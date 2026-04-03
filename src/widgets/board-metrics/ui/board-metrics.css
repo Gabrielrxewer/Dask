@@ -1,0 +1,31 @@
+.board-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.board-metrics__card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  min-height: 84px;
+}
+
+.board-metrics__card p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+}
+
+.board-metrics__card h3 {
+  margin: 9px 0 0;
+  font-family: "Sora", "Segoe UI", sans-serif;
+  font-size: 1.45rem;
+}
+
+@media (max-width: 720px) {
+  .board-metrics {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}

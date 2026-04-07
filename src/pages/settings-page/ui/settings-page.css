@@ -1,0 +1,58 @@
+.settings-view {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.settings-view__card {
+  border: 1px solid #dce8f7;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.settings-view__card h3 {
+  margin: 0;
+  color: #12395f;
+  font-size: 0.95rem;
+}
+
+.settings-view__card label {
+  display: grid;
+  gap: 6px;
+  color: #365a7f;
+  font-size: 0.84rem;
+}
+
+.settings-view__card input[type="checkbox"] {
+  margin-right: 7px;
+}
+
+.settings-view__card select {
+  border: 1px solid #d2e2f5;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #2b5177;
+  padding: 6px 8px;
+}
+
+.settings-view__card button {
+  justify-self: start;
+  border: 1px solid #d0e3f8;
+  background: #f3f8ff;
+  color: #245684;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 980px) {
+  .settings-view {
+    grid-template-columns: 1fr;
+  }
+}

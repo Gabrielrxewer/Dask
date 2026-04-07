@@ -1,0 +1,349 @@
+import { useEffect, useMemo, useState } from "react";
+import { MemberAvatar } from "@/entities/member";
+import { buildTaskTypeMetaMap, priorityMeta } from "@/entities/task";
+import type {
+  BoardConfig,
+  Task,
+  TaskCustomFieldValue,
+  TaskFieldDefinition,
+  TaskStatus
+} from "@/entities/task";
+import type { Member } from "@/entities/member";
+import "./task-details-modal.css";
+
+interface TaskDetailsModalProps {
+  task: Task;
+  status: TaskStatus;
+  assignee: Member;
+  boardConfig: BoardConfig;
+  onToggleChecklistItem: (taskId: string, itemId: string) => void;
+  onClose: () => void;
+}
+
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+}
+
+const longDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" });
+
+function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  if (definition.type === "boolean") {
+    return value ? "Sim" : "Nao";
+  }
+
+  if (value === null || typeof value === "undefined" || value === "") {
+    return "-";
+  }
+
+  return String(value);
+}
+
+function createAiSuggestion(baseText: string): string {
+  const normalized = baseText.trim();
+  const input = normalized.length > 0 ? normalized : "Definir objetivo principal da entrega.";
+
+  return [
+    "Contexto",
+    input,
+    "",
+    "Objetivo",
+    "Entregar valor de negocio com criterio de aceite claro e medicao de resultado.",
+    "",
+    "Escopo",
+    "- Fluxo principal mapeado",
+    "- Dependencias e riscos explicitados",
+    "- Alinhamento com stakeholders e QA",
+    "",
+    "Criterios de aceite",
+    "- Comportamento validado no cenario principal",
+    "- Evidencia de teste anexada",
+    "- Sem regressao em funcionalidades relacionadas"
+  ].join("\n");
+}
+
+export function TaskDetailsModal({
+  task,
+  status,
+  assignee,
+  boardConfig,
+  onToggleChecklistItem,
+  onClose
+}: TaskDetailsModalProps) {
+  const checklistItems = task.checklist.items;
+  const checklistTotal = checklistItems.length;
+  const checklistDone = checklistItems.filter(item => item.done).length;
+  const checklistProgress = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
+  const priority = priorityMeta[task.priority] ?? priorityMeta.low;
+
+  const [descriptionDraft, setDescriptionDraft] = useState(task.text);
+  const [aiSuggestion, setAiSuggestion] = useState("");
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: `${task.id}-assistant-1`,
+      role: "assistant",
+      text: "Sou o assistente do card. Posso te ajudar a quebrar escopo, revisar riscos e preparar handoff para o time."
+    }
+  ]);
+
+  const type = useMemo(() => {
+    const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
+    return (
+      typeMap[task.type] ?? {
+        id: task.type,
+        label: task.type,
+        background: "#edf5ff",
+        border: "#cfe2ff",
+        text: "#1d4e85"
+      }
+    );
+  }, [boardConfig.taskTypes, task.type]);
+
+  const customFields = useMemo(() => {
+    return boardConfig.fieldDefinitions
+      .map(definition => ({
+        definition,
+        value: task.customFields[definition.id]
+      }))
+      .filter(item => typeof item.value !== "undefined");
+  }, [boardConfig.fieldDefinitions, task.customFields]);
+
+  useEffect(() => {
+    setDescriptionDraft(task.text);
+    setAiSuggestion("");
+    setChatInput("");
+    setChatMessages([
+      {
+        id: `${task.id}-assistant-1`,
+        role: "assistant",
+        text: "Sou o assistente do card. Posso te ajudar a quebrar escopo, revisar riscos e preparar handoff para o time."
+      }
+    ]);
+  }, [task.id, task.text]);
+
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEsc);
+
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [onClose]);
+
+  const handleGenerateSuggestion = () => {
+    setAiSuggestion(createAiSuggestion(descriptionDraft));
+  };
+
+  const handleSendChat = () => {
+    const trimmed = chatInput.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const userMessage: ChatMessage = {
+      id: `${task.id}-user-${Date.now()}`,
+      role: "user",
+      text: trimmed
+    };
+
+    const assistantMessage: ChatMessage = {
+      id: `${task.id}-assistant-${Date.now() + 1}`,
+      role: "assistant",
+      text: `Entendido. Sobre \"${task.title}\", vou considerar esse ponto e sugerir uma proxima acao objetiva para o time.`
+    };
+
+    setChatMessages(prev => [...prev, userMessage, assistantMessage]);
+    setChatInput("");
+  };
+
+  return (
+    <div className="task-details-overlay" role="presentation" onClick={onClose}>
+      <aside
+        className="task-details"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-details-title"
+        onClick={event => event.stopPropagation()}
+      >
+        <header className="task-details__topbar">
+          <div className="task-details__breadcrumbs">Task details</div>
+          <button className="task-details__close" type="button" onClick={onClose} aria-label="Fechar detalhes">
+            x
+          </button>
+        </header>
+
+        <div className="task-details__body">
+          <section className="task-details__main">
+            <h2 id="task-details-title" className="task-details__title">
+              {task.title}
+            </h2>
+
+            <div className="task-details__chips">
+              <span
+                className="task-details__chip"
+                style={{
+                  backgroundColor: type.background,
+                  borderColor: type.border,
+                  color: type.text
+                }}
+              >
+                {type.label}
+              </span>
+              <span className="task-details__chip task-details__chip--status">
+                <span className="task-details__status-dot" style={{ background: status.dot }} />
+                {status.label}
+              </span>
+              <span className={`task-details__chip ${priority.className}`}>{priority.label}</span>
+              <span className="task-details__chip">{`Prazo ${longDate.format(new Date(task.due))}`}</span>
+            </div>
+
+            <section className="task-details__section">
+              <h3>Descricao</h3>
+              <p>{task.text}</p>
+            </section>
+
+            <section className="task-details__section">
+              <h3>Aprimorar descricao com IA</h3>
+              <textarea
+                className="task-details__textarea"
+                value={descriptionDraft}
+                onChange={event => setDescriptionDraft(event.target.value)}
+              />
+              <div className="task-details__actions-row">
+                <button type="button" onClick={handleGenerateSuggestion}>
+                  Aprimorar descricao
+                </button>
+                <button type="button" disabled={!aiSuggestion} onClick={() => setDescriptionDraft(aiSuggestion)}>
+                  Usar sugestao
+                </button>
+              </div>
+              {aiSuggestion ? <pre className="task-details__ai-suggestion">{aiSuggestion}</pre> : null}
+            </section>
+
+            <section className="task-details__section">
+              <h3>Checklist</h3>
+              <div className="task-details__progress-head">
+                <span>{`${checklistDone}/${checklistTotal} concluidos`}</span>
+                <strong>{`${checklistProgress}%`}</strong>
+              </div>
+              <div className="task-details__progress-track">
+                <div className="task-details__progress-fill" style={{ width: `${checklistProgress}%` }} />
+              </div>
+              <ul className="task-details__checklist">
+                {checklistItems.map(item => (
+                  <li className={item.done ? "is-done" : ""} key={item.id}>
+                    <button
+                      type="button"
+                      className="task-details__check-toggle"
+                      aria-pressed={item.done}
+                      onClick={() => onToggleChecklistItem(task.id, item.id)}
+                    >
+                      {item.done ? "x" : "o"}
+                    </button>
+                    <p>{item.label}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {customFields.length > 0 ? (
+              <section className="task-details__section">
+                <h3>Campos customizados</h3>
+                <div className="task-details__custom-fields">
+                  {customFields.map(({ definition, value }) => (
+                    <div className="task-details__custom-field" key={definition.id}>
+                      <span>{definition.label}</span>
+                      <strong>{formatCustomFieldValue(value, definition)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="task-details__section">
+              <h3>Tags</h3>
+              <div className="task-details__tags">
+                {task.tags.map(tag => (
+                  <span key={tag} className="task-details__tag">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </section>
+          </section>
+
+          <aside className="task-details__side">
+            <section className="task-details__panel">
+              <h4>Owner</h4>
+              <div className="task-details__owner">
+                <MemberAvatar member={assignee} />
+                <div>
+                  <p>{assignee.name}</p>
+                  <span>{`@${assignee.initials.toLowerCase()}`}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="task-details__panel">
+              <h4>Chat do card</h4>
+              <div className="task-details__chat-list">
+                {chatMessages.map(message => (
+                  <article
+                    className={`task-details__chat-item ${message.role === "assistant" ? "is-assistant" : "is-user"}`}
+                    key={message.id}
+                  >
+                    <strong>{message.role === "assistant" ? "Dask Copilot" : "Voce"}</strong>
+                    <p>{message.text}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="task-details__chat-input-wrap">
+                <textarea
+                  className="task-details__chat-input"
+                  placeholder="Pergunte algo sobre este card"
+                  value={chatInput}
+                  onChange={event => setChatInput(event.target.value)}
+                />
+                <button type="button" onClick={handleSendChat}>
+                  Enviar
+                </button>
+              </div>
+            </section>
+
+            <section className="task-details__panel">
+              <h4>Atividade</h4>
+              <ul className="task-details__activity">
+                <li>
+                  <strong>{assignee.name}</strong>
+                  <span>Atualizou a checklist hoje</span>
+                </li>
+                <li>
+                  <strong>Dask Bot</strong>
+                  <span>Sincronizou o status com o board</span>
+                </li>
+                <li>
+                  <strong>{assignee.name}</strong>
+                  <span>Criou esta tarefa</span>
+                </li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+      </aside>
+    </div>
+  );
+}

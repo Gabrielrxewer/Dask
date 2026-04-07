@@ -1,0 +1,12 @@
+services:
+  dask-frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_PATH: /dask/
+    image: dask-frontend:latest
+    container_name: dask-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8080"

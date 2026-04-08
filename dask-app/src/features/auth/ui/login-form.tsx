@@ -42,31 +42,33 @@ export function LoginForm() {
   return (
     <section className="auth-login">
       <div className="auth-login__header">
-        <p className="auth-login__eyebrow">Dask</p>
+        <p className="auth-login__eyebrow">Acesso seguro</p>
         <h1 className="auth-login__title">Entrar na plataforma</h1>
-        <p className="auth-login__subtitle">Use sua conta para acessar o workspace com seguranca.</p>
+        <p className="auth-login__subtitle">Use sua conta para acessar o workspace com seguranca e continuidade.</p>
       </div>
 
       <form className="auth-login__form" onSubmit={event => void handleSubmit(event)} noValidate>
-        <label className="auth-login__label" htmlFor="email">
-          Email
-        </label>
-        <TextInput
-          className="auth-login__input"
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={email}
-          onChange={event => setEmail(event.target.value)}
-          placeholder="voce@empresa.com"
-          required
-        />
+        <div className="auth-login__field">
+          <label className="auth-login__label" htmlFor="email">
+            Email
+          </label>
+          <TextInput
+            className="auth-login__input"
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={email}
+            onChange={event => setEmail(event.target.value)}
+            placeholder="voce@empresa.com"
+            required
+          />
+        </div>
 
-        <div className="auth-login__password-field">
+        <div className="auth-login__field auth-login__password-field">
           <label className="auth-login__label" htmlFor="password">
             Senha
           </label>
@@ -104,6 +106,8 @@ export function LoginForm() {
         <Button className="auth-login__submit" type="submit" variant="primary" disabled={isSubmitting}>
           {isSubmitting ? "Entrando..." : "Entrar"}
         </Button>
+
+        <p className="auth-login__footnote">Seu acesso permanece vinculado ao ambiente corporativo e protegido por sessao autenticada.</p>
       </form>
     </section>
   );

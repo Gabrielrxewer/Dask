@@ -7,6 +7,7 @@ import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { CreateTaskButton } from "@/features/create-task";
 import type { CreateTaskInput } from "@/modules/workspace";
+import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
@@ -75,7 +76,7 @@ export function AppShell({
 
       <aside className="sidebar">
         <div className="sidebar__brand">
-          <span className="sidebar__brand-mark">D</span>
+          <img className="sidebar__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
           <div>
             <p className="sidebar__brand-title">Dask</p>
             <p className="sidebar__brand-subtitle">Universal Workflow</p>

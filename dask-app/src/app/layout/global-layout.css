@@ -1,6 +1,6 @@
 :root {
-  --global-header-height: 40px;
-  --global-footer-height: 40px;
+  --global-header-height: 44px;
+  --global-footer-height: 34px;
 }
 
 .global-layout {
@@ -33,39 +33,43 @@
   top: 0;
   height: var(--global-header-height);
   min-height: var(--global-header-height);
-  border-bottom: 1px solid var(--chrome-border);
+  border-bottom: 1px solid rgba(135, 184, 220, 0.34);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 0 12px;
+  gap: 12px;
+  padding: 0 16px;
   background:
-    linear-gradient(180deg, rgba(8, 34, 57, 0.92) 0%, rgba(10, 49, 78, 0.88) 100%),
-    linear-gradient(120deg, rgba(18, 111, 165, 0.08), rgba(18, 111, 165, 0.02));
-  box-shadow: 0 4px 14px rgba(11, 37, 63, 0.1);
+    linear-gradient(180deg, rgba(11, 46, 78, 0.94) 0%, rgba(12, 61, 98, 0.92) 100%),
+    linear-gradient(120deg, rgba(38, 145, 214, 0.16), rgba(31, 170, 153, 0.08));
+  box-shadow:
+    0 12px 24px rgba(8, 31, 53, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
   overflow: visible;
 }
 
 .global-header__left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   padding-left: 0;
 }
 
 .global-header__menu {
-  border: 1px solid rgba(173, 200, 224, 0.28);
-  background: rgba(255, 255, 255, 0.08);
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  border: 1px solid rgba(161, 202, 233, 0.3);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(234, 244, 252, 0.08) 100%);
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
   margin-right: 0;
-  box-shadow: 0 2px 8px rgba(5, 22, 38, 0.12);
+  box-shadow:
+    0 8px 18px rgba(4, 21, 37, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
   transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
   position: relative;
   z-index: 1;
@@ -84,12 +88,12 @@
   width: 100%;
   height: 100%;
   border-radius: 2px;
-  background: #d6e9f8;
+  background: #d9ecfa;
 }
 
 .global-header__menu:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(189, 220, 242, 0.38);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(240, 248, 255, 0.12) 100%);
+  border-color: rgba(170, 213, 242, 0.42);
   transform: translateY(-1px);
 }
 
@@ -100,40 +104,51 @@
 
 .global-header__menu:focus-visible,
 .global-header__user:focus-visible {
-  border-color: rgba(189, 220, 242, 0.52);
-  box-shadow: 0 0 0 3px rgba(10, 134, 232, 0.16);
+  border-color: rgba(175, 218, 246, 0.54);
+  box-shadow: 0 0 0 3px rgba(118, 196, 245, 0.18);
 }
 
 .global-header__brand {
   display: flex;
   align-items: center;
+  gap: 10px;
   min-width: 0;
   position: relative;
   z-index: 1;
 }
 
+.global-header__brand-mark {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(11, 28, 46, 0.18));
+}
+
 .global-header__brand strong {
   font-family: var(--font-family-heading);
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #deeffa;
-  letter-spacing: 0.01em;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #e6f2fb;
+  letter-spacing: -0.015em;
   line-height: 1;
 }
 
 .global-header__user {
-  min-height: 28px;
-  min-width: 30px;
+  min-height: 32px;
+  min-width: 34px;
   border-radius: 999px;
-  border: 1px solid rgba(173, 200, 224, 0.28);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(161, 202, 233, 0.34);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(233, 243, 252, 0.1) 100%);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
-  padding: 0 8px 0 4px;
-  box-shadow: 0 2px 8px rgba(5, 22, 38, 0.1);
+  padding: 0 10px 0 4px;
+  box-shadow:
+    0 8px 18px rgba(4, 21, 37, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
   transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
   position: relative;
   z-index: 1;
@@ -146,50 +161,28 @@
 }
 
 .global-header__user-avatar {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(196, 221, 239, 0.5);
+  background: linear-gradient(135deg, #dff0ff 0%, #e9faf6 100%);
+  border: 1px solid rgba(176, 211, 234, 0.72);
+  box-shadow: 0 4px 12px rgba(15, 57, 89, 0.08);
 }
 
-.global-header__user-icon-shape {
-  position: relative;
-  width: 10px;
-  height: 10px;
-  display: block;
-}
-
-.global-header__user-icon-shape::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: #587792;
-  transform: translateX(-50%);
-}
-
-.global-header__user-icon-shape::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 9px;
-  height: 5px;
-  border-radius: 999px 999px 3px 3px;
-  background: #587792;
-  transform: translateX(-50%);
+.global-header__user-avatar-text {
+  font-family: var(--font-family-heading);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #16507d;
 }
 
 .global-header__user-name {
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   line-height: 1;
-  color: #e7f3fc;
+  color: #e4f1fb;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -198,8 +191,8 @@
 }
 
 .global-header__user:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(189, 220, 242, 0.34);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.17) 0%, rgba(240, 248, 255, 0.12) 100%);
+  border-color: rgba(170, 213, 242, 0.42);
   transform: translateY(-1px);
 }
 
@@ -312,31 +305,45 @@
   bottom: 0;
   height: var(--global-footer-height);
   min-height: var(--global-footer-height);
-  border-top: 1px solid var(--chrome-border);
+  border-top: 1px solid rgba(125, 176, 215, 0.28);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0;
   padding: 0 12px;
   background:
-    linear-gradient(180deg, rgba(8, 34, 57, 0.92) 0%, rgba(10, 49, 78, 0.88) 100%),
-    linear-gradient(120deg, rgba(18, 111, 165, 0.08), rgba(18, 111, 165, 0.02));
-  box-shadow: 0 -3px 12px rgba(11, 37, 63, 0.08);
+    linear-gradient(180deg, rgba(10, 42, 71, 0.92) 0%, rgba(11, 56, 90, 0.9) 100%),
+    linear-gradient(120deg, rgba(37, 141, 209, 0.12), rgba(31, 170, 153, 0.05));
+  box-shadow:
+    0 -8px 18px rgba(8, 31, 53, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 .global-footer__brand {
   margin: 0;
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .global-footer__brand {
   font-family: var(--font-family-heading);
-  font-size: 0.74rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: #deeffa;
-  opacity: 0.86;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d6e9f8;
+  opacity: 0.9;
+}
+
+.global-footer__brand-mark {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(8, 28, 47, 0.18));
 }
 
 @media (max-width: 1140px) {
@@ -347,8 +354,8 @@
 
   .global-header,
   .global-footer {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .global-header__user {
@@ -362,37 +369,36 @@
 
 @media (max-width: 760px) {
   .global-header__brand strong {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
   }
 
   .global-header__menu {
-    width: 26px;
-    height: 26px;
-    border-radius: 7px;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
   }
 
   .global-header__user {
-    min-height: 26px;
-    width: 26px;
-    min-width: 26px;
+    min-height: 28px;
+    width: 28px;
+    min-width: 28px;
     justify-content: center;
     padding: 0;
-    border-radius: 8px;
+    border-radius: 10px;
   }
 
   .global-header__user-avatar {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
-  .global-header__user-icon-shape {
-    width: 9px;
-    height: 9px;
+  .global-header__user-avatar-text {
+    font-size: 0.5rem;
   }
 
   .global-footer {
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }
 

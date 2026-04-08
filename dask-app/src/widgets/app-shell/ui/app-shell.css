@@ -49,14 +49,9 @@
 .sidebar__brand-mark {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-family: "Sora", "Segoe UI", sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: #082640;
-  background: linear-gradient(120deg, #7ee7ff, #7af8cb);
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgba(7, 25, 41, 0.22));
 }
 
 .sidebar__brand-title {

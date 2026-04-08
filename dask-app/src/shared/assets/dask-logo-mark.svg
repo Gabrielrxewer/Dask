@@ -1,0 +1,41 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="daskLogoMain" x1="72" y1="48" x2="188" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD982"/>
+      <stop offset="0.26" stop-color="#F6919F"/>
+      <stop offset="0.54" stop-color="#A560EA"/>
+      <stop offset="0.78" stop-color="#2C78E6"/>
+      <stop offset="1" stop-color="#22C7C7"/>
+    </linearGradient>
+    <linearGradient id="daskLogoLower" x1="58" y1="118" x2="180" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#86F0C8"/>
+      <stop offset="0.34" stop-color="#53D1D0"/>
+      <stop offset="0.7" stop-color="#2D74DF"/>
+      <stop offset="1" stop-color="#6D3CC8"/>
+    </linearGradient>
+    <linearGradient id="daskLogoDots" x1="156" y1="60" x2="196" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE08F"/>
+      <stop offset="1" stop-color="#F3879A"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="128" cy="134" r="78" fill="url(#daskLogoLower)"/>
+  <path
+    d="M62 78C74 52 102 38 132 38C159 38 185 49 202 69L130 141L92 108C80 98 68 94 54 97C56 90 58 84 62 78Z"
+    fill="url(#daskLogoMain)"
+  />
+  <path
+    d="M55 103C67 97 79 100 90 109L128 142L187 83C195 75 208 74 217 82C226 90 226 103 218 111L148 182C142 188 135 191 127 191C119 191 112 188 106 183L42 122C31 112 41 108 55 103Z"
+    fill="url(#daskLogoLower)"
+  />
+  <path
+    d="M51 101C64 94 78 96 91 107L128 139L187 80C194 72 207 71 215 79C223 87 223 99 216 107L147 176C136 187 120 187 109 177L46 119C35 109 37 105 51 101Z"
+    stroke="white"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="169" cy="78" r="6" fill="url(#daskLogoDots)"/>
+  <circle cx="187" cy="66" r="4.5" fill="url(#daskLogoDots)"/>
+  <circle cx="153" cy="90" r="7.5" fill="url(#daskLogoDots)"/>
+</svg>

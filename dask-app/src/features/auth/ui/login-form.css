@@ -1,41 +1,64 @@
 .auth-login {
-  width: min(460px, 100%);
+  width: min(448px, 100%);
+  position: relative;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 254, 0.96) 100%);
-  border: 1px solid #c6d8ea;
-  border-radius: 24px;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 251, 255, 0.975) 58%, rgba(243, 248, 253, 0.955) 100%);
+  border: 1px solid rgba(197, 212, 226, 0.88);
+  border-radius: 26px;
   box-shadow:
-    0 22px 44px rgba(22, 62, 99, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.72) inset;
+    0 22px 42px rgba(17, 48, 79, 0.11),
+    0 8px 16px rgba(31, 72, 112, 0.055),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
   display: grid;
-  gap: 24px;
-  padding: clamp(24px, 2.2vw, 30px);
+  gap: 22px;
+  padding: clamp(30px, 2.4vw, 33px);
+  overflow: hidden;
+  backdrop-filter: saturate(108%) blur(8px);
+}
+
+.auth-login::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 88px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(128, 186, 223, 0.16) 0%, transparent 56%),
+    linear-gradient(180deg, rgba(242, 248, 255, 0.74) 0%, rgba(242, 248, 255, 0) 100%);
+  pointer-events: none;
 }
 
 .auth-login__header {
+  position: relative;
   display: grid;
   gap: 8px;
 }
 
 .auth-login__title {
   margin: 0;
-  font-size: clamp(1.46rem, 1.14rem + 1vw, 1.86rem);
-  line-height: 1.12;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.82rem, 1.4rem + 0.82vw, 2.1rem);
+  line-height: 0.98;
+  letter-spacing: -0.038em;
   color: #0a2237;
   max-width: 12ch;
 }
 
 .auth-login__subtitle {
   margin: 0;
-  color: #58728c;
-  line-height: 1.5;
-  font-size: 0.94rem;
-  max-width: 36ch;
+  color: #617a92;
+  line-height: 1.58;
+  font-size: 0.91rem;
+  max-width: 30ch;
 }
 
 .auth-login__eyebrow {
   margin: 0;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(175, 201, 224, 0.62);
+  background: rgba(252, 254, 255, 0.78);
+  box-shadow: 0 5px 12px rgba(15, 54, 89, 0.04);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 0.68rem;
@@ -45,43 +68,59 @@
 
 .auth-login__form {
   display: grid;
-  gap: 15px;
+  gap: 14px;
+}
+
+.auth-login__field {
+  display: grid;
+  gap: 6px;
 }
 
 .auth-login__label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #21405d;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  color: #274760;
 }
 
 .auth-login__input {
   width: 100%;
-  min-height: 44px;
-  border-radius: 12px;
-  border-color: #c6d8ea;
-  background: linear-gradient(180deg, rgba(253, 254, 255, 0.96) 0%, rgba(245, 249, 255, 0.94) 100%);
-  padding: 0 14px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  min-height: 46px;
+  border-radius: 15px;
+  border-color: #c8d9ea;
+  background: linear-gradient(180deg, rgba(254, 255, 255, 0.985) 0%, rgba(246, 249, 255, 0.97) 100%);
+  padding: 0 16px;
+  color: #112b43;
+  font-size: 0.95rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.78) inset,
+    0 5px 12px rgba(21, 57, 89, 0.028);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
-    background 0.2s ease;
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .auth-login__input:hover {
-  border-color: #aec6de;
-  background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 100%);
+  border-color: #b3cadf;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f9fe 100%);
+}
+
+.auth-login__input::placeholder {
+  color: #7e95aa;
 }
 
 .auth-login__input:focus {
-  border-color: color-mix(in oklab, var(--accent) 50%, #b2cde5);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 42%, #b8d0e5);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--accent) 12%, transparent),
+    0 8px 16px rgba(18, 67, 108, 0.05);
   background: #ffffff;
+  transform: translateY(-1px);
 }
 
 .auth-login__password-field {
-  display: grid;
   gap: 8px;
 }
 
@@ -92,24 +131,25 @@
 .auth-login__toggle {
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 11px;
   transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
-  border: 1px solid transparent;
-  background: rgba(241, 247, 255, 0.82);
+  width: 29px;
+  height: 29px;
+  border: 1px solid rgba(185, 203, 220, 0.58);
+  background: rgba(246, 250, 255, 0.92);
   cursor: pointer;
   padding: 0;
   border-radius: 999px;
   transition:
     background 0.2s ease,
-    transform 0.2s ease,
-    border-color 0.2s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .auth-login__toggle:hover {
   background: rgba(233, 243, 252, 0.98);
-  border-color: rgba(183, 207, 227, 0.72);
+  border-color: rgba(166, 195, 219, 0.84);
+  box-shadow: 0 3px 8px rgba(20, 58, 92, 0.05);
 }
 
 .auth-login__toggle:focus-visible {
@@ -170,64 +210,73 @@
 }
 
 .auth-login__input--password {
-  padding-right: 50px;
+  padding-right: 48px;
 }
 
 .auth-login__message {
-  margin: 2px 0 -2px;
-  color: #a33524;
-  font-size: 0.84rem;
+  margin: 0;
+  color: #963629;
+  font-size: 0.82rem;
   background: linear-gradient(180deg, #fff6f3 0%, #fff2ef 100%);
-  border: 1px solid #f0ccc5;
-  border-radius: 10px;
-  padding: 9px 11px;
+  border: 1px solid #edd0c9;
+  border-radius: 13px;
+  padding: 10px 12px;
 }
 
 .auth-login__submit {
-  margin-top: 4px;
+  margin-top: 12px;
   width: 100%;
-  min-height: 46px;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  min-height: 48px;
+  border-radius: 15px;
+  font-size: 0.89rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.022em;
   color: #eaf7ff;
-  border-color: rgba(8, 61, 102, 0.18);
+  border-color: rgba(8, 61, 102, 0.1);
   box-shadow:
-    0 12px 22px rgba(8, 56, 93, 0.18),
+    0 10px 18px rgba(8, 56, 93, 0.13),
     0 2px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 .auth-login__submit.shared-button--primary {
-  background: linear-gradient(132deg, #0a446f 0%, #0b6fa9 56%, #0f8d87 100%);
+  background: linear-gradient(135deg, #0a426b 0%, #0b6da7 60%, #138b88 100%);
 }
 
 .auth-login__submit.shared-button--primary:hover {
-  background: linear-gradient(132deg, #093a60 0%, #0a669c 56%, #0d7f79 100%);
+  background: linear-gradient(135deg, #093a5d 0%, #0a669d 60%, #0f817d 100%);
   box-shadow:
-    0 14px 24px rgba(8, 54, 89, 0.2),
+    0 12px 20px rgba(8, 54, 89, 0.15),
     0 2px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 .auth-login__submit:focus-visible {
   box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--accent) 24%, transparent),
-    0 12px 22px rgba(8, 56, 93, 0.18),
+    0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent),
+    0 10px 18px rgba(8, 56, 93, 0.13),
     0 2px 0 rgba(255, 255, 255, 0.18) inset;
+}
+
+.auth-login__footnote {
+  margin: 4px 0 0;
+  color: #778b9d;
+  font-size: 0.74rem;
+  line-height: 1.52;
+  text-align: center;
 }
 
 @media (max-width: 480px) {
   .auth-login {
+    width: 100%;
     border-radius: 22px;
-    padding: 20px;
+    padding: 24px 20px;
     gap: 20px;
   }
 
   .auth-login__title {
-    font-size: 1.34rem;
+    font-size: 1.48rem;
   }
 
   .auth-login__submit {
-    min-height: 44px;
+    min-height: 47px;
   }
 }

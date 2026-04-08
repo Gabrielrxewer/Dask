@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { GlobalChromeProvider } from "@/app/layout";
+import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
 function isCompactViewport(): boolean {
@@ -137,6 +138,7 @@ export function GlobalLayout() {
                 </span>
               </button>
               <div className="global-header__brand">
+                <img className="global-header__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
                 <strong>Dask</strong>
               </div>
             </div>
@@ -153,7 +155,7 @@ export function GlobalLayout() {
                 disabled={isLoginRoute}
               >
                 <span className="global-header__user-avatar" aria-hidden="true">
-                  <span className="global-header__user-icon-shape" />
+                  <span className="global-header__user-avatar-text">{profileInitials}</span>
                 </span>
                 {status === "authenticated" ? (
                   <span className="global-header__user-name">{profileLabel}</span>
@@ -211,7 +213,10 @@ export function GlobalLayout() {
           </main>
 
           <footer className="global-footer">
-            <p className="global-footer__brand">Dask Platform</p>
+            <p className="global-footer__brand">
+              <img className="global-footer__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
+              <span>Dask Platform</span>
+            </p>
           </footer>
         </div>
       </div>

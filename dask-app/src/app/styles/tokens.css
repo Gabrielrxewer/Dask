@@ -1,23 +1,54 @@
 :root {
-  --bg: #f1f6fb;
-  --bg-deep: #0a1d33;
+  --bg: #eff4fa;
+  --bg-soft: #e4edf8;
+  --bg-deep: #0b223f;
   --panel: #ffffff;
-  --panel-elevated: #f8fbff;
-  --panel-soft: #eef5ff;
-  --text: #142233;
-  --text-soft: #5f7085;
-  --line: #d7e3f2;
-  --accent: #0d8df7;
-  --accent-soft: #e8f4ff;
-  --accent-2: #14b8a6;
-  --danger: #ef4444;
-  --warn: #f59e0b;
-  --success: #22c55e;
-  --radius-xl: 22px;
+  --panel-soft: #f6f9fe;
+  --panel-muted: #edf3fb;
+  --text: #0f2439;
+  --text-strong: #0a1e31;
+  --text-soft: #586f88;
+  --text-muted: #6b87a3;
+  --line: #d3dfef;
+  --line-strong: #b8cade;
+  --accent: #0a86e8;
+  --accent-strong: #0a6fc1;
+  --accent-soft: #e8f3fe;
+  --success: #1f9d5b;
+  --success-soft: #e9f8ef;
+  --warn: #b7791f;
+  --warn-soft: #fff7ea;
+  --danger: #d94848;
+  --danger-soft: #fff0f0;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  --radius-xl: 24px;
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 10px;
-  --shadow-1: 0 14px 40px rgba(24, 58, 97, 0.1);
-  --shadow-2: 0 10px 26px rgba(6, 38, 77, 0.08);
-  --focus: 0 0 0 3px color-mix(in oklab, var(--accent) 24%, transparent);
+  --radius-xs: 8px;
+
+  --font-family-heading: "Sora", "Segoe UI", sans-serif;
+  --font-family-body: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-size-2xs: 0.72rem;
+  --font-size-xs: 0.8rem;
+  --font-size-sm: 0.9rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.2rem;
+  --font-size-xl: 1.5rem;
+
+  --shadow-1: 0 10px 24px rgba(12, 35, 63, 0.08);
+  --shadow-2: 0 20px 42px rgba(10, 31, 57, 0.12);
+  --focus: 0 0 0 3px color-mix(in oklab, var(--accent) 26%, transparent);
+  --state-hover: color-mix(in oklab, var(--accent) 8%, transparent);
+  --state-active: color-mix(in oklab, var(--accent) 15%, transparent);
+  --state-disabled-opacity: 0.55;
 }

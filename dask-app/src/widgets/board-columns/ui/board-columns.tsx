@@ -3,7 +3,7 @@ import type { DragEvent } from "react";
 import type { MembersById } from "@/entities/member";
 import { MemberAvatar } from "@/entities/member";
 import { TaskCard, groupTasksByStatus } from "@/entities/task";
-import type { BoardConfig, Task, TaskStatus, TaskStatusId } from "@/entities/task";
+import type { BoardConfig, Task, TaskPriority, TaskStatus, TaskStatusId } from "@/entities/task";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
@@ -14,6 +14,7 @@ interface BoardColumnsProps {
   boardConfig: BoardConfig;
   membersById: MembersById;
   onMoveTask: (taskId: string, statusId: TaskStatusId) => void;
+  onUpdatePriority: (taskId: string, priority: TaskPriority) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
 }
 
@@ -23,6 +24,7 @@ export function BoardColumns({
   boardConfig,
   membersById,
   onMoveTask,
+  onUpdatePriority,
   onToggleChecklistItem
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
@@ -41,12 +43,14 @@ export function BoardColumns({
 
   const handleDragStart = (event: DragEvent<HTMLElement>, taskId: string) => {
     setDraggingTaskId(taskId);
+    document.body.classList.add("board-is-dragging");
     setTaskDragPayload(event, taskId);
   };
 
   const handleDragEnd = () => {
     setDraggingTaskId("");
     setDropTargetStatus("");
+    document.body.classList.remove("board-is-dragging");
   };
 
   const handleDrop = (event: DragEvent<HTMLElement>, statusId: TaskStatusId) => {
@@ -87,18 +91,23 @@ export function BoardColumns({
               </header>
 
               <div className="board-column__list">
-                {statusTasks.map(task => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    boardConfig={boardConfig}
-                    assigneeSlot={<MemberAvatar member={membersById[task.assignee]} />}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                    isDragging={draggingTaskId === task.id}
-                    onOpen={setSelectedTaskId}
-                  />
-                ))}
+                {statusTasks.length === 0 ? (
+                  <p className="board-column__empty">Sem itens nesta etapa.</p>
+                ) : (
+                  statusTasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      boardConfig={boardConfig}
+                      assigneeSlot={<MemberAvatar member={membersById[task.assignee]} />}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      isDragging={draggingTaskId === task.id}
+                      onOpen={setSelectedTaskId}
+                      onUpdatePriority={onUpdatePriority}
+                    />
+                  ))
+                )}
               </div>
             </section>
           );
@@ -111,6 +120,7 @@ export function BoardColumns({
           status={selectedStatus}
           assignee={membersById[selectedTask.assignee]}
           boardConfig={boardConfig}
+          onUpdatePriority={onUpdatePriority}
           onToggleChecklistItem={onToggleChecklistItem}
           onClose={() => setSelectedTaskId("")}
         />

@@ -1,4 +1,4 @@
-export { priorityMeta } from "@/entities/task/model/task-statuses";
+export { priorityMeta, taskPriorityOptions } from "@/entities/task/model/task-statuses";
 export { factoryBoardConfig, buildTaskTypeMetaMap } from "@/entities/task/model/board-config";
 export { initialTasks } from "@/entities/task/model/mock-tasks";
 export { groupTasksByStatus, buildBoardMetrics } from "@/entities/task/model/task-selectors";

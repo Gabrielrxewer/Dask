@@ -1,7 +1,7 @@
 import type { MemberId } from "@/entities/member/model/types";
 
 export type TaskStatusId = string;
-export type TaskPriority = "high" | "medium" | "low";
+export type TaskPriority = 0 | 1 | 2 | 3 | 4;
 export type TaskType = string;
 
 export type TaskCustomFieldValue = string | number | boolean | string[] | null;

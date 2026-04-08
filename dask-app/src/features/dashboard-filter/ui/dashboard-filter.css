@@ -1,6 +1,24 @@
+.dashboard-filter .shared-input {
+  width: 100%;
+  min-width: 220px;
+}
+
 .dashboard-filter {
-  display: flex;
+  width: min(560px, 100%);
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.dashboard-filter .shared-button {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .dashboard-filter {
+    width: 100%;
+    grid-template-columns: minmax(180px, 1fr) auto;
+  }
 }

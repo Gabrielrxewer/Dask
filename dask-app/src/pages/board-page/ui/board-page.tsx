@@ -2,13 +2,7 @@
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
-import {
-  buildBoardMetrics,
-  factoryBoardConfig,
-  type Task,
-  type TaskStatus,
-  type TaskStatusId
-} from "@/entities/task";
+import { buildBoardMetrics, factoryBoardConfig, type Task, type TaskPriority, type TaskStatus, type TaskStatusId } from "@/entities/task";
 import { currentUserId, membersById } from "@/entities/member";
 import {
   applyDashboardFilter,
@@ -16,13 +10,14 @@ import {
   type DashboardFilterState
 } from "@/features/dashboard-filter";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
+import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
 import "./board-page.css";
 
 const modeOptions: Array<{ id: WorkspaceBoardMode; label: string; caption: string }> = [
   { id: "dev", label: "Execucao", caption: "Fluxo operacional principal" },
   { id: "po", label: "Planejamento", caption: "Priorizacao e compromisso" },
   { id: "manager", label: "Gestao", caption: "Visao de capacidade e risco" },
-  { id: "qa", label: "Qualidade", caption: "ValidaÃ§Ã£o e conformidade" }
+  { id: "qa", label: "Qualidade", caption: "Validacao e conformidade" }
 ];
 
 const poStatuses: TaskStatus[] = [
@@ -114,7 +109,7 @@ function checklistSummary(task: Task): { done: number; total: number; percent: n
 }
 
 export function BoardPage() {
-  const { snapshot, isLoading, createTask, moveTask, updateTaskCustomField, toggleChecklistItem } = useWorkspace();
+  const { snapshot, isLoading, createTask, moveTask, updateTaskPriority, updateTaskCustomField, toggleChecklistItem } = useWorkspace();
   const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
@@ -171,6 +166,7 @@ export function BoardPage() {
 
   const activeBoardTasks =
     mode === "po" ? planningTasks : mode === "qa" ? qaTasks : mode === "manager" ? managerTasks : filteredTasks;
+  const activeModeMeta = modeOptions.find(option => option.id === mode);
 
   const modeCards = useMemo(() => {
     if (mode === "po") {
@@ -244,42 +240,56 @@ export function BoardPage() {
     void updateTaskCustomField(taskId, "managerLane", statusId);
   };
 
+  const handleUpdatePriority = (taskId: string, priority: TaskPriority) => {
+    void updateTaskPriority(taskId, priority);
+  };
+
   return (
     <AppShell
       metrics={devMetrics}
+      noPageScroll
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
       onCreateTask={input => void createTask(input)}
     >
-      <section className="board-mode-switch" aria-label="Modos do board">
-        {modeOptions.map(option => (
-          <button
-            key={option.id}
-            type="button"
-            className={`board-mode-switch__button ${mode === option.id ? "is-active" : ""}`}
-            onClick={() => setMode(option.id)}
-          >
-            <strong>{option.label}</strong>
-            <span>{option.caption}</span>
-          </button>
-        ))}
-      </section>
+      <div className="board-view">
+        <section className="board-view__modes">
+          <div className="board-view__modes-head">
+            <h2>Visao operacional</h2>
+            <p>Selecione a perspectiva para navegar no fluxo.</p>
+          </div>
+          <Tabs
+            value={mode}
+            items={modeOptions.map(option => ({ id: option.id, label: option.label }))}
+            onChange={setMode}
+            className="board-view__tabs"
+          />
+        </section>
 
-      <BoardMetrics metrics={devMetrics} cards={modeCards} />
+        <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
 
-      {isLoading ? (
-        <section className="board-loading">Carregando workspace...</section>
-      ) : (
-        <BoardColumns
-          statuses={activeStatuses}
-          boardConfig={boardConfig}
-          tasks={activeBoardTasks}
-          membersById={activeMembers}
-          onMoveTask={handleMoveTask}
-          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
-        />
-      )}
+        <Section
+          title={activeModeMeta ? `Quadro ${activeModeMeta.label}` : "Quadro"}
+          subtitle={activeModeMeta?.caption ?? "Acompanhe o andamento das entregas em colunas."}
+          actions={<StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>}
+          className="board-view__canvas"
+        >
+          {isLoading ? (
+            <LoadingState text="Carregando workspace..." />
+          ) : (
+            <BoardColumns
+              statuses={activeStatuses}
+              boardConfig={boardConfig}
+              tasks={activeBoardTasks}
+              membersById={activeMembers}
+              onMoveTask={handleMoveTask}
+              onUpdatePriority={handleUpdatePriority}
+              onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
+            />
+          )}
+        </Section>
+      </div>
     </AppShell>
   );
 }

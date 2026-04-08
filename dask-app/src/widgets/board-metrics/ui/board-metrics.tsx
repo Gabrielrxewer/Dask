@@ -1,4 +1,5 @@
 import type { BoardMetrics as BoardMetricsType } from "@/entities/task";
+import { MetricCard } from "@/shared/ui";
 import "./board-metrics.css";
 
 interface MetricCardItem {
@@ -9,25 +10,23 @@ interface MetricCardItem {
 interface BoardMetricsProps {
   metrics: BoardMetricsType;
   cards?: MetricCardItem[];
+  className?: string;
 }
 
-export function BoardMetrics({ metrics, cards }: BoardMetricsProps) {
+export function BoardMetrics({ metrics, cards, className = "" }: BoardMetricsProps) {
   const fallbackCards: MetricCardItem[] = [
     { label: "Total de cards", value: metrics.total },
     { label: "Em progresso", value: metrics.doing },
     { label: "Entrega esta semana", value: metrics.dueThisWeek },
-    { label: "Concluído", value: `${metrics.donePercent}%` }
+    { label: "Concluido", value: `${metrics.donePercent}%` }
   ];
 
   const metricCards = cards && cards.length > 0 ? cards : fallbackCards;
 
   return (
-    <section className="board-metrics">
+    <section className={`board-metrics ${className}`.trim()}>
       {metricCards.map(card => (
-        <article className="board-metrics__card" key={card.label}>
-          <p>{card.label}</p>
-          <h3>{card.value}</h3>
-        </article>
+        <MetricCard label={card.label} value={card.value} key={card.label} />
       ))}
     </section>
   );

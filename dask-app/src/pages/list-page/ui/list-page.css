@@ -1,44 +1,11 @@
-.list-view {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--panel);
-  overflow: hidden;
-  box-shadow: var(--shadow-2);
+.list-view__table {
+  border: 0;
+  border-radius: 0;
 }
 
-.list-view__header,
-.list-view__row {
-  display: grid;
-  grid-template-columns: minmax(220px, 2.2fr) 1fr 1fr 1.2fr 0.7fr;
-  gap: 10px;
+.list-view__table .shared-data-table__cell {
+  display: flex;
   align-items: center;
-  padding: 10px 12px;
-}
-
-.list-view__header {
-  background: #f4f8ff;
-  border-bottom: 1px solid #dce8f7;
-  color: #53708e;
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.list-view__rows {
-  display: grid;
-}
-
-.list-view__row {
-  border-top: 1px solid #edf3fb;
-  transition: background 0.15s ease;
-}
-
-.list-view__row:hover {
-  background: #f8fbff;
-}
-
-.list-view__row:first-child {
-  border-top: 0;
 }
 
 .list-view__title {
@@ -47,57 +14,54 @@
   text-align: left;
   padding: 0;
   cursor: pointer;
+  width: 100%;
+  min-height: 44px;
+  transition: transform 0.15s ease;
 }
 
 .list-view__title strong {
   display: block;
-  color: #113b63;
-  font-size: 0.9rem;
+  color: var(--text-strong);
+  font-size: var(--font-size-sm);
 }
 
 .list-view__title p {
   margin: 2px 0 0;
-  color: #587494;
-  font-size: 0.78rem;
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
   line-height: 1.35;
+}
+
+.list-view__title:hover strong {
+  color: var(--accent-strong);
+}
+
+.list-view__title:hover {
+  transform: translateX(1px);
+}
+
+.list-view__title:focus-visible {
+  border-radius: var(--radius-xs);
 }
 
 .list-view__type {
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 0.72rem;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   width: fit-content;
   padding: 3px 8px;
 }
 
 .list-view__status {
-  border: 1px solid #d2e2f5;
-  border-radius: 8px;
-  background: #f8fbff;
-  color: #2b5177;
-  padding: 6px 8px;
-}
-
-.list-view__empty {
-  padding: 18px;
-  color: #4c6d8f;
-  font-size: 0.88rem;
+  min-height: 34px;
+  font-size: var(--font-size-xs);
+  width: 100%;
 }
 
 .list-view__owner,
 .list-view__checklist {
   color: #35597d;
-  font-size: 0.82rem;
+  font-size: var(--font-size-xs);
 }
 
-@media (max-width: 980px) {
-  .list-view {
-    overflow-x: auto;
-  }
-
-  .list-view__header,
-  .list-view__row {
-    min-width: 860px;
-  }
-}

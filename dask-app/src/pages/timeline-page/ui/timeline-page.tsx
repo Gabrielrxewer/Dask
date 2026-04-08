@@ -1,19 +1,26 @@
-﻿import { useMemo, useState } from "react";
-import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
-import { TaskDetailsModal } from "@/widgets/task-details";
+import { useMemo, useState } from "react";
 import { currentUserId, membersById } from "@/entities/member";
-import {
-  buildBoardMetrics,
-  buildTaskTypeMetaMap,
-  factoryBoardConfig
-} from "@/entities/task";
+import { buildBoardMetrics, buildTaskTypeMetaMap, factoryBoardConfig } from "@/entities/task";
 import {
   applyDashboardFilter,
   initialDashboardFilter,
   type DashboardFilterState
 } from "@/features/dashboard-filter";
 import { useWorkspace } from "@/modules/workspace";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHeader,
+  DataTableRow,
+  EmptyState,
+  LoadingState,
+  Section,
+  StatusBadge
+} from "@/shared/ui";
+import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
+import { TaskDetailsModal } from "@/widgets/task-details";
 import "./timeline-page.css";
 
 function toDateStamp(value: string): number {
@@ -21,8 +28,12 @@ function toDateStamp(value: string): number {
   return Number.isNaN(date.getTime()) ? Date.now() : date.getTime();
 }
 
+function toShortDate(value: number): string {
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" }).format(new Date(value));
+}
+
 export function TimelinePage() {
-  const { snapshot, isLoading, createTask, toggleChecklistItem } = useWorkspace();
+  const { snapshot, isLoading, createTask, updateTaskPriority, toggleChecklistItem } = useWorkspace();
   const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
   const [selectedTaskId, setSelectedTaskId] = useState("");
 
@@ -66,6 +77,7 @@ export function TimelinePage() {
   }, [sortedTasks]);
 
   const range = Math.max(dateRange.max - dateRange.min, 1000 * 60 * 60 * 24);
+  const rangeLabel = `${toShortDate(dateRange.min)} - ${toShortDate(dateRange.max)}`;
 
   return (
     <AppShell
@@ -78,57 +90,74 @@ export function TimelinePage() {
     >
       <BoardMetrics metrics={metrics} />
 
-      <section className="timeline-view">
-        <header className="timeline-view__head">
-          <span>Itens</span>
-          <span>Janela de entrega</span>
-        </header>
+      <Section
+        title="Linha do tempo de entregas"
+        subtitle="Visualize os itens por prazo para antecipar gargalos e riscos de calendario."
+        actions={<StatusBadge>{rangeLabel}</StatusBadge>}
+        className="timeline-view"
+      >
+        <DataTable
+          columns="minmax(220px, 1.3fr) 2.4fr"
+          className="timeline-view__table"
+          responsiveMinWidth="860px"
+          responsiveMinWidthMobile="760px"
+        >
+          <DataTableHeader>
+            <span>Itens</span>
+            <span>Janela de entrega</span>
+          </DataTableHeader>
 
-        <div className="timeline-view__rows">
-          {isLoading ? (
-            <article className="timeline-view__empty">Carregando workspace...</article>
-          ) : sortedTasks.length === 0 ? (
-            <article className="timeline-view__empty">Nenhum item com prazo encontrado.</article>
-          ) : (
-            sortedTasks.map(task => {
-              const taskStamp = toDateStamp(task.due);
-              const offset = ((taskStamp - dateRange.min) / range) * 100;
-              const width = 14;
-              const done = task.checklist.items.filter(item => item.done).length;
-              const total = task.checklist.items.length;
-              const type = typeMap[task.type];
+          <DataTableBody>
+            {isLoading ? (
+              <LoadingState text="Carregando workspace..." />
+            ) : sortedTasks.length === 0 ? (
+              <EmptyState>Nenhum item com prazo encontrado.</EmptyState>
+            ) : (
+              sortedTasks.map(task => {
+                const taskStamp = toDateStamp(task.due);
+                const offset = ((taskStamp - dateRange.min) / range) * 100;
+                const width = 14;
+                const done = task.checklist.items.filter(item => item.done).length;
+                const total = task.checklist.items.length;
+                const type = typeMap[task.type];
+                const isLate = taskStamp < Date.now();
 
-              return (
-                <article className="timeline-view__row" key={task.id}>
-                  <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
-                    <strong>{task.title}</strong>
-                    <p>{`${done}/${total} checklist`}</p>
-                  </button>
+                return (
+                  <DataTableRow key={task.id}>
+                    <DataTableCell>
+                      <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
+                        <strong>{task.title}</strong>
+                        <p>{`${done}/${total} checklist`}</p>
+                      </button>
+                    </DataTableCell>
 
-                  <div className="timeline-view__lane">
-                    <div className="timeline-view__track" />
-                    <button
-                      type="button"
-                      className="timeline-view__bar"
-                      style={{
-                        left: `${Math.min(Math.max(offset, 0), 86)}%`,
-                        width: `${width}%`,
-                        background: type?.background ?? "#edf5ff",
-                        borderColor: type?.border ?? "#cfe2ff",
-                        color: type?.text ?? "#1d4e85"
-                      }}
-                      onClick={() => setSelectedTaskId(task.id)}
-                    >
-                      {type?.label ?? task.type}
-                      <span>{task.due}</span>
-                    </button>
-                  </div>
-                </article>
-              );
-            })
-          )}
-        </div>
-      </section>
+                    <DataTableCell>
+                      <div className="timeline-view__lane">
+                        <div className="timeline-view__track" />
+                        <button
+                          type="button"
+                          className={`timeline-view__bar ${isLate ? "timeline-view__bar--late" : ""}`.trim()}
+                          style={{
+                            left: `${Math.min(Math.max(offset, 0), 86)}%`,
+                            width: `${width}%`,
+                            background: type?.background ?? "#edf5ff",
+                            borderColor: type?.border ?? "#cfe2ff",
+                            color: type?.text ?? "#1d4e85"
+                          }}
+                          onClick={() => setSelectedTaskId(task.id)}
+                        >
+                          {type?.label ?? task.type}
+                          <span>{task.due}</span>
+                        </button>
+                      </div>
+                    </DataTableCell>
+                  </DataTableRow>
+                );
+              })
+            )}
+          </DataTableBody>
+        </DataTable>
+      </Section>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal
@@ -136,6 +165,7 @@ export function TimelinePage() {
           status={selectedStatus}
           assignee={activeMembers[selectedTask.assignee]}
           boardConfig={boardConfig}
+          onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           onClose={() => setSelectedTaskId("")}
         />
@@ -143,3 +173,4 @@ export function TimelinePage() {
     </AppShell>
   );
 }
+

@@ -1,15 +1,15 @@
 .shared-input {
-  width: min(420px, 88vw);
+  width: min(420px, 100%);
   min-height: 42px;
   border: 1px solid var(--line);
   background: var(--panel);
-  border-radius: 12px;
-  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-3);
   color: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .shared-input:focus {
-  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
   background: #fcfeff;
 }

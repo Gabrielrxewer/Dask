@@ -1,14 +1,16 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { MemberAvatar } from "@/entities/member";
-import { buildTaskTypeMetaMap, priorityMeta } from "@/entities/task";
+import { buildTaskTypeMetaMap, priorityMeta, taskPriorityOptions } from "@/entities/task";
 import type {
   BoardConfig,
   Task,
   TaskCustomFieldValue,
+  TaskPriority,
   TaskFieldDefinition,
   TaskStatus
 } from "@/entities/task";
 import type { Member } from "@/entities/member";
+import { Button, FormField, ModalShell, Select, Textarea } from "@/shared/ui";
 import "./task-details-modal.css";
 
 interface TaskDetailsModalProps {
@@ -16,6 +18,7 @@ interface TaskDetailsModalProps {
   status: TaskStatus;
   assignee: Member;
   boardConfig: BoardConfig;
+  onUpdatePriority: (taskId: string, priority: TaskPriority) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
   onClose: () => void;
 }
@@ -72,6 +75,7 @@ export function TaskDetailsModal({
   status,
   assignee,
   boardConfig,
+  onUpdatePriority,
   onToggleChecklistItem,
   onClose
 }: TaskDetailsModalProps) {
@@ -79,7 +83,7 @@ export function TaskDetailsModal({
   const checklistTotal = checklistItems.length;
   const checklistDone = checklistItems.filter(item => item.done).length;
   const checklistProgress = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
-  const priority = priorityMeta[task.priority] ?? priorityMeta.low;
+  const priority = priorityMeta[task.priority] ?? priorityMeta[2];
 
   const [descriptionDraft, setDescriptionDraft] = useState(task.text);
   const [aiSuggestion, setAiSuggestion] = useState("");
@@ -171,14 +175,7 @@ export function TaskDetailsModal({
   };
 
   return (
-    <div className="task-details-overlay" role="presentation" onClick={onClose}>
-      <aside
-        className="task-details"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="task-details-title"
-        onClick={event => event.stopPropagation()}
-      >
+    <ModalShell titleId="task-details-title" className="task-details" onClose={onClose}>
         <header className="task-details__topbar">
           <div className="task-details__breadcrumbs">Task details</div>
           <button className="task-details__close" type="button" onClick={onClose} aria-label="Fechar detalhes">
@@ -212,24 +209,51 @@ export function TaskDetailsModal({
             </div>
 
             <section className="task-details__section">
+              <h3>Prioridade</h3>
+              <div className="task-details__priority-control">
+                <span className={`task-details__chip ${priority.className}`}>{priority.label}</span>
+                <FormField label="Nivel de prioridade (0 a 4)">
+                  <Select
+                    value={String(task.priority)}
+                    onChange={event => onUpdatePriority(task.id, Number(event.target.value) as TaskPriority)}
+                  >
+                    {taskPriorityOptions.map(value => (
+                      <option value={value} key={value}>
+                        {priorityMeta[value].label}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+              </div>
+            </section>
+
+            <section className="task-details__section">
               <h3>Descricao</h3>
               <p>{task.text}</p>
             </section>
 
             <section className="task-details__section">
               <h3>Aprimorar descricao com IA</h3>
-              <textarea
-                className="task-details__textarea"
-                value={descriptionDraft}
-                onChange={event => setDescriptionDraft(event.target.value)}
-              />
+              <FormField label="Descricao refinada">
+                <Textarea
+                  className="task-details__textarea"
+                  value={descriptionDraft}
+                  onChange={event => setDescriptionDraft(event.target.value)}
+                />
+              </FormField>
               <div className="task-details__actions-row">
-                <button type="button" onClick={handleGenerateSuggestion}>
+                <Button type="button" size="sm" onClick={handleGenerateSuggestion}>
                   Aprimorar descricao
-                </button>
-                <button type="button" disabled={!aiSuggestion} onClick={() => setDescriptionDraft(aiSuggestion)}>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!aiSuggestion}
+                  onClick={() => setDescriptionDraft(aiSuggestion)}
+                >
                   Usar sugestao
-                </button>
+                </Button>
               </div>
               {aiSuggestion ? <pre className="task-details__ai-suggestion">{aiSuggestion}</pre> : null}
             </section>
@@ -312,15 +336,15 @@ export function TaskDetailsModal({
                 ))}
               </div>
               <div className="task-details__chat-input-wrap">
-                <textarea
+                <Textarea
                   className="task-details__chat-input"
                   placeholder="Pergunte algo sobre este card"
                   value={chatInput}
                   onChange={event => setChatInput(event.target.value)}
                 />
-                <button type="button" onClick={handleSendChat}>
+                <Button type="button" size="sm" onClick={handleSendChat}>
                   Enviar
-                </button>
+                </Button>
               </div>
             </section>
 
@@ -343,8 +367,7 @@ export function TaskDetailsModal({
             </section>
           </aside>
         </div>
-      </aside>
-    </div>
+    </ModalShell>
   );
 }
 

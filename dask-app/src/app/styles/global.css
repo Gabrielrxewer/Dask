@@ -13,10 +13,13 @@ body,
 }
 
 body {
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: var(--font-family-body);
   color: var(--text);
-  background: radial-gradient(circle at 20% 0%, #d9ebff 0%, #f4f8ff 38%, #e9f2ff 100%);
-  line-height: 1.4;
+  background:
+    radial-gradient(circle at 8% 0%, #d7e8fb 0%, transparent 34%),
+    radial-gradient(circle at 92% 6%, #d9eef8 0%, transparent 28%),
+    linear-gradient(180deg, var(--bg) 0%, #f5f8fc 100%);
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -27,7 +30,57 @@ textarea {
   font: inherit;
 }
 
-:where(button, input, select, textarea):focus-visible {
-  outline: none;
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent-strong) 72%, #ffffff);
+  outline-offset: 2px;
   box-shadow: var(--focus);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-family-heading);
+  color: var(--text-strong);
+}
+
+p {
+  margin: 0;
+}
+
+.surface-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-1);
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.section-subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+}
+
+.empty-state {
+  border: 1px dashed var(--line-strong);
+  background: var(--panel-soft);
+  color: var(--text-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  font-size: var(--font-size-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

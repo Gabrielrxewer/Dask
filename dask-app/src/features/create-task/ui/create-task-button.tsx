@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { priorityMeta, taskPriorityOptions, type TaskPriority } from "@/entities/task";
 import type { CreateTaskInput } from "@/modules/workspace";
-import { Button, TextInput } from "@/shared/ui";
+import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
 import "./create-task-button.css";
 
 interface CreateTaskButtonProps {
@@ -43,6 +44,7 @@ function improveDescriptionMock(description: string): string {
 export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [type, setType] = useState(typeOptions[0].id);
+  const [priority, setPriority] = useState<TaskPriority>(2);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -73,23 +75,17 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
       return;
     }
 
-    await onCreate({ type, title, description });
+    await onCreate({ type, title, description, priority });
 
     setIsOpen(false);
     setType(typeOptions[0].id);
+    setPriority(2);
     setTitle("");
     setDescription("");
   };
 
   const modal = (
-    <div className="create-item-modal__overlay" role="presentation" onClick={() => setIsOpen(false)}>
-      <section
-        className="create-item-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-item-title"
-        onClick={event => event.stopPropagation()}
-      >
+    <ModalShell titleId="create-item-title" className="create-item-modal" onClose={() => setIsOpen(false)}>
         <header className="create-item-modal__header">
           <div>
             <p className="create-item-modal__label">Novo item</p>
@@ -106,19 +102,17 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
         </header>
 
         <div className="create-item-modal__body">
-          <label className="create-item-modal__field">
-            <span>Tipo do item</span>
-            <select value={type} onChange={event => setType(event.target.value)}>
+          <FormField label="Tipo do item" className="create-item-modal__field">
+            <Select value={type} onChange={event => setType(event.target.value)}>
               {typeOptions.map(option => (
                 <option key={option.id} value={option.id}>
                   {option.label}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </FormField>
 
-          <label className="create-item-modal__field">
-            <span>Titulo</span>
+          <FormField label="Titulo" className="create-item-modal__field">
             <TextInput
               className="create-item-modal__input"
               value={title}
@@ -126,16 +120,28 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
               placeholder="Ex: Ajustar fluxo de aprovacao"
               autoFocus
             />
-          </label>
+          </FormField>
 
-          <label className="create-item-modal__field">
-            <span>Descricao</span>
-            <textarea
+          <FormField label="Prioridade" className="create-item-modal__field">
+            <Select
+              value={String(priority)}
+              onChange={event => setPriority(Number(event.target.value) as TaskPriority)}
+            >
+              {taskPriorityOptions.map(option => (
+                <option value={option} key={option}>
+                  {priorityMeta[option].label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+
+          <FormField label="Descricao" className="create-item-modal__field">
+            <Textarea
               value={description}
               onChange={event => setDescription(event.target.value)}
               placeholder="Descreva contexto, objetivo e resultado esperado"
             />
-          </label>
+          </FormField>
 
           <button
             type="button"
@@ -154,8 +160,7 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
             Criar item
           </Button>
         </footer>
-      </section>
-    </div>
+    </ModalShell>
   );
 
   return (
@@ -167,3 +172,4 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
     </>
   );
 }
+

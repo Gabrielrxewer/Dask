@@ -31,7 +31,7 @@ export function createTaskFromInput(input: CreateTaskInput, assignee: Task["assi
     text: normalizedDescription,
     type: taskType,
     status: "backlog",
-    priority: "medium",
+    priority: input.priority ?? 2,
     tags: ["Novo item"],
     assignee,
     checklist: createChecklist(taskId, 3),

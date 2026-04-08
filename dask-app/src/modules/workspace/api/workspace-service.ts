@@ -32,6 +32,15 @@ export const workspaceService: WorkspaceService = {
     });
   },
 
+  async updateTaskPriority(taskId, priority) {
+    return saveAndReturn({
+      ...workspaceSnapshot,
+      tasks: workspaceSnapshot.tasks.map(task =>
+        task.id === taskId ? { ...task, priority } : task
+      )
+    });
+  },
+
   async updateTaskCustomField(taskId, fieldId, value) {
     return saveAndReturn({
       ...workspaceSnapshot,

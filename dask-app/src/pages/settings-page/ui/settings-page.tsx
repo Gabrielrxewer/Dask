@@ -1,7 +1,8 @@
-﻿import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
+import { FormField, Section, Select } from "@/shared/ui";
+import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
 import "./settings-page.css";
 
 export function SettingsPage() {
@@ -19,70 +20,71 @@ export function SettingsPage() {
   const visibleFieldsCount = visibleFields.size;
 
   return (
-    <AppShell metrics={metrics} pageTitle="Configurações do workspace" pageLabel="Admin">
+    <AppShell metrics={metrics} pageTitle="Configuracoes do workspace" pageLabel="Admin">
       <BoardMetrics
         metrics={metrics}
         cards={[
-          { label: "Campos visíveis", value: visibleFieldsCount },
-          { label: "Modo padrão", value: defaultMode.toUpperCase() },
+          { label: "Campos visiveis", value: visibleFieldsCount },
+          { label: "Modo padrao", value: defaultMode.toUpperCase() },
           { label: "Layouts salvos", value: 4 },
-          { label: "Atualização", value: "Agora" }
+          { label: "Atualizacao", value: "Agora" }
         ]}
       />
 
       <section className="settings-view">
-        <article className="settings-view__card">
-          <h3>Campos visíveis no card</h3>
-          {fieldDefinitions.map(field => (
-            <label key={field.id}>
-              <input
-                type="checkbox"
-                checked={visibleFields.has(field.id)}
-                onChange={event => void setCardFieldVisibility(field.id, event.target.checked)}
-              />
-              {field.label}
-            </label>
-          ))}
-        </article>
+        <Section title="Campos visiveis no card" className="settings-view__card settings-view__card--scroll">
+          <div className="settings-view__field-list">
+            {fieldDefinitions.map(field => (
+              <label key={field.id} className="settings-view__checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={visibleFields.has(field.id)}
+                  onChange={event => void setCardFieldVisibility(field.id, event.target.checked)}
+                />
+                {field.label}
+              </label>
+            ))}
+          </div>
+        </Section>
 
-        <article className="settings-view__card">
-          <h3>Preferências do workspace</h3>
-          <label>
-            Modo inicial
-            <select
-              value={defaultMode}
-              onChange={event =>
-                void updatePreferences({
-                  defaultBoardMode: event.target.value as "dev" | "po" | "manager" | "qa"
-                })
-              }
-            >
-              <option value="dev">Dev</option>
-              <option value="po">PO</option>
-              <option value="manager">Gestão</option>
-              <option value="qa">QA</option>
-            </select>
-          </label>
+        <Section
+          title="Preferencias do workspace"
+          subtitle="As configuracoes sao aplicadas automaticamente no workspace."
+          className="settings-view__card"
+        >
+          <div className="settings-view__form-grid">
+            <FormField label="Modo inicial">
+              <Select
+                value={defaultMode}
+                onChange={event =>
+                  void updatePreferences({
+                    defaultBoardMode: event.target.value as "dev" | "po" | "manager" | "qa"
+                  })
+                }
+              >
+                <option value="dev">Dev</option>
+                <option value="po">PO</option>
+                <option value="manager">Gestao</option>
+                <option value="qa">QA</option>
+              </Select>
+            </FormField>
 
-          <label>
-            Formato de data
-            <select
-              value={dateFormat}
-              onChange={event =>
-                void updatePreferences({
-                  dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
-                })
-              }
-            >
-              <option value="dd/mm/yyyy">DD/MM/YYYY</option>
-              <option value="mm/dd/yyyy">MM/DD/YYYY</option>
-            </select>
-          </label>
-
-          <p className="settings-view__hint">As configurações são aplicadas automaticamente no workspace.</p>
-        </article>
+            <FormField label="Formato de data">
+              <Select
+                value={dateFormat}
+                onChange={event =>
+                  void updatePreferences({
+                    dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
+                  })
+                }
+              >
+                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+              </Select>
+            </FormField>
+          </div>
+        </Section>
       </section>
     </AppShell>
   );
 }
-

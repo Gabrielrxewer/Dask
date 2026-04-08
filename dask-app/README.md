@@ -82,3 +82,8 @@ dask-app/
 |   |-- widgets/
 |-- package.json
 ```
+
+## Documentacao de arquitetura front-end
+
+- Arquitetura atual: `docs/frontend-architecture.md`
+- Playbook de evolucao: `docs/frontend-playbook.md`

@@ -1,15 +1,3 @@
-﻿.create-item-modal__overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 20, 36, 0.48);
-  backdrop-filter: blur(2px);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  z-index: 9999;
-  pointer-events: auto;
-}
-
 .create-item-modal {
   position: relative;
   width: min(640px, 100%);
@@ -41,14 +29,14 @@
 
 .create-item-modal__header h2 {
   margin: 4px 0 0;
-  font-family: "Sora", "Segoe UI", sans-serif;
+  font-family: var(--font-family-heading);
   font-size: 1.28rem;
 }
 
 .create-item-modal__close {
   border: 1px solid var(--line);
   background: #f5f8fd;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   width: 34px;
   height: 34px;
   font-weight: 700;
@@ -61,25 +49,9 @@
   gap: 12px;
 }
 
-.create-item-modal__field {
-  display: grid;
-  gap: 6px;
-}
-
-.create-item-modal__field span {
-  color: #37587b;
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-
-.create-item-modal__field select,
-.create-item-modal__field textarea {
+.create-item-modal__field .shared-select,
+.create-item-modal__field .shared-textarea {
   width: 100%;
-  border: 1px solid var(--line);
-  background: #fbfdff;
-  border-radius: 12px;
-  color: var(--text);
-  padding: 10px 12px;
 }
 
 .create-item-modal__input {
@@ -87,14 +59,12 @@
   max-width: 100%;
 }
 
-.create-item-modal__field select {
+.create-item-modal__field .shared-select {
   min-height: 42px;
 }
 
-.create-item-modal__field textarea {
+.create-item-modal__field .shared-textarea {
   min-height: 130px;
-  resize: vertical;
-  line-height: 1.4;
 }
 
 .create-item-modal__ai {

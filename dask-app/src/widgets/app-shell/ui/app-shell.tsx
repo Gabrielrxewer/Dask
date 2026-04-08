@@ -6,6 +6,7 @@ import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { CreateTaskButton } from "@/features/create-task";
 import type { CreateTaskInput } from "@/modules/workspace";
+import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
 interface AppShellProps {
@@ -16,15 +17,26 @@ interface AppShellProps {
   onFilterQueryChange?: (query: string) => void;
   onMineToggle?: () => void;
   onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
+  noPageScroll?: boolean;
   children: ReactNode;
 }
 
-const navItems = [
-  { to: "/board", label: "Board" },
-  { to: "/list", label: "List" },
-  { to: "/timeline", label: "Timeline" },
-  { to: "/automations", label: "Automations" },
-  { to: "/settings", label: "Settings" }
+const navGroups = [
+  {
+    title: "Planejamento",
+    items: [
+      { to: "/board", label: "Board" },
+      { to: "/list", label: "List" },
+      { to: "/timeline", label: "Timeline" }
+    ]
+  },
+  {
+    title: "Operacao",
+    items: [
+      { to: "/automations", label: "Automations" },
+      { to: "/settings", label: "Settings" }
+    ]
+  }
 ];
 
 export function AppShell({
@@ -35,6 +47,7 @@ export function AppShell({
   onFilterQueryChange,
   onMineToggle,
   onCreateTask,
+  noPageScroll = false,
   children
 }: AppShellProps) {
   const filterProps =
@@ -52,7 +65,7 @@ export function AppShell({
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${noPageScroll ? "app-shell--no-scroll" : ""}`.trim()}>
       <div className="app-shell__noise" />
 
       <aside className="sidebar">
@@ -67,17 +80,22 @@ export function AppShell({
         {onCreateTask ? <CreateTaskButton onCreate={onCreateTask} /> : null}
 
         <nav className="sidebar__menu">
-          <p className="sidebar__menu-title">Navegacao</p>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `sidebar__menu-link ${isActive ? "sidebar__menu-link--active" : ""}`.trim()
-              }
-            >
-              {item.label}
-            </NavLink>
+          {navGroups.map((group) => (
+            <section className="sidebar__menu-group" key={group.title}>
+              <p className="sidebar__menu-title">{group.title}</p>
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `sidebar__menu-link ${isActive ? "sidebar__menu-link--active" : ""}`.trim()
+                  }
+                >
+                  <span className="sidebar__menu-link-mark" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </section>
           ))}
         </nav>
 
@@ -107,16 +125,9 @@ export function AppShell({
       </aside>
 
       <div className="workspace">
-        <header className="workspace__topbar">
-          <div>
-            <p className="workspace__label">{pageLabel}</p>
-            <h1 className="workspace__title">{pageTitle}</h1>
-          </div>
+        <PageHeader label={pageLabel} title={pageTitle} actions={filterProps ? <DashboardFilter {...filterProps} /> : null} />
 
-          {filterProps ? <DashboardFilter {...filterProps} /> : null}
-        </header>
-
-        {children}
+        <main className="workspace__content">{children}</main>
       </div>
     </div>
   );

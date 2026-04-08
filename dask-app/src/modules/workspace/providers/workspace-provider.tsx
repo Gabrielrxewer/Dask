@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { TaskCustomFieldValue, TaskStatusId } from "@/entities/task";
+import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api/workspace-service";
 import type { CreateTaskInput, WorkspaceAutomation, WorkspacePreferences, WorkspaceSnapshot } from "@/modules/workspace/model/types";
 
@@ -8,6 +8,7 @@ interface WorkspaceContextValue {
   isLoading: boolean;
   createTask: (input: CreateTaskInput) => Promise<void>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<void>;
+  updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<void>;
   updateTaskCustomField: (taskId: string, fieldId: string, value: TaskCustomFieldValue) => Promise<void>;
   toggleChecklistItem: (taskId: string, itemId: string) => Promise<void>;
   setAutomationStatus: (automationId: string, status: WorkspaceAutomation["status"]) => Promise<void>;
@@ -57,6 +58,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, []);
 
+  const updateTaskPriority = useCallback(async (taskId: string, priority: TaskPriority) => {
+    const nextSnapshot = await workspaceService.updateTaskPriority(taskId, priority);
+    setSnapshot(nextSnapshot);
+  }, []);
+
   const updateTaskCustomField = useCallback(
     async (taskId: string, fieldId: string, value: TaskCustomFieldValue) => {
       const nextSnapshot = await workspaceService.updateTaskCustomField(taskId, fieldId, value);
@@ -94,6 +100,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       isLoading,
       createTask,
       moveTask,
+      updateTaskPriority,
       updateTaskCustomField,
       toggleChecklistItem,
       setAutomationStatus,
@@ -105,6 +112,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       isLoading,
       createTask,
       moveTask,
+      updateTaskPriority,
       updateTaskCustomField,
       toggleChecklistItem,
       setAutomationStatus,

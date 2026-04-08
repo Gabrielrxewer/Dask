@@ -1,21 +1,10 @@
-.task-details-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 17, 32, 0.48);
-  backdrop-filter: blur(2px);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  z-index: 40;
-}
-
 .task-details {
   width: min(1120px, 96vw);
   max-height: min(90vh, 920px);
   background: #f8fbff;
-  border: 1px solid #dbe7f5;
+  border: 1px solid #d5e3f4;
   border-radius: 18px;
-  box-shadow: 0 30px 60px rgba(12, 37, 66, 0.28);
+  box-shadow: 0 26px 54px rgba(12, 37, 66, 0.25);
   display: grid;
   grid-template-rows: auto 1fr;
   overflow: hidden;
@@ -103,6 +92,7 @@
   border: 1px solid #dce8f7;
   border-radius: 14px;
   padding: 14px;
+  box-shadow: 0 5px 12px rgba(14, 45, 77, 0.05);
 }
 
 .task-details__section h3 {
@@ -115,6 +105,12 @@
   margin: 8px 0 0;
   color: #53708e;
   line-height: 1.5;
+}
+
+.task-details__priority-control {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
 }
 
 .task-details__progress-head {
@@ -220,16 +216,8 @@
 }
 
 .task-details__textarea {
-  width: 100%;
   min-height: 96px;
-  resize: vertical;
-  border: 1px solid #d3e5fa;
-  border-radius: 10px;
-  padding: 9px 10px;
   margin-top: 9px;
-  font: inherit;
-  color: #284f74;
-  background: #f9fcff;
 }
 
 .task-details__actions-row {
@@ -239,19 +227,7 @@
 }
 
 .task-details__actions-row button {
-  border: 1px solid #c8def8;
-  border-radius: 8px;
-  background: #f1f7ff;
-  color: #245684;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.task-details__actions-row button:disabled {
-  opacity: 0.5;
-  cursor: default;
+  min-height: 34px;
 }
 
 .task-details__ai-suggestion {
@@ -359,7 +335,8 @@
 }
 
 .task-details__chat-item.is-user {
-  background: #eaf4ff;
+  background: #ebf4ff;
+  border-color: #cde2fb;
 }
 
 .task-details__chat-item strong {
@@ -382,34 +359,15 @@
 }
 
 .task-details__chat-input {
-  width: 100%;
   min-height: 72px;
-  resize: vertical;
-  border: 1px solid #d3e5fa;
-  border-radius: 10px;
-  padding: 8px 10px;
-  font: inherit;
-  color: #284f74;
-  background: #f9fcff;
 }
 
 .task-details__chat-input-wrap button {
   justify-self: end;
-  border: 1px solid #c8def8;
-  border-radius: 8px;
-  background: #f1f7ff;
-  color: #245684;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 600;
+  min-height: 34px;
 }
 
 @media (max-width: 900px) {
-  .task-details-overlay {
-    padding: 10px;
-  }
-
   .task-details {
     width: 100%;
     max-height: 94vh;

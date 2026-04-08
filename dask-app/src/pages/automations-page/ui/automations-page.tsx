@@ -1,7 +1,8 @@
-﻿import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
+import { Button, Card, EmptyState, LoadingState, Section, StatusBadge } from "@/shared/ui";
+import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
 import "./automations-page.css";
 
 export function AutomationsPage() {
@@ -26,40 +27,51 @@ export function AutomationsPage() {
         ]}
       />
 
-      <section className="automations-view">
+      <Section
+        title="Catalogo de automacoes"
+        subtitle="Gerencie rotinas ativas, pause fluxos e valide execucoes em teste."
+        className="automations-view"
+      >
         {isLoading ? (
-          <article className="automations-view__empty">Carregando workspace...</article>
+          <LoadingState text="Carregando workspace..." />
         ) : automations.length === 0 ? (
-          <article className="automations-view__empty">Nenhuma automacao configurada.</article>
+          <EmptyState>Nenhuma automacao configurada.</EmptyState>
         ) : (
-          automations.map(item => {
-            const isActive = item.status === "active";
+          <div className="automations-view__grid">
+            {automations.map(item => {
+              const isActive = item.status === "active";
 
-            return (
-              <article key={item.id} className="automations-view__card">
-                <header>
-                  <h3>{item.title}</h3>
-                  <span className={`automations-view__status ${isActive ? "is-active" : ""}`}>
-                    {isActive ? "Ativa" : "Pausada"}
-                  </span>
-                </header>
-                <p>
-                  <strong>Gatilho:</strong> {item.trigger}
-                </p>
-                <p>
-                  <strong>Acao:</strong> {item.action}
-                </p>
-                <footer>
-                  <button type="button" onClick={() => void setAutomationStatus(item.id, isActive ? "paused" : "active")}>
-                    {isActive ? "Pausar" : "Ativar"}
-                  </button>
-                  <button type="button">Executar teste</button>
-                </footer>
-              </article>
-            );
-          })
+              return (
+                <Card key={item.id} className="automations-view__card" variant="interactive">
+                  <header>
+                    <h3>{item.title}</h3>
+                    <StatusBadge tone={isActive ? "success" : "warning"}>{isActive ? "Ativa" : "Pausada"}</StatusBadge>
+                  </header>
+                  <p>
+                    <strong>Gatilho:</strong> {item.trigger}
+                  </p>
+                  <p>
+                    <strong>Acao:</strong> {item.action}
+                  </p>
+                  <footer>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void setAutomationStatus(item.id, isActive ? "paused" : "active")}
+                    >
+                      {isActive ? "Pausar" : "Ativar"}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm">
+                      Executar teste
+                    </Button>
+                  </footer>
+                </Card>
+              );
+            })}
+          </div>
         )}
-      </section>
+      </Section>
     </AppShell>
   );
 }
+

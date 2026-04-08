@@ -1,5 +1,5 @@
 import type { MemberId, MembersById } from "@/entities/member";
-import type { BoardConfig, Task, TaskCustomFieldValue, TaskStatusId } from "@/entities/task";
+import type { BoardConfig, Task, TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 
 export type WorkspaceBoardMode = "dev" | "po" | "manager" | "qa";
 export type WorkspaceDateFormat = "dd/mm/yyyy" | "mm/dd/yyyy";
@@ -22,6 +22,7 @@ export interface CreateTaskInput {
   type: string;
   title: string;
   description: string;
+  priority: TaskPriority;
 }
 
 export interface WorkspaceSnapshot {
@@ -39,6 +40,7 @@ export interface WorkspaceService {
   getSnapshot: () => Promise<WorkspaceSnapshot>;
   createTask: (input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
+  updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<WorkspaceSnapshot>;
   updateTaskCustomField: (
     taskId: string,
     fieldId: string,

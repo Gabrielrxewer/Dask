@@ -1,7 +1,4 @@
-﻿import { useMemo, useState } from "react";
-import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
-import { TaskDetailsModal } from "@/widgets/task-details";
+import { useMemo, useState } from "react";
 import { currentUserId, membersById } from "@/entities/member";
 import {
   buildBoardMetrics,
@@ -15,10 +12,25 @@ import {
   type DashboardFilterState
 } from "@/features/dashboard-filter";
 import { useWorkspace } from "@/modules/workspace";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHeader,
+  DataTableRow,
+  EmptyState,
+  LoadingState,
+  Section,
+  Select,
+  StatusBadge
+} from "@/shared/ui";
+import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
+import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
 
 export function ListPage() {
-  const { snapshot, isLoading, createTask, moveTask, toggleChecklistItem } = useWorkspace();
+  const { snapshot, isLoading, createTask, moveTask, updateTaskPriority, toggleChecklistItem } = useWorkspace();
   const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
   const [selectedTaskId, setSelectedTaskId] = useState("");
 
@@ -60,61 +72,83 @@ export function ListPage() {
     >
       <BoardMetrics metrics={metrics} />
 
-      <section className="list-view">
-        <header className="list-view__header">
-          <span>TÃ­tulo</span>
-          <span>Tipo</span>
-          <span>Status</span>
-          <span>Owner</span>
-          <span>Checklist</span>
-        </header>
+      <Section
+        title="Itens do workspace"
+        subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
+        actions={<StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>}
+        className="list-view"
+      >
+        <DataTable
+          columns="minmax(220px, 2.2fr) 1fr 1fr 1.2fr 0.7fr"
+          className="list-view__table"
+          responsiveMinWidth="860px"
+          responsiveMinWidthMobile="760px"
+        >
+          <DataTableHeader>
+            <span>Titulo</span>
+            <span>Tipo</span>
+            <span>Status</span>
+            <span>Owner</span>
+            <span>Checklist</span>
+          </DataTableHeader>
 
-        <div className="list-view__rows">
-          {isLoading ? (
-            <article className="list-view__empty">Carregando workspace...</article>
-          ) : filteredTasks.length === 0 ? (
-            <article className="list-view__empty">Nenhum item encontrado para o filtro atual.</article>
-          ) : (
-            filteredTasks.map(task => {
-              const done = task.checklist.items.filter(item => item.done).length;
-              const total = task.checklist.items.length;
-              const type = taskTypeMap[task.type];
+          <DataTableBody>
+            {isLoading ? (
+              <LoadingState text="Carregando workspace..." />
+            ) : filteredTasks.length === 0 ? (
+              <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>
+            ) : (
+              filteredTasks.map(task => {
+                const done = task.checklist.items.filter(item => item.done).length;
+                const total = task.checklist.items.length;
+                const type = taskTypeMap[task.type];
 
-              return (
-                <article className="list-view__row" key={task.id}>
-                  <button type="button" className="list-view__title" onClick={() => setSelectedTaskId(task.id)}>
-                    <strong>{task.title}</strong>
-                    <p>{task.text}</p>
-                  </button>
-                  <span
-                    className="list-view__type"
-                    style={{
-                      backgroundColor: type?.background ?? "#edf5ff",
-                      borderColor: type?.border ?? "#cfe2ff",
-                      color: type?.text ?? "#1d4e85"
-                    }}
-                  >
-                    {type?.label ?? task.type}
-                  </span>
-                  <select
-                    className="list-view__status"
-                    value={task.status}
-                    onChange={event => handleStatusChange(task.id, event.target.value)}
-                  >
-                    {boardConfig.statuses.map(status => (
-                      <option key={status.id} value={status.id}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="list-view__owner">{activeMembers[task.assignee]?.name}</span>
-                  <span className="list-view__checklist">{`${done}/${total}`}</span>
-                </article>
-              );
-            })
-          )}
-        </div>
-      </section>
+                return (
+                  <DataTableRow key={task.id}>
+                    <DataTableCell>
+                      <button type="button" className="list-view__title" onClick={() => setSelectedTaskId(task.id)}>
+                        <strong>{task.title}</strong>
+                        <p>{task.text}</p>
+                      </button>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <span
+                        className="list-view__type"
+                        style={{
+                          backgroundColor: type?.background ?? "#edf5ff",
+                          borderColor: type?.border ?? "#cfe2ff",
+                          color: type?.text ?? "#1d4e85"
+                        }}
+                      >
+                        {type?.label ?? task.type}
+                      </span>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Select
+                        className="list-view__status"
+                        value={task.status}
+                        onChange={event => handleStatusChange(task.id, event.target.value)}
+                      >
+                        {boardConfig.statuses.map(status => (
+                          <option key={status.id} value={status.id}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <span className="list-view__owner">{activeMembers[task.assignee]?.name}</span>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <span className="list-view__checklist">{`${done}/${total}`}</span>
+                    </DataTableCell>
+                  </DataTableRow>
+                );
+              })
+            )}
+          </DataTableBody>
+        </DataTable>
+      </Section>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal
@@ -122,6 +156,7 @@ export function ListPage() {
           status={selectedStatus}
           assignee={activeMembers[selectedTask.assignee]}
           boardConfig={boardConfig}
+          onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           onClose={() => setSelectedTaskId("")}
         />
@@ -129,3 +164,4 @@ export function ListPage() {
     </AppShell>
   );
 }
+

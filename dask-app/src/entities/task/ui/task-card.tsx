@@ -1,7 +1,7 @@
 import type { DragEvent, ReactNode } from "react";
-import { formatShortDate } from "@/shared/lib/date/format-date";
 import { buildTaskTypeMetaMap, priorityMeta } from "@/entities/task";
-import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition } from "@/entities/task";
+import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
+import { formatShortDate } from "@/shared/lib/date/format-date";
 import "./task-card.css";
 
 interface TaskCardProps {
@@ -12,6 +12,7 @@ interface TaskCardProps {
   onDragEnd: () => void;
   isDragging?: boolean;
   onOpen?: (taskId: string) => void;
+  onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
 }
 
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
@@ -37,11 +38,12 @@ export function TaskCard({
   onDragStart,
   onDragEnd,
   isDragging = false,
-  onOpen
+  onOpen,
+  onUpdatePriority
 }: TaskCardProps) {
   const checklistTotal = task.checklist.items.length;
   const checklistDone = task.checklist.items.filter(item => item.done).length;
-  const priority = priorityMeta[task.priority] ?? priorityMeta.low;
+  const priority = priorityMeta[task.priority] ?? priorityMeta[2];
   const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
   const type = typeMap[task.type] ?? {
     id: task.type,
@@ -67,10 +69,12 @@ export function TaskCard({
     .slice(0, 4);
 
   const canOpen = typeof onOpen === "function";
+  const canUpdatePriority = typeof onUpdatePriority === "function";
+  const nextPriority: TaskPriority = task.priority === 4 ? 0 : ((task.priority + 1) as TaskPriority);
 
   return (
     <article
-      className={`task-card ${isDragging ? "task-card--dragging" : ""}`.trim()}
+      className={`task-card task-card--priority-${task.priority} ${isDragging ? "task-card--dragging" : ""}`.trim()}
       draggable
       onDragStart={event => onDragStart(event, task.id)}
       onDragEnd={onDragEnd}
@@ -100,7 +104,21 @@ export function TaskCard({
           >
             {type.label}
           </span>
-          <span className={`task-card__priority ${priority.className}`}>{priority.label}</span>
+          <button
+            type="button"
+            className={`task-card__priority ${priority.className}`.trim()}
+            aria-label={`Prioridade atual ${priority.label}. Clique para mudar.`}
+            disabled={!canUpdatePriority}
+            onClick={event => {
+              event.stopPropagation();
+              if (!canUpdatePriority) {
+                return;
+              }
+              onUpdatePriority(task.id, nextPriority);
+            }}
+          >
+            {priority.label}
+          </button>
         </div>
         <button
           className="task-card__ghost"

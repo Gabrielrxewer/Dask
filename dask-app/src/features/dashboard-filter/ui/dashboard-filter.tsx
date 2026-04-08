@@ -1,6 +1,6 @@
 ﻿import type { ChangeEvent } from "react";
 import type { DashboardFilterState } from "@/features/dashboard-filter/model/types";
-import { Button, TextInput } from "@/shared/ui";
+import { Button, FilterBar, TextInput } from "@/shared/ui";
 import "./dashboard-filter.css";
 
 interface DashboardFilterProps {
@@ -21,7 +21,7 @@ export function DashboardFilter({
   };
 
   return (
-    <div className="dashboard-filter">
+    <FilterBar className="dashboard-filter">
       <TextInput
         type="search"
         value={query}
@@ -38,6 +38,6 @@ export function DashboardFilter({
       >
         Somente minhas
       </Button>
-    </div>
+    </FilterBar>
   );
 }

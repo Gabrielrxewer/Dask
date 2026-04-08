@@ -1,23 +1,17 @@
 .automations-view {
+  overflow: visible;
+}
+
+.automations-view__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 14px;
 }
 
 .automations-view__card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--panel);
   padding: 14px;
   display: grid;
   gap: 8px;
-  box-shadow: var(--shadow-2);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-}
-
-.automations-view__card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 28px rgba(18, 58, 96, 0.12);
 }
 
 .automations-view__card header {
@@ -29,30 +23,14 @@
 
 .automations-view__card h3 {
   margin: 0;
-  color: #12395f;
+  color: var(--text-strong);
   font-size: 0.95rem;
-}
-
-.automations-view__status {
-  border-radius: 999px;
-  border: 1px solid #f0d6b7;
-  background: #fff4e6;
-  color: #8a5f00;
-  padding: 3px 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.automations-view__status.is-active {
-  border-color: #caedd8;
-  background: #e8f9ef;
-  color: #1f7a45;
 }
 
 .automations-view__card p {
   margin: 0;
-  color: #53708e;
-  font-size: 0.82rem;
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
   line-height: 1.4;
 }
 
@@ -62,29 +40,8 @@
   gap: 8px;
 }
 
-.automations-view__card button {
-  border: 1px solid #d0e3f8;
-  background: #f3f8ff;
-  color: #245684;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.automations-view__empty {
-  grid-column: 1 / -1;
-  border: 1px dashed #b9d6f3;
-  background: #f3f8ff;
-  color: #2d5b87;
-  border-radius: 14px;
-  padding: 18px;
-  font-size: 0.9rem;
-}
-
 @media (max-width: 980px) {
-  .automations-view {
+  .automations-view__grid {
     grid-template-columns: 1fr;
   }
 }

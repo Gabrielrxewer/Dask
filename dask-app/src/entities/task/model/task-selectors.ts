@@ -1,5 +1,5 @@
 import { isDateWithinNextDays } from "@/shared/lib/date/format-date";
-import type { BoardMetrics, Task, TaskStatus, TaskStatusId } from "@/entities/task/model/types";
+import type { BoardMetrics, Task, TaskStatus, TaskStatusId, TaskTypeMetaItem } from "@/entities/task/model/types";
 
 export function groupTasksByStatus(
   tasks: Task[],
@@ -40,4 +40,27 @@ export function buildBoardMetrics(tasks: Task[]): BoardMetrics {
     donePercent,
     active: doing + review
   };
+}
+
+export function buildTaskChecklistSummary(task: Task): { done: number; total: number; percent: number } {
+  const total = task.checklist.items.length;
+  const done = task.checklist.items.filter(item => item.done).length;
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  return { done, total, percent };
+}
+
+export function getTaskTypeDisplayMeta(
+  typeMap: Record<string, TaskTypeMetaItem>,
+  taskType: string
+): TaskTypeMetaItem {
+  return (
+    typeMap[taskType] ?? {
+      id: taskType,
+      label: taskType,
+      background: "#edf5ff",
+      border: "#cfe2ff",
+      text: "#1d4e85"
+    }
+  );
 }

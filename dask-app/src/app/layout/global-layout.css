@@ -1,6 +1,6 @@
 :root {
-  --global-header-height: 44px;
-  --global-footer-height: 34px;
+  --global-header-height: 40px;
+  --global-footer-height: 28px;
   --global-chrome-border: rgba(144, 190, 226, 0.34);
   --global-chrome-surface:
     radial-gradient(circle at 14% 0%, rgba(246, 145, 159, 0.18) 0%, transparent 24%),
@@ -9,8 +9,8 @@
     linear-gradient(120deg, rgba(38, 145, 214, 0.16), rgba(31, 170, 153, 0.08));
   --global-chrome-highlight:
     linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0) 100%);
-  --global-chrome-shadow-top: 0 12px 24px rgba(8, 31, 53, 0.18);
-  --global-chrome-shadow-bottom: 0 -8px 18px rgba(8, 31, 53, 0.14);
+  --global-chrome-shadow-top: 0 8px 18px rgba(8, 31, 53, 0.14);
+  --global-chrome-shadow-bottom: 0 -6px 14px rgba(8, 31, 53, 0.12);
 }
 
 .global-layout {
@@ -35,7 +35,7 @@
   right: 0;
   width: 100%;
   z-index: 40;
-  backdrop-filter: blur(12px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(112%);
   overflow: hidden;
   background: var(--global-chrome-surface);
 }
@@ -44,11 +44,11 @@
 .global-footer::before {
   content: "";
   position: absolute;
-  left: 10%;
-  right: 10%;
+  left: 12%;
+  right: 12%;
   height: 1px;
   background: var(--global-chrome-highlight);
-  opacity: 0.85;
+  opacity: 0.72;
   pointer-events: none;
 }
 
@@ -59,9 +59,9 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 22% 50%, rgba(48, 213, 205, 0.08) 0%, transparent 20%),
-    radial-gradient(circle at 78% 50%, rgba(125, 97, 238, 0.08) 0%, transparent 20%);
-  opacity: 0.9;
+    radial-gradient(circle at 22% 50%, rgba(48, 213, 205, 0.06) 0%, transparent 20%),
+    radial-gradient(circle at 78% 50%, rgba(125, 97, 238, 0.06) 0%, transparent 20%);
+  opacity: 0.7;
 }
 
 .global-header {
@@ -73,10 +73,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 16px;
+  padding: 0 18px;
   box-shadow:
     var(--global-chrome-shadow-top),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
   overflow: visible;
 }
 
@@ -87,7 +87,7 @@
 .global-header__left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   padding-left: 0;
 }
@@ -95,25 +95,25 @@
 .global-header__menu {
   border: 1px solid rgba(161, 202, 233, 0.3);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(234, 244, 252, 0.08) 100%);
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
   margin-right: 0;
   box-shadow:
-    0 8px 18px rgba(4, 21, 37, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    0 6px 14px rgba(4, 21, 37, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.07) inset;
   transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
   position: relative;
   z-index: 1;
 }
 
 .global-header__menu-grid {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 3px;
@@ -156,30 +156,30 @@
 }
 
 .global-header__brand-full {
-  width: clamp(112px, 10.8vw, 132px);
-  height: 32px;
+  width: clamp(108px, 10.4vw, 126px);
+  height: 28px;
   display: block;
   align-self: center;
   flex-shrink: 0;
   object-fit: contain;
   object-position: center;
-  filter: drop-shadow(0 4px 10px rgba(11, 28, 46, 0.18));
+  filter: drop-shadow(0 3px 8px rgba(11, 28, 46, 0.16));
 }
 
 .global-header__user {
-  min-height: 32px;
-  min-width: 34px;
+  min-height: 28px;
+  min-width: 30px;
   border-radius: 999px;
   border: 1px solid rgba(161, 202, 233, 0.34);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(233, 243, 252, 0.1) 100%);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 7px;
   cursor: pointer;
-  padding: 0 10px 0 4px;
+  padding: 0 8px 0 3px;
   box-shadow:
-    0 8px 18px rgba(4, 21, 37, 0.16),
+    0 6px 14px rgba(4, 21, 37, 0.14),
     0 1px 0 rgba(255, 255, 255, 0.08) inset;
   transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
   position: relative;
@@ -193,8 +193,8 @@
 }
 
 .global-header__user-avatar {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -205,8 +205,8 @@
 
 .global-header__user-avatar-icon {
   position: relative;
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 1.8px solid #16507d;
   border-bottom: 0;
@@ -217,9 +217,9 @@
   content: "";
   position: absolute;
   left: 50%;
-  top: 12px;
-  width: 14px;
-  height: 8px;
+  top: 11px;
+  width: 13px;
+  height: 7px;
   border: 1.8px solid #16507d;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
@@ -228,7 +228,7 @@
 }
 
 .global-header__user-name {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1;
   color: #e4f1fb;
   font-weight: 600;
@@ -366,7 +366,7 @@
   padding: 0 12px;
   box-shadow:
     var(--global-chrome-shadow-bottom),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .global-footer::before {
@@ -374,16 +374,16 @@
 }
 
 .global-footer__brand {
-  width: clamp(94px, 9.2vw, 110px);
-  height: 28px;
+  width: clamp(80px, 8vw, 92px);
+  height: 20px;
   display: block;
   align-self: center;
   position: relative;
   z-index: 1;
   object-fit: contain;
   object-position: center;
-  opacity: 0.96;
-  filter: drop-shadow(0 2px 6px rgba(8, 28, 47, 0.18));
+  opacity: 0.78;
+  filter: drop-shadow(0 2px 5px rgba(8, 28, 47, 0.14));
 }
 
 @media (max-width: 1140px) {
@@ -409,8 +409,8 @@
 
 @media (max-width: 760px) {
   .global-header__brand-full {
-    width: 102px;
-    height: 30px;
+    width: 96px;
+    height: 26px;
   }
 
   .global-header__menu {
@@ -452,8 +452,8 @@
   }
 
   .global-footer__brand {
-    width: 88px;
-    height: 26px;
+    width: 74px;
+    height: 18px;
   }
 }
 

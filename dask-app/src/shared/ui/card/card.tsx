@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 
 type CardVariant = "default" | "interactive";
 
@@ -9,7 +10,7 @@ interface CardProps extends HTMLAttributes<HTMLElement> {
 
 export function Card({ children, className = "", variant = "default", ...props }: CardProps) {
   return (
-    <article className={`shared-card shared-card--${variant} ${className}`.trim()} {...props}>
+    <article className={cn("shared-card", `shared-card--${variant}`, className)} {...props}>
       {children}
     </article>
   );

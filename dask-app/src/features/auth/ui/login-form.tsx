@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
 import { useAuth, useLogin } from "@/features/auth";
+import { cn } from "@/shared/lib/cn";
 import "./login-form.css";
 
 interface LoginLocationState {
@@ -85,7 +86,7 @@ export function LoginForm() {
             />
             <button
               type="button"
-              className={`auth-login__toggle ${showPassword ? "auth-login__toggle--active" : ""}`.trim()}
+              className={cn("auth-login__toggle", showPassword && "auth-login__toggle--active")}
               onClick={() => setShowPassword(value => !value)}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               aria-controls="password"

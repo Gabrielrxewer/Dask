@@ -1,6 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { MemberAvatar } from "@/entities/member";
-import { buildTaskTypeMetaMap, priorityMeta, taskPriorityOptions } from "@/entities/task";
+import {
+  buildTaskChecklistSummary,
+  buildTaskTypeMetaMap,
+  getTaskTypeDisplayMeta,
+  priorityMeta,
+  taskPriorityOptions
+} from "@/entities/task";
 import type {
   BoardConfig,
   Task,
@@ -30,6 +36,8 @@ interface ChatMessage {
 }
 
 const longDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" });
+const initialAssistantMessage =
+  "Sou o assistente do card. Posso te ajudar a quebrar escopo, revisar riscos e preparar handoff para o time.";
 
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
   if (Array.isArray(value)) {
@@ -80,9 +88,7 @@ export function TaskDetailsModal({
   onClose
 }: TaskDetailsModalProps) {
   const checklistItems = task.checklist.items;
-  const checklistTotal = checklistItems.length;
-  const checklistDone = checklistItems.filter(item => item.done).length;
-  const checklistProgress = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
+  const checklist = buildTaskChecklistSummary(task);
   const priority = priorityMeta[task.priority] ?? priorityMeta[2];
 
   const [descriptionDraft, setDescriptionDraft] = useState(task.text);
@@ -92,21 +98,13 @@ export function TaskDetailsModal({
     {
       id: `${task.id}-assistant-1`,
       role: "assistant",
-      text: "Sou o assistente do card. Posso te ajudar a quebrar escopo, revisar riscos e preparar handoff para o time."
+      text: initialAssistantMessage
     }
   ]);
 
   const type = useMemo(() => {
     const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
-    return (
-      typeMap[task.type] ?? {
-        id: task.type,
-        label: task.type,
-        background: "#edf5ff",
-        border: "#cfe2ff",
-        text: "#1d4e85"
-      }
-    );
+    return getTaskTypeDisplayMeta(typeMap, task.type);
   }, [boardConfig.taskTypes, task.type]);
 
   const customFields = useMemo(() => {
@@ -126,7 +124,7 @@ export function TaskDetailsModal({
       {
         id: `${task.id}-assistant-1`,
         role: "assistant",
-        text: "Sou o assistente do card. Posso te ajudar a quebrar escopo, revisar riscos e preparar handoff para o time."
+        text: initialAssistantMessage
       }
     ]);
   }, [task.id, task.text]);
@@ -244,11 +242,11 @@ export function TaskDetailsModal({
             <section className="task-details__section">
               <h3>Checklist</h3>
               <div className="task-details__progress-head">
-                <span>{`${checklistDone}/${checklistTotal} concluidos`}</span>
-                <strong>{`${checklistProgress}%`}</strong>
+                <span>{`${checklist.done}/${checklist.total} concluidos`}</span>
+                <strong>{`${checklist.percent}%`}</strong>
               </div>
               <div className="task-details__progress-track">
-                <div className="task-details__progress-fill" style={{ width: `${checklistProgress}%` }} />
+                <div className="task-details__progress-fill" style={{ width: `${checklist.percent}%` }} />
               </div>
               <ul className="task-details__checklist">
                 {checklistItems.map(item => (

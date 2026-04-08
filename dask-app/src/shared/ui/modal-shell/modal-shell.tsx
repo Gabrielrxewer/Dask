@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 
 interface ModalShellProps {
   titleId: string;
@@ -29,7 +30,7 @@ export function ModalShell({ titleId, className = "", onClose, children }: Modal
   return (
     <div className="shared-modal-overlay" role="presentation" onClick={onClose}>
       <aside
-        className={`shared-modal-shell ${className}`.trim()}
+        className={cn("shared-modal-shell", className)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

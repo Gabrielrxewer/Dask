@@ -42,9 +42,12 @@
   </g>
 
   <text
-    x="198"
+    x="208"
     y="194"
-    fill="#27324F"
+    fill="#FFFFFF"
+    stroke="#2C78E6"
+    stroke-width="2"
+    paint-order="stroke fill"
     font-family="Aptos, Segoe UI, Arial, sans-serif"
     font-size="96"
     font-weight="800"

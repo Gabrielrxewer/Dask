@@ -1,4 +1,5 @@
 import type { BoardMetrics as BoardMetricsType } from "@/entities/task";
+import { cn } from "@/shared/lib/cn";
 import { MetricCard } from "@/shared/ui";
 import "./board-metrics.css";
 
@@ -24,7 +25,7 @@ export function BoardMetrics({ metrics, cards, className = "" }: BoardMetricsPro
   const metricCards = cards && cards.length > 0 ? cards : fallbackCards;
 
   return (
-    <section className={`board-metrics ${className}`.trim()}>
+    <section className={cn("board-metrics", className)}>
       {metricCards.map(card => (
         <MetricCard label={card.label} value={card.value} key={card.label} />
       ))}

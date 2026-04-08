@@ -1,6 +1,7 @@
 import type { DragEvent, ReactNode } from "react";
-import { buildTaskTypeMetaMap, priorityMeta } from "@/entities/task";
+import { buildTaskChecklistSummary, buildTaskTypeMetaMap, getTaskTypeDisplayMeta, priorityMeta } from "@/entities/task";
 import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
+import { cn } from "@/shared/lib/cn";
 import { formatShortDate } from "@/shared/lib/date/format-date";
 import "./task-card.css";
 
@@ -56,17 +57,10 @@ export function TaskCard({
   onOpen,
   onUpdatePriority
 }: TaskCardProps) {
-  const checklistTotal = task.checklist.items.length;
-  const checklistDone = task.checklist.items.filter(item => item.done).length;
+  const checklist = buildTaskChecklistSummary(task);
   const priority = priorityMeta[task.priority] ?? priorityMeta[2];
   const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
-  const type = typeMap[task.type] ?? {
-    id: task.type,
-    label: task.type,
-    background: "#edf5ff",
-    border: "#cfe2ff",
-    text: "#1d4e85"
-  };
+  const type = getTaskTypeDisplayMeta(typeMap, task.type);
   const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>((acc, field) => {
     acc[field.id] = field;
     return acc;
@@ -91,9 +85,12 @@ export function TaskCard({
 
   return (
     <article
-      className={`task-card task-card--priority-${task.priority} ${compact ? "task-card--compact" : ""} ${
-        isDragging ? "task-card--dragging" : ""
-      }`.trim()}
+      className={cn(
+        "task-card",
+        `task-card--priority-${task.priority}`,
+        compact && "task-card--compact",
+        isDragging && "task-card--dragging"
+      )}
       draggable
       onDragStart={event => onDragStart(event, task.id)}
       onDragEnd={onDragEnd}
@@ -128,7 +125,7 @@ export function TaskCard({
           </span>
           <button
             type="button"
-            className={`task-card__priority ${priority.className}`.trim()}
+            className={cn("task-card__priority", priority.className)}
             aria-label={`Prioridade atual ${priority.label}. Clique para mudar.`}
             disabled={!canUpdatePriority}
             onClick={event => {
@@ -177,7 +174,7 @@ export function TaskCard({
       <footer className="task-card__footer">
         {!compact ? assigneeSlot : <span className="task-card__creator">{`Criado por ${authorLabel}`}</span>}
         <div className="task-card__meta">
-          {!compact ? <span>{`Checklist ${checklistDone}/${checklistTotal}`}</span> : null}
+          {!compact ? <span>{`Checklist ${checklist.done}/${checklist.total}`}</span> : null}
           <span>{`Prazo ${formatShortDate(task.due)}`}</span>
         </div>
       </footer>

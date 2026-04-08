@@ -2,12 +2,19 @@
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
-import { buildBoardMetrics, factoryBoardConfig, type Task, type TaskPriority, type TaskStatus, type TaskStatusId } from "@/entities/task";
+import {
+  buildBoardMetrics,
+  buildTaskChecklistSummary,
+  factoryBoardConfig,
+  type Task,
+  type TaskPriority,
+  type TaskStatus,
+  type TaskStatusId
+} from "@/entities/task";
 import { currentUserId, membersById } from "@/entities/member";
 import {
   applyDashboardFilter,
-  initialDashboardFilter,
-  type DashboardFilterState
+  useDashboardFilter
 } from "@/features/dashboard-filter";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
@@ -100,17 +107,9 @@ function resolveManagerStatus(task: Task): TaskStatusId {
   return "mgr-delivery";
 }
 
-function checklistSummary(task: Task): { done: number; total: number; percent: number } {
-  const total = task.checklist.items.length;
-  const done = task.checklist.items.filter(item => item.done).length;
-  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
-
-  return { done, total, percent };
-}
-
 export function BoardPage() {
   const { snapshot, isLoading, createTask, moveTask, updateTaskPriority, updateTaskCustomField, toggleChecklistItem } = useWorkspace();
-  const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
+  const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
 
@@ -223,7 +222,8 @@ export function BoardPage() {
         managerTasks.length === 0
           ? 0
           : Math.round(
-              managerTasks.reduce((sum, task) => sum + checklistSummary(task).percent, 0) / managerTasks.length
+              managerTasks.reduce((sum, task) => sum + buildTaskChecklistSummary(task).percent, 0) /
+                managerTasks.length
             );
 
       return [
@@ -290,8 +290,8 @@ export function BoardPage() {
       noPageScroll
       topNavigation={topNavigation}
       filter={filter}
-      onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
-      onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
+      onFilterQueryChange={setQuery}
+      onMineToggle={toggleMineOnly}
       onCreateTask={input => void createTask(input)}
     >
       <div className="board-view">

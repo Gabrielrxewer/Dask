@@ -1,4 +1,5 @@
 import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 
 interface DataTableProps {
   columns: string;
@@ -27,7 +28,7 @@ export function DataTable({
 }: DataTableProps) {
   return (
     <DataTableGridContext.Provider value={{ columns }}>
-      <div className={`shared-data-table ${className}`.trim()}>
+      <div className={cn("shared-data-table", className)}>
         <div
           className="shared-data-table__scroll"
           style={
@@ -52,25 +53,25 @@ interface RowLikeProps {
 export function DataTableHeader({ children, className = "" }: RowLikeProps) {
   const columns = useDataTableColumns();
   return (
-    <header className={`shared-data-table__header ${className}`.trim()} style={{ gridTemplateColumns: columns }}>
+    <header className={cn("shared-data-table__header", className)} style={{ gridTemplateColumns: columns }}>
       {children}
     </header>
   );
 }
 
 export function DataTableBody({ children, className = "" }: RowLikeProps) {
-  return <div className={`shared-data-table__body ${className}`.trim()}>{children}</div>;
+  return <div className={cn("shared-data-table__body", className)}>{children}</div>;
 }
 
 export function DataTableRow({ children, className = "" }: RowLikeProps) {
   const columns = useDataTableColumns();
   return (
-    <div className={`shared-data-table__row ${className}`.trim()} style={{ gridTemplateColumns: columns }}>
+    <div className={cn("shared-data-table__row", className)} style={{ gridTemplateColumns: columns }}>
       {children}
     </div>
   );
 }
 
 export function DataTableCell({ children, className = "" }: RowLikeProps) {
-  return <div className={`shared-data-table__cell ${className}`.trim()}>{children}</div>;
+  return <div className={cn("shared-data-table__cell", className)}>{children}</div>;
 }

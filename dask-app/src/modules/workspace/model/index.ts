@@ -3,6 +3,7 @@ export {
   createInitialWorkspaceSnapshot,
   createTaskFromInput
 } from "@/modules/workspace/model/mock-workspace";
+export { useWorkspaceTaskPage } from "@/modules/workspace/model/use-workspace-task-page";
 export type {
   CreateTaskInput,
   WorkspaceAutomation,

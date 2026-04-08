@@ -1,5 +1,10 @@
 export { workspaceService } from "@/modules/workspace/api";
-export { cloneWorkspaceSnapshot, createInitialWorkspaceSnapshot, createTaskFromInput } from "@/modules/workspace/model";
+export {
+  cloneWorkspaceSnapshot,
+  createInitialWorkspaceSnapshot,
+  createTaskFromInput,
+  useWorkspaceTaskPage
+} from "@/modules/workspace/model";
 export type {
   CreateTaskInput,
   WorkspaceAutomation,

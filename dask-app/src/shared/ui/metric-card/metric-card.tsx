@@ -1,3 +1,5 @@
+import { cn } from "@/shared/lib/cn";
+
 interface MetricCardProps {
   label: string;
   value: string | number;
@@ -6,7 +8,7 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, className = "" }: MetricCardProps) {
   return (
-    <article className={`shared-metric-card ${className}`.trim()}>
+    <article className={cn("shared-metric-card", className)}>
       <p>{label}</p>
       <h3>{value}</h3>
     </article>

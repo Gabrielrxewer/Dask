@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { GlobalChromeProvider } from "@/app/layout";
+import { cn } from "@/shared/lib/cn";
 import daskLogoFullOnDark from "@/shared/assets/dask-logo-full-on-dark.svg";
 import "./global-layout.css";
 
@@ -208,9 +209,11 @@ export function GlobalLayout() {
           </header>
 
           <main
-            className={`global-layout__main ${isBoardRoute ? "global-layout__main--no-scroll" : ""} ${
-              isLoginRoute ? "global-layout__main--login" : ""
-            }`.trim()}
+            className={cn(
+              "global-layout__main",
+              isBoardRoute && "global-layout__main--no-scroll",
+              isLoginRoute && "global-layout__main--login"
+            )}
           >
             <Outlet />
           </main>

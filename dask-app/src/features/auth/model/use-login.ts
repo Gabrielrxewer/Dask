@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useAuth } from "@/features/auth/model";
 import type { LoginInput } from "@/features/auth/api/types";
+import { useAsyncAction } from "@/shared/lib/react/use-async-action";
 
 interface UseLoginResult {
   login: (input: LoginInput) => Promise<void>;
@@ -9,19 +9,10 @@ interface UseLoginResult {
 
 export function useLogin(): UseLoginResult {
   const auth = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const login = async (input: LoginInput): Promise<void> => {
-    setIsSubmitting(true);
-    try {
-      await auth.login(input);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const { run, isSubmitting } = useAsyncAction(auth.login);
 
   return {
-    login,
+    login: run,
     isSubmitting
   };
 }

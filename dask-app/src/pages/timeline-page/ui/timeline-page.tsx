@@ -1,12 +1,6 @@
-import { useMemo, useState } from "react";
-import { currentUserId, membersById } from "@/entities/member";
-import { buildBoardMetrics, buildTaskTypeMetaMap, factoryBoardConfig } from "@/entities/task";
-import {
-  applyDashboardFilter,
-  initialDashboardFilter,
-  type DashboardFilterState
-} from "@/features/dashboard-filter";
-import { useWorkspace } from "@/modules/workspace";
+import { useMemo } from "react";
+import { buildTaskChecklistSummary, buildTaskTypeMetaMap, getTaskTypeDisplayMeta } from "@/entities/task";
+import { useWorkspaceTaskPage } from "@/modules/workspace";
 import {
   DataTable,
   DataTableBody,
@@ -21,6 +15,7 @@ import {
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
+import { cn } from "@/shared/lib/cn";
 import "./timeline-page.css";
 
 function toDateStamp(value: string): number {
@@ -33,36 +28,28 @@ function toShortDate(value: number): string {
 }
 
 export function TimelinePage() {
-  const { snapshot, isLoading, createTask, updateTaskPriority, toggleChecklistItem } = useWorkspace();
-  const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
-  const [selectedTaskId, setSelectedTaskId] = useState("");
-
-  const tasks = snapshot?.tasks ?? [];
-  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const activeMembers = snapshot?.membersById ?? membersById;
-  const activeUser = snapshot?.currentUserId ?? currentUserId;
-
-  const filteredTasks = useMemo(
-    () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
-    [tasks, filter, activeMembers, activeUser]
-  );
-
-  const metrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);
+  const {
+    isLoading,
+    createTask,
+    updateTaskPriority,
+    toggleChecklistItem,
+    filter,
+    setFilterQuery,
+    toggleMineFilter,
+    boardConfig,
+    activeMembers,
+    filteredTasks,
+    metrics,
+    selectedTask,
+    selectedStatus,
+    selectTask,
+    clearSelectedTask
+  } = useWorkspaceTaskPage();
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
 
   const sortedTasks = useMemo(
     () => [...filteredTasks].sort((a, b) => toDateStamp(a.due) - toDateStamp(b.due)),
     [filteredTasks]
-  );
-
-  const selectedTask = useMemo(
-    () => filteredTasks.find(task => task.id === selectedTaskId) ?? null,
-    [filteredTasks, selectedTaskId]
-  );
-
-  const selectedStatus = useMemo(
-    () => (selectedTask ? boardConfig.statuses.find(status => status.id === selectedTask.status) ?? null : null),
-    [selectedTask, boardConfig.statuses]
   );
 
   const dateRange = useMemo(() => {
@@ -85,8 +72,8 @@ export function TimelinePage() {
       noPageScroll
       pageTitle="Linha do tempo"
       filter={filter}
-      onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
-      onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
+      onFilterQueryChange={setFilterQuery}
+      onMineToggle={toggleMineFilter}
       onCreateTask={input => void createTask(input)}
     >
       <div className="timeline-view">
@@ -119,17 +106,16 @@ export function TimelinePage() {
                   const taskStamp = toDateStamp(task.due);
                   const offset = ((taskStamp - dateRange.min) / range) * 100;
                   const width = 14;
-                  const done = task.checklist.items.filter(item => item.done).length;
-                  const total = task.checklist.items.length;
-                  const type = typeMap[task.type];
+                  const checklist = buildTaskChecklistSummary(task);
+                  const type = getTaskTypeDisplayMeta(typeMap, task.type);
                   const isLate = taskStamp < Date.now();
 
                   return (
                     <DataTableRow key={task.id}>
                       <DataTableCell>
-                        <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
+                        <button type="button" className="timeline-view__meta" onClick={() => selectTask(task.id)}>
                           <strong>{task.title}</strong>
-                          <p>{`${done}/${total} checklist`}</p>
+                          <p>{`${checklist.done}/${checklist.total} checklist`}</p>
                         </button>
                       </DataTableCell>
 
@@ -138,17 +124,17 @@ export function TimelinePage() {
                           <div className="timeline-view__track" />
                           <button
                             type="button"
-                            className={`timeline-view__bar ${isLate ? "timeline-view__bar--late" : ""}`.trim()}
+                            className={cn("timeline-view__bar", isLate && "timeline-view__bar--late")}
                             style={{
                               left: `${Math.min(Math.max(offset, 0), 86)}%`,
                               width: `${width}%`,
-                              background: type?.background ?? "#edf5ff",
-                              borderColor: type?.border ?? "#cfe2ff",
-                              color: type?.text ?? "#1d4e85"
+                              background: type.background,
+                              borderColor: type.border,
+                              color: type.text
                             }}
-                            onClick={() => setSelectedTaskId(task.id)}
+                            onClick={() => selectTask(task.id)}
                           >
-                            {type?.label ?? task.type}
+                            {type.label}
                             <span>{task.due}</span>
                           </button>
                         </div>
@@ -170,7 +156,7 @@ export function TimelinePage() {
           boardConfig={boardConfig}
           onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
-          onClose={() => setSelectedTaskId("")}
+          onClose={clearSelectedTask}
         />
       ) : null}
     </AppShell>

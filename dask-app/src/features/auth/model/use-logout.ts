@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useAuth } from "@/features/auth/model";
+import { useAsyncAction } from "@/shared/lib/react/use-async-action";
 
 interface UseLogoutResult {
   logout: () => Promise<void>;
@@ -9,20 +9,12 @@ interface UseLogoutResult {
 
 export function useLogout(): UseLogoutResult {
   const auth = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const run = async (callback: () => Promise<void>): Promise<void> => {
-    setIsSubmitting(true);
-    try {
-      await callback();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const logoutAction = useAsyncAction(auth.logout);
+  const logoutAllAction = useAsyncAction(auth.logoutAll);
 
   return {
-    logout: () => run(auth.logout),
-    logoutAll: () => run(auth.logoutAll),
-    isSubmitting
+    logout: logoutAction.run,
+    logoutAll: logoutAllAction.run,
+    isSubmitting: logoutAction.isSubmitting || logoutAllAction.isSubmitting
   };
 }

@@ -3,4 +3,5 @@ export {
   initialDashboardFilter,
   applyDashboardFilter
 } from "@/features/dashboard-filter/model/filter-utils";
+export { useDashboardFilter } from "@/features/dashboard-filter/model/use-dashboard-filter";
 export type { DashboardFilterState } from "@/features/dashboard-filter/model/types";

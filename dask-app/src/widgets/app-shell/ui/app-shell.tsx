@@ -8,6 +8,7 @@ import { DashboardFilter } from "@/features/dashboard-filter";
 import { CreateTaskButton } from "@/features/create-task";
 import type { CreateTaskInput } from "@/modules/workspace";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
+import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
@@ -67,9 +68,7 @@ export function AppShell({
 
   return (
     <div
-      className={`app-shell ${noPageScroll ? "app-shell--no-scroll" : ""} ${
-        isSidebarOpen ? "app-shell--nav-open" : ""
-      }`.trim()}
+      className={cn("app-shell", noPageScroll && "app-shell--no-scroll", isSidebarOpen && "app-shell--nav-open")}
     >
       <div className="app-shell__noise" />
       <button type="button" className="app-shell__nav-backdrop" aria-label="Fechar menu" onClick={closeNavigation} />
@@ -94,9 +93,7 @@ export function AppShell({
                   key={item.to}
                   to={item.to}
                   onClick={closeNavigation}
-                  className={({ isActive }) =>
-                    `sidebar__menu-link ${isActive ? "sidebar__menu-link--active" : ""}`.trim()
-                  }
+                  className={({ isActive }) => cn("sidebar__menu-link", isActive && "sidebar__menu-link--active")}
                 >
                   <span className="sidebar__menu-link-mark" />
                   {item.label}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 
 interface SectionProps {
   title: string;
@@ -10,7 +11,7 @@ interface SectionProps {
 
 export function Section({ title, subtitle, actions, className = "", children }: SectionProps) {
   return (
-    <section className={`shared-section ${className}`.trim()}>
+    <section className={cn("shared-section", className)}>
       <header className="shared-section__header">
         <div>
           <h2 className="shared-section__title">{title}</h2>

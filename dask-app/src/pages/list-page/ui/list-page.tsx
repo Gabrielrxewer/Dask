@@ -1,17 +1,6 @@
-import { useMemo, useState } from "react";
-import { currentUserId, membersById } from "@/entities/member";
-import {
-  buildBoardMetrics,
-  buildTaskTypeMetaMap,
-  factoryBoardConfig,
-  type TaskStatusId
-} from "@/entities/task";
-import {
-  applyDashboardFilter,
-  initialDashboardFilter,
-  type DashboardFilterState
-} from "@/features/dashboard-filter";
-import { useWorkspace } from "@/modules/workspace";
+import { useMemo } from "react";
+import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
+import { useWorkspaceTaskPage } from "@/modules/workspace";
 import {
   DataTable,
   DataTableBody,
@@ -30,32 +19,25 @@ import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
 
 export function ListPage() {
-  const { snapshot, isLoading, createTask, moveTask, updateTaskPriority, toggleChecklistItem } = useWorkspace();
-  const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
-  const [selectedTaskId, setSelectedTaskId] = useState("");
-
-  const tasks = snapshot?.tasks ?? [];
-  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const activeMembers = snapshot?.membersById ?? membersById;
-  const activeUser = snapshot?.currentUserId ?? currentUserId;
-
-  const filteredTasks = useMemo(
-    () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
-    [tasks, filter, activeMembers, activeUser]
-  );
-
-  const metrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);
+  const {
+    isLoading,
+    createTask,
+    moveTask,
+    updateTaskPriority,
+    toggleChecklistItem,
+    filter,
+    setFilterQuery,
+    toggleMineFilter,
+    boardConfig,
+    activeMembers,
+    filteredTasks,
+    metrics,
+    selectedTask,
+    selectedStatus,
+    selectTask,
+    clearSelectedTask
+  } = useWorkspaceTaskPage();
   const taskTypeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
-
-  const selectedTask = useMemo(
-    () => filteredTasks.find(task => task.id === selectedTaskId) ?? null,
-    [filteredTasks, selectedTaskId]
-  );
-
-  const selectedStatus = useMemo(
-    () => (selectedTask ? boardConfig.statuses.find(status => status.id === selectedTask.status) ?? null : null),
-    [selectedTask, boardConfig.statuses]
-  );
 
   const handleStatusChange = (taskId: string, statusId: TaskStatusId) => {
     void moveTask(taskId, statusId);
@@ -67,8 +49,8 @@ export function ListPage() {
       noPageScroll
       pageTitle="Lista de itens"
       filter={filter}
-      onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
-      onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
+      onFilterQueryChange={setFilterQuery}
+      onMineToggle={toggleMineFilter}
       onCreateTask={input => void createTask(input)}
     >
       <div className="list-view">
@@ -103,12 +85,12 @@ export function ListPage() {
                 filteredTasks.map(task => {
                   const done = task.checklist.items.filter(item => item.done).length;
                   const total = task.checklist.items.length;
-                  const type = taskTypeMap[task.type];
+                  const type = getTaskTypeDisplayMeta(taskTypeMap, task.type);
 
                   return (
                     <DataTableRow key={task.id}>
                       <DataTableCell>
-                        <button type="button" className="list-view__title" onClick={() => setSelectedTaskId(task.id)}>
+                        <button type="button" className="list-view__title" onClick={() => selectTask(task.id)}>
                           <strong>{task.title}</strong>
                           <p>{task.text}</p>
                         </button>
@@ -161,7 +143,7 @@ export function ListPage() {
           boardConfig={boardConfig}
           onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
-          onClose={() => setSelectedTaskId("")}
+          onClose={clearSelectedTask}
         />
       ) : null}
     </AppShell>

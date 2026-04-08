@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 import "./button.css";
 
 type ButtonVariant = "default" | "primary" | "outline";
@@ -23,7 +24,7 @@ export function Button({
     <button
       type={type}
       onClick={onClick}
-      className={`shared-button shared-button--${variant} shared-button--${size} ${className}`.trim()}
+      className={cn("shared-button", `shared-button--${variant}`, `shared-button--${size}`, className)}
       {...props}
     >
       {children}

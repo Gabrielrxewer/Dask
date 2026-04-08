@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 
 interface FormFieldProps {
   label: string;
@@ -8,7 +9,7 @@ interface FormFieldProps {
 
 export function FormField({ label, className = "", children }: FormFieldProps) {
   return (
-    <label className={`shared-form-field ${className}`.trim()}>
+    <label className={cn("shared-form-field", className)}>
       <span className="shared-form-field__label">{label}</span>
       {children}
     </label>

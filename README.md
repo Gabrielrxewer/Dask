@@ -22,13 +22,19 @@ Este repositorio esta organizado em dois projetos:
 
 ## Setup rapido
 
-1. Instalar dependencias da API:
+1. Subir infraestrutura Docker:
+
+```bash
+npm run infra:up
+```
+
+2. Instalar dependencias da API:
 
 ```bash
 npm --prefix dask-api install
 ```
 
-2. Instalar dependencias do app:
+3. Instalar dependencias do app:
 
 ```bash
 npm --prefix dask-app install
@@ -36,6 +42,10 @@ npm --prefix dask-app install
 
 ## Comandos da raiz
 
+- `npm run infra:up`
+- `npm run infra:down`
+- `npm run infra:logs`
+- `npm run infra:reset`
 - `npm run dev:app`
 - `npm run dev:api`
 - `npm run build:app`

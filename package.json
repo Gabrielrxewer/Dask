@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "infra:up": "docker compose -f docker-compose.infra.yml up -d",
+    "infra:down": "docker compose -f docker-compose.infra.yml down",
+    "infra:logs": "docker compose -f docker-compose.infra.yml logs -f",
+    "infra:reset": "docker compose -f docker-compose.infra.yml down -v",
     "dev:app": "npm --prefix dask-app run dev",
     "dev:api": "npm --prefix dask-api run dev",
     "build:app": "npm --prefix dask-app run build",

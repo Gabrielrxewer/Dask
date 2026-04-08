@@ -21,17 +21,16 @@ dask-api/
 |   |-- core/
 |   |-- infra/
 |   |-- modules/
-|-- docker-compose.yml
 |-- package.json
 ```
 
 ## Setup local
 
 1. Copie `.env.example` para `.env`.
-2. Suba PostgreSQL e Redis:
+2. Suba PostgreSQL e Redis a partir da raiz do monorepo:
 
 ```bash
-docker compose up -d
+npm run infra:up
 ```
 
 3. Instale dependencias:

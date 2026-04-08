@@ -1,81 +1,88 @@
-import { useState } from "react";
-import { AppShell } from "@/widgets/app-shell";
+﻿import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
-import { buildBoardMetrics, initialTasks } from "@/entities/task";
+import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
+import { useWorkspace } from "@/modules/workspace";
 import "./settings-page.css";
 
-const metrics = buildBoardMetrics(initialTasks);
-
 export function SettingsPage() {
-  const [showStoryPoints, setShowStoryPoints] = useState(true);
-  const [showSeverity, setShowSeverity] = useState(true);
-  const [showSprint, setShowSprint] = useState(true);
-  const [defaultMode, setDefaultMode] = useState("dev");
+  const { snapshot, updatePreferences, setCardFieldVisibility } = useWorkspace();
+
+  const tasks = snapshot?.tasks ?? [];
+  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const metrics = buildBoardMetrics(tasks);
+
+  const defaultMode = snapshot?.preferences.defaultBoardMode ?? "dev";
+  const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
+  const visibleFields = new Set(snapshot?.preferences.visibleCardFieldIds ?? []);
+  const fieldDefinitions = boardConfig.fieldDefinitions;
+
+  const visibleFieldsCount = visibleFields.size;
 
   return (
-    <AppShell metrics={metrics} pageTitle="Configura��es do dashboard" pageLabel="Admin">
+    <AppShell metrics={metrics} pageTitle="Configurações do workspace" pageLabel="Admin">
       <BoardMetrics
         metrics={metrics}
         cards={[
-          { label: "Campos visiveis", value: [showStoryPoints, showSeverity, showSprint].filter(Boolean).length },
-          { label: "Modo padrao", value: defaultMode.toUpperCase() },
+          { label: "Campos visíveis", value: visibleFieldsCount },
+          { label: "Modo padrão", value: defaultMode.toUpperCase() },
           { label: "Layouts salvos", value: 4 },
-          { label: "Atualizacao", value: "Agora" }
+          { label: "Atualização", value: "Agora" }
         ]}
       />
 
       <section className="settings-view">
         <article className="settings-view__card">
-          <h3>Campos visiveis no card</h3>
-          <label>
-            <input
-              type="checkbox"
-              checked={showStoryPoints}
-              onChange={event => setShowStoryPoints(event.target.checked)}
-            />
-            Story Points
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={showSeverity}
-              onChange={event => setShowSeverity(event.target.checked)}
-            />
-            Severidade
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={showSprint}
-              onChange={event => setShowSprint(event.target.checked)}
-            />
-            Sprint
-          </label>
+          <h3>Campos visíveis no card</h3>
+          {fieldDefinitions.map(field => (
+            <label key={field.id}>
+              <input
+                type="checkbox"
+                checked={visibleFields.has(field.id)}
+                onChange={event => void setCardFieldVisibility(field.id, event.target.checked)}
+              />
+              {field.label}
+            </label>
+          ))}
         </article>
 
         <article className="settings-view__card">
-          <h3>Preferencias do workspace</h3>
+          <h3>Preferências do workspace</h3>
           <label>
             Modo inicial
-            <select value={defaultMode} onChange={event => setDefaultMode(event.target.value)}>
+            <select
+              value={defaultMode}
+              onChange={event =>
+                void updatePreferences({
+                  defaultBoardMode: event.target.value as "dev" | "po" | "manager" | "qa"
+                })
+              }
+            >
               <option value="dev">Dev</option>
               <option value="po">PO</option>
-              <option value="manager">Gerente</option>
+              <option value="manager">Gestão</option>
               <option value="qa">QA</option>
             </select>
           </label>
 
           <label>
             Formato de data
-            <select defaultValue="dd/mm/yyyy">
+            <select
+              value={dateFormat}
+              onChange={event =>
+                void updatePreferences({
+                  dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
+                })
+              }
+            >
               <option value="dd/mm/yyyy">DD/MM/YYYY</option>
               <option value="mm/dd/yyyy">MM/DD/YYYY</option>
             </select>
           </label>
 
-          <button type="button">Salvar configuracoes</button>
+          <p className="settings-view__hint">As configurações são aplicadas automaticamente no workspace.</p>
         </article>
       </section>
     </AppShell>
   );
 }
+

@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
 import {
   buildBoardMetrics,
   factoryBoardConfig,
-  initialTasks,
   type Task,
   type TaskStatus,
   type TaskStatusId
@@ -16,17 +15,14 @@ import {
   initialDashboardFilter,
   type DashboardFilterState
 } from "@/features/dashboard-filter";
-import { createMockTask } from "@/features/create-task";
-import { moveTaskToStatus } from "@/features/change-status";
+import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import "./board-page.css";
 
-type BoardMode = "dev" | "po" | "manager" | "qa";
-
-const modeOptions: Array<{ id: BoardMode; label: string; caption: string }> = [
-  { id: "dev", label: "Dev", caption: "Execucao tecnica" },
-  { id: "po", label: "PO", caption: "Planejamento" },
-  { id: "manager", label: "Gerente", caption: "Portfolio" },
-  { id: "qa", label: "QA", caption: "Qualidade" }
+const modeOptions: Array<{ id: WorkspaceBoardMode; label: string; caption: string }> = [
+  { id: "dev", label: "Execucao", caption: "Fluxo operacional principal" },
+  { id: "po", label: "Planejamento", caption: "Priorizacao e compromisso" },
+  { id: "manager", label: "Gestao", caption: "Visao de capacidade e risco" },
+  { id: "qa", label: "Qualidade", caption: "ValidaÃ§Ã£o e conformidade" }
 ];
 
 const poStatuses: TaskStatus[] = [
@@ -118,14 +114,30 @@ function checklistSummary(task: Task): { done: number; total: number; percent: n
 }
 
 export function BoardPage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { snapshot, isLoading, createTask, moveTask, updateTaskCustomField, toggleChecklistItem } = useWorkspace();
   const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
-  const [createdCount, setCreatedCount] = useState(0);
-  const [mode, setMode] = useState<BoardMode>("dev");
+  const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
+  const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
+
+  const tasks = snapshot?.tasks ?? [];
+  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const activeMembers = snapshot?.membersById ?? membersById;
+  const activeUser = snapshot?.currentUserId ?? currentUserId;
+
+  useEffect(() => {
+    if (!snapshot) {
+      return;
+    }
+    const defaultMode = snapshot.preferences.defaultBoardMode;
+    if (previousDefaultMode.current !== defaultMode) {
+      previousDefaultMode.current = defaultMode;
+      setMode(defaultMode);
+    }
+  }, [snapshot]);
 
   const filteredTasks = useMemo(
-    () => applyDashboardFilter(tasks, filter, membersById, currentUserId),
-    [tasks, filter]
+    () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
+    [tasks, filter, activeMembers, activeUser]
   );
 
   const devMetrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);
@@ -155,7 +167,7 @@ export function BoardPage() {
         ? qaStatuses
         : mode === "manager"
           ? managerStatuses
-          : factoryBoardConfig.statuses;
+          : boardConfig.statuses;
 
   const activeBoardTasks =
     mode === "po" ? planningTasks : mode === "qa" ? qaTasks : mode === "manager" ? managerTasks : filteredTasks;
@@ -213,61 +225,23 @@ export function BoardPage() {
     ];
   }, [mode, planningTasks, qaTasks, managerTasks, devMetrics]);
 
-  const handleCreateTask = () => {
-    setTasks(prevTasks => [createMockTask(createdCount), ...prevTasks]);
-    setCreatedCount(prev => prev + 1);
-  };
-
   const handleMoveTask = (taskId: string, statusId: TaskStatusId) => {
     if (mode === "dev") {
-      setTasks(prevTasks => moveTaskToStatus(prevTasks, taskId, statusId));
+      void moveTask(taskId, statusId);
       return;
     }
 
     if (mode === "po") {
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId
-            ? { ...task, customFields: { ...task.customFields, planningStatus: statusId } }
-            : task
-        )
-      );
+      void updateTaskCustomField(taskId, "planningStatus", statusId);
       return;
     }
 
     if (mode === "qa") {
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? { ...task, customFields: { ...task.customFields, qaStatus: statusId } } : task
-        )
-      );
+      void updateTaskCustomField(taskId, "qaStatus", statusId);
       return;
     }
 
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, customFields: { ...task.customFields, managerLane: statusId } } : task
-      )
-    );
-  };
-
-  const handleToggleChecklistItem = (taskId: string, itemId: string) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task => {
-        if (task.id !== taskId) {
-          return task;
-        }
-
-        return {
-          ...task,
-          checklist: {
-            items: task.checklist.items.map(item =>
-              item.id === itemId ? { ...item, done: !item.done } : item
-            )
-          }
-        };
-      })
-    );
+    void updateTaskCustomField(taskId, "managerLane", statusId);
   };
 
   return (
@@ -276,7 +250,7 @@ export function BoardPage() {
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
-      onCreateTask={handleCreateTask}
+      onCreateTask={input => void createTask(input)}
     >
       <section className="board-mode-switch" aria-label="Modos do board">
         {modeOptions.map(option => (
@@ -294,14 +268,18 @@ export function BoardPage() {
 
       <BoardMetrics metrics={devMetrics} cards={modeCards} />
 
-      <BoardColumns
-        statuses={activeStatuses}
-        boardConfig={factoryBoardConfig}
-        tasks={activeBoardTasks}
-        membersById={membersById}
-        onMoveTask={handleMoveTask}
-        onToggleChecklistItem={handleToggleChecklistItem}
-      />
+      {isLoading ? (
+        <section className="board-loading">Carregando workspace...</section>
+      ) : (
+        <BoardColumns
+          statuses={activeStatuses}
+          boardConfig={boardConfig}
+          tasks={activeBoardTasks}
+          membersById={activeMembers}
+          onMoveTask={handleMoveTask}
+          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
+        />
+      )}
     </AppShell>
   );
 }

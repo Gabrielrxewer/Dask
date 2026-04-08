@@ -1,0 +1,116 @@
+﻿.create-item-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 20, 36, 0.48);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.create-item-modal {
+  position: relative;
+  width: min(640px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.create-item-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.create-item-modal__label {
+  margin: 0;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+}
+
+.create-item-modal__header h2 {
+  margin: 4px 0 0;
+  font-family: "Sora", "Segoe UI", sans-serif;
+  font-size: 1.28rem;
+}
+
+.create-item-modal__close {
+  border: 1px solid var(--line);
+  background: #f5f8fd;
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  font-weight: 700;
+  color: #33587c;
+  cursor: pointer;
+}
+
+.create-item-modal__body {
+  display: grid;
+  gap: 12px;
+}
+
+.create-item-modal__field {
+  display: grid;
+  gap: 6px;
+}
+
+.create-item-modal__field span {
+  color: #37587b;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.create-item-modal__field select,
+.create-item-modal__field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fbfdff;
+  border-radius: 12px;
+  color: var(--text);
+  padding: 10px 12px;
+}
+
+.create-item-modal__input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.create-item-modal__field select {
+  min-height: 42px;
+}
+
+.create-item-modal__field textarea {
+  min-height: 130px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.create-item-modal__ai {
+  border: 1px solid #b8d5f4;
+  background: linear-gradient(135deg, #eef8ff 0%, #e7fff6 100%);
+  color: #154b74;
+  border-radius: 12px;
+  min-height: 42px;
+  padding: 0 14px;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-item-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

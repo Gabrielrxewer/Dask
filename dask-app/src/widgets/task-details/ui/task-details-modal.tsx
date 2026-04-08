@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { MemberAvatar } from "@/entities/member";
 import { buildTaskTypeMetaMap, priorityMeta } from "@/entities/task";
 import type {
@@ -163,7 +163,7 @@ export function TaskDetailsModal({
     const assistantMessage: ChatMessage = {
       id: `${task.id}-assistant-${Date.now() + 1}`,
       role: "assistant",
-      text: `Entendido. Sobre \"${task.title}\", vou considerar esse ponto e sugerir uma proxima acao objetiva para o time.`
+      text: `Entendido. Sobre "${task.title}", vou considerar esse ponto e sugerir uma proxima acao objetiva para o time.`
     };
 
     setChatMessages(prev => [...prev, userMessage, assistantMessage]);
@@ -347,3 +347,4 @@ export function TaskDetailsModal({
     </div>
   );
 }
+

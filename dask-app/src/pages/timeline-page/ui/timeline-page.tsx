@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
@@ -6,16 +6,14 @@ import { currentUserId, membersById } from "@/entities/member";
 import {
   buildBoardMetrics,
   buildTaskTypeMetaMap,
-  factoryBoardConfig,
-  initialTasks,
-  type Task
+  factoryBoardConfig
 } from "@/entities/task";
 import {
   applyDashboardFilter,
   initialDashboardFilter,
   type DashboardFilterState
 } from "@/features/dashboard-filter";
-import { createMockTask } from "@/features/create-task";
+import { useWorkspace } from "@/modules/workspace";
 import "./timeline-page.css";
 
 function toDateStamp(value: string): number {
@@ -24,18 +22,22 @@ function toDateStamp(value: string): number {
 }
 
 export function TimelinePage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { snapshot, isLoading, createTask, toggleChecklistItem } = useWorkspace();
   const [filter, setFilter] = useState<DashboardFilterState>(initialDashboardFilter);
-  const [createdCount, setCreatedCount] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState("");
 
+  const tasks = snapshot?.tasks ?? [];
+  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const activeMembers = snapshot?.membersById ?? membersById;
+  const activeUser = snapshot?.currentUserId ?? currentUserId;
+
   const filteredTasks = useMemo(
-    () => applyDashboardFilter(tasks, filter, membersById, currentUserId),
-    [tasks, filter]
+    () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
+    [tasks, filter, activeMembers, activeUser]
   );
 
   const metrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);
-  const typeMap = useMemo(() => buildTaskTypeMetaMap(factoryBoardConfig.taskTypes), []);
+  const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
 
   const sortedTasks = useMemo(
     () => [...filteredTasks].sort((a, b) => toDateStamp(a.due) - toDateStamp(b.due)),
@@ -48,11 +50,8 @@ export function TimelinePage() {
   );
 
   const selectedStatus = useMemo(
-    () =>
-      selectedTask
-        ? factoryBoardConfig.statuses.find(status => status.id === selectedTask.status) ?? null
-        : null,
-    [selectedTask]
+    () => (selectedTask ? boardConfig.statuses.find(status => status.id === selectedTask.status) ?? null : null),
+    [selectedTask, boardConfig.statuses]
   );
 
   const dateRange = useMemo(() => {
@@ -68,84 +67,66 @@ export function TimelinePage() {
 
   const range = Math.max(dateRange.max - dateRange.min, 1000 * 60 * 60 * 24);
 
-  const handleCreateTask = () => {
-    setTasks(prevTasks => [createMockTask(createdCount), ...prevTasks]);
-    setCreatedCount(prev => prev + 1);
-  };
-
-  const handleToggleChecklistItem = (taskId: string, itemId: string) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task => {
-        if (task.id !== taskId) {
-          return task;
-        }
-
-        return {
-          ...task,
-          checklist: {
-            items: task.checklist.items.map(item =>
-              item.id === itemId ? { ...item, done: !item.done } : item
-            )
-          }
-        };
-      })
-    );
-  };
-
   return (
     <AppShell
       metrics={metrics}
-      pageTitle="Timeline"
+      pageTitle="Linha do tempo"
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
-      onCreateTask={handleCreateTask}
+      onCreateTask={input => void createTask(input)}
     >
       <BoardMetrics metrics={metrics} />
 
       <section className="timeline-view">
         <header className="timeline-view__head">
-          <span>Cards</span>
+          <span>Itens</span>
           <span>Janela de entrega</span>
         </header>
 
         <div className="timeline-view__rows">
-          {sortedTasks.map(task => {
-            const taskStamp = toDateStamp(task.due);
-            const offset = ((taskStamp - dateRange.min) / range) * 100;
-            const width = 14;
-            const done = task.checklist.items.filter(item => item.done).length;
-            const total = task.checklist.items.length;
-            const type = typeMap[task.type];
+          {isLoading ? (
+            <article className="timeline-view__empty">Carregando workspace...</article>
+          ) : sortedTasks.length === 0 ? (
+            <article className="timeline-view__empty">Nenhum item com prazo encontrado.</article>
+          ) : (
+            sortedTasks.map(task => {
+              const taskStamp = toDateStamp(task.due);
+              const offset = ((taskStamp - dateRange.min) / range) * 100;
+              const width = 14;
+              const done = task.checklist.items.filter(item => item.done).length;
+              const total = task.checklist.items.length;
+              const type = typeMap[task.type];
 
-            return (
-              <article className="timeline-view__row" key={task.id}>
-                <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
-                  <strong>{task.title}</strong>
-                  <p>{`${done}/${total} checklist`}</p>
-                </button>
-
-                <div className="timeline-view__lane">
-                  <div className="timeline-view__track" />
-                  <button
-                    type="button"
-                    className="timeline-view__bar"
-                    style={{
-                      left: `${Math.min(Math.max(offset, 0), 86)}%`,
-                      width: `${width}%`,
-                      background: type?.background ?? "#edf5ff",
-                      borderColor: type?.border ?? "#cfe2ff",
-                      color: type?.text ?? "#1d4e85"
-                    }}
-                    onClick={() => setSelectedTaskId(task.id)}
-                  >
-                    {type?.label ?? task.type}
-                    <span>{task.due}</span>
+              return (
+                <article className="timeline-view__row" key={task.id}>
+                  <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
+                    <strong>{task.title}</strong>
+                    <p>{`${done}/${total} checklist`}</p>
                   </button>
-                </div>
-              </article>
-            );
-          })}
+
+                  <div className="timeline-view__lane">
+                    <div className="timeline-view__track" />
+                    <button
+                      type="button"
+                      className="timeline-view__bar"
+                      style={{
+                        left: `${Math.min(Math.max(offset, 0), 86)}%`,
+                        width: `${width}%`,
+                        background: type?.background ?? "#edf5ff",
+                        borderColor: type?.border ?? "#cfe2ff",
+                        color: type?.text ?? "#1d4e85"
+                      }}
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      {type?.label ?? task.type}
+                      <span>{task.due}</span>
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
         </div>
       </section>
 
@@ -153,9 +134,9 @@ export function TimelinePage() {
         <TaskDetailsModal
           task={selectedTask}
           status={selectedStatus}
-          assignee={membersById[selectedTask.assignee]}
-          boardConfig={factoryBoardConfig}
-          onToggleChecklistItem={handleToggleChecklistItem}
+          assignee={activeMembers[selectedTask.assignee]}
+          boardConfig={boardConfig}
+          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           onClose={() => setSelectedTaskId("")}
         />
       ) : null}

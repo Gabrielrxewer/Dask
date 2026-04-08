@@ -1,11 +1,16 @@
-const BASE_LATENCY_MS = 280;
+const BASE_LATENCY_MS = 220;
 
-interface MockResponse<T> {
+export async function withMockLatency<T>(payload: T, latencyMs = BASE_LATENCY_MS): Promise<T> {
+  await new Promise(resolve => setTimeout(resolve, latencyMs));
+  return payload;
+}
+
+export interface MockResponse<T> {
   ok: boolean;
   data: T;
 }
 
 export async function mockRequest<T>(payload: T): Promise<MockResponse<T>> {
-  await new Promise(resolve => setTimeout(resolve, BASE_LATENCY_MS));
-  return { ok: true, data: payload };
+  const data = await withMockLatency(payload);
+  return { ok: true, data };
 }

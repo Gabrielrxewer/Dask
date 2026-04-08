@@ -16,7 +16,7 @@ export function BoardMetrics({ metrics, cards }: BoardMetricsProps) {
     { label: "Total de cards", value: metrics.total },
     { label: "Em progresso", value: metrics.doing },
     { label: "Entrega esta semana", value: metrics.dueThisWeek },
-    { label: "Concluido", value: `${metrics.donePercent}%` }
+    { label: "Concluído", value: `${metrics.donePercent}%` }
   ];
 
   const metricCards = cards && cards.length > 0 ? cards : fallbackCards;

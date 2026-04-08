@@ -15,6 +15,10 @@
   box-shadow: var(--shadow-2);
 }
 
+.shared-button:active {
+  transform: translateY(0);
+}
+
 .shared-button--primary {
   background: linear-gradient(120deg, #11baf8, #21d4a2);
   color: #072135;

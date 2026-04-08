@@ -21,6 +21,7 @@
   z-index: 1;
   background: linear-gradient(165deg, #0b223d 0%, #092744 52%, #073853 100%);
   color: #e7f1fd;
+  border: 1px solid rgba(171, 206, 240, 0.18);
   border-radius: var(--radius-xl);
   padding: 18px;
   display: flex;
@@ -80,6 +81,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   font-weight: 500;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .sidebar__menu-link:hover {
@@ -89,6 +91,11 @@
 .sidebar__menu-link--active {
   background: rgba(20, 184, 166, 0.24);
   color: #d9fff9;
+}
+
+.sidebar__menu-link:focus-visible {
+  outline: 2px solid rgba(108, 232, 215, 0.8);
+  outline-offset: 2px;
 }
 
 .sidebar__foot {
@@ -130,6 +137,7 @@
   position: relative;
   z-index: 1;
   background: color-mix(in oklab, #ffffff 85%, #e3efff 15%);
+  border: 1px solid #d9e7f8;
   border-radius: var(--radius-xl);
   padding: 16px;
   box-shadow: var(--shadow-1);

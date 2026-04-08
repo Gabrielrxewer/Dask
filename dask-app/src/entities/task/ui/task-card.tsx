@@ -20,7 +20,7 @@ function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFie
   }
 
   if (definition.type === "boolean") {
-    return value ? "Sim" : "Nao";
+    return value ? "Sim" : "Não";
   }
 
   if (value === null || typeof value === "undefined" || value === "") {
@@ -105,7 +105,7 @@ export function TaskCard({
         <button
           className="task-card__ghost"
           type="button"
-          aria-label="Mais acoes"
+          aria-label="Mais ações"
           onClick={event => event.stopPropagation()}
         >
           ...

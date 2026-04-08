@@ -1,39 +1,44 @@
 .shared-button {
-  border: 1px solid var(--line);
-  background: var(--panel-soft);
+  border: var(--control-border);
+  background: var(--control-surface);
   color: var(--text);
   font-weight: 600;
   border-radius: var(--radius-sm);
-  min-height: 38px;
-  padding: 0 10px;
-  font-size: var(--font-size-xs);
+  min-height: var(--control-height-md);
+  padding: 0 var(--control-padding-x);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .shared-button:hover {
   border-color: var(--line-strong);
-  background: color-mix(in oklab, var(--panel-soft) 85%, var(--state-hover));
+  background: var(--control-surface-hover);
+  box-shadow: var(--shadow-1);
 }
 
 .shared-button:active {
+  background: var(--control-surface-active);
   transform: translateY(1px);
 }
 
 .shared-button--primary {
   border-color: transparent;
-  background: linear-gradient(130deg, var(--accent) 0%, #1da4f3 40%, #22c7b8 100%);
-  color: #042038;
+  background: var(--brand-gradient-main);
+  color: #eaf7ff;
+  box-shadow: 0 14px 28px rgba(8, 56, 93, 0.16), 0 1px 0 rgba(255, 255, 255, 0.22) inset;
 }
 
 .shared-button--primary:hover {
-  box-shadow: var(--shadow-1);
-  background: linear-gradient(130deg, var(--accent-strong) 0%, #128ee0 50%, #19b9ac 100%);
+  box-shadow: 0 16px 30px rgba(8, 54, 89, 0.22), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  background: var(--brand-gradient-main-hover);
 }
 
 .shared-button--outline {
-  border-color: var(--line);
-  background: #fff;
+  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
+  background: rgba(255, 255, 255, 0.82);
   color: #1b4a76;
 }
 
@@ -44,13 +49,13 @@
 }
 
 .shared-button--sm {
-  min-height: 34px;
+  min-height: var(--control-height-sm);
   padding: 0 10px;
   font-size: var(--font-size-xs);
 }
 
 .shared-button--md {
-  min-height: 38px;
+  min-height: var(--control-height-md);
 }
 
 .shared-button:disabled {
@@ -61,5 +66,6 @@
 }
 
 .shared-button:focus-visible {
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  border-color: var(--control-border-strong);
+  box-shadow: var(--focus-strong);
 }

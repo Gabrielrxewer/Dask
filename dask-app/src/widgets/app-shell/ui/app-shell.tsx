@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { useGlobalChrome } from "@/app/layout/global-chrome-context";
+import { routePaths } from "@/app/router/route-paths";
+import { useGlobalChrome } from "@/app/layout";
 import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
@@ -26,16 +27,16 @@ const navGroups = [
   {
     title: "Planejamento",
     items: [
-      { to: "/board", label: "Board" },
-      { to: "/list", label: "List" },
-      { to: "/timeline", label: "Timeline" }
+      { to: routePaths.board, label: "Board" },
+      { to: routePaths.list, label: "List" },
+      { to: routePaths.timeline, label: "Timeline" }
     ]
   },
   {
     title: "Operacao",
     items: [
-      { to: "/automations", label: "Automations" },
-      { to: "/settings", label: "Settings" }
+      { to: routePaths.automations, label: "Automations" },
+      { to: routePaths.settings, label: "Settings" }
     ]
   }
 ];

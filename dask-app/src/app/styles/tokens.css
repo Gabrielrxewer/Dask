@@ -14,6 +14,13 @@
   --accent: #0a86e8;
   --accent-strong: #0a6fc1;
   --accent-soft: #e8f3fe;
+  --brand-gradient-soft: linear-gradient(130deg, #a8dbff 0%, #9df2df 100%);
+  --brand-gradient-main: linear-gradient(130deg, #0b426f 0%, #0a79bd 52%, #0f9f98 100%);
+  --brand-gradient-main-hover: linear-gradient(130deg, #09375e 0%, #096aaa 52%, #0c8f89 100%);
+  --chrome-surface: linear-gradient(180deg, rgba(6, 31, 52, 0.94) 0%, rgba(7, 42, 68, 0.92) 100%);
+  --chrome-overlay: linear-gradient(125deg, rgba(33, 153, 201, 0.14), rgba(17, 121, 171, 0.08));
+  --chrome-border: rgba(176, 207, 232, 0.44);
+  --chrome-pill-border: rgba(167, 207, 234, 0.32);
   --success: #1f9d5b;
   --success-soft: #e9f8ef;
   --warn: #b7791f;
@@ -29,12 +36,14 @@
   --space-6: 24px;
   --space-7: 28px;
   --space-8: 32px;
+  --space-9: 40px;
 
   --radius-xl: 24px;
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 10px;
   --radius-xs: 8px;
+  --radius-pill: 999px;
 
   --font-family-heading: "Sora", "Segoe UI", sans-serif;
   --font-family-body: "Space Grotesk", "Segoe UI", sans-serif;
@@ -44,11 +53,28 @@
   --font-size-md: 1rem;
   --font-size-lg: 1.2rem;
   --font-size-xl: 1.5rem;
+  --font-size-label: 0.82rem;
+  --font-size-title-sm: 1.05rem;
+  --font-size-title-md: 1.22rem;
+  --font-size-title-lg: 1.5rem;
 
   --shadow-1: 0 10px 24px rgba(12, 35, 63, 0.08);
   --shadow-2: 0 20px 42px rgba(10, 31, 57, 0.12);
+  --shadow-3: 0 22px 48px rgba(7, 27, 47, 0.16);
   --focus: 0 0 0 3px color-mix(in oklab, var(--accent) 26%, transparent);
+  --focus-strong: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
   --state-hover: color-mix(in oklab, var(--accent) 8%, transparent);
   --state-active: color-mix(in oklab, var(--accent) 15%, transparent);
   --state-disabled-opacity: 0.55;
+  --control-height-sm: 34px;
+  --control-height-md: 42px;
+  --control-height-lg: 46px;
+  --control-padding-x: 12px;
+  --control-border: 1px solid var(--line);
+  --control-border-strong: color-mix(in oklab, var(--accent) 36%, var(--line));
+  --control-surface: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+  --control-surface-hover: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);
+  --control-surface-active: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  --surface-raised: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
+  --surface-muted: linear-gradient(180deg, #f8fbff 0%, #eef5fd 100%);
 }

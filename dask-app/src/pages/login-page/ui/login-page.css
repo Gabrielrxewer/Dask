@@ -2,23 +2,23 @@
   min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height) - (var(--space-4) * 2));
   display: grid;
   place-items: center;
-  padding: clamp(14px, 2.5vw, 24px);
+  padding: clamp(18px, 2.8vw, 30px);
   position: relative;
   overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(95, 159, 212, 0.12) 0%, transparent 30%),
+    radial-gradient(circle at 82% 12%, rgba(94, 186, 180, 0.1) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(241, 247, 252, 0.98) 0%, rgba(234, 243, 251, 0.98) 100%);
 }
 
 .login-page__backdrop {
-  position: absolute;
-  inset: -12%;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 18% 24%, rgba(15, 124, 214, 0.22) 0%, transparent 44%),
-    radial-gradient(circle at 78% 0%, rgba(16, 156, 139, 0.2) 0%, transparent 48%),
-    linear-gradient(170deg, #e8f0fa 0%, #f3f8ff 56%, #e5eef9 100%);
+  display: none;
 }
 
 @media (max-width: 760px) {
   .login-page {
     min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height) - (var(--space-3) * 2));
+    padding: 16px;
   }
 }

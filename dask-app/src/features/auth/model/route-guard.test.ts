@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { routePaths } from "@/app/router/route-paths";
 import { resolveProtectedRoute, resolvePublicRoute } from "@/features/auth/model/route-guard";
 import type { AuthSnapshot } from "@/features/auth/model/types";
 
@@ -23,7 +24,7 @@ describe("route guards", () => {
   it("redirects protected route when unauthenticated", () => {
     const result = resolveProtectedRoute(snapshot({ status: "unauthenticated" }));
     expect(result.mode).toBe("redirect");
-    expect(result.redirectTo).toBe("/login");
+    expect(result.redirectTo).toBe(routePaths.login);
     expect(result.reason).toBe("unauthenticated");
   });
 
@@ -41,6 +42,6 @@ describe("route guards", () => {
   it("redirects authenticated users away from public login route", () => {
     const result = resolvePublicRoute(snapshot({ status: "authenticated", isAuthenticated: true }));
     expect(result.mode).toBe("redirect");
-    expect(result.redirectTo).toBe("/board");
+    expect(result.redirectTo).toBe(routePaths.board);
   });
 });

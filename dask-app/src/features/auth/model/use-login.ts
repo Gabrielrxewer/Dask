@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/features/auth/model/auth-provider";
+import { useAuth } from "@/features/auth/model";
 import type { LoginInput } from "@/features/auth/api/types";
 
 interface UseLoginResult {

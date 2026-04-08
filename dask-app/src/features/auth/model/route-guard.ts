@@ -1,3 +1,4 @@
+import { routePaths } from "@/app/router/route-paths";
 import type { AuthSnapshot } from "@/features/auth/model/types";
 
 export interface RouteGuardResult {
@@ -17,7 +18,7 @@ export function resolveProtectedRoute(snapshot: AuthSnapshot): RouteGuardResult 
 
   return {
     mode: "redirect",
-    redirectTo: "/login",
+    redirectTo: routePaths.login,
     reason: snapshot.status === "session_expired" ? "session_expired" : "unauthenticated"
   };
 }
@@ -30,7 +31,7 @@ export function resolvePublicRoute(snapshot: AuthSnapshot): RouteGuardResult {
   if (snapshot.isAuthenticated) {
     return {
       mode: "redirect",
-      redirectTo: "/board"
+      redirectTo: routePaths.board
     };
   }
 

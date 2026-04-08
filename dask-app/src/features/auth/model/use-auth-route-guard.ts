@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import { useAuth } from "@/features/auth/model/auth-provider";
+import { useAuth } from "@/features/auth/model";
 import { resolveProtectedRoute, resolvePublicRoute } from "@/features/auth/model/route-guard";
 
 export function useProtectedRouteGuard() {

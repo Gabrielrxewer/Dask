@@ -1,13 +1,16 @@
 .shared-status-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  gap: 6px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--line);
-  padding: 4px 10px;
+  min-height: 28px;
+  padding: 0 10px;
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--text-soft);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .shared-status-badge--success {

@@ -1,4 +1,5 @@
-export { WorkspaceProvider, useWorkspace } from "@/modules/workspace/providers/workspace-provider";
+export { workspaceService } from "@/modules/workspace/api";
+export { cloneWorkspaceSnapshot, createInitialWorkspaceSnapshot, createTaskFromInput } from "@/modules/workspace/model";
 export type {
   CreateTaskInput,
   WorkspaceAutomation,
@@ -6,4 +7,5 @@ export type {
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceSnapshot
-} from "@/modules/workspace/model/types";
+} from "@/modules/workspace/model";
+export { WorkspaceProvider, useWorkspace } from "@/modules/workspace/providers";

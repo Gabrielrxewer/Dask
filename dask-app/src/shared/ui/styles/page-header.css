@@ -2,21 +2,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .shared-page-header__label {
   margin: 0;
   color: var(--text-soft);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
+  font-weight: 700;
 }
 
 .shared-page-header__title {
   margin: 2px 0 0;
-  font-size: 1.08rem;
+  font-size: clamp(1.18rem, 1rem + 0.4vw, 1.42rem);
 }
 
 .shared-filter-bar {

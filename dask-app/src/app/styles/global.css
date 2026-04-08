@@ -42,22 +42,43 @@ h3,
 h4 {
   font-family: var(--font-family-heading);
   color: var(--text-strong);
+  letter-spacing: -0.01em;
 }
 
 p {
   margin: 0;
 }
 
+h1 {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: var(--font-size-title-lg);
+  line-height: 1.15;
+}
+
+h3 {
+  font-size: var(--font-size-title-md);
+  line-height: 1.2;
+}
+
+h4 {
+  font-size: var(--font-size-title-sm);
+  line-height: 1.2;
+}
+
 .surface-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: var(--panel);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 
 .section-title {
   margin: 0;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-title-md);
 }
 
 .section-subtitle {

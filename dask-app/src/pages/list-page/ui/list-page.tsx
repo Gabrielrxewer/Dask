@@ -64,91 +64,94 @@ export function ListPage() {
   return (
     <AppShell
       metrics={metrics}
+      noPageScroll
       pageTitle="Lista de itens"
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
       onCreateTask={input => void createTask(input)}
     >
-      <BoardMetrics metrics={metrics} />
+      <div className="list-view">
+        <BoardMetrics metrics={metrics} className="list-view__metrics" />
 
-      <Section
-        title="Itens do workspace"
-        subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
-        actions={<StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>}
-        className="list-view"
-      >
-        <DataTable
-          columns="minmax(220px, 2.2fr) 1fr 1fr 1.2fr 0.7fr"
-          className="list-view__table"
-          responsiveMinWidth="860px"
-          responsiveMinWidthMobile="760px"
+        <Section
+          title="Itens do workspace"
+          subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
+          actions={<StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>}
+          className="list-view__section"
         >
-          <DataTableHeader>
-            <span>Titulo</span>
-            <span>Tipo</span>
-            <span>Status</span>
-            <span>Owner</span>
-            <span>Checklist</span>
-          </DataTableHeader>
+          <DataTable
+            columns="minmax(220px, 2.2fr) 1fr 1fr 1.2fr 0.7fr"
+            className="list-view__table"
+            responsiveMinWidth="860px"
+            responsiveMinWidthMobile="760px"
+          >
+            <DataTableHeader>
+              <span>Titulo</span>
+              <span>Tipo</span>
+              <span>Status</span>
+              <span>Owner</span>
+              <span>Checklist</span>
+            </DataTableHeader>
 
-          <DataTableBody>
-            {isLoading ? (
-              <LoadingState text="Carregando workspace..." />
-            ) : filteredTasks.length === 0 ? (
-              <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>
-            ) : (
-              filteredTasks.map(task => {
-                const done = task.checklist.items.filter(item => item.done).length;
-                const total = task.checklist.items.length;
-                const type = taskTypeMap[task.type];
+            <DataTableBody>
+              {isLoading ? (
+                <LoadingState text="Carregando workspace..." />
+              ) : filteredTasks.length === 0 ? (
+                <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>
+              ) : (
+                filteredTasks.map(task => {
+                  const done = task.checklist.items.filter(item => item.done).length;
+                  const total = task.checklist.items.length;
+                  const type = taskTypeMap[task.type];
 
-                return (
-                  <DataTableRow key={task.id}>
-                    <DataTableCell>
-                      <button type="button" className="list-view__title" onClick={() => setSelectedTaskId(task.id)}>
-                        <strong>{task.title}</strong>
-                        <p>{task.text}</p>
-                      </button>
-                    </DataTableCell>
-                    <DataTableCell>
-                      <span
-                        className="list-view__type"
-                        style={{
-                          backgroundColor: type?.background ?? "#edf5ff",
-                          borderColor: type?.border ?? "#cfe2ff",
-                          color: type?.text ?? "#1d4e85"
-                        }}
-                      >
-                        {type?.label ?? task.type}
-                      </span>
-                    </DataTableCell>
-                    <DataTableCell>
-                      <Select
-                        className="list-view__status"
-                        value={task.status}
-                        onChange={event => handleStatusChange(task.id, event.target.value)}
-                      >
-                        {boardConfig.statuses.map(status => (
-                          <option key={status.id} value={status.id}>
-                            {status.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </DataTableCell>
-                    <DataTableCell>
-                      <span className="list-view__owner">{activeMembers[task.assignee]?.name}</span>
-                    </DataTableCell>
-                    <DataTableCell>
-                      <span className="list-view__checklist">{`${done}/${total}`}</span>
-                    </DataTableCell>
-                  </DataTableRow>
-                );
-              })
-            )}
-          </DataTableBody>
-        </DataTable>
-      </Section>
+                  return (
+                    <DataTableRow key={task.id}>
+                      <DataTableCell>
+                        <button type="button" className="list-view__title" onClick={() => setSelectedTaskId(task.id)}>
+                          <strong>{task.title}</strong>
+                          <p>{task.text}</p>
+                        </button>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <span
+                          className="list-view__type"
+                          style={{
+                            backgroundColor: type?.background ?? "#edf5ff",
+                            borderColor: type?.border ?? "#cfe2ff",
+                            color: type?.text ?? "#1d4e85"
+                          }}
+                        >
+                          {type?.label ?? task.type}
+                        </span>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <Select
+                          className="list-view__status"
+                          value={task.status}
+                          onChange={event => handleStatusChange(task.id, event.target.value)}
+                        >
+                          {boardConfig.statuses.map(status => (
+                            <option key={status.id} value={status.id}>
+                              {status.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <span className="list-view__owner">{activeMembers[task.assignee]?.name}</span>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <span className="list-view__checklist">{`${done}/${total}`}</span>
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })
+              )}
+            </DataTableBody>
+          </DataTable>
+        </Section>
+      </div>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal

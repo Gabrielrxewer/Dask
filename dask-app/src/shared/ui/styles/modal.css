@@ -1,8 +1,8 @@
 .shared-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 17, 32, 0.48);
-  backdrop-filter: blur(2px);
+  background: rgba(4, 17, 32, 0.52);
+  backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -11,4 +11,6 @@
 
 .shared-modal-shell {
   position: relative;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-3);
 }

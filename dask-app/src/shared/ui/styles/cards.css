@@ -1,7 +1,8 @@
 .shared-card {
   border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   padding: var(--space-4);
 }
 
@@ -12,24 +13,25 @@
 .shared-card--interactive:hover {
   transform: translateY(-1px);
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-2);
 }
 
 .shared-metric-card {
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--panel);
-  min-height: 70px;
-  padding: 10px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-1);
+  min-height: 78px;
+  padding: 12px;
 }
 
 .shared-metric-card p {
   margin: 0;
   color: var(--text-soft);
-  font-size: 0.8rem;
+  font-size: var(--font-size-xs);
 }
 
 .shared-metric-card h3 {
   margin: 6px 0 0;
-  font-size: 1.18rem;
+  font-size: var(--font-size-title-md);
 }

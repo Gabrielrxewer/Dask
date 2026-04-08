@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAuth } from "@/features/auth/model/auth-provider";
+import { useAuth } from "@/features/auth/model";
 
 export function useSessionStatus() {
   const auth = useAuth();

@@ -1,6 +1,45 @@
+.timeline-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  width: 100%;
+}
+
+.timeline-view__metrics .shared-metric-card {
+  min-height: 62px;
+  padding: 8px 10px;
+}
+
+.timeline-view__metrics .shared-metric-card h3 {
+  margin-top: 4px;
+  font-size: 1rem;
+}
+
+.timeline-view__section {
+  min-height: 0;
+}
+
+.timeline-view__section .shared-section__header {
+  padding: var(--space-3) var(--space-4);
+}
+
+.timeline-view__section .shared-section__content {
+  padding: 0;
+  min-height: 0;
+}
+
 .timeline-view__table {
   border: 0;
   border-radius: 0;
+}
+
+.timeline-view__table .shared-data-table__header {
+  min-height: 40px;
+}
+
+.timeline-view__table .shared-data-table__row {
+  min-height: 52px;
 }
 
 .timeline-view__meta {
@@ -35,7 +74,7 @@
 
 .timeline-view__lane {
   position: relative;
-  min-height: 42px;
+  min-height: 38px;
   width: 100%;
 }
 
@@ -55,8 +94,8 @@
   top: 50%;
   transform: translateY(-50%);
   border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 6px 8px;
+  border-radius: 9px;
+  padding: 5px 8px;
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -85,5 +124,32 @@
 .timeline-view__bar span {
   font-weight: 600;
   opacity: 0.8;
+}
+
+@media (min-width: 1141px) {
+  .app-shell--no-scroll .timeline-view {
+    height: 100%;
+  }
+
+  .app-shell--no-scroll .timeline-view__metrics {
+    flex-shrink: 0;
+  }
+
+  .app-shell--no-scroll .timeline-view__section {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-shell--no-scroll .timeline-view__section .shared-section__content {
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .app-shell--no-scroll .timeline-view__table,
+  .app-shell--no-scroll .timeline-view__table .shared-data-table,
+  .app-shell--no-scroll .timeline-view__table .shared-data-table__scroll {
+    height: 100%;
+  }
 }
 

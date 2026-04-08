@@ -82,82 +82,85 @@ export function TimelinePage() {
   return (
     <AppShell
       metrics={metrics}
+      noPageScroll
       pageTitle="Linha do tempo"
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
       onCreateTask={input => void createTask(input)}
     >
-      <BoardMetrics metrics={metrics} />
+      <div className="timeline-view">
+        <BoardMetrics metrics={metrics} className="timeline-view__metrics" />
 
-      <Section
-        title="Linha do tempo de entregas"
-        subtitle="Visualize os itens por prazo para antecipar gargalos e riscos de calendario."
-        actions={<StatusBadge>{rangeLabel}</StatusBadge>}
-        className="timeline-view"
-      >
-        <DataTable
-          columns="minmax(220px, 1.3fr) 2.4fr"
-          className="timeline-view__table"
-          responsiveMinWidth="860px"
-          responsiveMinWidthMobile="760px"
+        <Section
+          title="Linha do tempo de entregas"
+          subtitle="Visualize os itens por prazo para antecipar gargalos e riscos de calendario."
+          actions={<StatusBadge>{rangeLabel}</StatusBadge>}
+          className="timeline-view__section"
         >
-          <DataTableHeader>
-            <span>Itens</span>
-            <span>Janela de entrega</span>
-          </DataTableHeader>
+          <DataTable
+            columns="minmax(220px, 1.3fr) 2.4fr"
+            className="timeline-view__table"
+            responsiveMinWidth="860px"
+            responsiveMinWidthMobile="760px"
+          >
+            <DataTableHeader>
+              <span>Itens</span>
+              <span>Janela de entrega</span>
+            </DataTableHeader>
 
-          <DataTableBody>
-            {isLoading ? (
-              <LoadingState text="Carregando workspace..." />
-            ) : sortedTasks.length === 0 ? (
-              <EmptyState>Nenhum item com prazo encontrado.</EmptyState>
-            ) : (
-              sortedTasks.map(task => {
-                const taskStamp = toDateStamp(task.due);
-                const offset = ((taskStamp - dateRange.min) / range) * 100;
-                const width = 14;
-                const done = task.checklist.items.filter(item => item.done).length;
-                const total = task.checklist.items.length;
-                const type = typeMap[task.type];
-                const isLate = taskStamp < Date.now();
+            <DataTableBody>
+              {isLoading ? (
+                <LoadingState text="Carregando workspace..." />
+              ) : sortedTasks.length === 0 ? (
+                <EmptyState>Nenhum item com prazo encontrado.</EmptyState>
+              ) : (
+                sortedTasks.map(task => {
+                  const taskStamp = toDateStamp(task.due);
+                  const offset = ((taskStamp - dateRange.min) / range) * 100;
+                  const width = 14;
+                  const done = task.checklist.items.filter(item => item.done).length;
+                  const total = task.checklist.items.length;
+                  const type = typeMap[task.type];
+                  const isLate = taskStamp < Date.now();
 
-                return (
-                  <DataTableRow key={task.id}>
-                    <DataTableCell>
-                      <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
-                        <strong>{task.title}</strong>
-                        <p>{`${done}/${total} checklist`}</p>
-                      </button>
-                    </DataTableCell>
-
-                    <DataTableCell>
-                      <div className="timeline-view__lane">
-                        <div className="timeline-view__track" />
-                        <button
-                          type="button"
-                          className={`timeline-view__bar ${isLate ? "timeline-view__bar--late" : ""}`.trim()}
-                          style={{
-                            left: `${Math.min(Math.max(offset, 0), 86)}%`,
-                            width: `${width}%`,
-                            background: type?.background ?? "#edf5ff",
-                            borderColor: type?.border ?? "#cfe2ff",
-                            color: type?.text ?? "#1d4e85"
-                          }}
-                          onClick={() => setSelectedTaskId(task.id)}
-                        >
-                          {type?.label ?? task.type}
-                          <span>{task.due}</span>
+                  return (
+                    <DataTableRow key={task.id}>
+                      <DataTableCell>
+                        <button type="button" className="timeline-view__meta" onClick={() => setSelectedTaskId(task.id)}>
+                          <strong>{task.title}</strong>
+                          <p>{`${done}/${total} checklist`}</p>
                         </button>
-                      </div>
-                    </DataTableCell>
-                  </DataTableRow>
-                );
-              })
-            )}
-          </DataTableBody>
-        </DataTable>
-      </Section>
+                      </DataTableCell>
+
+                      <DataTableCell>
+                        <div className="timeline-view__lane">
+                          <div className="timeline-view__track" />
+                          <button
+                            type="button"
+                            className={`timeline-view__bar ${isLate ? "timeline-view__bar--late" : ""}`.trim()}
+                            style={{
+                              left: `${Math.min(Math.max(offset, 0), 86)}%`,
+                              width: `${width}%`,
+                              background: type?.background ?? "#edf5ff",
+                              borderColor: type?.border ?? "#cfe2ff",
+                              color: type?.text ?? "#1d4e85"
+                            }}
+                            onClick={() => setSelectedTaskId(task.id)}
+                          >
+                            {type?.label ?? task.type}
+                            <span>{task.due}</span>
+                          </button>
+                        </div>
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })
+              )}
+            </DataTableBody>
+          </DataTable>
+        </Section>
+      </div>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal

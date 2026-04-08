@@ -1,8 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
-import { useAuth } from "@/features/auth/model/auth-provider";
-import { useLogin } from "@/features/auth/model/use-login";
+import { useAuth, useLogin } from "@/features/auth";
 import "./login-form.css";
 
 interface LoginLocationState {
@@ -44,13 +43,16 @@ export function LoginForm() {
     <section className="auth-login">
       <div className="auth-login__header">
         <p className="auth-login__eyebrow">Dask</p>
-        <h1>Entrar na plataforma</h1>
-        <p>Use sua conta para acessar o workspace com seguranca.</p>
+        <h1 className="auth-login__title">Entrar na plataforma</h1>
+        <p className="auth-login__subtitle">Use sua conta para acessar o workspace com seguranca.</p>
       </div>
 
       <form className="auth-login__form" onSubmit={event => void handleSubmit(event)} noValidate>
-        <label htmlFor="email">Email</label>
+        <label className="auth-login__label" htmlFor="email">
+          Email
+        </label>
         <TextInput
+          className="auth-login__input"
           id="email"
           name="email"
           type="email"
@@ -64,26 +66,33 @@ export function LoginForm() {
           required
         />
 
-        <label htmlFor="password">Senha</label>
         <div className="auth-login__password-field">
-          <TextInput
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            value={password}
-            onChange={event => setPassword(event.target.value)}
-            placeholder="Sua senha"
-            required
-          />
-          <button
-            type="button"
-            className="auth-login__toggle"
-            onClick={() => setShowPassword(value => !value)}
-            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-          >
-            {showPassword ? "Ocultar" : "Mostrar"}
-          </button>
+          <label className="auth-login__label" htmlFor="password">
+            Senha
+          </label>
+          <div className="auth-login__password-input-wrap">
+            <TextInput
+              className="auth-login__input auth-login__input--password"
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={event => setPassword(event.target.value)}
+              placeholder="Sua senha"
+              required
+            />
+            <button
+              type="button"
+              className={`auth-login__toggle ${showPassword ? "auth-login__toggle--active" : ""}`.trim()}
+              onClick={() => setShowPassword(value => !value)}
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              aria-controls="password"
+              aria-pressed={showPassword}
+            >
+              <span className="auth-login__toggle-eye" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {hintMessage ? (
@@ -92,7 +101,7 @@ export function LoginForm() {
           </p>
         ) : null}
 
-        <Button type="submit" variant="primary" disabled={isSubmitting}>
+        <Button className="auth-login__submit" type="submit" variant="primary" disabled={isSubmitting}>
           {isSubmitting ? "Entrando..." : "Entrar"}
         </Button>
       </form>

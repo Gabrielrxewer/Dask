@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { AuthProvider } from "@/features/auth/model/auth-provider";
-import { AuthStore } from "@/features/auth/model/auth-store";
+import { AuthProvider, AuthStore } from "@/features/auth";
 import { LoginForm } from "@/features/auth/ui/login-form";
 import type { AuthServiceContract } from "@/features/auth/api/types";
 import type { SessionTokenPair, SessionTransport } from "@/shared/lib/auth/session-transport";

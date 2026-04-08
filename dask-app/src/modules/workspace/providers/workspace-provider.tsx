@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
-import { workspaceService } from "@/modules/workspace/api/workspace-service";
-import type { CreateTaskInput, WorkspaceAutomation, WorkspacePreferences, WorkspaceSnapshot } from "@/modules/workspace/model/types";
+import { workspaceService } from "@/modules/workspace/api";
+import type { CreateTaskInput, WorkspaceAutomation, WorkspacePreferences, WorkspaceSnapshot } from "@/modules/workspace/model";
 
 interface WorkspaceContextValue {
   snapshot: WorkspaceSnapshot | null;

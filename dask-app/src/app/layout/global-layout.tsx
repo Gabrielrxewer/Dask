@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
-import { GlobalChromeProvider } from "@/app/layout/global-chrome-context";
+import { GlobalChromeProvider } from "@/app/layout";
 import "./global-layout.css";
 
 function isCompactViewport(): boolean {
@@ -30,8 +31,8 @@ export function GlobalLayout() {
   const navigate = useNavigate();
   const { user, status } = useAuth();
   const { logout, logoutAll, isSubmitting } = useLogout();
-  const isLoginRoute = location.pathname === "/login";
-  const isBoardRoute = location.pathname === "/board";
+  const isLoginRoute = location.pathname === routePaths.login;
+  const isBoardRoute = location.pathname === routePaths.board;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -104,8 +105,6 @@ export function GlobalLayout() {
   const profileEmail = user?.email ?? "Sem e-mail";
   const profileInitials = getUserInitials(profileLabel);
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
-  const locationLabel = isLoginRoute ? "Acesso" : "Workspace";
-
   const chromeValue = {
     isSidebarOpen,
     toggleNavigation,
@@ -139,7 +138,6 @@ export function GlobalLayout() {
               </button>
               <div className="global-header__brand">
                 <strong>Dask</strong>
-                <span>{locationLabel}</span>
               </div>
             </div>
 
@@ -154,7 +152,12 @@ export function GlobalLayout() {
                 onClick={() => setIsUserMenuOpen(prev => !prev)}
                 disabled={isLoginRoute}
               >
-                <span className="global-header__user-icon" />
+                <span className="global-header__user-avatar" aria-hidden="true">
+                  <span className="global-header__user-icon-shape" />
+                </span>
+                {status === "authenticated" ? (
+                  <span className="global-header__user-name">{profileLabel}</span>
+                ) : null}
               </button>
 
               {isUserMenuOpen ? (
@@ -172,7 +175,7 @@ export function GlobalLayout() {
                       type="button"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        navigate("/settings");
+                        navigate(routePaths.settings);
                       }}
                     >
                       Abrir perfil do usuario
@@ -208,8 +211,7 @@ export function GlobalLayout() {
           </main>
 
           <footer className="global-footer">
-            <p>Dask Platform</p>
-            <small>Fluxo inteligente e rastreavel para operacao de engenharia</small>
+            <p className="global-footer__brand">Dask Platform</p>
           </footer>
         </div>
       </div>

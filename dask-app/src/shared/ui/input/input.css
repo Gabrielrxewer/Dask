@@ -1,16 +1,26 @@
 .shared-input {
-  width: min(420px, 100%);
-  min-height: 38px;
-  border: 1px solid var(--line);
-  background: var(--panel);
+  width: 100%;
+  min-height: var(--control-height-md);
+  border: var(--control-border);
+  background: var(--control-surface);
   border-radius: var(--radius-sm);
-  padding: 0 10px;
-  font-size: var(--font-size-xs);
-  color: inherit;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  padding: 0 var(--control-padding-x);
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .shared-input:focus {
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+  border-color: var(--control-border-strong);
   background: #fcfeff;
+  box-shadow: var(--focus-strong);
+}
+
+.shared-input:hover {
+  background: var(--control-surface-hover);
+}
+
+.shared-input::placeholder {
+  color: var(--text-muted);
 }

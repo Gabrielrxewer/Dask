@@ -1,6 +1,6 @@
 ﻿import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
-import { buildBoardMetrics } from "@/entities/task";
+import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import "./settings-page.css";
 
@@ -8,57 +8,45 @@ export function SettingsPage() {
   const { snapshot, updatePreferences, setCardFieldVisibility } = useWorkspace();
 
   const tasks = snapshot?.tasks ?? [];
+  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const metrics = buildBoardMetrics(tasks);
 
   const defaultMode = snapshot?.preferences.defaultBoardMode ?? "dev";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
   const visibleFields = new Set(snapshot?.preferences.visibleCardFieldIds ?? []);
+  const fieldDefinitions = boardConfig.fieldDefinitions;
 
   const visibleFieldsCount = visibleFields.size;
 
   return (
-    <AppShell metrics={metrics} pageTitle="Configuracoes do dashboard" pageLabel="Admin">
+    <AppShell metrics={metrics} pageTitle="Configurações do workspace" pageLabel="Admin">
       <BoardMetrics
         metrics={metrics}
         cards={[
-          { label: "Campos visiveis", value: visibleFieldsCount },
-          { label: "Modo padrao", value: defaultMode.toUpperCase() },
+          { label: "Campos visíveis", value: visibleFieldsCount },
+          { label: "Modo padrão", value: defaultMode.toUpperCase() },
           { label: "Layouts salvos", value: 4 },
-          { label: "Atualizacao", value: "Agora" }
+          { label: "Atualização", value: "Agora" }
         ]}
       />
 
       <section className="settings-view">
         <article className="settings-view__card">
-          <h3>Campos visiveis no card</h3>
-          <label>
-            <input
-              type="checkbox"
-              checked={visibleFields.has("storyPoints")}
-              onChange={event => void setCardFieldVisibility("storyPoints", event.target.checked)}
-            />
-            Story Points
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={visibleFields.has("severity")}
-              onChange={event => void setCardFieldVisibility("severity", event.target.checked)}
-            />
-            Severidade
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={visibleFields.has("sprint")}
-              onChange={event => void setCardFieldVisibility("sprint", event.target.checked)}
-            />
-            Sprint
-          </label>
+          <h3>Campos visíveis no card</h3>
+          {fieldDefinitions.map(field => (
+            <label key={field.id}>
+              <input
+                type="checkbox"
+                checked={visibleFields.has(field.id)}
+                onChange={event => void setCardFieldVisibility(field.id, event.target.checked)}
+              />
+              {field.label}
+            </label>
+          ))}
         </article>
 
         <article className="settings-view__card">
-          <h3>Preferencias do workspace</h3>
+          <h3>Preferências do workspace</h3>
           <label>
             Modo inicial
             <select
@@ -71,7 +59,7 @@ export function SettingsPage() {
             >
               <option value="dev">Dev</option>
               <option value="po">PO</option>
-              <option value="manager">Gerente</option>
+              <option value="manager">Gestão</option>
               <option value="qa">QA</option>
             </select>
           </label>
@@ -91,9 +79,10 @@ export function SettingsPage() {
             </select>
           </label>
 
-          <p className="settings-view__hint">As configuracoes sao aplicadas automaticamente no workspace.</p>
+          <p className="settings-view__hint">As configurações são aplicadas automaticamente no workspace.</p>
         </article>
       </section>
     </AppShell>
   );
 }
+

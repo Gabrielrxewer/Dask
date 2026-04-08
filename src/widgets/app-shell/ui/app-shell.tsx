@@ -4,6 +4,7 @@ import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { CreateTaskButton } from "@/features/create-task";
+import type { CreateTaskInput } from "@/modules/workspace";
 import "./app-shell.css";
 
 interface AppShellProps {
@@ -13,7 +14,7 @@ interface AppShellProps {
   filter?: DashboardFilterState;
   onFilterQueryChange?: (query: string) => void;
   onMineToggle?: () => void;
-  onCreateTask?: () => void;
+  onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
   children: ReactNode;
 }
 
@@ -27,8 +28,8 @@ const navItems = [
 
 export function AppShell({
   metrics,
-  pageLabel = "Space",
-  pageTitle = "Dask Workspace",
+  pageLabel = "Workspace",
+  pageTitle = "Dask Platform",
   filter,
   onFilterQueryChange,
   onMineToggle,
@@ -46,7 +47,7 @@ export function AppShell({
           <span className="sidebar__brand-mark">D</span>
           <div>
             <p className="sidebar__brand-title">Dask</p>
-            <p className="sidebar__brand-subtitle">Workspace 2.0</p>
+            <p className="sidebar__brand-subtitle">Universal Workflow</p>
           </div>
         </div>
 
@@ -68,10 +69,10 @@ export function AppShell({
         </nav>
 
         <div className="sidebar__foot">
-          <p className="sidebar__menu-title">Sprint atual</p>
+          <p className="sidebar__menu-title">Ciclo atual</p>
           <div className="sidebar__sprint-card">
-            <p className="sidebar__sprint-name">Q2 Product Push</p>
-            <p className="sidebar__sprint-meta">{`${metrics.active} tarefas ativas`}</p>
+            <p className="sidebar__sprint-name">Entrega principal</p>
+            <p className="sidebar__sprint-meta">{`${metrics.active} itens ativos`}</p>
             <div className="sidebar__track">
               <div className="sidebar__fill" style={{ width: `${metrics.donePercent}%` }} />
             </div>

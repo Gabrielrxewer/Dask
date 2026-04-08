@@ -5,13 +5,13 @@
 }
 
 .automations-view__card {
-  border: 1px solid #dce8f7;
-  border-radius: 16px;
-  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
   padding: 14px;
   display: grid;
   gap: 8px;
-  box-shadow: 0 12px 26px rgba(18, 58, 96, 0.08);
+  box-shadow: var(--shadow-2);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 

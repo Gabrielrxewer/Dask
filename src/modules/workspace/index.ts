@@ -1,5 +1,6 @@
 export { WorkspaceProvider, useWorkspace } from "@/modules/workspace/providers/workspace-provider";
 export type {
+  CreateTaskInput,
   WorkspaceAutomation,
   WorkspaceBoardMode,
   WorkspaceDateFormat,

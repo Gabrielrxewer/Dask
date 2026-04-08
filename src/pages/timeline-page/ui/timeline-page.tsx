@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
@@ -70,17 +70,17 @@ export function TimelinePage() {
   return (
     <AppShell
       metrics={metrics}
-      pageTitle="Timeline"
+      pageTitle="Linha do tempo"
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
-      onCreateTask={() => void createTask()}
+      onCreateTask={input => void createTask(input)}
     >
       <BoardMetrics metrics={metrics} />
 
       <section className="timeline-view">
         <header className="timeline-view__head">
-          <span>Cards</span>
+          <span>Itens</span>
           <span>Janela de entrega</span>
         </header>
 
@@ -88,7 +88,7 @@ export function TimelinePage() {
           {isLoading ? (
             <article className="timeline-view__empty">Carregando workspace...</article>
           ) : sortedTasks.length === 0 ? (
-            <article className="timeline-view__empty">Nenhum card com prazo encontrado.</article>
+            <article className="timeline-view__empty">Nenhum item com prazo encontrado.</article>
           ) : (
             sortedTasks.map(task => {
               const taskStamp = toDateStamp(task.due);

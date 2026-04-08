@@ -1,9 +1,8 @@
 import { withMockLatency } from "@/shared/api/http-client";
-import { createInitialWorkspaceSnapshot, cloneWorkspaceSnapshot, createTaskFromSeed } from "@/modules/workspace/model/mock-workspace";
+import { createInitialWorkspaceSnapshot, cloneWorkspaceSnapshot, createTaskFromInput } from "@/modules/workspace/model/mock-workspace";
 import type { WorkspacePreferences, WorkspaceService, WorkspaceSnapshot } from "@/modules/workspace/model/types";
 
 let workspaceSnapshot: WorkspaceSnapshot = createInitialWorkspaceSnapshot();
-let createTaskSeed = 0;
 
 function saveAndReturn(nextState: WorkspaceSnapshot): Promise<WorkspaceSnapshot> {
   workspaceSnapshot = nextState;
@@ -15,9 +14,8 @@ export const workspaceService: WorkspaceService = {
     return withMockLatency(cloneWorkspaceSnapshot(workspaceSnapshot));
   },
 
-  async createTask() {
-    const nextTask = createTaskFromSeed(createTaskSeed);
-    createTaskSeed += 1;
+  async createTask(input) {
+    const nextTask = createTaskFromInput(input, workspaceSnapshot.currentUserId);
 
     return saveAndReturn({
       ...workspaceSnapshot,

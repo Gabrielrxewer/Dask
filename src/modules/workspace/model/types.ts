@@ -18,6 +18,12 @@ export interface WorkspacePreferences {
   visibleCardFieldIds: string[];
 }
 
+export interface CreateTaskInput {
+  type: string;
+  title: string;
+  description: string;
+}
+
 export interface WorkspaceSnapshot {
   id: string;
   name: string;
@@ -31,7 +37,7 @@ export interface WorkspaceSnapshot {
 
 export interface WorkspaceService {
   getSnapshot: () => Promise<WorkspaceSnapshot>;
-  createTask: () => Promise<WorkspaceSnapshot>;
+  createTask: (input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
   updateTaskCustomField: (
     taskId: string,

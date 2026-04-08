@@ -1,23 +1,6 @@
 import { currentUserId, membersById } from "@/entities/member";
-import { factoryBoardConfig, initialTasks, type Task, type TaskPriority } from "@/entities/task";
-import type { WorkspaceSnapshot } from "@/modules/workspace/model/types";
-
-const mockTitlePool: string[] = [
-  "Mapear fluxo de backlog para squad de platform",
-  "Reforcar criterio de aceite no board de QA",
-  "Criar widget de risco por sprint",
-  "Aprimorar notificacoes de automacao",
-  "Normalizar campos de card para integracao futura"
-];
-
-const tagsPool: string[][] = [
-  ["Product", "Roadmap"],
-  ["Engineering", "Workflow"],
-  ["Analytics", "Delivery"],
-  ["Automation", "Ops"]
-];
-
-const priorities: TaskPriority[] = ["low", "medium", "high"];
+import { factoryBoardConfig, initialTasks, type Task } from "@/entities/task";
+import type { CreateTaskInput, WorkspaceSnapshot } from "@/modules/workspace/model/types";
 
 function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -33,31 +16,31 @@ function createChecklist(taskId: string, total: number): Task["checklist"] {
   };
 }
 
-export function createTaskFromSeed(seed: number): Task {
-  const index = seed % mockTitlePool.length;
+export function createTaskFromInput(input: CreateTaskInput, assignee: Task["assignee"]): Task {
   const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 3 + index * 2);
+  dueDate.setDate(dueDate.getDate() + 7);
 
-  const taskId = `t-ws-${Date.now()}-${seed}`;
-  const taskType = factoryBoardConfig.taskTypes[index % factoryBoardConfig.taskTypes.length];
+  const taskId = `t-ws-${Date.now()}`;
+  const taskType = input.type.trim().toLowerCase() || "task";
+  const normalizedTitle = input.title.trim() || "Nova tarefa";
+  const normalizedDescription = input.description.trim() || "Descreva o objetivo desta tarefa.";
 
   return {
     id: taskId,
-    title: mockTitlePool[index],
-    text: "Card criado para evolucao incremental do workspace.",
-    type: taskType?.id ?? "user-story",
+    title: normalizedTitle,
+    text: normalizedDescription,
+    type: taskType,
     status: "backlog",
-    priority: priorities[index % priorities.length],
-    tags: tagsPool[index % tagsPool.length],
-    assignee: (Object.keys(membersById)[index % Object.keys(membersById).length] as Task["assignee"]) ?? "u1",
-    checklist: createChecklist(taskId, 4 + index),
+    priority: "medium",
+    tags: ["Novo item"],
+    assignee,
+    checklist: createChecklist(taskId, 3),
     due: dueDate.toISOString().slice(0, 10),
     customFields: {
-      storyPoints: 3 + index,
-      severity: ["Low", "Medium", "High", "Critical"][index % 4],
-      sprint: `Sprint ${18 + (index % 3)}`,
-      environment: ["Development", "Staging", "Production"][index % 3],
-      qaReady: index % 2 === 0
+      severity: "Medium",
+      sprint: "Planejamento",
+      environment: "Development",
+      qaReady: false
     }
   };
 }

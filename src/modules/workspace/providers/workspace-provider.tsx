@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { TaskCustomFieldValue, TaskStatusId } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api/workspace-service";
-import type { WorkspaceAutomation, WorkspacePreferences, WorkspaceSnapshot } from "@/modules/workspace/model/types";
+import type { CreateTaskInput, WorkspaceAutomation, WorkspacePreferences, WorkspaceSnapshot } from "@/modules/workspace/model/types";
 
 interface WorkspaceContextValue {
   snapshot: WorkspaceSnapshot | null;
   isLoading: boolean;
-  createTask: () => Promise<void>;
+  createTask: (input: CreateTaskInput) => Promise<void>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<void>;
   updateTaskCustomField: (taskId: string, fieldId: string, value: TaskCustomFieldValue) => Promise<void>;
   toggleChecklistItem: (taskId: string, itemId: string) => Promise<void>;
@@ -47,8 +47,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     };
   }, []);
 
-  const createTask = useCallback(async () => {
-    const nextSnapshot = await workspaceService.createTask();
+  const createTask = useCallback(async (input: CreateTaskInput) => {
+    const nextSnapshot = await workspaceService.createTask(input);
     setSnapshot(nextSnapshot);
   }, []);
 

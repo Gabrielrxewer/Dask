@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
@@ -19,10 +19,10 @@ import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import "./board-page.css";
 
 const modeOptions: Array<{ id: WorkspaceBoardMode; label: string; caption: string }> = [
-  { id: "dev", label: "Dev", caption: "Execucao tecnica" },
-  { id: "po", label: "PO", caption: "Planejamento" },
-  { id: "manager", label: "Gerente", caption: "Portfolio" },
-  { id: "qa", label: "QA", caption: "Qualidade" }
+  { id: "dev", label: "Execucao", caption: "Fluxo operacional principal" },
+  { id: "po", label: "Planejamento", caption: "Priorizacao e compromisso" },
+  { id: "manager", label: "Gestao", caption: "Visao de capacidade e risco" },
+  { id: "qa", label: "Qualidade", caption: "ValidaÃ§Ã£o e conformidade" }
 ];
 
 const poStatuses: TaskStatus[] = [
@@ -250,7 +250,7 @@ export function BoardPage() {
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
-      onCreateTask={() => void createTask()}
+      onCreateTask={input => void createTask(input)}
     >
       <section className="board-mode-switch" aria-label="Modos do board">
         {modeOptions.map(option => (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
@@ -52,17 +52,17 @@ export function ListPage() {
   return (
     <AppShell
       metrics={metrics}
-      pageTitle="Lista de cards"
+      pageTitle="Lista de itens"
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
-      onCreateTask={() => void createTask()}
+      onCreateTask={input => void createTask(input)}
     >
       <BoardMetrics metrics={metrics} />
 
       <section className="list-view">
         <header className="list-view__header">
-          <span>Titulo</span>
+          <span>TÃ­tulo</span>
           <span>Tipo</span>
           <span>Status</span>
           <span>Owner</span>
@@ -73,7 +73,7 @@ export function ListPage() {
           {isLoading ? (
             <article className="list-view__empty">Carregando workspace...</article>
           ) : filteredTasks.length === 0 ? (
-            <article className="list-view__empty">Nenhum card encontrado para o filtro atual.</article>
+            <article className="list-view__empty">Nenhum item encontrado para o filtro atual.</article>
           ) : (
             filteredTasks.map(task => {
               const done = task.checklist.items.filter(item => item.done).length;

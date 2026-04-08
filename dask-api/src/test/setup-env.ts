@@ -1,0 +1,16 @@
+process.env.NODE_ENV ??= 'test';
+process.env.PORT ??= '3333';
+process.env.API_PREFIX ??= '/api/v1';
+process.env.DATABASE_URL ??= 'postgresql://local/test';
+process.env.REDIS_URL ??= 'redis://localhost:6379';
+process.env.JWT_SECRET ??= '1234567890123456';
+process.env.JWT_EXPIRES_IN ??= '15m';
+process.env.JWT_REFRESH_SECRET ??= '12345678901234567890123456789012';
+process.env.JWT_REFRESH_EXPIRES_IN ??= '7d';
+process.env.HASH_PEPPER ??= '12345678901234567890123456789012';
+process.env.AUTH_MAX_FAILURES ??= '5';
+process.env.CORS_ALLOWED_ORIGINS ??= 'http://localhost:5173';
+process.env.CSRF_SECRET ??= '12345678901234567890123456789012';
+process.env.COOKIE_SAME_SITE ??= 'strict';
+process.env.LOG_LEVEL ??= 'silent';
+process.env.ENABLE_WORKERS ??= 'false';

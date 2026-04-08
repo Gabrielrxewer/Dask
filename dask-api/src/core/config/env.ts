@@ -9,13 +9,29 @@ const envSchema = z.object({
   API_PREFIX: z.string().default('/api/v1'),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
+
   JWT_SECRET: z.string().min(16),
-  JWT_EXPIRES_IN: z.string().default('1d'),
+  JWT_EXPIRES_IN: z.string().default('15m'),
+  JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+
+  HASH_PEPPER: z.string().min(32),
+  AUTH_MAX_FAILURES: z.coerce.number().int().min(1).default(5),
+
+  // Comma-separated allowlist, no wildcard.
+  CORS_ALLOWED_ORIGINS: z.string().min(1),
+
+  // Secret used to sign double-submit CSRF tokens.
+  CSRF_SECRET: z.string().min(32),
+
+  // strict | lax | none
+  COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('strict'),
+
   LOG_LEVEL: z.string().default('info'),
   ENABLE_WORKERS: z
     .string()
     .default('true')
-    .transform((v) => v === 'true')
+    .transform((value) => value === 'true')
 });
 
 const parsed = envSchema.safeParse(process.env);

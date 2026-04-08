@@ -1,10 +1,10 @@
 import { RouterProvider } from "@/app/providers/router-provider";
-import { WorkspaceProvider } from "@/modules/workspace";
+import { AuthProvider } from "@/app/providers/auth-provider";
 
 export function AppProvider() {
   return (
-    <WorkspaceProvider>
+    <AuthProvider>
       <RouterProvider />
-    </WorkspaceProvider>
+    </AuthProvider>
   );
 }

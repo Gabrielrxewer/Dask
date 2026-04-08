@@ -1,0 +1,75 @@
+.auth-login {
+  width: min(420px, 100%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d5e1f1;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-1);
+  padding: 26px;
+  display: grid;
+  gap: 18px;
+}
+
+.auth-login__header h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(1.3rem, 1.5vw + 1rem, 1.8rem);
+  font-family: "Sora", "Segoe UI", sans-serif;
+}
+
+.auth-login__header p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.auth-login__eyebrow {
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+  color: var(--accent);
+}
+
+.auth-login__form {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-login__form label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.auth-login__password-field {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-login__toggle {
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0;
+}
+
+.auth-login__toggle:hover {
+  color: #0a72c9;
+}
+
+.auth-login__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: 8px;
+}
+
+.auth-login__message {
+  margin: 2px 0 0;
+  color: #b4442b;
+  font-size: 0.9rem;
+}
+
+.auth-login .shared-button {
+  margin-top: 4px;
+  width: 100%;
+}

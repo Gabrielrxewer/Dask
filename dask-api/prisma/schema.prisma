@@ -27,18 +27,52 @@ enum AuditSeverity {
 }
 
 model User {
-  id              String                    @id @default(uuid())
-  email           String                    @unique
-  name            String
-  passwordHash    String
-  preferences     Json?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  organizations   OrganizationMembership[]
-  teams           TeamMembership[]
-  workspaces      WorkspaceMembership[]
-  createdItems    Item[]                    @relation("ItemCreatedBy")
-  comments        ItemComment[]
+  id                  String                    @id @default(uuid())
+  email               String                    @unique
+  name                String
+  passwordHash        String
+  // 0 = legacy plain-bcrypt (pre-migration), 1 = HMAC-SHA256+bcrypt with pepper
+  passwordHashVersion Int                       @default(0)
+  loginFailureCount   Int                       @default(0)
+  lockedUntil         DateTime?
+  preferences         Json?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  organizations       OrganizationMembership[]
+  teams               TeamMembership[]
+  workspaces          WorkspaceMembership[]
+  createdItems        Item[]                    @relation("ItemCreatedBy")
+  comments            ItemComment[]
+  refreshTokens       RefreshToken[]
+  resetTokens         PasswordResetToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  // familyId links tokens issued from the same login session;
+  // reuse of a revoked token triggers revocation of the entire family
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Organization {

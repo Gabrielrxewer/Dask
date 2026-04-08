@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import type { BoardMetrics } from "@/entities/task";
+import { useAuth, useLogout } from "@/features/auth";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { CreateTaskButton } from "@/features/create-task";
@@ -46,6 +47,10 @@ export function AppShell({
         }
       : null;
 
+  const { user, status } = useAuth();
+  const { logout, logoutAll, isSubmitting } = useLogout();
+  const isAuthBusy = isSubmitting || status === "logout_in_progress";
+
   return (
     <div className="app-shell">
       <div className="app-shell__noise" />
@@ -83,6 +88,19 @@ export function AppShell({
             <p className="sidebar__sprint-meta">{`${metrics.active} itens ativos`}</p>
             <div className="sidebar__track">
               <div className="sidebar__fill" style={{ width: `${metrics.donePercent}%` }} />
+            </div>
+          </div>
+
+          <div className="sidebar__session">
+            <p className="sidebar__menu-title">Sessao</p>
+            <p className="sidebar__session-user">{user?.name ?? user?.email ?? "Usuario autenticado"}</p>
+            <div className="sidebar__session-actions">
+              <button type="button" onClick={() => void logout()} disabled={isAuthBusy}>
+                {isAuthBusy ? "Saindo..." : "Sair"}
+              </button>
+              <button type="button" onClick={() => void logoutAll()} disabled={isAuthBusy}>
+                Sair de todos
+              </button>
             </div>
           </div>
         </div>

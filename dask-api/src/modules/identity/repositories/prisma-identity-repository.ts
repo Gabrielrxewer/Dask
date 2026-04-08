@@ -5,20 +5,101 @@ import {
   type PrismaClient,
   type User
 } from '@prisma/client';
-import type { IdentityRepository } from '@/modules/identity/repositories/identity-repository';
+import type {
+  IdentityRepository,
+  LockoutState,
+  StoredPasswordResetToken,
+  StoredRefreshToken
+} from '@/modules/identity/repositories/identity-repository';
+
+// Lockout thresholds: { afterFailures → lockDurationMs }
+const LOCKOUT_SCHEDULE: [number, number][] = [
+  [5, 15 * 60 * 1000],    // 5 failures  → locked 15 min
+  [10, 60 * 60 * 1000],   // 10 failures → locked 1 h
+  [20, 24 * 60 * 60 * 1000] // 20 failures → locked 24 h
+];
+
+function computeLockedUntil(failureCount: number): Date | null {
+  for (let i = LOCKOUT_SCHEDULE.length - 1; i >= 0; i--) {
+    const [threshold, durationMs] = LOCKOUT_SCHEDULE[i];
+    if (failureCount >= threshold) {
+      return new Date(Date.now() + durationMs);
+    }
+  }
+  return null;
+}
 
 export class PrismaIdentityRepository implements IdentityRepository {
   public constructor(private readonly prisma: PrismaClient) {}
 
-  public createUser(input: { email: string; name: string; passwordHash: string }): Promise<User> {
-    return this.prisma.user.create({
-      data: input
-    });
+  // ── User ──────────────────────────────────────────────────────────────────
+
+  public createUser(input: {
+    email: string;
+    name: string;
+    passwordHash: string;
+    passwordHashVersion: number;
+  }): Promise<User> {
+    return this.prisma.user.create({ data: input });
   }
 
   public findUserByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
   }
+
+  public findUserById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  public async updateUserPassword(
+    userId: string,
+    input: { passwordHash: string; hashVersion: number }
+  ): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: input.passwordHash, passwordHashVersion: input.hashVersion }
+    });
+  }
+
+  // ── Account lockout ───────────────────────────────────────────────────────
+
+  /**
+   * Atomically increment failure count and set lockedUntil based on thresholds.
+   * Uses a transaction to avoid races between concurrent failed login attempts.
+   */
+  public async incrementLoginFailures(
+    userId: string,
+    _maxFailures: number
+  ): Promise<LockoutState> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: { loginFailureCount: { increment: 1 } },
+        select: { loginFailureCount: true }
+      });
+
+      const newCount = updated.loginFailureCount;
+      const lockedUntil = computeLockedUntil(newCount);
+
+      if (lockedUntil !== null) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { lockedUntil }
+        });
+      }
+
+      return { failureCount: newCount, lockedUntil };
+    });
+  }
+
+  public async resetLoginFailures(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { loginFailureCount: 0, lockedUntil: null }
+    });
+  }
+
+  // ── Organisation ─────────────────────────────────────────────────────────
 
   public async createOrganization(input: {
     name: string;
@@ -48,10 +129,92 @@ export class PrismaIdentityRepository implements IdentityRepository {
   }
 
   public async getUserRoles(userId: string): Promise<MembershipRole[]> {
-    const orgMemberships = await this.prisma.organizationMembership.findMany({
+    const memberships = await this.prisma.organizationMembership.findMany({
       where: { userId },
       select: { role: true }
     });
-    return orgMemberships.map((membership) => membership.role);
+    return memberships.map((m) => m.role);
+  }
+
+  // ── Refresh tokens ────────────────────────────────────────────────────────
+
+  public async createRefreshToken(input: {
+    userId: string;
+    tokenHash: string;
+    familyId: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    await this.prisma.refreshToken.create({ data: input });
+  }
+
+  public async findRefreshToken(tokenHash: string): Promise<StoredRefreshToken | null> {
+    return this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+  }
+
+  /**
+   * Atomically revoke the token only if it is still active (revokedAt IS NULL).
+   * Returns true if revocation happened (token was valid).
+   * Returns false if token was already revoked — signals potential reuse attack.
+   *
+   * Using updateMany with the revokedAt IS NULL constraint provides CAS
+   * semantics under PostgreSQL READ COMMITTED: if two requests race, only one
+   * will match the WHERE clause and receive a non-zero count.
+   */
+  public async revokeRefreshToken(tokenHash: string): Promise<boolean> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+    return result.count > 0;
+  }
+
+  public async revokeTokenFamily(familyId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+  }
+
+  public async revokeAllUserRefreshTokens(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+  }
+
+  // ── Password reset tokens ─────────────────────────────────────────────────
+
+  public async createPasswordResetToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    await this.prisma.passwordResetToken.create({ data: input });
+  }
+
+  public async findPasswordResetToken(
+    tokenHash: string
+  ): Promise<StoredPasswordResetToken | null> {
+    return this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+  }
+
+  public async markPasswordResetTokenUsed(tokenHash: string): Promise<void> {
+    await this.prisma.passwordResetToken.updateMany({
+      where: { tokenHash, usedAt: null },
+      data: { usedAt: new Date() }
+    });
+  }
+
+  public async revokeUserResetTokens(userId: string): Promise<void> {
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() }
+    });
+  }
+
+  public async countActiveResetTokens(userId: string): Promise<number> {
+    return this.prisma.passwordResetToken.count({
+      where: { userId, usedAt: null, expiresAt: { gt: new Date() } }
+    });
   }
 }

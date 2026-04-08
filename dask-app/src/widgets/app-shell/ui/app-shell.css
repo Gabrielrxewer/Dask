@@ -100,6 +100,8 @@
 
 .sidebar__foot {
   margin-top: auto;
+  display: grid;
+  gap: 12px;
 }
 
 .sidebar__sprint-card {
@@ -131,6 +133,43 @@
   height: 100%;
   background: linear-gradient(110deg, #7ef9d9, #6dd4ff);
   transition: width 0.25s ease;
+}
+
+.sidebar__session {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(203, 224, 250, 0.15);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.sidebar__session-user {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: #dcefff;
+}
+
+.sidebar__session-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.sidebar__session-actions button {
+  border: 1px solid rgba(219, 240, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e9f5ff;
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.sidebar__session-actions button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sidebar__session-actions button:disabled {
+  opacity: 0.75;
+  cursor: wait;
 }
 
 .workspace {

@@ -1,0 +1,18 @@
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-page__backdrop {
+  position: absolute;
+  inset: -15%;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(13, 141, 247, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(20, 184, 166, 0.2) 0%, transparent 50%),
+    linear-gradient(160deg, #edf4ff 0%, #f5fbff 52%, #e8f3ff 100%);
+}

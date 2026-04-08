@@ -1,0 +1,29 @@
+.shared-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-soft);
+  background: #fff;
+}
+
+.shared-status-badge--success {
+  border-color: color-mix(in oklab, var(--success) 55%, #ffffff);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.shared-status-badge--warning {
+  border-color: color-mix(in oklab, var(--warn) 50%, #ffffff);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.shared-loading-state {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+}

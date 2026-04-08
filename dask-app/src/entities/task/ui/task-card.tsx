@@ -7,6 +7,8 @@ import "./task-card.css";
 interface TaskCardProps {
   task: Task;
   boardConfig: BoardConfig;
+  compact?: boolean;
+  creatorName?: string;
   assigneeSlot?: ReactNode;
   onDragStart: (event: DragEvent<HTMLElement>, taskId: string) => void;
   onDragEnd: () => void;
@@ -14,6 +16,17 @@ interface TaskCardProps {
   onOpen?: (taskId: string) => void;
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
 }
+
+const taskTypeIconById: Record<string, string> = {
+  bug: "🐞",
+  "user-story": "📖",
+  incident: "🚨",
+  epic: "🧭",
+  hotfix: "🩹",
+  improvement: "✨",
+  spike: "🧪",
+  research: "🔎"
+};
 
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
   if (Array.isArray(value)) {
@@ -34,6 +47,8 @@ function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFie
 export function TaskCard({
   task,
   boardConfig,
+  compact = false,
+  creatorName,
   assigneeSlot = null,
   onDragStart,
   onDragEnd,
@@ -71,10 +86,14 @@ export function TaskCard({
   const canOpen = typeof onOpen === "function";
   const canUpdatePriority = typeof onUpdatePriority === "function";
   const nextPriority: TaskPriority = task.priority === 4 ? 0 : ((task.priority + 1) as TaskPriority);
+  const authorLabel = creatorName ?? "Usuario";
+  const typeIcon = taskTypeIconById[task.type] ?? "📌";
 
   return (
     <article
-      className={`task-card task-card--priority-${task.priority} ${isDragging ? "task-card--dragging" : ""}`.trim()}
+      className={`task-card task-card--priority-${task.priority} ${compact ? "task-card--compact" : ""} ${
+        isDragging ? "task-card--dragging" : ""
+      }`.trim()}
       draggable
       onDragStart={event => onDragStart(event, task.id)}
       onDragEnd={onDragEnd}
@@ -94,6 +113,9 @@ export function TaskCard({
     >
       <header className="task-card__head">
         <div className="task-card__badges">
+          <span className="task-card__type-icon" aria-hidden="true">
+            {typeIcon}
+          </span>
           <span
             className="task-card__type"
             style={{
@@ -131,7 +153,7 @@ export function TaskCard({
       </header>
 
       <h4 className="task-card__title">{task.title}</h4>
-      <p className="task-card__text">{task.text}</p>
+      {!compact ? <p className="task-card__text">{task.text}</p> : null}
 
       <div className="task-card__tags">
         {task.tags.map(tag => (
@@ -141,7 +163,7 @@ export function TaskCard({
         ))}
       </div>
 
-      {visibleFields.length > 0 ? (
+      {!compact && visibleFields.length > 0 ? (
         <div className="task-card__fields">
           {visibleFields.map(({ definition, value }) => (
             <span className="task-card__field" key={definition.id}>
@@ -153,9 +175,9 @@ export function TaskCard({
       ) : null}
 
       <footer className="task-card__footer">
-        {assigneeSlot}
+        {!compact ? assigneeSlot : <span className="task-card__creator">{`Criado por ${authorLabel}`}</span>}
         <div className="task-card__meta">
-          <span>{`Checklist ${checklistDone}/${checklistTotal}`}</span>
+          {!compact ? <span>{`Checklist ${checklistDone}/${checklistTotal}`}</span> : null}
           <span>{`Prazo ${formatShortDate(task.due)}`}</span>
         </div>
       </footer>

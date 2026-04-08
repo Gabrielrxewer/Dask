@@ -1,0 +1,38 @@
+.shared-select,
+.shared-textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.shared-select {
+  min-height: 42px;
+  padding: 0 var(--space-3);
+}
+
+.shared-textarea {
+  min-height: 96px;
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+  font: inherit;
+}
+
+.shared-select:focus,
+.shared-textarea:focus {
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+  background: #fcfeff;
+}
+
+.shared-form-field {
+  display: grid;
+  gap: 6px;
+}
+
+.shared-form-field__label {
+  font-size: var(--font-size-xs);
+  color: var(--text-soft);
+  font-weight: 600;
+}

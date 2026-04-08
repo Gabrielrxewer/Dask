@@ -1,0 +1,35 @@
+.shared-card {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.shared-card--interactive {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.shared-card--interactive:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-1);
+}
+
+.shared-metric-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  min-height: 70px;
+  padding: 10px;
+}
+
+.shared-metric-card p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+}
+
+.shared-metric-card h3 {
+  margin: 6px 0 0;
+  font-size: 1.18rem;
+}

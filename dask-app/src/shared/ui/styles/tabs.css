@@ -1,0 +1,22 @@
+.shared-tabs {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.shared-tabs__item {
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--text);
+  border-radius: 999px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.shared-tabs__item--active {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}

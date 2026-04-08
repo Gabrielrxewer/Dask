@@ -2,14 +2,12 @@ import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 
 interface GlobalChromeContextValue {
-  isSidebarCollapsed: boolean;
   isSidebarOpen: boolean;
   toggleNavigation: () => void;
   closeNavigation: () => void;
 }
 
 const defaultValue: GlobalChromeContextValue = {
-  isSidebarCollapsed: false,
   isSidebarOpen: false,
   toggleNavigation: () => undefined,
   closeNavigation: () => undefined

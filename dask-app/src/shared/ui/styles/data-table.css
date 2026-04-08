@@ -1,0 +1,50 @@
+.shared-data-table {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.shared-data-table__scroll {
+  overflow-x: auto;
+}
+
+.shared-data-table__scroll > * {
+  min-width: var(--table-min-width, 100%);
+}
+
+@media (max-width: 768px) {
+  .shared-data-table__scroll > * {
+    min-width: var(--table-min-width-mobile, 100%);
+  }
+}
+
+.shared-data-table__header,
+.shared-data-table__row {
+  display: grid;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+
+.shared-data-table__header {
+  min-height: 42px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.shared-data-table__row {
+  min-height: 58px;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, #fff);
+}
+
+.shared-data-table__row:last-child {
+  border-bottom: 0;
+}
+
+.shared-data-table__cell {
+  min-width: 0;
+}

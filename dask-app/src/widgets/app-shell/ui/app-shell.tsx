@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useGlobalChrome } from "@/app/layout/global-chrome-context";
 import type { BoardMetrics } from "@/entities/task";
-import { useAuth, useLogout } from "@/features/auth";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { CreateTaskButton } from "@/features/create-task";
@@ -14,6 +13,7 @@ interface AppShellProps {
   metrics: BoardMetrics;
   pageLabel?: string;
   pageTitle?: string;
+  topNavigation?: ReactNode;
   filter?: DashboardFilterState;
   onFilterQueryChange?: (query: string) => void;
   onMineToggle?: () => void;
@@ -44,6 +44,7 @@ export function AppShell({
   metrics,
   pageLabel = "Workspace",
   pageTitle = "Dask Platform",
+  topNavigation,
   filter,
   onFilterQueryChange,
   onMineToggle,
@@ -51,7 +52,7 @@ export function AppShell({
   noPageScroll = false,
   children
 }: AppShellProps) {
-  const { isSidebarCollapsed, isSidebarOpen, closeNavigation } = useGlobalChrome();
+  const { isSidebarOpen, closeNavigation } = useGlobalChrome();
   const filterProps =
     filter && onFilterQueryChange && onMineToggle
       ? {
@@ -62,15 +63,11 @@ export function AppShell({
         }
       : null;
 
-  const { user, status } = useAuth();
-  const { logout, logoutAll, isSubmitting } = useLogout();
-  const isAuthBusy = isSubmitting || status === "logout_in_progress";
-
   return (
     <div
       className={`app-shell ${noPageScroll ? "app-shell--no-scroll" : ""} ${
-        isSidebarCollapsed ? "app-shell--nav-collapsed" : ""
-      } ${isSidebarOpen ? "app-shell--nav-open" : ""}`.trim()}
+        isSidebarOpen ? "app-shell--nav-open" : ""
+      }`.trim()}
     >
       <div className="app-shell__noise" />
       <button type="button" className="app-shell__nav-backdrop" aria-label="Fechar menu" onClick={closeNavigation} />
@@ -116,23 +113,11 @@ export function AppShell({
               <div className="sidebar__fill" style={{ width: `${metrics.donePercent}%` }} />
             </div>
           </div>
-
-          <div className="sidebar__session">
-            <p className="sidebar__menu-title">Sessao</p>
-            <p className="sidebar__session-user">{user?.name ?? user?.email ?? "Usuario autenticado"}</p>
-            <div className="sidebar__session-actions">
-              <button type="button" onClick={() => void logout()} disabled={isAuthBusy}>
-                {isAuthBusy ? "Saindo..." : "Sair"}
-              </button>
-              <button type="button" onClick={() => void logoutAll()} disabled={isAuthBusy}>
-                Sair de todos
-              </button>
-            </div>
-          </div>
         </div>
       </aside>
 
       <div className="workspace">
+        {topNavigation ? <div className="workspace__top-nav">{topNavigation}</div> : null}
         <PageHeader label={pageLabel} title={pageTitle} actions={filterProps ? <DashboardFilter {...filterProps} /> : null} />
 
         <main className="workspace__content">{children}</main>

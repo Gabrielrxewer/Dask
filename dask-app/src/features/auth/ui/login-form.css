@@ -1,12 +1,12 @@
 .auth-login {
   width: min(420px, 100%);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #d5e1f1;
+  background: color-mix(in oklab, #ffffff 90%, #edf4fe 10%);
+  border: 1px solid #cfdef0;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-1);
-  padding: 26px;
+  box-shadow: 0 24px 48px rgba(8, 31, 54, 0.14);
+  padding: 28px;
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .auth-login__header h1 {
@@ -18,6 +18,7 @@
 .auth-login__header p {
   margin: 0;
   color: var(--text-soft);
+  line-height: 1.45;
 }
 
 .auth-login__eyebrow {
@@ -30,7 +31,7 @@
 
 .auth-login__form {
   display: grid;
-  gap: 10px;
+  gap: 11px;
 }
 
 .auth-login__form label {
@@ -70,6 +71,6 @@
 }
 
 .auth-login .shared-button {
-  margin-top: 4px;
+  margin-top: 8px;
   width: 100%;
 }

@@ -13,6 +13,7 @@ interface BoardColumnsProps {
   tasks: Task[];
   boardConfig: BoardConfig;
   membersById: MembersById;
+  compactCards?: boolean;
   onMoveTask: (taskId: string, statusId: TaskStatusId) => void;
   onUpdatePriority: (taskId: string, priority: TaskPriority) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
@@ -23,6 +24,7 @@ export function BoardColumns({
   tasks,
   boardConfig,
   membersById,
+  compactCards = false,
   onMoveTask,
   onUpdatePriority,
   onToggleChecklistItem
@@ -40,6 +42,19 @@ export function BoardColumns({
     () => (selectedTask ? statuses.find(status => status.id === selectedTask.status) ?? null : null),
     [selectedTask, statuses]
   );
+
+  const resolveCreatorName = (task: Task): string => {
+    const createdBy = task.customFields["createdBy"];
+    if (typeof createdBy === "string" && createdBy.trim()) {
+      const createdByMember = (membersById as Record<string, { name?: string }>)[createdBy];
+      if (createdByMember?.name) {
+        return createdByMember.name;
+      }
+      return createdBy;
+    }
+
+    return membersById[task.assignee]?.name ?? "Usuario";
+  };
 
   const handleDragStart = (event: DragEvent<HTMLElement>, taskId: string) => {
     setDraggingTaskId(taskId);
@@ -99,6 +114,8 @@ export function BoardColumns({
                       key={task.id}
                       task={task}
                       boardConfig={boardConfig}
+                      compact={compactCards}
+                      creatorName={resolveCreatorName(task)}
                       assigneeSlot={<MemberAvatar member={membersById[task.assignee]} />}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}

@@ -135,19 +135,34 @@ export function BoardPage() {
     [tasks, filter, activeMembers, activeUser]
   );
 
-  const devMetrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);
+  const devMetrics = useMemo(() => buildBoardMetrics(tasks), [tasks]);
 
   const planningTasks = useMemo(
+    () => tasks.map(task => ({ ...task, status: resolvePlanningStatus(task) })),
+    [tasks]
+  );
+
+  const qaTasks = useMemo(() => tasks.map(task => ({ ...task, status: resolveQaStatus(task) })), [tasks]);
+
+  const managerTasks = useMemo(
+    () =>
+      tasks
+        .filter(task => ["epic", "user-story", "improvement", "research", "spike", "bug", "incident", "hotfix"].includes(task.type))
+        .map(task => ({ ...task, status: resolveManagerStatus(task) })),
+    [tasks]
+  );
+
+  const planningTasksFiltered = useMemo(
     () => filteredTasks.map(task => ({ ...task, status: resolvePlanningStatus(task) })),
     [filteredTasks]
   );
 
-  const qaTasks = useMemo(
+  const qaTasksFiltered = useMemo(
     () => filteredTasks.map(task => ({ ...task, status: resolveQaStatus(task) })),
     [filteredTasks]
   );
 
-  const managerTasks = useMemo(
+  const managerTasksFiltered = useMemo(
     () =>
       filteredTasks
         .filter(task => ["epic", "user-story", "improvement", "research", "spike", "bug", "incident", "hotfix"].includes(task.type))
@@ -165,7 +180,13 @@ export function BoardPage() {
           : boardConfig.statuses;
 
   const activeBoardTasks =
-    mode === "po" ? planningTasks : mode === "qa" ? qaTasks : mode === "manager" ? managerTasks : filteredTasks;
+    mode === "po"
+      ? planningTasksFiltered
+      : mode === "qa"
+        ? qaTasksFiltered
+        : mode === "manager"
+          ? managerTasksFiltered
+          : filteredTasks;
   const activeModeMeta = modeOptions.find(option => option.id === mode);
 
   const modeCards = useMemo(() => {
@@ -244,34 +265,41 @@ export function BoardPage() {
     void updateTaskPriority(taskId, priority);
   };
 
+  const boardSubtitle =
+    activeBoardTasks.length === 0 && filter.query.trim().length > 0
+      ? "Nenhum item encontrado para essa busca."
+      : activeModeMeta?.caption ?? "Acompanhe o andamento das entregas em colunas.";
+
+  const topNavigation = (
+    <section className="board-top-nav" aria-label="Navegacao de visao operacional">
+      <div className="board-top-nav__head">
+        <strong>Visao operacional</strong>
+      </div>
+      <Tabs
+        value={mode}
+        items={modeOptions.map(option => ({ id: option.id, label: option.label }))}
+        onChange={setMode}
+        className="board-top-nav__tabs"
+      />
+    </section>
+  );
+
   return (
     <AppShell
       metrics={devMetrics}
       noPageScroll
+      topNavigation={topNavigation}
       filter={filter}
       onFilterQueryChange={query => setFilter(prev => ({ ...prev, query }))}
       onMineToggle={() => setFilter(prev => ({ ...prev, mineOnly: !prev.mineOnly }))}
       onCreateTask={input => void createTask(input)}
     >
       <div className="board-view">
-        <section className="board-view__modes">
-          <div className="board-view__modes-head">
-            <h2>Visao operacional</h2>
-            <p>Selecione a perspectiva para navegar no fluxo.</p>
-          </div>
-          <Tabs
-            value={mode}
-            items={modeOptions.map(option => ({ id: option.id, label: option.label }))}
-            onChange={setMode}
-            className="board-view__tabs"
-          />
-        </section>
-
         <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
 
         <Section
           title={activeModeMeta ? `Quadro ${activeModeMeta.label}` : "Quadro"}
-          subtitle={activeModeMeta?.caption ?? "Acompanhe o andamento das entregas em colunas."}
+          subtitle={boardSubtitle}
           actions={<StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>}
           className="board-view__canvas"
         >
@@ -283,6 +311,7 @@ export function BoardPage() {
               boardConfig={boardConfig}
               tasks={activeBoardTasks}
               membersById={activeMembers}
+              compactCards={mode === "qa"}
               onMoveTask={handleMoveTask}
               onUpdatePriority={handleUpdatePriority}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}

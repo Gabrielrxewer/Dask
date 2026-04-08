@@ -1,0 +1,14 @@
+.shared-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 17, 32, 0.48);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 120;
+}
+
+.shared-modal-shell {
+  position: relative;
+}

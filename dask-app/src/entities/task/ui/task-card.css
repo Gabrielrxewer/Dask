@@ -76,6 +76,17 @@
   flex-wrap: wrap;
 }
 
+.task-card__type-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ecf4ff;
+  border: 1px solid #d8e8fb;
+  font-size: 0.72rem;
+}
+
 .task-card__type {
   font-size: 0.7rem;
   font-weight: 700;
@@ -194,12 +205,35 @@
   gap: 10px;
 }
 
+.task-card__creator {
+  font-size: var(--font-size-2xs);
+  font-weight: 600;
+  color: #4b6884;
+}
+
 .task-card__meta {
   display: grid;
   justify-items: end;
   gap: 2px;
   color: #6e8095;
   font-size: var(--font-size-2xs);
+}
+
+.task-card--compact {
+  padding: 10px;
+}
+
+.task-card--compact .task-card__title {
+  margin: 8px 0 6px;
+}
+
+.task-card--compact .task-card__tags {
+  margin-top: 8px;
+}
+
+.task-card--compact .task-card__footer {
+  margin-top: 10px;
+  align-items: center;
 }
 
 @keyframes board-rise {

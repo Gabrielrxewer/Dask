@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "@/features/auth";
+import { useEffect, useRef, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth, useLogout } from "@/features/auth";
 import { GlobalChromeProvider } from "@/app/layout/global-chrome-context";
 import "./global-layout.css";
 
@@ -27,14 +27,64 @@ function getUserInitials(nameOrEmail?: string): string {
 
 export function GlobalLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, status } = useAuth();
+  const { logout, logoutAll, isSubmitting } = useLogout();
+  const isLoginRoute = location.pathname === "/login";
+  const isBoardRoute = location.pathname === "/board";
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    setIsUserMenuOpen(false);
+    if (!isCompactViewport()) {
+      setIsSidebarOpen(true);
+      return;
+    }
     setIsSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (!isCompactViewport()) {
+        setIsSidebarOpen(true);
+        return;
+      }
+      setIsSidebarOpen(false);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      setIsUserMenuOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isUserMenuOpen]);
 
   const toggleNavigation = () => {
     if (isCompactViewport()) {
@@ -42,7 +92,7 @@ export function GlobalLayout() {
       return;
     }
 
-    setIsSidebarCollapsed(prev => !prev);
+    setIsSidebarOpen(true);
   };
 
   const closeNavigation = () => {
@@ -51,10 +101,12 @@ export function GlobalLayout() {
 
   const profileLabel = user?.name ?? user?.email ?? "Visitante";
   const profileSubLabel = status === "authenticated" ? "Sessao ativa" : "Nao autenticado";
-  const locationLabel = location.pathname === "/login" ? "Acesso" : "Workspace";
+  const profileEmail = user?.email ?? "Sem e-mail";
+  const profileInitials = getUserInitials(profileLabel);
+  const isAuthBusy = isSubmitting || status === "logout_in_progress";
+  const locationLabel = isLoginRoute ? "Acesso" : "Workspace";
 
   const chromeValue = {
-    isSidebarCollapsed,
     isSidebarOpen,
     toggleNavigation,
     closeNavigation
@@ -70,11 +122,20 @@ export function GlobalLayout() {
                 type="button"
                 className="global-header__menu"
                 aria-label="Alternar menu de navegacao"
-                onClick={toggleNavigation}
+                onClick={isLoginRoute ? undefined : toggleNavigation}
+                disabled={isLoginRoute}
               >
-                <span />
-                <span />
-                <span />
+                <span className="global-header__menu-grid">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
               </button>
               <div className="global-header__brand">
                 <strong>Dask</strong>
@@ -82,16 +143,67 @@ export function GlobalLayout() {
               </div>
             </div>
 
-            <div className="global-header__profile" title={profileLabel}>
-              <span className="global-header__avatar">{getUserInitials(profileLabel)}</span>
-              <div>
-                <p>{profileLabel}</p>
-                <small>{profileSubLabel}</small>
-              </div>
+            <div className="global-header__user-wrap" ref={userMenuRef}>
+              <button
+                type="button"
+                className="global-header__user"
+                aria-label={profileLabel}
+                title={profileSubLabel}
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+                onClick={() => setIsUserMenuOpen(prev => !prev)}
+                disabled={isLoginRoute}
+              >
+                <span className="global-header__user-icon" />
+              </button>
+
+              {isUserMenuOpen ? (
+                <div className="global-header__user-menu" role="menu" aria-label="Menu de perfil do usuario">
+                  <header className="global-header__user-menu-head">
+                    <span className="global-header__user-menu-avatar">{profileInitials}</span>
+                    <div>
+                      <p>{profileLabel}</p>
+                      <small>{profileEmail}</small>
+                    </div>
+                  </header>
+
+                  <nav className="global-header__user-menu-actions" aria-label="Acoes do perfil">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        navigate("/settings");
+                      }}
+                    >
+                      Abrir perfil do usuario
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        void logout();
+                      }}
+                      disabled={isAuthBusy}
+                    >
+                      {isAuthBusy ? "Saindo..." : "Sair"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        void logoutAll();
+                      }}
+                      disabled={isAuthBusy}
+                    >
+                      Sair de todos
+                    </button>
+                  </nav>
+                </div>
+              ) : null}
             </div>
           </header>
 
-          <main className="global-layout__main">
+          <main className={`global-layout__main ${isBoardRoute ? "global-layout__main--no-scroll" : ""}`.trim()}>
             <Outlet />
           </main>
 

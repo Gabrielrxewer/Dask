@@ -37,6 +37,7 @@ export function createTaskFromInput(input: CreateTaskInput, assignee: Task["assi
     checklist: createChecklist(taskId, 3),
     due: dueDate.toISOString().slice(0, 10),
     customFields: {
+      createdBy: assignee,
       severity: "Medium",
       sprint: "Planejamento",
       environment: "Development",

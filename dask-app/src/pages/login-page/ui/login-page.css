@@ -1,18 +1,24 @@
 .login-page {
-  min-height: 100%;
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height) - (var(--space-4) * 2));
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: clamp(14px, 2.5vw, 24px);
   position: relative;
   overflow: hidden;
 }
 
 .login-page__backdrop {
   position: absolute;
-  inset: -15%;
+  inset: -12%;
   z-index: -1;
   background:
-    radial-gradient(circle at 20% 25%, rgba(13, 141, 247, 0.22) 0%, transparent 45%),
-    radial-gradient(circle at 80% 0%, rgba(20, 184, 166, 0.2) 0%, transparent 50%),
-    linear-gradient(160deg, #edf4ff 0%, #f5fbff 52%, #e8f3ff 100%);
+    radial-gradient(circle at 18% 24%, rgba(15, 124, 214, 0.22) 0%, transparent 44%),
+    radial-gradient(circle at 78% 0%, rgba(16, 156, 139, 0.2) 0%, transparent 48%),
+    linear-gradient(170deg, #e8f0fa 0%, #f3f8ff 56%, #e5eef9 100%);
+}
+
+@media (max-width: 760px) {
+  .login-page {
+    min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height) - (var(--space-3) * 2));
+  }
 }

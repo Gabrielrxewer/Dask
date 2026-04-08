@@ -1,25 +1,18 @@
 {
-  "name": "dask-fsd-board",
+  "name": "dask-monorepo",
   "private": true,
-  "version": "0.0.1",
-  "type": "module",
+  "version": "0.1.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "@types/node": "^22.15.0",
-    "@types/react": "^18.3.20",
-    "@types/react-dom": "^18.3.5",
-    "typescript": "^5.8.3",
-    "vite": "^5.4.11"
+    "dev:app": "npm --prefix dask-app run dev",
+    "dev:api": "npm --prefix dask-api run dev",
+    "build:app": "npm --prefix dask-app run build",
+    "build:api": "npm --prefix dask-api run build",
+    "typecheck:app": "npm --prefix dask-app run typecheck",
+    "typecheck:api": "npm --prefix dask-api run typecheck",
+    "test:app": "npm --prefix dask-app run test",
+    "test:api": "npm --prefix dask-api run test",
+    "check:app": "npm --prefix dask-app run check",
+    "check:api": "npm --prefix dask-api run check",
+    "check:all": "npm run check:app && npm run check:api"
   }
 }

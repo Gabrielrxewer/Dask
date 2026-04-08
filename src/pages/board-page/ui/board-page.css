@@ -8,6 +8,15 @@
   background: linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
 }
 
+.board-loading {
+  border: 1px dashed #b9d6f3;
+  background: #f3f8ff;
+  color: #2d5b87;
+  border-radius: 14px;
+  padding: 18px;
+  font-size: 0.9rem;
+}
+
 .board-mode-switch__button {
   border: 1px solid #d3e4f8;
   background: #ffffff;

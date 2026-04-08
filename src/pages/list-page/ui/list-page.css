@@ -1,8 +1,9 @@
 .list-view {
   border: 1px solid #dce8f7;
-  border-radius: 14px;
+  border-radius: 16px;
   background: #ffffff;
   overflow: hidden;
+  box-shadow: 0 12px 26px rgba(18, 58, 96, 0.08);
 }
 
 .list-view__header,
@@ -15,7 +16,7 @@
 }
 
 .list-view__header {
-  background: #f3f8ff;
+  background: #f4f8ff;
   border-bottom: 1px solid #dce8f7;
   color: #53708e;
   font-size: 0.76rem;
@@ -29,6 +30,11 @@
 
 .list-view__row {
   border-top: 1px solid #edf3fb;
+  transition: background 0.15s ease;
+}
+
+.list-view__row:hover {
+  background: #f8fbff;
 }
 
 .list-view__row:first-child {
@@ -71,6 +77,12 @@
   background: #f8fbff;
   color: #2b5177;
   padding: 6px 8px;
+}
+
+.list-view__empty {
+  padding: 18px;
+  color: #4c6d8f;
+  font-size: 0.88rem;
 }
 
 .list-view__owner,

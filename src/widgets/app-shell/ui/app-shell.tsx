@@ -86,7 +86,7 @@ export function AppShell({
             <h1 className="workspace__title">{pageTitle}</h1>
           </div>
 
-          {hasFilter ? (
+          {hasFilter && filter && onFilterQueryChange && onMineToggle ? (
             <DashboardFilter
               query={filter.query}
               mineOnly={filter.mineOnly}

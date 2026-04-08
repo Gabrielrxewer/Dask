@@ -2,11 +2,13 @@
   --bg: #f1f6fb;
   --bg-deep: #0a1d33;
   --panel: #ffffff;
+  --panel-elevated: #f8fbff;
   --panel-soft: #eef5ff;
   --text: #142233;
   --text-soft: #5f7085;
   --line: #d7e3f2;
   --accent: #0d8df7;
+  --accent-soft: #e8f4ff;
   --accent-2: #14b8a6;
   --danger: #ef4444;
   --warn: #f59e0b;
@@ -14,6 +16,8 @@
   --radius-xl: 22px;
   --radius-lg: 16px;
   --radius-md: 12px;
+  --radius-sm: 10px;
   --shadow-1: 0 14px 40px rgba(24, 58, 97, 0.1);
   --shadow-2: 0 10px 26px rgba(6, 38, 77, 0.08);
+  --focus: 0 0 0 3px color-mix(in oklab, var(--accent) 24%, transparent);
 }

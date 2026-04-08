@@ -6,9 +6,10 @@
   border-radius: 12px;
   padding: 0 12px;
   color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .shared-input:focus {
-  outline: 2px solid color-mix(in oklab, var(--accent) 40%, transparent);
   border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+  background: #fcfeff;
 }

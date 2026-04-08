@@ -16,9 +16,18 @@ body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   color: var(--text);
   background: radial-gradient(circle at 20% 0%, #d9ebff 0%, #f4f8ff 38%, #e9f2ff 100%);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+:where(button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }

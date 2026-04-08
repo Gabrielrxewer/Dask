@@ -262,7 +262,6 @@ model SearchDocument {
   boardId         String
   content         String
   metadata        Json?
-  embedding       Unsupported("vector(1536)")?
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
   item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)

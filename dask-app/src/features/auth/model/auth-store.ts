@@ -31,6 +31,10 @@ export class AuthStore {
   private readonly transport: SessionTransport;
   private readonly listeners = new Set<AuthListener>();
   private state: AuthState = initialState;
+  private snapshot: AuthSnapshot = {
+    ...initialState,
+    isAuthenticated: false
+  };
   private bootstrapInFlight: Promise<void> | null = null;
   private refreshInFlight: Promise<string | null> | null = null;
 
@@ -47,10 +51,7 @@ export class AuthStore {
   }
 
   public getSnapshot(): AuthSnapshot {
-    return {
-      ...this.state,
-      isAuthenticated: this.state.status === "authenticated"
-    };
+    return this.snapshot;
   }
 
   public async bootstrap(): Promise<void> {
@@ -393,6 +394,10 @@ export class AuthStore {
 
   private setState(updater: (prev: AuthState) => AuthState): void {
     this.state = updater(this.state);
+    this.snapshot = {
+      ...this.state,
+      isAuthenticated: this.state.status === "authenticated"
+    };
     this.listeners.forEach(listener => listener());
   }
 }

@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { GlobalLayout } from "@/app/layout/global-layout";
 import { PublicRoute, ProtectedRoute } from "@/features/auth";
 import { WorkspaceProvider } from "@/modules/workspace";
 import { BoardPage } from "@/pages/board-page";
@@ -20,30 +21,32 @@ export function RouterProvider() {
   return (
     <BrowserRouter basename={getRouterBase()}>
       <Routes>
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-
-        <Route element={<ProtectedRoute />}>
+        <Route element={<GlobalLayout />}>
           <Route
+            path="/login"
             element={
-              <WorkspaceProvider>
-                <Outlet />
-              </WorkspaceProvider>
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
             }
-          >
-            <Route path="/" element={<Navigate replace to="/board" />} />
-            <Route path="/board" element={<BoardPage />} />
-            <Route path="/list" element={<ListPage />} />
-            <Route path="/timeline" element={<TimelinePage />} />
-            <Route path="/automations" element={<AutomationsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate replace to="/board" />} />
+          />
+
+          <Route element={<ProtectedRoute />}>
+            <Route
+              element={
+                <WorkspaceProvider>
+                  <Outlet />
+                </WorkspaceProvider>
+              }
+            >
+              <Route path="/" element={<Navigate replace to="/board" />} />
+              <Route path="/board" element={<BoardPage />} />
+              <Route path="/list" element={<ListPage />} />
+              <Route path="/timeline" element={<TimelinePage />} />
+              <Route path="/automations" element={<AutomationsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate replace to="/board" />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

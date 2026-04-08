@@ -45,7 +45,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  z-index: 40;
+  z-index: 120;
 }
 
 .shared-modal-shell {

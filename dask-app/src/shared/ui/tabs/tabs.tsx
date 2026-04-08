@@ -1,18 +1,16 @@
-type TabId = string;
-
-interface TabsItem {
-  id: TabId;
+interface TabsItem<T extends string> {
+  id: T;
   label: string;
 }
 
-interface TabsProps {
-  value: TabId;
-  items: TabsItem[];
-  onChange: (id: TabId) => void;
+interface TabsProps<T extends string> {
+  value: T;
+  items: Array<TabsItem<T>>;
+  onChange: (id: T) => void;
   className?: string;
 }
 
-export function Tabs({ value, items, onChange, className = "" }: TabsProps) {
+export function Tabs<T extends string>({ value, items, onChange, className = "" }: TabsProps<T>) {
   return (
     <div className={`shared-tabs ${className}`.trim()}>
       {items.map(item => (

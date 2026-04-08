@@ -131,23 +131,6 @@ export function TaskDetailsModal({
     ]);
   }, [task.id, task.text]);
 
-  useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleEsc);
-
-    return () => {
-      window.removeEventListener("keydown", handleEsc);
-      document.body.style.overflow = originalOverflow;
-    };
-  }, [onClose]);
-
   const handleGenerateSuggestion = () => {
     setAiSuggestion(createAiSuggestion(descriptionDraft));
   };

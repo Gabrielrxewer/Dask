@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { priorityMeta, taskPriorityOptions, type TaskPriority } from "@/entities/task";
 import type { CreateTaskInput } from "@/modules/workspace";
@@ -47,28 +47,6 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
   const [priority, setPriority] = useState<TaskPriority>(2);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
-    };
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    window.addEventListener("keydown", onEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onEscape);
-    };
-  }, [isOpen]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {

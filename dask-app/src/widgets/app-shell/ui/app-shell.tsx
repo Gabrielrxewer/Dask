@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
+import { useGlobalChrome } from "@/app/layout/global-chrome-context";
 import type { BoardMetrics } from "@/entities/task";
 import { useAuth, useLogout } from "@/features/auth";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
@@ -50,6 +51,7 @@ export function AppShell({
   noPageScroll = false,
   children
 }: AppShellProps) {
+  const { isSidebarCollapsed, isSidebarOpen, closeNavigation } = useGlobalChrome();
   const filterProps =
     filter && onFilterQueryChange && onMineToggle
       ? {
@@ -65,8 +67,13 @@ export function AppShell({
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
 
   return (
-    <div className={`app-shell ${noPageScroll ? "app-shell--no-scroll" : ""}`.trim()}>
+    <div
+      className={`app-shell ${noPageScroll ? "app-shell--no-scroll" : ""} ${
+        isSidebarCollapsed ? "app-shell--nav-collapsed" : ""
+      } ${isSidebarOpen ? "app-shell--nav-open" : ""}`.trim()}
+    >
       <div className="app-shell__noise" />
+      <button type="button" className="app-shell__nav-backdrop" aria-label="Fechar menu" onClick={closeNavigation} />
 
       <aside className="sidebar">
         <div className="sidebar__brand">
@@ -87,6 +94,7 @@ export function AppShell({
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  onClick={closeNavigation}
                   className={({ isActive }) =>
                     `sidebar__menu-link ${isActive ? "sidebar__menu-link--active" : ""}`.trim()
                   }

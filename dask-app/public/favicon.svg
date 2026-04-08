@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="dask-g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a86e8"/>
+      <stop offset="100%" stop-color="#22c7b8"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#dask-g)"/>
+  <path d="M23 20h11c8 0 13 5 13 12s-5 12-13 12H23V20Zm10.5 18c4.6 0 7.5-2.2 7.5-6s-2.9-6-7.5-6H29v12h4.5Z" fill="#062036"/>
+</svg>

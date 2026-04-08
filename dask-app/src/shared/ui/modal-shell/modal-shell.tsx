@@ -18,12 +18,10 @@ export function ModalShell({ titleId, className = "", onClose, children }: Modal
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    document.body.classList.add("has-modal-open");
     window.addEventListener("keydown", onEscape);
 
     return () => {
       window.removeEventListener("keydown", onEscape);
-      document.body.classList.remove("has-modal-open");
       document.body.style.overflow = previousOverflow;
     };
   }, [onClose]);

@@ -161,10 +161,6 @@
   font-size: var(--font-size-2xs);
 }
 
-body.has-modal-open .global-layout__surface {
-  filter: blur(3px);
-}
-
 @media (max-width: 1140px) {
   .global-layout__main {
     padding-left: var(--space-3);

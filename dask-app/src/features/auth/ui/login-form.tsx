@@ -42,7 +42,6 @@ export function LoginForm() {
   return (
     <section className="auth-login">
       <div className="auth-login__header">
-        <p className="auth-login__eyebrow">Acesso seguro</p>
         <h1 className="auth-login__title">Entrar na plataforma</h1>
         <p className="auth-login__subtitle">Use sua conta para acessar o workspace com seguranca e continuidade.</p>
       </div>

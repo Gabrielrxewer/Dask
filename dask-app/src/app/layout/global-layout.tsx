@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { GlobalChromeProvider } from "@/app/layout";
-import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
+import daskLogoFullOnDark from "@/shared/assets/dask-logo-full-on-dark.svg";
 import "./global-layout.css";
 
 function isCompactViewport(): boolean {
@@ -138,8 +138,7 @@ export function GlobalLayout() {
                 </span>
               </button>
               <div className="global-header__brand">
-                <img className="global-header__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
-                <strong>Dask</strong>
+                <img className="global-header__brand-full" src={daskLogoFullOnDark} alt="Logo Dask" />
               </div>
             </div>
 
@@ -155,7 +154,7 @@ export function GlobalLayout() {
                 disabled={isLoginRoute}
               >
                 <span className="global-header__user-avatar" aria-hidden="true">
-                  <span className="global-header__user-avatar-text">{profileInitials}</span>
+                  <span className="global-header__user-avatar-icon" />
                 </span>
                 {status === "authenticated" ? (
                   <span className="global-header__user-name">{profileLabel}</span>
@@ -208,15 +207,16 @@ export function GlobalLayout() {
             </div>
           </header>
 
-          <main className={`global-layout__main ${isBoardRoute ? "global-layout__main--no-scroll" : ""}`.trim()}>
+          <main
+            className={`global-layout__main ${isBoardRoute ? "global-layout__main--no-scroll" : ""} ${
+              isLoginRoute ? "global-layout__main--login" : ""
+            }`.trim()}
+          >
             <Outlet />
           </main>
 
           <footer className="global-footer">
-            <p className="global-footer__brand">
-              <img className="global-footer__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
-              <span>Dask Platform</span>
-            </p>
+            <img className="global-footer__brand" src={daskLogoFullOnDark} alt="Logo Dask" />
           </footer>
         </div>
       </div>

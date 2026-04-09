@@ -20,7 +20,7 @@ export function SettingsPage() {
   const visibleFieldsCount = visibleFields.size;
 
   return (
-    <AppShell metrics={metrics} noPageScroll pageTitle="Configuracoes do workspace" pageLabel="Admin">
+    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes do workspace" pageLabel="Admin">
       <div className="settings-page">
         <BoardMetrics
           metrics={metrics}

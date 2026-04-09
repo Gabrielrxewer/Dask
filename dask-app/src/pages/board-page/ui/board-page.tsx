@@ -272,9 +272,6 @@ export function BoardPage() {
 
   const topNavigation = (
     <section className="board-top-nav" aria-label="Navegacao de visao operacional">
-      <div className="board-top-nav__head">
-        <strong>Visao operacional</strong>
-      </div>
       <Tabs
         value={mode}
         items={modeOptions.map(option => ({ id: option.id, label: option.label }))}

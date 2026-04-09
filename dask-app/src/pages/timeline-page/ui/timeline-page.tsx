@@ -70,6 +70,7 @@ export function TimelinePage() {
     <AppShell
       metrics={metrics}
       noPageScroll
+      hideSidebarBrandMark
       pageTitle="Linha do tempo"
       filter={filter}
       onFilterQueryChange={setFilterQuery}

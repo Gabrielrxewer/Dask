@@ -16,7 +16,7 @@ export function AutomationsPage() {
   const pausedAutomations = automations.filter(item => item.status === "paused").length;
 
   return (
-    <AppShell metrics={metrics} noPageScroll pageTitle="Automacoes" pageLabel="Automation Hub">
+    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Automacoes" pageLabel="Automation Hub">
       <div className="automations-view">
         <BoardMetrics
           metrics={metrics}

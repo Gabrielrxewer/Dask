@@ -9,17 +9,16 @@
 
 .board-top-nav {
   display: grid;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 0;
+  margin-bottom: 0;
 }
 
-.board-top-nav__head strong {
-  display: inline-block;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #6c84a0;
+.workspace__top-nav:has(.board-top-nav) {
+  margin-bottom: calc(var(--space-3) * -1);
+}
+
+.workspace__top-nav:has(.board-top-nav) + .shared-page-header {
+  margin-bottom: var(--space-2);
 }
 
 .board-top-nav__tabs.shared-tabs {

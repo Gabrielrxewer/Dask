@@ -21,7 +21,7 @@
 
 .sidebar {
   position: fixed;
-  top: var(--global-header-height);
+  top: calc(var(--global-header-height) - 1px);
   bottom: var(--global-footer-height);
   left: 0;
   width: min(var(--sidebar-width), 90vw);

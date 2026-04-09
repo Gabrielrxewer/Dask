@@ -47,6 +47,7 @@ export function ListPage() {
     <AppShell
       metrics={metrics}
       noPageScroll
+      hideSidebarBrandMark
       pageTitle="Lista de itens"
       filter={filter}
       onFilterQueryChange={setFilterQuery}

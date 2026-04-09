@@ -1,4 +1,3 @@
-import { appConfig } from "@/shared/config/env";
 import { isApiError } from "@/shared/api/http-client";
 import { createSessionTransport, type SessionTransport } from "@/shared/lib/auth/session-transport";
 import { authService } from "@/features/auth/api/auth-service";
@@ -11,6 +10,7 @@ type AuthListener = () => void;
 
 interface RefreshOptions {
   setRefreshingState: boolean;
+  onUnauthorized: "expire-session" | "unauthenticated";
 }
 
 export interface AuthStoreDependencies {
@@ -25,6 +25,26 @@ const initialState: AuthState = {
   sessionNotice: null,
   errorMessage: null
 };
+
+const CSRF_COOKIE_NAME = "dask-csrf";
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const cookie = document.cookie
+    .split(";")
+    .map(entry => entry.trim())
+    .find(entry => entry.startsWith(`${name}=`));
+
+  if (!cookie) {
+    return null;
+  }
+
+  const value = cookie.slice(name.length + 1);
+  return value ? decodeURIComponent(value) : null;
+}
 
 export class AuthStore {
   private readonly authService: AuthServiceContract;
@@ -82,8 +102,7 @@ export class AuthStore {
 
     const result = await this.authService.register(input);
     this.transport.setTokens({
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken
+      accessToken: result.accessToken
     });
 
     this.setState(prev => ({
@@ -105,8 +124,7 @@ export class AuthStore {
     try {
       const result = await this.authService.login(input);
       this.transport.setTokens({
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken
+        accessToken: result.accessToken
       });
 
       this.setState(prev => ({
@@ -135,10 +153,6 @@ export class AuthStore {
       return;
     }
 
-    const refreshToken = this.transport.getRefreshToken();
-    const shouldCallLogout =
-      appConfig.authTransportMode === "cookie-session" || Boolean(refreshToken);
-
     this.setState(prev => ({
       ...prev,
       status: "logout_in_progress",
@@ -148,9 +162,7 @@ export class AuthStore {
     this.transport.clear();
 
     try {
-      if (shouldCallLogout) {
-        await this.authService.logout({ refreshToken: refreshToken ?? undefined });
-      }
+      await this.authService.logout({});
     } finally {
       this.setState(prev => ({
         ...prev,
@@ -191,7 +203,8 @@ export class AuthStore {
 
   public async refreshAccessToken(): Promise<string | null> {
     return this.refreshTokens({
-      setRefreshingState: this.state.status === "authenticated"
+      setRefreshingState: this.state.status === "authenticated",
+      onUnauthorized: "expire-session"
     });
   }
 
@@ -212,25 +225,17 @@ export class AuthStore {
   }
 
   public getCsrfToken(): string | null {
-    return null;
+    return readCookie(CSRF_COOKIE_NAME);
   }
 
   private async performBootstrap(): Promise<void> {
     const hasAccessToken = Boolean(this.transport.getAccessToken());
-    const hasRefreshToken = Boolean(this.transport.getRefreshToken());
 
-    if (!hasAccessToken && !hasRefreshToken) {
-      this.setState(prev => ({
-        ...prev,
-        status: "unauthenticated",
-        user: null,
-        initialized: true
-      }));
-      return;
-    }
-
-    if (!hasAccessToken && hasRefreshToken) {
-      const refreshedAccessToken = await this.refreshTokens({ setRefreshingState: false });
+    if (!hasAccessToken) {
+      const refreshedAccessToken = await this.refreshTokens({
+        setRefreshingState: false,
+        onUnauthorized: "unauthenticated"
+      });
       if (!refreshedAccessToken) {
         return;
       }
@@ -248,7 +253,10 @@ export class AuthStore {
       }));
     } catch (error) {
       if (this.isUnauthorized(error)) {
-        const refreshedAccessToken = await this.refreshTokens({ setRefreshingState: false });
+        const refreshedAccessToken = await this.refreshTokens({
+          setRefreshingState: false,
+          onUnauthorized: "expire-session"
+        });
         if (!refreshedAccessToken) {
           return;
         }
@@ -298,13 +306,6 @@ export class AuthStore {
       return this.refreshInFlight;
     }
 
-    const refreshToken = this.transport.getRefreshToken();
-
-    if (appConfig.authTransportMode !== "cookie-session" && !refreshToken) {
-      this.expireSession();
-      return null;
-    }
-
     if (options.setRefreshingState) {
       this.setState(prev => ({
         ...prev,
@@ -314,9 +315,11 @@ export class AuthStore {
     }
 
     const run = this.authService
-      .refresh({ refreshToken: refreshToken ?? undefined })
+      .refresh({})
       .then(tokens => {
-        this.transport.setTokens(tokens);
+        this.transport.setTokens({
+          accessToken: tokens.accessToken
+        });
 
         if (options.setRefreshingState && this.state.user) {
           this.setState(prev => ({
@@ -331,7 +334,19 @@ export class AuthStore {
       })
       .catch(error => {
         if (this.isUnauthorized(error)) {
-          this.expireSession();
+          if (options.onUnauthorized === "expire-session") {
+            this.expireSession();
+          } else {
+            this.transport.clear();
+            this.setState(prev => ({
+              ...prev,
+              status: "unauthenticated",
+              user: null,
+              initialized: true,
+              sessionNotice: null,
+              errorMessage: null
+            }));
+          }
           return null;
         }
 

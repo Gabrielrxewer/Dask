@@ -12,26 +12,24 @@ export interface RegisterInput {
 }
 
 export interface RefreshInput {
-  refreshToken?: string;
 }
 
 export interface LogoutInput {
-  refreshToken?: string;
 }
 
-export interface AuthTokenPair {
+export interface RefreshResponse {
   accessToken: string;
-  refreshToken: string;
 }
 
-export interface AuthSuccessResponse extends AuthTokenPair {
+export interface AuthSuccessResponse {
+  accessToken: string;
   user: AuthenticatedUser;
 }
 
 export interface AuthServiceContract {
   register: (input: RegisterInput) => Promise<AuthSuccessResponse>;
   login: (input: LoginInput) => Promise<AuthSuccessResponse>;
-  refresh: (input: RefreshInput) => Promise<AuthTokenPair>;
+  refresh: (input: RefreshInput) => Promise<RefreshResponse>;
   logout: (input: LogoutInput) => Promise<void>;
   logoutAll: () => Promise<void>;
   me: () => Promise<AuthenticatedUser>;

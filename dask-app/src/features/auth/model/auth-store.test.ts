@@ -1,29 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/api/http-client";
 import { AuthStore } from "@/features/auth/model/auth-store";
-import type { AuthServiceContract, AuthSuccessResponse, AuthTokenPair } from "@/features/auth/api/types";
-import type { SessionTokenPair, SessionTransport } from "@/shared/lib/auth/session-transport";
+import type { AuthServiceContract, AuthSuccessResponse, RefreshResponse } from "@/features/auth/api/types";
+import type { SessionTokens, SessionTransport } from "@/shared/lib/auth/session-transport";
 
 class MemoryTransport implements SessionTransport {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
 
   public getAccessToken(): string | null {
     return this.accessToken;
   }
 
-  public getRefreshToken(): string | null {
-    return this.refreshToken;
-  }
-
-  public setTokens(tokens: SessionTokenPair): void {
+  public setTokens(tokens: SessionTokens): void {
     this.accessToken = tokens.accessToken;
-    this.refreshToken = tokens.refreshToken;
   }
 
   public clear(): void {
     this.accessToken = null;
-    this.refreshToken = null;
   }
 }
 
@@ -35,15 +28,14 @@ const mockUser = {
   updatedAt: "2026-04-01T00:00:00.000Z"
 };
 
-const tokenPair: AuthTokenPair = {
-  accessToken: "access-token",
-  refreshToken: "refresh-token"
+const tokenPair: RefreshResponse = {
+  accessToken: "access-token"
 };
 
 function authSuccess(overrides: Partial<AuthSuccessResponse> = {}): AuthSuccessResponse {
   return {
     user: mockUser,
-    ...tokenPair,
+    accessToken: tokenPair.accessToken,
     ...overrides
   };
 }
@@ -74,7 +66,6 @@ describe("AuthStore", () => {
     expect(snapshot.isAuthenticated).toBe(true);
     expect(snapshot.user?.email).toBe("ana@example.com");
     expect(transport.getAccessToken()).toBe("access-token");
-    expect(transport.getRefreshToken()).toBe("refresh-token");
   });
 
   it("maps login failure to a safe user message", async () => {
@@ -94,7 +85,6 @@ describe("AuthStore", () => {
     expect(snapshot.status).toBe("unauthenticated");
     expect(snapshot.errorMessage).toBe("Credenciais invalidas.");
     expect(transport.getAccessToken()).toBeNull();
-    expect(transport.getRefreshToken()).toBeNull();
   });
 
   it("bootstraps an existing session by loading /me", async () => {
@@ -120,10 +110,7 @@ describe("AuthStore", () => {
     vi.mocked(service.me)
       .mockRejectedValueOnce(new ApiError({ status: 401, message: "expired token" }))
       .mockResolvedValueOnce(mockUser);
-    vi.mocked(service.refresh).mockResolvedValue({
-      accessToken: "fresh-access-token",
-      refreshToken: "fresh-refresh-token"
-    });
+    vi.mocked(service.refresh).mockResolvedValue({ accessToken: "fresh-access-token" });
 
     const store = new AuthStore({ authService: service, transport });
     await store.bootstrap();
@@ -140,8 +127,8 @@ describe("AuthStore", () => {
     const transport = new MemoryTransport();
     transport.setTokens(tokenPair);
 
-    let resolveRefresh: (value: AuthTokenPair) => void = () => {};
-    const refreshPromise = new Promise<AuthTokenPair>(resolve => {
+    let resolveRefresh: (value: RefreshResponse) => void = () => {};
+    const refreshPromise = new Promise<RefreshResponse>(resolve => {
       resolveRefresh = value => resolve(value);
     });
     vi.mocked(service.refresh).mockReturnValue(refreshPromise);
@@ -151,10 +138,7 @@ describe("AuthStore", () => {
     const first = store.refreshAccessToken();
     const second = store.refreshAccessToken();
 
-    resolveRefresh({
-      accessToken: "new-access-token",
-      refreshToken: "new-refresh-token"
-    });
+    resolveRefresh({ accessToken: "new-access-token" });
 
     const [firstResult, secondResult] = await Promise.all([first, second]);
     expect(firstResult).toBe("new-access-token");
@@ -179,7 +163,6 @@ describe("AuthStore", () => {
     expect(snapshot.status).toBe("session_expired");
     expect(snapshot.sessionNotice).toContain("sessao expirou");
     expect(transport.getAccessToken()).toBeNull();
-    expect(transport.getRefreshToken()).toBeNull();
   });
 
   it("logs out and clears local session state", async () => {
@@ -201,7 +184,7 @@ describe("AuthStore", () => {
     const snapshot = store.getSnapshot();
     expect(snapshot.status).toBe("unauthenticated");
     expect(snapshot.user).toBeNull();
-    expect(service.logout).toHaveBeenCalledWith({ refreshToken: "refresh-token" });
+    expect(service.logout).toHaveBeenCalledWith({});
     expect(transport.getAccessToken()).toBeNull();
     expect(statuses).toContain("logout_in_progress");
   });
@@ -219,6 +202,6 @@ describe("AuthStore", () => {
     const snapshot = store.getSnapshot();
     expect(service.logoutAll).toHaveBeenCalledTimes(1);
     expect(snapshot.status).toBe("unauthenticated");
-    expect(transport.getRefreshToken()).toBeNull();
+    expect(transport.getAccessToken()).toBeNull();
   });
 });

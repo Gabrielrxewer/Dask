@@ -4,28 +4,21 @@ import { MemoryRouter } from "react-router-dom";
 import { AuthProvider, AuthStore } from "@/features/auth";
 import { LoginForm } from "@/features/auth/ui/login-form";
 import type { AuthServiceContract } from "@/features/auth/api/types";
-import type { SessionTokenPair, SessionTransport } from "@/shared/lib/auth/session-transport";
+import type { SessionTokens, SessionTransport } from "@/shared/lib/auth/session-transport";
 
 class MemoryTransport implements SessionTransport {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
 
   public getAccessToken(): string | null {
     return this.accessToken;
   }
 
-  public getRefreshToken(): string | null {
-    return this.refreshToken;
-  }
-
-  public setTokens(tokens: SessionTokenPair): void {
+  public setTokens(tokens: SessionTokens): void {
     this.accessToken = tokens.accessToken;
-    this.refreshToken = tokens.refreshToken;
   }
 
   public clear(): void {
     this.accessToken = null;
-    this.refreshToken = null;
   }
 }
 

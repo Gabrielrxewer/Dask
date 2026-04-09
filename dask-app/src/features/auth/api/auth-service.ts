@@ -1,44 +1,14 @@
-import { appConfig } from "@/shared/config/env";
-import { ApiError, apiClient } from "@/shared/api/http-client";
+import { apiClient } from "@/shared/api/http-client";
+import type { AuthenticatedUser } from "@/entities/user";
 import type {
   AuthServiceContract,
   AuthSuccessResponse,
-  AuthTokenPair,
   LoginInput,
   LogoutInput,
+  RefreshResponse,
   RefreshInput,
   RegisterInput
 } from "@/features/auth/api/types";
-
-function buildRefreshPayload(input: RefreshInput): RefreshInput | undefined {
-  if (appConfig.authTransportMode === "cookie-session") {
-    return undefined;
-  }
-
-  if (!input.refreshToken) {
-    throw new ApiError({
-      status: 401,
-      message: "Missing refresh token."
-    });
-  }
-
-  return { refreshToken: input.refreshToken };
-}
-
-function buildLogoutPayload(input: LogoutInput): LogoutInput | undefined {
-  if (appConfig.authTransportMode === "cookie-session") {
-    return undefined;
-  }
-
-  if (!input.refreshToken) {
-    throw new ApiError({
-      status: 401,
-      message: "Missing refresh token."
-    });
-  }
-
-  return { refreshToken: input.refreshToken };
-}
 
 export const authService: AuthServiceContract = {
   register(input: RegisterInput): Promise<AuthSuccessResponse> {
@@ -55,16 +25,16 @@ export const authService: AuthServiceContract = {
     });
   },
 
-  refresh(input: RefreshInput): Promise<AuthTokenPair> {
-    return apiClient.post<AuthTokenPair>("/auth/refresh", buildRefreshPayload(input), {
-      authMode: "none",
+  refresh(_input: RefreshInput): Promise<RefreshResponse> {
+    return apiClient.post<RefreshResponse>("/auth/refresh", undefined, {
+      authMode: "optional",
       retryOnUnauthorized: false
     });
   },
 
-  async logout(input: LogoutInput): Promise<void> {
-    await apiClient.post<void>("/auth/logout", buildLogoutPayload(input), {
-      authMode: "none",
+  async logout(_input: LogoutInput): Promise<void> {
+    await apiClient.post<void>("/auth/logout", undefined, {
+      authMode: "optional",
       retryOnUnauthorized: false
     });
   },
@@ -77,7 +47,7 @@ export const authService: AuthServiceContract = {
   },
 
   me() {
-    return apiClient.get<AuthSuccessResponse["user"]>("/auth/me", {
+    return apiClient.get<AuthenticatedUser>("/auth/me", {
       authMode: "required",
       retryOnUnauthorized: true
     });

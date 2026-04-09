@@ -18,7 +18,6 @@ export function LoginPage() {
           </div>
 
           <img className="login-page__logo" src={daskLogoFull} alt="Logo Dask" />
-          <p className="login-page__eyebrow">Gestao operacional conectada</p>
           <h2 className="login-page__title">Mais clareza e controle para a operacao industrial.</h2>
           <p className="login-page__subtitle">
             Centralize atividades, acompanhe prioridades e mantenha sua equipe alinhada em uma interface moderna,

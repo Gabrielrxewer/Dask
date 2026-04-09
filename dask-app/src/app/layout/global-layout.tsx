@@ -4,7 +4,7 @@ import { routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
-import daskLogoFullOnDark from "@/shared/assets/dask-logo-full-on-dark.svg";
+import daskWordmarkOnDark from "@/shared/assets/dask-wordmark-on-dark.svg";
 import "./global-layout.css";
 
 function isCompactViewport(): boolean {
@@ -139,7 +139,7 @@ export function GlobalLayout() {
                 </span>
               </button>
               <div className="global-header__brand">
-                <img className="global-header__brand-full" src={daskLogoFullOnDark} alt="Logo Dask" />
+                <img className="global-header__brand-full" src={daskWordmarkOnDark} alt="Dask" />
               </div>
             </div>
 
@@ -219,7 +219,9 @@ export function GlobalLayout() {
           </main>
 
           <footer className="global-footer">
-            <img className="global-footer__brand" src={daskLogoFullOnDark} alt="Logo Dask" />
+            <span className="global-footer__wordmark" aria-label="Dask">
+              Dask
+            </span>
           </footer>
         </div>
       </div>

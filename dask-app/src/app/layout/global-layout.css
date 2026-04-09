@@ -1,6 +1,6 @@
 :root {
   --global-header-height: 40px;
-  --global-footer-height: 28px;
+  --global-footer-height: 40px;
   --global-chrome-border: rgba(144, 190, 226, 0.34);
   --global-chrome-surface:
     radial-gradient(circle at 14% 0%, rgba(246, 145, 159, 0.18) 0%, transparent 24%),
@@ -156,7 +156,7 @@
 }
 
 .global-header__brand-full {
-  width: clamp(108px, 10.4vw, 126px);
+  width: clamp(94px, 9vw, 110px);
   height: 28px;
   display: block;
   align-self: center;
@@ -362,8 +362,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  padding: 0 12px;
+  gap: 12px;
+  padding: 0 18px;
   box-shadow:
     var(--global-chrome-shadow-bottom),
     0 1px 0 rgba(255, 255, 255, 0.05) inset;
@@ -373,17 +373,19 @@
   bottom: 0;
 }
 
-.global-footer__brand {
-  width: clamp(80px, 8vw, 92px);
-  height: 20px;
-  display: block;
-  align-self: center;
+.global-footer__wordmark {
   position: relative;
   z-index: 1;
-  object-fit: contain;
-  object-position: center;
-  opacity: 0.78;
-  filter: drop-shadow(0 2px 5px rgba(8, 28, 47, 0.14));
+  display: inline-block;
+  font-family: Aptos, "Segoe UI", Arial, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  color: #ffffff;
+  -webkit-text-stroke: 2px #2c78e6;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 8px rgba(11, 28, 46, 0.16);
 }
 
 @media (max-width: 1140px) {
@@ -409,7 +411,7 @@
 
 @media (max-width: 760px) {
   .global-header__brand-full {
-    width: 96px;
+    width: 88px;
     height: 26px;
   }
 
@@ -447,13 +449,12 @@
   }
 
   .global-footer {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
-  .global-footer__brand {
-    width: 74px;
-    height: 18px;
+  .global-footer__wordmark {
+    font-size: 0.98rem;
   }
 }
 

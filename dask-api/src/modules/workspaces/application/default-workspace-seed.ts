@@ -505,8 +505,8 @@ async function backfillLegacyItems(
     const legacyType = normalizeKey(item.type);
     const legacyState = normalizeKey(item.status);
 
-    const resolvedTypeSlug = legacyTypeMap[legacyType] ?? legacyType || 'task';
-    const resolvedStateSlug = legacyStatusMap[legacyState] ?? legacyState || 'backlog';
+    const resolvedTypeSlug = (legacyTypeMap[legacyType] ?? legacyType) || 'task';
+    const resolvedStateSlug = (legacyStatusMap[legacyState] ?? legacyState) || 'backlog';
     const resolvedColumnSlug = statusToColumnSlugMap[resolvedStateSlug] ?? 'backlog';
 
     const resolvedTypeId = item.typeId ?? typeBySlug.get(resolvedTypeSlug) ?? typeBySlug.get('task') ?? null;

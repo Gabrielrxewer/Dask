@@ -22,3 +22,16 @@ export const createTemplateDto = z.object({
   schema: z.record(z.unknown()),
   rules: z.record(z.unknown()).optional()
 });
+
+export const workspaceIdParamsDto = z.object({
+  workspaceId: z.string().uuid()
+});
+
+export const boardSnapshotParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  boardId: z.string().uuid()
+});
+
+export const boardSnapshotQueryDto = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional()
+});

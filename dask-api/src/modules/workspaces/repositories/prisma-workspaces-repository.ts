@@ -6,7 +6,12 @@ import {
   type PrismaClient,
   type Workspace
 } from '@prisma/client';
-import type { WorkspacesRepository } from '@/modules/workspaces/repositories/workspaces-repository';
+import type {
+  BoardSnapshot,
+  UserWorkspaceSummary,
+  WorkspaceBoardSummary,
+  WorkspacesRepository
+} from '@/modules/workspaces/repositories/workspaces-repository';
 
 export class PrismaWorkspacesRepository implements WorkspacesRepository {
   public constructor(private readonly prisma: PrismaClient) {}
@@ -69,5 +74,151 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
         rules: input.rules as Prisma.InputJsonValue | undefined
       }
     });
+  }
+
+  public async listUserWorkspaces(userId: string): Promise<UserWorkspaceSummary[]> {
+    const memberships = await this.prisma.workspaceMembership.findMany({
+      where: { userId },
+      select: {
+        role: true,
+        workspace: {
+          select: {
+            id: true,
+            organizationId: true,
+            name: true,
+            key: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        }
+      },
+      orderBy: {
+        workspace: {
+          updatedAt: 'desc'
+        }
+      }
+    });
+
+    return memberships.map((membership) => ({
+      id: membership.workspace.id,
+      organizationId: membership.workspace.organizationId,
+      name: membership.workspace.name,
+      key: membership.workspace.key,
+      role: membership.role,
+      createdAt: membership.workspace.createdAt,
+      updatedAt: membership.workspace.updatedAt
+    }));
+  }
+
+  public async getWorkspaceRoleForUser(
+    workspaceId: string,
+    userId: string
+  ): Promise<MembershipRole | null> {
+    const membership = await this.prisma.workspaceMembership.findFirst({
+      where: {
+        workspaceId,
+        userId
+      },
+      select: {
+        role: true
+      }
+    });
+
+    return membership?.role ?? null;
+  }
+
+  public async listBoardsByWorkspace(workspaceId: string): Promise<WorkspaceBoardSummary[]> {
+    const boards = await this.prisma.board.findMany({
+      where: { workspaceId },
+      include: {
+        _count: {
+          select: {
+            items: true,
+            columns: true
+          }
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    });
+
+    return boards.map((board) => ({
+      id: board.id,
+      workspaceId: board.workspaceId,
+      templateId: board.templateId,
+      name: board.name,
+      description: board.description,
+      createdAt: board.createdAt,
+      updatedAt: board.updatedAt,
+      itemCount: board._count.items,
+      columnCount: board._count.columns
+    }));
+  }
+
+  public async findBoardSnapshot(input: {
+    workspaceId: string;
+    boardId: string;
+    itemLimit: number;
+  }): Promise<BoardSnapshot | null> {
+    const board = await this.prisma.board.findFirst({
+      where: {
+        id: input.boardId,
+        workspaceId: input.workspaceId
+      },
+      include: {
+        columns: {
+          orderBy: {
+            position: 'asc'
+          }
+        },
+        items: {
+          orderBy: {
+            updatedAt: 'desc'
+          },
+          take: input.itemLimit
+        }
+      }
+    });
+
+    if (!board) {
+      return null;
+    }
+
+    return {
+      board: {
+        id: board.id,
+        workspaceId: board.workspaceId,
+        templateId: board.templateId,
+        name: board.name,
+        description: board.description,
+        config: board.config,
+        createdAt: board.createdAt,
+        updatedAt: board.updatedAt
+      },
+      columns: board.columns.map((column) => ({
+        id: column.id,
+        boardId: column.boardId,
+        name: column.name,
+        code: column.code,
+        position: column.position,
+        settings: column.settings
+      })),
+      items: board.items.map((item) => ({
+        id: item.id,
+        boardId: item.boardId,
+        workspaceId: item.workspaceId,
+        columnId: item.columnId,
+        type: item.type,
+        title: item.title,
+        description: item.description,
+        status: item.status,
+        fields: item.fields,
+        metadata: item.metadata,
+        createdBy: item.createdBy,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      }))
+    };
   }
 }

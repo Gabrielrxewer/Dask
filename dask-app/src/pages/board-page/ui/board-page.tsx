@@ -288,6 +288,7 @@ export function BoardPage() {
     <AppShell
       metrics={devMetrics}
       noPageScroll
+      hideSidebarBrandMark
       topNavigation={topNavigation}
       filter={filter}
       onFilterQueryChange={setQuery}

@@ -116,6 +116,7 @@ export function BoardColumns({
                       boardConfig={boardConfig}
                       compact={compactCards}
                       creatorName={resolveCreatorName(task)}
+                      assigneeName={membersById[task.assignee]?.name ?? "Usuario"}
                       assigneeSlot={<MemberAvatar member={membersById[task.assignee]} />}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}

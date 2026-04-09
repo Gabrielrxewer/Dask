@@ -10,6 +10,7 @@ interface TaskCardProps {
   boardConfig: BoardConfig;
   compact?: boolean;
   creatorName?: string;
+  assigneeName?: string;
   assigneeSlot?: ReactNode;
   onDragStart: (event: DragEvent<HTMLElement>, taskId: string) => void;
   onDragEnd: () => void;
@@ -19,14 +20,14 @@ interface TaskCardProps {
 }
 
 const taskTypeIconById: Record<string, string> = {
-  bug: "🐞",
-  "user-story": "📖",
-  incident: "🚨",
-  epic: "🧭",
-  hotfix: "🩹",
-  improvement: "✨",
-  spike: "🧪",
-  research: "🔎"
+  bug: "B",
+  "user-story": "US",
+  incident: "I",
+  epic: "E",
+  hotfix: "H",
+  improvement: "M",
+  spike: "S",
+  research: "R"
 };
 
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
@@ -35,7 +36,7 @@ function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFie
   }
 
   if (definition.type === "boolean") {
-    return value ? "Sim" : "Não";
+    return value ? "Sim" : "Nao";
   }
 
   if (value === null || typeof value === "undefined" || value === "") {
@@ -50,6 +51,7 @@ export function TaskCard({
   boardConfig,
   compact = false,
   creatorName,
+  assigneeName,
   assigneeSlot = null,
   onDragStart,
   onDragEnd,
@@ -75,13 +77,16 @@ export function TaskCard({
       (item): item is { definition: TaskFieldDefinition; value: TaskCustomFieldValue } =>
         Boolean(item.definition) && typeof item.value !== "undefined"
     )
-    .slice(0, 4);
+    .slice(0, 2);
 
   const canOpen = typeof onOpen === "function";
   const canUpdatePriority = typeof onUpdatePriority === "function";
   const nextPriority: TaskPriority = task.priority === 4 ? 0 : ((task.priority + 1) as TaskPriority);
   const authorLabel = creatorName ?? "Usuario";
-  const typeIcon = taskTypeIconById[task.type] ?? "📌";
+  const ownerLabel = assigneeName ?? authorLabel;
+  const typeIcon = taskTypeIconById[task.type] ?? "T";
+  const displayTags = task.tags.slice(0, 4);
+  const hiddenTagsCount = Math.max(task.tags.length - displayTags.length, 0);
 
   return (
     <article
@@ -142,7 +147,7 @@ export function TaskCard({
         <button
           className="task-card__ghost"
           type="button"
-          aria-label="Mais ações"
+          aria-label="Mais acoes"
           onClick={event => event.stopPropagation()}
         >
           ...
@@ -150,17 +155,29 @@ export function TaskCard({
       </header>
 
       <h4 className="task-card__title">{task.title}</h4>
-      {!compact ? <p className="task-card__text">{task.text}</p> : null}
+      {task.text ? <p className="task-card__text">{task.text}</p> : null}
+
+      <div className="task-card__summary">
+        <span className="task-card__summary-item">
+          <strong>Criado por</strong>
+          <span>{authorLabel}</span>
+        </span>
+        <span className="task-card__summary-item">
+          <strong>Responsavel</strong>
+          <span>{ownerLabel}</span>
+        </span>
+      </div>
 
       <div className="task-card__tags">
-        {task.tags.map(tag => (
+        {displayTags.map(tag => (
           <span className="task-card__tag" key={tag}>
             {tag}
           </span>
         ))}
+        {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
       </div>
 
-      {!compact && visibleFields.length > 0 ? (
+      {visibleFields.length > 0 ? (
         <div className="task-card__fields">
           {visibleFields.map(({ definition, value }) => (
             <span className="task-card__field" key={definition.id}>
@@ -172,9 +189,15 @@ export function TaskCard({
       ) : null}
 
       <footer className="task-card__footer">
-        {!compact ? assigneeSlot : <span className="task-card__creator">{`Criado por ${authorLabel}`}</span>}
+        <div className="task-card__owner">
+          {assigneeSlot}
+          <div className="task-card__owner-text">
+            <strong>Responsavel</strong>
+            <span>{ownerLabel}</span>
+          </div>
+        </div>
         <div className="task-card__meta">
-          {!compact ? <span>{`Checklist ${checklist.done}/${checklist.total}`}</span> : null}
+          <span>{`Checklist ${checklist.done}/${checklist.total}`}</span>
           <span>{`Prazo ${formatShortDate(task.due)}`}</span>
         </div>
       </footer>

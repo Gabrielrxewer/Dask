@@ -22,6 +22,7 @@ interface AppShellProps {
   onMineToggle?: () => void;
   onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
   noPageScroll?: boolean;
+  hideSidebarBrandMark?: boolean;
   children: ReactNode;
 }
 
@@ -53,6 +54,7 @@ export function AppShell({
   onMineToggle,
   onCreateTask,
   noPageScroll = false,
+  hideSidebarBrandMark = false,
   children
 }: AppShellProps) {
   const { isSidebarOpen, closeNavigation } = useGlobalChrome();
@@ -75,7 +77,9 @@ export function AppShell({
 
       <aside className="sidebar">
         <div className="sidebar__brand">
-          <img className="sidebar__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
+          {hideSidebarBrandMark ? null : (
+            <img className="sidebar__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
+          )}
           <div>
             <p className="sidebar__brand-title">Dask</p>
             <p className="sidebar__brand-subtitle">Universal Workflow</p>

@@ -4,20 +4,24 @@
   align-items: center;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
+  padding: 8px 4px 2px;
 }
 
 .shared-page-header__label {
   margin: 0;
-  color: var(--text-soft);
+  color: #6c84a0;
   font-size: var(--font-size-2xs);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   font-weight: 700;
 }
 
 .shared-page-header__title {
   margin: 2px 0 0;
-  font-size: clamp(1.18rem, 1rem + 0.4vw, 1.42rem);
+  font-size: clamp(1.42rem, 1.12rem + 0.72vw, 1.9rem);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: #10233f;
 }
 
 .shared-filter-bar {

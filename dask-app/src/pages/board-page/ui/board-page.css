@@ -9,17 +9,17 @@
 
 .board-top-nav {
   display: grid;
-  gap: 4px;
-  margin-bottom: 2px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .board-top-nav__head strong {
   display: inline-block;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #6a829a;
+  color: #6c84a0;
 }
 
 .board-top-nav__tabs.shared-tabs {
@@ -30,7 +30,7 @@
   flex-wrap: nowrap;
   gap: 0;
   overflow: hidden;
-  border-bottom: 1px solid #d8e4f1;
+  border-bottom: 1px solid rgba(187, 209, 230, 0.64);
   background: transparent;
 }
 
@@ -42,21 +42,21 @@
   background: transparent;
   min-height: 34px;
   padding: 0 8px;
-  color: #5c748d;
+  color: #58728e;
   font-size: 0.78rem;
   font-weight: 600;
   text-align: center;
 }
 
 .board-top-nav__tabs .shared-tabs__item:hover {
-  background: rgba(12, 89, 155, 0.05);
-  color: #2f587a;
+  background: rgba(255, 255, 255, 0.4);
+  color: #234667;
 }
 
 .board-top-nav__tabs .shared-tabs__item--active {
   background: transparent;
-  color: #1a73e8;
-  border-bottom-color: #1a73e8;
+  color: #2c78e6;
+  border-bottom-color: #2c78e6;
 }
 
 .board-view__metrics .shared-metric-card {

@@ -34,7 +34,7 @@ export function GlobalLayout() {
   const { user, status } = useAuth();
   const { logout, logoutAll, isSubmitting } = useLogout();
   const isLoginRoute = location.pathname === routePaths.login;
-  const isBoardRoute = location.pathname === routePaths.board;
+  const isAppRoute = !isLoginRoute;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -211,7 +211,7 @@ export function GlobalLayout() {
           <main
             className={cn(
               "global-layout__main",
-              isBoardRoute && "global-layout__main--no-scroll",
+              isAppRoute && "global-layout__main--no-scroll",
               isLoginRoute && "global-layout__main--login"
             )}
           >

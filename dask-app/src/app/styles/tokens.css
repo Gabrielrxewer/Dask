@@ -17,6 +17,18 @@
   --brand-gradient-soft: linear-gradient(130deg, #a8dbff 0%, #9df2df 100%);
   --brand-gradient-main: linear-gradient(130deg, #0b426f 0%, #0a79bd 52%, #0f9f98 100%);
   --brand-gradient-main-hover: linear-gradient(130deg, #09375e 0%, #096aaa 52%, #0c8f89 100%);
+  --brand-gradient-login: linear-gradient(135deg, #0f3f70 0%, #2c78e6 38%, #7d61ee 68%, #28cfc7 100%);
+  --brand-gradient-login-hover: linear-gradient(135deg, #0e3a66 0%, #276dd5 38%, #7357df 68%, #25bfb9 100%);
+  --ambient-surface:
+    radial-gradient(circle at 16% 24%, rgba(247, 145, 159, 0.16) 0%, rgba(247, 145, 159, 0.02) 26%, transparent 44%),
+    radial-gradient(circle at 80% 20%, rgba(125, 97, 238, 0.13) 0%, rgba(125, 97, 238, 0.02) 24%, transparent 42%),
+    radial-gradient(circle at 72% 74%, rgba(48, 213, 205, 0.1) 0%, rgba(48, 213, 205, 0.02) 26%, transparent 46%),
+    linear-gradient(135deg, rgba(247, 145, 159, 0.08) 0%, rgba(165, 96, 234, 0.06) 28%, rgba(44, 120, 230, 0.08) 58%, rgba(48, 213, 205, 0.1) 100%),
+    linear-gradient(180deg, #f8fbff 0%, #eef5fd 52%, #e9f3fb 100%);
+  --glass-surface: linear-gradient(180deg, rgba(248, 251, 255, 0.84) 0%, rgba(243, 248, 255, 0.78) 100%);
+  --glass-surface-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 249, 255, 0.86) 100%);
+  --glass-border: rgba(186, 206, 227, 0.72);
+  --glass-highlight: rgba(255, 255, 255, 0.86);
   --chrome-surface: linear-gradient(180deg, rgba(6, 31, 52, 0.94) 0%, rgba(7, 42, 68, 0.92) 100%);
   --chrome-overlay: linear-gradient(125deg, rgba(33, 153, 201, 0.14), rgba(17, 121, 171, 0.08));
   --chrome-border: rgba(176, 207, 232, 0.44);
@@ -75,6 +87,6 @@
   --control-surface: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
   --control-surface-hover: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);
   --control-surface-active: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
-  --surface-raised: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
+  --surface-raised: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 249, 255, 0.84) 100%);
   --surface-muted: linear-gradient(180deg, #f8fbff 0%, #eef5fd 100%);
 }

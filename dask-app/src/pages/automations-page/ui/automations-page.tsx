@@ -16,61 +16,63 @@ export function AutomationsPage() {
   const pausedAutomations = automations.filter(item => item.status === "paused").length;
 
   return (
-    <AppShell metrics={metrics} pageTitle="Automacoes" pageLabel="Automation Hub">
-      <BoardMetrics
-        metrics={metrics}
-        cards={[
-          { label: "Automacoes ativas", value: activeAutomations },
-          { label: "Automacoes pausadas", value: pausedAutomations },
-          { label: "Execucoes hoje", value: 47 },
-          { label: "Falhas", value: 0 }
-        ]}
-      />
+    <AppShell metrics={metrics} noPageScroll pageTitle="Automacoes" pageLabel="Automation Hub">
+      <div className="automations-view">
+        <BoardMetrics
+          metrics={metrics}
+          cards={[
+            { label: "Automacoes ativas", value: activeAutomations },
+            { label: "Automacoes pausadas", value: pausedAutomations },
+            { label: "Execucoes hoje", value: 47 },
+            { label: "Falhas", value: 0 }
+          ]}
+        />
 
-      <Section
-        title="Catalogo de automacoes"
-        subtitle="Gerencie rotinas ativas, pause fluxos e valide execucoes em teste."
-        className="automations-view"
-      >
-        {isLoading ? (
-          <LoadingState text="Carregando workspace..." />
-        ) : automations.length === 0 ? (
-          <EmptyState>Nenhuma automacao configurada.</EmptyState>
-        ) : (
-          <div className="automations-view__grid">
-            {automations.map(item => {
-              const isActive = item.status === "active";
+        <Section
+          title="Catalogo de automacoes"
+          subtitle="Gerencie rotinas ativas, pause fluxos e valide execucoes em teste."
+          className="automations-view__section"
+        >
+          {isLoading ? (
+            <LoadingState text="Carregando workspace..." />
+          ) : automations.length === 0 ? (
+            <EmptyState>Nenhuma automacao configurada.</EmptyState>
+          ) : (
+            <div className="automations-view__grid">
+              {automations.map(item => {
+                const isActive = item.status === "active";
 
-              return (
-                <Card key={item.id} className="automations-view__card" variant="interactive">
-                  <header>
-                    <h3>{item.title}</h3>
-                    <StatusBadge tone={isActive ? "success" : "warning"}>{isActive ? "Ativa" : "Pausada"}</StatusBadge>
-                  </header>
-                  <p>
-                    <strong>Gatilho:</strong> {item.trigger}
-                  </p>
-                  <p>
-                    <strong>Acao:</strong> {item.action}
-                  </p>
-                  <footer>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void setAutomationStatus(item.id, isActive ? "paused" : "active")}
-                    >
-                      {isActive ? "Pausar" : "Ativar"}
-                    </Button>
-                    <Button type="button" variant="outline" size="sm">
-                      Executar teste
-                    </Button>
-                  </footer>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </Section>
+                return (
+                  <Card key={item.id} className="automations-view__card" variant="interactive">
+                    <header>
+                      <h3>{item.title}</h3>
+                      <StatusBadge tone={isActive ? "success" : "warning"}>{isActive ? "Ativa" : "Pausada"}</StatusBadge>
+                    </header>
+                    <p>
+                      <strong>Gatilho:</strong> {item.trigger}
+                    </p>
+                    <p>
+                      <strong>Acao:</strong> {item.action}
+                    </p>
+                    <footer>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void setAutomationStatus(item.id, isActive ? "paused" : "active")}
+                      >
+                        {isActive ? "Pausar" : "Ativar"}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm">
+                        Executar teste
+                      </Button>
+                    </footer>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+      </div>
     </AppShell>
   );
 }

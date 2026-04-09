@@ -1,9 +1,12 @@
 .shared-card {
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(245, 250, 255, 0.5) 100%);
+  border-radius: 20px;
+  box-shadow:
+    0 16px 32px rgba(25, 62, 98, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
   padding: var(--space-4);
+  backdrop-filter: blur(10px);
 }
 
 .shared-card--interactive {
@@ -17,21 +20,26 @@
 }
 
 .shared-metric-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-1);
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(245, 250, 255, 0.5) 100%);
+  box-shadow:
+    0 16px 32px rgba(25, 62, 98, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
   min-height: 78px;
-  padding: 12px;
+  padding: 14px 16px;
+  backdrop-filter: blur(10px);
 }
 
 .shared-metric-card p {
   margin: 0;
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
+  color: #5f7790;
+  font-size: 0.78rem;
 }
 
 .shared-metric-card h3 {
-  margin: 6px 0 0;
-  font-size: var(--font-size-title-md);
+  margin: 8px 0 0;
+  font-size: clamp(1.22rem, 1.05rem + 0.28vw, 1.38rem);
+  letter-spacing: -0.035em;
+  color: #173553;
 }

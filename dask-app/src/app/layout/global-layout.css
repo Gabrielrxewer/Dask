@@ -2,11 +2,12 @@
   --global-header-height: 48px;
   --global-footer-height: 40px;
   --global-content-gap: 8px;
+  --global-sidebar-width: 280px;
   --global-chrome-border: rgba(144, 190, 226, 0.34);
   --global-chrome-surface:
     radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.12) 0%, transparent 24%),
     radial-gradient(circle at 84% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 26%),
-    linear-gradient(135deg, rgba(15, 63, 112, 0.98) 0%, rgba(44, 120, 230, 0.98) 38%, rgba(125, 97, 238, 0.98) 68%, rgba(40, 207, 199, 0.98) 100%);
+    linear-gradient(90deg, rgba(15, 63, 112, 0.98) 0%, rgba(44, 120, 230, 0.98) 38%, rgba(125, 97, 238, 0.98) 68%, rgba(40, 207, 199, 0.98) 100%);
   --global-chrome-highlight:
     linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0) 100%);
   --global-chrome-shadow-top: 0 8px 18px rgba(8, 31, 53, 0.14);
@@ -83,7 +84,7 @@
   top: 0;
   height: var(--global-header-height);
   min-height: var(--global-header-height);
-  border-bottom: 1px solid var(--global-chrome-border);
+  border-bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -93,6 +94,10 @@
     var(--global-chrome-shadow-top),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
   overflow: visible;
+  background:
+    linear-gradient(var(--global-chrome-border), var(--global-chrome-border))
+      calc(var(--global-sidebar-width)) 100% / calc(100% - var(--global-sidebar-width)) 1px no-repeat,
+    var(--global-chrome-surface);
 }
 
 .global-header::before {
@@ -397,7 +402,7 @@
   bottom: 0;
   height: var(--global-footer-height);
   min-height: var(--global-footer-height);
-  border-top: 1px solid var(--global-chrome-border);
+  border-top: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -406,6 +411,10 @@
   box-shadow:
     var(--global-chrome-shadow-bottom),
     0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  background:
+    linear-gradient(var(--global-chrome-border), var(--global-chrome-border))
+      calc(var(--global-sidebar-width)) 0 / calc(100% - var(--global-sidebar-width)) 1px no-repeat,
+    var(--global-chrome-surface);
 }
 
 .global-footer::before {

@@ -1,5 +1,5 @@
 .app-shell {
-  --sidebar-width: 280px;
+  --sidebar-width: var(--global-sidebar-width);
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -21,27 +21,28 @@
 
 .sidebar {
   position: fixed;
-  top: calc(var(--global-header-height) - 1px);
-  bottom: var(--global-footer-height);
+  top: 0;
+  bottom: 0;
   left: 0;
   width: min(var(--sidebar-width), 90vw);
   z-index: 70;
-  background: linear-gradient(135deg, #27588f 0%, #2f63a0 52%, #376cac 100%);
+  background-color: rgba(15, 63, 112, 0.98);
+  background-image: var(--global-chrome-surface);
+  background-position: left top;
+  background-repeat: no-repeat;
+  background-size: 100vw 100dvh;
   color: #e7f1fd;
   border-right: 1px solid rgba(144, 190, 226, 0.34);
   border-radius: 0;
-  padding: 10px 12px 12px;
+  padding: calc(var(--global-header-height) + 10px) 12px calc(var(--global-footer-height) + 12px);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow:
-    0 34px 72px rgba(15, 41, 72, 0.12),
-    0 14px 30px rgba(36, 80, 128, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  box-shadow: none;
   transform: translateX(-100%);
   transition: transform 0.22s ease;
   overflow-y: auto;
-  backdrop-filter: saturate(120%) blur(16px);
+  backdrop-filter: blur(10px) saturate(112%);
 }
 
 .sidebar__brand {

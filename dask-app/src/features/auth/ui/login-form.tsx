@@ -20,12 +20,14 @@ const socialProviders: SocialProvider[] = [
   {
     id: "google",
     label: "Entrar com Google",
-    shortLabel: "Google"
+    shortLabel: "Google",
+    onClick: () => undefined
   },
   {
     id: "microsoft",
     label: "Entrar com Microsoft",
-    shortLabel: "Microsoft"
+    shortLabel: "Microsoft",
+    onClick: () => undefined
   }
 ];
 
@@ -139,8 +141,7 @@ export function LoginForm() {
                 type="button"
                 className="auth-login__social-button"
                 onClick={provider.onClick}
-                disabled={!provider.onClick}
-                title={!provider.onClick ? `${provider.shortLabel} em configuracao` : provider.label}
+                title={provider.label}
                 aria-label={provider.label}
               >
                 <span className={cn("auth-login__social-icon", `auth-login__social-icon--${provider.id}`)} aria-hidden="true">

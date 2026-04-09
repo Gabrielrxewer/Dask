@@ -24,7 +24,10 @@ export const buildItemsRoutes = (deps: { itemsService: ItemsService }): Router =
     '/items/:itemId',
     asyncHandler(async (req, res) => {
       const input = updateItemDto.parse(req.body);
-      const item = await deps.itemsService.updateItem(req.params.itemId, input);
+      const item = await deps.itemsService.updateItem(req.params.itemId, {
+        ...input,
+        updatedBy: req.auth!.userId
+      });
       res.status(200).json(item);
     })
   );

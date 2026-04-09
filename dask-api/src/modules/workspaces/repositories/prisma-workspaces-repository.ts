@@ -6,6 +6,7 @@ import {
   type PrismaClient,
   type Workspace
 } from '@prisma/client';
+import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import type {
   BoardSnapshot,
   UserWorkspaceSummary,
@@ -39,6 +40,11 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
           userId: input.ownerUserId,
           role: MembershipRole.OWNER
         }
+      });
+
+      await ensureWorkspaceDefaultConfiguration(tx, {
+        workspaceId: workspace.id,
+        ownerUserId: input.ownerUserId
       });
 
       return workspace;
@@ -209,13 +215,22 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
         boardId: item.boardId,
         workspaceId: item.workspaceId,
         columnId: item.columnId,
+        boardColumnId: item.boardColumnId,
         type: item.type,
+        typeId: item.typeId,
         title: item.title,
         description: item.description,
         status: item.status,
+        stateId: item.stateId,
         fields: item.fields,
         metadata: item.metadata,
+        checklist: item.checklist,
+        assigneeId: item.assigneeId,
+        parentId: item.parentId,
+        dueDate: item.dueDate,
+        position: item.position,
         createdBy: item.createdBy,
+        updatedBy: item.updatedBy,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt
       }))

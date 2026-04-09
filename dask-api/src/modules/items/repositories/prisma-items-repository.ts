@@ -1,4 +1,4 @@
-import { Prisma, type Item, type ItemType, type PrismaClient } from '@prisma/client';
+import { Prisma, type Item, type PrismaClient } from '@prisma/client';
 import type { ItemsRepository } from '@/modules/items/repositories/items-repository';
 
 export class PrismaItemsRepository implements ItemsRepository {
@@ -8,20 +8,29 @@ export class PrismaItemsRepository implements ItemsRepository {
     boardId: string;
     workspaceId: string;
     columnId?: string;
-    type: 'CARD' | 'TASK' | 'NOTE';
+    boardColumnId?: string;
+    type: string;
+    typeId?: string;
     title: string;
     description?: string;
     status: string;
+    stateId?: string;
     fields?: Record<string, unknown>;
     metadata?: Record<string, unknown>;
+    checklist?: Record<string, unknown>;
+    assigneeId?: string;
+    parentId?: string;
+    dueDate?: Date;
+    position?: number;
     createdBy: string;
+    updatedBy?: string;
   }): Promise<Item> {
     return this.prisma.item.create({
       data: {
         ...input,
-        type: input.type as ItemType,
         fields: input.fields as Prisma.InputJsonValue | undefined,
-        metadata: input.metadata as Prisma.InputJsonValue | undefined
+        metadata: input.metadata as Prisma.InputJsonValue | undefined,
+        checklist: input.checklist as Prisma.InputJsonValue | undefined
       }
     });
   }
@@ -32,9 +41,19 @@ export class PrismaItemsRepository implements ItemsRepository {
       title?: string;
       description?: string;
       status?: string;
+      stateId?: string;
       columnId?: string;
+      boardColumnId?: string;
+      type?: string;
+      typeId?: string;
       fields?: Record<string, unknown>;
       metadata?: Record<string, unknown>;
+      checklist?: Record<string, unknown>;
+      assigneeId?: string;
+      parentId?: string;
+      dueDate?: Date | null;
+      position?: number;
+      updatedBy?: string;
     }
   ): Promise<Item> {
     return this.prisma.item.update({
@@ -42,7 +61,8 @@ export class PrismaItemsRepository implements ItemsRepository {
       data: {
         ...patch,
         fields: patch.fields as Prisma.InputJsonValue | undefined,
-        metadata: patch.metadata as Prisma.InputJsonValue | undefined
+        metadata: patch.metadata as Prisma.InputJsonValue | undefined,
+        checklist: patch.checklist as Prisma.InputJsonValue | undefined
       }
     });
   }

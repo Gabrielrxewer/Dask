@@ -34,6 +34,9 @@ import { IntegrationService } from '@/modules/integration/application/integratio
 import { buildIntegrationRoutes } from '@/modules/integration/http/routes';
 import { AuditService } from '@/modules/audit/application/audit-service';
 import { buildAuditRoutes } from '@/modules/audit/http/routes';
+import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
+import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
 
 function parseAllowedOrigins(raw: string): string[] {
   const values = raw
@@ -115,6 +118,8 @@ export const createApp = (): Express => {
   const organizationService = new OrganizationService(identityRepository, eventPublisher);
   const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
   const itemsService = new ItemsService(itemsRepository, eventPublisher);
+  const workspaceConfigService = new WorkspaceConfigService(prisma);
+  const workspaceWorkItemsService = new WorkspaceWorkItemsService(prisma, workspaceConfigService);
   const improvementRequestService = new ImprovementRequestService(itemsRepository, eventPublisher, jobQueue);
   const indexingRequestService = new IndexingRequestService(itemsRepository, eventPublisher, jobQueue);
   const hybridSearchService = new HybridSearchService(prisma);
@@ -143,6 +148,13 @@ export const createApp = (): Express => {
   app.use(env.API_PREFIX, buildAutomationRoutes({ automationService }));
   app.use(env.API_PREFIX, buildIntegrationRoutes({ integrationService }));
   app.use(env.API_PREFIX, buildAuditRoutes({ auditService }));
+  app.use(
+    env.API_PREFIX,
+    buildWorkspacePlatformRoutes({
+      workspaceConfigService,
+      workspaceWorkItemsService
+    })
+  );
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

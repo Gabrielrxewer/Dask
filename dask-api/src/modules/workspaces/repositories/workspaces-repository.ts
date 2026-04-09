@@ -1,4 +1,4 @@
-import type { Board, BoardTemplate, ItemType, MembershipRole, Workspace } from '@prisma/client';
+import type { Board, BoardTemplate, MembershipRole, Workspace } from '@prisma/client';
 
 export type UserWorkspaceSummary = {
   id: string;
@@ -36,13 +36,22 @@ export type BoardItemSnapshot = {
   boardId: string;
   workspaceId: string;
   columnId: string | null;
-  type: ItemType;
+  boardColumnId: string | null;
+  type: string;
+  typeId: string | null;
   title: string;
   description: string | null;
   status: string;
+  stateId: string | null;
   fields: unknown;
   metadata: unknown;
+  checklist: unknown;
+  assigneeId: string | null;
+  parentId: string | null;
+  dueDate: Date | null;
+  position: number;
   createdBy: string;
+  updatedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

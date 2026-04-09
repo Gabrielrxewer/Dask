@@ -1,4 +1,4 @@
-import { ItemType, type PrismaClient, type SearchDocument } from '@prisma/client';
+import type { PrismaClient, SearchDocument } from '@prisma/client';
 
 export type HybridSearchFilters = {
   workspaceId?: string;
@@ -29,7 +29,7 @@ export class HybridSearchService {
           filters?.status || filters?.itemType
             ? {
                 status: filters.status,
-                type: filters.itemType ? (filters.itemType as ItemType) : undefined
+                type: filters.itemType
               }
             : undefined
       },

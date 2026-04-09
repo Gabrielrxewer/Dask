@@ -14,13 +14,22 @@ export class ItemsService {
     boardId: string;
     workspaceId: string;
     columnId?: string;
-    type: 'CARD' | 'TASK' | 'NOTE';
+    boardColumnId?: string;
+    type: string;
+    typeId?: string;
     title: string;
     description?: string;
     status: string;
+    stateId?: string;
     fields?: Record<string, unknown>;
     metadata?: Record<string, unknown>;
+    checklist?: Record<string, unknown>;
+    assigneeId?: string;
+    parentId?: string;
+    dueDate?: Date;
+    position?: number;
     createdBy: string;
+    updatedBy?: string;
   }) {
     const item = await this.itemsRepository.createItem(input);
     await this.eventPublisher.publish({
@@ -33,7 +42,9 @@ export class ItemsService {
         itemId: item.id,
         workspaceId: item.workspaceId,
         boardId: item.boardId,
-        type: item.type
+        type: item.type,
+        typeId: item.typeId,
+        stateId: item.stateId
       }
     });
     return item;
@@ -45,9 +56,19 @@ export class ItemsService {
       title?: string;
       description?: string;
       status?: string;
+      stateId?: string;
       columnId?: string;
+      boardColumnId?: string;
+      type?: string;
+      typeId?: string;
       fields?: Record<string, unknown>;
       metadata?: Record<string, unknown>;
+      checklist?: Record<string, unknown>;
+      assigneeId?: string;
+      parentId?: string;
+      dueDate?: Date | null;
+      position?: number;
+      updatedBy?: string;
     }
   ) {
     const current = await this.itemsRepository.findItemById(itemId);
@@ -70,7 +91,10 @@ export class ItemsService {
       }
     });
 
-    if (patch.columnId && patch.columnId !== current.columnId) {
+    const nextColumnId = patch.boardColumnId ?? patch.columnId;
+    const previousColumnId = current.boardColumnId ?? current.columnId;
+
+    if (nextColumnId && nextColumnId !== previousColumnId) {
       await this.eventPublisher.publish({
         id: uuid(),
         name: DomainEventNames.ItemMoved,
@@ -79,8 +103,8 @@ export class ItemsService {
         occurredAt: new Date(),
         payload: {
           itemId,
-          fromColumnId: current.columnId,
-          toColumnId: patch.columnId,
+          fromColumnId: previousColumnId,
+          toColumnId: nextColumnId,
           workspaceId: updated.workspaceId,
           boardId: updated.boardId
         }

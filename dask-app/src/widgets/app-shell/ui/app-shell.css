@@ -2,10 +2,12 @@
   --sidebar-width: 280px;
   position: relative;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
   min-height: 100%;
-  padding: 8px;
-  gap: 8px;
+  padding: 0;
+  gap: var(--global-content-gap);
 }
 
 .app-shell__noise {
@@ -195,10 +197,13 @@
     0 34px 72px rgba(15, 41, 72, 0.12),
     0 14px 30px rgba(36, 80, 128, 0.08),
     0 1px 0 rgba(255, 255, 255, 0.92) inset;
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   backdrop-filter: saturate(120%) blur(16px);
 }
 
@@ -214,10 +219,19 @@
 }
 
 .workspace__content {
-  display: grid;
-  align-content: start;
-  gap: var(--space-3);
+  flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow: auto;
+}
+
+.workspace__content > :first-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 
 .workspace__top-nav {
@@ -258,7 +272,6 @@
 .app-shell--no-scroll .workspace__content {
   flex: 1 1 auto;
   min-height: 0;
-  height: auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -275,10 +288,7 @@
 
 @media (min-width: 1141px) {
   .app-shell {
-    padding-left: calc(8px + var(--sidebar-width));
-    padding-right: 8px;
-    padding-top: 8px;
-    padding-bottom: 8px;
+    padding-left: calc(var(--sidebar-width) + var(--global-content-gap));
   }
 
   .sidebar {
@@ -294,8 +304,6 @@
 @media (max-width: 1140px) {
   .app-shell {
     grid-template-columns: 1fr;
-    padding: 10px;
-    gap: 10px;
     min-height: 100%;
   }
 

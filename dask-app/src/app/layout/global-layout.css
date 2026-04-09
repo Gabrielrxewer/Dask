@@ -1,6 +1,7 @@
 :root {
   --global-header-height: 48px;
   --global-footer-height: 40px;
+  --global-content-gap: 8px;
   --global-chrome-border: rgba(144, 190, 226, 0.34);
   --global-chrome-surface:
     radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.12) 0%, transparent 24%),
@@ -17,7 +18,11 @@
 }
 
 .global-layout__surface {
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
+  padding-top: var(--global-header-height);
+  padding-bottom: var(--global-footer-height);
 }
 
 .global-layout .global-layout__surface {
@@ -371,21 +376,20 @@
 .global-layout__main {
   position: relative;
   z-index: 1;
-  padding: calc(var(--global-header-height) + var(--space-4)) var(--space-4)
-    calc(var(--global-footer-height) + var(--space-4));
-  min-height: 100dvh;
+  flex: 1 1 auto;
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  padding: var(--global-content-gap);
+  overflow: auto;
 }
 
 .global-layout__main--login {
-  padding: var(--global-header-height) 0 var(--global-footer-height);
-  min-height: 100dvh;
+  padding: 0;
 }
 
 .global-layout__main--no-scroll {
   box-sizing: border-box;
   height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
   min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
-  padding: calc(var(--global-header-height) + 6px) 6px calc(var(--global-footer-height) + 6px);
   overflow: hidden;
 }
 
@@ -425,12 +429,7 @@
 
 @media (max-width: 1140px) {
   .global-layout__main {
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-  }
-
-  .global-layout__main--no-scroll {
-    padding: calc(var(--global-header-height) + 8px) 8px calc(var(--global-footer-height) + 8px);
+    padding: 8px;
   }
 
   .global-header,
@@ -449,8 +448,8 @@
 }
 
 @media (max-width: 760px) {
-  .global-layout__main--no-scroll {
-    padding: calc(var(--global-header-height) + 8px) 6px calc(var(--global-footer-height) + 6px);
+  :root {
+    --global-content-gap: 6px;
   }
 
   .global-header__brand-mark {

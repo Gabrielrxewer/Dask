@@ -51,9 +51,11 @@ echo "▶ A iniciar postgres e redis..."
 $COMPOSE up -d postgres redis
 
 echo "   Aguardar postgres ficar saudável..."
-until $COMPOSE exec -T postgres pg_isready -U postgres &>/dev/null; do
+until [ "$(docker inspect --format='{{.State.Health.Status}}' dask-postgres 2>/dev/null)" = "healthy" ]; do
+  echo -n "."
   sleep 2
 done
+echo ""
 echo "✔ Postgres pronto."
 
 # ── 5. Schema da base de dados ────────────────────────────────────────────────

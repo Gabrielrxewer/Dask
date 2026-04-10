@@ -3,7 +3,7 @@
 # Uso: bash setup-vps.sh
 set -e
 
-COMPOSE="docker compose -f docker-compose.prod.yml"
+COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 
 echo ""
 echo "╔══════════════════════════════════════╗"

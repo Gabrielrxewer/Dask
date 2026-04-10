@@ -1,0 +1,115 @@
+services:
+
+  # ─── Infra ──────────────────────────────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: dask-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-dask}
+    volumes:
+      - dask_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dask-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: dask-redis
+    restart: unless-stopped
+    volumes:
+      - dask_redis_data:/data
+    networks:
+      - dask-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend ────────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: ./dask-api
+    container_name: dask-api
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dask}
+      REDIS_URL: redis://redis:6379
+    networks:
+      - dask-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Frontend ───────────────────────────────────────────────────────────────
+
+  app:
+    build:
+      context: ./dask-app
+      args:
+        VITE_BASE_PATH: /
+        VITE_API_BASE_URL: https://${DOMAIN:-my-dask.com}
+        VITE_API_PREFIX: /api/v1
+        VITE_AUTH_TRANSPORT_MODE: cookie-session
+        VITE_CSRF_HEADER_NAME: x-csrf-token
+    container_name: dask-app
+    restart: unless-stopped
+    networks:
+      - dask-net
+    depends_on:
+      - api
+
+  # ─── Reverse proxy ──────────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: dask-nginx
+    restart: unless-stopped
+    # Exposto só em loopback para debug local (curl localhost).
+    # O cloudflared acede via rede Docker (http://nginx:80).
+    ports:
+      - "127.0.0.1:80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - dask-net
+    depends_on:
+      - api
+      - app
+
+  # ─── Cloudflare Tunnel ──────────────────────────────────────────────────────
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: dask-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - dask-net
+    depends_on:
+      - nginx
+
+# ─── Volumes & Networks ───────────────────────────────────────────────────────
+
+volumes:
+  dask_postgres_data:
+  dask_redis_data:
+
+networks:
+  dask-net:
+    driver: bridge

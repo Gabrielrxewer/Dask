@@ -176,14 +176,11 @@
   position: relative;
   z-index: 1;
   line-height: 0;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(226, 241, 255, 0.78);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.56) 0%, rgba(240, 249, 255, 0.44) 100%);
-  box-shadow:
-    0 8px 18px rgba(10, 36, 62, 0.12),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .global-header__brand-mark {

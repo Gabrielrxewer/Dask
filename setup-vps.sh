@@ -56,11 +56,11 @@ until $COMPOSE exec -T postgres pg_isready -U postgres &>/dev/null; do
 done
 echo "✔ Postgres pronto."
 
-# ── 5. Migrações ──────────────────────────────────────────────────────────────
+# ── 5. Schema da base de dados ────────────────────────────────────────────────
 echo ""
-echo "▶ A correr migrações Prisma..."
-$COMPOSE run --rm api npx prisma migrate deploy
-echo "✔ Migrações aplicadas."
+echo "▶ A aplicar schema Prisma (prisma db push)..."
+$COMPOSE run --rm api npx prisma db push
+echo "✔ Schema aplicado."
 
 # ── 6. Subir todos os serviços ────────────────────────────────────────────────
 echo ""

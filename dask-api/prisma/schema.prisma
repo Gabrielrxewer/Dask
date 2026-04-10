@@ -52,6 +52,7 @@ model User {
   updatedItems             Item[]                    @relation("ItemUpdatedBy")
   comments                 ItemComment[]
   updatedCustomFieldValues CustomFieldValue[]        @relation("CustomFieldValueUpdatedBy")
+  updatedViewPlacements    WorkItemViewPlacement[]   @relation("WorkItemViewPlacementUpdatedBy")
   refreshTokens            RefreshToken[]
   resetTokens              PasswordResetToken[]
 }
@@ -153,6 +154,10 @@ model Workspace {
   preferences            WorkspacePreferences?
   workItems              Item[]
   automationRules        AutomationRule[]
+  automationViews        AutomationView[]
+  automationViewColumns  AutomationViewColumn[]
+  itemViewPlacements     WorkItemViewPlacement[]
+  automationExecutions   AutomationExecution[]
 
   @@unique([organizationId, key])
 }
@@ -312,7 +317,7 @@ model TagDefinition {
 model WorkspacePreferences {
   id                  String     @id @default(uuid())
   workspaceId         String     @unique
-  defaultBoardMode    String     @default("board")
+  defaultBoardMode    String     @default("dev")
   dateFormat          String     @default("dd/mm/yyyy")
   visibleCardFieldIds Json?
   settings            Json?
@@ -409,6 +414,7 @@ model Item {
   searchDocuments   SearchDocument[]
   customFieldValues CustomFieldValue[]
   tags              WorkItemTag[]
+  viewPlacements    WorkItemViewPlacement[]
 
   @@index([workspaceId, typeId])
   @@index([workspaceId, stateId])
@@ -479,15 +485,104 @@ model AutomationRule {
   id              String                    @id @default(uuid())
   workspaceId     String
   name            String
+  description     String?
+  triggerType     String
   trigger         Json
   conditions      Json?
   actions         Json
+  priority        Int                       @default(100)
+  version         Int                       @default(1)
   enabled         Boolean                   @default(true)
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
   workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  executions      AutomationExecution[]
 
-  @@index([workspaceId, enabled])
+  @@index([workspaceId, enabled, triggerType, priority])
+}
+
+model AutomationExecution {
+  id          String         @id @default(uuid())
+  workspaceId String
+  ruleId      String?
+  eventName   String
+  eventId     String?
+  status      String
+  attempts    Int            @default(0)
+  context     Json?
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  rule        AutomationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([ruleId, createdAt])
+}
+
+model AutomationView {
+  id          String                 @id @default(uuid())
+  workspaceId String
+  key         String
+  name        String
+  description String?
+  position    Int                    @default(0)
+  isSystem    Boolean                @default(false)
+  isActive    Boolean                @default(true)
+  settings    Json?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns     AutomationViewColumn[]
+  placements  WorkItemViewPlacement[]
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, isActive, position])
+}
+
+model AutomationViewColumn {
+  id          String               @id @default(uuid())
+  workspaceId String
+  viewId      String
+  key         String
+  name        String
+  description String?
+  color       String
+  position    Int                  @default(0)
+  isActive    Boolean              @default(true)
+  isTerminal  Boolean              @default(false)
+  settings    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  view        AutomationView       @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  placements  WorkItemViewPlacement[]
+
+  @@unique([viewId, key])
+  @@index([workspaceId, viewId, isActive, position])
+}
+
+model WorkItemViewPlacement {
+  id          String                @id @default(uuid())
+  workspaceId String
+  itemId      String
+  viewId      String
+  columnId    String
+  position    Int                   @default(0)
+  metadata    Json?
+  updatedBy   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  workspace   Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  item        Item                  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  view        AutomationView        @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  column      AutomationViewColumn  @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  updater     User?                 @relation("WorkItemViewPlacementUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([itemId, viewId])
+  @@index([workspaceId, viewId, columnId, position])
 }
 
 model SearchDocument {

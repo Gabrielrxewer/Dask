@@ -29,6 +29,8 @@ import { IndexingRequestService } from '@/modules/search/application/indexing-re
 import { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
 import { buildSearchRoutes } from '@/modules/search/http/routes';
 import { AutomationService } from '@/modules/automation/application/automation-service';
+import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
+import { AutomationEventDispatcher } from '@/modules/automation/application/automation-event-dispatcher';
 import { buildAutomationRoutes } from '@/modules/automation/http/routes';
 import { IntegrationService } from '@/modules/integration/application/integration-service';
 import { buildIntegrationRoutes } from '@/modules/integration/http/routes';
@@ -119,14 +121,26 @@ export const createApp = (): Express => {
   const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
   const itemsService = new ItemsService(itemsRepository, eventPublisher);
   const workspaceConfigService = new WorkspaceConfigService(prisma);
-  const workspaceWorkItemsService = new WorkspaceWorkItemsService(prisma, workspaceConfigService);
+  const workspaceWorkItemsService = new WorkspaceWorkItemsService(
+    prisma,
+    workspaceConfigService,
+    eventPublisher
+  );
   const improvementRequestService = new ImprovementRequestService(itemsRepository, eventPublisher, jobQueue);
   const indexingRequestService = new IndexingRequestService(itemsRepository, eventPublisher, jobQueue);
   const hybridSearchService = new HybridSearchService(prisma);
-  const automationService = new AutomationService(prisma, eventPublisher, jobQueue);
+  const automationService = new AutomationService(
+    prisma,
+    eventPublisher,
+    jobQueue,
+    workspaceConfigService
+  );
+  const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
+  const automationEventDispatcher = new AutomationEventDispatcher(eventBus, jobQueue);
   const integrationService = new IntegrationService(eventPublisher);
   const auditService = new AuditService(prisma, eventBus);
 
+  automationEventDispatcher.registerListeners();
   auditService.registerEventListeners();
 
   app.get('/health', (_req: Request, res: Response) => {
@@ -145,7 +159,7 @@ export const createApp = (): Express => {
   app.use(env.API_PREFIX, buildItemsRoutes({ itemsService }));
   app.use(env.API_PREFIX, buildAiRoutes({ improvementRequestService }));
   app.use(env.API_PREFIX, buildSearchRoutes({ indexingRequestService, hybridSearchService }));
-  app.use(env.API_PREFIX, buildAutomationRoutes({ automationService }));
+  app.use(env.API_PREFIX, buildAutomationRoutes({ automationService, automationViewService }));
   app.use(env.API_PREFIX, buildIntegrationRoutes({ integrationService }));
   app.use(env.API_PREFIX, buildAuditRoutes({ auditService }));
   app.use(

@@ -6,6 +6,7 @@ import { queueConnection } from '@/infra/queue/bullmq-job-queue';
 import { MockAIProvider } from '@/infra/providers/ai/mock-ai-provider';
 import { MockEmbeddingProvider } from '@/infra/providers/ai/mock-embedding-provider';
 import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orchestration-service';
+import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
 
 export const startWorkers = (): Worker[] => {
   if (!env.ENABLE_WORKERS) {
@@ -16,6 +17,7 @@ export const startWorkers = (): Worker[] => {
   const aiProvider = new MockAIProvider();
   const embeddingProvider = new MockEmbeddingProvider();
   const promptService = new PromptOrchestrationService();
+  const automationRuntimeService = new AutomationRuntimeService(prisma);
 
   const worker = new Worker(
     'dask-jobs',
@@ -96,9 +98,21 @@ export const startWorkers = (): Worker[] => {
         });
       }
 
+      if (job.name === 'automation.process-event') {
+        await automationRuntimeService.processEvent({
+          eventId: job.data.eventId as string | undefined,
+          eventName: job.data.eventName as string,
+          workspaceId: job.data.workspaceId as string,
+          payload: (job.data.payload as Record<string, unknown>) ?? {}
+        });
+      }
+
       if (job.name === 'automation.run-rule') {
-        const ruleId = job.data.ruleId as string;
-        logger.info({ ruleId, context: job.data.context }, 'Executing automation rule');
+        await automationRuntimeService.runRule({
+          ruleId: job.data.ruleId as string,
+          context: (job.data.context as Record<string, unknown>) ?? {},
+          requestedBy: job.data.requestedBy as string | undefined
+        });
       }
     },
     {

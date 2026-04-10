@@ -1,5 +1,8 @@
 import { CustomFieldType, Prisma, type PrismaClient } from '@prisma/client';
+import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
+import { DomainEventNames } from '@/core/events/event-names';
+import { EventPublisher } from '@/core/events/event-publisher';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import {
@@ -19,7 +22,8 @@ import {
 export class WorkspaceWorkItemsService {
   public constructor(
     private readonly prisma: PrismaClient,
-    private readonly configService: WorkspaceConfigService
+    private readonly configService: WorkspaceConfigService,
+    private readonly eventPublisher: EventPublisher
   ) {}
 
   public async getWorkspaceSnapshot(input: { workspaceId: string; userId: string; limit?: number }) {
@@ -243,7 +247,15 @@ export class WorkspaceWorkItemsService {
       return item.id;
     });
 
-    return this.getSerializedWorkItemById(input.workspaceId, created);
+    const createdItem = await this.getSerializedWorkItemById(input.workspaceId, created);
+
+    await this.publishItemCreatedEvent({
+      workspaceId: input.workspaceId,
+      item: createdItem,
+      requestedBy: input.userId
+    });
+
+    return createdItem;
   }
 
   public async updateWorkItem(input: {
@@ -333,7 +345,40 @@ export class WorkspaceWorkItemsService {
       }
     });
 
-    return this.getSerializedWorkItemById(input.workspaceId, current.id);
+    const updatedItem = await this.getSerializedWorkItemById(input.workspaceId, current.id);
+    const previousColumnId = current.boardColumnId ?? current.columnId;
+    const nextColumnId = updatedItem.column.id;
+    const previousStateId = current.stateId;
+    const nextStateId = updatedItem.stateId;
+
+    await this.publishItemUpdatedEvent({
+      workspaceId: input.workspaceId,
+      item: updatedItem,
+      patch: input.payload as Record<string, unknown>,
+      requestedBy: input.userId
+    });
+
+    if (previousColumnId !== nextColumnId) {
+      await this.publishItemMovedEvent({
+        workspaceId: input.workspaceId,
+        item: updatedItem,
+        fromColumnId: previousColumnId,
+        toColumnId: nextColumnId,
+        requestedBy: input.userId
+      });
+    }
+
+    if (previousStateId !== nextStateId) {
+      await this.publishItemStateChangedEvent({
+        workspaceId: input.workspaceId,
+        item: updatedItem,
+        fromStateId: previousStateId,
+        toStateId: nextStateId,
+        requestedBy: input.userId
+      });
+    }
+
+    return updatedItem;
   }
 
   public async moveWorkItem(input: {
@@ -381,7 +426,27 @@ export class WorkspaceWorkItemsService {
       }
     });
 
-    return this.getSerializedWorkItemById(input.workspaceId, current.id);
+    const movedItem = await this.getSerializedWorkItemById(input.workspaceId, current.id);
+
+    await this.publishItemMovedEvent({
+      workspaceId: input.workspaceId,
+      item: movedItem,
+      fromColumnId: current.boardColumnId ?? null,
+      toColumnId: movedItem.column.id,
+      requestedBy: input.userId
+    });
+
+    if (current.stateId !== movedItem.stateId) {
+      await this.publishItemStateChangedEvent({
+        workspaceId: input.workspaceId,
+        item: movedItem,
+        fromStateId: current.stateId,
+        toStateId: movedItem.stateId,
+        requestedBy: input.userId
+      });
+    }
+
+    return movedItem;
   }
 
   public async transitionWorkItem(input: {
@@ -403,7 +468,8 @@ export class WorkspaceWorkItemsService {
       select: {
         id: true,
         boardColumnId: true,
-        columnId: true
+        columnId: true,
+        stateId: true
       }
     });
 
@@ -427,7 +493,29 @@ export class WorkspaceWorkItemsService {
       }
     });
 
-    return this.getSerializedWorkItemById(input.workspaceId, current.id);
+    const transitionedItem = await this.getSerializedWorkItemById(input.workspaceId, current.id);
+    const previousColumnId = current.boardColumnId ?? current.columnId;
+    const nextColumnId = transitionedItem.column.id;
+
+    await this.publishItemStateChangedEvent({
+      workspaceId: input.workspaceId,
+      item: transitionedItem,
+      fromStateId: current.stateId,
+      toStateId: transitionedItem.stateId,
+      requestedBy: input.userId
+    });
+
+    if (previousColumnId !== nextColumnId) {
+      await this.publishItemMovedEvent({
+        workspaceId: input.workspaceId,
+        item: transitionedItem,
+        fromColumnId: previousColumnId,
+        toColumnId: nextColumnId,
+        requestedBy: input.userId
+      });
+    }
+
+    return transitionedItem;
   }
 
   public async setWorkItemCustomFieldValue(input: {
@@ -817,7 +905,9 @@ export class WorkspaceWorkItemsService {
         select: { fields: true }
       });
 
-      const legacyFields = isRecord(currentItem?.fields) ? { ...currentItem.fields } : {};
+      const legacyFields: Record<string, unknown> = isRecord(currentItem?.fields)
+        ? { ...currentItem.fields }
+        : {};
       for (const field of fields) {
         legacyFields[field.slug] = input.valuesByFieldId[field.id];
       }
@@ -950,11 +1040,119 @@ export class WorkspaceWorkItemsService {
       type: workItem.type.slug,
       status: workItem.state.slug,
       priority: parsePriority(metadata.priority),
-      tags: workItem.tags.map((tag) => tag.name),
+      tags: workItem.tags.map((tag: { name: string }) => tag.name),
       assignee: workItem.assigneeId ?? workItem.createdBy,
       checklist: workItem.checklist,
       due: workItem.dueDate ? workItem.dueDate.toISOString().slice(0, 10) : '',
       customFields: workItem.customFields
+    };
+  }
+
+  private async publishItemCreatedEvent(input: {
+    workspaceId: string;
+    item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>;
+    requestedBy: string;
+  }): Promise<void> {
+    await this.eventPublisher.publish({
+      id: uuid(),
+      name: DomainEventNames.ItemCreated,
+      aggregateType: 'item',
+      aggregateId: input.item.id,
+      occurredAt: new Date(),
+      payload: {
+        ...this.toAutomationEventPayload(input.workspaceId, input.item),
+        requestedBy: input.requestedBy
+      }
+    });
+  }
+
+  private async publishItemUpdatedEvent(input: {
+    workspaceId: string;
+    item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>;
+    patch: Record<string, unknown>;
+    requestedBy: string;
+  }): Promise<void> {
+    await this.eventPublisher.publish({
+      id: uuid(),
+      name: DomainEventNames.ItemUpdated,
+      aggregateType: 'item',
+      aggregateId: input.item.id,
+      occurredAt: new Date(),
+      payload: {
+        ...this.toAutomationEventPayload(input.workspaceId, input.item),
+        patch: input.patch,
+        requestedBy: input.requestedBy
+      }
+    });
+  }
+
+  private async publishItemMovedEvent(input: {
+    workspaceId: string;
+    item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>;
+    fromColumnId: string | null;
+    toColumnId: string | null;
+    requestedBy: string;
+  }): Promise<void> {
+    await this.eventPublisher.publish({
+      id: uuid(),
+      name: DomainEventNames.ItemMoved,
+      aggregateType: 'item',
+      aggregateId: input.item.id,
+      occurredAt: new Date(),
+      payload: {
+        ...this.toAutomationEventPayload(input.workspaceId, input.item),
+        sourceViewKey: 'dev',
+        toViewKey: 'dev',
+        fromColumnId: input.fromColumnId,
+        toColumnId: input.toColumnId,
+        toColumnKey: input.item.column.slug,
+        requestedBy: input.requestedBy
+      }
+    });
+  }
+
+  private async publishItemStateChangedEvent(input: {
+    workspaceId: string;
+    item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>;
+    fromStateId: string | null;
+    toStateId: string | null;
+    requestedBy: string;
+  }): Promise<void> {
+    await this.eventPublisher.publish({
+      id: uuid(),
+      name: DomainEventNames.ItemStateChanged,
+      aggregateType: 'item',
+      aggregateId: input.item.id,
+      occurredAt: new Date(),
+      payload: {
+        ...this.toAutomationEventPayload(input.workspaceId, input.item),
+        fromStateId: input.fromStateId,
+        toStateId: input.toStateId,
+        requestedBy: input.requestedBy
+      }
+    });
+  }
+
+  private toAutomationEventPayload(
+    workspaceId: string,
+    item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>
+  ) {
+    const priority = parsePriority(
+      isRecord(item.metadata) ? (item.metadata.priority as unknown) : undefined
+    );
+
+    return {
+      itemId: item.id,
+      workspaceId,
+      boardId: item.boardId,
+      itemTypeId: item.type.id,
+      itemTypeSlug: item.type.slug,
+      status: item.state.slug,
+      stateId: item.state.id,
+      assigneeId: item.assigneeId,
+      priority,
+      toColumnId: item.column.id,
+      toColumnKey: item.column.slug
     };
   }
 

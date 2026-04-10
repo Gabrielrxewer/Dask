@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, type Mocked } from 'vitest';
 import { MembershipRole } from '@prisma/client';
-import { AppError } from '@/core/errors/app-error';
 import { WorkspacesService } from '@/modules/workspaces/application/workspaces-service';
 import type { EventPublisher } from '@/core/events/event-publisher';
 import type {
@@ -73,7 +72,7 @@ describe('WorkspacesService - read module', () => {
 
     await expect(
       service.listWorkspaceBoards({ workspaceId: 'workspace-1', userId: 'user-1' })
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       message: 'Workspace not found',
       statusCode: 404
     });
@@ -140,7 +139,7 @@ describe('WorkspacesService - read module', () => {
         boardId: 'board-missing',
         userId: 'user-1'
       })
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       message: 'Board not found',
       statusCode: 404
     });

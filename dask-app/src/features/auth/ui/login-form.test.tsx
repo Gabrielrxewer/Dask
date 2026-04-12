@@ -56,4 +56,25 @@ describe("LoginForm accessibility and UX", () => {
     expect(normalizedHtml).not.toContain('autocomplete="off"');
     expect(normalizedHtml).not.toContain("onpaste");
   });
+
+  it("renders register step with name and new-password autocomplete", () => {
+    const store = new AuthStore({
+      authService: createAuthServiceMock(),
+      transport: new MemoryTransport()
+    });
+
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/?step=register"]}>
+        <AuthProvider store={store}>
+          <LoginForm />
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    const normalizedHtml = html.toLowerCase();
+    expect(normalizedHtml).toContain('name="name"');
+    expect(normalizedHtml).toContain('autocomplete="name"');
+    expect(normalizedHtml).toContain('autocomplete="new-password"');
+    expect(normalizedHtml).not.toContain('autocomplete="current-password"');
+  });
 });

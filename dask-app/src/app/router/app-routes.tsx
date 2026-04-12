@@ -5,6 +5,7 @@ import { WorkspaceProvider } from "@/modules/workspace";
 import {
   AutomationsPage,
   BoardPage,
+  HomePage,
   ListPage,
   LoginPage,
   SettingsPage,
@@ -25,6 +26,15 @@ export function AppRoutes() {
     <Routes>
       <Route element={<GlobalLayout />}>
         <Route
+          path={routePaths.home}
+          element={
+            <PublicRoute>
+              <HomePage />
+            </PublicRoute>
+          }
+        />
+
+        <Route
           path={routePaths.login}
           element={
             <PublicRoute>
@@ -35,7 +45,6 @@ export function AppRoutes() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<WorkspaceBoundary />}>
-            <Route path={routePaths.root} element={<Navigate replace to={routePaths.board} />} />
             <Route path={routePaths.board} element={<BoardPage />} />
             <Route path={routePaths.list} element={<ListPage />} />
             <Route path={routePaths.timeline} element={<TimelinePage />} />

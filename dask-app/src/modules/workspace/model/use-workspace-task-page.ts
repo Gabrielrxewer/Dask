@@ -1,7 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
-import { currentUserId, membersById } from "@/entities/member";
-import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
+import { buildBoardMetrics } from "@/entities/task";
 import { applyDashboardFilter, useDashboardFilter } from "@/features/dashboard-filter";
+import {
+  getSelectedTask,
+  getSelectedTaskStatus,
+  getWorkspaceBoardConfig,
+  getWorkspaceCurrentUserId,
+  getWorkspaceMembers,
+  getWorkspaceTasks
+} from "@/modules/workspace/model/selectors";
 import { useWorkspace } from "@/modules/workspace/providers";
 
 export function useWorkspaceTaskPage() {
@@ -9,10 +16,10 @@ export function useWorkspaceTaskPage() {
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const tasks = workspace.snapshot?.tasks ?? [];
-  const boardConfig = workspace.snapshot?.boardConfig ?? factoryBoardConfig;
-  const activeMembers = workspace.snapshot?.membersById ?? membersById;
-  const activeUser = workspace.snapshot?.currentUserId ?? currentUserId;
+  const tasks = getWorkspaceTasks(workspace.snapshot);
+  const boardConfig = getWorkspaceBoardConfig(workspace.snapshot);
+  const activeMembers = getWorkspaceMembers(workspace.snapshot);
+  const activeUser = getWorkspaceCurrentUserId(workspace.snapshot);
 
   const filteredTasks = useMemo(
     () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
@@ -22,13 +29,13 @@ export function useWorkspaceTaskPage() {
   const metrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);
 
   const selectedTask = useMemo(
-    () => filteredTasks.find(task => task.id === selectedTaskId) ?? null,
+    () => getSelectedTask(filteredTasks, selectedTaskId),
     [filteredTasks, selectedTaskId]
   );
 
   const selectedStatus = useMemo(
-    () => (selectedTask ? boardConfig.statuses.find(status => status.id === selectedTask.status) ?? null : null),
-    [selectedTask, boardConfig.statuses]
+    () => getSelectedTaskStatus(boardConfig, selectedTask),
+    [boardConfig, selectedTask]
   );
 
   const selectTask = useCallback((taskId: string) => {

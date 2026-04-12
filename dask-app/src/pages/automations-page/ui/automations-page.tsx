@@ -1,5 +1,10 @@
-import { buildBoardMetrics } from "@/entities/task";
-import { useWorkspace } from "@/modules/workspace";
+import {
+  countActiveAutomations,
+  countPausedAutomations,
+  getWorkspaceAutomations,
+  getWorkspaceMetrics,
+  useWorkspace
+} from "@/modules/workspace";
 import { Button, Card, EmptyState, LoadingState, Section, StatusBadge } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
@@ -8,12 +13,10 @@ import "./automations-page.css";
 export function AutomationsPage() {
   const { snapshot, isLoading, setAutomationStatus } = useWorkspace();
 
-  const tasks = snapshot?.tasks ?? [];
-  const automations = snapshot?.automations ?? [];
-
-  const metrics = buildBoardMetrics(tasks);
-  const activeAutomations = automations.filter(item => item.status === "active").length;
-  const pausedAutomations = automations.filter(item => item.status === "paused").length;
+  const automations = getWorkspaceAutomations(snapshot);
+  const metrics = getWorkspaceMetrics(snapshot);
+  const activeAutomations = countActiveAutomations(automations);
+  const pausedAutomations = countPausedAutomations(automations);
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Automacoes" pageLabel="Automation Hub">

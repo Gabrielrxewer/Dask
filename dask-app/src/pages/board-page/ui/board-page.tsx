@@ -22,9 +22,9 @@ import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
 import "./board-page.css";
 
 const modeOptions: Array<{ id: WorkspaceBoardMode; label: string; caption: string }> = [
-  { id: "dev", label: "Execucao", caption: "Fluxo operacional principal" },
+  { id: "dev", label: "Execução", caption: "Fluxo operacional principal" },
   { id: "po", label: "Planejamento", caption: "Priorizacao e compromisso" },
-  { id: "manager", label: "Gestao", caption: "Visao de capacidade e risco" },
+  { id: "manager", label: "Gestão", caption: "Visao de capacidade e risco" },
   { id: "qa", label: "Qualidade", caption: "Validacao e conformidade" }
 ];
 
@@ -48,6 +48,32 @@ const managerStatuses: TaskStatus[] = [
   { id: "mgr-risks", label: "Riscos", dot: "#ef4444" },
   { id: "mgr-delivery", label: "Entrega", dot: "#16a34a" }
 ];
+
+interface BoardViewportSnapshot {
+  width: number;
+  height: number;
+  dpr: number;
+}
+
+function captureBoardViewport(): BoardViewportSnapshot {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    dpr: window.devicePixelRatio || 1
+  };
+}
+
+function isSameBoardViewport(
+  current: BoardViewportSnapshot,
+  baseline: BoardViewportSnapshot,
+  tolerance = { width: 6, height: 6, dpr: 0.05 }
+): boolean {
+  return (
+    Math.abs(current.width - baseline.width) <= tolerance.width &&
+    Math.abs(current.height - baseline.height) <= tolerance.height &&
+    Math.abs(current.dpr - baseline.dpr) <= tolerance.dpr
+  );
+}
 
 function getCustomFieldString(task: Task, fieldId: string): string {
   const value = task.customFields[fieldId];
@@ -112,7 +138,9 @@ export function BoardPage() {
   const { snapshot, isLoading, createTask, moveTask, updateTaskPriority, updateTaskCustomField, toggleChecklistItem } = useWorkspace();
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
+  const [fitInitialCards, setFitInitialCards] = useState(true);
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
+  const initialViewportRef = useRef<BoardViewportSnapshot | null>(null);
 
   const tasks = snapshot?.tasks ?? [];
   const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
@@ -129,6 +157,27 @@ export function BoardPage() {
       setMode(defaultMode);
     }
   }, [snapshot]);
+
+  useEffect(() => {
+    const syncViewportMode = () => {
+      const currentViewport = captureBoardViewport();
+      if (!initialViewportRef.current) {
+        initialViewportRef.current = currentViewport;
+      }
+
+      setFitInitialCards(isSameBoardViewport(currentViewport, initialViewportRef.current));
+    };
+
+    syncViewportMode();
+
+    window.addEventListener("resize", syncViewportMode);
+    window.visualViewport?.addEventListener("resize", syncViewportMode);
+
+    return () => {
+      window.removeEventListener("resize", syncViewportMode);
+      window.visualViewport?.removeEventListener("resize", syncViewportMode);
+    };
+  }, []);
 
   const filteredTasks = useMemo(
     () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
@@ -187,7 +236,8 @@ export function BoardPage() {
         : mode === "manager"
           ? managerTasksFiltered
           : filteredTasks;
-  const activeModeMeta = modeOptions.find(option => option.id === mode);
+  const activeModeMeta = modeOptions.find(option => option.id === mode) ?? modeOptions[0];
+  const pageTitle = `${activeModeMeta.label} Board`;
 
   const modeCards = useMemo(() => {
     if (mode === "po") {
@@ -269,7 +319,7 @@ export function BoardPage() {
   const boardSubtitle =
     activeBoardTasks.length === 0 && filter.query.trim().length > 0
       ? "Nenhum item encontrado para essa busca."
-      : activeModeMeta?.caption ?? "Acompanhe o andamento das entregas em colunas.";
+      : activeModeMeta.caption;
 
   const topNavigation = (
     <section className="board-top-nav" aria-label="Navegacao de visao operacional">
@@ -287,8 +337,7 @@ export function BoardPage() {
       metrics={devMetrics}
       noPageScroll
       hideSidebarBrandMark
-      pageLabel="Planejamento"
-      pageTitle="Board"
+      pageTitle={pageTitle}
       topNavigation={topNavigation}
       filter={filter}
       onFilterQueryChange={setQuery}
@@ -298,13 +347,16 @@ export function BoardPage() {
         <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
 
         <Section
-          title={activeModeMeta ? `Quadro ${activeModeMeta.label}` : "Quadro"}
+          title={activeModeMeta.label}
           subtitle={boardSubtitle}
           actions={
-            <>
+            <div className="board-view__section-actions">
               <StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>
-              <CreateTaskButton onCreate={input => void createTask(input)} />
-            </>
+              <CreateTaskButton
+                className="board-view__create-task"
+                onCreate={input => void createTask(input)}
+              />
+            </div>
           }
           className="board-view__canvas"
         >
@@ -317,6 +369,7 @@ export function BoardPage() {
               tasks={activeBoardTasks}
               membersById={activeMembers}
               compactCards={mode === "qa"}
+              fitInitialCards={fitInitialCards}
               onMoveTask={handleMoveTask}
               onUpdatePriority={handleUpdatePriority}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}

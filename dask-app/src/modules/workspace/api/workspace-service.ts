@@ -1,6 +1,16 @@
 import { withMockLatency } from "@/shared/api/http-client";
-import { createInitialWorkspaceSnapshot, cloneWorkspaceSnapshot, createTaskFromInput } from "@/modules/workspace/model/mock-workspace";
-import type { WorkspacePreferences, WorkspaceService, WorkspaceSnapshot } from "@/modules/workspace/model/types";
+import { createInitialWorkspaceSnapshot, cloneWorkspaceSnapshot } from "@/modules/workspace/model/mock-workspace";
+import {
+  createTaskInWorkspaceSnapshot,
+  moveTaskInWorkspaceSnapshot,
+  setCardFieldVisibilityInWorkspaceSnapshot,
+  toggleTaskChecklistItemInWorkspaceSnapshot,
+  updateAutomationStatusInWorkspaceSnapshot,
+  updatePreferencesInWorkspaceSnapshot,
+  updateTaskCustomFieldInWorkspaceSnapshot,
+  updateTaskPriorityInWorkspaceSnapshot
+} from "@/modules/workspace/model/snapshot-mutations";
+import type { WorkspaceService, WorkspaceSnapshot } from "@/modules/workspace/model/types";
 
 let workspaceSnapshot: WorkspaceSnapshot = createInitialWorkspaceSnapshot();
 
@@ -15,108 +25,34 @@ export const workspaceService: WorkspaceService = {
   },
 
   async createTask(input) {
-    const nextTask = createTaskFromInput(input, workspaceSnapshot.currentUserId);
-
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: [nextTask, ...workspaceSnapshot.tasks]
-    });
+    return saveAndReturn(createTaskInWorkspaceSnapshot(workspaceSnapshot, input));
   },
 
   async moveTask(taskId, nextStatus) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task =>
-        task.id === taskId ? { ...task, status: nextStatus } : task
-      )
-    });
+    return saveAndReturn(moveTaskInWorkspaceSnapshot(workspaceSnapshot, taskId, nextStatus));
   },
 
   async updateTaskPriority(taskId, priority) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task =>
-        task.id === taskId ? { ...task, priority } : task
-      )
-    });
+    return saveAndReturn(updateTaskPriorityInWorkspaceSnapshot(workspaceSnapshot, taskId, priority));
   },
 
   async updateTaskCustomField(taskId, fieldId, value) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task =>
-        task.id === taskId
-          ? { ...task, customFields: { ...task.customFields, [fieldId]: value } }
-          : task
-      )
-    });
+    return saveAndReturn(updateTaskCustomFieldInWorkspaceSnapshot(workspaceSnapshot, taskId, fieldId, value));
   },
 
   async toggleChecklistItem(taskId, itemId) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task => {
-        if (task.id !== taskId) {
-          return task;
-        }
-
-        return {
-          ...task,
-          checklist: {
-            items: task.checklist.items.map(item =>
-              item.id === itemId ? { ...item, done: !item.done } : item
-            )
-          }
-        };
-      })
-    });
+    return saveAndReturn(toggleTaskChecklistItemInWorkspaceSnapshot(workspaceSnapshot, taskId, itemId));
   },
 
   async setAutomationStatus(automationId, status) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      automations: workspaceSnapshot.automations.map(automation =>
-        automation.id === automationId ? { ...automation, status } : automation
-      )
-    });
+    return saveAndReturn(updateAutomationStatusInWorkspaceSnapshot(workspaceSnapshot, automationId, status));
   },
 
   async updatePreferences(patch) {
-    const preferences: WorkspacePreferences = {
-      ...workspaceSnapshot.preferences,
-      ...patch
-    };
-
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      preferences
-    });
+    return saveAndReturn(updatePreferencesInWorkspaceSnapshot(workspaceSnapshot, patch));
   },
 
   async setCardFieldVisibility(fieldId, visible) {
-    const visibleFields = new Set(workspaceSnapshot.boardConfig.cardLayout.visibleFieldIds);
-
-    if (visible) {
-      visibleFields.add(fieldId);
-    } else {
-      visibleFields.delete(fieldId);
-    }
-
-    const visibleFieldIds = Array.from(visibleFields);
-
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      boardConfig: {
-        ...workspaceSnapshot.boardConfig,
-        cardLayout: {
-          ...workspaceSnapshot.boardConfig.cardLayout,
-          visibleFieldIds
-        }
-      },
-      preferences: {
-        ...workspaceSnapshot.preferences,
-        visibleCardFieldIds: visibleFieldIds
-      }
-    });
+    return saveAndReturn(setCardFieldVisibilityInWorkspaceSnapshot(workspaceSnapshot, fieldId, visible));
   }
 };

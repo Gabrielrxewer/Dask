@@ -1,5 +1,13 @@
-import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
-import { useWorkspace } from "@/modules/workspace";
+import {
+  getWorkspaceBoardConfig,
+  getWorkspaceMetrics,
+  getWorkspacePreferences,
+  useWorkspace,
+  type WorkspaceBoardMode,
+  type WorkspaceDateFormat,
+  workspaceBoardModeOptions,
+  workspaceDateFormatOptions
+} from "@/modules/workspace";
 import { FormField, Section, Select } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
@@ -8,13 +16,12 @@ import "./settings-page.css";
 export function SettingsPage() {
   const { snapshot, updatePreferences, setCardFieldVisibility } = useWorkspace();
 
-  const tasks = snapshot?.tasks ?? [];
-  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const metrics = buildBoardMetrics(tasks);
-
-  const defaultMode = snapshot?.preferences.defaultBoardMode ?? "dev";
-  const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
-  const visibleFields = new Set(snapshot?.preferences.visibleCardFieldIds ?? []);
+  const boardConfig = getWorkspaceBoardConfig(snapshot);
+  const metrics = getWorkspaceMetrics(snapshot);
+  const preferences = getWorkspacePreferences(snapshot);
+  const defaultMode = preferences.defaultBoardMode;
+  const dateFormat = preferences.dateFormat;
+  const visibleFields = new Set(preferences.visibleCardFieldIds);
   const fieldDefinitions = boardConfig.fieldDefinitions;
 
   const visibleFieldsCount = visibleFields.size;
@@ -59,14 +66,15 @@ export function SettingsPage() {
                   value={defaultMode}
                   onChange={event =>
                     void updatePreferences({
-                      defaultBoardMode: event.target.value as "dev" | "po" | "manager" | "qa"
+                      defaultBoardMode: event.target.value as WorkspaceBoardMode
                     })
                   }
                 >
-                  <option value="dev">Dev</option>
-                  <option value="po">PO</option>
-                  <option value="manager">Gestao</option>
-                  <option value="qa">QA</option>
+                  {workspaceBoardModeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </FormField>
 
@@ -75,12 +83,15 @@ export function SettingsPage() {
                   value={dateFormat}
                   onChange={event =>
                     void updatePreferences({
-                      dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
+                      dateFormat: event.target.value as WorkspaceDateFormat
                     })
                   }
                 >
-                  <option value="dd/mm/yyyy">DD/MM/YYYY</option>
-                  <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                  {workspaceDateFormatOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </FormField>
             </div>

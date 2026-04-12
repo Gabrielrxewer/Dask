@@ -46,6 +46,32 @@ function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFie
   return String(value);
 }
 
+function resolveFieldChipTone(definition: TaskFieldDefinition, value: TaskCustomFieldValue): string {
+  if (definition.id !== "severity" || typeof value !== "string") {
+    return "";
+  }
+
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (normalizedValue === "critical") {
+    return "task-card__field-chip--critical";
+  }
+
+  if (normalizedValue === "high") {
+    return "task-card__field-chip--high";
+  }
+
+  if (normalizedValue === "medium") {
+    return "task-card__field-chip--medium";
+  }
+
+  if (normalizedValue === "low") {
+    return "task-card__field-chip--low";
+  }
+
+  return "";
+}
+
 export function TaskCard({
   task,
   boardConfig,
@@ -68,6 +94,8 @@ export function TaskCard({
     return acc;
   }, {});
 
+  const maxVisibleTags = compact ? 1 : 2;
+  const maxVisibleFields = compact ? 1 : 2;
   const visibleFields = boardConfig.cardLayout.visibleFieldIds
     .map(fieldId => ({
       definition: fieldMap[fieldId],
@@ -77,7 +105,7 @@ export function TaskCard({
       (item): item is { definition: TaskFieldDefinition; value: TaskCustomFieldValue } =>
         Boolean(item.definition) && typeof item.value !== "undefined"
     )
-    .slice(0, 2);
+    .slice(0, maxVisibleFields);
 
   const canOpen = typeof onOpen === "function";
   const canUpdatePriority = typeof onUpdatePriority === "function";
@@ -85,8 +113,12 @@ export function TaskCard({
   const authorLabel = creatorName ?? "Usuario";
   const ownerLabel = assigneeName ?? authorLabel;
   const typeIcon = taskTypeIconById[task.type] ?? "T";
-  const displayTags = task.tags.slice(0, 4);
+  const displayTags = task.tags.slice(0, maxVisibleTags);
   const hiddenTagsCount = Math.max(task.tags.length - displayTags.length, 0);
+  const hasSupportingInfo = displayTags.length > 0 || hiddenTagsCount > 0 || visibleFields.length > 0;
+  const showCreator = authorLabel.trim().toLowerCase() !== ownerLabel.trim().toLowerCase();
+  const hasChecklist = checklist.total > 0;
+  const hasDueDate = Boolean(task.due);
 
   return (
     <article
@@ -115,18 +147,13 @@ export function TaskCard({
     >
       <header className="task-card__head">
         <div className="task-card__badges">
-          <span className="task-card__type-icon" aria-hidden="true">
-            {typeIcon}
-          </span>
           <span
             className="task-card__type"
-            style={{
-              backgroundColor: type.background,
-              borderColor: type.border,
-              color: type.text
-            }}
           >
-            {type.label}
+            <span className="task-card__type-icon" aria-hidden="true">
+              {typeIcon}
+            </span>
+            <span>{type.label}</span>
           </span>
           <button
             type="button"
@@ -144,49 +171,36 @@ export function TaskCard({
             {priority.label}
           </button>
         </div>
-        <button
-          className="task-card__ghost"
-          type="button"
-          aria-label="Mais acoes"
-          onClick={event => event.stopPropagation()}
-        >
-          ...
-        </button>
       </header>
 
-      <h4 className="task-card__title">{task.title}</h4>
-      {task.text ? <p className="task-card__text">{task.text}</p> : null}
+      <div className="task-card__body">
+        <h4 className="task-card__title">{task.title}</h4>
+        {task.text ? <p className="task-card__text">{task.text}</p> : null}
+        {showCreator ? <p className="task-card__caption">{`Criado por ${authorLabel}`}</p> : null}
 
-      <div className="task-card__summary">
-        <span className="task-card__summary-item">
-          <strong>Criado por</strong>
-          <span>{authorLabel}</span>
-        </span>
-        <span className="task-card__summary-item">
-          <strong>Responsavel</strong>
-          <span>{ownerLabel}</span>
-        </span>
+        {hasSupportingInfo ? (
+          <div className="task-card__supporting">
+            {displayTags.map(tag => (
+              <span className="task-card__tag" key={tag}>
+                {tag}
+              </span>
+            ))}
+            {hiddenTagsCount > 0 ? (
+              <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span>
+            ) : null}
+
+            {visibleFields.map(({ definition, value }) => (
+              <span
+                className={cn("task-card__field-chip", resolveFieldChipTone(definition, value))}
+                key={definition.id}
+              >
+                <strong>{definition.label}</strong>
+                <span>{formatCustomFieldValue(value, definition)}</span>
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
-
-      <div className="task-card__tags">
-        {displayTags.map(tag => (
-          <span className="task-card__tag" key={tag}>
-            {tag}
-          </span>
-        ))}
-        {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
-      </div>
-
-      {visibleFields.length > 0 ? (
-        <div className="task-card__fields">
-          {visibleFields.map(({ definition, value }) => (
-            <span className="task-card__field" key={definition.id}>
-              <strong>{definition.label}</strong>
-              {formatCustomFieldValue(value, definition)}
-            </span>
-          ))}
-        </div>
-      ) : null}
 
       <footer className="task-card__footer">
         <div className="task-card__owner">
@@ -197,8 +211,18 @@ export function TaskCard({
           </div>
         </div>
         <div className="task-card__meta">
-          <span>{`Checklist ${checklist.done}/${checklist.total}`}</span>
-          <span>{`Prazo ${formatShortDate(task.due)}`}</span>
+          {hasChecklist ? (
+            <span className="task-card__meta-item">
+              <strong>{`${checklist.done}/${checklist.total}`}</strong>
+              <span>Checklist</span>
+            </span>
+          ) : null}
+          {hasDueDate ? (
+            <span className="task-card__meta-item">
+              <strong>{formatShortDate(task.due)}</strong>
+              <span>Prazo</span>
+            </span>
+          ) : null}
         </div>
       </footer>
     </article>

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
 import { CreateTaskButton } from "@/features/create-task";
-import { useWorkspaceTaskPage } from "@/modules/workspace";
+import { SelectedTaskDetailsModal, useWorkspaceTaskPage } from "@/modules/workspace";
 import {
   DataTable,
   DataTableBody,
@@ -16,7 +16,6 @@ import {
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
-import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
 
 export function ListPage() {
@@ -142,17 +141,15 @@ export function ListPage() {
         </Section>
       </div>
 
-      {selectedTask && selectedStatus ? (
-        <TaskDetailsModal
-          task={selectedTask}
-          status={selectedStatus}
-          assignee={activeMembers[selectedTask.assignee]}
-          boardConfig={boardConfig}
-          onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
-          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
-          onClose={clearSelectedTask}
-        />
-      ) : null}
+      <SelectedTaskDetailsModal
+        selectedTask={selectedTask}
+        selectedStatus={selectedStatus}
+        activeMembers={activeMembers}
+        boardConfig={boardConfig}
+        onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
+        onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
+        onClose={clearSelectedTask}
+      />
     </AppShell>
   );
 }

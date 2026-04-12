@@ -2,20 +2,34 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border-radius: 16px;
-  padding: 0 14px 0 10px;
+  border-radius: var(--board-control-radius, 14px);
+  padding: 0 16px 0 12px;
   white-space: nowrap;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
 }
 
 .create-task-button__trigger-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 1rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  flex-shrink: 0;
+}
+
+.create-task-button__trigger-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.create-task-button__trigger-label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
   font-weight: 700;
   line-height: 1;
 }

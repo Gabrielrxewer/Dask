@@ -1,5 +1,6 @@
 import { currentUserId, membersById } from "@/entities/member";
 import { factoryBoardConfig, initialTasks, type Task } from "@/entities/task";
+import { defaultWorkspacePreferences } from "@/modules/workspace/model/options";
 import type { CreateTaskInput, WorkspaceSnapshot } from "@/modules/workspace/model/types";
 
 function deepClone<T>(value: T): T {
@@ -80,8 +81,7 @@ export function createInitialWorkspaceSnapshot(): WorkspaceSnapshot {
       }
     ],
     preferences: {
-      defaultBoardMode: "dev",
-      dateFormat: "dd/mm/yyyy",
+      ...defaultWorkspacePreferences,
       visibleCardFieldIds: [...boardConfig.cardLayout.visibleFieldIds]
     }
   };

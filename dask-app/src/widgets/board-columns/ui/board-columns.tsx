@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import type { DragEvent } from "react";
+import type { CSSProperties, DragEvent } from "react";
 import type { MembersById } from "@/entities/member";
 import { MemberAvatar } from "@/entities/member";
 import { TaskCard, groupTasksByStatus } from "@/entities/task";
 import type { BoardConfig, Task, TaskPriority, TaskStatus, TaskStatusId } from "@/entities/task";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
+import { cn } from "@/shared/lib/cn";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
 
@@ -14,6 +15,7 @@ interface BoardColumnsProps {
   boardConfig: BoardConfig;
   membersById: MembersById;
   compactCards?: boolean;
+  fitInitialCards?: boolean;
   onMoveTask: (taskId: string, statusId: TaskStatusId) => void;
   onUpdatePriority: (taskId: string, priority: TaskPriority) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
@@ -25,6 +27,7 @@ export function BoardColumns({
   boardConfig,
   membersById,
   compactCards = false,
+  fitInitialCards = false,
   onMoveTask,
   onUpdatePriority,
   onToggleChecklistItem
@@ -78,7 +81,7 @@ export function BoardColumns({
   };
 
   return (
-    <main className="board-columns-wrap">
+    <main className={cn("board-columns-wrap", fitInitialCards && "board-columns-wrap--fit-initial")}>
       <section className="board-columns">
         {statuses.map(status => {
           const statusTasks = columns[status.id] ?? [];
@@ -88,6 +91,7 @@ export function BoardColumns({
             <section
               className={`board-column ${isTarget ? "board-column--drop-target" : ""}`}
               key={status.id}
+              style={{ ["--board-column-accent" as string]: status.dot } as CSSProperties}
               onDragOver={event => {
                 event.preventDefault();
                 setDropTargetStatus(status.id);

@@ -22,77 +22,72 @@ interface WorkspaceProviderProps {
   children: ReactNode;
 }
 
+function useWorkspaceSnapshotAction<Args extends unknown[]>(
+  mutation: (...args: Args) => Promise<WorkspaceSnapshot>,
+  setSnapshot: (snapshot: WorkspaceSnapshot) => void
+) {
+  return useCallback(
+    async (...args: Args): Promise<void> => {
+      const nextSnapshot = await mutation(...args);
+      setSnapshot(nextSnapshot);
+    },
+    [mutation, setSnapshot]
+  );
+}
+
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    let isActive = true;
 
-    workspaceService
-      .getSnapshot()
-      .then(nextSnapshot => {
-        if (mounted) {
+    const loadSnapshot = async () => {
+      try {
+        const nextSnapshot = await workspaceService.getSnapshot();
+        if (isActive) {
           setSnapshot(nextSnapshot);
+        }
+      } finally {
+        if (isActive) {
           setIsLoading(false);
         }
-      })
-      .catch(() => {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      });
+      }
+    };
+
+    void loadSnapshot();
 
     return () => {
-      mounted = false;
+      isActive = false;
     };
   }, []);
 
-  const createTask = useCallback(async (input: CreateTaskInput) => {
-    const nextSnapshot = await workspaceService.createTask(input);
-    setSnapshot(nextSnapshot);
-  }, []);
-
-  const moveTask = useCallback(async (taskId: string, nextStatus: TaskStatusId) => {
-    const nextSnapshot = await workspaceService.moveTask(taskId, nextStatus);
-    setSnapshot(nextSnapshot);
-  }, []);
-
-  const updateTaskPriority = useCallback(async (taskId: string, priority: TaskPriority) => {
-    const nextSnapshot = await workspaceService.updateTaskPriority(taskId, priority);
-    setSnapshot(nextSnapshot);
-  }, []);
-
-  const updateTaskCustomField = useCallback(
-    async (taskId: string, fieldId: string, value: TaskCustomFieldValue) => {
-      const nextSnapshot = await workspaceService.updateTaskCustomField(taskId, fieldId, value);
-      setSnapshot(nextSnapshot);
-    },
-    []
+  const createTask = useWorkspaceSnapshotAction<[CreateTaskInput]>(workspaceService.createTask, setSnapshot);
+  const moveTask = useWorkspaceSnapshotAction<[string, TaskStatusId]>(workspaceService.moveTask, setSnapshot);
+  const updateTaskPriority = useWorkspaceSnapshotAction<[string, TaskPriority]>(
+    workspaceService.updateTaskPriority,
+    setSnapshot
   );
-
-  const toggleChecklistItem = useCallback(async (taskId: string, itemId: string) => {
-    const nextSnapshot = await workspaceService.toggleChecklistItem(taskId, itemId);
-    setSnapshot(nextSnapshot);
-  }, []);
-
-  const setAutomationStatus = useCallback(
-    async (automationId: string, status: WorkspaceAutomation["status"]) => {
-      const nextSnapshot = await workspaceService.setAutomationStatus(automationId, status);
-      setSnapshot(nextSnapshot);
-    },
-    []
+  const updateTaskCustomField = useWorkspaceSnapshotAction<[string, string, TaskCustomFieldValue]>(
+    workspaceService.updateTaskCustomField,
+    setSnapshot
   );
-
-  const updatePreferences = useCallback(async (patch: Partial<WorkspacePreferences>) => {
-    const nextSnapshot = await workspaceService.updatePreferences(patch);
-    setSnapshot(nextSnapshot);
-  }, []);
-
-  const setCardFieldVisibility = useCallback(async (fieldId: string, visible: boolean) => {
-    const nextSnapshot = await workspaceService.setCardFieldVisibility(fieldId, visible);
-    setSnapshot(nextSnapshot);
-  }, []);
+  const toggleChecklistItem = useWorkspaceSnapshotAction<[string, string]>(
+    workspaceService.toggleChecklistItem,
+    setSnapshot
+  );
+  const setAutomationStatus = useWorkspaceSnapshotAction<[string, WorkspaceAutomation["status"]]>(
+    workspaceService.setAutomationStatus,
+    setSnapshot
+  );
+  const updatePreferences = useWorkspaceSnapshotAction<[Partial<WorkspacePreferences>]>(
+    workspaceService.updatePreferences,
+    setSnapshot
+  );
+  const setCardFieldVisibility = useWorkspaceSnapshotAction<[string, boolean]>(
+    workspaceService.setCardFieldVisibility,
+    setSnapshot
+  );
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({

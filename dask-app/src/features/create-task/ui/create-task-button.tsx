@@ -145,11 +145,14 @@ export function CreateTaskButton({ onCreate, className }: CreateTaskButtonProps)
 
   return (
     <>
-      <Button variant="primary" size="sm" className={cn("create-task-button__trigger", className)} onClick={() => setIsOpen(true)}>
+      <Button variant="primary" size="md" className={cn("create-task-button__trigger", className)} onClick={() => setIsOpen(true)}>
         <span className="create-task-button__trigger-icon" aria-hidden="true">
-          +
+          <svg viewBox="0 0 16 16" fill="none" focusable="false">
+            <path d="M8 3.25V12.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M3.25 8H12.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
         </span>
-        <span>Nova tarefa</span>
+        <span className="create-task-button__trigger-label">Nova tarefa</span>
       </Button>
       {isOpen ? createPortal(modal, document.body) : null}
     </>

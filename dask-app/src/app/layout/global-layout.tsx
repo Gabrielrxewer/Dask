@@ -33,8 +33,11 @@ export function GlobalLayout() {
   const navigate = useNavigate();
   const { user, status } = useAuth();
   const { logout, logoutAll, isSubmitting } = useLogout();
+  const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
-  const isAppRoute = !isLoginRoute;
+  const isPublicGuestRoute = isHomeRoute || isLoginRoute;
+  const isAppRoute = !isPublicGuestRoute;
+  const isAuthenticated = status === "authenticated";
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -123,8 +126,8 @@ export function GlobalLayout() {
                 type="button"
                 className="global-header__menu"
                 aria-label="Alternar menu de navegacao"
-                onClick={isLoginRoute ? undefined : toggleNavigation}
-                disabled={isLoginRoute}
+                onClick={isPublicGuestRoute ? undefined : toggleNavigation}
+                disabled={isPublicGuestRoute}
               >
                 <span className="global-header__menu-grid">
                   <i />
@@ -143,76 +146,85 @@ export function GlobalLayout() {
               </div>
             </div>
 
-            <div className="global-header__user-wrap" ref={userMenuRef}>
-              <button
-                type="button"
-                className="global-header__user"
-                aria-label={profileLabel}
-                title={profileSubLabel}
-                aria-haspopup="menu"
-                aria-expanded={isUserMenuOpen}
-                onClick={() => setIsUserMenuOpen(prev => !prev)}
-                disabled={isLoginRoute}
-              >
-                <span className="global-header__user-avatar" aria-hidden="true">
-                  <span className="global-header__user-avatar-icon" />
-                </span>
-                {status === "authenticated" ? (
+            {isAuthenticated ? (
+              <div className="global-header__user-wrap" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="global-header__user"
+                  aria-label={profileLabel}
+                  title={profileSubLabel}
+                  aria-haspopup="menu"
+                  aria-expanded={isUserMenuOpen}
+                  onClick={() => setIsUserMenuOpen(prev => !prev)}
+                >
+                  <span className="global-header__user-avatar" aria-hidden="true">
+                    <span className="global-header__user-avatar-icon" />
+                  </span>
                   <span className="global-header__user-name">{profileLabel}</span>
+                </button>
+
+                {isUserMenuOpen ? (
+                  <div className="global-header__user-menu" role="menu" aria-label="Menu de perfil do usuario">
+                    <header className="global-header__user-menu-head">
+                      <span className="global-header__user-menu-avatar">{profileInitials}</span>
+                      <div>
+                        <p>{profileLabel}</p>
+                        <small>{profileEmail}</small>
+                      </div>
+                    </header>
+
+                    <nav className="global-header__user-menu-actions" aria-label="Acoes do perfil">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          navigate(routePaths.settings);
+                        }}
+                      >
+                        Abrir perfil do usuario
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          void logout();
+                        }}
+                        disabled={isAuthBusy}
+                      >
+                        {isAuthBusy ? "Saindo..." : "Sair"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          void logoutAll();
+                        }}
+                        disabled={isAuthBusy}
+                      >
+                        Sair de todos
+                      </button>
+                    </nav>
+                  </div>
                 ) : null}
-              </button>
-
-              {isUserMenuOpen ? (
-                <div className="global-header__user-menu" role="menu" aria-label="Menu de perfil do usuario">
-                  <header className="global-header__user-menu-head">
-                    <span className="global-header__user-menu-avatar">{profileInitials}</span>
-                    <div>
-                      <p>{profileLabel}</p>
-                      <small>{profileEmail}</small>
-                    </div>
-                  </header>
-
-                  <nav className="global-header__user-menu-actions" aria-label="Acoes do perfil">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        navigate(routePaths.settings);
-                      }}
-                    >
-                      Abrir perfil do usuario
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        void logout();
-                      }}
-                      disabled={isAuthBusy}
-                    >
-                      {isAuthBusy ? "Saindo..." : "Sair"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        void logoutAll();
-                      }}
-                      disabled={isAuthBusy}
-                    >
-                      Sair de todos
-                    </button>
-                  </nav>
-                </div>
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <div className="global-header__guest-actions">
+                <button
+                  type="button"
+                  className="global-header__guest-link"
+                  onClick={() => navigate(isHomeRoute ? routePaths.login : routePaths.home)}
+                >
+                  {isHomeRoute ? "Entrar" : "Voltar para Home"}
+                </button>
+              </div>
+            )}
           </header>
 
           <main
             className={cn(
               "global-layout__main",
               isAppRoute && "global-layout__main--no-scroll",
-              isLoginRoute && "global-layout__main--login"
+              isPublicGuestRoute && "global-layout__main--public"
             )}
           >
             <Outlet />

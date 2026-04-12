@@ -13,7 +13,7 @@ export function PageHeader({ label, title, actions }: PageHeaderProps) {
         {label ? <p className="shared-page-header__label">{label}</p> : null}
         <h1 className="shared-page-header__title">{title}</h1>
       </div>
-      {actions ? <div>{actions}</div> : null}
+      {actions ? <div className="shared-page-header__actions">{actions}</div> : null}
     </header>
   );
 }

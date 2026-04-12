@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
+import { CreateTaskButton } from "@/features/create-task";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import {
   DataTable,
@@ -48,11 +49,11 @@ export function ListPage() {
       metrics={metrics}
       noPageScroll
       hideSidebarBrandMark
-      pageTitle="Lista de itens"
+      pageLabel="Planejamento"
+      pageTitle="List"
       filter={filter}
       onFilterQueryChange={setFilterQuery}
       onMineToggle={toggleMineFilter}
-      onCreateTask={input => void createTask(input)}
     >
       <div className="list-view">
         <BoardMetrics metrics={metrics} className="list-view__metrics" />
@@ -60,7 +61,12 @@ export function ListPage() {
         <Section
           title="Itens do workspace"
           subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
-          actions={<StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>}
+          actions={
+            <>
+              <StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>
+              <CreateTaskButton onCreate={input => void createTask(input)} />
+            </>
+          }
           className="list-view__section"
         >
           <DataTable

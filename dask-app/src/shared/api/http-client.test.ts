@@ -57,7 +57,10 @@ describe("apiClient auth handling", () => {
       handleUnauthorized
     });
 
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(401, { message: "expired" }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(401, { message: "expired" }))
+      .mockResolvedValueOnce(jsonResponse(401, { message: "expired" }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -66,7 +69,7 @@ describe("apiClient auth handling", () => {
       })
     ).rejects.toBeInstanceOf(ApiError);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refreshAccessToken).toHaveBeenCalledTimes(1);
     expect(handleUnauthorized).toHaveBeenCalledTimes(1);
   });

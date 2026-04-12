@@ -2,11 +2,13 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { priorityMeta, taskPriorityOptions, type TaskPriority } from "@/entities/task";
 import type { CreateTaskInput } from "@/modules/workspace";
+import { cn } from "@/shared/lib/cn";
 import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
 import "./create-task-button.css";
 
 interface CreateTaskButtonProps {
   onCreate: (input: CreateTaskInput) => void | Promise<void>;
+  className?: string;
 }
 
 const typeOptions: Array<{ id: string; label: string }> = [
@@ -41,7 +43,7 @@ function improveDescriptionMock(description: string): string {
   ].join("\n");
 }
 
-export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
+export function CreateTaskButton({ onCreate, className }: CreateTaskButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [type, setType] = useState(typeOptions[0].id);
   const [priority, setPriority] = useState<TaskPriority>(2);
@@ -143,8 +145,11 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
 
   return (
     <>
-      <Button variant="primary" onClick={() => setIsOpen(true)}>
-        + Nova tarefa
+      <Button variant="primary" size="sm" className={cn("create-task-button__trigger", className)} onClick={() => setIsOpen(true)}>
+        <span className="create-task-button__trigger-icon" aria-hidden="true">
+          +
+        </span>
+        <span>Nova tarefa</span>
       </Button>
       {isOpen ? createPortal(modal, document.body) : null}
     </>

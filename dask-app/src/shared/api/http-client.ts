@@ -210,7 +210,9 @@ async function runRequest<T>(config: InternalRequestConfig): Promise<T> {
         isRetryAttempt: true
       });
     }
+  }
 
+  if (error.status === 401 && config.authMode !== "none" && authBridge) {
     authBridge.handleUnauthorized();
   }
 

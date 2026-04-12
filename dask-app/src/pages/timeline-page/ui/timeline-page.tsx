@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { buildTaskChecklistSummary, buildTaskTypeMetaMap, getTaskTypeDisplayMeta } from "@/entities/task";
+import { CreateTaskButton } from "@/features/create-task";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import {
   DataTable,
@@ -71,11 +72,11 @@ export function TimelinePage() {
       metrics={metrics}
       noPageScroll
       hideSidebarBrandMark
-      pageTitle="Linha do tempo"
+      pageLabel="Planejamento"
+      pageTitle="Timeline"
       filter={filter}
       onFilterQueryChange={setFilterQuery}
       onMineToggle={toggleMineFilter}
-      onCreateTask={input => void createTask(input)}
     >
       <div className="timeline-view">
         <BoardMetrics metrics={metrics} className="timeline-view__metrics" />
@@ -83,7 +84,12 @@ export function TimelinePage() {
         <Section
           title="Linha do tempo de entregas"
           subtitle="Visualize os itens por prazo para antecipar gargalos e riscos de calendario."
-          actions={<StatusBadge>{rangeLabel}</StatusBadge>}
+          actions={
+            <>
+              <StatusBadge>{rangeLabel}</StatusBadge>
+              <CreateTaskButton onCreate={input => void createTask(input)} />
+            </>
+          }
           className="timeline-view__section"
         >
           <DataTable

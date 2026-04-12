@@ -44,6 +44,14 @@
   font-size: var(--font-size-sm);
 }
 
+.shared-section__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .shared-section__content {
   position: relative;
   z-index: 1;

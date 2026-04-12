@@ -17,7 +17,7 @@ export function Section({ title, subtitle, actions, className = "", children }: 
           <h2 className="shared-section__title">{title}</h2>
           {subtitle ? <p className="shared-section__subtitle">{subtitle}</p> : null}
         </div>
-        {actions ? <div>{actions}</div> : null}
+        {actions ? <div className="shared-section__actions">{actions}</div> : null}
       </header>
       <div className="shared-section__content">{children}</div>
     </section>

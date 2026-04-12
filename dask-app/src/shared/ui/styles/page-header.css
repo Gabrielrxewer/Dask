@@ -24,9 +24,27 @@
   color: #10233f;
 }
 
+.shared-page-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .shared-filter-bar {
   display: flex;
   gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .shared-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shared-page-header__actions {
+    width: 100%;
+  }
 }

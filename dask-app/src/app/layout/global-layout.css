@@ -2,7 +2,7 @@
   --global-header-height: 48px;
   --global-footer-height: 48px;
   --global-content-gap: 8px;
-  --global-sidebar-width: 280px;
+  --global-sidebar-width: 304px;
   --global-chrome-border: rgba(144, 190, 226, 0.34);
   --global-chrome-surface:
     radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.12) 0%, transparent 24%),

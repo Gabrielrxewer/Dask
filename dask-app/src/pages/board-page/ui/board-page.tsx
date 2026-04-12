@@ -16,6 +16,7 @@ import {
   applyDashboardFilter,
   useDashboardFilter
 } from "@/features/dashboard-filter";
+import { CreateTaskButton } from "@/features/create-task";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
 import "./board-page.css";
@@ -286,11 +287,12 @@ export function BoardPage() {
       metrics={devMetrics}
       noPageScroll
       hideSidebarBrandMark
+      pageLabel="Planejamento"
+      pageTitle="Board"
       topNavigation={topNavigation}
       filter={filter}
       onFilterQueryChange={setQuery}
       onMineToggle={toggleMineOnly}
-      onCreateTask={input => void createTask(input)}
     >
       <div className="board-view">
         <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
@@ -298,7 +300,12 @@ export function BoardPage() {
         <Section
           title={activeModeMeta ? `Quadro ${activeModeMeta.label}` : "Quadro"}
           subtitle={boardSubtitle}
-          actions={<StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>}
+          actions={
+            <>
+              <StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>
+              <CreateTaskButton onCreate={input => void createTask(input)} />
+            </>
+          }
           className="board-view__canvas"
         >
           {isLoading ? (

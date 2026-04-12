@@ -1,3 +1,29 @@
+.create-task-button__trigger.shared-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  padding: 0 14px 0 10px;
+  white-space: nowrap;
+}
+
+.create-task-button__trigger-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.create-task-button__trigger.shared-button:hover .create-task-button__trigger-icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .create-item-modal {
   position: relative;
   width: min(640px, 100%);

@@ -62,6 +62,8 @@ function makeRepo(): Mocked<IdentityRepository> {
     createUser: vi.fn(),
     findUserByEmail: vi.fn(),
     findUserById: vi.fn(),
+    findUserByExternalIdentity: vi.fn(),
+    linkExternalIdentity: vi.fn(),
     updateUserPassword: vi.fn(),
     incrementLoginFailures: vi.fn(),
     resetLoginFailures: vi.fn(),
@@ -352,6 +354,81 @@ describe('login', () => {
       'user-1',
       expect.objectContaining({ hashVersion: 1 })
     );
+  });
+});
+
+describe('loginWithExternal', () => {
+  let service: AuthService;
+  let repo: ReturnType<typeof makeRepo>;
+
+  beforeEach(() => {
+    repo = makeRepo();
+    service = new AuthService(repo, makePasswordService());
+  });
+
+  it('logs in when external identity already exists', async () => {
+    const linkedUser = makeUser({ email: 'alice@example.com' });
+    (repo.findUserByExternalIdentity as MockedFunction<typeof repo.findUserByExternalIdentity>).mockResolvedValue(linkedUser);
+    (repo.linkExternalIdentity as MockedFunction<typeof repo.linkExternalIdentity>).mockResolvedValue();
+    (repo.resetLoginFailures as MockedFunction<typeof repo.resetLoginFailures>).mockResolvedValue();
+    (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
+
+    const result = await service.loginWithExternal({
+      provider: 'GOOGLE',
+      providerSubject: 'google-sub-1',
+      email: 'alice@example.com',
+      name: 'Alice Example',
+      emailVerified: true
+    });
+
+    expect(result.accessToken).toBeTruthy();
+    expect(result.user.email).toBe('alice@example.com');
+    expect(repo.findUserByEmail).not.toHaveBeenCalled();
+  });
+
+  it('creates user and links provider when email does not exist', async () => {
+    (repo.findUserByExternalIdentity as MockedFunction<typeof repo.findUserByExternalIdentity>).mockResolvedValue(null);
+    (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
+    (repo.createUser as MockedFunction<typeof repo.createUser>).mockResolvedValue(
+      makeUser({ id: 'new-user', email: 'new@example.com', passwordHash: null })
+    );
+    (repo.linkExternalIdentity as MockedFunction<typeof repo.linkExternalIdentity>).mockResolvedValue();
+    (repo.resetLoginFailures as MockedFunction<typeof repo.resetLoginFailures>).mockResolvedValue();
+    (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
+
+    const result = await service.loginWithExternal({
+      provider: 'GOOGLE',
+      providerSubject: 'google-sub-2',
+      email: 'new@example.com',
+      name: 'New User',
+      emailVerified: true
+    });
+
+    expect(result.user.email).toBe('new@example.com');
+    expect(repo.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'new@example.com', passwordHash: null })
+    );
+    expect(repo.linkExternalIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not auto-link when email already exists without external identity', async () => {
+    (repo.findUserByExternalIdentity as MockedFunction<typeof repo.findUserByExternalIdentity>).mockResolvedValue(null);
+    (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(
+      makeUser({ id: 'local-user', email: 'alice@example.com' })
+    );
+
+    await expect(
+      service.loginWithExternal({
+        provider: 'GOOGLE',
+        providerSubject: 'google-sub-3',
+        email: 'alice@example.com',
+        name: 'Alice Example',
+        emailVerified: true
+      })
+    ).rejects.toThrow(/already exists/i);
+
+    expect(repo.linkExternalIdentity).not.toHaveBeenCalled();
+    expect(repo.createUser).not.toHaveBeenCalled();
   });
 });
 

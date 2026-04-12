@@ -165,6 +165,22 @@ describe("AuthStore", () => {
     expect(transport.getAccessToken()).toBeNull();
   });
 
+  it("finishes bootstrap as unauthenticated when initial refresh returns forbidden", async () => {
+    const service = createAuthServiceMock();
+    const transport = new MemoryTransport();
+    vi.mocked(service.refresh).mockRejectedValue(
+      new ApiError({ status: 403, message: "CSRF token required." })
+    );
+
+    const store = new AuthStore({ authService: service, transport });
+    await store.bootstrap();
+
+    const snapshot = store.getSnapshot();
+    expect(snapshot.status).toBe("unauthenticated");
+    expect(snapshot.initialized).toBe(true);
+    expect(snapshot.isAuthenticated).toBe(false);
+  });
+
   it("logs out and clears local session state", async () => {
     const service = createAuthServiceMock();
     const transport = new MemoryTransport();

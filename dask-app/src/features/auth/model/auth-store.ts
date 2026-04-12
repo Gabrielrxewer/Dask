@@ -232,11 +232,24 @@ export class AuthStore {
     const hasAccessToken = Boolean(this.transport.getAccessToken());
 
     if (!hasAccessToken) {
-      const refreshedAccessToken = await this.refreshTokens({
-        setRefreshingState: false,
-        onUnauthorized: "unauthenticated"
-      });
-      if (!refreshedAccessToken) {
+      try {
+        const refreshedAccessToken = await this.refreshTokens({
+          setRefreshingState: false,
+          onUnauthorized: "unauthenticated"
+        });
+        if (!refreshedAccessToken) {
+          return;
+        }
+      } catch {
+        this.transport.clear();
+        this.setState(prev => ({
+          ...prev,
+          status: "unauthenticated",
+          user: null,
+          initialized: true,
+          sessionNotice: null,
+          errorMessage: "Nao foi possivel restaurar a sessao. Tente novamente."
+        }));
         return;
       }
     }
@@ -384,7 +397,7 @@ export class AuthStore {
   }
 
   private isUnauthorized(error: unknown): boolean {
-    return isApiError(error) && error.status === 401;
+    return isApiError(error) && (error.status === 401 || error.status === 403);
   }
 
   private mapLoginError(error: unknown): string {

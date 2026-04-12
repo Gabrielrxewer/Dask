@@ -46,8 +46,6 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
     store.getSnapshot.bind(store)
   );
 
-  useAuthBootstrap(store);
-
   useEffect(() => {
     setHttpAuthBridge({
       getAccessToken: () => store.getAccessToken(),
@@ -60,6 +58,8 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
       setHttpAuthBridge(null);
     };
   }, [store]);
+
+  useAuthBootstrap(store);
 
   const bootstrap = useCallback(() => store.bootstrap(), [store]);
   const login = useCallback((input: LoginInput) => store.login(input), [store]);

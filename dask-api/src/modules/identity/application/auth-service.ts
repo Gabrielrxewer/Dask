@@ -24,7 +24,10 @@ import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
 import { validatePassword, normalizeEmail } from '@/modules/identity/domain/password-policy';
 import { PasswordService } from '@/modules/identity/application/password-service';
-import type { IdentityRepository } from '@/modules/identity/repositories/identity-repository';
+import type {
+  ExternalAuthProvider,
+  IdentityRepository
+} from '@/modules/identity/repositories/identity-repository';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -41,6 +44,15 @@ export type UserProfile = {
   name: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type ExternalAuthInput = {
+  provider: ExternalAuthProvider;
+  providerSubject: string;
+  email: string;
+  name: string;
+  providerTenantId?: string | null;
+  emailVerified?: boolean | null;
 };
 
 /**
@@ -268,6 +280,60 @@ export class AuthService {
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
+  public async loginWithExternal(
+    input: ExternalAuthInput,
+    context?: RequestContext
+  ): Promise<{ user: UserProfile } & AuthTokens> {
+    const normalizedEmail = normalizeEmail(input.email);
+    const linkedUser = await this.identityRepository.findUserByExternalIdentity({
+      provider: input.provider,
+      providerSubject: input.providerSubject,
+      providerTenantId: input.providerTenantId ?? null
+    });
+
+    let user = linkedUser;
+
+    if (!user) {
+      const userByEmail = await this.identityRepository.findUserByEmail(normalizedEmail);
+
+      if (userByEmail) {
+        throw new AppError(
+          'An account with this email already exists. Please sign in with your password to link this provider.',
+          409,
+          { code: 'EXTERNAL_LINK_CONFIRMATION_REQUIRED', provider: input.provider }
+        );
+      }
+    }
+
+    if (!user) {
+      user = await this.identityRepository.createUser({
+        email: normalizedEmail,
+        name: input.name,
+        passwordHash: null,
+        passwordHashVersion: 1
+      });
+    }
+
+    await this.identityRepository.linkExternalIdentity({
+      userId: user.id,
+      provider: input.provider,
+      providerSubject: input.providerSubject,
+      providerTenantId: input.providerTenantId ?? null,
+      emailAtProvider: normalizedEmail,
+      emailVerified: input.emailVerified ?? null
+    });
+
+    await this.identityRepository.resetLoginFailures(user.id);
+
+    const tokens = await this.issueTokenPair(user.id, user.email);
+    logAuthEvent('auth.login.success', {
+      userId: user.id,
+      context,
+      extra: { provider: input.provider, oauth: true }
+    });
+
+    return { user: toUserProfile(user), ...tokens };
+  }
 
   public async refresh(
     rawRefreshToken: string,
@@ -499,3 +565,4 @@ export class AuthService {
     return { accessToken, refreshToken: rawRefreshToken };
   }
 }
+

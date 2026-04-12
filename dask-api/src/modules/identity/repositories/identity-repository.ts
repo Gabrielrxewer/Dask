@@ -32,6 +32,8 @@ export type LockoutState = {
   lockedUntil: Date | null;
 };
 
+export type ExternalAuthProvider = 'GOOGLE' | 'MICROSOFT';
+
 // ---------------------------------------------------------------------------
 // Repository interface
 // ---------------------------------------------------------------------------
@@ -47,6 +49,19 @@ export interface IdentityRepository {
 
   findUserByEmail(email: string): Promise<User | null>;
   findUserById(id: string): Promise<User | null>;
+  findUserByExternalIdentity(input: {
+    provider: ExternalAuthProvider;
+    providerSubject: string;
+    providerTenantId?: string | null;
+  }): Promise<User | null>;
+  linkExternalIdentity(input: {
+    userId: string;
+    provider: ExternalAuthProvider;
+    providerSubject: string;
+    providerTenantId?: string | null;
+    emailAtProvider?: string | null;
+    emailVerified?: boolean | null;
+  }): Promise<void>;
 
   updateUserPassword(
     userId: string,

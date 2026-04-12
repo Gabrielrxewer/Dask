@@ -27,6 +27,15 @@ const envSchema = z.object({
   // strict | lax | none
   COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('strict'),
 
+  // OAuth / OIDC (social login)
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().optional(),
+  MICROSOFT_OAUTH_CLIENT_ID: z.string().optional(),
+  MICROSOFT_OAUTH_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_OAUTH_TENANT_ID: z.string().default('common'),
+  MICROSOFT_OAUTH_REDIRECT_URI: z.string().optional(),
+
   LOG_LEVEL: z.string().default('info'),
   ENABLE_WORKERS: z
     .string()

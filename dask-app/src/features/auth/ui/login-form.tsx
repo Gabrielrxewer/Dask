@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
 import { useAuth, useLogin } from "@/features/auth";
 import { cn } from "@/shared/lib/cn";
+import { buildApiUrl } from "@/shared/config/env";
 import "./login-form.css";
 
 interface LoginLocationState {
@@ -13,21 +14,18 @@ type SocialProvider = {
   id: "google" | "microsoft";
   label: string;
   shortLabel: string;
-  onClick?: () => void;
 };
 
 const socialProviders: SocialProvider[] = [
   {
     id: "google",
     label: "Entrar com Google",
-    shortLabel: "Google",
-    onClick: () => undefined
+    shortLabel: "Google"
   },
   {
     id: "microsoft",
     label: "Entrar com Microsoft",
-    shortLabel: "Microsoft",
-    onClick: () => undefined
+    shortLabel: "Microsoft"
   }
 ];
 
@@ -41,10 +39,18 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const locationState = (location.state as LoginLocationState | null) ?? null;
+  const searchParams = new URLSearchParams(location.search);
+  const oauthLinkRequired = searchParams.get("oauth") === "link_required";
+  const oauthProvider = searchParams.get("provider");
 
   const hintMessage = useMemo(() => {
     if (auth.errorMessage) {
       return auth.errorMessage;
+    }
+
+    if (oauthLinkRequired) {
+      const providerLabel = oauthProvider === "microsoft" ? "Microsoft" : "Google";
+      return `Ja existe uma conta com este email. Entre com senha para vincular ${providerLabel}.`;
     }
 
     if (locationState?.reason === "session_expired" || auth.status === "session_expired") {
@@ -52,7 +58,7 @@ export function LoginForm() {
     }
 
     return auth.sessionNotice;
-  }, [auth.errorMessage, auth.sessionNotice, auth.status, locationState?.reason]);
+  }, [auth.errorMessage, auth.sessionNotice, auth.status, locationState?.reason, oauthLinkRequired, oauthProvider]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -60,6 +66,10 @@ export function LoginForm() {
       email: email.trim(),
       password
     });
+  };
+
+  const handleSocialLogin = (providerId: SocialProvider["id"]) => {
+    window.location.assign(buildApiUrl(`/auth/${providerId}`));
   };
 
   return (
@@ -140,7 +150,7 @@ export function LoginForm() {
                 key={provider.id}
                 type="button"
                 className="auth-login__social-button"
-                onClick={provider.onClick}
+                onClick={() => handleSocialLogin(provider.id)}
                 title={provider.label}
                 aria-label={provider.label}
               >

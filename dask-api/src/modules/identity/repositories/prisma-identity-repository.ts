@@ -6,6 +6,7 @@ import {
   type User
 } from '@prisma/client';
 import type {
+  ExternalAuthProvider,
   IdentityRepository,
   LockoutState,
   StoredPasswordResetToken,
@@ -49,6 +50,67 @@ export class PrismaIdentityRepository implements IdentityRepository {
 
   public findUserById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  public async findUserByExternalIdentity(input: {
+    provider: ExternalAuthProvider;
+    providerSubject: string;
+    providerTenantId?: string | null;
+  }): Promise<User | null> {
+    const identity = await this.prisma.externalIdentity.findFirst({
+      where: {
+        provider: input.provider,
+        providerSubject: input.providerSubject,
+        providerTenantId: input.providerTenantId ?? null
+      },
+      include: { user: true }
+    });
+
+    return identity?.user ?? null;
+  }
+
+  public async linkExternalIdentity(input: {
+    userId: string;
+    provider: ExternalAuthProvider;
+    providerSubject: string;
+    providerTenantId?: string | null;
+    emailAtProvider?: string | null;
+    emailVerified?: boolean | null;
+  }): Promise<void> {
+    const providerTenantId = input.providerTenantId ?? null;
+
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.externalIdentity.findFirst({
+        where: {
+          provider: input.provider,
+          providerSubject: input.providerSubject,
+          providerTenantId
+        }
+      });
+
+      if (existing) {
+        await tx.externalIdentity.update({
+          where: { id: existing.id },
+          data: {
+            userId: input.userId,
+            emailAtProvider: input.emailAtProvider ?? null,
+            emailVerified: input.emailVerified ?? null
+          }
+        });
+        return;
+      }
+
+      await tx.externalIdentity.create({
+        data: {
+          userId: input.userId,
+          provider: input.provider,
+          providerSubject: input.providerSubject,
+          providerTenantId,
+          emailAtProvider: input.emailAtProvider ?? null,
+          emailVerified: input.emailVerified ?? null
+        }
+      });
+    });
   }
 
   public async updateUserPassword(

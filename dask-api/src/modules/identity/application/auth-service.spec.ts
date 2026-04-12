@@ -275,6 +275,20 @@ describe('login', () => {
     ).rejects.toThrow('Invalid credentials.');
   });
 
+  it('returns generic 401 when account has no local password', async () => {
+    const user = makeUser({ passwordHash: null });
+    (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(user);
+    (repo.incrementLoginFailures as MockedFunction<typeof repo.incrementLoginFailures>).mockResolvedValue(
+      { failureCount: 1, lockedUntil: null } as LockoutState
+    );
+
+    await expect(
+      service.login({ email: 'alice@example.com', password: rawPassword })
+    ).rejects.toThrow('Invalid credentials.');
+
+    expect(repo.incrementLoginFailures).toHaveBeenCalledWith('user-1', expect.any(Number));
+  });
+
   it('rejects login when account is locked', async () => {
     const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
     const user = await userWithHash(rawPassword);

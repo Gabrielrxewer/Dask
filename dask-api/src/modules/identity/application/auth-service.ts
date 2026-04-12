@@ -207,6 +207,24 @@ export class AuthService {
     }
 
     // ── Password verification ──────────────────────────────────────────────
+    // Social-only accounts may not have a local password set.
+    if (user.passwordHash === null) {
+      const lockout = await this.identityRepository.incrementLoginFailures(
+        user.id,
+        env.AUTH_MAX_FAILURES
+      );
+      logAuthEvent('auth.login.failure', {
+        userId: user.id,
+        context,
+        extra: {
+          reason: 'password_not_set',
+          failureCount: lockout.failureCount,
+          lockedUntil: lockout.lockedUntil
+        }
+      });
+      throw new AppError('Invalid credentials.', 401);
+    }
+
     const valid = await this.passwordService.verify(
       input.password,
       user.passwordHash,

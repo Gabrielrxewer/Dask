@@ -41,7 +41,7 @@ export interface IdentityRepository {
   createUser(input: {
     email: string;
     name: string;
-    passwordHash: string;
+    passwordHash: string | null;
     passwordHashVersion: number;
   }): Promise<User>;
 

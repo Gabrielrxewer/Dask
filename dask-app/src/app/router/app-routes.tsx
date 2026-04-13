@@ -16,8 +16,10 @@ import {
   ListPage,
   LoginPage,
   NoWorkspacePage,
+  ResetPasswordPage,
   SettingsShellPage,
   TimelinePage,
+  VerifyEmailPage,
   WorkflowStatesSettingsPage
 } from "@/pages";
 import { buildWorkspaceBoardPath, routePaths } from "@/app/router";
@@ -95,6 +97,15 @@ export function AppRoutes() {
             </PublicRoute>
           }
         />
+
+        {/*
+          Rota pública sem guard de sessão.
+          O usuário chega aqui via link de e-mail — sem cookie de refresh válido.
+          Não pode estar dentro de PublicRoute (que bloqueia autenticados) nem
+          de ProtectedRoute (que exige sessão). Apenas o GlobalLayout envolve.
+        */}
+        <Route path={routePaths.resetPassword} element={<ResetPasswordPage />} />
+        <Route path={routePaths.verifyEmail} element={<VerifyEmailPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<WorkspaceBoundary />}>

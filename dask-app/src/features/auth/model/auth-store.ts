@@ -27,6 +27,15 @@ const initialState: AuthState = {
 };
 
 const CSRF_COOKIE_NAME = "dask-csrf";
+const EMAIL_NOT_VERIFIED_CODE = "EMAIL_NOT_VERIFIED";
+
+function hasErrorCode(details: unknown, code: string): boolean {
+  if (!details || typeof details !== "object") {
+    return false;
+  }
+
+  return (details as { code?: unknown }).code === code;
+}
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") {
@@ -101,6 +110,27 @@ export class AuthStore {
     }));
 
     const result = await this.authService.register(input);
+
+    if (!result.user.emailVerified) {
+      this.transport.clear();
+
+      try {
+        await this.authService.logout({});
+      } catch {
+        // Best-effort cleanup only; keep user unauthenticated on client side.
+      }
+
+      this.setState(prev => ({
+        ...prev,
+        status: "unauthenticated",
+        user: null,
+        initialized: true,
+        sessionNotice: null,
+        errorMessage: null
+      }));
+      return;
+    }
+
     this.transport.setTokens({
       accessToken: result.accessToken
     });
@@ -411,6 +441,10 @@ export class AuthStore {
 
     if (error.status === 429) {
       return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+    }
+
+    if (error.status === 403 && hasErrorCode(error.details, EMAIL_NOT_VERIFIED_CODE)) {
+      return "Confirme seu e-mail antes de entrar.";
     }
 
     if (error.isNetworkError) {

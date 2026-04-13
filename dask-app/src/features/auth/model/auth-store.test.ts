@@ -24,6 +24,7 @@ const mockUser = {
   id: "user-1",
   email: "ana@example.com",
   name: "Ana",
+  emailVerified: true,
   createdAt: "2026-04-01T00:00:00.000Z",
   updatedAt: "2026-04-01T00:00:00.000Z"
 };
@@ -47,7 +48,11 @@ function createAuthServiceMock(): AuthServiceContract {
     refresh: vi.fn(),
     logout: vi.fn(),
     logoutAll: vi.fn(),
-    me: vi.fn()
+    me: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    confirmPasswordReset: vi.fn(),
+    resendVerificationEmail: vi.fn(),
+    verifyEmail: vi.fn()
   };
 }
 

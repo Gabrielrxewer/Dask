@@ -29,7 +29,11 @@ function createAuthServiceMock(): AuthServiceContract {
     refresh: vi.fn(),
     logout: vi.fn(),
     logoutAll: vi.fn(),
-    me: vi.fn()
+    me: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    confirmPasswordReset: vi.fn(),
+    resendVerificationEmail: vi.fn(),
+    verifyEmail: vi.fn()
   };
 }
 

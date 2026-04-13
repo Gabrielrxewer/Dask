@@ -26,6 +26,24 @@ export interface AuthSuccessResponse {
   user: AuthenticatedUser;
 }
 
+export interface RequestPasswordResetInput {
+  email: string;
+}
+
+export interface RequestPasswordResetResponse {
+  message: string;
+  resetToken?: string;
+}
+
+export interface ConfirmPasswordResetInput {
+  token: string;
+  newPassword: string;
+}
+
+export interface ResendVerificationEmailInput {
+  email: string;
+}
+
 export interface AuthServiceContract {
   register: (input: RegisterInput) => Promise<AuthSuccessResponse>;
   login: (input: LoginInput) => Promise<AuthSuccessResponse>;
@@ -33,4 +51,8 @@ export interface AuthServiceContract {
   logout: (input: LogoutInput) => Promise<void>;
   logoutAll: () => Promise<void>;
   me: () => Promise<AuthenticatedUser>;
+  requestPasswordReset: (input: RequestPasswordResetInput) => Promise<RequestPasswordResetResponse>;
+  confirmPasswordReset: (input: ConfirmPasswordResetInput) => Promise<void>;
+  resendVerificationEmail: (input: ResendVerificationEmailInput) => Promise<void>;
+  verifyEmail: (token: string) => Promise<void>;
 }

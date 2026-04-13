@@ -1,10 +1,12 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
 import { useAuth, useLogin } from "@/features/auth";
+import { authService } from "@/features/auth/api/auth-service";
 import { cn } from "@/shared/lib/cn";
 import { buildApiUrl } from "@/shared/config/env";
 import { isApiError } from "@/shared/api/http-client";
+import { routePaths } from "@/app/router/route-paths";
 import "./login-form.css";
 
 interface LoginLocationState {
@@ -17,7 +19,7 @@ type SocialProvider = {
   shortLabel: string;
 };
 
-type AuthStep = "login" | "register";
+type AuthStep = "login" | "register" | "forgot-password";
 
 const socialProviders: SocialProvider[] = [
   {
@@ -31,6 +33,16 @@ const socialProviders: SocialProvider[] = [
     shortLabel: "Microsoft"
   }
 ];
+
+const EMAIL_NOT_VERIFIED_CODE = "EMAIL_NOT_VERIFIED";
+
+function hasErrorCode(details: unknown, code: string): boolean {
+  if (!details || typeof details !== "object") {
+    return false;
+  }
+
+  return (details as { code?: unknown }).code === code;
+}
 
 function mapRegisterError(error: unknown): string {
   if (!isApiError(error)) {
@@ -59,6 +71,7 @@ function mapRegisterError(error: unknown): string {
 export function LoginForm() {
   const auth = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { login, isSubmitting } = useLogin();
 
   const [email, setEmail] = useState("");
@@ -69,12 +82,15 @@ export function LoginForm() {
     new URLSearchParams(location.search).get("step") === "register" ? "register" : "login"
   );
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   const locationState = (location.state as LoginLocationState | null) ?? null;
   const searchParams = new URLSearchParams(location.search);
   const oauthLinkRequired = searchParams.get("oauth") === "link_required";
   const oauthProvider = searchParams.get("provider");
   const isRegisterStep = authStep === "register";
+  const isForgotStep = authStep === "forgot-password";
 
   const hintMessage = useMemo(() => {
     if (registerError) {
@@ -132,6 +148,7 @@ export function LoginForm() {
           name: trimmedName,
           password
         });
+        navigate(`${routePaths.verifyEmail}?email=${encodeURIComponent(email.trim())}`);
       } catch (error) {
         setRegisterError(mapRegisterError(error));
       }
@@ -139,10 +156,20 @@ export function LoginForm() {
       return;
     }
 
-    await login({
-      email: email.trim(),
-      password
-    });
+    try {
+      await login({
+        email: email.trim(),
+        password
+      });
+    } catch (error) {
+      if (
+        isApiError(error) &&
+        error.status === 403 &&
+        hasErrorCode(error.details, EMAIL_NOT_VERIFIED_CODE)
+      ) {
+        navigate(`${routePaths.verifyEmail}?email=${encodeURIComponent(email.trim())}`);
+      }
+    }
   };
 
   const handleSocialLogin = (providerId: SocialProvider["id"]) => {
@@ -152,7 +179,107 @@ export function LoginForm() {
   const handleStepChange = (step: AuthStep) => {
     setAuthStep(step);
     setRegisterError(null);
+    setForgotStatus("idle");
+    setForgotError(null);
   };
+
+  const handleForgotSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setForgotError("Informe seu e-mail para continuar.");
+      return;
+    }
+    setForgotStatus("loading");
+    setForgotError(null);
+    try {
+      await authService.requestPasswordReset({ email: trimmedEmail });
+      setForgotStatus("sent");
+    } catch {
+      setForgotStatus("error");
+      setForgotError("Nao foi possivel enviar o link. Tente novamente em instantes.");
+    }
+  };
+
+  if (isForgotStep) {
+    return (
+      <section className="auth-login-panel" aria-label="Recuperar senha">
+        <div className="auth-login">
+          <div className="auth-login__header">
+            <h1 className="auth-login__title">Recuperar senha</h1>
+            <p className="auth-login__subtitle">
+              Informe seu e-mail e enviaremos um link para voce criar uma nova senha.
+            </p>
+          </div>
+
+          {forgotStatus === "sent" ? (
+            <div className="auth-login__form">
+              <p className="auth-login__message auth-login__message--success" role="status">
+                Link enviado! Verifique sua caixa de entrada e a pasta de spam. O link expira em 1 hora.
+              </p>
+              <p className="auth-login__switch-cta">
+                <button
+                  type="button"
+                  className="auth-login__switch-cta-button"
+                  onClick={() => handleStepChange("login")}
+                >
+                  Voltar para o login
+                </button>
+              </p>
+            </div>
+          ) : (
+            <form className="auth-login__form" onSubmit={event => void handleForgotSubmit(event)} noValidate>
+              <div className="auth-login__field">
+                <label className="auth-login__label" htmlFor="forgot-email">
+                  Email
+                </label>
+                <TextInput
+                  className="auth-login__input"
+                  id="forgot-email"
+                  name="email"
+                  type="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={email}
+                  onChange={event => setEmail(event.target.value)}
+                  placeholder="voce@empresa.com"
+                  required
+                />
+              </div>
+
+              {forgotError ? (
+                <p className="auth-login__message" role="alert" aria-live="polite">
+                  {forgotError}
+                </p>
+              ) : null}
+
+              <Button
+                className="auth-login__submit"
+                type="submit"
+                variant="primary"
+                disabled={forgotStatus === "loading"}
+              >
+                {forgotStatus === "loading" ? "Enviando..." : "Enviar link de recuperacao"}
+              </Button>
+
+              <p className="auth-login__switch-cta">
+                Lembrou a senha?{" "}
+                <button
+                  type="button"
+                  className="auth-login__switch-cta-button"
+                  onClick={() => handleStepChange("login")}
+                >
+                  Voltar para o login
+                </button>
+              </p>
+            </form>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="auth-login-panel" aria-label="Acesso ao Dask">
@@ -207,9 +334,20 @@ export function LoginForm() {
           </div>
 
           <div className="auth-login__field auth-login__password-field">
-            <label className="auth-login__label" htmlFor="password">
-              Senha
-            </label>
+            <div className="auth-login__password-label-row">
+              <label className="auth-login__label" htmlFor="password">
+                Senha
+              </label>
+              {!isRegisterStep ? (
+                <button
+                  type="button"
+                  className="auth-login__forgot-link"
+                  onClick={() => handleStepChange("forgot-password")}
+                >
+                  Esqueci minha senha
+                </button>
+              ) : null}
+            </div>
             <div className="auth-login__password-input-wrap">
               <TextInput
                 className="auth-login__input auth-login__input--password"

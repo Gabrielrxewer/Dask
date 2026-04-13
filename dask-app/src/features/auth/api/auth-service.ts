@@ -3,11 +3,15 @@ import type { AuthenticatedUser } from "@/entities/user";
 import type {
   AuthServiceContract,
   AuthSuccessResponse,
+  ConfirmPasswordResetInput,
   LoginInput,
   LogoutInput,
   RefreshResponse,
   RefreshInput,
-  RegisterInput
+  RegisterInput,
+  ResendVerificationEmailInput,
+  RequestPasswordResetInput,
+  RequestPasswordResetResponse
 } from "@/features/auth/api/types";
 
 export const authService: AuthServiceContract = {
@@ -50,6 +54,34 @@ export const authService: AuthServiceContract = {
     return apiClient.get<AuthenticatedUser>("/auth/me", {
       authMode: "required",
       retryOnUnauthorized: true
+    });
+  },
+
+  requestPasswordReset(input: RequestPasswordResetInput): Promise<RequestPasswordResetResponse> {
+    return apiClient.post<RequestPasswordResetResponse>("/auth/password-reset/request", input, {
+      authMode: "none",
+      retryOnUnauthorized: false
+    });
+  },
+
+  async confirmPasswordReset(input: ConfirmPasswordResetInput): Promise<void> {
+    await apiClient.post<void>("/auth/password-reset/confirm", input, {
+      authMode: "none",
+      retryOnUnauthorized: false
+    });
+  },
+
+  async resendVerificationEmail(input: ResendVerificationEmailInput): Promise<void> {
+    await apiClient.post<void>("/auth/email-verification/resend", input, {
+      authMode: "none",
+      retryOnUnauthorized: false
+    });
+  },
+
+  async verifyEmail(token: string): Promise<void> {
+    await apiClient.get<void>(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+      authMode: "none",
+      retryOnUnauthorized: false
     });
   }
 };

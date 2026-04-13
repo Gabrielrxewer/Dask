@@ -1,7 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useParams } from "react-router-dom";
 import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api";
-import type { CreateTaskInput, WorkspaceAutomation, WorkspacePreferences, WorkspaceSnapshot } from "@/modules/workspace/model";
+import type {
+  ApiBoardColumn,
+  ApiCustomField,
+  ApiItemType,
+  ApiWorkflowState,
+  CreateBoardColumnInput,
+  CreateCustomFieldInput,
+  CreateItemTypeInput,
+  CreateTaskInput,
+  UpdateBoardColumnInput,
+  UpdateCustomFieldInput,
+  UpdateItemTypeInput,
+  WorkspaceAutomation,
+  WorkspacePreferences,
+  WorkspaceSnapshot
+} from "@/modules/workspace/model";
 
 interface WorkspaceContextValue {
   snapshot: WorkspaceSnapshot | null;
@@ -14,6 +30,24 @@ interface WorkspaceContextValue {
   setAutomationStatus: (automationId: string, status: WorkspaceAutomation["status"]) => Promise<void>;
   updatePreferences: (patch: Partial<WorkspacePreferences>) => Promise<void>;
   setCardFieldVisibility: (fieldId: string, visible: boolean) => Promise<void>;
+  setTypeFieldVisibility: (typeId: string, fieldId: string, visible: boolean) => Promise<void>;
+
+  fetchBoardColumns: () => Promise<ApiBoardColumn[]>;
+  fetchWorkflowStates: () => Promise<ApiWorkflowState[]>;
+  fetchItemTypes: () => Promise<ApiItemType[]>;
+  fetchCustomFields: () => Promise<ApiCustomField[]>;
+
+  createBoardColumn: (input: CreateBoardColumnInput) => Promise<void>;
+  updateBoardColumn: (columnId: string, input: UpdateBoardColumnInput) => Promise<void>;
+  deleteBoardColumn: (columnId: string) => Promise<void>;
+
+  createItemType: (input: CreateItemTypeInput) => Promise<void>;
+  updateItemType: (typeId: string, input: UpdateItemTypeInput) => Promise<void>;
+  deleteItemType: (typeId: string) => Promise<void>;
+
+  createCustomField: (input: CreateCustomFieldInput) => Promise<void>;
+  updateCustomField: (fieldId: string, input: UpdateCustomFieldInput) => Promise<void>;
+  deleteCustomField: (fieldId: string) => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -23,14 +57,22 @@ interface WorkspaceProviderProps {
 }
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
+  const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!workspaceSlug) {
+      setIsLoading(false);
+      setSnapshot(null);
+      return;
+    }
+
     let mounted = true;
 
+    setIsLoading(true);
     workspaceService
-      .getSnapshot()
+      .getSnapshot(workspaceSlug)
       .then(nextSnapshot => {
         if (mounted) {
           setSnapshot(nextSnapshot);
@@ -46,53 +88,168 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [workspaceSlug]);
 
   const createTask = useCallback(async (input: CreateTaskInput) => {
-    const nextSnapshot = await workspaceService.createTask(input);
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.createTask(workspaceSlug, input);
     setSnapshot(nextSnapshot);
-  }, []);
+  }, [workspaceSlug]);
 
   const moveTask = useCallback(async (taskId: string, nextStatus: TaskStatusId) => {
-    const nextSnapshot = await workspaceService.moveTask(taskId, nextStatus);
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.moveTask(workspaceSlug, taskId, nextStatus);
     setSnapshot(nextSnapshot);
-  }, []);
+  }, [workspaceSlug]);
 
   const updateTaskPriority = useCallback(async (taskId: string, priority: TaskPriority) => {
-    const nextSnapshot = await workspaceService.updateTaskPriority(taskId, priority);
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.updateTaskPriority(workspaceSlug, taskId, priority);
     setSnapshot(nextSnapshot);
-  }, []);
+  }, [workspaceSlug]);
 
   const updateTaskCustomField = useCallback(
     async (taskId: string, fieldId: string, value: TaskCustomFieldValue) => {
-      const nextSnapshot = await workspaceService.updateTaskCustomField(taskId, fieldId, value);
+      if (!workspaceSlug) {
+        return;
+      }
+
+      const nextSnapshot = await workspaceService.updateTaskCustomField(workspaceSlug, taskId, fieldId, value);
       setSnapshot(nextSnapshot);
     },
-    []
+    [workspaceSlug]
   );
 
   const toggleChecklistItem = useCallback(async (taskId: string, itemId: string) => {
-    const nextSnapshot = await workspaceService.toggleChecklistItem(taskId, itemId);
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.toggleChecklistItem(workspaceSlug, taskId, itemId);
     setSnapshot(nextSnapshot);
-  }, []);
+  }, [workspaceSlug]);
 
   const setAutomationStatus = useCallback(
     async (automationId: string, status: WorkspaceAutomation["status"]) => {
-      const nextSnapshot = await workspaceService.setAutomationStatus(automationId, status);
+      if (!workspaceSlug) {
+        return;
+      }
+
+      const nextSnapshot = await workspaceService.setAutomationStatus(workspaceSlug, automationId, status);
       setSnapshot(nextSnapshot);
     },
-    []
+    [workspaceSlug]
   );
 
   const updatePreferences = useCallback(async (patch: Partial<WorkspacePreferences>) => {
-    const nextSnapshot = await workspaceService.updatePreferences(patch);
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.updatePreferences(workspaceSlug, patch);
     setSnapshot(nextSnapshot);
-  }, []);
+  }, [workspaceSlug]);
 
   const setCardFieldVisibility = useCallback(async (fieldId: string, visible: boolean) => {
-    const nextSnapshot = await workspaceService.setCardFieldVisibility(fieldId, visible);
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.setCardFieldVisibility(workspaceSlug, fieldId, visible);
     setSnapshot(nextSnapshot);
-  }, []);
+  }, [workspaceSlug]);
+
+  const setTypeFieldVisibility = useCallback(
+    async (typeId: string, fieldId: string, visible: boolean) => {
+      if (!workspaceSlug) return;
+      const nextSnapshot = await workspaceService.setTypeFieldVisibility(workspaceSlug, typeId, fieldId, visible);
+      setSnapshot(nextSnapshot);
+    },
+    [workspaceSlug]
+  );
+
+  const fetchBoardColumns = useCallback(async (): Promise<ApiBoardColumn[]> => {
+    if (!workspaceSlug) return [];
+    return workspaceService.fetchBoardColumns(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const fetchWorkflowStates = useCallback(async (): Promise<ApiWorkflowState[]> => {
+    if (!workspaceSlug) return [];
+    return workspaceService.fetchWorkflowStates(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const fetchItemTypes = useCallback(async (): Promise<ApiItemType[]> => {
+    if (!workspaceSlug) return [];
+    return workspaceService.fetchItemTypes(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const fetchCustomFields = useCallback(async (): Promise<ApiCustomField[]> => {
+    if (!workspaceSlug) return [];
+    return workspaceService.fetchCustomFields(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const createBoardColumn = useCallback(async (input: CreateBoardColumnInput) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.createBoardColumn(workspaceSlug, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const updateBoardColumn = useCallback(async (columnId: string, input: UpdateBoardColumnInput) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.updateBoardColumn(workspaceSlug, columnId, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const deleteBoardColumn = useCallback(async (columnId: string) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.deleteBoardColumn(workspaceSlug, columnId);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const createItemType = useCallback(async (input: CreateItemTypeInput) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.createItemType(workspaceSlug, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const updateItemType = useCallback(async (typeId: string, input: UpdateItemTypeInput) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.updateItemType(workspaceSlug, typeId, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const deleteItemType = useCallback(async (typeId: string) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.deleteItemType(workspaceSlug, typeId);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const createCustomField = useCallback(async (input: CreateCustomFieldInput) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.createCustomField(workspaceSlug, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const updateCustomField = useCallback(async (fieldId: string, input: UpdateCustomFieldInput) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.updateCustomField(workspaceSlug, fieldId, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const deleteCustomField = useCallback(async (fieldId: string) => {
+    if (!workspaceSlug) return;
+    const nextSnapshot = await workspaceService.deleteCustomField(workspaceSlug, fieldId);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({
@@ -105,7 +262,21 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       toggleChecklistItem,
       setAutomationStatus,
       updatePreferences,
-      setCardFieldVisibility
+      setCardFieldVisibility,
+      setTypeFieldVisibility,
+      fetchBoardColumns,
+      fetchWorkflowStates,
+      fetchItemTypes,
+      fetchCustomFields,
+      createBoardColumn,
+      updateBoardColumn,
+      deleteBoardColumn,
+      createItemType,
+      updateItemType,
+      deleteItemType,
+      createCustomField,
+      updateCustomField,
+      deleteCustomField
     }),
     [
       snapshot,
@@ -117,7 +288,21 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       toggleChecklistItem,
       setAutomationStatus,
       updatePreferences,
-      setCardFieldVisibility
+      setCardFieldVisibility,
+      setTypeFieldVisibility,
+      fetchBoardColumns,
+      fetchWorkflowStates,
+      fetchItemTypes,
+      fetchCustomFields,
+      createBoardColumn,
+      updateBoardColumn,
+      deleteBoardColumn,
+      createItemType,
+      updateItemType,
+      deleteItemType,
+      createCustomField,
+      updateCustomField,
+      deleteCustomField
     ]
   );
 

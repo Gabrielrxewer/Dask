@@ -63,6 +63,26 @@ export interface TaskFieldDefinition {
 
 export interface CardLayoutConfig {
   visibleFieldIds: string[];
+  /** Campos visíveis por tipo de work item. Sobrepõe visibleFieldIds para aquele tipo. */
+  visibleFieldIdsByType?: Record<string, string[]>;
+}
+
+export type BoardViewStatusSource =
+  | { kind: "workflow_state" }
+  | {
+      kind: "custom_field";
+      fieldId: string;
+      fallbackByStatus?: Record<string, string>;
+    };
+
+export interface BoardViewConfig {
+  id: string;
+  label: string;
+  caption?: string;
+  statuses: TaskStatus[];
+  statusSource: BoardViewStatusSource;
+  allowedTaskTypes?: string[];
+  compactCards?: boolean;
 }
 
 export interface BoardConfig {
@@ -70,6 +90,7 @@ export interface BoardConfig {
   taskTypes: TaskTypeMetaItem[];
   fieldDefinitions: TaskFieldDefinition[];
   cardLayout: CardLayoutConfig;
+  views: BoardViewConfig[];
 }
 
 export interface BoardMetrics {

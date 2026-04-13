@@ -1,0 +1,47 @@
+.general-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.general-settings__card--scroll {
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.general-settings__field-list {
+  display: grid;
+  gap: 8px;
+}
+
+.general-settings__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 16px;
+  padding: 11px 12px;
+  color: #365a7f;
+  font-size: var(--font-size-xs);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
+  box-shadow:
+    0 12px 24px rgba(18, 54, 90, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  cursor: pointer;
+}
+
+.general-settings__checkbox-row input[type="checkbox"] {
+  margin: 0;
+}
+
+.general-settings__form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 860px) {
+  .general-settings {
+    grid-template-columns: 1fr;
+  }
+}

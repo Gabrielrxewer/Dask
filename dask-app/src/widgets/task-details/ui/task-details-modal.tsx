@@ -186,7 +186,16 @@ export function TaskDetailsModal({
                 {status.label}
               </span>
               <span className={`task-details__chip ${priority.className}`}>{priority.label}</span>
-              <span className="task-details__chip">{`Prazo ${longDate.format(new Date(task.due))}`}</span>
+              {task.due ? (
+                <span className="task-details__chip">
+                  {(() => {
+                    const d = new Date(task.due);
+                    return isNaN(d.getTime()) ? "Sem prazo" : `Prazo ${longDate.format(d)}`;
+                  })()}
+                </span>
+              ) : (
+                <span className="task-details__chip">Sem prazo</span>
+              )}
             </div>
 
             <section className="task-details__section">

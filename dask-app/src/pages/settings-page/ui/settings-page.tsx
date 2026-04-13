@@ -9,10 +9,25 @@ export function SettingsPage() {
   const { snapshot, updatePreferences, setCardFieldVisibility } = useWorkspace();
 
   const tasks = snapshot?.tasks ?? [];
-  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const boardConfig = {
+    ...factoryBoardConfig,
+    ...rawBoardConfig,
+    statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
+    taskTypes: Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes,
+    fieldDefinitions: Array.isArray(rawBoardConfig?.fieldDefinitions)
+      ? rawBoardConfig.fieldDefinitions
+      : factoryBoardConfig.fieldDefinitions,
+    cardLayout:
+      rawBoardConfig?.cardLayout && Array.isArray(rawBoardConfig.cardLayout.visibleFieldIds)
+        ? rawBoardConfig.cardLayout
+        : factoryBoardConfig.cardLayout,
+    views: Array.isArray(rawBoardConfig?.views) ? rawBoardConfig.views : []
+  };
   const metrics = buildBoardMetrics(tasks);
 
-  const defaultMode = snapshot?.preferences.defaultBoardMode ?? "dev";
+  const boardViews = boardConfig.views.length > 0 ? boardConfig.views : [{ id: "dev", label: "Dev" }];
+  const defaultMode = snapshot?.preferences.defaultBoardMode ?? boardViews[0]?.id ?? "dev";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
   const visibleFields = new Set(snapshot?.preferences.visibleCardFieldIds ?? []);
   const fieldDefinitions = boardConfig.fieldDefinitions;
@@ -27,7 +42,7 @@ export function SettingsPage() {
           cards={[
             { label: "Campos visiveis", value: visibleFieldsCount },
             { label: "Modo padrao", value: defaultMode.toUpperCase() },
-            { label: "Layouts salvos", value: 4 },
+            { label: "Layouts salvos", value: boardViews.length },
             { label: "Atualizacao", value: "Agora" }
           ]}
         />
@@ -59,14 +74,15 @@ export function SettingsPage() {
                   value={defaultMode}
                   onChange={event =>
                     void updatePreferences({
-                      defaultBoardMode: event.target.value as "dev" | "po" | "manager" | "qa"
+                      defaultBoardMode: event.target.value
                     })
                   }
                 >
-                  <option value="dev">Dev</option>
-                  <option value="po">PO</option>
-                  <option value="manager">Gestao</option>
-                  <option value="qa">QA</option>
+                  {boardViews.map(view => (
+                    <option key={view.id} value={view.id}>
+                      {view.label}
+                    </option>
+                  ))}
                 </Select>
               </FormField>
 

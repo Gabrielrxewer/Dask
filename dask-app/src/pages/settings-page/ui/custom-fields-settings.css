@@ -1,0 +1,129 @@
+.custom-fields-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.custom-fields-settings__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.custom-fields-settings__empty {
+  color: #8aadcc;
+  font-size: var(--font-size-sm);
+  padding: 20px 0 8px;
+}
+
+/* ── Row ──────────────────────────────────────────────────────────────────── */
+
+.custom-fields-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(187, 209, 230, 0.32);
+}
+
+.custom-fields-settings__row:last-child {
+  border-bottom: none;
+}
+
+.custom-fields-settings__row-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.custom-fields-settings__type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.custom-fields-settings__row-name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: #1e3a5f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-fields-settings__required {
+  font-size: 10px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 10px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.custom-fields-settings__options-hint {
+  font-size: 11px;
+  color: #b0c8e0;
+  white-space: nowrap;
+}
+
+.custom-fields-settings__row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Inline form ──────────────────────────────────────────────────────────── */
+
+.custom-fields-settings__form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  width: 100%;
+  border-bottom: 1px solid rgba(187, 209, 230, 0.32);
+}
+
+.custom-fields-settings__form-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.custom-fields-settings__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  color: #365a7f;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.custom-fields-settings__checkbox input[type="checkbox"] {
+  margin: 0;
+}
+
+.custom-fields-settings__form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 700px) {
+  .custom-fields-settings__form-fields {
+    grid-template-columns: 1fr;
+  }
+}

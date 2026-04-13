@@ -1,17 +1,26 @@
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { GlobalLayout } from "@/app/layout";
 import { ProtectedRoute, PublicRoute } from "@/features/auth";
-import { WorkspaceProvider } from "@/modules/workspace";
+import { WorkspaceProvider, workspaceService } from "@/modules/workspace";
+import { isApiError } from "@/shared/api/http-client";
+import { LoadingState } from "@/shared/ui";
 import {
   AutomationsPage,
   BoardPage,
+  ColumnsSettingsPage,
+  CustomFieldsSettingsPage,
+  GeneralSettingsPage,
   HomePage,
+  ItemTypesSettingsPage,
   ListPage,
   LoginPage,
-  SettingsPage,
-  TimelinePage
+  NoWorkspacePage,
+  SettingsShellPage,
+  TimelinePage,
+  WorkflowStatesSettingsPage
 } from "@/pages";
-import { routePaths } from "@/app/router";
+import { buildWorkspaceBoardPath, routePaths } from "@/app/router";
 
 function WorkspaceBoundary() {
   return (
@@ -19,6 +28,50 @@ function WorkspaceBoundary() {
       <Outlet />
     </WorkspaceProvider>
   );
+}
+
+function WorkspaceEntryRedirect() {
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    workspaceService
+      .listWorkspaces()
+      .then((workspaces) => {
+        if (!active) {
+          return;
+        }
+
+        const fallbackWorkspace = workspaces[0];
+        if (!fallbackWorkspace) {
+          setRedirectTo(routePaths.noWorkspace);
+          return;
+        }
+
+        setRedirectTo(buildWorkspaceBoardPath(fallbackWorkspace.slug));
+      })
+      .catch((error) => {
+        if (active) {
+          if (isApiError(error) && (error.status === 401 || error.status === 403)) {
+            setRedirectTo(routePaths.login);
+            return;
+          }
+
+          setRedirectTo(routePaths.noWorkspace);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!redirectTo) {
+    return <LoadingState text="Carregando workspaces..." />;
+  }
+
+  return <Navigate replace to={redirectTo} />;
 }
 
 export function AppRoutes() {
@@ -45,12 +98,26 @@ export function AppRoutes() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<WorkspaceBoundary />}>
+            <Route path={routePaths.workspaceEntry} element={<WorkspaceEntryRedirect />} />
+            <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />
             <Route path={routePaths.board} element={<BoardPage />} />
             <Route path={routePaths.list} element={<ListPage />} />
             <Route path={routePaths.timeline} element={<TimelinePage />} />
             <Route path={routePaths.automations} element={<AutomationsPage />} />
-            <Route path={routePaths.settings} element={<SettingsPage />} />
-            <Route path="*" element={<Navigate replace to={routePaths.board} />} />
+
+            {/* Settings — nested routes com layout compartilhado */}
+            <Route path={routePaths.settings} element={<SettingsShellPage />}>
+              <Route index element={<GeneralSettingsPage />} />
+              <Route path="workflow-states" element={<WorkflowStatesSettingsPage />} />
+              <Route path="columns" element={<ColumnsSettingsPage />} />
+              <Route path="item-types" element={<ItemTypesSettingsPage />} />
+              <Route path="custom-fields" element={<CustomFieldsSettingsPage />} />
+              {/* Aliases de rotas pre-existentes */}
+              <Route path="members" element={<GeneralSettingsPage />} />
+              <Route path="workflow" element={<WorkflowStatesSettingsPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate replace to={routePaths.workspaceEntry} />} />
           </Route>
         </Route>
       </Route>

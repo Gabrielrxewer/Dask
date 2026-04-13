@@ -1,100 +1,426 @@
-import { withMockLatency } from "@/shared/api/http-client";
-import { createInitialWorkspaceSnapshot, cloneWorkspaceSnapshot, createTaskFromInput } from "@/modules/workspace/model/mock-workspace";
-import type { WorkspacePreferences, WorkspaceService, WorkspaceSnapshot } from "@/modules/workspace/model/types";
+import { apiClient } from "@/shared/api/http-client";
+import { isApiError } from "@/shared/api/http-client";
+import type {
+  ApiBoardColumn,
+  ApiCustomField,
+  ApiItemType,
+  ApiWorkflowState,
+  CreateBoardColumnInput,
+  CreateCustomFieldInput,
+  CreateItemTypeInput,
+  UpdateBoardColumnInput,
+  UpdateCustomFieldInput,
+  UpdateItemTypeInput,
+  WorkspacePreferences,
+  WorkspaceService,
+  WorkspaceSnapshot,
+  WorkspaceSummary,
+  WorkspaceTemplateOption
+} from "@/modules/workspace/model/types";
 
-let workspaceSnapshot: WorkspaceSnapshot = createInitialWorkspaceSnapshot();
+type ApiWorkspaceSummary = {
+  id: string;
+  organizationId: string | null;
+  kind: WorkspaceSummary["kind"];
+  name: string;
+  key: string;
+  role: WorkspaceSummary["role"];
+};
 
-function saveAndReturn(nextState: WorkspaceSnapshot): Promise<WorkspaceSnapshot> {
-  workspaceSnapshot = nextState;
-  return withMockLatency(cloneWorkspaceSnapshot(workspaceSnapshot));
+function toWorkspaceSlug(workspace: Pick<ApiWorkspaceSummary, "key" | "name" | "id">): string {
+  const preferred = workspace.key || workspace.name || workspace.id;
+  return preferred
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function makeWorkspaceKey(value: string): string {
+  const base = value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "")
+    .slice(0, 12);
+
+  const fallback = base.length >= 2 ? base : "MYWORKSPACE";
+  const suffix = Date.now().toString().slice(-4);
+  return `${fallback.slice(0, 16)}${suffix}`.slice(0, 20);
+}
+
+let workspaceCache: WorkspaceSummary[] = [];
+const snapshotByWorkspaceSlug = new Map<string, WorkspaceSnapshot>();
+const fallbackTemplates: WorkspaceTemplateOption[] = [
+  { key: "software_delivery", name: "Software Delivery", description: "Template padrao" },
+  { key: "product_discovery", name: "Product Discovery", description: "Template de descoberta" },
+  { key: "operations_kanban", name: "Operations Kanban", description: "Template operacional" }
+];
+
+async function listWorkspaces(): Promise<WorkspaceSummary[]> {
+  const workspaces = await apiClient.get<ApiWorkspaceSummary[]>("/workspaces", {
+    authMode: "required",
+    retryOnUnauthorized: true
+  });
+
+  workspaceCache = workspaces.map((workspace) => ({
+    ...workspace,
+    slug: toWorkspaceSlug(workspace)
+  }));
+
+  return workspaceCache;
+}
+
+async function resolveWorkspaceId(workspaceSlug: string): Promise<string> {
+  const normalizedSlug = workspaceSlug.trim().toLowerCase();
+
+  if (workspaceCache.length === 0) {
+    await listWorkspaces();
+  }
+
+  const matched = workspaceCache.find((workspace) => workspace.slug === normalizedSlug);
+  if (matched) {
+    return matched.id;
+  }
+
+  const refreshed = await listWorkspaces();
+  const refreshedMatched = refreshed.find((workspace) => workspace.slug === normalizedSlug);
+  if (!refreshedMatched) {
+    throw new Error("Workspace not found for route slug.");
+  }
+
+  return refreshedMatched.id;
+}
+
+async function fetchSnapshot(workspaceSlug: string): Promise<WorkspaceSnapshot> {
+  const workspaceId = await resolveWorkspaceId(workspaceSlug);
+  const snapshot = await apiClient.get<WorkspaceSnapshot>(`/workspaces/${workspaceId}/snapshot`, {
+    authMode: "required",
+    retryOnUnauthorized: true
+  });
+
+  snapshotByWorkspaceSlug.set(workspaceSlug, snapshot);
+  return snapshot;
+}
+
+function getCachedTask(workspaceSlug: string, taskId: string) {
+  const snapshot = snapshotByWorkspaceSlug.get(workspaceSlug);
+  return snapshot?.tasks.find((task) => task.id === taskId) ?? null;
 }
 
 export const workspaceService: WorkspaceService = {
-  async getSnapshot() {
-    return withMockLatency(cloneWorkspaceSnapshot(workspaceSnapshot));
+  listWorkspaces,
+
+  async listWorkspaceTemplates() {
+    try {
+      return await apiClient.get<WorkspaceTemplateOption[]>("/workspaces/templates-catalog", {
+        authMode: "required",
+        retryOnUnauthorized: true
+      });
+    } catch (error) {
+      if (isApiError(error) && (error.status === 404 || error.status === 405)) {
+        return fallbackTemplates;
+      }
+
+      throw error;
+    }
   },
 
-  async createTask(input) {
-    const nextTask = createTaskFromInput(input, workspaceSnapshot.currentUserId);
+  async provisionWorkspace(input) {
+    try {
+      await apiClient.post("/workspaces/provision", input, {
+        authMode: "required",
+        retryOnUnauthorized: true
+      });
+    } catch (error) {
+      if (!isApiError(error) || (error.status !== 404 && error.status !== 405)) {
+        throw error;
+      }
 
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: [nextTask, ...workspaceSnapshot.tasks]
-    });
-  },
-
-  async moveTask(taskId, nextStatus) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task =>
-        task.id === taskId ? { ...task, status: nextStatus } : task
-      )
-    });
-  },
-
-  async updateTaskPriority(taskId, priority) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task =>
-        task.id === taskId ? { ...task, priority } : task
-      )
-    });
-  },
-
-  async updateTaskCustomField(taskId, fieldId, value) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task =>
-        task.id === taskId
-          ? { ...task, customFields: { ...task.customFields, [fieldId]: value } }
-          : task
-      )
-    });
-  },
-
-  async toggleChecklistItem(taskId, itemId) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      tasks: workspaceSnapshot.tasks.map(task => {
-        if (task.id !== taskId) {
-          return task;
-        }
-
-        return {
-          ...task,
-          checklist: {
-            items: task.checklist.items.map(item =>
-              item.id === itemId ? { ...item, done: !item.done } : item
-            )
+      let organizationId: string | undefined;
+      if (input.kind === "CORPORATE") {
+        const organization = await apiClient.post<{ id: string }>(
+          "/organizations",
+          {
+            name: input.organizationName ?? `${input.workspaceName} Organization`,
+            slug:
+              input.organizationSlug ??
+              input.workspaceName
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "")
+          },
+          {
+            authMode: "required",
+            retryOnUnauthorized: true
           }
-        };
-      })
+        );
+        organizationId = organization.id;
+      }
+
+      await apiClient.post(
+        "/workspaces",
+        {
+          kind: input.kind,
+          organizationId,
+          name: input.workspaceName,
+          key: input.workspaceKey ?? makeWorkspaceKey(input.workspaceName),
+          templateKey: input.templateKey
+        },
+        {
+          authMode: "required",
+          retryOnUnauthorized: true
+        }
+      );
+    }
+
+    const workspaces = await listWorkspaces();
+    const created = workspaces.find((workspace) => workspace.name === input.workspaceName) ?? workspaces[0];
+
+    if (!created) {
+      throw new Error("Workspace was provisioned but could not be resolved in list.");
+    }
+
+    return created;
+  },
+
+  async createPersonalWorkspace(input) {
+    const workspaceName = (input?.workspaceName ?? "Meu Workspace").trim() || "Meu Workspace";
+
+    return workspaceService.provisionWorkspace({
+      kind: "PERSONAL",
+      workspaceName,
+      workspaceKey: makeWorkspaceKey(workspaceName),
+      templateKey: "software_delivery"
     });
   },
 
-  async setAutomationStatus(automationId, status) {
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      automations: workspaceSnapshot.automations.map(automation =>
-        automation.id === automationId ? { ...automation, status } : automation
-      )
-    });
+  async getSnapshot(workspaceSlug) {
+    return fetchSnapshot(workspaceSlug);
   },
 
-  async updatePreferences(patch) {
-    const preferences: WorkspacePreferences = {
-      ...workspaceSnapshot.preferences,
-      ...patch
+  async createTask(workspaceSlug, input) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/work-items`, {
+      title: input.title,
+      description: input.description,
+      typeSlug: input.type,
+      metadata: { priority: input.priority }
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async moveTask(workspaceSlug, taskId, nextStatus) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+      stateSlug: nextStatus
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updateTaskPriority(workspaceSlug, taskId, priority) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+      metadata: { priority }
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updateTaskCustomField(workspaceSlug, taskId, fieldId, value) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const current = getCachedTask(workspaceSlug, taskId);
+    const nextFields = {
+      ...(current?.customFields ?? {}),
+      [fieldId]: value
     };
 
-    return saveAndReturn({
-      ...workspaceSnapshot,
+    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+      fields: nextFields
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async toggleChecklistItem(workspaceSlug, taskId, itemId) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const current = getCachedTask(workspaceSlug, taskId);
+    const nextChecklist = {
+      items: (current?.checklist.items ?? []).map((item) =>
+        item.id === itemId ? { ...item, done: !item.done } : item
+      )
+    };
+
+    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+      checklist: nextChecklist
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async setAutomationStatus(workspaceSlug, automationId, status) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/automation/workspaces/${workspaceId}/rules/${automationId}`, {
+      enabled: status === "active"
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updatePreferences(workspaceSlug, patch) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const preferences = await apiClient.patch<WorkspacePreferences>(`/workspaces/${workspaceId}/preferences`, patch, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    const snapshot = await fetchSnapshot(workspaceSlug);
+    return {
+      ...snapshot,
       preferences
+    };
+  },
+
+  // ─── Board Config — Fetch com UUIDs reais ────────────────────────────────
+
+  async fetchBoardColumns(workspaceSlug: string): Promise<ApiBoardColumn[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<ApiBoardColumn[]>(`/workspaces/${workspaceId}/board-columns`, {
+      authMode: "required",
+      retryOnUnauthorized: true
     });
   },
 
-  async setCardFieldVisibility(fieldId, visible) {
-    const visibleFields = new Set(workspaceSnapshot.boardConfig.cardLayout.visibleFieldIds);
+  async fetchWorkflowStates(workspaceSlug: string): Promise<ApiWorkflowState[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<ApiWorkflowState[]>(`/workspaces/${workspaceId}/workflow-states`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async fetchItemTypes(workspaceSlug: string): Promise<ApiItemType[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<ApiItemType[]>(`/workspaces/${workspaceId}/item-types`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async fetchCustomFields(workspaceSlug: string): Promise<ApiCustomField[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<ApiCustomField[]>(`/workspaces/${workspaceId}/custom-fields`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  // ─── Board Config ─────────────────────────────────────────────────────────
+
+  async createBoardColumn(workspaceSlug: string, input: CreateBoardColumnInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/board-columns`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updateBoardColumn(workspaceSlug: string, columnId: string, input: UpdateBoardColumnInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/board-columns/${columnId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async deleteBoardColumn(workspaceSlug: string, columnId: string) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/board-columns/${columnId}`, { isActive: false }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async createItemType(workspaceSlug: string, input: CreateItemTypeInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/item-types`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updateItemType(workspaceSlug: string, typeId: string, input: UpdateItemTypeInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/item-types/${typeId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async deleteItemType(workspaceSlug: string, typeId: string) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/item-types/${typeId}`, { isActive: false }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async createCustomField(workspaceSlug: string, input: CreateCustomFieldInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/custom-fields`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updateCustomField(workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/custom-fields/${fieldId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async deleteCustomField(workspaceSlug: string, fieldId: string) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/custom-fields/${fieldId}`, { isActive: false }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async setCardFieldVisibility(workspaceSlug, fieldId, visible) {
+    const snapshot = snapshotByWorkspaceSlug.get(workspaceSlug) ?? (await fetchSnapshot(workspaceSlug));
+    const visibleFields = new Set(snapshot.preferences.visibleCardFieldIds);
 
     if (visible) {
       visibleFields.add(fieldId);
@@ -102,21 +428,28 @@ export const workspaceService: WorkspaceService = {
       visibleFields.delete(fieldId);
     }
 
-    const visibleFieldIds = Array.from(visibleFields);
+    return workspaceService.updatePreferences(workspaceSlug, {
+      visibleCardFieldIds: Array.from(visibleFields)
+    });
+  },
 
-    return saveAndReturn({
-      ...workspaceSnapshot,
-      boardConfig: {
-        ...workspaceSnapshot.boardConfig,
-        cardLayout: {
-          ...workspaceSnapshot.boardConfig.cardLayout,
-          visibleFieldIds
-        }
-      },
-      preferences: {
-        ...workspaceSnapshot.preferences,
-        visibleCardFieldIds: visibleFieldIds
-      }
+  async setTypeFieldVisibility(workspaceSlug: string, typeId: string, fieldId: string, visible: boolean) {
+    const snapshot = snapshotByWorkspaceSlug.get(workspaceSlug) ?? (await fetchSnapshot(workspaceSlug));
+    const byType: Record<string, string[]> = {
+      ...(snapshot.preferences.visibleFieldsByType ?? {})
+    };
+    const currentIds = new Set<string>(byType[typeId] ?? []);
+
+    if (visible) {
+      currentIds.add(fieldId);
+    } else {
+      currentIds.delete(fieldId);
+    }
+
+    byType[typeId] = Array.from(currentIds);
+
+    return workspaceService.updatePreferences(workspaceSlug, {
+      visibleFieldsByType: byType
     });
   }
 };

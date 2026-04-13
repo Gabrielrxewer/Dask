@@ -1,7 +1,7 @@
 import type { MemberId, MembersById } from "@/entities/member";
 import type { BoardConfig, Task, TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 
-export type WorkspaceBoardMode = "dev" | "po" | "manager" | "qa";
+export type WorkspaceBoardMode = string;
 export type WorkspaceDateFormat = "dd/mm/yyyy" | "mm/dd/yyyy";
 
 export interface WorkspaceAutomation {
@@ -16,6 +16,8 @@ export interface WorkspacePreferences {
   defaultBoardMode: WorkspaceBoardMode;
   dateFormat: WorkspaceDateFormat;
   visibleCardFieldIds: string[];
+  /** Campos visíveis por tipo de work item. Sobrepõe visibleCardFieldIds para aquele tipo. */
+  visibleFieldsByType?: Record<string, string[]>;
 }
 
 export interface CreateTaskInput {
@@ -36,21 +38,199 @@ export interface WorkspaceSnapshot {
   preferences: WorkspacePreferences;
 }
 
+export interface WorkspaceSummary {
+  id: string;
+  organizationId: string | null;
+  kind: "PERSONAL" | "CORPORATE";
+  name: string;
+  key: string;
+  slug: string;
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+}
+
+export interface WorkspaceTemplateOption {
+  key: "software_delivery" | "product_discovery" | "operations_kanban";
+  name: string;
+  description?: string;
+}
+
+// ─── Board Config API Response Types ─────────────────────────────────────────
+// Retornados pelos endpoints GET /board-columns, /item-types, /custom-fields
+// Contêm os UUIDs reais necessários para PATCH/DELETE
+
+export interface ApiBoardColumn {
+  id: string;
+  name: string;
+  slug: string;
+  order: number;
+  wipLimit: number | null;
+  isActive: boolean;
+  /** UUIDs dos workflow states associados a esta coluna */
+  stateIds: string[];
+}
+
+export interface ApiWorkflowState {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  category: string | null;
+  isTerminal: boolean;
+  isEditable: boolean;
+  isActive: boolean;
+}
+
+export interface ApiItemType {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  icon: string | null;
+  description: string | null;
+  isActive: boolean;
+}
+
+export interface ApiCustomField {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  required: boolean;
+  isActive: boolean;
+  options: Array<{ id: string; label: string; value: string; color: string | null }>;
+}
+
+// ─── Board Config Input Types ────────────────────────────────────────────────
+
+export interface CreateBoardColumnInput {
+  name: string;
+  order?: number;
+  wipLimit?: number | null;
+}
+
+export interface UpdateBoardColumnInput {
+  name?: string;
+  order?: number;
+  wipLimit?: number | null;
+  isActive?: boolean;
+}
+
+export interface CreateItemTypeInput {
+  name: string;
+  color?: string;
+  icon?: string;
+  description?: string;
+}
+
+export interface UpdateItemTypeInput {
+  name?: string;
+  color?: string;
+  icon?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export type CustomFieldType =
+  | "text"
+  | "long_text"
+  | "number"
+  | "date"
+  | "datetime"
+  | "boolean"
+  | "select"
+  | "multi_select";
+
+export interface CustomFieldOptionInput {
+  label: string;
+  value: string;
+  color?: string;
+}
+
+export interface CreateCustomFieldInput {
+  name: string;
+  type: CustomFieldType;
+  description?: string;
+  required?: boolean;
+  options?: CustomFieldOptionInput[];
+}
+
+export interface UpdateCustomFieldInput {
+  name?: string;
+  type?: CustomFieldType;
+  description?: string;
+  required?: boolean;
+  isActive?: boolean;
+  options?: CustomFieldOptionInput[];
+}
+
 export interface WorkspaceService {
-  getSnapshot: () => Promise<WorkspaceSnapshot>;
-  createTask: (input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
-  moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
-  updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<WorkspaceSnapshot>;
+  listWorkspaces: () => Promise<WorkspaceSummary[]>;
+  listWorkspaceTemplates: () => Promise<WorkspaceTemplateOption[]>;
+  provisionWorkspace: (input: {
+    kind: "PERSONAL" | "CORPORATE";
+    workspaceName: string;
+    workspaceKey?: string;
+    templateKey?: WorkspaceTemplateOption["key"];
+    organizationName?: string;
+    organizationSlug?: string;
+  }) => Promise<WorkspaceSummary>;
+  createPersonalWorkspace: (input?: { workspaceName?: string }) => Promise<WorkspaceSummary>;
+  getSnapshot: (workspaceSlug: string) => Promise<WorkspaceSnapshot>;
+  createTask: (workspaceSlug: string, input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
+  moveTask: (workspaceSlug: string, taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
+  updateTaskPriority: (
+    workspaceSlug: string,
+    taskId: string,
+    priority: TaskPriority
+  ) => Promise<WorkspaceSnapshot>;
   updateTaskCustomField: (
+    workspaceSlug: string,
     taskId: string,
     fieldId: string,
     value: TaskCustomFieldValue
   ) => Promise<WorkspaceSnapshot>;
-  toggleChecklistItem: (taskId: string, itemId: string) => Promise<WorkspaceSnapshot>;
+  toggleChecklistItem: (
+    workspaceSlug: string,
+    taskId: string,
+    itemId: string
+  ) => Promise<WorkspaceSnapshot>;
   setAutomationStatus: (
+    workspaceSlug: string,
     automationId: string,
     status: WorkspaceAutomation["status"]
   ) => Promise<WorkspaceSnapshot>;
-  updatePreferences: (patch: Partial<WorkspacePreferences>) => Promise<WorkspaceSnapshot>;
-  setCardFieldVisibility: (fieldId: string, visible: boolean) => Promise<WorkspaceSnapshot>;
+  updatePreferences: (
+    workspaceSlug: string,
+    patch: Partial<WorkspacePreferences>
+  ) => Promise<WorkspaceSnapshot>;
+  setCardFieldVisibility: (
+    workspaceSlug: string,
+    fieldId: string,
+    visible: boolean
+  ) => Promise<WorkspaceSnapshot>;
+  setTypeFieldVisibility: (
+    workspaceSlug: string,
+    typeId: string,
+    fieldId: string,
+    visible: boolean
+  ) => Promise<WorkspaceSnapshot>;
+
+  // Busca itens de config com UUIDs reais (necessários para PATCH/DELETE)
+  fetchBoardColumns: (workspaceSlug: string) => Promise<ApiBoardColumn[]>;
+  fetchWorkflowStates: (workspaceSlug: string) => Promise<ApiWorkflowState[]>;
+  fetchItemTypes: (workspaceSlug: string) => Promise<ApiItemType[]>;
+  fetchCustomFields: (workspaceSlug: string) => Promise<ApiCustomField[]>;
+
+  // Board config management
+  createBoardColumn: (workspaceSlug: string, input: CreateBoardColumnInput) => Promise<WorkspaceSnapshot>;
+  updateBoardColumn: (workspaceSlug: string, columnId: string, input: UpdateBoardColumnInput) => Promise<WorkspaceSnapshot>;
+  deleteBoardColumn: (workspaceSlug: string, columnId: string) => Promise<WorkspaceSnapshot>;
+
+  createItemType: (workspaceSlug: string, input: CreateItemTypeInput) => Promise<WorkspaceSnapshot>;
+  updateItemType: (workspaceSlug: string, typeId: string, input: UpdateItemTypeInput) => Promise<WorkspaceSnapshot>;
+  deleteItemType: (workspaceSlug: string, typeId: string) => Promise<WorkspaceSnapshot>;
+
+  createCustomField: (workspaceSlug: string, input: CreateCustomFieldInput) => Promise<WorkspaceSnapshot>;
+  updateCustomField: (workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) => Promise<WorkspaceSnapshot>;
+  deleteCustomField: (workspaceSlug: string, fieldId: string) => Promise<WorkspaceSnapshot>;
 }

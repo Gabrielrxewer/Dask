@@ -68,7 +68,12 @@ export function TaskCard({
     return acc;
   }, {});
 
-  const visibleFields = boardConfig.cardLayout.visibleFieldIds
+  // Usa visibilidade específica do tipo, com fallback para a global
+  const effectiveVisibleFieldIds =
+    boardConfig.cardLayout.visibleFieldIdsByType?.[task.type] ??
+    boardConfig.cardLayout.visibleFieldIds;
+
+  const visibleFields = effectiveVisibleFieldIds
     .map(fieldId => ({
       definition: fieldMap[fieldId],
       value: task.customFields[fieldId]
@@ -77,7 +82,7 @@ export function TaskCard({
       (item): item is { definition: TaskFieldDefinition; value: TaskCustomFieldValue } =>
         Boolean(item.definition) && typeof item.value !== "undefined"
     )
-    .slice(0, 2);
+    .slice(0, 3);
 
   const canOpen = typeof onOpen === "function";
   const canUpdatePriority = typeof onUpdatePriority === "function";

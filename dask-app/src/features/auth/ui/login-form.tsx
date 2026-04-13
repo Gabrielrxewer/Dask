@@ -334,20 +334,9 @@ export function LoginForm() {
           </div>
 
           <div className="auth-login__field auth-login__password-field">
-            <div className="auth-login__password-label-row">
-              <label className="auth-login__label" htmlFor="password">
-                Senha
-              </label>
-              {!isRegisterStep ? (
-                <button
-                  type="button"
-                  className="auth-login__forgot-link"
-                  onClick={() => handleStepChange("forgot-password")}
-                >
-                  Esqueci minha senha
-                </button>
-              ) : null}
-            </div>
+            <label className="auth-login__label" htmlFor="password">
+              Senha
+            </label>
             <div className="auth-login__password-input-wrap">
               <TextInput
                 className="auth-login__input auth-login__input--password"
@@ -371,6 +360,17 @@ export function LoginForm() {
                 <span className="auth-login__toggle-eye" aria-hidden="true" />
               </button>
             </div>
+            {!isRegisterStep ? (
+              <p className="auth-login__forgot-row">
+                <button
+                  type="button"
+                  className="auth-login__forgot-link"
+                  onClick={() => handleStepChange("forgot-password")}
+                >
+                  Esqueci minha senha
+                </button>
+              </p>
+            ) : null}
           </div>
 
           {hintMessage ? (

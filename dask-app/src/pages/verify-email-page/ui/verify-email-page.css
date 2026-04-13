@@ -1,0 +1,104 @@
+.verify-email-page {
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+.verify-email-page__panel {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(181, 209, 231, 0.78);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(244, 249, 255, 0.64));
+  box-shadow: 0 30px 60px rgba(12, 42, 71, 0.1), 0 1px 0 rgba(255, 255, 255, 0.78) inset;
+}
+
+.verify-email-page__header {
+  display: grid;
+  gap: 12px;
+}
+
+.verify-email-page__eyebrow {
+  color: #2a628f;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.verify-email-page__title {
+  margin: 0;
+  color: #10233f;
+  font-size: clamp(1.8rem, 1.5rem + 0.8vw, 2.3rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.verify-email-page__subtitle {
+  color: #58708b;
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.verify-email-page__message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 244, 244, 0.9);
+  color: #8c3131;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.verify-email-page__message--success {
+  background: rgba(233, 248, 239, 0.92);
+  color: #1f7c4d;
+}
+
+.verify-email-page__message--info {
+  background: rgba(232, 243, 254, 0.92);
+  color: #1f5f92;
+}
+
+.verify-email-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.verify-email-page__link {
+  color: #235987;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.verify-email-page__link--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(182, 209, 231, 0.9);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+@media (max-width: 640px) {
+  .verify-email-page {
+    padding: 16px;
+  }
+
+  .verify-email-page__panel {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .verify-email-page__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

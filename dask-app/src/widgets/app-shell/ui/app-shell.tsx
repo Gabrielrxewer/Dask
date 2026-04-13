@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { NavLink, useParams } from "react-router-dom";
+import {
+  buildWorkspaceAutomationsPath,
+  buildWorkspaceBoardPath,
+  buildWorkspaceListPath,
+  buildWorkspaceSettingsPath,
+  buildWorkspaceTimelinePath
+} from "@/app/router/route-paths";
 import { useGlobalChrome } from "@/app/layout";
 import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
@@ -21,28 +27,11 @@ interface AppShellProps {
   onFilterQueryChange?: (query: string) => void;
   onMineToggle?: () => void;
   onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
+  createTaskTypes?: Array<{ id: string; label: string }>;
   noPageScroll?: boolean;
   hideSidebarBrandMark?: boolean;
   children: ReactNode;
 }
-
-const navGroups = [
-  {
-    title: "Planejamento",
-    items: [
-      { to: routePaths.board, label: "Board" },
-      { to: routePaths.list, label: "List" },
-      { to: routePaths.timeline, label: "Timeline" }
-    ]
-  },
-  {
-    title: "Operacao",
-    items: [
-      { to: routePaths.automations, label: "Automations" },
-      { to: routePaths.settings, label: "Settings" }
-    ]
-  }
-];
 
 export function AppShell({
   metrics,
@@ -53,10 +42,29 @@ export function AppShell({
   onFilterQueryChange,
   onMineToggle,
   onCreateTask,
+  createTaskTypes,
   noPageScroll = false,
   hideSidebarBrandMark = false,
   children
 }: AppShellProps) {
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  const navGroups = [
+    {
+      title: "Planejamento",
+      items: [
+        { to: buildWorkspaceBoardPath(workspaceSlug), label: "Board" },
+        { to: buildWorkspaceListPath(workspaceSlug), label: "List" },
+        { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline" }
+      ]
+    },
+    {
+      title: "Operacao",
+      items: [
+        { to: buildWorkspaceAutomationsPath(workspaceSlug), label: "Automations" },
+        { to: buildWorkspaceSettingsPath(workspaceSlug), label: "Settings" }
+      ]
+    }
+  ];
   const { isSidebarOpen, closeNavigation } = useGlobalChrome();
   const filterProps =
     filter && onFilterQueryChange && onMineToggle
@@ -86,7 +94,7 @@ export function AppShell({
           </div>
         </div>
 
-        {onCreateTask ? <CreateTaskButton onCreate={onCreateTask} /> : null}
+        {onCreateTask ? <CreateTaskButton onCreate={onCreateTask} typeOptions={createTaskTypes} /> : null}
 
         <nav className="sidebar__menu">
           {navGroups.map((group) => (

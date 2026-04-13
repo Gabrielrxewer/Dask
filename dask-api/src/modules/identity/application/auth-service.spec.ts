@@ -33,6 +33,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     id: 'user-1',
     email: 'alice@example.com',
     name: 'Alice',
+    emailVerified: true,
     passwordHash: '',
     passwordHashVersion: 1,
     loginFailureCount: 0,
@@ -188,6 +189,23 @@ describe('register', () => {
     expect(result.refreshToken).toBeTruthy();
     expect(result.user.email).toBe('alice@example.com');
     expect((result.user as unknown as Record<string, unknown>).passwordHash).toBeUndefined();
+  });
+
+  it('does not issue session tokens when user is not email-verified', async () => {
+    (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
+    (repo.createUser as MockedFunction<typeof repo.createUser>).mockResolvedValue(
+      makeUser({ emailVerified: false })
+    );
+
+    const result = await service.register({
+      email: 'alice@example.com',
+      name: 'Alice',
+      password: validPassword
+    });
+
+    expect(result.accessToken).toBeNull();
+    expect(result.refreshToken).toBeNull();
+    expect(repo.createRefreshToken).not.toHaveBeenCalled();
   });
 
   it('normalizes email to lowercase before persisting', async () => {

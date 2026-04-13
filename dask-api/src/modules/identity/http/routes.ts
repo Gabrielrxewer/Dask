@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { CookieOptions } from 'express';
 import type { Response } from 'express';
 import { Router } from 'express';
+import jwt, { type JwtHeader } from 'jsonwebtoken';
 import { AppError } from '@/core/errors/app-error';
 import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
@@ -30,6 +31,7 @@ const registerLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 10 })
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20 });
 const refreshLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 15 });
 const resetLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 5 });
+const verifyResendLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 3 });
 
 function extractContext(req: { ip?: string; headers: Record<string, string | string[] | undefined> }): RequestContext {
   return {
@@ -124,6 +126,13 @@ async function readJsonResponse(response: globalThis.Response): Promise<Record<s
 }
 
 type OAuthProvider = 'google' | 'microsoft';
+type JwkKey = {
+  kid?: string;
+  kty?: string;
+  n?: string;
+  e?: string;
+  [key: string]: unknown;
+};
 
 type OidcIdTokenClaims = {
   iss?: string;
@@ -134,6 +143,18 @@ type OidcIdTokenClaims = {
 };
 
 const OAUTH_MAX_AGE_MS = 10 * 60 * 1000;
+const JWKS_CACHE_TTL_MS = 60 * 60 * 1000;
+
+type JsonWebKeySet = {
+  keys?: JwkKey[];
+};
+
+type CachedJwks = {
+  expiresAt: number;
+  keys: JwkKey[];
+};
+
+const jwksCache = new Map<OAuthProvider, CachedJwks>();
 
 function base64UrlEncode(input: Buffer): string {
   return input
@@ -250,6 +271,79 @@ function parseIdTokenClaims(idToken: string): OidcIdTokenClaims {
   return claims as OidcIdTokenClaims;
 }
 
+function decodeJwtHeader(idToken: string): JwtHeader & { kid?: string; alg?: string } {
+  const decoded = jwt.decode(idToken, { complete: true });
+  if (!decoded || typeof decoded !== 'object' || !('header' in decoded) || typeof decoded.header !== 'object') {
+    throw new AppError('Invalid id_token header.', 401);
+  }
+  return decoded.header as JwtHeader & { kid?: string; alg?: string };
+}
+
+function resolveJwksUrl(provider: OAuthProvider): string {
+  if (provider === 'google') {
+    return 'https://www.googleapis.com/oauth2/v3/certs';
+  }
+  return 'https://login.microsoftonline.com/common/discovery/v2.0/keys';
+}
+
+async function fetchJwks(provider: OAuthProvider): Promise<JwkKey[]> {
+  const cached = jwksCache.get(provider);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now && cached.keys.length > 0) {
+    return cached.keys;
+  }
+
+  const response = await fetch(resolveJwksUrl(provider));
+  if (!response.ok) {
+    throw new AppError('Failed to fetch JWKS.', 503);
+  }
+
+  const payload = (await response.json()) as JsonWebKeySet;
+  const keys = Array.isArray(payload.keys) ? payload.keys : [];
+  if (keys.length === 0) {
+    throw new AppError('JWKS payload is invalid.', 503);
+  }
+
+  jwksCache.set(provider, {
+    keys,
+    expiresAt: now + JWKS_CACHE_TTL_MS
+  });
+
+  return keys;
+}
+
+async function verifyIdTokenSignature(idToken: string, provider: OAuthProvider): Promise<void> {
+  const header = decodeJwtHeader(idToken);
+  if (header.alg !== 'RS256' || typeof header.kid !== 'string' || header.kid.length === 0) {
+    throw new AppError('Unsupported id_token signature header.', 401);
+  }
+
+  const keys = await fetchJwks(provider);
+  const jwk = keys.find((item) => item.kid === header.kid && item.kty === 'RSA');
+  if (!jwk) {
+    throw new AppError('id_token signing key not found.', 401);
+  }
+
+  let publicKey: string;
+  try {
+    publicKey = crypto
+      .createPublicKey({
+        key: jwk as Record<string, unknown>,
+        format: 'jwk'
+      })
+      .export({ format: 'pem', type: 'spki' })
+      .toString();
+  } catch {
+    throw new AppError('Invalid id_token signing key.', 401);
+  }
+
+  try {
+    jwt.verify(idToken, publicKey, { algorithms: ['RS256'] });
+  } catch {
+    throw new AppError('Invalid id_token signature.', 401);
+  }
+}
+
 function validateAudienceClaim(aud: string | string[] | undefined, expectedClientId: string): boolean {
   if (typeof aud === 'string') {
     return aud === expectedClientId;
@@ -260,11 +354,12 @@ function validateAudienceClaim(aud: string | string[] | undefined, expectedClien
   return false;
 }
 
-function validateGoogleIdTokenClaims(idToken: string, expectedNonce: string): void {
+async function validateGoogleIdTokenClaims(idToken: string, expectedNonce: string): Promise<void> {
   if (!env.GOOGLE_OAUTH_CLIENT_ID) {
     throw new AppError('Google OAuth is not configured.', 503);
   }
 
+  await verifyIdTokenSignature(idToken, 'google');
   const claims = parseIdTokenClaims(idToken);
   const validIss = claims.iss === 'https://accounts.google.com' || claims.iss === 'accounts.google.com';
   if (!validIss) {
@@ -285,11 +380,12 @@ function validateGoogleIdTokenClaims(idToken: string, expectedNonce: string): vo
   }
 }
 
-function validateMicrosoftIdTokenClaims(idToken: string, expectedNonce: string): void {
+async function validateMicrosoftIdTokenClaims(idToken: string, expectedNonce: string): Promise<void> {
   if (!env.MICROSOFT_OAUTH_CLIENT_ID) {
     throw new AppError('Microsoft OAuth is not configured.', 503);
   }
 
+  await verifyIdTokenSignature(idToken, 'microsoft');
   const claims = parseIdTokenClaims(idToken);
   if (typeof claims.iss !== 'string' || !claims.iss.startsWith('https://login.microsoftonline.com/')) {
     throw new AppError('Microsoft id_token issuer mismatch.', 401);
@@ -488,7 +584,11 @@ export const buildIdentityRoutes = (deps: {
       const input = registerDto.parse(req.body);
       const result = await deps.authService.register(input, extractContext(req));
 
-      setSessionCookies(res, result.refreshToken);
+      if (result.refreshToken) {
+        setSessionCookies(res, result.refreshToken);
+      } else {
+        clearSessionCookies(res);
+      }
       setNoStore(res);
       res.status(201).json({
         user: result.user,
@@ -553,7 +653,7 @@ export const buildIdentityRoutes = (deps: {
       }
 
       const tokenResult = await exchangeGoogleCodeForAccessToken(code, pkceVerifier);
-      validateGoogleIdTokenClaims(tokenResult.idToken, expectedNonce);
+      await validateGoogleIdTokenClaims(tokenResult.idToken, expectedNonce);
       const accessToken = tokenResult.accessToken;
       const profile = await fetchGoogleUserProfile(accessToken);
       let result;
@@ -622,7 +722,7 @@ export const buildIdentityRoutes = (deps: {
       }
 
       const tokenResult = await exchangeMicrosoftCodeForAccessToken(code, pkceVerifier);
-      validateMicrosoftIdTokenClaims(tokenResult.idToken, expectedNonce);
+      await validateMicrosoftIdTokenClaims(tokenResult.idToken, expectedNonce);
       const accessToken = tokenResult.accessToken;
       const profile = await fetchMicrosoftUserProfile(accessToken);
       let result;
@@ -734,6 +834,32 @@ export const buildIdentityRoutes = (deps: {
       clearSessionCookies(res);
       setNoStore(res);
       res.status(200).json({ message: 'Password updated. Please log in with your new password.' });
+    })
+  );
+
+  router.post(
+    '/auth/email-verification/resend',
+    verifyResendLimiter,
+    asyncHandler(async (req, res) => {
+      const { email } = requestPasswordResetDto.parse(req.body);
+      await deps.authService.resendEmailVerification(email);
+      setNoStore(res);
+      res.status(200).json({
+        message: 'Se houver uma conta pendente de verificacao, o e-mail foi reenviado.'
+      });
+    })
+  );
+
+  router.get(
+    '/auth/verify-email',
+    asyncHandler(async (req, res) => {
+      const token = req.query.token;
+      if (typeof token !== 'string' || token.length === 0) {
+        throw new AppError('Missing or invalid token.', 400);
+      }
+      await deps.authService.confirmEmail(token, extractContext(req));
+      setNoStore(res);
+      res.status(200).json({ message: 'E-mail confirmado com sucesso.' });
     })
   );
 

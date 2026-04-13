@@ -1,6 +1,8 @@
 export const routePaths = {
   home: "/",
   login: "/login",
+  resetPassword: "/reset-password",
+  verifyEmail: "/verify-email",
   workspaceEntry: "/w",
   noWorkspace: "/w/no-workspace",
   workspaceBase: "/w/:workspaceSlug",

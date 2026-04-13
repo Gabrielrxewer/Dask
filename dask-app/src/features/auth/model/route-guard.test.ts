@@ -42,6 +42,6 @@ describe("route guards", () => {
   it("redirects authenticated users away from public login route", () => {
     const result = resolvePublicRoute(snapshot({ status: "authenticated", isAuthenticated: true }));
     expect(result.mode).toBe("redirect");
-    expect(result.redirectTo).toBe(routePaths.board);
+    expect(result.redirectTo).toBe(routePaths.workspaceEntry);
   });
 });

@@ -11,6 +11,8 @@ export type {
   WorkspaceBoardMode,
   WorkspaceDateFormat,
   WorkspacePreferences,
+  WorkspaceSummary,
+  WorkspaceTemplateOption,
   WorkspaceSnapshot
 } from "@/modules/workspace/model";
 export { WorkspaceProvider, useWorkspace } from "@/modules/workspace/providers";

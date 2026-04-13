@@ -15,8 +15,8 @@ export function useWorkspaceTaskPage() {
   const activeUser = workspace.snapshot?.currentUserId ?? currentUserId;
 
   const filteredTasks = useMemo(
-    () => applyDashboardFilter(tasks, filter, activeMembers, activeUser),
-    [tasks, filter, activeMembers, activeUser]
+    () => applyDashboardFilter(tasks, filter, boardConfig, activeMembers, activeUser),
+    [tasks, filter, boardConfig, activeMembers, activeUser]
   );
 
   const metrics = useMemo(() => buildBoardMetrics(filteredTasks), [filteredTasks]);

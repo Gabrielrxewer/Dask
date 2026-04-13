@@ -9,6 +9,7 @@ import type {
   ExternalAuthProvider,
   IdentityRepository,
   LockoutState,
+  StoredEmailVerificationToken,
   StoredPasswordResetToken,
   StoredRefreshToken
 } from '@/modules/identity/repositories/identity-repository';
@@ -277,6 +278,36 @@ export class PrismaIdentityRepository implements IdentityRepository {
   public async countActiveResetTokens(userId: string): Promise<number> {
     return this.prisma.passwordResetToken.count({
       where: { userId, usedAt: null, expiresAt: { gt: new Date() } }
+    });
+  }
+
+  // ── Email verification tokens ─────────────────────────────────────────────
+
+  public async createEmailVerificationToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    await this.prisma.emailVerificationToken.create({ data: input });
+  }
+
+  public async findEmailVerificationToken(
+    tokenHash: string
+  ): Promise<StoredEmailVerificationToken | null> {
+    return this.prisma.emailVerificationToken.findUnique({ where: { tokenHash } });
+  }
+
+  public async markEmailVerificationTokenUsed(tokenHash: string): Promise<void> {
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { tokenHash, usedAt: null },
+      data: { usedAt: new Date() }
+    });
+  }
+
+  public async setEmailVerified(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true }
     });
   }
 }

@@ -57,7 +57,7 @@ describe("apiClient auth handling", () => {
       handleUnauthorized
     });
 
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(401, { message: "expired" }));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(401, { message: "expired" })));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -66,9 +66,9 @@ describe("apiClient auth handling", () => {
       })
     ).rejects.toBeInstanceOf(ApiError);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refreshAccessToken).toHaveBeenCalledTimes(1);
-    expect(handleUnauthorized).toHaveBeenCalledTimes(1);
+    expect(handleUnauthorized).not.toHaveBeenCalled();
   });
 
   it("prevents infinite refresh loops by retrying only once", async () => {

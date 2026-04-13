@@ -37,10 +37,16 @@ enum AuthProvider {
   MICROSOFT
 }
 
+enum WorkspaceKind {
+  PERSONAL
+  CORPORATE
+}
+
 model User {
   id                       String                    @id @default(uuid())
   email                    String                    @unique
   name                     String
+  emailVerified            Boolean                   @default(false)
   passwordHash             String?
   // 0 = legacy plain-bcrypt (pre-migration), 1 = HMAC-SHA256+bcrypt with pepper
   passwordHashVersion      Int                       @default(0)
@@ -60,6 +66,7 @@ model User {
   updatedViewPlacements    WorkItemViewPlacement[]   @relation("WorkItemViewPlacementUpdatedBy")
   refreshTokens            RefreshToken[]
   resetTokens              PasswordResetToken[]
+  verificationTokens       EmailVerificationToken[]
   externalIdentities       ExternalIdentity[]
 }
 
@@ -97,6 +104,18 @@ model RefreshToken {
 }
 
 model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
   id        String    @id @default(uuid())
   userId    String
   tokenHash String    @unique
@@ -158,13 +177,14 @@ model TeamMembership {
 
 model Workspace {
   id                     String                    @id @default(uuid())
-  organizationId         String
+  organizationId         String?
+  kind                   WorkspaceKind             @default(CORPORATE)
   name                   String
   key                    String
   config                 Json?
   createdAt              DateTime                  @default(now())
   updatedAt              DateTime                  @updatedAt
-  organization           Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization           Organization?             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   memberships            WorkspaceMembership[]
   boards                 Board[]
   templates              BoardTemplate[]

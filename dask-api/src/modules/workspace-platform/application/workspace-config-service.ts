@@ -16,7 +16,7 @@ export type WorkspaceAccess = {
     id: string;
     name: string;
     key: string;
-    organizationId: string;
+    organizationId: string | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -555,7 +555,7 @@ export class WorkspaceConfigService {
       where: { workspaceId: input.workspaceId },
       create: {
         workspaceId: input.workspaceId,
-        defaultBoardMode: input.payload.defaultBoardMode ?? 'board',
+        defaultBoardMode: input.payload.defaultBoardMode ?? 'dev',
         dateFormat: input.payload.dateFormat ?? 'dd/mm/yyyy',
         visibleCardFieldIds: toJsonValue(input.payload.visibleCardFieldIds ?? []),
         settings: toJsonValue(mergedSettings)

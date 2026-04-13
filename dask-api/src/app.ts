@@ -13,8 +13,10 @@ import { prisma } from '@/infra/db/prisma';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
 import { AuthService } from '@/modules/identity/application/auth-service';
+import { ResendEmailService } from '@/infra/email/resend-email-service';
 import { OrganizationService } from '@/modules/identity/application/organization-service';
 import { PasswordService } from '@/modules/identity/application/password-service';
+import { RoleAuthorizationService } from '@/modules/identity/application/role-authorization-service';
 import { PrismaIdentityRepository } from '@/modules/identity/repositories/prisma-identity-repository';
 import { buildIdentityRoutes } from '@/modules/identity/http/routes';
 import { PrismaWorkspacesRepository } from '@/modules/workspaces/repositories/prisma-workspaces-repository';
@@ -116,10 +118,12 @@ export const createApp = (): Express => {
   const itemsRepository = new PrismaItemsRepository(prisma);
 
   const passwordService = new PasswordService(env.HASH_PEPPER);
-  const authService = new AuthService(identityRepository, passwordService);
+  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : undefined;
+  const authService = new AuthService(identityRepository, passwordService, emailService);
   const organizationService = new OrganizationService(identityRepository, eventPublisher);
+  const roleAuthorizationService = new RoleAuthorizationService(prisma);
   const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
-  const itemsService = new ItemsService(itemsRepository, eventPublisher);
+  const itemsService = new ItemsService(itemsRepository, eventPublisher, prisma);
   const workspaceConfigService = new WorkspaceConfigService(prisma);
   const workspaceWorkItemsService = new WorkspaceWorkItemsService(
     prisma,
@@ -155,8 +159,23 @@ export const createApp = (): Express => {
     env.API_PREFIX,
     buildIdentityRoutes({ authService, organizationService, allowedOrigins })
   );
-  app.use(env.API_PREFIX, buildWorkspacesRoutes({ workspacesService }));
-  app.use(env.API_PREFIX, buildItemsRoutes({ itemsService }));
+  app.use(
+    env.API_PREFIX,
+    buildWorkspacesRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      organizationService,
+      workspacesService
+    })
+  );
+  app.use(
+    env.API_PREFIX,
+    buildItemsRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      itemsService
+    })
+  );
   app.use(env.API_PREFIX, buildAiRoutes({ improvementRequestService }));
   app.use(env.API_PREFIX, buildSearchRoutes({ indexingRequestService, hybridSearchService }));
   app.use(env.API_PREFIX, buildAutomationRoutes({ automationService, automationViewService }));
@@ -165,6 +184,8 @@ export const createApp = (): Express => {
   app.use(
     env.API_PREFIX,
     buildWorkspacePlatformRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
       workspaceConfigService,
       workspaceWorkItemsService
     })

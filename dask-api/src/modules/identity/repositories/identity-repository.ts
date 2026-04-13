@@ -4,6 +4,15 @@ import type { MembershipRole, Organization, User } from '@prisma/client';
 // Stored-token types (independent of Prisma generation state)
 // ---------------------------------------------------------------------------
 
+export type StoredEmailVerificationToken = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date;
+};
+
 export type StoredRefreshToken = {
   id: string;
   userId: string;
@@ -123,4 +132,18 @@ export interface IdentityRepository {
 
   /** Count how many unexpired+unused reset tokens a user already has. */
   countActiveResetTokens(userId: string): Promise<number>;
+
+  // ── Email verification tokens ─────────────────────────────────────────────
+  createEmailVerificationToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void>;
+
+  findEmailVerificationToken(tokenHash: string): Promise<StoredEmailVerificationToken | null>;
+
+  markEmailVerificationTokenUsed(tokenHash: string): Promise<void>;
+
+  /** Mark the user's email as verified. */
+  setEmailVerified(userId: string): Promise<void>;
 }

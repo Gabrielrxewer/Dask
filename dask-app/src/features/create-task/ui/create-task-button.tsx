@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { priorityMeta, taskPriorityOptions, type TaskPriority } from "@/entities/task";
 import type { CreateTaskInput } from "@/modules/workspace";
@@ -7,9 +7,10 @@ import "./create-task-button.css";
 
 interface CreateTaskButtonProps {
   onCreate: (input: CreateTaskInput) => void | Promise<void>;
+  typeOptions?: Array<{ id: string; label: string }>;
 }
 
-const typeOptions: Array<{ id: string; label: string }> = [
+const fallbackTypeOptions: Array<{ id: string; label: string }> = [
   { id: "task", label: "Task" },
   { id: "bug", label: "Bug" },
   { id: "user-story", label: "User Story" },
@@ -41,12 +42,20 @@ function improveDescriptionMock(description: string): string {
   ].join("\n");
 }
 
-export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
+export function CreateTaskButton({ onCreate, typeOptions }: CreateTaskButtonProps) {
+  const resolvedTypeOptions =
+    typeOptions && typeOptions.length > 0 ? typeOptions : fallbackTypeOptions;
   const [isOpen, setIsOpen] = useState(false);
-  const [type, setType] = useState(typeOptions[0].id);
+  const [type, setType] = useState(resolvedTypeOptions[0].id);
   const [priority, setPriority] = useState<TaskPriority>(2);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (!resolvedTypeOptions.some(option => option.id === type)) {
+      setType(resolvedTypeOptions[0].id);
+    }
+  }, [resolvedTypeOptions, type]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -56,7 +65,7 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
     await onCreate({ type, title, description, priority });
 
     setIsOpen(false);
-    setType(typeOptions[0].id);
+    setType(resolvedTypeOptions[0].id);
     setPriority(2);
     setTitle("");
     setDescription("");
@@ -82,7 +91,7 @@ export function CreateTaskButton({ onCreate }: CreateTaskButtonProps) {
         <div className="create-item-modal__body">
           <FormField label="Tipo do item" className="create-item-modal__field">
             <Select value={type} onChange={event => setType(event.target.value)}>
-              {typeOptions.map(option => (
+              {resolvedTypeOptions.map(option => (
                 <option key={option.id} value={option.id}>
                   {option.label}
                 </option>

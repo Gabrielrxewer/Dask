@@ -19,6 +19,9 @@ function makeDeps() {
       update: vi.fn(),
       aggregate: vi.fn()
     },
+    workspacePreferences: {
+      findUnique: vi.fn().mockResolvedValue(null)
+    },
     item: {
       findFirst: vi.fn()
     },
@@ -86,8 +89,8 @@ describe('AutomationViewService', () => {
 
     await service.ensureDefaultViews('ws-1');
 
-    expect(prisma.automationView.upsert).toHaveBeenCalledTimes(4);
-    expect(prisma.automationViewColumn.upsert).toHaveBeenCalledTimes(16);
+    expect(prisma.automationView.upsert).toHaveBeenCalledTimes(1);
+    expect(prisma.automationViewColumn.upsert).toHaveBeenCalledTimes(4);
   });
 
   it('lists views and serializes columns', async () => {

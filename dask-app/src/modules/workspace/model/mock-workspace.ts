@@ -38,6 +38,7 @@ export function createTaskFromInput(input: CreateTaskInput, assignee: Task["assi
     due: dueDate.toISOString().slice(0, 10),
     customFields: {
       createdBy: assignee,
+      "story-points": 3,
       severity: "Medium",
       sprint: "Planejamento",
       environment: "Development",

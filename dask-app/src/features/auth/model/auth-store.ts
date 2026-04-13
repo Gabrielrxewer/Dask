@@ -131,6 +131,19 @@ export class AuthStore {
       return;
     }
 
+    if (!result.accessToken) {
+      this.transport.clear();
+      this.setState(prev => ({
+        ...prev,
+        status: "unauthenticated",
+        user: null,
+        initialized: true,
+        sessionNotice: null,
+        errorMessage: "Nao foi possivel iniciar sessao apos o cadastro."
+      }));
+      return;
+    }
+
     this.transport.setTokens({
       accessToken: result.accessToken
     });
@@ -153,6 +166,9 @@ export class AuthStore {
 
     try {
       const result = await this.authService.login(input);
+      if (!result.accessToken) {
+        throw new Error("Missing access token on login response.");
+      }
       this.transport.setTokens({
         accessToken: result.accessToken
       });
@@ -427,7 +443,7 @@ export class AuthStore {
   }
 
   private isUnauthorized(error: unknown): boolean {
-    return isApiError(error) && (error.status === 401 || error.status === 403);
+    return isApiError(error) && error.status === 401;
   }
 
   private mapLoginError(error: unknown): string {

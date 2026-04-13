@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { buildWorkspaceSettingsPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
@@ -28,6 +28,11 @@ function getUserInitials(nameOrEmail?: string): string {
   return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
 }
 
+function extractWorkspaceSlug(pathname: string): string | null {
+  const matched = pathname.match(/^\/w\/([^/]+)/i);
+  return matched?.[1] ?? null;
+}
+
 export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,7 +40,8 @@ export function GlobalLayout() {
   const { logout, logoutAll, isSubmitting } = useLogout();
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
-  const isPublicGuestRoute = isHomeRoute || isLoginRoute;
+  const isResetPasswordRoute = location.pathname === routePaths.resetPassword;
+  const isPublicGuestRoute = isHomeRoute || isLoginRoute || isResetPasswordRoute;
   const isAppRoute = !isPublicGuestRoute;
   const isAuthenticated = status === "authenticated";
 
@@ -110,6 +116,7 @@ export function GlobalLayout() {
   const profileEmail = user?.email ?? "Sem e-mail";
   const profileInitials = getUserInitials(profileLabel);
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
+  const activeWorkspaceSlug = extractWorkspaceSlug(location.pathname);
   const chromeValue = {
     isSidebarOpen,
     toggleNavigation,
@@ -178,7 +185,11 @@ export function GlobalLayout() {
                         type="button"
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          navigate(routePaths.settings);
+                          navigate(
+                            activeWorkspaceSlug
+                              ? buildWorkspaceSettingsPath(activeWorkspaceSlug)
+                              : routePaths.workspaceEntry
+                          );
                         }}
                       >
                         Abrir perfil do usuario

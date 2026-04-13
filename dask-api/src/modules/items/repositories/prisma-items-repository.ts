@@ -49,8 +49,8 @@ export class PrismaItemsRepository implements ItemsRepository {
       fields?: Record<string, unknown>;
       metadata?: Record<string, unknown>;
       checklist?: Record<string, unknown>;
-      assigneeId?: string;
-      parentId?: string;
+      assigneeId?: string | null;
+      parentId?: string | null;
       dueDate?: Date | null;
       position?: number;
       updatedBy?: string;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { currentUserId, membersById } from "@/entities/member/model/mock-members";
+import { factoryBoardConfig } from "@/entities/task/model/board-config";
 import { initialTasks } from "@/entities/task/model/mock-tasks";
 import { applyDashboardFilter } from "@/features/dashboard-filter/model/filter-utils";
 
@@ -8,6 +9,7 @@ describe("applyDashboardFilter", () => {
     const filtered = applyDashboardFilter(
       initialTasks,
       { query: "", mineOnly: true },
+      factoryBoardConfig,
       membersById,
       currentUserId
     );
@@ -20,6 +22,7 @@ describe("applyDashboardFilter", () => {
     const filtered = applyDashboardFilter(
       initialTasks,
       { query: "growth", mineOnly: false },
+      factoryBoardConfig,
       membersById,
       currentUserId
     );

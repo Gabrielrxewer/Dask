@@ -31,7 +31,7 @@ export function resolvePublicRoute(snapshot: AuthSnapshot): RouteGuardResult {
   if (snapshot.isAuthenticated) {
     return {
       mode: "redirect",
-      redirectTo: routePaths.board
+      redirectTo: routePaths.workspaceEntry
     };
   }
 

@@ -35,57 +35,6 @@ type DefaultViewSeed = {
   columns: DefaultColumnSeed[];
 };
 
-const defaultViews: DefaultViewSeed[] = [
-  {
-    key: 'dev',
-    name: 'Development',
-    description: 'Execution flow for the engineering view.',
-    position: 0,
-    columns: [
-      { key: 'backlog', name: 'Backlog', color: '#64748b', position: 0 },
-      { key: 'doing', name: 'Doing', color: '#0d8df7', position: 1 },
-      { key: 'review', name: 'Review', color: '#f59e0b', position: 2 },
-      { key: 'done', name: 'Done', color: '#22c55e', position: 3, isTerminal: true }
-    ]
-  },
-  {
-    key: 'qa',
-    name: 'Quality Assurance',
-    description: 'Validation and test operations flow.',
-    position: 1,
-    columns: [
-      { key: 'ready-for-test', name: 'Ready for Test', color: '#0d8df7', position: 0 },
-      { key: 'testing', name: 'Testing', color: '#f59e0b', position: 1 },
-      { key: 'approved', name: 'Approved', color: '#22c55e', position: 2, isTerminal: true },
-      { key: 'rejected', name: 'Rejected', color: '#ef4444', position: 3 }
-    ]
-  },
-  {
-    key: 'po',
-    name: 'Product',
-    description: 'Planning and commitment flow for product.',
-    position: 2,
-    columns: [
-      { key: 'ideas', name: 'Ideas', color: '#64748b', position: 0 },
-      { key: 'committed', name: 'Committed', color: '#0369a1', position: 1 },
-      { key: 'building', name: 'Building', color: '#f59e0b', position: 2 },
-      { key: 'ready', name: 'Ready', color: '#22c55e', position: 3, isTerminal: true }
-    ]
-  },
-  {
-    key: 'manager',
-    name: 'Management',
-    description: 'Management lens for initiatives, risk and delivery.',
-    position: 3,
-    columns: [
-      { key: 'epics', name: 'Epics', color: '#7c3aed', position: 0 },
-      { key: 'initiatives', name: 'Initiatives', color: '#0d8df7', position: 1 },
-      { key: 'risks', name: 'Risks', color: '#ef4444', position: 2 },
-      { key: 'delivery', name: 'Delivery', color: '#22c55e', position: 3, isTerminal: true }
-    ]
-  }
-];
-
 export class AutomationViewService {
   public constructor(
     private readonly prisma: PrismaClient,
@@ -93,6 +42,8 @@ export class AutomationViewService {
   ) {}
 
   public async ensureDefaultViews(workspaceId: string): Promise<void> {
+    const defaultViews = await this.resolveDefaultViewSeeds(workspaceId);
+
     for (const viewSeed of defaultViews) {
       const view = await this.prisma.automationView.upsert({
         where: {
@@ -138,6 +89,91 @@ export class AutomationViewService {
         });
       }
     }
+  }
+
+  private async resolveDefaultViewSeeds(workspaceId: string): Promise<DefaultViewSeed[]> {
+    const preferences = await this.prisma.workspacePreferences.findUnique({
+      where: { workspaceId },
+      select: { settings: true }
+    });
+
+    const settings =
+      preferences?.settings && typeof preferences.settings === 'object' && !Array.isArray(preferences.settings)
+        ? (preferences.settings as Record<string, unknown>)
+        : null;
+
+    const boardViews = Array.isArray(settings?.boardViews) ? settings?.boardViews : [];
+
+    const parsed: DefaultViewSeed[] = [];
+    for (const [index, entry] of boardViews.entries()) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+        continue;
+      }
+
+      const view = entry as Record<string, unknown>;
+      if (typeof view.key !== 'string' || typeof view.name !== 'string') {
+        continue;
+      }
+
+      const rawStatuses = Array.isArray(view.statuses) ? view.statuses : [];
+      const columns: DefaultColumnSeed[] = [];
+
+      for (const [statusIndex, status] of rawStatuses.entries()) {
+        if (!status || typeof status !== 'object' || Array.isArray(status)) {
+          continue;
+        }
+
+        const statusRecord = status as Record<string, unknown>;
+        if (
+          typeof statusRecord.id !== 'string' ||
+          typeof statusRecord.label !== 'string' ||
+          typeof statusRecord.dot !== 'string'
+        ) {
+          continue;
+        }
+
+        columns.push({
+          key: toSlug(statusRecord.id),
+          name: statusRecord.label,
+          color: normalizeHexColor(statusRecord.dot, '#64748b'),
+          position: statusIndex,
+          isTerminal: statusIndex === rawStatuses.length - 1
+        });
+      }
+
+      if (columns.length === 0) {
+        continue;
+      }
+
+      parsed.push({
+        key: toSlug(view.key),
+        name: view.name,
+        description: typeof view.caption === 'string' ? view.caption : '',
+        position: typeof view.position === 'number' ? view.position : index,
+        columns
+      });
+    }
+
+    parsed.sort((left, right) => left.position - right.position);
+
+    if (parsed.length > 0) {
+      return parsed;
+    }
+
+    return [
+      {
+        key: 'dev',
+        name: 'Development',
+        description: 'Execution flow for the engineering view.',
+        position: 0,
+        columns: [
+          { key: 'backlog', name: 'Backlog', color: '#64748b', position: 0 },
+          { key: 'in-progress', name: 'In Progress', color: '#0d8df7', position: 1 },
+          { key: 'in-review', name: 'In Review', color: '#f59e0b', position: 2 },
+          { key: 'done', name: 'Done', color: '#22c55e', position: 3, isTerminal: true }
+        ]
+      }
+    ];
   }
 
   public async listViews(input: { workspaceId: string; userId: string }) {

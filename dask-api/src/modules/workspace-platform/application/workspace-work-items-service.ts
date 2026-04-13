@@ -75,15 +75,17 @@ export class WorkspaceWorkItemsService {
       return acc;
     }, {});
 
+    const statuses = config.workflowStates
+      .filter((state) => state.isActive)
+      .sort((left, right) => left.order - right.order)
+      .map((state) => ({
+        id: state.slug,
+        label: state.name,
+        dot: state.color
+      }));
+
     const boardConfig = {
-      statuses: config.workflowStates
-        .filter((state) => state.isActive)
-        .sort((left, right) => left.order - right.order)
-        .map((state) => ({
-          id: state.slug,
-          label: state.name,
-          dot: state.color
-        })),
+      statuses,
       taskTypes: config.itemTypes
         .filter((itemType) => itemType.isActive)
         .sort((left, right) => left.order - right.order)
@@ -105,7 +107,8 @@ export class WorkspaceWorkItemsService {
         })),
       cardLayout: {
         visibleFieldIds: config.preferences.visibleCardFieldIds
-      }
+      },
+      views: this.resolveBoardViewsFromSettings(config.preferences.settings, statuses)
     };
 
     return {
@@ -149,7 +152,7 @@ export class WorkspaceWorkItemsService {
   }
 
   public async listWorkItems(input: { workspaceId: string; userId: string }) {
-    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
 
     const items = await this.prisma.item.findMany({
       where: { workspaceId: input.workspaceId },
@@ -1179,5 +1182,142 @@ export class WorkspaceWorkItemsService {
       default:
         return CustomFieldType.TEXT;
     }
+  }
+
+  private resolveBoardViewsFromSettings(
+    settings: unknown,
+    defaultStatuses: Array<{ id: string; label: string; dot: string }>
+  ) {
+    if (!isRecord(settings)) {
+      return [
+        {
+          id: 'dev',
+          label: 'Execucao',
+          caption: 'Fluxo operacional principal',
+          statuses: defaultStatuses,
+          statusSource: { kind: 'workflow_state' }
+        }
+      ];
+    }
+
+    const rawViews = settings.boardViews;
+    if (!Array.isArray(rawViews) || rawViews.length === 0) {
+      return [
+        {
+          id: 'dev',
+          label: 'Execucao',
+          caption: 'Fluxo operacional principal',
+          statuses: defaultStatuses,
+          statusSource: { kind: 'workflow_state' }
+        }
+      ];
+    }
+
+    const parsed = rawViews
+      .map((rawView, index) => {
+        if (!isRecord(rawView)) {
+          return null;
+        }
+
+        const id = typeof rawView.key === 'string' && rawView.key.trim().length > 0 ? rawView.key : null;
+        const label = typeof rawView.name === 'string' && rawView.name.trim().length > 0 ? rawView.name : null;
+        if (!id || !label) {
+          return null;
+        }
+
+        const caption = typeof rawView.caption === 'string' ? rawView.caption : undefined;
+        const compactCards = Boolean(rawView.compactCards);
+        const allowedTaskTypes = Array.isArray(rawView.allowedTaskTypes)
+          ? rawView.allowedTaskTypes.filter((value): value is string => typeof value === 'string')
+          : undefined;
+
+        const statuses = Array.isArray(rawView.statuses)
+          ? rawView.statuses
+              .map((status) => {
+                if (!isRecord(status)) {
+                  return null;
+                }
+
+                if (
+                  typeof status.id !== 'string' ||
+                  typeof status.label !== 'string' ||
+                  typeof status.dot !== 'string'
+                ) {
+                  return null;
+                }
+
+                return {
+                  id: status.id,
+                  label: status.label,
+                  dot: status.dot
+                };
+              })
+              .filter(
+                (
+                  status
+                ): status is {
+                  id: string;
+                  label: string;
+                  dot: string;
+                } => status !== null
+              )
+          : [];
+
+        const statusSourceRecord = isRecord(rawView.statusSource) ? rawView.statusSource : null;
+        const statusSourceKind =
+          statusSourceRecord && typeof statusSourceRecord.kind === 'string'
+            ? statusSourceRecord.kind
+            : 'workflow_state';
+
+        const statusSource =
+          statusSourceKind === 'custom_field' &&
+          typeof statusSourceRecord?.fieldId === 'string' &&
+          statusSourceRecord.fieldId.trim().length > 0
+            ? {
+                kind: 'custom_field' as const,
+                fieldId: statusSourceRecord.fieldId,
+                fallbackByStatus:
+                  isRecord(statusSourceRecord.fallbackByStatus)
+                    ? Object.entries(statusSourceRecord.fallbackByStatus).reduce<Record<string, string>>(
+                        (acc, [key, value]) => {
+                          if (typeof value === 'string') {
+                            acc[key] = value;
+                          }
+                          return acc;
+                        },
+                        {}
+                      )
+                    : undefined
+              }
+            : { kind: 'workflow_state' as const };
+
+        return {
+          id,
+          label,
+          caption,
+          statuses: statuses.length > 0 ? statuses : defaultStatuses,
+          statusSource,
+          compactCards,
+          allowedTaskTypes,
+          position: typeof rawView.position === 'number' ? rawView.position : index
+        };
+      })
+      .filter((view): view is NonNullable<typeof view> => view !== null)
+      .sort((left, right) => left.position - right.position)
+      .map(({ position: _position, ...view }) => view);
+
+    if (parsed.length === 0) {
+      return [
+        {
+          id: 'dev',
+          label: 'Execucao',
+          caption: 'Fluxo operacional principal',
+          statuses: defaultStatuses,
+          statusSource: { kind: 'workflow_state' as const }
+        }
+      ];
+    }
+
+    return parsed;
   }
 }

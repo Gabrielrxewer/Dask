@@ -127,6 +127,43 @@
   gap: 8px;
 }
 
+.auth-login__password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-login__forgot-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f5da2;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-login__forgot-link:hover {
+  color: #0a4c84;
+}
+
+.auth-login__forgot-link:focus-visible {
+  outline: 2px solid rgba(15, 93, 162, 0.2);
+  outline-offset: 2px;
+}
+
+.auth-login__message--success {
+  color: #1a5c35;
+  background: linear-gradient(180deg, rgba(240, 253, 246, 0.98) 0%, rgba(232, 250, 240, 0.96) 100%);
+  border-color: rgba(167, 219, 189, 0.96);
+}
+
 .auth-login__password-input-wrap {
   position: relative;
 }

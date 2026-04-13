@@ -22,7 +22,7 @@ export interface RefreshResponse {
 }
 
 export interface AuthSuccessResponse {
-  accessToken: string;
+  accessToken: string | null;
   user: AuthenticatedUser;
 }
 

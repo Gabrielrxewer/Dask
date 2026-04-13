@@ -1,6 +1,13 @@
 import { Router } from 'express';
+import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
+import {
+  requireWorkspacePermission,
+  requireWorkspaceRole,
+  workspaceScopeMiddleware
+} from '@/core/http/workspace-scope-middleware';
+import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import type { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import {
@@ -33,11 +40,26 @@ import {
 } from '@/modules/workspace-platform/http/dto';
 
 export const buildWorkspacePlatformRoutes = (deps: {
+  prisma: PrismaClient;
+  authorizationService: AuthorizationService;
   workspaceConfigService: WorkspaceConfigService;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
 }): Router => {
   const router = Router();
   router.use(authMiddleware);
+  const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
+  const requireWorkspaceRead = requireWorkspacePermission(deps.authorizationService, 'workspace.read');
+  const requireConfigWrite = [
+    requireWorkspacePermission(deps.authorizationService, 'workspace.write'),
+    requireWorkspaceRole(MembershipRole.ADMIN)
+  ];
+  const requireItemRead = requireWorkspacePermission(deps.authorizationService, 'item.read');
+  const requireItemWrite = [
+    requireWorkspacePermission(deps.authorizationService, 'item.write'),
+    requireWorkspaceRole(MembershipRole.MEMBER)
+  ];
+
+  router.use('/workspaces/:workspaceId', resolveWorkspaceScope, requireWorkspaceRead);
 
   router.get(
     '/workspaces/:workspaceId/config',
@@ -65,11 +87,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/item-types',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createItemTypeDto.parse(req.body);
       const itemType = await deps.workspaceConfigService.createItemType({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -79,11 +101,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/item-types/:typeId',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, typeId } = itemTypeParamsDto.parse(req.params);
+      const { typeId } = itemTypeParamsDto.parse(req.params);
       const payload = patchItemTypeDto.parse(req.body);
       const itemType = await deps.workspaceConfigService.updateItemType({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         typeId,
         userId: req.auth!.userId,
         payload
@@ -106,11 +129,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/workflow-states',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createWorkflowStateDto.parse(req.body);
       const state = await deps.workspaceConfigService.createWorkflowState({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -120,11 +143,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/workflow-states/:stateId',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, stateId } = workflowStateParamsDto.parse(req.params);
+      const { stateId } = workflowStateParamsDto.parse(req.params);
       const payload = patchWorkflowStateDto.parse(req.body);
       const state = await deps.workspaceConfigService.updateWorkflowState({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         stateId,
         userId: req.auth!.userId,
         payload
@@ -147,11 +171,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/board-columns',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createBoardColumnDto.parse(req.body);
       const column = await deps.workspaceConfigService.createBoardColumn({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -161,11 +185,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/board-columns/:columnId',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, columnId } = boardColumnParamsDto.parse(req.params);
+      const { columnId } = boardColumnParamsDto.parse(req.params);
       const payload = patchBoardColumnDto.parse(req.body);
       const column = await deps.workspaceConfigService.updateBoardColumn({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         columnId,
         userId: req.auth!.userId,
         payload
@@ -188,11 +213,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/tags',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createTagDto.parse(req.body);
       const tag = await deps.workspaceConfigService.createTag({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -202,11 +227,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/tags/:tagId',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, tagId } = tagParamsDto.parse(req.params);
+      const { tagId } = tagParamsDto.parse(req.params);
       const payload = patchTagDto.parse(req.body);
       const tag = await deps.workspaceConfigService.updateTag({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         tagId,
         userId: req.auth!.userId,
         payload
@@ -229,11 +255,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/custom-fields',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createCustomFieldDto.parse(req.body);
       const field = await deps.workspaceConfigService.createCustomField({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -243,11 +269,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/custom-fields/:fieldId',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, fieldId } = customFieldParamsDto.parse(req.params);
+      const { fieldId } = customFieldParamsDto.parse(req.params);
       const payload = patchCustomFieldDto.parse(req.body);
       const field = await deps.workspaceConfigService.updateCustomField({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         fieldId,
         userId: req.auth!.userId,
         payload
@@ -270,11 +297,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/preferences',
+    ...requireConfigWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = patchPreferencesDto.parse(req.body);
       const preferences = await deps.workspaceConfigService.updatePreferences({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -284,6 +311,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.get(
     '/workspaces/:workspaceId/snapshot',
+    requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const { limit } = workspaceSnapshotQueryDto.parse(req.query);
@@ -298,6 +326,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.get(
     '/workspaces/:workspaceId/work-items',
+    requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const items = await deps.workspaceWorkItemsService.listWorkItems({
@@ -310,11 +339,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createWorkItemDto.parse(req.body);
       const item = await deps.workspaceWorkItemsService.createWorkItem({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         userId: req.auth!.userId,
         payload
       });
@@ -324,11 +353,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/work-items/:itemId',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const { itemId } = workItemParamsDto.parse(req.params);
       const payload = patchWorkItemDto.parse(req.body);
       const item = await deps.workspaceWorkItemsService.updateWorkItem({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         itemId,
         userId: req.auth!.userId,
         payload
@@ -339,11 +369,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/move',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const { itemId } = workItemParamsDto.parse(req.params);
       const payload = moveWorkItemDto.parse(req.body);
       const item = await deps.workspaceWorkItemsService.moveWorkItem({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         itemId,
         userId: req.auth!.userId,
         payload
@@ -354,11 +385,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/transitions',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const { itemId } = workItemParamsDto.parse(req.params);
       const payload = transitionWorkItemDto.parse(req.body);
       const item = await deps.workspaceWorkItemsService.transitionWorkItem({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         itemId,
         userId: req.auth!.userId,
         payload
@@ -369,11 +401,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/work-items/:itemId/custom-fields/:fieldId',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, itemId, fieldId } = fieldValueParamsDto.parse(req.params);
+      const { itemId, fieldId } = fieldValueParamsDto.parse(req.params);
       const payload = patchWorkItemCustomFieldValueDto.parse(req.body);
       const item = await deps.workspaceWorkItemsService.setWorkItemCustomFieldValue({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         itemId,
         fieldId,
         userId: req.auth!.userId,
@@ -385,10 +418,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/tags/:tagId',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, itemId, tagId } = workItemTagParamsDto.parse(req.params);
+      const { itemId, tagId } = workItemTagParamsDto.parse(req.params);
       const item = await deps.workspaceWorkItemsService.addTagToWorkItem({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         itemId,
         tagId,
         userId: req.auth!.userId
@@ -399,10 +433,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.delete(
     '/workspaces/:workspaceId/work-items/:itemId/tags/:tagId',
+    ...requireItemWrite,
     asyncHandler(async (req, res) => {
-      const { workspaceId, itemId, tagId } = workItemTagParamsDto.parse(req.params);
+      const { itemId, tagId } = workItemTagParamsDto.parse(req.params);
       await deps.workspaceWorkItemsService.removeTagFromWorkItem({
-        workspaceId,
+        workspaceId: req.workspace!.id,
         itemId,
         tagId,
         userId: req.auth!.userId

@@ -38,10 +38,15 @@ export function PublicRoute({ children }: PublicRouteProps) {
 
   if (guard.mode === "redirect") {
     const state = (location.state as LocationState | null) ?? null;
-    const fallbackPath = guard.redirectTo ?? routePaths.board;
+    const fallbackPath = guard.redirectTo ?? routePaths.workspaceEntry;
     const fromPath = state?.from?.pathname;
     const fromSearch = state?.from?.search ?? "";
-    const redirectTo = fromPath ? `${fromPath}${fromSearch}` : fallbackPath;
+
+    // Only redirect back to protected app routes (/w/...).
+    // Paths like /login, /reset-password or /verify-email must never be
+    // used as redirect targets — they would create confusing loops.
+    const isValidAppPath = typeof fromPath === "string" && fromPath.startsWith("/w");
+    const redirectTo = isValidAppPath ? `${fromPath}${fromSearch}` : fallbackPath;
 
     return <Navigate replace to={redirectTo} />;
   }

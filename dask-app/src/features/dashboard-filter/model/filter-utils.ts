@@ -1,14 +1,12 @@
 import type { Member, MemberId } from "@/entities/member";
-import { buildTaskTypeMetaMap, factoryBoardConfig } from "@/entities/task";
-import type { Task } from "@/entities/task";
+import { buildTaskTypeMetaMap } from "@/entities/task";
+import type { BoardConfig, Task } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter/model/types";
 
 export const initialDashboardFilter: DashboardFilterState = {
   query: "",
   mineOnly: false
 };
-
-const taskTypeMap = buildTaskTypeMetaMap(factoryBoardConfig.taskTypes);
 
 function stringifyCustomField(value: Task["customFields"][string]): string {
   if (Array.isArray(value)) {
@@ -26,10 +24,12 @@ function stringifyCustomField(value: Task["customFields"][string]): string {
 export function applyDashboardFilter(
   tasks: Task[],
   filter: DashboardFilterState,
+  boardConfig: BoardConfig,
   membersById: Record<MemberId, Member>,
   currentUserId: MemberId
 ): Task[] {
   const normalizedQuery = filter.query.trim().toLowerCase();
+  const taskTypeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
 
   return tasks.filter(task => {
     const assigneeName = membersById[task.assignee]?.name ?? "";

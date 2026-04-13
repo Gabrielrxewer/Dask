@@ -1,4 +1,4 @@
-export type MemberId = "u1" | "u2" | "u3" | "u4";
+export type MemberId = string;
 
 export interface Member {
   id: MemberId;

@@ -1,8 +1,10 @@
-import type { Board, BoardTemplate, MembershipRole, Workspace } from '@prisma/client';
+import type { Board, BoardTemplate, MembershipRole, Workspace, WorkspaceKind } from '@prisma/client';
+import type { WorkspaceTemplateKey } from '@/modules/workspaces/application/workspace-template-catalog';
 
 export type UserWorkspaceSummary = {
   id: string;
-  organizationId: string;
+  organizationId: string | null;
+  kind: WorkspaceKind;
   name: string;
   key: string;
   role: MembershipRole;
@@ -73,9 +75,11 @@ export type BoardSnapshot = {
 
 export interface WorkspacesRepository {
   createWorkspace(input: {
-    organizationId: string;
+    organizationId?: string;
+    kind: WorkspaceKind;
     name: string;
     key: string;
+    templateKey?: WorkspaceTemplateKey;
     config?: Record<string, unknown>;
     ownerUserId: string;
   }): Promise<Workspace>;
@@ -94,6 +98,7 @@ export interface WorkspacesRepository {
     rules?: Record<string, unknown>;
   }): Promise<BoardTemplate>;
   listUserWorkspaces(userId: string): Promise<UserWorkspaceSummary[]>;
+  getOrganizationRoleForUser(organizationId: string, userId: string): Promise<MembershipRole | null>;
   getWorkspaceRoleForUser(workspaceId: string, userId: string): Promise<MembershipRole | null>;
   listBoardsByWorkspace(workspaceId: string): Promise<WorkspaceBoardSummary[]>;
   findBoardSnapshot(input: {

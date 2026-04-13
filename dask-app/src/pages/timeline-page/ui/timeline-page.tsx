@@ -76,6 +76,7 @@ export function TimelinePage() {
       onFilterQueryChange={setFilterQuery}
       onMineToggle={toggleMineFilter}
       onCreateTask={input => void createTask(input)}
+      createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
     >
       <div className="timeline-view">
         <BoardMetrics metrics={metrics} className="timeline-view__metrics" />

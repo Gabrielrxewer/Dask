@@ -36,6 +36,11 @@ const envSchema = z.object({
   MICROSOFT_OAUTH_TENANT_ID: z.string().default('common'),
   MICROSOFT_OAUTH_REDIRECT_URI: z.string().optional(),
 
+  // Email (Resend)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('Dask <noreply@dask.app>'),
+  APP_URL: z.string().default('http://localhost:5173'),
+
   LOG_LEVEL: z.string().default('info'),
   ENABLE_WORKERS: z
     .string()

@@ -6,10 +6,19 @@ export type AuthUserContext = {
   roles: MembershipRole[];
 };
 
+export type WorkspaceRequestContext = {
+  id: string;
+  key: string;
+  name: string;
+  organizationId: string | null;
+  role: MembershipRole;
+};
+
 declare global {
   namespace Express {
     interface Request {
       auth?: AuthUserContext;
+      workspace?: WorkspaceRequestContext;
     }
   }
 }

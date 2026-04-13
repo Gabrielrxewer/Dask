@@ -1,0 +1,227 @@
+.verify-email-page {
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 2.4vw, 30px) clamp(22px, 3vw, 40px);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 16% 24%, rgba(247, 145, 159, 0.16) 0%, rgba(247, 145, 159, 0.02) 26%, transparent 44%),
+    radial-gradient(circle at 80% 20%, rgba(125, 97, 238, 0.13) 0%, rgba(125, 97, 238, 0.02) 24%, transparent 42%),
+    radial-gradient(circle at 72% 74%, rgba(48, 213, 205, 0.1) 0%, rgba(48, 213, 205, 0.02) 26%, transparent 46%),
+    linear-gradient(135deg, rgba(247, 145, 159, 0.08) 0%, rgba(165, 96, 234, 0.06) 28%, rgba(44, 120, 230, 0.08) 58%, rgba(48, 213, 205, 0.1) 100%),
+    linear-gradient(180deg, #f8fbff 0%, #eef5fd 52%, #e9f3fb 100%);
+}
+
+.verify-email-page__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.54) 0%, rgba(255, 255, 255, 0.18) 20%, transparent 40%),
+    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.08) 18%, transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
+  filter: blur(1px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+
+.verify-email-page__card {
+  width: min(440px, 100%);
+  background: rgba(248, 251, 255, 0.84);
+  border: 1px solid rgba(186, 206, 227, 0.72);
+  border-radius: 32px;
+  box-shadow:
+    0 34px 72px rgba(15, 41, 72, 0.14),
+    0 14px 30px rgba(36, 80, 128, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.92) inset;
+  padding: clamp(30px, 2.6vw, 40px) clamp(28px, 2.5vw, 38px);
+  display: grid;
+  gap: 16px;
+  backdrop-filter: saturate(120%) blur(16px);
+  position: relative;
+}
+
+.verify-email-page__card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+/* ── Icons ───────────────────────────────────────────────────────────────── */
+
+.verify-email-page__envelope-icon {
+  width: 52px;
+  height: 40px;
+  border: 3px solid #2c78e6;
+  border-radius: 6px;
+  position: relative;
+  background: rgba(44, 120, 230, 0.08);
+}
+
+.verify-email-page__envelope-icon::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-top: 3px solid #2c78e6;
+  border-left: 26px solid transparent;
+  border-right: 26px solid transparent;
+  border-top-width: 20px;
+}
+
+.verify-email-page__envelope-icon::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-bottom: 14px solid #2c78e6;
+  border-left: 22px solid transparent;
+  border-right: 22px solid transparent;
+}
+
+.verify-email-page__success-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.28);
+  position: relative;
+}
+
+.verify-email-page__success-icon::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 12px;
+  border-left: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transform: translate(-50%, -62%) rotate(-45deg);
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+
+.verify-email-page__spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(44, 120, 230, 0.18);
+  border-top-color: #2c78e6;
+  border-radius: 999px;
+  animation: verify-spin 0.8s linear infinite;
+}
+
+@keyframes verify-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+
+.verify-email-page__title {
+  margin: 0;
+  font-size: clamp(1.56rem, 1.3rem + 0.54vw, 1.82rem);
+  line-height: 1.05;
+  letter-spacing: -0.038em;
+  color: #102644;
+}
+
+.verify-email-page__text {
+  margin: 0;
+  color: #3a5a76;
+  line-height: 1.68;
+  font-size: 0.96rem;
+}
+
+.verify-email-page__hint {
+  margin: 0;
+  color: #758fa7;
+  font-size: 0.84rem;
+  line-height: 1.56;
+}
+
+/* ── Resend ──────────────────────────────────────────────────────────────── */
+
+.verify-email-page__resend-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.verify-email-page__resend-success {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #1a5c35;
+  background: linear-gradient(180deg, rgba(240, 253, 246, 0.98) 0%, rgba(232, 250, 240, 0.96) 100%);
+  border: 1px solid rgba(167, 219, 189, 0.96);
+  border-radius: 14px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+.verify-email-page__resend-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #963629;
+}
+
+/* ── CTA button ──────────────────────────────────────────────────────────── */
+
+.verify-email-page__cta {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 19px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #eaf7ff;
+  border-color: rgba(78, 126, 206, 0.18);
+  box-shadow:
+    0 14px 28px rgba(74, 87, 184, 0.18),
+    0 8px 16px rgba(22, 120, 180, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.verify-email-page__cta.shared-button--primary {
+  background: linear-gradient(135deg, #0f3f70 0%, #2c78e6 38%, #7d61ee 68%, #28cfc7 100%);
+}
+
+.verify-email-page__cta.shared-button--primary:hover {
+  background: linear-gradient(135deg, #0e3a66 0%, #276dd5 38%, #7357df 68%, #25bfb9 100%);
+  transform: translateY(-1px);
+}
+
+/* ── Footer link ─────────────────────────────────────────────────────────── */
+
+.verify-email-page__switch-cta {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: #5f7690;
+}
+
+.verify-email-page__switch-cta-button {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: #0f5da2;
+  font-size: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.verify-email-page__switch-cta-button:hover {
+  color: #0a4c84;
+}

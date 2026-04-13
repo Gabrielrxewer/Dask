@@ -1,12 +1,18 @@
 import {
   MembershipRole,
   Prisma,
+  WorkspaceKind,
   type Board,
   type BoardTemplate,
   type PrismaClient,
   type Workspace
 } from '@prisma/client';
+import { AppError } from '@/core/errors/app-error';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
+import {
+  getWorkspaceTemplateByKey,
+  type WorkspaceTemplateKey
+} from '@/modules/workspaces/application/workspace-template-catalog';
 import type {
   BoardSnapshot,
   UserWorkspaceSummary,
@@ -18,16 +24,19 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
   public constructor(private readonly prisma: PrismaClient) {}
 
   public createWorkspace(input: {
-    organizationId: string;
+    organizationId?: string;
+    kind: WorkspaceKind;
     name: string;
     key: string;
+    templateKey?: WorkspaceTemplateKey;
     config?: Record<string, unknown>;
     ownerUserId: string;
   }): Promise<Workspace> {
     return this.prisma.$transaction(async (tx) => {
       const workspace = await tx.workspace.create({
         data: {
-          organizationId: input.organizationId,
+          organizationId: input.organizationId ?? null,
+          kind: input.kind,
           name: input.name,
           key: input.key,
           config: input.config as Prisma.InputJsonValue | undefined
@@ -44,8 +53,39 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
 
       await ensureWorkspaceDefaultConfiguration(tx, {
         workspaceId: workspace.id,
-        ownerUserId: input.ownerUserId
+        ownerUserId: input.ownerUserId,
+        templateKey: input.templateKey
       });
+
+      const selectedTemplate = getWorkspaceTemplateByKey(input.templateKey);
+      if (selectedTemplate) {
+        const boardTemplate = await tx.boardTemplate.create({
+          data: {
+            workspaceId: workspace.id,
+            name: selectedTemplate.name,
+            description: selectedTemplate.description,
+            schema: selectedTemplate.schema as Prisma.InputJsonValue,
+            rules: selectedTemplate.rules as Prisma.InputJsonValue
+          }
+        });
+
+        const defaultBoard = await tx.board.findFirst({
+          where: { workspaceId: workspace.id },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true }
+        });
+
+        if (defaultBoard) {
+          await tx.board.update({
+            where: { id: defaultBoard.id },
+            data: {
+              templateId: boardTemplate.id,
+              name: selectedTemplate.boardName,
+              description: selectedTemplate.boardDescription
+            }
+          });
+        }
+      }
 
       return workspace;
     });
@@ -58,11 +98,40 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     description?: string;
     config?: Record<string, unknown>;
   }): Promise<Board> {
-    return this.prisma.board.create({
-      data: {
-        ...input,
-        config: input.config as Prisma.InputJsonValue | undefined
+    return this.prisma.$transaction(async (tx) => {
+      const workspace = await tx.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { id: true }
+      });
+
+      if (!workspace) {
+        throw new AppError('Workspace not found', 404);
       }
+
+      if (input.templateId) {
+        const template = await tx.boardTemplate.findUnique({
+          where: { id: input.templateId },
+          select: { id: true, workspaceId: true }
+        });
+
+        if (!template) {
+          throw new AppError('Template not found', 404);
+        }
+
+        if (template.workspaceId !== input.workspaceId) {
+          throw new AppError('Template does not belong to this workspace', 400);
+        }
+      }
+
+      return tx.board.create({
+        data: {
+          workspaceId: input.workspaceId,
+          templateId: input.templateId,
+          name: input.name,
+          description: input.description,
+          config: input.config as Prisma.InputJsonValue | undefined
+        }
+      });
     });
   }
 
@@ -73,12 +142,25 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     schema: Record<string, unknown>;
     rules?: Record<string, unknown>;
   }): Promise<BoardTemplate> {
-    return this.prisma.boardTemplate.create({
-      data: {
-        ...input,
-        schema: input.schema as Prisma.InputJsonValue,
-        rules: input.rules as Prisma.InputJsonValue | undefined
+    return this.prisma.$transaction(async (tx) => {
+      const workspace = await tx.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { id: true }
+      });
+
+      if (!workspace) {
+        throw new AppError('Workspace not found', 404);
       }
+
+      return tx.boardTemplate.create({
+        data: {
+          workspaceId: input.workspaceId,
+          name: input.name,
+          description: input.description,
+          schema: input.schema as Prisma.InputJsonValue,
+          rules: input.rules as Prisma.InputJsonValue | undefined
+        }
+      });
     });
   }
 
@@ -91,6 +173,7 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
           select: {
             id: true,
             organizationId: true,
+            kind: true,
             name: true,
             key: true,
             createdAt: true,
@@ -108,12 +191,30 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     return memberships.map((membership) => ({
       id: membership.workspace.id,
       organizationId: membership.workspace.organizationId,
+      kind: membership.workspace.kind,
       name: membership.workspace.name,
       key: membership.workspace.key,
       role: membership.role,
       createdAt: membership.workspace.createdAt,
       updatedAt: membership.workspace.updatedAt
     }));
+  }
+
+  public async getOrganizationRoleForUser(
+    organizationId: string,
+    userId: string
+  ): Promise<MembershipRole | null> {
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        organizationId,
+        userId
+      },
+      select: {
+        role: true
+      }
+    });
+
+    return membership?.role ?? null;
   }
 
   public async getWorkspaceRoleForUser(

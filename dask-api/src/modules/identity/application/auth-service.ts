@@ -24,6 +24,7 @@ import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
 import { validatePassword, normalizeEmail } from '@/modules/identity/domain/password-policy';
 import { PasswordService } from '@/modules/identity/application/password-service';
+import type { EmailService } from '@/infra/email/email-service';
 import type {
   ExternalAuthProvider,
   IdentityRepository
@@ -38,10 +39,17 @@ export type AuthTokens = {
   refreshToken: string;
 };
 
+export type RegisterResult = {
+  user: UserProfile;
+  accessToken: string | null;
+  refreshToken: string | null;
+};
+
 export type UserProfile = {
   id: string;
   email: string;
   name: string;
+  emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -90,10 +98,18 @@ function toUserProfile(user: {
   id: string;
   email: string;
   name: string;
+  emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }): UserProfile {
-  return { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt, updatedAt: user.updatedAt };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    emailVerified: user.emailVerified,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +133,7 @@ type AuthEvent =
   | 'auth.login.success'
   | 'auth.login.failure'
   | 'auth.login.locked'
+  | 'auth.login.email_not_verified'
   | 'auth.refresh.success'
   | 'auth.refresh.reuse_detected'
   | 'auth.refresh.invalid'
@@ -124,7 +141,10 @@ type AuthEvent =
   | 'auth.logout_all'
   | 'auth.password_reset.requested'
   | 'auth.password_reset.completed'
-  | 'auth.password_reset.invalid';
+  | 'auth.password_reset.invalid'
+  | 'auth.email_verification.sent'
+  | 'auth.email_verification.confirmed'
+  | 'auth.email_verification.invalid';
 
 function logAuthEvent(
   event: AuthEvent,
@@ -146,7 +166,8 @@ function logAuthEvent(
 export class AuthService {
   public constructor(
     private readonly identityRepository: IdentityRepository,
-    private readonly passwordService: PasswordService
+    private readonly passwordService: PasswordService,
+    private readonly emailService?: EmailService
   ) {}
 
   // ── Register ──────────────────────────────────────────────────────────────
@@ -154,7 +175,7 @@ export class AuthService {
   public async register(
     input: { email: string; name: string; password: string },
     context?: RequestContext
-  ): Promise<{ user: UserProfile } & AuthTokens> {
+  ): Promise<RegisterResult> {
     // 1. Policy validation (length + blocklist) — NIST §5.1.1.2
     const policyResult = validatePassword(input.password);
     if (!policyResult.ok) {
@@ -182,9 +203,28 @@ export class AuthService {
       passwordHashVersion: version
     });
 
-    const tokens = await this.issueTokenPair(user.id, user.email);
-    logAuthEvent('auth.register.success', { userId: user.id, context });
-    return { user: toUserProfile(user), ...tokens };
+    let tokens: AuthTokens | null = null;
+    if (user.emailVerified) {
+      tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified);
+    }
+
+    logAuthEvent('auth.register.success', {
+      userId: user.id,
+      context,
+      extra: { emailVerified: user.emailVerified }
+    });
+
+    // Send email verification asynchronously — registration succeeds even if
+    // the email delivery fails (the user can request a resend later).
+    this.sendEmailVerification(user.id, user.email, user.name).catch((err) => {
+      logger.warn({ event: 'auth.email_verification.send_failed', userId: user.id, err });
+    });
+
+    return {
+      user: toUserProfile(user),
+      accessToken: tokens?.accessToken ?? null,
+      refreshToken: tokens?.refreshToken ?? null
+    };
   }
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -260,6 +300,23 @@ export class AuthService {
       throw new AppError('Invalid credentials.', 401);
     }
 
+    // ── E-mail verification gate ──────────────────────────────────────────
+    // Local accounts that have not confirmed their e-mail are blocked after
+    // the first login attempt.  We do NOT block registration (the first
+    // "session" is granted immediately), but every subsequent login requires
+    // a verified address.  Social accounts are considered verified by default.
+    if (!user.emailVerified) {
+      logAuthEvent('auth.login.email_not_verified', {
+        userId: user.id,
+        context
+      });
+      throw new AppError(
+        'Confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.',
+        403,
+        { code: 'EMAIL_NOT_VERIFIED' }
+      );
+    }
+
     // ── Success: reset lockout counter ────────────────────────────────────
     await this.identityRepository.resetLoginFailures(user.id);
 
@@ -274,7 +331,7 @@ export class AuthService {
       });
     }
 
-    const tokens = await this.issueTokenPair(user.id, user.email);
+    const tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified);
     logAuthEvent('auth.login.success', { userId: user.id, context });
     return { user: toUserProfile(user), ...tokens };
   }
@@ -325,7 +382,7 @@ export class AuthService {
 
     await this.identityRepository.resetLoginFailures(user.id);
 
-    const tokens = await this.issueTokenPair(user.id, user.email);
+    const tokens = await this.issueTokenPair(user.id, user.email, true);
     logAuthEvent('auth.login.success', {
       userId: user.id,
       context,
@@ -402,8 +459,15 @@ export class AuthService {
       throw new AppError('Invalid refresh token.', 401);
     }
 
+    if (!user.emailVerified) {
+      await this.identityRepository.revokeAllUserRefreshTokens(user.id);
+      throw new AppError('Confirme seu e-mail antes de continuar.', 401, {
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+
     // Issue new token pair, reusing the same familyId (rotation)
-    const tokens = await this.issueTokenPair(user.id, user.email, stored.familyId);
+    const tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified, stored.familyId);
     logAuthEvent('auth.refresh.success', { userId: user.id, context });
     return tokens;
   }
@@ -462,6 +526,16 @@ export class AuthService {
       return {};
     }
 
+    // Social-only accounts have no local password — skip silently.
+    // Do NOT reveal this distinction in the response (anti-enumeration).
+    if (user.passwordHash === null) {
+      logAuthEvent('auth.password_reset.requested', {
+        context,
+        extra: { found: true, skipped: 'social_only' }
+      });
+      return {};
+    }
+
     // Rate-limit: allow at most 1 active reset token per user
     const active = await this.identityRepository.countActiveResetTokens(user.id);
     if (active > 0) {
@@ -485,10 +559,12 @@ export class AuthService {
       extra: { found: true }
     });
 
-    // In development mode return the token for testing convenience.
-    // In production this MUST be delivered via email — never returned in the
-    // HTTP response (infrastructure dependency).
-    if (env.NODE_ENV === 'development') {
+    const resetUrl = `${env.APP_URL}/reset-password?token=${rawToken}`;
+
+    if (this.emailService) {
+      await this.emailService.sendPasswordResetEmail(user.email, user.name, resetUrl);
+    } else if (env.NODE_ENV === 'development') {
+      // Fallback for dev without email service configured.
       return { resetToken: rawToken };
     }
 
@@ -534,18 +610,84 @@ export class AuthService {
     await this.identityRepository.revokeUserResetTokens(stored.userId);
 
     logAuthEvent('auth.password_reset.completed', { userId: stored.userId, context });
+
+    // Fire-and-forget security alert — never block the response on email delivery.
+    const userForAlert = await this.identityRepository.findUserById(stored.userId);
+    if (userForAlert && this.emailService) {
+      this.emailService.sendPasswordChangedAlertEmail(userForAlert.email, userForAlert.name).catch((err) => {
+        logger.warn({ event: 'email.password_changed_alert.send_failed', userId: stored.userId, err });
+      });
+    }
+  }
+
+  /**
+   * Resend an e-mail verification link.
+   * Always returns without error regardless of whether the account exists,
+   * is already verified, or is a social-only account (anti-enumeration).
+   */
+  public async resendEmailVerification(email: string): Promise<void> {
+    const normalized = normalizeEmail(email);
+    const user = await this.identityRepository.findUserByEmail(normalized);
+
+    if (!user || user.emailVerified || user.passwordHash === null) {
+      return;
+    }
+
+    await this.sendEmailVerification(user.id, user.email, user.name);
+  }
+
+  // ── Email verification ────────────────────────────────────────────────────
+
+  /**
+   * Confirm an email address using the one-time token sent via email.
+   * Always returns a generic error message to avoid token oracle attacks.
+   */
+  public async confirmEmail(token: string, context?: RequestContext): Promise<void> {
+    const tokenHash = hashToken(token);
+    const stored = await this.identityRepository.findEmailVerificationToken(tokenHash);
+
+    if (!stored || stored.usedAt !== null || stored.expiresAt < new Date()) {
+      logAuthEvent('auth.email_verification.invalid', {
+        context,
+        extra: { reason: !stored ? 'not_found' : stored.usedAt ? 'already_used' : 'expired' }
+      });
+      throw new AppError('Invalid or expired verification link.', 400);
+    }
+
+    await Promise.all([
+      this.identityRepository.markEmailVerificationTokenUsed(tokenHash),
+      this.identityRepository.setEmailVerified(stored.userId)
+    ]);
+
+    logAuthEvent('auth.email_verification.confirmed', { userId: stored.userId, context });
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
 
+  private async sendEmailVerification(userId: string, email: string, name: string): Promise<void> {
+    if (!this.emailService) return;
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await this.identityRepository.createEmailVerificationToken({ userId, tokenHash, expiresAt });
+
+    const verifyUrl = `${env.APP_URL}/verify-email?token=${rawToken}`;
+    await this.emailService.sendEmailVerificationEmail(email, name, verifyUrl);
+
+    logAuthEvent('auth.email_verification.sent', { userId });
+  }
+
   private async issueTokenPair(
     userId: string,
     email: string,
+    emailVerified: boolean,
     existingFamilyId?: string
   ): Promise<AuthTokens> {
     const roles = await this.identityRepository.getUserRoles(userId);
 
-    const accessToken = jwt.sign({ email, roles }, env.JWT_SECRET, {
+    const accessToken = jwt.sign({ email, roles, emailVerified }, env.JWT_SECRET, {
       subject: userId,
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
     });

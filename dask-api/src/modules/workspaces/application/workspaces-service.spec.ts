@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, type Mocked } from 'vitest';
-import { MembershipRole } from '@prisma/client';
+import { MembershipRole, WorkspaceKind } from '@prisma/client';
 import { WorkspacesService } from '@/modules/workspaces/application/workspaces-service';
 import type { EventPublisher } from '@/core/events/event-publisher';
 import type {
@@ -13,6 +13,7 @@ function makeRepository(): Mocked<WorkspacesRepository> {
     createBoard: vi.fn(),
     createTemplate: vi.fn(),
     listUserWorkspaces: vi.fn(),
+    getOrganizationRoleForUser: vi.fn(),
     getWorkspaceRoleForUser: vi.fn(),
     listBoardsByWorkspace: vi.fn(),
     findBoardSnapshot: vi.fn()
@@ -50,6 +51,7 @@ describe('WorkspacesService - read module', () => {
       {
         id: 'workspace-1',
         organizationId: 'org-1',
+        kind: WorkspaceKind.CORPORATE,
         name: 'Core Workspace',
         key: 'CORE',
         role: MembershipRole.OWNER,

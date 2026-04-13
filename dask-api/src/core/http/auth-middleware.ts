@@ -7,6 +7,7 @@ import { AppError } from '@/core/errors/app-error';
 type AuthTokenPayload = JwtPayload & {
   sub: string;
   email: string;
+  emailVerified?: boolean;
   roles?: string[];
 };
 
@@ -25,6 +26,10 @@ export const authMiddleware = (req: Request, _res: Response, next: NextFunction)
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as AuthTokenPayload;
+    if (payload.emailVerified !== true) {
+      next(new AppError('Email not verified', 401));
+      return;
+    }
     req.auth = {
       userId: payload.sub,
       email: payload.email,

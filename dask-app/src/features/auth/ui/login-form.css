@@ -1,4 +1,5 @@
 .auth-login-panel {
+  --auth-login-height: clamp(680px, 72vh, 740px);
   width: min(484px, 100%);
   display: grid;
   justify-items: center;
@@ -17,7 +18,7 @@
     0 1px 0 rgba(255, 255, 255, 0.92) inset;
   display: grid;
   gap: 24px;
-  min-height: clamp(608px, 68vh, 680px);
+  height: var(--auth-login-height);
   padding: clamp(30px, 2.6vw, 40px) clamp(28px, 2.5vw, 38px);
   overflow: hidden;
   backdrop-filter: saturate(120%) blur(16px);
@@ -46,53 +47,6 @@
   position: relative;
   display: grid;
   gap: 12px;
-  padding-bottom: 4px;
-}
-
-.auth-login__step-switch {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 7px;
-  border-radius: 16px;
-  border: 1px solid rgba(184, 205, 228, 0.74);
-  background: linear-gradient(180deg, rgba(242, 248, 255, 0.92) 0%, rgba(233, 243, 252, 0.86) 100%);
-}
-
-.auth-login__step-switch-button {
-  border: 0;
-  min-height: 40px;
-  border-radius: 12px;
-  background: transparent;
-  color: #466585;
-  font-size: 0.86rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition:
-    color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.auth-login__step-switch-button:hover {
-  color: #1f4c78;
-}
-
-.auth-login__step-switch-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(156, 194, 234, 0.24);
-}
-
-.auth-login__step-switch-button--active {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.95) 100%);
-  color: #0e385f;
-  box-shadow:
-    0 8px 18px rgba(22, 67, 107, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.92) inset;
 }
 
 .auth-login__title {
@@ -315,16 +269,6 @@
     0 2px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
-.auth-login__footnote {
-  margin: 6px 0 0;
-  color: #70859b;
-  font-size: 0.74rem;
-  line-height: 1.58;
-  text-align: center;
-  max-width: 35ch;
-  justify-self: center;
-}
-
 .auth-login__social {
   width: 100%;
   display: flex;
@@ -418,9 +362,11 @@
 }
 
 .auth-login__switch-cta-button {
+  appearance: none;
   border: 0;
   padding: 0;
-  background: transparent;
+  background: none;
+  box-shadow: none;
   color: #0f5da2;
   font-size: inherit;
   font-weight: 700;
@@ -428,6 +374,7 @@
   text-decoration: underline;
   text-decoration-thickness: 1.5px;
   text-underline-offset: 2px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .auth-login__switch-cta-button:hover {
@@ -435,16 +382,14 @@
 }
 
 .auth-login__switch-cta-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(156, 194, 234, 0.24);
-  border-radius: 4px;
+  outline: 2px solid rgba(15, 93, 162, 0.2);
+  outline-offset: 2px;
 }
 
 @media (max-width: 480px) {
   .auth-login {
     width: 100%;
     border-radius: 24px;
-    min-height: 0;
     padding: 24px 20px;
     gap: 20px;
   }
@@ -475,9 +420,12 @@
 }
 
 @media (max-height: 820px) {
+  .auth-login-panel {
+    --auth-login-height: clamp(620px, 68vh, 680px);
+  }
+
   .auth-login {
     gap: 18px;
-    min-height: clamp(560px, 64vh, 620px);
     padding: 25px 24px 22px;
   }
 

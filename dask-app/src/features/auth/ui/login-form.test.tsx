@@ -76,5 +76,7 @@ describe("LoginForm accessibility and UX", () => {
     expect(normalizedHtml).toContain('autocomplete="name"');
     expect(normalizedHtml).toContain('autocomplete="new-password"');
     expect(normalizedHtml).not.toContain('autocomplete="current-password"');
+    expect(normalizedHtml).toContain('aria-label="entrar com google"');
+    expect(normalizedHtml).toContain('aria-label="entrar com microsoft"');
   });
 });

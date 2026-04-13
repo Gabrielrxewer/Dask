@@ -290,16 +290,6 @@ export function GlobalLayout() {
                   </span>
                   <small>Plataforma operacional inteligente com IA continua, busca semantica e estrutura configuravel.</small>
                 </div>
-
-                <div className="global-footer__marketing-links" aria-label="Atalhos do rodape">
-                  <a href="#plataforma" onClick={(event) => scrollToMarketingSection(event, "plataforma")}>
-                    Plataforma
-                  </a>
-                  <a href="#contextos" onClick={(event) => scrollToMarketingSection(event, "contextos")}>
-                    Contextos
-                  </a>
-                  <Link to={routePaths.login}>Entrar</Link>
-                </div>
               </div>
             ) : (
               <span className="global-footer__wordmark" aria-label="Dask">

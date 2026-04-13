@@ -1,3 +1,4 @@
+import { type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
@@ -153,6 +154,25 @@ function UseCaseCard({ useCase }: { useCase: HomeUseCase }) {
 }
 
 export function HomePage() {
+  const scrollToSection = (event: MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    event.preventDefault();
+
+    const container = event.currentTarget.closest(".global-layout__main");
+    const target = document.getElementById(targetId);
+    if (!(container instanceof HTMLElement) || !target) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const nextTop = targetRect.top - containerRect.top + container.scrollTop - 4;
+
+    container.scrollTo({
+      top: Math.max(0, nextTop),
+      behavior: "smooth"
+    });
+  };
+
   return (
     <main id="top" className="home-page">
       <div className="home-page__container">
@@ -170,7 +190,11 @@ export function HomePage() {
               <Link className="home-page__action home-page__action--primary" to={routePaths.login}>
                 Entrar na plataforma
               </Link>
-              <a className="home-page__action home-page__action--secondary" href="#plataforma">
+              <a
+                className="home-page__action home-page__action--secondary"
+                href="#plataforma"
+                onClick={(event) => scrollToSection(event, "plataforma")}
+              >
                 Explorar a plataforma
               </a>
             </div>
@@ -411,7 +435,11 @@ export function HomePage() {
               <Link className="home-page__action home-page__action--primary" to={routePaths.login}>
                 Entrar na plataforma
               </Link>
-              <a className="home-page__action home-page__action--secondary" href="#top">
+              <a
+                className="home-page__action home-page__action--secondary"
+                href="#top"
+                onClick={(event) => scrollToSection(event, "top")}
+              >
                 Voltar ao topo
               </a>
             </div>

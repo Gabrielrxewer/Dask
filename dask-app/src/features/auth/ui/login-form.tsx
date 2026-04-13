@@ -36,6 +36,15 @@ const socialProviders: SocialProvider[] = [
 
 const EMAIL_NOT_VERIFIED_CODE = "EMAIL_NOT_VERIFIED";
 
+type OAuthErrorCode =
+  | "cancelled"
+  | "session_expired"
+  | "invalid_request"
+  | "provider_auth_failed"
+  | "provider_unavailable"
+  | "provider_rejected"
+  | "unexpected";
+
 function hasErrorCode(details: unknown, code: string): boolean {
   if (!details || typeof details !== "object") {
     return false;
@@ -68,6 +77,28 @@ function mapRegisterError(error: unknown): string {
   return error.message || "Falha ao criar conta. Tente novamente.";
 }
 
+function mapOAuthErrorMessage(provider: string | null, errorCode: string | null): string {
+  const providerLabel = provider === "microsoft" ? "Microsoft" : provider === "google" ? "Google" : "o provedor externo";
+  const normalizedCode = (errorCode ?? "unexpected") as OAuthErrorCode;
+
+  switch (normalizedCode) {
+    case "cancelled":
+      return `Login com ${providerLabel} cancelado. Se quiser, tente novamente.`;
+    case "session_expired":
+      return `Sua tentativa de login com ${providerLabel} expirou. Clique novamente em ${providerLabel} para iniciar de novo.`;
+    case "invalid_request":
+      return `Nao foi possivel concluir o login com ${providerLabel}. Tente novamente em instantes.`;
+    case "provider_auth_failed":
+      return `Nao conseguimos validar sua autenticacao com ${providerLabel}. Tente novamente.`;
+    case "provider_unavailable":
+      return `${providerLabel} esta indisponivel no momento. Tente de novo em alguns minutos.`;
+    case "provider_rejected":
+      return `${providerLabel} recusou a autenticacao. Revise suas permissoes e tente novamente.`;
+    default:
+      return `Ocorreu uma falha ao entrar com ${providerLabel}. Tente novamente ou entre com e-mail e senha.`;
+  }
+}
+
 export function LoginForm() {
   const auth = useAuth();
   const location = useLocation();
@@ -88,7 +119,9 @@ export function LoginForm() {
   const locationState = (location.state as LoginLocationState | null) ?? null;
   const searchParams = new URLSearchParams(location.search);
   const oauthLinkRequired = searchParams.get("oauth") === "link_required";
+  const oauthError = searchParams.get("oauth") === "error";
   const oauthProvider = searchParams.get("provider");
+  const oauthErrorCode = searchParams.get("error");
   const isRegisterStep = authStep === "register";
   const isForgotStep = authStep === "forgot-password";
 
@@ -99,6 +132,10 @@ export function LoginForm() {
 
     if (isRegisterStep) {
       return null;
+    }
+
+    if (oauthError) {
+      return mapOAuthErrorMessage(oauthProvider, oauthErrorCode);
     }
 
     if (auth.errorMessage) {
@@ -121,6 +158,8 @@ export function LoginForm() {
     auth.status,
     isRegisterStep,
     locationState?.reason,
+    oauthError,
+    oauthErrorCode,
     oauthLinkRequired,
     oauthProvider,
     registerError
@@ -173,7 +212,8 @@ export function LoginForm() {
   };
 
   const handleSocialLogin = (providerId: SocialProvider["id"]) => {
-    window.location.assign(buildApiUrl(`/auth/${providerId}`));
+    const redirectOrigin = encodeURIComponent(window.location.origin);
+    window.location.assign(buildApiUrl(`/auth/${providerId}?redirect_origin=${redirectOrigin}`));
   };
 
   const handleStepChange = (step: AuthStep) => {

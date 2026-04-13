@@ -54,7 +54,7 @@ export const factoryBoardConfig: BoardConfig = {
   views: [
     {
       id: "dev",
-      label: "Execucao",
+      label: "Perspective",
       caption: "Fluxo operacional principal",
       statuses: [
         { id: "backlog", label: "Backlog", dot: "#8b9bb0" },

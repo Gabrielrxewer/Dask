@@ -124,7 +124,7 @@ export function BoardPage() {
       ? boardConfig.views
       : [{
           id: "dev",
-          label: "Execucao",
+          label: "Perspective",
           caption: "Fluxo operacional principal",
           statuses: boardConfig.statuses,
           statusSource: { kind: "workflow_state" as const }

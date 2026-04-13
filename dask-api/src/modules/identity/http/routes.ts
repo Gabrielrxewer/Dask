@@ -107,17 +107,125 @@ function buildMicrosoftAuthorizeUrl(input: { state: string; nonce: string; codeC
   return `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/authorize?${params.toString()}`;
 }
 
-function resolvePostAuthRedirectUrl(allowedOrigins: string[]): string {
-  const baseUrl = (allowedOrigins[0] ?? 'http://localhost:5173').replace(/\/+$/, '');
-  return `${baseUrl}/login`;
+function resolvePostAuthRedirectUrl(allowedOrigins: string[], preferredOrigin?: string): string {
+  const baseUrl = resolveAuthRedirectBaseUrl(allowedOrigins, preferredOrigin);
+  return `${baseUrl}/w`;
 }
 
 function resolveLinkRequiredRedirectUrl(
   allowedOrigins: string[],
-  provider: 'google' | 'microsoft'
+  provider: 'google' | 'microsoft',
+  preferredOrigin?: string
 ): string {
-  const baseUrl = (allowedOrigins[0] ?? 'http://localhost:5173').replace(/\/+$/, '');
+  const baseUrl = resolveAuthRedirectBaseUrl(allowedOrigins, preferredOrigin);
   return `${baseUrl}/login?oauth=link_required&provider=${provider}`;
+}
+
+type OAuthRedirectErrorCode =
+  | 'cancelled'
+  | 'session_expired'
+  | 'invalid_request'
+  | 'provider_auth_failed'
+  | 'provider_unavailable'
+  | 'provider_rejected'
+  | 'unexpected';
+
+function resolveOAuthErrorRedirectUrl(
+  allowedOrigins: string[],
+  provider: 'google' | 'microsoft',
+  errorCode: OAuthRedirectErrorCode,
+  preferredOrigin?: string
+): string {
+  const baseUrl = resolveAuthRedirectBaseUrl(allowedOrigins, preferredOrigin);
+  const params = new URLSearchParams({
+    oauth: 'error',
+    provider,
+    error: errorCode
+  });
+  return `${baseUrl}/login?${params.toString()}`;
+}
+
+function resolveAuthRedirectBaseUrl(allowedOrigins: string[], preferredOrigin?: string): string {
+  const candidates = [preferredOrigin, env.APP_URL, ...allowedOrigins, 'http://localhost:5173'];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'string') {
+      continue;
+    }
+
+    const trimmed = candidate.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.toString().replace(/\/+$/, '');
+    } catch {
+      continue;
+    }
+  }
+
+  return 'http://localhost:5173';
+}
+
+function normalizeOrigin(origin: string): string | null {
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return null;
+  }
+}
+
+function resolveAllowedOrigin(candidate: string | null | undefined, allowedOrigins: string[]): string | undefined {
+  if (!candidate) {
+    return undefined;
+  }
+  const normalized = normalizeOrigin(candidate);
+  if (!normalized) {
+    return undefined;
+  }
+  return allowedOrigins.includes(normalized) ? normalized : undefined;
+}
+
+function resolveOAuthProviderErrorCode(providerError: string): OAuthRedirectErrorCode {
+  if (providerError === 'access_denied') {
+    return 'cancelled';
+  }
+  if (providerError === 'temporarily_unavailable' || providerError === 'server_error') {
+    return 'provider_unavailable';
+  }
+  return 'provider_rejected';
+}
+
+function resolveOAuthCallbackErrorCode(error: unknown): OAuthRedirectErrorCode {
+  if (!(error instanceof AppError)) {
+    return 'unexpected';
+  }
+
+  if (error.statusCode === 503) {
+    return 'provider_unavailable';
+  }
+
+  if (error.statusCode === 401) {
+    return 'provider_auth_failed';
+  }
+
+  if (error.statusCode === 400) {
+    const message = error.message.toLowerCase();
+    if (
+      message.includes('state') ||
+      message.includes('nonce') ||
+      message.includes('pkce') ||
+      message.includes('missing code')
+    ) {
+      return 'session_expired';
+    }
+
+    return 'invalid_request';
+  }
+
+  return 'unexpected';
 }
 
 async function readJsonResponse(response: globalThis.Response): Promise<Record<string, unknown>> {
@@ -199,19 +307,22 @@ function getClearOauthCookieOptions(): CookieOptions {
   };
 }
 
-function oauthCookieName(provider: OAuthProvider, key: 'state' | 'nonce' | 'pkce'): string {
+function oauthCookieName(provider: OAuthProvider, key: 'state' | 'nonce' | 'pkce' | 'return'): string {
   return `dask-oauth-${provider}-${key}`;
 }
 
 function setOauthFlowCookies(
   res: Response,
   provider: OAuthProvider,
-  values: { state: string; nonce: string; pkceVerifier: string }
+  values: { state: string; nonce: string; pkceVerifier: string; returnOrigin?: string }
 ): void {
   const options = getOauthCookieOptions();
   res.cookie(oauthCookieName(provider, 'state'), values.state, options);
   res.cookie(oauthCookieName(provider, 'nonce'), values.nonce, options);
   res.cookie(oauthCookieName(provider, 'pkce'), values.pkceVerifier, options);
+  if (values.returnOrigin) {
+    res.cookie(oauthCookieName(provider, 'return'), values.returnOrigin, options);
+  }
 }
 
 function clearOauthFlowCookies(res: Response, provider: OAuthProvider): void {
@@ -219,6 +330,7 @@ function clearOauthFlowCookies(res: Response, provider: OAuthProvider): void {
   res.clearCookie(oauthCookieName(provider, 'state'), clearOptions);
   res.clearCookie(oauthCookieName(provider, 'nonce'), clearOptions);
   res.clearCookie(oauthCookieName(provider, 'pkce'), clearOptions);
+  res.clearCookie(oauthCookieName(provider, 'return'), clearOptions);
 }
 
 function assertRedirectUriPathMatchesExpected(value: string | undefined, expectedPath: string, providerLabel: string): string {
@@ -615,13 +727,19 @@ export const buildIdentityRoutes = (deps: {
 
   router.get(
     '/auth/google',
-    asyncHandler(async (_req, res) => {
+    asyncHandler(async (req, res) => {
       const state = randomBase64Url(32);
       const nonce = randomBase64Url(32);
       const pkceVerifier = randomBase64Url(64);
       const codeChallenge = sha256Base64Url(pkceVerifier);
+      const redirectOriginFromQuery =
+        typeof req.query.redirect_origin === 'string' ? req.query.redirect_origin : undefined;
+      const returnOrigin =
+        resolveAllowedOrigin(redirectOriginFromQuery, deps.allowedOrigins) ??
+        resolveAllowedOrigin(req.headers.origin as string | undefined, deps.allowedOrigins) ??
+        resolveAllowedOrigin(req.headers.referer as string | undefined, deps.allowedOrigins);
 
-      setOauthFlowCookies(res, 'google', { state, nonce, pkceVerifier });
+      setOauthFlowCookies(res, 'google', { state, nonce, pkceVerifier, returnOrigin });
       res.redirect(302, buildGoogleAuthorizeUrl({ state, nonce, codeChallenge }));
     })
   );
@@ -629,68 +747,98 @@ export const buildIdentityRoutes = (deps: {
   router.get(
     '/auth/google/callback',
     asyncHandler(async (req, res) => {
-      const code = req.query.code;
-      const state = req.query.state;
-
-      if (typeof code !== 'string' || code.length === 0) {
-        throw new AppError('Google callback is missing code.', 400);
-      }
-      if (typeof state !== 'string' || state.length === 0) {
-        throw new AppError('Google callback is missing state.', 400);
-      }
-
-      const expectedState = req.cookies?.[oauthCookieName('google', 'state')] as string | undefined;
-      const expectedNonce = req.cookies?.[oauthCookieName('google', 'nonce')] as string | undefined;
-      const pkceVerifier = req.cookies?.[oauthCookieName('google', 'pkce')] as string | undefined;
-
-      clearOauthFlowCookies(res, 'google');
-
-      if (!expectedState || !expectedNonce || !pkceVerifier) {
-        throw new AppError('Google OAuth flow state is missing.', 400);
-      }
-      if (!timingSafeEqualString(state, expectedState)) {
-        throw new AppError('Google OAuth state validation failed.', 400);
-      }
-
-      const tokenResult = await exchangeGoogleCodeForAccessToken(code, pkceVerifier);
-      await validateGoogleIdTokenClaims(tokenResult.idToken, expectedNonce);
-      const accessToken = tokenResult.accessToken;
-      const profile = await fetchGoogleUserProfile(accessToken);
-      let result;
-      try {
-        result = await deps.authService.loginWithExternal(
-          {
-            provider: 'GOOGLE',
-            providerSubject: profile.subject,
-            email: profile.email,
-            name: profile.name,
-            emailVerified: profile.emailVerified
-          },
-          extractContext(req)
+      const providerError = req.query.error;
+      const returnOrigin = req.cookies?.[oauthCookieName('google', 'return')] as string | undefined;
+      if (typeof providerError === 'string' && providerError.length > 0) {
+        clearOauthFlowCookies(res, 'google');
+        res.redirect(
+          302,
+          resolveOAuthErrorRedirectUrl(
+            deps.allowedOrigins,
+            'google',
+            resolveOAuthProviderErrorCode(providerError),
+            returnOrigin
+          )
         );
-      } catch (error) {
-        if (error instanceof AppError && error.statusCode === 409) {
-          res.redirect(302, resolveLinkRequiredRedirectUrl(deps.allowedOrigins, 'google'));
-          return;
-        }
-        throw error;
+        return;
       }
 
-      setSessionCookies(res, result.refreshToken);
-      setNoStore(res);
-      res.redirect(302, resolvePostAuthRedirectUrl(deps.allowedOrigins));
+      try {
+        const code = req.query.code;
+        const state = req.query.state;
+
+        if (typeof code !== 'string' || code.length === 0) {
+          throw new AppError('Google callback is missing code.', 400);
+        }
+        if (typeof state !== 'string' || state.length === 0) {
+          throw new AppError('Google callback is missing state.', 400);
+        }
+
+        const expectedState = req.cookies?.[oauthCookieName('google', 'state')] as string | undefined;
+        const expectedNonce = req.cookies?.[oauthCookieName('google', 'nonce')] as string | undefined;
+        const pkceVerifier = req.cookies?.[oauthCookieName('google', 'pkce')] as string | undefined;
+
+        clearOauthFlowCookies(res, 'google');
+
+        if (!expectedState || !expectedNonce || !pkceVerifier) {
+          throw new AppError('Google OAuth flow state is missing.', 400);
+        }
+        if (!timingSafeEqualString(state, expectedState)) {
+          throw new AppError('Google OAuth state validation failed.', 400);
+        }
+
+        const tokenResult = await exchangeGoogleCodeForAccessToken(code, pkceVerifier);
+        await validateGoogleIdTokenClaims(tokenResult.idToken, expectedNonce);
+        const accessToken = tokenResult.accessToken;
+        const profile = await fetchGoogleUserProfile(accessToken);
+        let result;
+        try {
+          result = await deps.authService.loginWithExternal(
+            {
+              provider: 'GOOGLE',
+              providerSubject: profile.subject,
+              email: profile.email,
+              name: profile.name,
+              emailVerified: profile.emailVerified
+            },
+            extractContext(req)
+          );
+        } catch (error) {
+          if (error instanceof AppError && error.statusCode === 409) {
+            res.redirect(302, resolveLinkRequiredRedirectUrl(deps.allowedOrigins, 'google', returnOrigin));
+            return;
+          }
+          throw error;
+        }
+
+        setSessionCookies(res, result.refreshToken);
+        setNoStore(res);
+        res.redirect(302, resolvePostAuthRedirectUrl(deps.allowedOrigins, returnOrigin));
+      } catch (error) {
+        clearOauthFlowCookies(res, 'google');
+        res.redirect(
+          302,
+          resolveOAuthErrorRedirectUrl(deps.allowedOrigins, 'google', resolveOAuthCallbackErrorCode(error), returnOrigin)
+        );
+      }
     })
   );
 
   router.get(
     '/auth/microsoft',
-    asyncHandler(async (_req, res) => {
+    asyncHandler(async (req, res) => {
       const state = randomBase64Url(32);
       const nonce = randomBase64Url(32);
       const pkceVerifier = randomBase64Url(64);
       const codeChallenge = sha256Base64Url(pkceVerifier);
+      const redirectOriginFromQuery =
+        typeof req.query.redirect_origin === 'string' ? req.query.redirect_origin : undefined;
+      const returnOrigin =
+        resolveAllowedOrigin(redirectOriginFromQuery, deps.allowedOrigins) ??
+        resolveAllowedOrigin(req.headers.origin as string | undefined, deps.allowedOrigins) ??
+        resolveAllowedOrigin(req.headers.referer as string | undefined, deps.allowedOrigins);
 
-      setOauthFlowCookies(res, 'microsoft', { state, nonce, pkceVerifier });
+      setOauthFlowCookies(res, 'microsoft', { state, nonce, pkceVerifier, returnOrigin });
       res.redirect(302, buildMicrosoftAuthorizeUrl({ state, nonce, codeChallenge }));
     })
   );
@@ -698,56 +846,85 @@ export const buildIdentityRoutes = (deps: {
   router.get(
     '/auth/microsoft/callback',
     asyncHandler(async (req, res) => {
-      const code = req.query.code;
-      const state = req.query.state;
-
-      if (typeof code !== 'string' || code.length === 0) {
-        throw new AppError('Microsoft callback is missing code.', 400);
-      }
-      if (typeof state !== 'string' || state.length === 0) {
-        throw new AppError('Microsoft callback is missing state.', 400);
-      }
-
-      const expectedState = req.cookies?.[oauthCookieName('microsoft', 'state')] as string | undefined;
-      const expectedNonce = req.cookies?.[oauthCookieName('microsoft', 'nonce')] as string | undefined;
-      const pkceVerifier = req.cookies?.[oauthCookieName('microsoft', 'pkce')] as string | undefined;
-
-      clearOauthFlowCookies(res, 'microsoft');
-
-      if (!expectedState || !expectedNonce || !pkceVerifier) {
-        throw new AppError('Microsoft OAuth flow state is missing.', 400);
-      }
-      if (!timingSafeEqualString(state, expectedState)) {
-        throw new AppError('Microsoft OAuth state validation failed.', 400);
-      }
-
-      const tokenResult = await exchangeMicrosoftCodeForAccessToken(code, pkceVerifier);
-      await validateMicrosoftIdTokenClaims(tokenResult.idToken, expectedNonce);
-      const accessToken = tokenResult.accessToken;
-      const profile = await fetchMicrosoftUserProfile(accessToken);
-      let result;
-      try {
-        result = await deps.authService.loginWithExternal(
-          {
-            provider: 'MICROSOFT',
-            providerSubject: profile.subject,
-            email: profile.email,
-            name: profile.name,
-            providerTenantId: profile.tenantId
-          },
-          extractContext(req)
+      const providerError = req.query.error;
+      const returnOrigin = req.cookies?.[oauthCookieName('microsoft', 'return')] as string | undefined;
+      if (typeof providerError === 'string' && providerError.length > 0) {
+        clearOauthFlowCookies(res, 'microsoft');
+        res.redirect(
+          302,
+          resolveOAuthErrorRedirectUrl(
+            deps.allowedOrigins,
+            'microsoft',
+            resolveOAuthProviderErrorCode(providerError),
+            returnOrigin
+          )
         );
-      } catch (error) {
-        if (error instanceof AppError && error.statusCode === 409) {
-          res.redirect(302, resolveLinkRequiredRedirectUrl(deps.allowedOrigins, 'microsoft'));
-          return;
-        }
-        throw error;
+        return;
       }
 
-      setSessionCookies(res, result.refreshToken);
-      setNoStore(res);
-      res.redirect(302, resolvePostAuthRedirectUrl(deps.allowedOrigins));
+      try {
+        const code = req.query.code;
+        const state = req.query.state;
+
+        if (typeof code !== 'string' || code.length === 0) {
+          throw new AppError('Microsoft callback is missing code.', 400);
+        }
+        if (typeof state !== 'string' || state.length === 0) {
+          throw new AppError('Microsoft callback is missing state.', 400);
+        }
+
+        const expectedState = req.cookies?.[oauthCookieName('microsoft', 'state')] as string | undefined;
+        const expectedNonce = req.cookies?.[oauthCookieName('microsoft', 'nonce')] as string | undefined;
+        const pkceVerifier = req.cookies?.[oauthCookieName('microsoft', 'pkce')] as string | undefined;
+
+        clearOauthFlowCookies(res, 'microsoft');
+
+        if (!expectedState || !expectedNonce || !pkceVerifier) {
+          throw new AppError('Microsoft OAuth flow state is missing.', 400);
+        }
+        if (!timingSafeEqualString(state, expectedState)) {
+          throw new AppError('Microsoft OAuth state validation failed.', 400);
+        }
+
+        const tokenResult = await exchangeMicrosoftCodeForAccessToken(code, pkceVerifier);
+        await validateMicrosoftIdTokenClaims(tokenResult.idToken, expectedNonce);
+        const accessToken = tokenResult.accessToken;
+        const profile = await fetchMicrosoftUserProfile(accessToken);
+        let result;
+        try {
+          result = await deps.authService.loginWithExternal(
+            {
+              provider: 'MICROSOFT',
+              providerSubject: profile.subject,
+              email: profile.email,
+              name: profile.name,
+              providerTenantId: profile.tenantId
+            },
+            extractContext(req)
+          );
+        } catch (error) {
+          if (error instanceof AppError && error.statusCode === 409) {
+            res.redirect(302, resolveLinkRequiredRedirectUrl(deps.allowedOrigins, 'microsoft', returnOrigin));
+            return;
+          }
+          throw error;
+        }
+
+        setSessionCookies(res, result.refreshToken);
+        setNoStore(res);
+        res.redirect(302, resolvePostAuthRedirectUrl(deps.allowedOrigins, returnOrigin));
+      } catch (error) {
+        clearOauthFlowCookies(res, 'microsoft');
+        res.redirect(
+          302,
+          resolveOAuthErrorRedirectUrl(
+            deps.allowedOrigins,
+            'microsoft',
+            resolveOAuthCallbackErrorCode(error),
+            returnOrigin
+          )
+        );
+      }
     })
   );
 

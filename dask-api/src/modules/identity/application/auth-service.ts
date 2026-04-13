@@ -380,9 +380,16 @@ export class AuthService {
       emailVerified: input.emailVerified ?? null
     });
 
+    // External/OIDC authentication is treated as verified identity for this session.
+    // Persisting this avoids refresh immediately failing with EMAIL_NOT_VERIFIED.
+    if (!user.emailVerified) {
+      await this.identityRepository.setEmailVerified(user.id);
+      user.emailVerified = true;
+    }
+
     await this.identityRepository.resetLoginFailures(user.id);
 
-    const tokens = await this.issueTokenPair(user.id, user.email, true);
+    const tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified);
     logAuthEvent('auth.login.success', {
       userId: user.id,
       context,

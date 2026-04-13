@@ -29,6 +29,16 @@ function isSecureCookie(): boolean {
   return env.NODE_ENV === 'production';
 }
 
+function resolveSessionSameSite(secure: boolean): SameSiteAttr {
+  // Browsers reject SameSite=None cookies unless Secure=true.
+  // In local HTTP development, silently downgrade to lax so session cookie is kept.
+  if (env.COOKIE_SAME_SITE === 'none' && !secure) {
+    return 'lax';
+  }
+
+  return env.COOKIE_SAME_SITE;
+}
+
 export function getSessionCookieOptions(): {
   httpOnly: true;
   secure: boolean;
@@ -36,10 +46,11 @@ export function getSessionCookieOptions(): {
   path: string;
   maxAge: number;
 } {
+  const secure = isSecureCookie();
   return {
     httpOnly: true,
-    secure: isSecureCookie(),
-    sameSite: env.COOKIE_SAME_SITE,
+    secure,
+    sameSite: resolveSessionSameSite(secure),
     path: '/',
     maxAge: refreshMaxAgeMs()
   };
@@ -69,10 +80,11 @@ export function getClearSessionCookieOptions(): {
   maxAge: number;
   expires: Date;
 } {
+  const secure = isSecureCookie();
   return {
     httpOnly: true,
-    secure: isSecureCookie(),
-    sameSite: env.COOKIE_SAME_SITE,
+    secure,
+    sameSite: resolveSessionSameSite(secure),
     path: '/',
     maxAge: 0,
     expires: new Date(0)

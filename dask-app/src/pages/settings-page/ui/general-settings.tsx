@@ -1,20 +1,41 @@
+﻿import { useMemo } from "react";
 import { factoryBoardConfig } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { FormField, Section, Select } from "@/shared/ui";
 import "./general-settings.css";
 
+type BoardPerspective = {
+  id: string;
+  label: string;
+};
+
 export function GeneralSettings() {
   const { snapshot, updatePreferences } = useWorkspace();
 
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const boardConfig = {
-    ...factoryBoardConfig,
-    ...rawBoardConfig,
-    views: Array.isArray(rawBoardConfig?.views) ? rawBoardConfig.views : []
-  };
+  const perspectives = useMemo(() => {
+    const fromPerspectives =
+      Array.isArray((rawBoardConfig as { perspectives?: unknown }).perspectives)
+        ? ((rawBoardConfig as { perspectives: BoardPerspective[] }).perspectives ?? [])
+        : [];
 
-  const boardViews = boardConfig.views.length > 0 ? boardConfig.views : [{ id: "dev", label: "Dev" }];
-  const defaultMode = snapshot?.preferences.defaultBoardMode ?? boardViews[0]?.id ?? "dev";
+    if (fromPerspectives.length > 0) {
+      return fromPerspectives;
+    }
+
+    const fromViews =
+      Array.isArray((rawBoardConfig as { views?: unknown }).views)
+        ? ((rawBoardConfig as { views: BoardPerspective[] }).views ?? [])
+        : [];
+
+    if (fromViews.length > 0) {
+      return fromViews;
+    }
+
+    return [{ id: "dev", label: "DEV" }];
+  }, [rawBoardConfig]);
+
+  const defaultMode = snapshot?.preferences.defaultBoardMode ?? perspectives[0]?.id ?? "dev";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
 
   return (
@@ -25,7 +46,7 @@ export function GeneralSettings() {
         className="general-settings__card"
       >
         <div className="general-settings__form-grid">
-          <FormField label="Modo inicial">
+          <FormField label="Perspectiva inicial">
             <Select
               value={defaultMode}
               onChange={event =>
@@ -34,9 +55,9 @@ export function GeneralSettings() {
                 })
               }
             >
-              {boardViews.map(view => (
-                <option key={view.id} value={view.id}>
-                  {view.label}
+              {perspectives.map(perspective => (
+                <option key={perspective.id} value={perspective.id}>
+                  {perspective.label}
                 </option>
               ))}
             </Select>

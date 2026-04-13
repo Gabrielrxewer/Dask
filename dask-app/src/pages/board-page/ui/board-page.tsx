@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
 import {
   buildBoardMetrics,
   factoryBoardConfig,
+  type BoardConfig,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -21,31 +22,37 @@ import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
 import "./board-page.css";
 
 /**
- * Constrói as colunas visuais do board a partir das board columns do backend,
+ * Constroi as colunas visuais do board a partir das board columns do backend,
  * remapeando o status de cada task para o ID da board column correspondente.
  *
  * Mapping:
- *   task.status (slug) → workflowState.id (UUID) → boardColumn.id (UUID)
+ *   task.status (slug) -> workflowState.id (UUID) -> boardColumn.id (UUID)
  */
 function buildBoardColumnsView(
   tasks: Task[],
   boardCols: ApiBoardColumn[],
-  workflowStates: ApiWorkflowState[]
+  workflowStates: ApiWorkflowState[],
+  visibleBoardColumnIds?: string[]
 ): { statuses: TaskStatus[]; tasks: Task[] } | null {
   if (boardCols.length === 0) return null;
 
-  // slug → UUID
+  const visibleSet =
+    Array.isArray(visibleBoardColumnIds) && visibleBoardColumnIds.length > 0
+      ? new Set(visibleBoardColumnIds)
+      : null;
+  const scopedColumns = visibleSet ? boardCols.filter(column => visibleSet.has(column.id)) : boardCols;
+
+  if (scopedColumns.length === 0) return null;
+
   const slugToUUID = new Map(workflowStates.map(s => [s.slug, s.id]));
-  // UUID → board column
   const uuidToCol = new Map<string, ApiBoardColumn>();
-  for (const col of boardCols) {
+  for (const col of scopedColumns) {
     for (const stateId of col.stateIds) {
       uuidToCol.set(stateId, col);
     }
   }
 
-  // Converte board columns em TaskStatus[]
-  const statuses: TaskStatus[] = boardCols.map(col => {
+  const statuses: TaskStatus[] = scopedColumns.map(col => {
     const firstState = workflowStates.find(s => s.id === col.stateIds[0]);
     return {
       id: col.id,
@@ -54,7 +61,6 @@ function buildBoardColumnsView(
     };
   });
 
-  // Remapeia o status de cada task para o ID da board column
   const remappedTasks = tasks.map(task => {
     const stateUUID = slugToUUID.get(task.status);
     if (!stateUUID) return task;
@@ -82,7 +88,6 @@ export function BoardPage() {
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
 
-  // Board columns e workflow states para renderização correta
   const [apiBoardCols, setApiBoardCols] = useState<ApiBoardColumn[]>([]);
   const [apiWorkflowStates, setApiWorkflowStates] = useState<ApiWorkflowState[]>([]);
 
@@ -98,6 +103,13 @@ export function BoardPage() {
 
   const tasks = snapshot?.tasks ?? [];
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const rawPerspectives: BoardConfig["perspectives"] =
+    Array.isArray((rawBoardConfig as { perspectives?: unknown }).perspectives)
+      ? (rawBoardConfig as { perspectives: BoardConfig["perspectives"] }).perspectives
+      : Array.isArray((rawBoardConfig as { views?: unknown }).views)
+        ? (rawBoardConfig as { views: BoardConfig["perspectives"] }).views
+        : [];
+
   const boardConfig = {
     ...factoryBoardConfig,
     ...rawBoardConfig,
@@ -107,24 +119,24 @@ export function BoardPage() {
       ? rawBoardConfig.fieldDefinitions
       : factoryBoardConfig.fieldDefinitions,
     cardLayout: {
-      // Preferências do usuário sobrepõem o config do servidor
       visibleFieldIds: snapshot?.preferences.visibleCardFieldIds ??
         (Array.isArray(rawBoardConfig?.cardLayout?.visibleFieldIds)
           ? rawBoardConfig.cardLayout.visibleFieldIds
           : factoryBoardConfig.cardLayout.visibleFieldIds),
-      // Visibilidade por tipo de work item
       visibleFieldIdsByType: snapshot?.preferences.visibleFieldsByType ?? {}
     },
-    views: Array.isArray(rawBoardConfig?.views) ? rawBoardConfig.views : []
+    perspectives: rawPerspectives
   };
+
   const activeMembers = snapshot?.membersById ?? membersById;
   const activeUser = snapshot?.currentUserId ?? currentUserId;
-  const boardViews =
-    boardConfig.views.length > 0
-      ? boardConfig.views
+
+  const boardPerspectives =
+    boardConfig.perspectives.length > 0
+      ? boardConfig.perspectives
       : [{
           id: "dev",
-          label: "Perspective",
+          label: "DEV",
           caption: "Fluxo operacional principal",
           statuses: boardConfig.statuses,
           statusSource: { kind: "workflow_state" as const }
@@ -136,15 +148,15 @@ export function BoardPage() {
     }
 
     const defaultMode =
-      boardViews.find(view => view.id === snapshot.preferences.defaultBoardMode)?.id ??
-      boardViews[0]?.id ??
+      boardPerspectives.find(perspective => perspective.id === snapshot.preferences.defaultBoardMode)?.id ??
+      boardPerspectives[0]?.id ??
       "dev";
 
     if (previousDefaultMode.current !== defaultMode) {
       previousDefaultMode.current = defaultMode;
       setMode(defaultMode);
     }
-  }, [snapshot, boardViews]);
+  }, [snapshot, boardPerspectives]);
 
   const filteredTasks = useMemo(
     () => applyDashboardFilter(tasks, filter, boardConfig, activeMembers, activeUser),
@@ -152,56 +164,87 @@ export function BoardPage() {
   );
 
   const devMetrics = useMemo(() => buildBoardMetrics(tasks), [tasks]);
-  const activeView = boardViews.find(view => view.id === mode) ?? boardViews[0];
+  const activePerspective = boardPerspectives.find(perspective => perspective.id === mode) ?? boardPerspectives[0];
 
-  const mapTasksForView = useMemo(
+  const mapTasksForPerspective = useMemo(
     () => (sourceTasks: typeof tasks) => {
-      if (!activeView) {
+      if (!activePerspective) {
         return sourceTasks;
       }
 
       const filteredByType =
-        activeView.allowedTaskTypes && activeView.allowedTaskTypes.length > 0
-          ? sourceTasks.filter(task => activeView.allowedTaskTypes?.includes(task.type))
+        activePerspective.allowedTaskTypes && activePerspective.allowedTaskTypes.length > 0
+          ? sourceTasks.filter(task => activePerspective.allowedTaskTypes?.includes(task.type))
           : sourceTasks;
 
       return filteredByType.map(task => {
-        if (activeView.statusSource.kind === "workflow_state") {
+        if (activePerspective.statusSource.kind === "workflow_state") {
           return task;
         }
 
-        const rawValue = task.customFields[activeView.statusSource.fieldId];
+        const rawValue = task.customFields[activePerspective.statusSource.fieldId];
         if (typeof rawValue === "string" && rawValue.trim().length > 0) {
           return { ...task, status: rawValue };
         }
 
         const fallback =
-          activeView.statusSource.fallbackByStatus?.[task.status] ??
-          activeView.statuses[0]?.id ??
+          activePerspective.statusSource.fallbackByStatus?.[task.status] ??
+          activePerspective.statuses[0]?.id ??
           task.status;
 
         return { ...task, status: fallback };
       });
     },
-    [activeView]
+    [activePerspective]
   );
 
-  // Tenta usar board columns; cai de volta para workflow states do snapshot
-  const boardColumnsView = useMemo(
-    () => buildBoardColumnsView(mapTasksForView(filteredTasks), apiBoardCols, apiWorkflowStates),
-    [apiBoardCols, apiWorkflowStates, filteredTasks, mapTasksForView]
+  const useBoardColumnsProjection = activePerspective?.statusSource.kind === "workflow_state";
+
+  const boardColumnsPerspective = useMemo(
+    () =>
+      useBoardColumnsProjection
+        ? buildBoardColumnsView(
+            mapTasksForPerspective(filteredTasks),
+            apiBoardCols,
+            apiWorkflowStates,
+            activePerspective?.visibleBoardColumnIds
+          )
+        : null,
+    [
+      useBoardColumnsProjection,
+      activePerspective?.visibleBoardColumnIds,
+      apiBoardCols,
+      apiWorkflowStates,
+      filteredTasks,
+      mapTasksForPerspective
+    ]
   );
-  const boardColumnsViewAll = useMemo(
-    () => buildBoardColumnsView(mapTasksForView(tasks), apiBoardCols, apiWorkflowStates),
-    [apiBoardCols, apiWorkflowStates, tasks, mapTasksForView]
+  const boardColumnsPerspectiveAll = useMemo(
+    () =>
+      useBoardColumnsProjection
+        ? buildBoardColumnsView(
+            mapTasksForPerspective(tasks),
+            apiBoardCols,
+            apiWorkflowStates,
+            activePerspective?.visibleBoardColumnIds
+          )
+        : null,
+    [
+      useBoardColumnsProjection,
+      activePerspective?.visibleBoardColumnIds,
+      apiBoardCols,
+      apiWorkflowStates,
+      tasks,
+      mapTasksForPerspective
+    ]
   );
 
-  const activeStatuses = boardColumnsView?.statuses ?? activeView?.statuses ?? boardConfig.statuses;
-  const activeBoardTasks = boardColumnsView?.tasks ?? mapTasksForView(filteredTasks);
-  const activeViewTasks = boardColumnsViewAll?.tasks ?? mapTasksForView(tasks);
+  const activeStatuses = boardColumnsPerspective?.statuses ?? activePerspective?.statuses ?? boardConfig.statuses;
+  const activeBoardTasks = boardColumnsPerspective?.tasks ?? mapTasksForPerspective(filteredTasks);
+  const activePerspectiveTasks = boardColumnsPerspectiveAll?.tasks ?? mapTasksForPerspective(tasks);
 
   const modeCards = useMemo(() => {
-    if (!activeView || activeStatuses.length === 0) {
+    if (!activePerspective || activeStatuses.length === 0) {
       return [
         { label: "Total de cards", value: devMetrics.total },
         { label: "Em progresso", value: devMetrics.doing },
@@ -212,22 +255,20 @@ export function BoardPage() {
 
     const firstStatus = activeStatuses[0];
     const lastStatus = activeStatuses[activeStatuses.length - 1];
-    const firstCount = firstStatus ? activeViewTasks.filter(task => task.status === firstStatus.id).length : 0;
-    const doneCount = lastStatus ? activeViewTasks.filter(task => task.status === lastStatus.id).length : 0;
-    const donePercent = activeViewTasks.length > 0 ? Math.round((doneCount / activeViewTasks.length) * 100) : 0;
+    const firstCount = firstStatus ? activePerspectiveTasks.filter(task => task.status === firstStatus.id).length : 0;
+    const doneCount = lastStatus ? activePerspectiveTasks.filter(task => task.status === lastStatus.id).length : 0;
+    const donePercent = activePerspectiveTasks.length > 0 ? Math.round((doneCount / activePerspectiveTasks.length) * 100) : 0;
 
     return [
-      { label: "Total de cards", value: activeViewTasks.length },
+      { label: "Total de cards", value: activePerspectiveTasks.length },
       { label: firstStatus?.label ?? "Primeira coluna", value: firstCount },
       { label: lastStatus?.label ?? "Ultima coluna", value: doneCount },
       { label: "Concluido", value: `${donePercent}%` }
     ];
-  }, [activeView, activeStatuses, activeViewTasks, devMetrics]);
+  }, [activePerspective, activeStatuses, activePerspectiveTasks, devMetrics]);
 
   const handleMoveTask = (taskId: string, statusId: TaskStatusId) => {
-    // Se estiver usando board columns, converte o column ID para o slug do
-    // primeiro workflow state dessa coluna antes de chamar moveTask
-    if (apiBoardCols.length > 0) {
+    if (useBoardColumnsProjection && apiBoardCols.length > 0) {
       const col = apiBoardCols.find(c => c.id === statusId);
       if (col && col.stateIds.length > 0) {
         const firstState = apiWorkflowStates.find(s => s.id === col.stateIds[0]);
@@ -238,12 +279,12 @@ export function BoardPage() {
       }
     }
 
-    if (!activeView || activeView.statusSource.kind === "workflow_state") {
+    if (!activePerspective || activePerspective.statusSource.kind === "workflow_state") {
       void moveTask(taskId, statusId);
       return;
     }
 
-    void updateTaskCustomField(taskId, activeView.statusSource.fieldId, statusId);
+    void updateTaskCustomField(taskId, activePerspective.statusSource.fieldId, statusId);
   };
 
   const handleUpdatePriority = (taskId: string, priority: TaskPriority) => {
@@ -253,13 +294,13 @@ export function BoardPage() {
   const boardSubtitle =
     activeBoardTasks.length === 0 && filter.query.trim().length > 0
       ? "Nenhum item encontrado para essa busca."
-      : activeView?.caption ?? "Acompanhe o andamento das entregas em colunas.";
+      : activePerspective?.caption ?? "Acompanhe o andamento das entregas em colunas.";
 
   const topNavigation = (
-    <section className="board-top-nav" aria-label="Navegacao de visao operacional">
+    <section className="board-top-nav" aria-label="Navegacao de perspectivas">
       <Tabs
         value={mode}
-        items={boardViews.map(option => ({ id: option.id, label: option.label }))}
+        items={boardPerspectives.map(option => ({ id: option.id, label: option.label }))}
         onChange={setMode}
         className="board-top-nav__tabs"
       />
@@ -282,7 +323,7 @@ export function BoardPage() {
         <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
 
         <Section
-          title={activeView ? `Quadro ${activeView.label}` : "Quadro"}
+          title={activePerspective ? `Quadro ${activePerspective.label}` : "Quadro"}
           subtitle={boardSubtitle}
           actions={<StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>}
           className="board-view__canvas"
@@ -295,7 +336,7 @@ export function BoardPage() {
               boardConfig={boardConfig}
               tasks={activeBoardTasks}
               membersById={activeMembers}
-              compactCards={Boolean(activeView?.compactCards)}
+              compactCards={Boolean(activePerspective?.compactCards)}
               onMoveTask={handleMoveTask}
               onUpdatePriority={handleUpdatePriority}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}

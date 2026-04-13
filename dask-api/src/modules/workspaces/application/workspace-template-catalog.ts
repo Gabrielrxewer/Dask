@@ -1,4 +1,4 @@
-export type WorkspaceTemplateKey = 'software_delivery' | 'product_discovery' | 'operations_kanban';
+﻿export type WorkspaceTemplateKey = 'software_delivery' | 'product_discovery' | 'operations_kanban';
 
 export type WorkspaceTemplateDefinition = {
   key: WorkspaceTemplateKey;
@@ -10,6 +10,13 @@ export type WorkspaceTemplateDefinition = {
   rules: Record<string, unknown>;
 };
 
+const defaultPerspectiveStatuses = [
+  { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+  { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
+  { id: 'in-review', label: 'Review', dot: '#f59e0b' },
+  { id: 'done', label: 'Done', dot: '#22c55e' }
+];
+
 export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
   {
     key: 'software_delivery',
@@ -20,54 +27,40 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
     schema: {
       lanes: ['backlog', 'doing', 'review', 'done'],
       issueTypes: ['epic', 'user-story', 'task', 'bug', 'improvement', 'spike', 'incident', 'hotfix', 'chore', 'research'],
-      boardViews: [
+      perspectives: [
         {
           key: 'dev',
-          name: 'Execucao',
+          name: 'DEV',
           caption: 'Fluxo operacional principal',
-          statuses: [
-            { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
-            { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
-            { id: 'in-review', label: 'Review', dot: '#f59e0b' },
-            { id: 'done', label: 'Done', dot: '#22c55e' }
-          ],
-          statusSource: { kind: 'workflow_state' }
+          statuses: defaultPerspectiveStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['backlog', 'doing', 'review', 'done']
         },
         {
           key: 'po',
-          name: 'Planejamento',
-          caption: 'Priorizacao e compromisso',
-          statuses: [
-            { id: 'plan-ideas', label: 'Ideias', dot: '#8b9bb0' },
-            { id: 'plan-committed', label: 'Planejado', dot: '#1976d2' },
-            { id: 'plan-building', label: 'Construindo', dot: '#f59e0b' },
-            { id: 'plan-ready', label: 'Pronto para entrega', dot: '#22c55e' }
-          ],
-          statusSource: { kind: 'custom_field', fieldId: 'planning-status' }
-        },
-        {
-          key: 'manager',
-          name: 'Gestao',
-          caption: 'Visao de capacidade e risco',
-          statuses: [
-            { id: 'mgr-epics', label: 'Epicos', dot: '#7c3aed' },
-            { id: 'mgr-initiatives', label: 'Iniciativas', dot: '#0d8df7' },
-            { id: 'mgr-risks', label: 'Riscos', dot: '#ef4444' },
-            { id: 'mgr-delivery', label: 'Entrega', dot: '#16a34a' }
-          ],
-          statusSource: { kind: 'custom_field', fieldId: 'manager-lane' }
+          name: 'PO',
+          caption: 'Planejamento e priorizacao',
+          statuses: defaultPerspectiveStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['backlog', 'doing', 'review']
         },
         {
           key: 'qa',
-          name: 'Qualidade',
+          name: 'QA',
           caption: 'Validacao e conformidade',
-          statuses: [
-            { id: 'qa-ready', label: 'Liberado para teste', dot: '#4f8cff' },
-            { id: 'qa-testing', label: 'Em teste', dot: '#f59e0b' },
-            { id: 'qa-approved', label: 'Aprovado', dot: '#22c55e' },
-            { id: 'qa-rejected', label: 'Reprovado', dot: '#e53935' }
-          ],
-          statusSource: { kind: 'custom_field', fieldId: 'qa-status' }
+          statuses: defaultPerspectiveStatuses,
+          statusSource: { kind: 'workflow_state' },
+          compactCards: true,
+          visibleBoardColumnSlugs: ['review', 'done']
+        },
+        {
+          key: 'management',
+          name: 'GESTAO',
+          caption: 'Visao de capacidade e risco',
+          statuses: defaultPerspectiveStatuses,
+          statusSource: { kind: 'workflow_state' },
+          allowedTaskTypes: ['epic', 'user-story', 'improvement', 'research', 'spike', 'bug', 'incident', 'hotfix'],
+          visibleBoardColumnSlugs: ['doing', 'review', 'done']
         }
       ]
     },

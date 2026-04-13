@@ -102,10 +102,14 @@ export class AutomationViewService {
         ? (preferences.settings as Record<string, unknown>)
         : null;
 
-    const boardViews = Array.isArray(settings?.boardViews) ? settings?.boardViews : [];
+    const boardPerspectives = Array.isArray(settings?.perspectives)
+      ? settings?.perspectives
+      : Array.isArray(settings?.boardViews)
+        ? settings?.boardViews
+        : [];
 
     const parsed: DefaultViewSeed[] = [];
-    for (const [index, entry] of boardViews.entries()) {
+    for (const [index, entry] of boardPerspectives.entries()) {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
         continue;
       }

@@ -83,6 +83,7 @@ export interface BoardViewConfig {
   statusSource: BoardViewStatusSource;
   allowedTaskTypes?: string[];
   compactCards?: boolean;
+  visibleBoardColumnIds?: string[];
 }
 
 export interface BoardConfig {
@@ -90,7 +91,9 @@ export interface BoardConfig {
   taskTypes: TaskTypeMetaItem[];
   fieldDefinitions: TaskFieldDefinition[];
   cardLayout: CardLayoutConfig;
-  views: BoardViewConfig[];
+  perspectives: BoardViewConfig[];
+  /** @deprecated Use perspectives. */
+  views?: BoardViewConfig[];
 }
 
 export interface BoardMetrics {

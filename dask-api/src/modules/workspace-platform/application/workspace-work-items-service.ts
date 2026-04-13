@@ -108,7 +108,7 @@ export class WorkspaceWorkItemsService {
       cardLayout: {
         visibleFieldIds: config.preferences.visibleCardFieldIds
       },
-      views: this.resolveBoardViewsFromSettings(config.preferences.settings, statuses)
+      perspectives: this.resolveBoardPerspectivesFromSettings(config.preferences.settings, statuses)
     };
 
     return {
@@ -1184,7 +1184,7 @@ export class WorkspaceWorkItemsService {
     }
   }
 
-  private resolveBoardViewsFromSettings(
+  private resolveBoardPerspectivesFromSettings(
     settings: unknown,
     defaultStatuses: Array<{ id: string; label: string; dot: string }>
   ) {
@@ -1192,7 +1192,7 @@ export class WorkspaceWorkItemsService {
       return [
         {
           id: 'dev',
-          label: 'Execucao',
+          label: 'DEV',
           caption: 'Fluxo operacional principal',
           statuses: defaultStatuses,
           statusSource: { kind: 'workflow_state' }
@@ -1200,12 +1200,12 @@ export class WorkspaceWorkItemsService {
       ];
     }
 
-    const rawViews = settings.boardViews;
-    if (!Array.isArray(rawViews) || rawViews.length === 0) {
+    const rawPerspectives = Array.isArray(settings.perspectives) ? settings.perspectives : settings.boardViews;
+    if (!Array.isArray(rawPerspectives) || rawPerspectives.length === 0) {
       return [
         {
           id: 'dev',
-          label: 'Execucao',
+          label: 'DEV',
           caption: 'Fluxo operacional principal',
           statuses: defaultStatuses,
           statusSource: { kind: 'workflow_state' }
@@ -1213,7 +1213,7 @@ export class WorkspaceWorkItemsService {
       ];
     }
 
-    const parsed = rawViews
+    const parsed = rawPerspectives
       .map((rawView, index) => {
         if (!isRecord(rawView)) {
           return null;
@@ -1229,6 +1229,9 @@ export class WorkspaceWorkItemsService {
         const compactCards = Boolean(rawView.compactCards);
         const allowedTaskTypes = Array.isArray(rawView.allowedTaskTypes)
           ? rawView.allowedTaskTypes.filter((value): value is string => typeof value === 'string')
+          : undefined;
+        const visibleBoardColumnIds = Array.isArray(rawView.visibleBoardColumnIds)
+          ? rawView.visibleBoardColumnIds.filter((value): value is string => typeof value === 'string')
           : undefined;
 
         const statuses = Array.isArray(rawView.statuses)
@@ -1299,6 +1302,7 @@ export class WorkspaceWorkItemsService {
           statusSource,
           compactCards,
           allowedTaskTypes,
+          visibleBoardColumnIds,
           position: typeof rawView.position === 'number' ? rawView.position : index
         };
       })
@@ -1310,7 +1314,7 @@ export class WorkspaceWorkItemsService {
       return [
         {
           id: 'dev',
-          label: 'Execucao',
+          label: 'DEV',
           caption: 'Fluxo operacional principal',
           statuses: defaultStatuses,
           statusSource: { kind: 'workflow_state' as const }

@@ -40,8 +40,41 @@
   gap: 12px;
 }
 
+.general-settings__perspectives-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.general-settings__perspective-card {
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
+  box-shadow:
+    0 12px 24px rgba(18, 54, 90, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+}
+
+.general-settings__perspective-title {
+  margin: 0 0 10px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #173553;
+}
+
+.general-settings__empty {
+  margin: 0;
+  color: #5f7790;
+  font-size: var(--font-size-xs);
+}
+
 @media (max-width: 860px) {
   .general-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .general-settings__perspectives-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -22,12 +22,17 @@ export function SettingsPage() {
       rawBoardConfig?.cardLayout && Array.isArray(rawBoardConfig.cardLayout.visibleFieldIds)
         ? rawBoardConfig.cardLayout
         : factoryBoardConfig.cardLayout,
-    views: Array.isArray(rawBoardConfig?.views) ? rawBoardConfig.views : []
+    perspectives: Array.isArray(rawBoardConfig?.perspectives)
+      ? rawBoardConfig.perspectives
+      : Array.isArray(rawBoardConfig?.views)
+        ? rawBoardConfig.views
+        : []
   };
   const metrics = buildBoardMetrics(tasks);
 
-  const boardViews = boardConfig.views.length > 0 ? boardConfig.views : [{ id: "dev", label: "Dev" }];
-  const defaultMode = snapshot?.preferences.defaultBoardMode ?? boardViews[0]?.id ?? "dev";
+  const boardPerspectives =
+    boardConfig.perspectives.length > 0 ? boardConfig.perspectives : [{ id: "dev", label: "DEV" }];
+  const defaultMode = snapshot?.preferences.defaultBoardMode ?? boardPerspectives[0]?.id ?? "dev";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
   const visibleFields = new Set(snapshot?.preferences.visibleCardFieldIds ?? []);
   const fieldDefinitions = boardConfig.fieldDefinitions;
@@ -42,7 +47,7 @@ export function SettingsPage() {
           cards={[
             { label: "Campos visiveis", value: visibleFieldsCount },
             { label: "Modo padrao", value: defaultMode.toUpperCase() },
-            { label: "Layouts salvos", value: boardViews.length },
+            { label: "Perspectivas", value: boardPerspectives.length },
             { label: "Atualizacao", value: "Agora" }
           ]}
         />
@@ -78,9 +83,9 @@ export function SettingsPage() {
                     })
                   }
                 >
-                  {boardViews.map(view => (
-                    <option key={view.id} value={view.id}>
-                      {view.label}
+                  {boardPerspectives.map(perspective => (
+                    <option key={perspective.id} value={perspective.id}>
+                      {perspective.label}
                     </option>
                   ))}
                 </Select>

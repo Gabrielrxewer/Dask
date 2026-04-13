@@ -16,6 +16,7 @@ import {
   ListPage,
   LoginPage,
   NoWorkspacePage,
+  PerspectivesSettingsPage,
   ResetPasswordPage,
   SettingsShellPage,
   TimelinePage,
@@ -123,6 +124,7 @@ export function AppRoutes() {
               <Route path="columns" element={<ColumnsSettingsPage />} />
               <Route path="item-types" element={<ItemTypesSettingsPage />} />
               <Route path="custom-fields" element={<CustomFieldsSettingsPage />} />
+              <Route path="perspectives" element={<PerspectivesSettingsPage />} />
               {/* Aliases de rotas pre-existentes */}
               <Route path="members" element={<GeneralSettingsPage />} />
               <Route path="workflow" element={<WorkflowStatesSettingsPage />} />

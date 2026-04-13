@@ -15,6 +15,7 @@ export {
   ColumnsSettingsPage,
   WorkflowStatesSettingsPage,
   ItemTypesSettingsPage,
+  PerspectivesSettingsPage,
   CustomFieldsSettingsPage,
   SettingsPage
 } from "@/pages/settings-page";

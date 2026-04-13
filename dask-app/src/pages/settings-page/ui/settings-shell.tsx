@@ -6,6 +6,7 @@ import {
   buildWorkspaceSettingsColumnsPath,
   buildWorkspaceSettingsCustomFieldsPath,
   buildWorkspaceSettingsItemTypesPath,
+  buildWorkspaceSettingsPerspectivesPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceSettingsWorkflowStatesPath
 } from "@/app/router";
@@ -16,6 +17,11 @@ const NAV_ITEMS = [
     label: "Geral",
     description: "Preferencias do workspace",
     buildPath: buildWorkspaceSettingsPath
+  },
+  {
+    label: "Perspectivas",
+    description: "Criar perspectivas e colunas visiveis",
+    buildPath: buildWorkspaceSettingsPerspectivesPath
   },
   {
     label: "Workflow States",

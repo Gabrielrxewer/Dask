@@ -18,6 +18,7 @@ export interface WorkspacePreferences {
   visibleCardFieldIds: string[];
   /** Campos visíveis por tipo de work item. Sobrepõe visibleCardFieldIds para aquele tipo. */
   visibleFieldsByType?: Record<string, string[]>;
+  settings?: Record<string, unknown>;
 }
 
 export interface CreateTaskInput {

@@ -7,6 +7,7 @@ export {
   buildWorkspaceSettingsColumnsPath,
   buildWorkspaceSettingsCustomFieldsPath,
   buildWorkspaceSettingsItemTypesPath,
+  buildWorkspaceSettingsPerspectivesPath,
   buildWorkspaceSettingsWorkflowStatesPath,
   buildWorkspaceSettingsMembersPath,
   buildWorkspaceSettingsPath,

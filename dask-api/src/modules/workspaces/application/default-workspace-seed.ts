@@ -52,6 +52,7 @@ type DefaultBoardViewSeed = {
   caption: string;
   compactCards?: boolean;
   allowedTaskTypes?: string[];
+  visibleBoardColumnSlugs?: string[];
   statusSource:
     | { kind: 'workflow_state' }
     | { kind: 'custom_field'; fieldId: string; fallbackByStatus?: Record<string, string> };
@@ -322,8 +323,9 @@ const defaultCustomFields: DefaultCustomFieldSeed[] = [
 const defaultBoardViews: DefaultBoardViewSeed[] = [
   {
     key: 'dev',
-    name: 'Execucao',
+    name: 'DEV',
     caption: 'Fluxo operacional principal',
+    visibleBoardColumnSlugs: ['backlog', 'doing', 'review', 'done'],
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
@@ -334,67 +336,43 @@ const defaultBoardViews: DefaultBoardViewSeed[] = [
   },
   {
     key: 'po',
-    name: 'Planejamento',
-    caption: 'Priorizacao e compromisso',
-    statusSource: {
-      kind: 'custom_field',
-      fieldId: 'planning-status',
-      fallbackByStatus: {
-        done: 'plan-ready',
-        'in-review': 'plan-building',
-        'in-progress': 'plan-committed',
-        backlog: 'plan-ideas'
-      }
-    },
+    name: 'PO',
+    caption: 'Planejamento e priorizacao',
+    visibleBoardColumnSlugs: ['backlog', 'doing', 'review'],
+    statusSource: { kind: 'workflow_state' },
     statuses: [
-      { id: 'plan-ideas', label: 'Ideias', dot: '#8b9bb0' },
-      { id: 'plan-committed', label: 'Planejado', dot: '#1976d2' },
-      { id: 'plan-building', label: 'Construindo', dot: '#f59e0b' },
-      { id: 'plan-ready', label: 'Pronto para entrega', dot: '#22c55e' }
+      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+      { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
+      { id: 'in-review', label: 'Review', dot: '#f59e0b' },
+      { id: 'done', label: 'Done', dot: '#22c55e' }
     ]
   },
   {
-    key: 'manager',
-    name: 'Gestao',
-    caption: 'Visao de capacidade e risco',
-    statusSource: {
-      kind: 'custom_field',
-      fieldId: 'manager-lane',
-      fallbackByStatus: {
-        done: 'mgr-delivery',
-        'in-review': 'mgr-initiatives',
-        'in-progress': 'mgr-initiatives',
-        backlog: 'mgr-epics'
-      }
-    },
+    key: 'management',
+    name: 'GESTAO',
+    caption: 'Acompanhamento executivo',
+    visibleBoardColumnSlugs: ['doing', 'review', 'done'],
+    statusSource: { kind: 'workflow_state' },
     allowedTaskTypes: ['epic', 'user-story', 'improvement', 'research', 'spike', 'bug', 'incident', 'hotfix'],
     statuses: [
-      { id: 'mgr-epics', label: 'Epicos', dot: '#7c3aed' },
-      { id: 'mgr-initiatives', label: 'Iniciativas', dot: '#0d8df7' },
-      { id: 'mgr-risks', label: 'Riscos', dot: '#ef4444' },
-      { id: 'mgr-delivery', label: 'Entrega', dot: '#16a34a' }
+      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+      { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
+      { id: 'in-review', label: 'Review', dot: '#f59e0b' },
+      { id: 'done', label: 'Done', dot: '#22c55e' }
     ]
   },
   {
     key: 'qa',
-    name: 'Qualidade',
+    name: 'QA',
     caption: 'Validacao e conformidade',
     compactCards: true,
-    statusSource: {
-      kind: 'custom_field',
-      fieldId: 'qa-status',
-      fallbackByStatus: {
-        done: 'qa-approved',
-        'in-review': 'qa-testing',
-        'in-progress': 'qa-testing',
-        backlog: 'qa-ready'
-      }
-    },
+    visibleBoardColumnSlugs: ['review', 'done'],
+    statusSource: { kind: 'workflow_state' },
     statuses: [
-      { id: 'qa-ready', label: 'Liberado para teste', dot: '#4f8cff' },
-      { id: 'qa-testing', label: 'Em teste', dot: '#f59e0b' },
-      { id: 'qa-approved', label: 'Aprovado', dot: '#22c55e' },
-      { id: 'qa-rejected', label: 'Reprovado', dot: '#e53935' }
+      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+      { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
+      { id: 'in-review', label: 'Review', dot: '#f59e0b' },
+      { id: 'done', label: 'Done', dot: '#22c55e' }
     ]
   }
 ];
@@ -438,6 +416,15 @@ function toPrismaJson(value: unknown): Prisma.InputJsonValue {
 function getSeededBoardViews(templateKey?: WorkspaceTemplateKey): DefaultBoardViewSeed[] {
   const selectedTemplate = getWorkspaceTemplateByKey(templateKey);
   const schema = selectedTemplate?.schema;
+
+  if (
+    schema &&
+    typeof schema === 'object' &&
+    !Array.isArray(schema) &&
+    Array.isArray((schema as Record<string, unknown>).perspectives)
+  ) {
+    return (schema as Record<string, unknown>).perspectives as DefaultBoardViewSeed[];
+  }
 
   if (
     schema &&
@@ -605,13 +592,16 @@ export async function seedWorkspaceConfigurationDefaults(
       dateFormat: 'dd/mm/yyyy',
       visibleCardFieldIds: toPrismaJson(['story-points', 'severity', 'sprint', 'environment']),
       settings: toPrismaJson({
-        boardViews: seededBoardViews.map((view, position) => ({
+        perspectives: seededBoardViews.map((view, position) => ({
           key: view.key,
           name: view.name,
           caption: view.caption,
           compactCards: Boolean(view.compactCards),
           position,
           allowedTaskTypes: view.allowedTaskTypes ?? [],
+          visibleBoardColumnIds: (view.visibleBoardColumnSlugs ?? [])
+            .map((slug) => columnBySlug.get(slug))
+            .filter((value): value is string => Boolean(value)),
           statusSource: view.statusSource,
           statuses: view.statuses,
           automations: {

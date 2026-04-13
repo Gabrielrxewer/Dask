@@ -16,7 +16,8 @@ export const routePaths = {
   settingsCustomFields: "/w/:workspaceSlug/settings/custom-fields",
   settingsColumns: "/w/:workspaceSlug/settings/columns",
   settingsItemTypes: "/w/:workspaceSlug/settings/item-types",
-  settingsWorkflowStates: "/w/:workspaceSlug/settings/workflow-states"
+  settingsWorkflowStates: "/w/:workspaceSlug/settings/workflow-states",
+  settingsPerspectives: "/w/:workspaceSlug/settings/perspectives"
 } as const;
 
 export type AppRoutePath = (typeof routePaths)[keyof typeof routePaths];
@@ -69,4 +70,8 @@ export function buildWorkspaceSettingsItemTypesPath(workspaceSlug: string): stri
 
 export function buildWorkspaceSettingsWorkflowStatesPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/settings/workflow-states");
+}
+
+export function buildWorkspaceSettingsPerspectivesPath(workspaceSlug: string): string {
+  return buildWorkspacePath(workspaceSlug, "/settings/perspectives");
 }

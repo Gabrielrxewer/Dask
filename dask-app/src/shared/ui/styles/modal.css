@@ -6,7 +6,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  z-index: 120;
+  z-index: 2200;
 }
 
 .shared-modal-shell {

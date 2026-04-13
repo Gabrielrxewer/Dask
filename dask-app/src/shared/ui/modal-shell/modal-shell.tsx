@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/shared/lib/cn";
 
 interface ModalShellProps {
@@ -10,7 +11,11 @@ interface ModalShellProps {
 }
 
 export function ModalShell({ titleId, className = "", onClose, children }: ModalShellProps) {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
+
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
@@ -27,7 +32,11 @@ export function ModalShell({ titleId, className = "", onClose, children }: Modal
     };
   }, [onClose]);
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <div className="shared-modal-overlay" role="presentation" onClick={onClose}>
       <aside
         className={cn("shared-modal-shell", className)}
@@ -38,6 +47,7 @@ export function ModalShell({ titleId, className = "", onClose, children }: Modal
       >
         {children}
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }

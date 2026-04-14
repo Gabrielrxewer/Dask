@@ -29,13 +29,13 @@
 .billing-success__title {
   font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 700;
-  color: var(--color-text-primary, #f1f5f9);
+  color: var(--text-strong, #0a1e31);
   margin: 0;
 }
 
 .billing-success__description {
   font-size: 15px;
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--text-soft, #586f88);
   max-width: 440px;
   line-height: 1.6;
   margin: 0;
@@ -71,7 +71,7 @@
 .billing-success__btn--secondary {
   background: rgba(173, 205, 231, 0.08);
   border: 1px solid rgba(173, 205, 231, 0.18);
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--text-soft, #586f88);
 }
 
 .billing-success__btn:hover {
@@ -83,7 +83,7 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--text-soft, #586f88);
 }
 
 .billing-success__spinner {

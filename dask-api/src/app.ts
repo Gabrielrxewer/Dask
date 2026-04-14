@@ -6,6 +6,7 @@ import pinoHttp from 'pino-http';
 import { env } from '@/core/config/env';
 import { EventPublisher } from '@/core/events/event-publisher';
 import { InMemoryEventBus } from '@/core/events/in-memory-event-bus';
+import { asyncHandler } from '@/core/http/async-handler';
 import { errorMiddleware } from '@/core/http/error-middleware';
 import { notFoundMiddleware } from '@/core/http/not-found-middleware';
 import { logger } from '@/core/logging/logger';
@@ -178,6 +179,24 @@ export const createApp = (): Express => {
       env: env.NODE_ENV
     });
   });
+
+  // Stripe webhook — must be registered directly on `app` BEFORE any router that applies
+  // router.use(authMiddleware) globally, otherwise those routers intercept the request
+  // and return 401 before it reaches the billing router.
+  if (billingService) {
+    app.post(
+      `${env.API_PREFIX}/billing/webhook`,
+      asyncHandler(async (req: Request, res: Response) => {
+        const signature = req.headers['stripe-signature'];
+        if (!signature || typeof signature !== 'string') {
+          res.status(400).json({ error: 'Missing stripe-signature header' });
+          return;
+        }
+        await billingService.handleWebhook(req.body as Buffer, signature);
+        res.status(200).json({ received: true });
+      })
+    );
+  }
 
   app.use(
     env.API_PREFIX,

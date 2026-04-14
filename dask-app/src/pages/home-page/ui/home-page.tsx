@@ -4,25 +4,20 @@ import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth/model";
 import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
 import {
-  focusPanel,
+  architectureItems,
   heroBadges,
   heroSignals,
-  platformFeatures,
-  previewLanes,
   processStages,
-  searchLenses,
-  structureLayers,
-  useCases
+  useCases,
+  valuePillars
 } from "./home-page.data";
 import type {
+  HomeArchitectureItem,
   HomeBadge,
-  HomeFeature,
-  HomePreviewLane,
   HomeProcessStage,
-  HomeSearchLens,
   HomeSignal,
-  HomeStructureLayer,
-  HomeUseCase
+  HomeUseCase,
+  HomeValuePillar
 } from "./home-page.types";
 import "./home-page.css";
 
@@ -60,96 +55,43 @@ function SignalCard({ signal }: { signal: HomeSignal }) {
   );
 }
 
-function PreviewLane({ lane }: { lane: HomePreviewLane }) {
+function ValuePillar({ pillar, index }: { pillar: HomeValuePillar; index: number }) {
   return (
-    <section className={`home-page__preview-lane home-page__preview-lane--${lane.tone}`} aria-label={lane.title}>
-      <header className="home-page__preview-lane-head">
-        <div>
-          <p className="home-page__preview-lane-title">{lane.title}</p>
-          <p className="home-page__preview-lane-description">{lane.description}</p>
-        </div>
-        <span className="home-page__preview-lane-count">{lane.count}</span>
-      </header>
-
-      <div className="home-page__preview-card-list">
-        {lane.items.map((item) => (
-          <article key={item} className="home-page__preview-card">
-            <span className="home-page__preview-card-status" aria-hidden="true" />
-            <div>
-              <strong>{item}</strong>
-              <span>Fluxo apoiado por IA e estrutura configuravel.</span>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function FeatureCard({ feature }: { feature: HomeFeature }) {
-  return (
-    <article className="home-page__feature-card">
-      <p className="home-page__feature-eyebrow">{feature.eyebrow}</p>
-      <h3 className="home-page__feature-title">{feature.title}</h3>
-      <p className="home-page__feature-description">{feature.description}</p>
-      <div className="home-page__feature-highlights" aria-label="Destaques">
-        {feature.highlights.map((highlight) => (
-          <span key={highlight}>{highlight}</span>
-        ))}
-      </div>
+    <article className="home-page__pillar">
+      <span className="home-page__pillar-number">{String(index + 1).padStart(2, "0")}</span>
+      <p className="home-page__pillar-eyebrow">{pillar.eyebrow}</p>
+      <h3>{pillar.title}</h3>
+      <p>{pillar.description}</p>
     </article>
   );
 }
 
-function ProcessStage({ stage }: { stage: HomeProcessStage }) {
+function WorkflowStep({ stage }: { stage: HomeProcessStage }) {
   return (
-    <article className="home-page__stage-card">
-      <div className="home-page__stage-step">{stage.step}</div>
-      <div className="home-page__stage-body">
+    <article className="home-page__workflow-step">
+      <span className="home-page__workflow-index">{stage.step}</span>
+      <div>
         <h3>{stage.title}</h3>
         <p>{stage.description}</p>
-        <small>{stage.note}</small>
       </div>
     </article>
   );
 }
 
-function SearchLensCard({ lens }: { lens: HomeSearchLens }) {
+function UseCaseItem({ useCase }: { useCase: HomeUseCase }) {
   return (
-    <article className="home-page__search-card">
-      <header className="home-page__search-card-head">
-        <span>{lens.label}</span>
-        <small>Semantico</small>
-      </header>
-      <div className="home-page__search-query">{lens.query}</div>
-      <p className="home-page__search-context">{lens.context}</p>
-      <div className="home-page__search-results">
-        {lens.results.map((result) => (
-          <div key={result} className="home-page__search-result">
-            {result}
-          </div>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function StructureLayerCard({ layer }: { layer: HomeStructureLayer }) {
-  return (
-    <article className="home-page__layer-card">
-      <p className="home-page__layer-label">{layer.label}</p>
-      <h3>{layer.title}</h3>
-      <p>{layer.description}</p>
-    </article>
-  );
-}
-
-function UseCaseCard({ useCase }: { useCase: HomeUseCase }) {
-  return (
-    <article className="home-page__use-case-card">
+    <article className="home-page__use-case-item">
       <h3>{useCase.title}</h3>
-      <p>{useCase.description}</p>
-      <strong>{useCase.outcome}</strong>
+      <p>{useCase.focus}</p>
+    </article>
+  );
+}
+
+function ArchitectureItem({ item }: { item: HomeArchitectureItem }) {
+  return (
+    <article className="home-page__architecture-item">
+      <h3>{item.label}</h3>
+      <p>{item.detail}</p>
     </article>
   );
 }
@@ -157,13 +99,11 @@ function UseCaseCard({ useCase }: { useCase: HomeUseCase }) {
 function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSONAL" | "BUSINESS") => void }) {
   return (
     <section className="home-page__section home-page__pricing-section" id="precos" aria-label="Planos e precos">
-      <header className="home-page__section-intro">
-        <p className="home-page__section-eyebrow">Planos</p>
-        <h2 className="home-page__section-title">Simples, direto e sem surpresas.</h2>
-        <p className="home-page__section-description">
-          Escolha o plano que melhor se encaixa na sua operacao. Cobranca mensal recorrente, cancele quando quiser.
-        </p>
-      </header>
+      <SectionIntro
+        eyebrow="Planos"
+        title="Simples, direto e sem surpresas."
+        description="Escolha o plano que melhor se encaixa na sua operacao. Cobranca mensal recorrente, cancele quando quiser."
+      />
 
       <div className="home-page__pricing-cards">
         <article className="home-page__pricing-card">
@@ -172,12 +112,10 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
             <strong>R$ 19,90</strong>
             <span>/mes</span>
           </div>
-          <p className="home-page__pricing-description">
-            Para uso individual com boards, IA e automacoes basicas.
-          </p>
+          <p className="home-page__pricing-description">Para uso individual com boards, IA e automacoes basicas.</p>
           <ul className="home-page__pricing-features">
-            {["1 workspace pessoal", "Boards, listas e timeline", "IA para melhorias", "Automacoes basicas", "Busca semantica"].map(f => (
-              <li key={f}>{f}</li>
+            {["1 workspace pessoal", "Boards, listas e timeline", "IA para melhorias", "Automacoes basicas", "Busca semantica"].map((feature) => (
+              <li key={feature}>{feature}</li>
             ))}
           </ul>
           <button
@@ -196,12 +134,18 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
             <strong>R$ 99,00</strong>
             <span>/mes</span>
           </div>
-          <p className="home-page__pricing-description">
-            Para equipes e operacoes corporativas com recursos avancados.
-          </p>
+          <p className="home-page__pricing-description">Para equipes e operacoes corporativas com recursos avancados.</p>
           <ul className="home-page__pricing-features">
-            {["Multiplos workspaces", "Suporte a equipes", "Boards, listas e timeline", "IA avancada e automacoes", "Campos personalizados", "Auditoria e integrações", "Suporte prioritario"].map(f => (
-              <li key={f}>{f}</li>
+            {[
+              "Multiplos workspaces",
+              "Suporte a equipes",
+              "Boards, listas e timeline",
+              "IA avancada e automacoes",
+              "Campos personalizados",
+              "Auditoria e integracoes",
+              "Suporte prioritario"
+            ].map((feature) => (
+              <li key={feature}>{feature}</li>
             ))}
           </ul>
           <button
@@ -296,200 +240,79 @@ export function HomePage() {
           </aside>
         </section>
 
-        <section className="home-page__section home-page__section--preview" aria-label="Preview estilizado do produto">
-          <div className="home-page__hero-preview" aria-label="Preview estilizado do produto">
-            <div className="home-page__preview-shell">
-              <header className="home-page__preview-topbar">
-                <div className="home-page__preview-orbs" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <div className="home-page__preview-topbar-content">
-                  <div className="home-page__preview-title-group">
-                    <strong>Dask Workspace</strong>
-                    <span>Operacao com IA distribuida, busca e templates</span>
-                  </div>
-                  <div className="home-page__preview-toolbar">
-                    <span className="home-page__preview-pill">IA ativa</span>
-                    <span className="home-page__preview-pill">Busca semantica</span>
-                  </div>
-                </div>
-              </header>
-
-              <div className="home-page__preview-layout">
-                <aside className="home-page__preview-sidebar" aria-label="Navegacao do produto">
-                  <span className="home-page__preview-sidebar-label">Workspace</span>
-                  <strong>Operacao central</strong>
-                  <div className="home-page__preview-sidebar-nav">
-                    <span className="is-active">Boards</span>
-                    <span>Templates</span>
-                    <span>Busca</span>
-                    <span>Automacoes</span>
-                  </div>
-                </aside>
-
-                <div className="home-page__preview-stage">
-                  <div className="home-page__preview-command-bar">
-                    <span>Buscar por contexto, risco, etapa ou template</span>
-                    <div className="home-page__preview-command-meta">
-                      <span>12 fontes cruzadas</span>
-                      <span>4 sugestoes</span>
-                    </div>
-                  </div>
-
-                  <div className="home-page__preview-stage-content">
-                    <div className="home-page__preview-board">
-                      {previewLanes.map((lane) => (
-                        <PreviewLane key={lane.title} lane={lane} />
-                      ))}
-                    </div>
-
-                    <aside className="home-page__preview-assistant" aria-label="Painel de IA">
-                      <p className="home-page__preview-assistant-eyebrow">{focusPanel.eyebrow}</p>
-                      <h2 className="home-page__preview-assistant-title">{focusPanel.status}</h2>
-                      <p className="home-page__preview-assistant-summary">{focusPanel.summary}</p>
-
-                      <div className="home-page__preview-assistant-tags">
-                        {focusPanel.tags.map((tag) => (
-                          <span key={tag}>{tag}</span>
-                        ))}
-                      </div>
-
-                      <div className="home-page__preview-assistant-metrics">
-                        {focusPanel.metrics.map((metric) => (
-                          <div key={metric.label}>
-                            <strong>{metric.value}</strong>
-                            <span>{metric.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </aside>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="home-page__section">
+        <section className="home-page__section home-page__value-section">
           <SectionIntro
             id="plataforma"
-            eyebrow="Plataforma"
-            title="Nao e apenas um board. E uma camada operacional inteligente com presenca de produto real."
-            description="O Dask une experiencia premium, IA continua e flexibilidade estrutural em uma interface que comunica confianca logo no primeiro contato."
+            eyebrow="Valor central"
+            title="Tres pilares para uma operacao mais clara."
+            description="O Dask combina inteligencia, contexto e estrutura configuravel em uma experiencia unica para o trabalho do dia a dia."
           />
 
-          <div className="home-page__feature-grid">
-            {platformFeatures.map((feature) => (
-              <FeatureCard key={feature.title} feature={feature} />
+          <div className="home-page__pillar-grid">
+            {valuePillars.map((pillar, index) => (
+              <ValuePillar key={pillar.eyebrow} pillar={pillar} index={index} />
             ))}
           </div>
         </section>
 
-        <section className="home-page__section home-page__section--immersive">
-          <div className="home-page__immersive-shell">
-            <div className="home-page__immersive-copy">
-              <SectionIntro
-                id="inteligencia"
-                eyebrow="IA ao longo do processo"
-                title="O Dask distribui inteligencia em cada etapa da operacao."
-                description="Em vez de depender de consultas isoladas, a plataforma leva IA para o ponto em que o trabalho acontece e combina isso com busca semantica, historico e estrutura."
-              />
+        <section id="inteligencia" className="home-page__section home-page__workflow-section">
+          <div className="home-page__workflow-copy">
+            <SectionIntro
+              eyebrow="Como funciona"
+              title="Do registro inicial a evolucao do processo."
+              description="A plataforma acompanha o fluxo real: organiza a entrada, adiciona contexto, recupera conhecimento e melhora a execucao com continuidade."
+            />
+          </div>
 
-              <div className="home-page__stage-list">
-                {processStages.map((stage) => (
-                  <ProcessStage key={stage.step} stage={stage} />
-                ))}
-              </div>
-            </div>
-
-            <div className="home-page__immersive-panels">
-              <article className="home-page__focus-card">
-                <p className="home-page__focus-eyebrow">{focusPanel.eyebrow}</p>
-                <h3 className="home-page__focus-title">{focusPanel.title}</h3>
-                <p className="home-page__focus-summary">{focusPanel.summary}</p>
-
-                <div className="home-page__focus-tag-row">
-                  {focusPanel.tags.map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
-
-                <div className="home-page__focus-metrics">
-                  {focusPanel.metrics.map((metric) => (
-                    <div key={metric.label} className="home-page__focus-metric">
-                      <strong>{metric.value}</strong>
-                      <span>{metric.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="home-page__focus-insights">
-                  {focusPanel.insights.map((insight) => (
-                    <p key={insight}>{insight}</p>
-                  ))}
-                </div>
-              </article>
-
-              <div className="home-page__search-stack">
-                {searchLenses.map((lens) => (
-                  <SearchLensCard key={lens.label} lens={lens} />
-                ))}
-              </div>
-            </div>
+          <div className="home-page__workflow-panel" aria-label="Fluxo de trabalho no Dask">
+            {processStages.map((stage) => (
+              <WorkflowStep key={stage.step} stage={stage} />
+            ))}
           </div>
         </section>
 
-        <section className="home-page__section">
-          <SectionIntro
-            id="estruturas"
-            eyebrow="Estruturas adaptaveis"
-            title="Configuravel para diferentes operacoes, sem perder clareza, padrao e acabamento."
-            description="A base do Dask permite partir de software e evoluir para novos contextos com um produto consistente, elegante e pronto para operacoes serias."
-          />
-
-          <div className="home-page__layers-panel">
-            <div className="home-page__layers-head">
-              <p>Arquitetura configuravel</p>
-              <strong>Camadas que se ajustam ao negocio.</strong>
-            </div>
-
-            <div className="home-page__layers-list">
-              {structureLayers.map((layer) => (
-                <StructureLayerCard key={layer.title} layer={layer} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="home-page__section">
+        <section className="home-page__section home-page__adaptability-section">
           <SectionIntro
             id="contextos"
-            eyebrow="Contextos"
-            title="A plataforma se adapta a cenarios diferentes sem perder consistencia de produto."
-            description="O Dask pode nascer em software e operar com o mesmo nivel de clareza em administrativo, qualidade, suporte, projetos e outros fluxos internos."
+            eyebrow="Adaptabilidade"
+            title="A mesma base para contextos diferentes."
+            description="Software, administrativo, qualidade, suporte e escola podem operar com a mesma logica de clareza, busca e inteligencia aplicada."
           />
 
-          <div className="home-page__contexts-panel">
-            <div className="home-page__contexts-head">
-              <p className="home-page__contexts-anchor">Aplicacao em multiplos cenarios</p>
-              <strong>Software e muito alem dele.</strong>
-            </div>
+          <div className="home-page__context-map" aria-label="Contextos de aplicacao">
+            {useCases.map((useCase) => (
+              <UseCaseItem key={useCase.title} useCase={useCase} />
+            ))}
+          </div>
 
-            <div className="home-page__use-case-grid">
-              {useCases.map((useCase) => (
-                <UseCaseCard key={useCase.title} useCase={useCase} />
+          <aside className="home-page__adaptability-note" aria-label="Resumo de adaptabilidade">
+            <p>Escala sem fragmentar a experiencia.</p>
+            <strong>Um produto consistente para operacoes com linguagens diferentes.</strong>
+          </aside>
+        </section>
+
+        <section className="home-page__section home-page__architecture-section">
+          <SectionIntro
+            id="estruturas"
+            eyebrow="Arquitetura configuravel"
+            title="Flexibilidade estrutural com leitura simples."
+            description="A configuracao aparece como uma base estrategica: suficiente para adaptar processos, sem transformar a experiencia em uma tela tecnica demais."
+          />
+
+          <div className="home-page__architecture-grid">
+            <div className="home-page__architecture-list" aria-label="Elementos configuraveis">
+              {architectureItems.map((item) => (
+                <ArchitectureItem key={item.label} item={item} />
               ))}
             </div>
 
-            <div className="home-page__context-chip-row" aria-label="Contextos adicionais">
-              {["Projetos", "Suporte interno", "PMO", "Operacoes escolares", "Compliance", "Qualidade"].map(
-                (context) => (
-                  <span key={context}>{context}</span>
-                )
-              )}
-            </div>
+            <aside className="home-page__architecture-preview" aria-label="Resumo da configuracao">
+              <p className="home-page__architecture-preview-eyebrow">Modelo operacional</p>
+              <h3>Configurar, operar, aprender e replicar.</h3>
+              <p>
+                Workspaces e templates mantem o padrao. Campos, views e regras absorvem a particularidade de cada fluxo.
+              </p>
+            </aside>
           </div>
         </section>
 
@@ -499,12 +322,10 @@ export function HomePage() {
           <div className="home-page__cta-shell">
             <div className="home-page__cta-copy">
               <p className="home-page__section-eyebrow">Entrada do sistema</p>
-              <h2 className="home-page__cta-title">
-                Uma Home com presenca de produto, valor claro e espaco para operacoes inteligentes crescerem.
-              </h2>
+              <h2 className="home-page__cta-title">Clareza operacional com inteligencia continua.</h2>
               <p className="home-page__cta-description">
-                Entre no Dask e veja uma plataforma pronta para organizar processos, distribuir inteligencia e elevar
-                a percepcao de valor do sistema desde a primeira tela.
+                Entre no Dask para organizar processos, recuperar contexto e evoluir a operacao com uma plataforma
+                flexivel, leve e pronta para crescer.
               </p>
             </div>
 

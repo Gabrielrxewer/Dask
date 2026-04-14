@@ -1,13 +1,10 @@
 import type {
+  HomeArchitectureItem,
   HomeBadge,
-  HomeFeature,
-  HomeFocusPanel,
-  HomePreviewLane,
   HomeProcessStage,
-  HomeSearchLens,
   HomeSignal,
-  HomeStructureLayer,
-  HomeUseCase
+  HomeUseCase,
+  HomeValuePillar
 } from "./home-page.types";
 
 export const heroBadges: HomeBadge[] = [
@@ -34,174 +31,98 @@ export const heroSignals: HomeSignal[] = [
   }
 ];
 
-export const previewLanes: HomePreviewLane[] = [
+export const valuePillars: HomeValuePillar[] = [
   {
-    title: "Entrada estruturada",
-    description: "Itens recebem template, prioridade e contexto desde o inicio.",
-    count: "18 ativos",
-    tone: "blue",
-    items: ["Novo onboarding enterprise", "Plano de aula intensivo", "Revisao de nao conformidade"]
-  },
-  {
-    title: "Execucao assistida",
-    description: "IA sugere proxima acao, ajustes de descricao e referencias relacionadas.",
-    count: "07 em foco",
-    tone: "violet",
-    items: ["Refinar escopo com IA", "Cruzar dependencias de squads", "Ajustar checklist operacional"]
-  },
-  {
-    title: "Evolucao continua",
-    description: "Automacoes, busca e templates mantem o fluxo consistente.",
-    count: "05 automacoes",
-    tone: "teal",
-    items: ["Atualizar base semantica", "Replicar template por unidade", "Gerar sinal de risco recorrente"]
-  }
-];
-
-export const platformFeatures: HomeFeature[] = [
-  {
-    eyebrow: "IA no fluxo real",
-    title: "A inteligencia participa do processo sem virar uma tela isolada.",
-    description:
-      "O Dask leva apoio de IA para o momento em que o trabalho acontece: entrada do item, enriquecimento de contexto, busca, priorizacao e proxima acao.",
-    highlights: ["Aprimora descricao", "Sinaliza riscos", "Sugere proximos passos"]
+    eyebrow: "IA continua",
+    title: "Inteligencia no ponto em que o trabalho acontece.",
+    description: "Apoio para descrever, priorizar, contextualizar e sugerir proximos passos dentro do fluxo."
   },
   {
     eyebrow: "Busca semantica",
-    title: "Contexto acionavel em diferentes areas, tipos de conteudo e estruturas.",
-    description:
-      "A plataforma localiza informacao por significado em boards, historicos, templates e documentos relacionados, reduzindo perda de contexto operacional.",
-    highlights: ["Itens e historico", "Templates e referencias", "Consultas multicontexto"]
+    title: "Contexto recuperavel por significado.",
+    description: "Itens, historicos, templates e referencias aparecem pela intencao da busca, nao apenas pelo nome exato."
   },
   {
     eyebrow: "Estrutura configuravel",
-    title: "Workspaces, boards, campos, regras e templates sem comprometer a experiencia.",
-    description:
-      "O sistema pode nascer em software, mas foi pensado para acomodar diferentes modelos operacionais com clareza visual e governanca.",
-    highlights: ["Boards sob medida", "Campos e estados customizados", "Templates replicaveis"]
-  },
-  {
-    eyebrow: "Produto de ecossistema",
-    title: "Mais que um board: uma entrada de sistema pronta para operacoes maduras.",
-    description:
-      "A Home comunica governanca, inteligencia e flexibilidade logo na primeira dobra, com preview de produto, arquitetura clara e presenca de marca.",
-    highlights: ["Visao premium", "Leitura imediata", "Percepcao de robustez"]
+    title: "Estrutura flexivel sem perder clareza.",
+    description: "Workspaces, boards, campos, views, regras e templates se ajustam ao processo de cada operacao."
   }
 ];
 
 export const processStages: HomeProcessStage[] = [
   {
     step: "01",
-    title: "Captura com padrao e contexto",
-    description:
-      "Templates organizam o que entra no fluxo e evitam que cada atividade comece do zero.",
-    note: "Menos improviso na origem da operacao."
+    title: "Entrada estruturada",
+    description: "Templates e campos essenciais padronizam o que entra no fluxo."
   },
   {
     step: "02",
-    title: "IA contextualiza durante a execucao",
-    description:
-      "Descricoes, categorias e proxima acao podem ser refinadas com apoio inteligente no proprio percurso.",
-    note: "Apoio continuo em vez de consulta eventual."
+    title: "Enriquecimento com IA",
+    description: "Descricoes, prioridades e sinais recebem contexto antes da execucao."
   },
   {
     step: "03",
-    title: "Busca semantica reduz friccao",
-    description:
-      "Times acessam referencias, historicos e itens correlatos por significado, com menos dependencia de memoria individual.",
-    note: "Decisao mais rapida com contexto recuperavel."
+    title: "Busca contextual",
+    description: "Historico, itens relacionados e referencias ficam recuperaveis por significado."
   },
   {
     step: "04",
-    title: "Estrutura evolui com o negocio",
-    description:
-      "Boards, views, campos e automacoes se adaptam ao processo sem desmontar a experiencia do produto.",
-    note: "Escala com consistencia visual e operacional."
-  }
-];
-
-export const focusPanel: HomeFocusPanel = {
-  eyebrow: "Painel de contexto",
-  title: "IA age junto da atividade em vez de ficar isolada em um chat paralelo.",
-  summary:
-    "Ao abrir um item, o Dask combina status, historico, busca semantica e sinais do board para apoiar a proxima decisao.",
-  status: "Descricao aprimorada + proxima acao sugerida",
-  tags: ["Descricao", "Prioridade", "Busca", "Template"],
-  metrics: [
-    { label: "Fontes relacionadas", value: "12" },
-    { label: "Sugestoes acionaveis", value: "04" },
-    { label: "Tempo de leitura", value: "-38%" }
-  ],
-  insights: [
-    "Padroniza a descricao conforme o template do fluxo.",
-    "Relaciona itens semelhantes antes de criar retrabalho.",
-    "Indica proximos passos coerentes com o estado atual."
-  ]
-};
-
-export const searchLenses: HomeSearchLens[] = [
-  {
-    label: "Software",
-    query: "quais itens de onboarding enterprise estao com risco alto",
-    context: "Busca semantica entre backlog, historico, templates e dependencias relacionadas.",
-    results: ["Board Growth: 6 itens com dependencia de API", "Template: rollout enterprise", "Documento: SLA de implantacao"]
+    title: "Execucao com contexto",
+    description: "O time decide com mais clareza, menos retrabalho e melhor rastreabilidade."
   },
   {
-    label: "Administrativo",
-    query: "pendencias de aprovacao com atraso recorrente",
-    context: "Recupera aprovacoes, responsaveis, regras e sinais de gargalo no fluxo.",
-    results: ["Fila financeira: 9 aprovacoes acima do SLA", "Template: aprovacao multietapa", "Registro: historico de replanejamento"]
-  },
-  {
-    label: "Qualidade",
-    query: "nao conformidades recorrentes na linha 4",
-    context: "Cruza ocorrencias, checklists, causas e padroes de recorrencia por significado.",
-    results: ["Checklist de inspecao final", "Historico: 3 causas com recorrencia mensal", "Acao preventiva recomendada"]
-  }
-];
-
-export const structureLayers: HomeStructureLayer[] = [
-  {
-    label: "Camada 01",
-    title: "Workspace alinhado ao contexto da operacao",
-    description: "Cada area pode iniciar com nomenclatura, vistas e sinais adequados ao proprio fluxo."
-  },
-  {
-    label: "Camada 02",
-    title: "Boards e views com leitura operacional",
-    description: "Kanban, lista, timeline e outras vistas podem coexistir sem perder consistencia."
-  },
-  {
-    label: "Camada 03",
-    title: "Campos, estados e regras configuraveis",
-    description: "A estrutura absorve variacoes de processo sem virar um produto quebrado ou confuso."
-  },
-  {
-    label: "Camada 04",
-    title: "Templates replicaveis e expansao controlada",
-    description: "Boas praticas podem ser copiadas entre times, unidades e novos cenarios operacionais."
+    step: "05",
+    title: "Evolucao continua",
+    description: "Regras, views e templates amadurecem junto com a operacao."
   }
 ];
 
 export const useCases: HomeUseCase[] = [
   {
     title: "Software",
-    description: "Discovery, backlog, entrega, QA e suporte conectados por contexto.",
-    outcome: "Times trabalham com menos retrabalho e mais rastreabilidade."
-  },
-  {
-    title: "Escola",
-    description: "Matricula, acompanhamento academico, secretaria e comunicacao interna em fluxo unico.",
-    outcome: "Jornada do aluno organizada com visibilidade institucional."
+    focus: "Discovery, backlog, entrega, QA e suporte conectados."
   },
   {
     title: "Administrativo",
-    description: "Solicitacoes internas, aprovacoes, SLA e execucao operacional em uma mesma base.",
-    outcome: "Processos claros sem depender de controles paralelos."
+    focus: "Solicitacoes, aprovacoes, SLAs e execucao interna."
   },
   {
-    title: "Qualidade e suporte",
-    description: "Ocorrencias, nao conformidades, atendimento e planos de acao com memoria operacional.",
-    outcome: "Resposta consistente, historico recuperavel e melhoria continua."
+    title: "Qualidade",
+    focus: "Ocorrencias, nao conformidades e planos de acao."
+  },
+  {
+    title: "Suporte",
+    focus: "Atendimentos, historico, prioridade e melhoria continua."
+  },
+  {
+    title: "Escola",
+    focus: "Secretaria, acompanhamento academico e comunicacao interna."
+  }
+];
+
+export const architectureItems: HomeArchitectureItem[] = [
+  {
+    label: "Workspaces",
+    detail: "Separacao clara por area, cliente, unidade ou frente operacional."
+  },
+  {
+    label: "Boards",
+    detail: "Modelos de fluxo para organizar demanda, execucao e acompanhamento."
+  },
+  {
+    label: "Campos",
+    detail: "Informacoes essenciais adaptadas a cada tipo de operacao."
+  },
+  {
+    label: "Views",
+    detail: "Leitura por kanban, lista, timeline e perspectivas de gestao."
+  },
+  {
+    label: "Regras",
+    detail: "Automacoes e criterios que reduzem trabalho repetitivo."
+  },
+  {
+    label: "Templates",
+    detail: "Padroes replicaveis para escalar boas praticas com consistencia."
   }
 ];

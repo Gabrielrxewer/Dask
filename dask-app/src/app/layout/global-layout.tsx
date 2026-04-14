@@ -7,6 +7,14 @@ import { cn } from "@/shared/lib/cn";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
+const homeNavigationItems = [
+  { id: "top", label: "Inicio" },
+  { id: "inteligencia", label: "Como funciona" },
+  { id: "contextos", label: "Adaptabilidade" },
+  { id: "estruturas", label: "Estrutura" },
+  { id: "precos", label: "Planos" }
+];
+
 function isCompactViewport(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
@@ -47,16 +55,55 @@ export function GlobalLayout() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
+  const [activeHomeSection, setActiveHomeSection] = useState("top");
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setIsUserMenuOpen(false);
+    setIsHomeNavOpen(false);
     if (!isCompactViewport()) {
       setIsSidebarOpen(true);
       return;
     }
     setIsSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isHomeRoute) {
+      setActiveHomeSection("top");
+      return;
+    }
+
+    const scrollContainer = document.querySelector(".global-layout__main");
+    if (!(scrollContainer instanceof HTMLElement)) {
+      return;
+    }
+
+    const updateActiveSection = () => {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const currentSection = homeNavigationItems.reduce((activeId, item) => {
+        const target = document.getElementById(item.id);
+        if (!target) {
+          return activeId;
+        }
+
+        const targetTop = target.getBoundingClientRect().top - containerRect.top + scrollContainer.scrollTop;
+        return scrollContainer.scrollTop + 120 >= targetTop ? item.id : activeId;
+      }, "top");
+
+      setActiveHomeSection(currentSection);
+    };
+
+    updateActiveSection();
+    scrollContainer.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
+  }, [isHomeRoute]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -111,6 +158,27 @@ export function GlobalLayout() {
     setIsSidebarOpen(false);
   };
 
+  const scrollToHomeSection = (targetId: string) => {
+    const container = document.querySelector(".global-layout__main");
+    const target = document.getElementById(targetId);
+    if (!(container instanceof HTMLElement) || !target) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const sectionTopSpacing = 14;
+    const nextTop =
+      targetId === "top" ? 0 : targetRect.top - containerRect.top + container.scrollTop - sectionTopSpacing;
+
+    container.scrollTo({
+      top: Math.max(0, nextTop),
+      behavior: "smooth"
+    });
+    setActiveHomeSection(targetId);
+    setIsHomeNavOpen(false);
+  };
+
   const profileLabel = user?.name ?? user?.email ?? "Visitante";
   const profileSubLabel = status === "authenticated" ? "Sessao ativa" : "Nao autenticado";
   const profileEmail = user?.email ?? "Sem e-mail";
@@ -127,14 +195,15 @@ export function GlobalLayout() {
     <GlobalChromeProvider value={chromeValue}>
       <div className="global-layout">
         <div className="global-layout__surface">
-          <header className="global-header">
+          <header className={cn("global-header", isHomeRoute && "global-header--home")}>
             <div className="global-header__left">
               <button
                 type="button"
                 className="global-header__menu"
-                aria-label="Alternar menu de navegacao"
-                onClick={isPublicGuestRoute ? undefined : toggleNavigation}
-                disabled={isPublicGuestRoute}
+                aria-label={isHomeRoute ? "Alternar menu da Home" : "Alternar menu de navegacao"}
+                aria-expanded={isHomeRoute ? isHomeNavOpen : isSidebarOpen}
+                onClick={isHomeRoute ? () => setIsHomeNavOpen(prev => !prev) : isPublicGuestRoute ? undefined : toggleNavigation}
+                disabled={isPublicGuestRoute && !isHomeRoute}
               >
                 <span className="global-header__menu-grid">
                   <i />
@@ -152,6 +221,24 @@ export function GlobalLayout() {
                 <img className="global-header__brand-mark" src={daskLogoMark} alt="Dask" />
               </div>
             </div>
+
+            {isHomeRoute ? (
+              <nav className="global-header__home-nav" aria-label="Navegacao da Home">
+                {homeNavigationItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(
+                      "global-header__home-link",
+                      activeHomeSection === item.id && "global-header__home-link--active"
+                    )}
+                    onClick={() => scrollToHomeSection(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            ) : null}
 
             {isAuthenticated ? (
               <div className="global-header__user-wrap" ref={userMenuRef}>
@@ -229,6 +316,24 @@ export function GlobalLayout() {
                 </button>
               </div>
             )}
+
+            {isHomeRoute && isHomeNavOpen ? (
+              <nav className="global-header__home-menu" aria-label="Navegacao da Home">
+                {homeNavigationItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(
+                      "global-header__home-menu-link",
+                      activeHomeSection === item.id && "global-header__home-menu-link--active"
+                    )}
+                    onClick={() => scrollToHomeSection(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            ) : null}
           </header>
 
           <main

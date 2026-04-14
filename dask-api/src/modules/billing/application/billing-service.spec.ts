@@ -10,7 +10,7 @@
  *  - billing status resolution
  */
 
-import { describe, it, expect, vi, beforeEach, type Mocked } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mocked } from 'vitest';
 import { BillingService } from './billing-service';
 import type { BillingRepository, BillingUser, Subscription } from '../repositories/billing-repository';
 import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
@@ -182,6 +182,16 @@ describe('BillingService', () => {
   // ── Billing status ─────────────────────────────────────────────────────────
 
   describe('getBillingStatus', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    beforeEach(() => {
+      process.env.NODE_ENV = 'production';
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
     it('returns canAccessPlatform=true for ACTIVE subscription', async () => {
       repo.findUserById.mockResolvedValue(
         makeUser({ subscriptionStatus: 'ACTIVE' as SubscriptionStatus, hasActiveSubscription: true, subscriptionPlan: 'PERSONAL' as SubscriptionPlan })

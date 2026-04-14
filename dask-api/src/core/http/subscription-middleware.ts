@@ -16,6 +16,11 @@ export function createSubscriptionMiddleware(prisma: PrismaClient) {
       return;
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      next();
+      return;
+    }
+
     // NOTE: `hasActiveSubscription` and `subscriptionStatus` are added by the billing migration.
     // Run `prisma migrate dev` and `prisma generate` before using this middleware.
     const user = await (prisma.user.findUnique as Function)({

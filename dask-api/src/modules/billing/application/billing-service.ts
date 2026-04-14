@@ -25,10 +25,29 @@ interface StripeSubscriptionObject {
   id: string;
   customer: string | { id: string };
   status: string;
-  current_period_start: number;
-  current_period_end: number;
+  /** Top-level in older API versions; may be undefined in newer ones */
+  current_period_start?: number;
+  current_period_end?: number;
   cancel_at_period_end: boolean;
   metadata: Record<string, string>;
+  /** Newer Stripe API versions put period dates here */
+  items?: {
+    data: Array<{
+      current_period_start?: number;
+      current_period_end?: number;
+    }>;
+  };
+}
+
+/** Safely extracts period dates — handles both old (top-level) and new (items[0]) Stripe API shapes */
+function extractPeriodDates(sub: StripeSubscriptionObject): { start: Date; end: Date } {
+  const rawStart = sub.current_period_start ?? sub.items?.data?.[0]?.current_period_start;
+  const rawEnd   = sub.current_period_end   ?? sub.items?.data?.[0]?.current_period_end;
+  const now = Date.now();
+  return {
+    start: rawStart ? new Date(rawStart * 1000) : new Date(now),
+    end:   rawEnd   ? new Date(rawEnd   * 1000) : new Date(now + 30 * 24 * 60 * 60 * 1000)
+  };
 }
 
 interface StripeInvoiceObject {
@@ -237,18 +256,30 @@ export class BillingService {
 
     // Fetch full subscription object (cast to our local interface as Stripe v22 moved period fields)
     const stripeSub = await (this.stripe.subscriptions.retrieve as Function)(stripeSubId) as StripeSubscriptionObject;
+    logger.info({
+      event: 'billing.debug.subscription_shape',
+      stripeSubId,
+      top_level_start: stripeSub.current_period_start,
+      top_level_end: stripeSub.current_period_end,
+      items_count: stripeSub.items?.data?.length,
+      item0_start: stripeSub.items?.data?.[0]?.current_period_start,
+      item0_end: stripeSub.items?.data?.[0]?.current_period_end,
+      status: stripeSub.status,
+    });
     const customerId =
       typeof stripeSub.customer === 'string' ? stripeSub.customer : stripeSub.customer.id;
 
     const existing = await this.repo.findSubscriptionByStripeId(stripeSubId);
     const status = mapStripeStatus(stripeSub.status);
 
+    const { start, end } = extractPeriodDates(stripeSub);
+
     if (existing) {
       const updated = await this.repo.updateSubscription(stripeSubId, {
         status,
         planCode,
-        currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+        currentPeriodStart: start,
+        currentPeriodEnd: end,
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
         lastWebhookEvent: 'checkout.session.completed'
       });
@@ -262,8 +293,8 @@ export class BillingService {
         planCode,
         status,
         amount: PLAN_AMOUNTS_BRL[planCode],
-        currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+        currentPeriodStart: start,
+        currentPeriodEnd: end,
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
         lastWebhookEvent: 'checkout.session.completed'
       });
@@ -281,12 +312,14 @@ export class BillingService {
 
     const existing = await this.repo.findSubscriptionByStripeId(sub.id);
 
+    const { start, end } = extractPeriodDates(sub);
+
     if (existing) {
       const updated = await this.repo.updateSubscription(sub.id, {
         status,
         planCode: planCode ?? existing.planCode,
-        currentPeriodStart: new Date(sub.current_period_start * 1000),
-        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+        currentPeriodStart: start,
+        currentPeriodEnd: end,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
         lastWebhookEvent: eventType
       });
@@ -300,8 +333,8 @@ export class BillingService {
         planCode,
         status,
         amount: PLAN_AMOUNTS_BRL[planCode],
-        currentPeriodStart: new Date(sub.current_period_start * 1000),
-        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+        currentPeriodStart: start,
+        currentPeriodEnd: end,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
         lastWebhookEvent: eventType
       });
@@ -333,10 +366,11 @@ export class BillingService {
     if (!existing) return;
 
     const stripeSub = await (this.stripe.subscriptions.retrieve as Function)(subscriptionId) as StripeSubscriptionObject;
+    const { start, end } = extractPeriodDates(stripeSub);
     const updated = await this.repo.updateSubscription(subscriptionId, {
       status: mapStripeStatus(stripeSub.status),
-      currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-      currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+      currentPeriodStart: start,
+      currentPeriodEnd: end,
       lastWebhookEvent: 'invoice.paid'
     });
     await this.repo.syncUserBillingFields(existing.userId, updated);

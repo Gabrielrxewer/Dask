@@ -1,4 +1,4 @@
-import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
+import { buildBoardMetrics, factoryBoardConfig, mergeCardFieldDefinitions } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { FormField, Section, Select } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
@@ -6,7 +6,7 @@ import { BoardMetrics } from "@/widgets/board-metrics";
 import "./settings-page.css";
 
 export function SettingsPage() {
-  const { snapshot, updatePreferences, setCardFieldVisibility } = useWorkspace();
+  const { snapshot, updatePreferences } = useWorkspace();
 
   const tasks = snapshot?.tasks ?? [];
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
@@ -15,9 +15,9 @@ export function SettingsPage() {
     ...rawBoardConfig,
     statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
     taskTypes: Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes,
-    fieldDefinitions: Array.isArray(rawBoardConfig?.fieldDefinitions)
-      ? rawBoardConfig.fieldDefinitions
-      : factoryBoardConfig.fieldDefinitions,
+    fieldDefinitions: mergeCardFieldDefinitions(
+      Array.isArray(rawBoardConfig?.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : factoryBoardConfig.fieldDefinitions
+    ),
     cardLayout:
       rawBoardConfig?.cardLayout && Array.isArray(rawBoardConfig.cardLayout.visibleFieldIds)
         ? rawBoardConfig.cardLayout
@@ -34,10 +34,9 @@ export function SettingsPage() {
     boardConfig.perspectives.length > 0 ? boardConfig.perspectives : [{ id: "dev", label: "DEV" }];
   const defaultMode = snapshot?.preferences.defaultBoardMode ?? boardPerspectives[0]?.id ?? "dev";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
-  const visibleFields = new Set(snapshot?.preferences.visibleCardFieldIds ?? []);
   const fieldDefinitions = boardConfig.fieldDefinitions;
 
-  const visibleFieldsCount = visibleFields.size;
+  const visibleFieldsCount = fieldDefinitions.length;
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes do workspace" pageLabel="Admin">
@@ -45,7 +44,7 @@ export function SettingsPage() {
         <BoardMetrics
           metrics={metrics}
           cards={[
-            { label: "Campos visiveis", value: visibleFieldsCount },
+            { label: "Campos disponiveis", value: visibleFieldsCount },
             { label: "Modo padrao", value: defaultMode.toUpperCase() },
             { label: "Perspectivas", value: boardPerspectives.length },
             { label: "Atualizacao", value: "Agora" }
@@ -53,15 +52,10 @@ export function SettingsPage() {
         />
 
         <section className="settings-view">
-          <Section title="Campos visiveis no card" className="settings-view__card settings-view__card--scroll">
+          <Section title="Campos por Tipo" className="settings-view__card settings-view__card--scroll">
             <div className="settings-view__field-list">
               {fieldDefinitions.map(field => (
                 <label key={field.id} className="settings-view__checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={visibleFields.has(field.id)}
-                    onChange={event => void setCardFieldVisibility(field.id, event.target.checked)}
-                  />
                   {field.label}
                 </label>
               ))}

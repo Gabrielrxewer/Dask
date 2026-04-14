@@ -13,6 +13,7 @@ export type {
   CreateCustomFieldInput,
   CreateItemTypeInput,
   CreateTaskInput,
+  CustomFieldSettings,
   CustomFieldOptionInput,
   CustomFieldType,
   UpdateBoardColumnInput,
@@ -23,6 +24,7 @@ export type {
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceSummary,
+  WorkspaceTemplateKey,
   WorkspaceTemplateOption,
   WorkspaceSnapshot
 } from "@/modules/workspace/model/types";

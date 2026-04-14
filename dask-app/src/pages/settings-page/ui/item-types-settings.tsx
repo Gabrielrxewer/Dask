@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ApiItemType } from "@/modules/workspace/model";
-import { factoryBoardConfig } from "@/entities/task";
+import {
+  applyFieldCapabilityOverrides,
+  CARD_FIELDS_SCHEMA_VERSION,
+  factoryBoardConfig,
+  getTaskFieldTypeLabel,
+  mergeCardFieldDefinitions
+} from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { Button, FormField, Section, TextInput } from "@/shared/ui";
 import "./item-types-settings.css";
@@ -13,6 +19,43 @@ interface EditState {
   color: string;
 }
 
+interface FieldDraft {
+  card: string[];
+  detail: string[];
+}
+
+function sanitizeFieldIds(values: string[], allowedFieldIds?: Set<string>): string[] {
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === "string")
+        .map(value => value.trim())
+        .filter(value => value.length > 0 && (!allowedFieldIds || allowedFieldIds.has(value)))
+    )
+  );
+}
+
+function sanitizeFieldMapByType(
+  input: Record<string, string[]>,
+  allowedFieldIds?: Set<string>
+): Record<string, string[]> {
+  return Object.entries(input).reduce<Record<string, string[]>>((acc, [typeSlug, fieldIds]) => {
+    const normalizedSlug = typeSlug.trim();
+    if (normalizedSlug.length === 0) {
+      return acc;
+    }
+
+    acc[normalizedSlug] = sanitizeFieldIds(Array.isArray(fieldIds) ? fieldIds : [], allowedFieldIds);
+    return acc;
+  }, {});
+}
+
+function areSameIdSets(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every(value => rightSet.has(value));
+}
+
 export function ItemTypesSettings() {
   const {
     snapshot,
@@ -20,12 +63,29 @@ export function ItemTypesSettings() {
     createItemType,
     updateItemType,
     deleteItemType,
-    setTypeFieldVisibility
+    updatePreferences
   } = useWorkspace();
 
   const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const allFields = Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : [];
-  const visibleFieldsByType = snapshot?.preferences.visibleFieldsByType ?? {};
+  const allFields = applyFieldCapabilityOverrides(
+    mergeCardFieldDefinitions(
+      Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : []
+    ),
+    snapshot?.preferences.settings
+  );
+  const allowedFieldIds = new Set(allFields.map(field => field.id));
+  const visibleFieldsByType = Object.entries(snapshot?.preferences.visibleFieldsByType ?? {}).reduce<
+    Record<string, string[]>
+  >((acc, [typeSlug, fieldIds]) => {
+    acc[typeSlug] = sanitizeFieldIds(fieldIds, allowedFieldIds);
+    return acc;
+  }, {});
+  const detailVisibleFieldsByType = Object.entries(snapshot?.preferences.detailVisibleFieldsByType ?? {}).reduce<
+    Record<string, string[]>
+  >((acc, [typeSlug, fieldIds]) => {
+    acc[typeSlug] = sanitizeFieldIds(fieldIds, allowedFieldIds);
+    return acc;
+  }, {});
 
   const [itemTypes, setItemTypes] = useState<ApiItemType[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -34,6 +94,9 @@ export function ItemTypesSettings() {
   const [newType, setNewType] = useState<{ name: string; color: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [savingFieldsTypeSlug, setSavingFieldsTypeSlug] = useState<string | null>(null);
+  const [fieldDraftsByTypeSlug, setFieldDraftsByTypeSlug] = useState<Record<string, FieldDraft>>({});
+  const [fieldErrorsByTypeSlug, setFieldErrorsByTypeSlug] = useState<Record<string, string>>({});
 
   const loadTypes = useCallback(async () => {
     setLoadingList(true);
@@ -92,15 +155,189 @@ export function ItemTypesSettings() {
     }
   };
 
-  const handleToggleFieldVisibility = (typeId: string, fieldId: string, currentlyVisible: boolean) => {
-    void setTypeFieldVisibility(typeId, fieldId, !currentlyVisible);
+  const resolveEffectiveCardFields = useCallback(
+    (typeSlug: string): string[] => visibleFieldsByType[typeSlug] ?? [],
+    [visibleFieldsByType]
+  );
+
+  const resolveEffectiveDetailFields = useCallback(
+    (typeSlug: string): string[] => detailVisibleFieldsByType[typeSlug] ?? visibleFieldsByType[typeSlug] ?? [],
+    [detailVisibleFieldsByType, visibleFieldsByType]
+  );
+
+  const resolveDraft = useCallback(
+    (typeSlug: string): FieldDraft =>
+      fieldDraftsByTypeSlug[typeSlug] ?? {
+        card: [...resolveEffectiveCardFields(typeSlug)],
+        detail: [...resolveEffectiveDetailFields(typeSlug)]
+      },
+    [fieldDraftsByTypeSlug, resolveEffectiveCardFields, resolveEffectiveDetailFields]
+  );
+
+  const ensureTypeDraft = useCallback(
+    (typeSlug: string) => {
+      setFieldErrorsByTypeSlug(current => ({ ...current, [typeSlug]: "" }));
+      setFieldDraftsByTypeSlug(current => {
+        if (current[typeSlug]) return current;
+        return {
+          ...current,
+          [typeSlug]: {
+            card: [...resolveEffectiveCardFields(typeSlug)],
+            detail: [...resolveEffectiveDetailFields(typeSlug)]
+          }
+        };
+      });
+    },
+    [resolveEffectiveCardFields, resolveEffectiveDetailFields]
+  );
+
+  const updateTypeDraft = useCallback((typeSlug: string, nextDraft: FieldDraft) => {
+    setFieldDraftsByTypeSlug(current => ({
+      ...current,
+      [typeSlug]: {
+        card: sanitizeFieldIds(nextDraft.card, allowedFieldIds),
+        detail: sanitizeFieldIds(nextDraft.detail, allowedFieldIds)
+      }
+    }));
+  }, [allowedFieldIds]);
+
+  const toggleDraftField = useCallback(
+    (typeSlug: string, scope: "card" | "detail", fieldId: string, checked: boolean) => {
+      const draft = resolveDraft(typeSlug);
+      const currentSet = new Set(draft[scope]);
+
+      if (checked) {
+        currentSet.add(fieldId);
+      } else {
+        currentSet.delete(fieldId);
+      }
+
+      updateTypeDraft(typeSlug, { ...draft, [scope]: Array.from(currentSet) });
+    },
+    [resolveDraft, updateTypeDraft]
+  );
+
+  const setDraftFields = useCallback(
+    (typeSlug: string, scope: "card" | "detail", fieldIds: string[]) => {
+      const draft = resolveDraft(typeSlug);
+      updateTypeDraft(typeSlug, { ...draft, [scope]: sanitizeFieldIds(fieldIds, allowedFieldIds) });
+    },
+    [allowedFieldIds, resolveDraft, updateTypeDraft]
+  );
+
+  const handleDiscardTypeChanges = useCallback(
+    (typeSlug: string) => {
+      setFieldErrorsByTypeSlug(current => ({ ...current, [typeSlug]: "" }));
+      updateTypeDraft(typeSlug, {
+        card: [...resolveEffectiveCardFields(typeSlug)],
+        detail: [...resolveEffectiveDetailFields(typeSlug)]
+      });
+    },
+    [resolveEffectiveCardFields, resolveEffectiveDetailFields, updateTypeDraft]
+  );
+
+  const handleUseDefaultForType = useCallback(
+    async (typeSlug: string) => {
+      if (!snapshot) return;
+      setSavingFieldsTypeSlug(typeSlug);
+      setFieldErrorsByTypeSlug(current => ({ ...current, [typeSlug]: "" }));
+
+      try {
+        const nextVisibleByType = sanitizeFieldMapByType(
+          { ...(snapshot.preferences.visibleFieldsByType ?? {}) },
+          allowedFieldIds
+        );
+        const nextDetailByType = sanitizeFieldMapByType(
+          { ...(snapshot.preferences.detailVisibleFieldsByType ?? {}) },
+          allowedFieldIds
+        );
+        delete nextVisibleByType[typeSlug];
+        delete nextDetailByType[typeSlug];
+
+        await updatePreferences({
+          visibleFieldsByType: nextVisibleByType,
+          detailVisibleFieldsByType: nextDetailByType,
+          settings: {
+            cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION
+          }
+        });
+
+        setFieldDraftsByTypeSlug(current => {
+          const { [typeSlug]: _removed, ...rest } = current;
+          return rest;
+        });
+      } catch {
+        setFieldErrorsByTypeSlug(current => ({
+          ...current,
+          [typeSlug]: "Nao foi possivel aplicar o padrao. Tente novamente."
+        }));
+      } finally {
+        setSavingFieldsTypeSlug(null);
+      }
+    },
+    [allowedFieldIds, snapshot, updatePreferences]
+  );
+
+  const handleSaveTypeFields = useCallback(
+    async (typeSlug: string) => {
+      if (!snapshot) return;
+      const draft = resolveDraft(typeSlug);
+      setSavingFieldsTypeSlug(typeSlug);
+      setFieldErrorsByTypeSlug(current => ({ ...current, [typeSlug]: "" }));
+
+      try {
+        const currentVisibleByType = sanitizeFieldMapByType(
+          { ...(snapshot.preferences.visibleFieldsByType ?? {}) },
+          allowedFieldIds
+        );
+        const currentDetailByType = sanitizeFieldMapByType(
+          { ...(snapshot.preferences.detailVisibleFieldsByType ?? {}) },
+          allowedFieldIds
+        );
+
+        await updatePreferences({
+          visibleFieldsByType: {
+            ...currentVisibleByType,
+            [typeSlug]: sanitizeFieldIds(draft.card, allowedFieldIds)
+          },
+          detailVisibleFieldsByType: {
+            ...currentDetailByType,
+            [typeSlug]: sanitizeFieldIds(draft.detail, allowedFieldIds)
+          },
+          settings: {
+            cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION
+          }
+        });
+
+        setFieldDraftsByTypeSlug(current => {
+          const { [typeSlug]: _removed, ...rest } = current;
+          return rest;
+        });
+      } catch {
+        setFieldErrorsByTypeSlug(current => ({
+          ...current,
+          [typeSlug]: "Nao foi possivel salvar as alteracoes. Verifique os dados e tente novamente."
+        }));
+      } finally {
+        setSavingFieldsTypeSlug(null);
+      }
+    },
+    [allowedFieldIds, resolveDraft, snapshot, updatePreferences]
+  );
+
+  const handleToggleCardFieldVisibility = (typeSlug: string, fieldId: string, checked: boolean) => {
+    toggleDraftField(typeSlug, "card", fieldId, checked);
+  };
+
+  const handleToggleDetailFieldVisibility = (typeSlug: string, fieldId: string, checked: boolean) => {
+    toggleDraftField(typeSlug, "detail", fieldId, checked);
   };
 
   return (
     <div className="item-types-settings">
       <Section
         title="Tipos de work item"
-        subtitle="Defina os tipos de tarefa e quais campos aparecem no card do board para cada tipo."
+        subtitle="Defina os tipos e quais campos aparecem no card e no workitem expandido para cada tipo."
         actions={
           !newType ? (
             <Button type="button" size="sm" onClick={() => { setNewType({ name: "", color: DEFAULT_COLOR }); setEditing(null); setExpandedFieldsFor(null); }}>
@@ -159,8 +396,19 @@ export function ItemTypesSettings() {
           )}
 
           {itemTypes.map(type => {
-            const typeVisibleFields = new Set<string>(visibleFieldsByType[type.id] ?? []);
+            const draft = resolveDraft(type.slug);
+            const typeCardFields = new Set<string>(draft.card);
+            const typeDetailFields = new Set<string>(draft.detail);
+            const effectiveCardFields = resolveEffectiveCardFields(type.slug);
+            const effectiveDetailFields = resolveEffectiveDetailFields(type.slug);
+            const hasUnsavedChanges =
+              !areSameIdSets(draft.card, effectiveCardFields) ||
+              !areSameIdSets(draft.detail, effectiveDetailFields);
+            const hasCardOverride = Object.prototype.hasOwnProperty.call(visibleFieldsByType, type.slug);
+            const hasDetailOverride = Object.prototype.hasOwnProperty.call(detailVisibleFieldsByType, type.slug);
             const isExpandedFields = expandedFieldsFor === type.id;
+            const isSavingTypeFields = savingFieldsTypeSlug === type.slug;
+            const typeFieldsError = fieldErrorsByTypeSlug[type.slug] ?? "";
 
             return (
               <div key={type.id} className="item-types-settings__item">
@@ -211,20 +459,23 @@ export function ItemTypesSettings() {
                       >
                         {type.name}
                       </span>
-                      {typeVisibleFields.size > 0 && (
-                        <span className="item-types-settings__fields-hint">
-                          {typeVisibleFields.size} {typeVisibleFields.size === 1 ? "campo visivel" : "campos visiveis"}
-                        </span>
-                      )}
+                      <span className="item-types-settings__fields-hint">
+                        Card: {typeCardFields.size} | Expandido: {typeDetailFields.size}
+                      </span>
                     </div>
                     <div className="item-types-settings__row-actions">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => setExpandedFieldsFor(isExpandedFields ? null : type.id)}
+                        onClick={() => {
+                          if (!isExpandedFields) {
+                            ensureTypeDraft(type.slug);
+                          }
+                          setExpandedFieldsFor(isExpandedFields ? null : type.id);
+                        }}
                       >
-                        {isExpandedFields ? "Fechar campos" : "Campos visiveis"}
+                        {isExpandedFields ? "Fechar campos" : "Configurar campos"}
                       </Button>
                       <Button type="button" size="sm" variant="outline" onClick={() => handleStartEdit(type)}>
                         Editar
@@ -242,33 +493,149 @@ export function ItemTypesSettings() {
                   </div>
                 )}
 
-                {/* Painel de campos visíveis por tipo */}
                 {isExpandedFields && !editing && (
                   <div className="item-types-settings__fields-panel">
                     <p className="item-types-settings__fields-title">
-                      Campos visíveis no card para <strong>{type.name}</strong>
+                      Campos para <strong>{type.name}</strong>
                     </p>
+
                     {allFields.length === 0 ? (
                       <p className="item-types-settings__fields-empty">
                         Nenhum campo customizado definido. Crie campos em "Campos customizados".
                       </p>
                     ) : (
-                      <div className="item-types-settings__fields-grid">
-                        {allFields.map(field => {
-                          const isVisible = typeVisibleFields.has(field.id);
-                          return (
-                            <label key={field.id} className="item-types-settings__field-row">
-                              <input
-                                type="checkbox"
-                                checked={isVisible}
-                                onChange={() => handleToggleFieldVisibility(type.id, field.id, isVisible)}
-                              />
-                              <span className="item-types-settings__field-label">{field.label}</span>
-                              <span className="item-types-settings__field-type">{field.type}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
+                      <>
+                        <p className="item-types-settings__fields-title">
+                          Card fechado
+                          <span className="item-types-settings__fields-meta">
+                            {hasCardOverride ? "Configuracao propria" : "Usando padrao do workspace"}
+                          </span>
+                        </p>
+                        <div className="item-types-settings__fields-actions">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDraftFields(type.slug, "card", allFields.map(field => field.id))}
+                          >
+                            Selecionar todos
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDraftFields(type.slug, "card", [])}
+                          >
+                            Limpar
+                          </Button>
+                        </div>
+                        <div className="item-types-settings__fields-grid">
+                          {allFields.map(field => {
+                            const isVisible = typeCardFields.has(field.id);
+                            return (
+                              <label key={`card-${type.slug}-${field.id}`} className="item-types-settings__field-row">
+                                <input
+                                  type="checkbox"
+                                  checked={isVisible}
+                                  onChange={event => handleToggleCardFieldVisibility(type.slug, field.id, event.target.checked)}
+                                />
+                                <span className="item-types-settings__field-label">{field.label}</span>
+                                <span className="item-types-settings__field-type">{getTaskFieldTypeLabel(field)}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        <p className="item-types-settings__fields-title">
+                          Workitem expandido
+                          <span className="item-types-settings__fields-meta">
+                            {hasDetailOverride ? "Configuracao propria" : "Usando padrao do card"}
+                          </span>
+                        </p>
+                        <div className="item-types-settings__fields-actions">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDraftFields(type.slug, "detail", allFields.map(field => field.id))}
+                          >
+                            Selecionar todos
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDraftFields(type.slug, "detail", draft.card)}
+                          >
+                            Copiar do card
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDraftFields(type.slug, "detail", [])}
+                          >
+                            Limpar
+                          </Button>
+                        </div>
+                        <div className="item-types-settings__fields-grid">
+                          {allFields.map(field => {
+                            const isVisible = typeDetailFields.has(field.id);
+                            return (
+                              <label key={`detail-${type.slug}-${field.id}`} className="item-types-settings__field-row">
+                                <input
+                                  type="checkbox"
+                                  checked={isVisible}
+                                  onChange={event =>
+                                    handleToggleDetailFieldVisibility(type.slug, field.id, event.target.checked)
+                                  }
+                                />
+                                <span className="item-types-settings__field-label">{field.label}</span>
+                                <span className="item-types-settings__field-type">{getTaskFieldTypeLabel(field)}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        <div className="item-types-settings__panel-footer">
+                          {typeFieldsError ? (
+                            <span className="item-types-settings__error">{typeFieldsError}</span>
+                          ) : hasUnsavedChanges ? (
+                            <span className="item-types-settings__pending">Alteracoes nao salvas.</span>
+                          ) : (
+                            <span className="item-types-settings__saved">Sem alteracoes pendentes.</span>
+                          )}
+
+                          <div className="item-types-settings__panel-footer-actions">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDiscardTypeChanges(type.slug)}
+                              disabled={isSavingTypeFields || !hasUnsavedChanges}
+                            >
+                              Reverter
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void handleUseDefaultForType(type.slug)}
+                              disabled={isSavingTypeFields}
+                            >
+                              Usar padrao
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => void handleSaveTypeFields(type.slug)}
+                              disabled={isSavingTypeFields || !hasUnsavedChanges}
+                            >
+                              {isSavingTypeFields ? "Salvando..." : "Salvar alteracoes"}
+                            </Button>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

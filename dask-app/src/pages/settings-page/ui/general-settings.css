@@ -40,6 +40,30 @@
   gap: 12px;
 }
 
+.general-settings__warning {
+  margin: 0;
+  color: #8f4d12;
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.general-settings__reset-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.general-settings__feedback {
+  color: #1f6b43;
+  font-size: var(--font-size-xs);
+}
+
+.general-settings__error {
+  color: #ad2f2f;
+  font-size: var(--font-size-xs);
+}
+
 .general-settings__perspectives-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(220px, 1fr));

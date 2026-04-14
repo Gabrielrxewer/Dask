@@ -1,0 +1,215 @@
+.choose-plan {
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(32px, 5vw, 80px) clamp(18px, 3.6vw, 40px);
+  gap: 48px;
+}
+
+.choose-plan__header {
+  text-align: center;
+  max-width: 560px;
+  display: grid;
+  gap: 12px;
+}
+
+.choose-plan__eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-primary, #3b82f6);
+}
+
+.choose-plan__title {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-strong, #0a1e31);
+  margin: 0;
+}
+
+.choose-plan__description {
+  font-size: 15px;
+  color: var(--color-text-secondary, #94a3b8);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.choose-plan__plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.choose-plan__card {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(173, 205, 231, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s;
+  position: relative;
+}
+
+.choose-plan__card:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(15, 23, 42, 0.85);
+  transform: translateY(-2px);
+}
+
+.choose-plan__card--selected {
+  border-color: rgba(59, 130, 246, 0.85);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.choose-plan__card--featured {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.choose-plan__card--featured:hover,
+.choose-plan__card--featured.choose-plan__card--selected {
+  border-color: rgba(139, 92, 246, 0.85);
+}
+
+.choose-plan__badge {
+  position: absolute;
+  top: -11px;
+  right: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.choose-plan__plan-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #94a3b8);
+  margin: 0;
+}
+
+.choose-plan__price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.choose-plan__price-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--color-text-primary, #f1f5f9);
+  line-height: 1;
+}
+
+.choose-plan__price-period {
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a3b8);
+}
+
+.choose-plan__plan-description {
+  font-size: 14px;
+  color: var(--color-text-secondary, #94a3b8);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.choose-plan__features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.choose-plan__feature {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a3b8);
+}
+
+.choose-plan__feature::before {
+  content: "✓";
+  font-size: 12px;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.choose-plan__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, transform 0.15s;
+  width: 100%;
+  white-space: nowrap;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+
+.choose-plan__card--featured .choose-plan__action {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+.choose-plan__action:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.choose-plan__action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.choose-plan__action--loading::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: choose-plan-spin 0.6s linear infinite;
+}
+
+@keyframes choose-plan-spin {
+  to { transform: rotate(360deg); }
+}
+
+.choose-plan__notice {
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a3b8);
+  text-align: center;
+  max-width: 480px;
+}
+
+.choose-plan__error {
+  font-size: 13px;
+  color: #f87171;
+  padding: 10px 16px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 8px;
+  text-align: center;
+}

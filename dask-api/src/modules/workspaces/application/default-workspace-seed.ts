@@ -44,6 +44,7 @@ type DefaultCustomFieldSeed = {
   required?: boolean;
   options?: Array<{ label: string; value: string; color?: string }>;
   scopeTypeSlugs: string[];
+  settings?: Record<string, unknown>;
 };
 
 type DefaultBoardViewSeed = {
@@ -59,39 +60,51 @@ type DefaultBoardViewSeed = {
   statuses: Array<{ id: string; label: string; dot: string }>;
 };
 
-const defaultItemTypes: DefaultTypeSeed[] = [
+type TemplateSeedPreset = {
+  templateKey: WorkspaceTemplateKey;
+  itemTypes: DefaultTypeSeed[];
+  workflowStates: DefaultStateSeed[];
+  columns: DefaultColumnSeed[];
+  customFields: DefaultCustomFieldSeed[];
+  defaultBoardMode: string;
+  defaultVisibleCardFields: string[];
+  defaultVisibleDetailFields: string[];
+  defaultBoardViews: DefaultBoardViewSeed[];
+};
+
+const CARD_FIELDS_SCHEMA_VERSION = 2;
+
+const defaultSystemCardFieldIds = [
+  'sys:type',
+  'sys:priority',
+  'sys:status',
+  'sys:title',
+  'sys:description',
+  'sys:created-by',
+  'sys:assignee',
+  'sys:due-date'
+];
+
+const defaultSystemDetailFieldIds = [
+  'sys:type',
+  'sys:priority',
+  'sys:status',
+  'sys:title',
+  'sys:description',
+  'sys:created-by',
+  'sys:assignee',
+  'sys:tags',
+  'sys:checklist',
+  'sys:due-date'
+];
+
+const softwareDeliveryItemTypes: DefaultTypeSeed[] = [
   {
-    name: 'Epic',
-    slug: 'epic',
-    description: 'Large initiative that groups features and stories.',
-    color: '#6d28d9',
-    icon: 'layers',
-    acceptsParent: false,
-    acceptsChecklist: false,
-    acceptsDueDate: true,
-    acceptsAssignee: true,
-    acceptsTags: true,
-    acceptsCustomFields: true
-  },
-  {
-    name: 'User Story',
-    slug: 'user-story',
-    description: 'End-user behavior or need to be delivered.',
-    color: '#16a34a',
-    icon: 'bookmark',
-    acceptsParent: true,
-    acceptsChecklist: true,
-    acceptsDueDate: true,
-    acceptsAssignee: true,
-    acceptsTags: true,
-    acceptsCustomFields: true
-  },
-  {
-    name: 'Improvement',
-    slug: 'improvement',
-    description: 'Enhancement over existing behavior.',
-    color: '#b45309',
-    icon: 'sparkles',
+    name: 'Bug',
+    slug: 'bug',
+    description: 'Defect requiring investigation and correction.',
+    color: '#dc2626',
+    icon: 'bug',
     acceptsParent: true,
     acceptsChecklist: true,
     acceptsDueDate: true,
@@ -113,13 +126,26 @@ const defaultItemTypes: DefaultTypeSeed[] = [
     acceptsCustomFields: true
   },
   {
-    name: 'Bug',
-    slug: 'bug',
-    description: 'Defect requiring investigation and correction.',
-    color: '#dc2626',
-    icon: 'bug',
+    name: 'User Story',
+    slug: 'user-story',
+    description: 'End-user behavior or need to be delivered.',
+    color: '#16a34a',
+    icon: 'bookmark',
     acceptsParent: true,
     acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Epic',
+    slug: 'epic',
+    description: 'Large initiative that groups work items.',
+    color: '#6d28d9',
+    icon: 'layers',
+    acceptsParent: false,
+    acceptsChecklist: false,
     acceptsDueDate: true,
     acceptsAssignee: true,
     acceptsTags: true,
@@ -137,62 +163,10 @@ const defaultItemTypes: DefaultTypeSeed[] = [
     acceptsAssignee: true,
     acceptsTags: true,
     acceptsCustomFields: true
-  },
-  {
-    name: 'Incident',
-    slug: 'incident',
-    description: 'Operational disruption requiring action.',
-    color: '#9b2034',
-    icon: 'siren',
-    acceptsParent: true,
-    acceptsChecklist: true,
-    acceptsDueDate: true,
-    acceptsAssignee: true,
-    acceptsTags: true,
-    acceptsCustomFields: true
-  },
-  {
-    name: 'Hotfix',
-    slug: 'hotfix',
-    description: 'Urgent corrective delivery in production.',
-    color: '#9b4d00',
-    icon: 'wrench',
-    acceptsParent: true,
-    acceptsChecklist: true,
-    acceptsDueDate: true,
-    acceptsAssignee: true,
-    acceptsTags: true,
-    acceptsCustomFields: true
-  },
-  {
-    name: 'Chore',
-    slug: 'chore',
-    description: 'Maintenance task with low product impact.',
-    color: '#4a5f75',
-    icon: 'tool',
-    acceptsParent: true,
-    acceptsChecklist: true,
-    acceptsDueDate: true,
-    acceptsAssignee: true,
-    acceptsTags: true,
-    acceptsCustomFields: true
-  },
-  {
-    name: 'Research',
-    slug: 'research',
-    description: 'Research stream to support planning decisions.',
-    color: '#384c9a',
-    icon: 'search',
-    acceptsParent: true,
-    acceptsChecklist: true,
-    acceptsDueDate: true,
-    acceptsAssignee: true,
-    acceptsTags: true,
-    acceptsCustomFields: true
   }
 ];
 
-const defaultWorkflowStates: DefaultStateSeed[] = [
+const softwareDeliveryStates: DefaultStateSeed[] = [
   { name: 'Backlog', slug: 'backlog', category: 'todo', color: '#64748b' },
   { name: 'In Progress', slug: 'in-progress', category: 'doing', color: '#0d8df7' },
   { name: 'In Review', slug: 'in-review', category: 'doing', color: '#f59e0b' },
@@ -200,22 +174,22 @@ const defaultWorkflowStates: DefaultStateSeed[] = [
   { name: 'Blocked', slug: 'blocked', category: 'blocked', color: '#ef4444' }
 ];
 
-const defaultColumns: DefaultColumnSeed[] = [
+const softwareDeliveryColumns: DefaultColumnSeed[] = [
   { name: 'Backlog', slug: 'backlog', stateSlugs: ['backlog'] },
   { name: 'Doing', slug: 'doing', stateSlugs: ['in-progress', 'blocked'], wipLimit: 10 },
   { name: 'Review', slug: 'review', stateSlugs: ['in-review'], wipLimit: 6 },
   { name: 'Done', slug: 'done', stateSlugs: ['done'] }
 ];
 
-const allScopeTypes = defaultItemTypes.map((itemType) => itemType.slug);
+const softwareDeliveryTypeSlugs = softwareDeliveryItemTypes.map((itemType) => itemType.slug);
 
-const defaultCustomFields: DefaultCustomFieldSeed[] = [
+const softwareDeliveryCustomFields: DefaultCustomFieldSeed[] = [
   {
     name: 'Story Points',
     slug: 'story-points',
     description: 'Relative effort estimation.',
     type: 'NUMBER',
-    scopeTypeSlugs: allScopeTypes
+    scopeTypeSlugs: softwareDeliveryTypeSlugs
   },
   {
     name: 'Severity',
@@ -223,137 +197,22 @@ const defaultCustomFields: DefaultCustomFieldSeed[] = [
     description: 'Business and technical severity level.',
     type: 'SELECT',
     options: [
-      { label: 'Critical', value: 'Critical', color: '#dc2626' },
-      { label: 'High', value: 'High', color: '#f97316' },
-      { label: 'Medium', value: 'Medium', color: '#f59e0b' },
-      { label: 'Low', value: 'Low', color: '#22c55e' }
+      { label: 'Critical', value: 'critical', color: '#dc2626' },
+      { label: 'High', value: 'high', color: '#f97316' },
+      { label: 'Medium', value: 'medium', color: '#f59e0b' },
+      { label: 'Low', value: 'low', color: '#22c55e' }
     ],
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Status Planejamento',
-    slug: 'planning-status',
-    type: 'SELECT',
-    options: [
-      { label: 'Ideias', value: 'plan-ideas', color: '#8b9bb0' },
-      { label: 'Planejado', value: 'plan-committed', color: '#1976d2' },
-      { label: 'Construindo', value: 'plan-building', color: '#f59e0b' },
-      { label: 'Pronto para entrega', value: 'plan-ready', color: '#22c55e' }
-    ],
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Status QA',
-    slug: 'qa-status',
-    type: 'SELECT',
-    options: [
-      { label: 'Liberado para teste', value: 'qa-ready', color: '#4f8cff' },
-      { label: 'Em teste', value: 'qa-testing', color: '#f59e0b' },
-      { label: 'Aprovado', value: 'qa-approved', color: '#22c55e' },
-      { label: 'Reprovado', value: 'qa-rejected', color: '#e53935' }
-    ],
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Faixa Gerencial',
-    slug: 'manager-lane',
-    type: 'SELECT',
-    options: [
-      { label: 'Epicos', value: 'mgr-epics', color: '#7c3aed' },
-      { label: 'Iniciativas', value: 'mgr-initiatives', color: '#0d8df7' },
-      { label: 'Riscos', value: 'mgr-risks', color: '#ef4444' },
-      { label: 'Entrega', value: 'mgr-delivery', color: '#16a34a' }
-    ],
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Sprint',
-    slug: 'sprint',
-    type: 'TEXT',
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Componente',
-    slug: 'component',
-    type: 'TEXT',
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Ambiente',
-    slug: 'environment',
-    type: 'SELECT',
-    options: [
-      { label: 'Production', value: 'Production', color: '#dc2626' },
-      { label: 'Staging', value: 'Staging', color: '#f59e0b' },
-      { label: 'Development', value: 'Development', color: '#22c55e' }
-    ],
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'QA Ready',
-    slug: 'qa-ready',
-    type: 'BOOLEAN',
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Impacto Cliente',
-    slug: 'customer-impact',
-    type: 'SELECT',
-    options: [
-      { label: 'Alto', value: 'Alto', color: '#dc2626' },
-      { label: 'Medio', value: 'Medio', color: '#f59e0b' },
-      { label: 'Baixo', value: 'Baixo', color: '#22c55e' }
-    ],
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Release',
-    slug: 'release',
-    type: 'TEXT',
-    scopeTypeSlugs: allScopeTypes
-  },
-  {
-    name: 'Squad',
-    slug: 'squad',
-    type: 'TEXT',
-    scopeTypeSlugs: allScopeTypes
+    scopeTypeSlugs: softwareDeliveryTypeSlugs
   }
 ];
 
-const defaultBoardViews: DefaultBoardViewSeed[] = [
+const softwareDeliveryBoardViews: DefaultBoardViewSeed[] = [
   {
     key: 'dev',
     name: 'DEV',
     caption: 'Fluxo operacional principal',
     visibleBoardColumnSlugs: ['backlog', 'doing', 'review', 'done'],
     statusSource: { kind: 'workflow_state' },
-    statuses: [
-      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
-      { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
-      { id: 'in-review', label: 'Review', dot: '#f59e0b' },
-      { id: 'done', label: 'Done', dot: '#22c55e' }
-    ]
-  },
-  {
-    key: 'po',
-    name: 'PO',
-    caption: 'Planejamento e priorizacao',
-    visibleBoardColumnSlugs: ['backlog', 'doing', 'review'],
-    statusSource: { kind: 'workflow_state' },
-    statuses: [
-      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
-      { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
-      { id: 'in-review', label: 'Review', dot: '#f59e0b' },
-      { id: 'done', label: 'Done', dot: '#22c55e' }
-    ]
-  },
-  {
-    key: 'management',
-    name: 'GESTAO',
-    caption: 'Acompanhamento executivo',
-    visibleBoardColumnSlugs: ['doing', 'review', 'done'],
-    statusSource: { kind: 'workflow_state' },
-    allowedTaskTypes: ['epic', 'user-story', 'improvement', 'research', 'spike', 'bug', 'incident', 'hotfix'],
     statuses: [
       { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
       { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
@@ -374,13 +233,318 @@ const defaultBoardViews: DefaultBoardViewSeed[] = [
       { id: 'in-review', label: 'Review', dot: '#f59e0b' },
       { id: 'done', label: 'Done', dot: '#22c55e' }
     ]
+  },
+  {
+    key: 'management',
+    name: 'GESTAO',
+    caption: 'Acompanhamento executivo',
+    visibleBoardColumnSlugs: ['doing', 'review', 'done'],
+    allowedTaskTypes: ['bug', 'task', 'user-story', 'epic', 'spike'],
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+      { id: 'in-progress', label: 'Em Progresso', dot: '#0d8df7' },
+      { id: 'in-review', label: 'Review', dot: '#f59e0b' },
+      { id: 'done', label: 'Done', dot: '#22c55e' }
+    ]
   }
 ];
 
+const productDiscoveryItemTypes: DefaultTypeSeed[] = [
+  {
+    name: 'Opportunity',
+    slug: 'opportunity',
+    description: 'Problem area worth exploring.',
+    color: '#7c3aed',
+    icon: 'target',
+    acceptsParent: false,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Hypothesis',
+    slug: 'hypothesis',
+    description: 'Assumption to validate with evidence.',
+    color: '#0d8df7',
+    icon: 'lightbulb',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Experiment',
+    slug: 'experiment',
+    description: 'Experiment plan or execution work item.',
+    color: '#f59e0b',
+    icon: 'flask',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Insight',
+    slug: 'insight',
+    description: 'Learning captured from discovery.',
+    color: '#16a34a',
+    icon: 'sparkles',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  }
+];
+
+const productDiscoveryStates: DefaultStateSeed[] = [
+  { name: 'Backlog', slug: 'backlog', category: 'todo', color: '#64748b' },
+  { name: 'Discovery', slug: 'discovery', category: 'doing', color: '#0d8df7' },
+  { name: 'Experiment', slug: 'experiment', category: 'doing', color: '#f59e0b' },
+  { name: 'Validated', slug: 'validated', category: 'done', color: '#22c55e', isTerminal: true }
+];
+
+const productDiscoveryColumns: DefaultColumnSeed[] = [
+  { name: 'Backlog', slug: 'backlog', stateSlugs: ['backlog'] },
+  { name: 'Discovery', slug: 'discovery', stateSlugs: ['discovery'], wipLimit: 8 },
+  { name: 'Experiment', slug: 'experiment', stateSlugs: ['experiment'], wipLimit: 6 },
+  { name: 'Validated', slug: 'validated', stateSlugs: ['validated'] }
+];
+
+const productDiscoveryTypeSlugs = productDiscoveryItemTypes.map((itemType) => itemType.slug);
+
+const productDiscoveryCustomFields: DefaultCustomFieldSeed[] = [
+  {
+    name: 'Confidence',
+    slug: 'confidence',
+    description: 'Confidence score for the current hypothesis.',
+    type: 'NUMBER',
+    scopeTypeSlugs: productDiscoveryTypeSlugs
+  },
+  {
+    name: 'Impact',
+    slug: 'impact',
+    description: 'Expected impact level for product outcomes.',
+    type: 'SELECT',
+    options: [
+      { label: 'High', value: 'high', color: '#dc2626' },
+      { label: 'Medium', value: 'medium', color: '#f59e0b' },
+      { label: 'Low', value: 'low', color: '#22c55e' }
+    ],
+    scopeTypeSlugs: productDiscoveryTypeSlugs
+  }
+];
+
+const productDiscoveryBoardViews: DefaultBoardViewSeed[] = [
+  {
+    key: 'discovery',
+    name: 'DISCOVERY',
+    caption: 'Ideias, hipoteses e experimentos em validacao',
+    visibleBoardColumnSlugs: ['backlog', 'discovery', 'experiment', 'validated'],
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+      { id: 'discovery', label: 'Discovery', dot: '#0d8df7' },
+      { id: 'experiment', label: 'Experiment', dot: '#f59e0b' },
+      { id: 'validated', label: 'Validated', dot: '#22c55e' }
+    ]
+  },
+  {
+    key: 'product',
+    name: 'PRODUCT',
+    caption: 'Visao de impacto e confianca das iniciativas',
+    visibleBoardColumnSlugs: ['discovery', 'experiment', 'validated'],
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'backlog', label: 'Backlog', dot: '#8b9bb0' },
+      { id: 'discovery', label: 'Discovery', dot: '#0d8df7' },
+      { id: 'experiment', label: 'Experiment', dot: '#f59e0b' },
+      { id: 'validated', label: 'Validated', dot: '#22c55e' }
+    ]
+  }
+];
+
+const operationsKanbanItemTypes: DefaultTypeSeed[] = [
+  {
+    name: 'Incident',
+    slug: 'incident',
+    description: 'Operational disruption requiring fast response.',
+    color: '#dc2626',
+    icon: 'siren',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Request',
+    slug: 'request',
+    description: 'Operational request from internal or external users.',
+    color: '#0369a1',
+    icon: 'inbox',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Maintenance',
+    slug: 'maintenance',
+    description: 'Preventive or corrective maintenance task.',
+    color: '#f59e0b',
+    icon: 'wrench',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  },
+  {
+    name: 'Problem',
+    slug: 'problem',
+    description: 'Root-cause investigation and structural fix.',
+    color: '#7c3aed',
+    icon: 'search',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  }
+];
+
+const operationsKanbanStates: DefaultStateSeed[] = [
+  { name: 'Queue', slug: 'queue', category: 'todo', color: '#64748b' },
+  { name: 'Triage', slug: 'triage', category: 'doing', color: '#0d8df7' },
+  { name: 'In Progress', slug: 'in-progress', category: 'doing', color: '#f59e0b' },
+  { name: 'Resolved', slug: 'resolved', category: 'done', color: '#22c55e', isTerminal: true },
+  { name: 'Blocked', slug: 'blocked', category: 'blocked', color: '#ef4444' }
+];
+
+const operationsKanbanColumns: DefaultColumnSeed[] = [
+  { name: 'Queue', slug: 'queue', stateSlugs: ['queue'] },
+  { name: 'Triage', slug: 'triage', stateSlugs: ['triage', 'blocked'], wipLimit: 12 },
+  { name: 'Execution', slug: 'execution', stateSlugs: ['in-progress'], wipLimit: 8 },
+  { name: 'Resolved', slug: 'resolved', stateSlugs: ['resolved'] }
+];
+
+const operationsKanbanTypeSlugs = operationsKanbanItemTypes.map((itemType) => itemType.slug);
+
+const operationsKanbanCustomFields: DefaultCustomFieldSeed[] = [
+  {
+    name: 'Severity',
+    slug: 'severity',
+    description: 'Operational severity of the work item.',
+    type: 'SELECT',
+    options: [
+      { label: 'P1 Critical', value: 'p1', color: '#dc2626' },
+      { label: 'P2 High', value: 'p2', color: '#f97316' },
+      { label: 'P3 Medium', value: 'p3', color: '#f59e0b' },
+      { label: 'P4 Low', value: 'p4', color: '#22c55e' }
+    ],
+    scopeTypeSlugs: operationsKanbanTypeSlugs
+  },
+  {
+    name: 'SLA Hours',
+    slug: 'sla-hours',
+    description: 'Target SLA in hours for completion.',
+    type: 'NUMBER',
+    scopeTypeSlugs: operationsKanbanTypeSlugs
+  }
+];
+
+const operationsKanbanBoardViews: DefaultBoardViewSeed[] = [
+  {
+    key: 'ops',
+    name: 'OPS',
+    caption: 'Controle operacional e fila de atendimento',
+    visibleBoardColumnSlugs: ['queue', 'triage', 'execution', 'resolved'],
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'queue', label: 'Queue', dot: '#8b9bb0' },
+      { id: 'triage', label: 'Triage', dot: '#0d8df7' },
+      { id: 'in-progress', label: 'In Progress', dot: '#f59e0b' },
+      { id: 'resolved', label: 'Resolved', dot: '#22c55e' }
+    ]
+  },
+  {
+    key: 'leadership',
+    name: 'LEADERSHIP',
+    caption: 'Visao de risco e capacidade operacional',
+    visibleBoardColumnSlugs: ['triage', 'execution', 'resolved'],
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'queue', label: 'Queue', dot: '#8b9bb0' },
+      { id: 'triage', label: 'Triage', dot: '#0d8df7' },
+      { id: 'in-progress', label: 'In Progress', dot: '#f59e0b' },
+      { id: 'resolved', label: 'Resolved', dot: '#22c55e' }
+    ]
+  }
+];
+
+const templateSeedPresets: Record<WorkspaceTemplateKey, TemplateSeedPreset> = {
+  software_delivery: {
+    templateKey: 'software_delivery',
+    itemTypes: softwareDeliveryItemTypes,
+    workflowStates: softwareDeliveryStates,
+    columns: softwareDeliveryColumns,
+    customFields: softwareDeliveryCustomFields,
+    defaultBoardMode: 'dev',
+    defaultVisibleCardFields: [...defaultSystemCardFieldIds, 'story-points', 'severity'],
+    defaultVisibleDetailFields: [...defaultSystemDetailFieldIds, 'story-points', 'severity'],
+    defaultBoardViews: softwareDeliveryBoardViews
+  },
+  product_discovery: {
+    templateKey: 'product_discovery',
+    itemTypes: productDiscoveryItemTypes,
+    workflowStates: productDiscoveryStates,
+    columns: productDiscoveryColumns,
+    customFields: productDiscoveryCustomFields,
+    defaultBoardMode: 'discovery',
+    defaultVisibleCardFields: [...defaultSystemCardFieldIds, 'impact'],
+    defaultVisibleDetailFields: [...defaultSystemDetailFieldIds, 'impact', 'confidence'],
+    defaultBoardViews: productDiscoveryBoardViews
+  },
+  operations_kanban: {
+    templateKey: 'operations_kanban',
+    itemTypes: operationsKanbanItemTypes,
+    workflowStates: operationsKanbanStates,
+    columns: operationsKanbanColumns,
+    customFields: operationsKanbanCustomFields,
+    defaultBoardMode: 'ops',
+    defaultVisibleCardFields: [...defaultSystemCardFieldIds, 'severity'],
+    defaultVisibleDetailFields: [...defaultSystemDetailFieldIds, 'severity', 'sla-hours'],
+    defaultBoardViews: operationsKanbanBoardViews
+  }
+};
+
 const legacyTypeMap: Record<string, string> = {
   card: 'user-story',
-  task: 'task',
-  note: 'improvement'
+  note: 'task',
+  story: 'user-story',
+  incident: 'incident',
+  bug: 'bug',
+  request: 'request',
+  maintenance: 'maintenance',
+  problem: 'problem',
+  opportunity: 'opportunity',
+  hypothesis: 'hypothesis',
+  experiment: 'experiment',
+  insight: 'insight'
 };
 
 const legacyStatusMap: Record<string, string> = {
@@ -394,15 +558,12 @@ const legacyStatusMap: Record<string, string> = {
   review: 'in-review',
   'in-review': 'in-review',
   done: 'done',
-  blocked: 'blocked'
-};
-
-const statusToColumnSlugMap: Record<string, string> = {
-  backlog: 'backlog',
-  'in-progress': 'doing',
-  'in-review': 'review',
-  blocked: 'doing',
-  done: 'done'
+  blocked: 'blocked',
+  queue: 'queue',
+  triage: 'triage',
+  resolved: 'resolved',
+  discovery: 'discovery',
+  validated: 'validated'
 };
 
 function normalizeKey(value: string | null | undefined): string {
@@ -413,7 +574,60 @@ function toPrismaJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
 }
 
-function getSeededBoardViews(templateKey?: WorkspaceTemplateKey): DefaultBoardViewSeed[] {
+function isWorkspaceTemplateKey(value: unknown): value is WorkspaceTemplateKey {
+  return value === 'software_delivery' || value === 'product_discovery' || value === 'operations_kanban';
+}
+
+async function resolveStoredTemplateKey(
+  prisma: PrismaExecutor,
+  workspaceId: string
+): Promise<WorkspaceTemplateKey | undefined> {
+  const preferences = await prisma.workspacePreferences.findUnique({
+    where: { workspaceId },
+    select: { settings: true }
+  });
+
+  if (!preferences?.settings || typeof preferences.settings !== 'object' || Array.isArray(preferences.settings)) {
+    return undefined;
+  }
+
+  const templateKey = (preferences.settings as Record<string, unknown>).templateKey;
+  return isWorkspaceTemplateKey(templateKey) ? templateKey : undefined;
+}
+
+function resolveTemplatePreset(templateKey?: WorkspaceTemplateKey): TemplateSeedPreset {
+  if (!templateKey) {
+    return templateSeedPresets.software_delivery;
+  }
+
+  return templateSeedPresets[templateKey] ?? templateSeedPresets.software_delivery;
+}
+
+function buildDefaultFieldMapByType(
+  itemTypes: DefaultTypeSeed[],
+  fieldIds: string[]
+): Record<string, string[]> {
+  return itemTypes.reduce<Record<string, string[]>>((acc, itemType) => {
+    acc[itemType.slug] = [...fieldIds];
+    return acc;
+  }, {});
+}
+
+function buildStatusToColumnSlugMap(columns: DefaultColumnSeed[]): Record<string, string> {
+  return columns.reduce<Record<string, string>>((acc, column) => {
+    for (const stateSlug of column.stateSlugs) {
+      if (!acc[stateSlug]) {
+        acc[stateSlug] = column.slug;
+      }
+    }
+    return acc;
+  }, {});
+}
+
+function getSeededBoardViews(
+  templateKey: WorkspaceTemplateKey | undefined,
+  fallbackBoardViews: DefaultBoardViewSeed[]
+): DefaultBoardViewSeed[] {
   const selectedTemplate = getWorkspaceTemplateByKey(templateKey);
   const schema = selectedTemplate?.schema;
 
@@ -435,7 +649,7 @@ function getSeededBoardViews(templateKey?: WorkspaceTemplateKey): DefaultBoardVi
     return (schema as Record<string, unknown>).boardViews as DefaultBoardViewSeed[];
   }
 
-  return defaultBoardViews;
+  return fallbackBoardViews;
 }
 
 export async function ensureWorkspaceDefaultConfiguration(
@@ -446,8 +660,15 @@ export async function ensureWorkspaceDefaultConfiguration(
     templateKey?: WorkspaceTemplateKey;
   }
 ): Promise<{ defaultBoardId: string }> {
-  const seedResult = await seedWorkspaceConfigurationDefaults(prisma, input.workspaceId, input.templateKey);
-  await backfillLegacyItems(prisma, input.workspaceId, input.ownerUserId);
+  const resolvedTemplateKey = input.templateKey ?? (await resolveStoredTemplateKey(prisma, input.workspaceId));
+  const preset = resolveTemplatePreset(resolvedTemplateKey);
+  const seedResult = await seedWorkspaceConfigurationDefaults(
+    prisma,
+    input.workspaceId,
+    resolvedTemplateKey
+  );
+
+  await backfillLegacyItems(prisma, input.workspaceId, input.ownerUserId, preset);
   return seedResult;
 }
 
@@ -456,10 +677,11 @@ export async function seedWorkspaceConfigurationDefaults(
   workspaceId: string,
   templateKey?: WorkspaceTemplateKey
 ): Promise<{ defaultBoardId: string }> {
+  const preset = resolveTemplatePreset(templateKey);
   const board = await ensureDefaultBoard(prisma, workspaceId);
 
   const typeBySlug = new Map<string, string>();
-  for (const [index, typeSeed] of defaultItemTypes.entries()) {
+  for (const [index, typeSeed] of preset.itemTypes.entries()) {
     const type = await prisma.workItemType.upsert({
       where: {
         workspaceId_slug: {
@@ -475,7 +697,7 @@ export async function seedWorkspaceConfigurationDefaults(
         color: typeSeed.color,
         icon: typeSeed.icon,
         position: index,
-        usageRules: toPrismaJson({ source: 'seed.default' }),
+        usageRules: toPrismaJson({ source: 'seed.default', templateKey: preset.templateKey }),
         acceptsParent: typeSeed.acceptsParent,
         acceptsChecklist: typeSeed.acceptsChecklist,
         acceptsDueDate: typeSeed.acceptsDueDate,
@@ -483,14 +705,17 @@ export async function seedWorkspaceConfigurationDefaults(
         acceptsTags: typeSeed.acceptsTags,
         acceptsCustomFields: typeSeed.acceptsCustomFields
       },
-      update: {}
+      update: {
+        position: index,
+        isActive: true
+      }
     });
 
     typeBySlug.set(typeSeed.slug, type.id);
   }
 
   const stateBySlug = new Map<string, string>();
-  for (const [index, stateSeed] of defaultWorkflowStates.entries()) {
+  for (const [index, stateSeed] of preset.workflowStates.entries()) {
     const state = await prisma.workflowState.upsert({
       where: {
         workspaceId_slug: {
@@ -507,14 +732,18 @@ export async function seedWorkspaceConfigurationDefaults(
         position: index,
         isTerminal: Boolean(stateSeed.isTerminal)
       },
-      update: {}
+      update: {
+        position: index,
+        isActive: true,
+        isTerminal: Boolean(stateSeed.isTerminal)
+      }
     });
 
     stateBySlug.set(stateSeed.slug, state.id);
   }
 
   const columnBySlug = new Map<string, string>();
-  for (const [index, columnSeed] of defaultColumns.entries()) {
+  for (const [index, columnSeed] of preset.columns.entries()) {
     const column = await prisma.boardColumn.upsert({
       where: {
         workspaceId_slug: {
@@ -529,7 +758,11 @@ export async function seedWorkspaceConfigurationDefaults(
         position: index,
         wipLimit: columnSeed.wipLimit
       },
-      update: {}
+      update: {
+        position: index,
+        isActive: true,
+        wipLimit: columnSeed.wipLimit ?? null
+      }
     });
 
     columnBySlug.set(columnSeed.slug, column.id);
@@ -546,13 +779,25 @@ export async function seedWorkspaceConfigurationDefaults(
         name: columnSeed.name,
         code: columnSeed.slug,
         position: index,
-        settings: toPrismaJson({ source: 'workspace-default-seed', workspaceColumnId: column.id })
+        settings: toPrismaJson({
+          source: 'workspace-default-seed',
+          workspaceColumnId: column.id,
+          templateKey: preset.templateKey
+        })
       },
-      update: {}
+      update: {
+        name: columnSeed.name,
+        position: index,
+        settings: toPrismaJson({
+          source: 'workspace-default-seed',
+          workspaceColumnId: column.id,
+          templateKey: preset.templateKey
+        })
+      }
     });
   }
 
-  for (const columnSeed of defaultColumns) {
+  for (const columnSeed of preset.columns) {
     const columnId = columnBySlug.get(columnSeed.slug);
     if (!columnId) {
       continue;
@@ -577,21 +822,34 @@ export async function seedWorkspaceConfigurationDefaults(
           stateId,
           position
         },
-        update: {}
+        update: {
+          position
+        }
       });
     }
   }
 
-  const seededBoardViews = getSeededBoardViews(templateKey);
+  const seededBoardViews = getSeededBoardViews(templateKey, preset.defaultBoardViews);
+  const defaultBoardMode = seededBoardViews[0]?.key ?? preset.defaultBoardMode;
 
   await prisma.workspacePreferences.upsert({
     where: { workspaceId },
     create: {
       workspaceId,
-      defaultBoardMode: 'dev',
+      defaultBoardMode,
       dateFormat: 'dd/mm/yyyy',
-      visibleCardFieldIds: toPrismaJson(['story-points', 'severity', 'sprint', 'environment']),
+      visibleCardFieldIds: toPrismaJson(preset.defaultVisibleCardFields),
       settings: toPrismaJson({
+        templateKey: preset.templateKey,
+        cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION,
+        visibleFieldsByType: buildDefaultFieldMapByType(
+          preset.itemTypes,
+          preset.defaultVisibleCardFields
+        ),
+        detailVisibleFieldsByType: buildDefaultFieldMapByType(
+          preset.itemTypes,
+          preset.defaultVisibleDetailFields
+        ),
         perspectives: seededBoardViews.map((view, position) => ({
           key: view.key,
           name: view.name,
@@ -599,7 +857,7 @@ export async function seedWorkspaceConfigurationDefaults(
           compactCards: Boolean(view.compactCards),
           position,
           allowedTaskTypes: view.allowedTaskTypes ?? [],
-          visibleBoardColumnIds: (view.visibleBoardColumnSlugs ?? [])
+          visibleBoardColumnIds: (view.visibleBoardColumnSlugs ?? preset.columns.map((column) => column.slug))
             .map((slug) => columnBySlug.get(slug))
             .filter((value): value is string => Boolean(value)),
           statusSource: view.statusSource,
@@ -613,7 +871,7 @@ export async function seedWorkspaceConfigurationDefaults(
     update: {}
   });
 
-  for (const [index, customFieldSeed] of defaultCustomFields.entries()) {
+  for (const [index, customFieldSeed] of preset.customFields.entries()) {
     const customField = await prisma.customFieldDefinition.upsert({
       where: {
         workspaceId_slug: {
@@ -628,9 +886,19 @@ export async function seedWorkspaceConfigurationDefaults(
         description: customFieldSeed.description,
         type: customFieldSeed.type,
         required: Boolean(customFieldSeed.required),
-        position: index
+        position: index,
+        settings: customFieldSeed.settings
+          ? toPrismaJson(customFieldSeed.settings)
+          : undefined
       },
-      update: {}
+      update: {
+        position: index,
+        isActive: true,
+        settings:
+          customFieldSeed.settings !== undefined
+            ? toPrismaJson(customFieldSeed.settings)
+            : undefined
+      }
     });
 
     for (const [optionIndex, option] of (customFieldSeed.options ?? []).entries()) {
@@ -648,7 +916,12 @@ export async function seedWorkspaceConfigurationDefaults(
           color: option.color,
           position: optionIndex
         },
-        update: {}
+        update: {
+          label: option.label,
+          color: option.color,
+          position: optionIndex,
+          isActive: true
+        }
       });
     }
 
@@ -707,7 +980,8 @@ async function ensureDefaultBoard(
 async function backfillLegacyItems(
   prisma: PrismaExecutor,
   workspaceId: string,
-  ownerUserId?: string
+  ownerUserId: string | undefined,
+  preset: TemplateSeedPreset
 ): Promise<void> {
   const [types, states, columns, items] = await Promise.all([
     prisma.workItemType.findMany({
@@ -747,23 +1021,54 @@ async function backfillLegacyItems(
   const typeBySlug = new Map(types.map((entry) => [entry.slug, entry.id]));
   const stateBySlug = new Map(states.map((entry) => [entry.slug, entry.id]));
   const columnBySlug = new Map(columns.map((entry) => [entry.slug, entry.id]));
+  const validTypeIds = new Set(types.map((entry) => entry.id));
+  const validStateIds = new Set(states.map((entry) => entry.id));
+  const validColumnIds = new Set(columns.map((entry) => entry.id));
+
+  const defaultTypeSlug = preset.itemTypes[0]?.slug ?? types[0]?.slug;
+  const defaultStateSlug = preset.workflowStates[0]?.slug ?? states[0]?.slug;
+  const defaultColumnSlug = preset.columns[0]?.slug ?? columns[0]?.slug;
+
+  if (!defaultTypeSlug || !defaultStateSlug || !defaultColumnSlug) {
+    return;
+  }
+
+  const typeSlugSet = new Set(types.map((entry) => entry.slug));
+  const stateSlugSet = new Set(states.map((entry) => entry.slug));
+  const statusToColumnSlugMap = buildStatusToColumnSlugMap(preset.columns);
 
   for (const item of items) {
     const legacyType = normalizeKey(item.type);
     const legacyState = normalizeKey(item.status);
 
-    const resolvedTypeSlug = (legacyTypeMap[legacyType] ?? legacyType) || 'user-story';
-    const resolvedStateSlug = (legacyStatusMap[legacyState] ?? legacyState) || 'backlog';
-    const resolvedColumnSlug = statusToColumnSlugMap[resolvedStateSlug] ?? 'backlog';
+    const mappedTypeSlug = legacyTypeMap[legacyType] ?? legacyType;
+    const mappedStateSlug = legacyStatusMap[legacyState] ?? legacyState;
 
-    const resolvedTypeId = item.typeId ?? typeBySlug.get(resolvedTypeSlug) ?? typeBySlug.get('user-story') ?? null;
-    const resolvedStateId = item.stateId ?? stateBySlug.get(resolvedStateSlug) ?? stateBySlug.get('backlog') ?? null;
+    const resolvedTypeSlug = typeSlugSet.has(mappedTypeSlug)
+      ? mappedTypeSlug
+      : defaultTypeSlug;
+    const resolvedStateSlug = stateSlugSet.has(mappedStateSlug)
+      ? mappedStateSlug
+      : defaultStateSlug;
+
+    const mappedColumnSlug = statusToColumnSlugMap[resolvedStateSlug] ?? defaultColumnSlug;
+
+    const resolvedTypeId =
+      item.typeId && validTypeIds.has(item.typeId)
+        ? item.typeId
+        : typeBySlug.get(resolvedTypeSlug) ?? typeBySlug.get(defaultTypeSlug) ?? null;
+
+    const resolvedStateId =
+      item.stateId && validStateIds.has(item.stateId)
+        ? item.stateId
+        : stateBySlug.get(resolvedStateSlug) ?? stateBySlug.get(defaultStateSlug) ?? null;
+
     const resolvedColumnId =
-      item.boardColumnId ??
-      columnBySlug.get(resolvedColumnSlug) ??
-      columnBySlug.get('backlog') ??
-      item.columnId ??
-      null;
+      item.boardColumnId && validColumnIds.has(item.boardColumnId)
+        ? item.boardColumnId
+        : columnBySlug.get(mappedColumnSlug) ??
+          columnBySlug.get(defaultColumnSlug) ??
+          null;
 
     await prisma.item.update({
       where: { id: item.id },

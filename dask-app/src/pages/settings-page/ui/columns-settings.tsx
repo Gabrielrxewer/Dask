@@ -1,40 +1,58 @@
-import { useCallback, useEffect, useState } from "react";
-import type { ApiBoardColumn } from "@/modules/workspace/model";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { useWorkspace } from "@/modules/workspace";
-import { Button, FormField, Section, TextInput } from "@/shared/ui";
+import { Button, FormField, Section, Select, TextInput } from "@/shared/ui";
 import "./columns-settings.css";
 
 interface EditState {
   id: string;
   name: string;
+  defaultStateId: string;
 }
 
 export function ColumnsSettings() {
-  const { fetchBoardColumns, createBoardColumn, updateBoardColumn, deleteBoardColumn } = useWorkspace();
+  const {
+    fetchBoardColumns,
+    fetchWorkflowStates,
+    createBoardColumn,
+    updateBoardColumn,
+    deleteBoardColumn
+  } = useWorkspace();
 
   const [columns, setColumns] = useState<ApiBoardColumn[]>([]);
+  const [workflowStates, setWorkflowStates] = useState<ApiWorkflowState[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
+  const [newDefaultStateId, setNewDefaultStateId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const loadColumns = useCallback(async () => {
+  const activeStates = useMemo(
+    () => workflowStates.filter(state => state.isActive),
+    [workflowStates]
+  );
+
+  const loadConfig = useCallback(async () => {
     setLoadingList(true);
     try {
-      const items = await fetchBoardColumns();
+      const [items, states] = await Promise.all([fetchBoardColumns(), fetchWorkflowStates()]);
       setColumns(items);
+      setWorkflowStates(states);
+      if (!newDefaultStateId && states.length > 0) {
+        setNewDefaultStateId(states[0].id);
+      }
     } finally {
       setLoadingList(false);
     }
-  }, [fetchBoardColumns]);
+  }, [fetchBoardColumns, fetchWorkflowStates, newDefaultStateId]);
 
   useEffect(() => {
-    void loadColumns();
-  }, [loadColumns]);
+    void loadConfig();
+  }, [loadConfig]);
 
   const handleStartEdit = (col: ApiBoardColumn) => {
-    setEditing({ id: col.id, name: col.name });
+    setEditing({ id: col.id, name: col.name, defaultStateId: col.stateIds[0] ?? (activeStates[0]?.id ?? "") });
     setNewName(null);
   };
 
@@ -44,9 +62,12 @@ export function ColumnsSettings() {
     if (!editing || !editing.name.trim()) return;
     setSaving(true);
     try {
-      await updateBoardColumn(editing.id, { name: editing.name.trim() });
+      await updateBoardColumn(editing.id, {
+        name: editing.name.trim(),
+        stateIds: editing.defaultStateId ? [editing.defaultStateId] : []
+      });
       setEditing(null);
-      await loadColumns();
+      await loadConfig();
     } finally {
       setSaving(false);
     }
@@ -56,7 +77,7 @@ export function ColumnsSettings() {
     setDeletingId(colId);
     try {
       await deleteBoardColumn(colId);
-      await loadColumns();
+      await loadConfig();
     } finally {
       setDeletingId(null);
     }
@@ -66,9 +87,12 @@ export function ColumnsSettings() {
     if (newName === null || !newName.trim()) return;
     setSaving(true);
     try {
-      await createBoardColumn({ name: newName.trim() });
+      await createBoardColumn({
+        name: newName.trim(),
+        stateIds: newDefaultStateId ? [newDefaultStateId] : []
+      });
       setNewName(null);
-      await loadColumns();
+      await loadConfig();
     } finally {
       setSaving(false);
     }
@@ -78,7 +102,7 @@ export function ColumnsSettings() {
     <div className="columns-settings">
       <Section
         title="Colunas do board"
-        subtitle="Gerencie as colunas que aparecem no board. Remover uma coluna nao apaga os itens nela."
+        subtitle="Gerencie as colunas do board e o state automatico aplicado ao mover cards para cada coluna."
         actions={
           newName === null ? (
             <Button type="button" size="sm" onClick={() => { setNewName(""); setEditing(null); }}>
@@ -102,6 +126,15 @@ export function ColumnsSettings() {
                   }}
                 />
               </FormField>
+
+              <FormField label="State automatico da coluna">
+                <Select value={newDefaultStateId} onChange={e => setNewDefaultStateId(e.target.value)}>
+                  {activeStates.map(state => (
+                    <option key={state.id} value={state.id}>{state.name}</option>
+                  ))}
+                </Select>
+              </FormField>
+
               <div className="columns-settings__form-actions">
                 <Button type="button" size="sm" onClick={() => void handleCreate()} disabled={saving || !newName.trim()}>
                   {saving ? "Criando..." : "Criar"}
@@ -134,6 +167,18 @@ export function ColumnsSettings() {
                       }}
                     />
                   </FormField>
+
+                  <FormField label="State automatico da coluna">
+                    <Select
+                      value={editing.defaultStateId}
+                      onChange={e => setEditing({ ...editing, defaultStateId: e.target.value })}
+                    >
+                      {activeStates.map(state => (
+                        <option key={state.id} value={state.id}>{state.name}</option>
+                      ))}
+                    </Select>
+                  </FormField>
+
                   <div className="columns-settings__form-actions">
                     <Button type="button" size="sm" onClick={() => void handleSaveEdit()} disabled={saving || !editing.name.trim()}>
                       {saving ? "Salvando..." : "Salvar"}
@@ -151,10 +196,13 @@ export function ColumnsSettings() {
                     {col.wipLimit !== null && (
                       <span className="columns-settings__wip">WIP {col.wipLimit}</span>
                     )}
+                    <span className="columns-settings__wip">
+                      State automatico: {activeStates.find(state => state.id === col.stateIds[0])?.name ?? "Nao definido"}
+                    </span>
                   </div>
                   <div className="columns-settings__row-actions">
                     <Button type="button" size="sm" variant="outline" onClick={() => handleStartEdit(col)}>
-                      Renomear
+                      Editar
                     </Button>
                     <Button
                       type="button"

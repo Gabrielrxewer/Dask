@@ -42,10 +42,12 @@ export function PublicRoute({ children }: PublicRouteProps) {
     const fromPath = state?.from?.pathname;
     const fromSearch = state?.from?.search ?? "";
 
-    // Only redirect back to protected app routes (/w/...).
+    // Allow redirecting back to protected app routes (/w/...) or billing flow (/choose-plan).
     // Paths like /login, /reset-password or /verify-email must never be
     // used as redirect targets — they would create confusing loops.
-    const isValidAppPath = typeof fromPath === "string" && fromPath.startsWith("/w");
+    const VALID_PREFIXES = ["/w", "/choose-plan"];
+    const isValidAppPath =
+      typeof fromPath === "string" && VALID_PREFIXES.some((prefix) => fromPath.startsWith(prefix));
     const redirectTo = isValidAppPath ? `${fromPath}${fromSearch}` : fallbackPath;
 
     return <Navigate replace to={redirectTo} />;

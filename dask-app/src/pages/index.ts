@@ -1,4 +1,8 @@
 export { AutomationsPage } from "@/pages/automations-page";
+export { ChoosePlanPage } from "@/pages/choose-plan-page";
+export { BillingSuccessPage } from "@/pages/billing-success-page";
+export { BillingCancelPage } from "@/pages/billing-cancel-page";
+export { SubscriptionBlockedPage } from "@/pages/subscription-blocked-page";
 export { ResetPasswordPage } from "@/pages/reset-password-page";
 export { VerifyEmailPage } from "@/pages/verify-email-page";
 export { BoardPage } from "@/pages/board-page";

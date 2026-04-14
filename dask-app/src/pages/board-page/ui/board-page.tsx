@@ -3,10 +3,13 @@ import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
 import {
+  applyFieldCapabilityOverrides,
   buildBoardMetrics,
   factoryBoardConfig,
+  mergeCardFieldDefinitions,
   type BoardConfig,
   type Task,
+  type TaskCustomFieldValue,
   type TaskPriority,
   type TaskStatus,
   type TaskStatusId
@@ -79,6 +82,8 @@ export function BoardPage() {
     createTask,
     moveTask,
     updateTaskPriority,
+    updateTaskTitle,
+    updateTaskDescription,
     updateTaskCustomField,
     toggleChecklistItem,
     fetchBoardColumns,
@@ -115,15 +120,31 @@ export function BoardPage() {
     ...rawBoardConfig,
     statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
     taskTypes: Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes,
-    fieldDefinitions: Array.isArray(rawBoardConfig?.fieldDefinitions)
-      ? rawBoardConfig.fieldDefinitions
-      : factoryBoardConfig.fieldDefinitions,
+    fieldDefinitions: applyFieldCapabilityOverrides(
+      mergeCardFieldDefinitions(
+        Array.isArray(rawBoardConfig?.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : factoryBoardConfig.fieldDefinitions
+      ),
+      snapshot?.preferences.settings
+    ),
     cardLayout: {
-      visibleFieldIds: snapshot?.preferences.visibleCardFieldIds ??
+      visibleFieldIds:
+        snapshot?.preferences.visibleCardFieldIds ??
         (Array.isArray(rawBoardConfig?.cardLayout?.visibleFieldIds)
           ? rawBoardConfig.cardLayout.visibleFieldIds
           : factoryBoardConfig.cardLayout.visibleFieldIds),
-      visibleFieldIdsByType: snapshot?.preferences.visibleFieldsByType ?? {}
+      visibleFieldIdsByType: Object.entries(snapshot?.preferences.visibleFieldsByType ?? {}).reduce<Record<string, string[]>>(
+        (acc, [typeId, fieldIds]) => {
+          acc[typeId] = fieldIds;
+          return acc;
+        },
+        {}
+      ),
+      detailVisibleFieldIdsByType: Object.entries(
+        snapshot?.preferences.detailVisibleFieldsByType ?? {}
+      ).reduce<Record<string, string[]>>((acc, [typeId, fieldIds]) => {
+        acc[typeId] = fieldIds;
+        return acc;
+      }, {})
     },
     perspectives: rawPerspectives
   };
@@ -273,22 +294,32 @@ export function BoardPage() {
       if (col && col.stateIds.length > 0) {
         const firstState = apiWorkflowStates.find(s => s.id === col.stateIds[0]);
         if (firstState) {
-          void moveTask(taskId, firstState.slug);
-          return;
+          return moveTask(taskId, firstState.slug);
         }
       }
     }
 
     if (!activePerspective || activePerspective.statusSource.kind === "workflow_state") {
-      void moveTask(taskId, statusId);
-      return;
+      return moveTask(taskId, statusId);
     }
 
-    void updateTaskCustomField(taskId, activePerspective.statusSource.fieldId, statusId);
+    return updateTaskCustomField(taskId, activePerspective.statusSource.fieldId, statusId);
   };
 
   const handleUpdatePriority = (taskId: string, priority: TaskPriority) => {
-    void updateTaskPriority(taskId, priority);
+    return updateTaskPriority(taskId, priority);
+  };
+
+  const handleUpdateTaskTitle = (taskId: string, title: string) => {
+    return updateTaskTitle(taskId, title);
+  };
+
+  const handleUpdateTaskDescription = (taskId: string, description: string) => {
+    return updateTaskDescription(taskId, description);
+  };
+
+  const handleUpdateTaskCustomField = (taskId: string, fieldId: string, value: TaskCustomFieldValue) => {
+    return updateTaskCustomField(taskId, fieldId, value);
   };
 
   const boardSubtitle =
@@ -339,6 +370,9 @@ export function BoardPage() {
               compactCards={Boolean(activePerspective?.compactCards)}
               onMoveTask={handleMoveTask}
               onUpdatePriority={handleUpdatePriority}
+              onUpdateTaskTitle={handleUpdateTaskTitle}
+              onUpdateTaskDescription={handleUpdateTaskDescription}
+              onUpdateTaskCustomField={handleUpdateTaskCustomField}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
             />
           )}

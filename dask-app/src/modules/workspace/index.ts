@@ -12,6 +12,7 @@ export type {
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceSummary,
+  WorkspaceTemplateKey,
   WorkspaceTemplateOption,
   WorkspaceSnapshot
 } from "@/modules/workspace/model";

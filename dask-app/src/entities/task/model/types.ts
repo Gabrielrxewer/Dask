@@ -7,7 +7,25 @@ export type TaskType = string;
 export type TaskCustomFieldValue = string | number | boolean | string[] | null;
 export type TaskCustomFields = Record<string, TaskCustomFieldValue>;
 
-export type TaskFieldType = "text" | "number" | "date" | "select" | "multi-select" | "boolean";
+export type TaskFieldType =
+  | "text"
+  | "text_ai"
+  | "number"
+  | "date"
+  | "datetime"
+  | "select"
+  | "multi-select"
+  | "multi_select"
+  | "boolean"
+  | "user";
+
+export type TaskFieldSource = "system" | "custom";
+
+export interface TaskFieldCapabilities {
+  aiEnhance?: boolean;
+  selectable?: boolean;
+  multiSelectable?: boolean;
+}
 
 export interface ChecklistItem {
   id: string;
@@ -59,12 +77,16 @@ export interface TaskFieldDefinition {
   label: string;
   type: TaskFieldType;
   options?: string[];
+  source?: TaskFieldSource;
+  capabilities?: TaskFieldCapabilities;
 }
 
 export interface CardLayoutConfig {
   visibleFieldIds: string[];
   /** Campos visíveis por tipo de work item. Sobrepõe visibleFieldIds para aquele tipo. */
   visibleFieldIdsByType?: Record<string, string[]>;
+  /** Campos visiveis no detalhe expandido por tipo de work item. */
+  detailVisibleFieldIdsByType?: Record<string, string[]>;
 }
 
 export type BoardViewStatusSource =

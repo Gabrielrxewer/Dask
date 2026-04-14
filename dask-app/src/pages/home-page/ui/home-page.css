@@ -1411,3 +1411,119 @@
     filter: blur(0);
   }
 }
+
+/* ── Pricing Section ────────────────────────────────────────── */
+.home-page__pricing-section {
+  scroll-margin-top: var(--global-header-height);
+}
+
+.home-page__pricing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.home-page__pricing-card {
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(173, 205, 231, 0.16);
+  background: rgba(15, 23, 42, 0.55);
+  position: relative;
+  transition: border-color 0.18s, transform 0.18s;
+}
+
+.home-page__pricing-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.home-page__pricing-card--featured {
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.home-page__pricing-card--featured:hover {
+  border-color: rgba(139, 92, 246, 0.7);
+}
+
+.home-page__pricing-badge {
+  position: absolute;
+  top: -11px;
+  right: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.home-page__pricing-plan-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #94a3b8);
+  margin: 0;
+}
+
+.home-page__pricing-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.home-page__pricing-price strong {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--color-text-primary, #f1f5f9);
+  line-height: 1;
+}
+
+.home-page__pricing-price span {
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a3b8);
+}
+
+.home-page__pricing-description {
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a3b8);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.home-page__pricing-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.home-page__pricing-features li {
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a3b8);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-page__pricing-features li::before {
+  content: "✓";
+  font-size: 11px;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.home-page__pricing-btn {
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+}

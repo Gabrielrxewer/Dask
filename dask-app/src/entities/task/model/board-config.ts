@@ -1,4 +1,4 @@
-﻿import type { BoardConfig, TaskTypeMetaItem } from "@/entities/task/model/types";
+import type { BoardConfig, TaskTypeMetaItem } from "@/entities/task/model/types";
 
 const defaultPerspectiveStatuses = [
   { id: "backlog", label: "Backlog", dot: "#8b9bb0" },
@@ -21,37 +21,9 @@ export const factoryBoardConfig: BoardConfig = {
     { id: "chore", label: "Chore", background: "#f2f5f8", border: "#dae1e9", text: "#4a5f75" },
     { id: "research", label: "Research", background: "#eef0ff", border: "#d7dcff", text: "#384c9a" }
   ],
-  fieldDefinitions: [
-    { id: "story-points", label: "Story Points", type: "number" },
-    { id: "severity", label: "Severidade", type: "select", options: ["Critical", "High", "Medium", "Low"] },
-    {
-      id: "planning-status",
-      label: "Status Planejamento",
-      type: "select",
-      options: ["plan-ideas", "plan-committed", "plan-building", "plan-ready"]
-    },
-    {
-      id: "qa-status",
-      label: "Status QA",
-      type: "select",
-      options: ["qa-ready", "qa-testing", "qa-approved", "qa-rejected"]
-    },
-    {
-      id: "manager-lane",
-      label: "Faixa Gerencial",
-      type: "select",
-      options: ["mgr-epics", "mgr-initiatives", "mgr-risks", "mgr-delivery"]
-    },
-    { id: "sprint", label: "Sprint", type: "text" },
-    { id: "component", label: "Componente", type: "text" },
-    { id: "environment", label: "Ambiente", type: "select", options: ["Production", "Staging", "Development"] },
-    { id: "qaReady", label: "QA Ready", type: "boolean" },
-    { id: "customerImpact", label: "Impacto Cliente", type: "select", options: ["Alto", "Medio", "Baixo"] },
-    { id: "release", label: "Release", type: "text" },
-    { id: "squad", label: "Squad", type: "text" }
-  ],
+  fieldDefinitions: [],
   cardLayout: {
-    visibleFieldIds: ["story-points", "severity", "sprint", "environment"]
+    visibleFieldIds: []
   },
   perspectives: [
     {

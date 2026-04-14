@@ -45,7 +45,15 @@ const envSchema = z.object({
   ENABLE_WORKERS: z
     .string()
     .default('true')
-    .transform((value) => value === 'true')
+    .transform((value) => value === 'true'),
+
+  // Stripe Billing
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_ID_PERSONAL_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_ID_BUSINESS_MONTHLY: z.string().optional(),
+  APP_PUBLIC_URL: z.string().default('http://localhost:5173'),
+  API_PUBLIC_URL: z.string().default('http://localhost:3333')
 });
 
 const parsed = envSchema.safeParse(process.env);

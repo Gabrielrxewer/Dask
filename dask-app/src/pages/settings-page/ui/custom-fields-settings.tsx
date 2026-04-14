@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  applyFieldCapabilityOverrides,
+  isSystemCardFieldId,
+  mergeCardFieldDefinitions
+} from "@/entities/task";
 import type { ApiCustomField } from "@/modules/workspace/model";
 import type { CustomFieldType } from "@/modules/workspace/model";
 import { useWorkspace } from "@/modules/workspace";
@@ -24,22 +29,156 @@ function getFieldTypeLabel(type: string): string {
   return FIELD_TYPE_LABEL[type] ?? type;
 }
 
+function getUnifiedFieldTypeLabel(type: string, allowAiGeneration: boolean): string {
+  if (allowAiGeneration && canToggleAiByType(type)) {
+    return "Text IA";
+  }
+
+  const normalizedType = type === "multi-select" ? "multi_select" : type;
+
+  const labels: Record<string, string> = {
+    text: "Texto curto",
+    text_ai: "Texto curto",
+    long_text: "Texto longo",
+    number: "Numero",
+    date: "Data",
+    datetime: "Data e hora",
+    boolean: "Sim / Nao",
+    select: "Selecao unica",
+    multi_select: "Selecao multipla",
+    user: "Usuario"
+  };
+
+  return labels[normalizedType] ?? normalizedType;
+}
+
 interface EditState {
   id: string;
   name: string;
   type: CustomFieldType;
   required: boolean;
+  allowAiGeneration: boolean;
+}
+
+interface SettingsFieldRow {
+  id: string;
+  label: string;
+  type: string;
+  source: "system" | "custom";
+  required: boolean;
+  optionsCount: number;
+  allowAiGeneration: boolean;
+  editableAi: boolean;
+}
+
+function supportsAiGeneration(type: CustomFieldType): boolean {
+  return type === "text" || type === "long_text";
+}
+
+function readAllowAiGeneration(settings: ApiCustomField["settings"]): boolean {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return false;
+  }
+
+  return settings.allowAiGeneration === true;
+}
+
+function canToggleAiByType(type: string): boolean {
+  return type === "text" || type === "text_ai";
+}
+
+function readFieldCapabilitiesById(settings?: Record<string, unknown>): Record<string, { aiEnhance?: boolean }> {
+  const source = settings?.fieldCapabilitiesById;
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return {};
+  }
+
+  return Object.entries(source as Record<string, unknown>).reduce<Record<string, { aiEnhance?: boolean }>>(
+    (acc, [fieldId, value]) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return acc;
+      }
+
+      const aiEnhance = (value as { aiEnhance?: unknown }).aiEnhance;
+      if (typeof aiEnhance === "boolean") {
+        acc[fieldId] = { aiEnhance };
+      }
+
+      return acc;
+    },
+    {}
+  );
 }
 
 export function CustomFieldsSettings() {
-  const { fetchCustomFields, createCustomField, updateCustomField, deleteCustomField } = useWorkspace();
+  const {
+    snapshot,
+    fetchCustomFields,
+    createCustomField,
+    updateCustomField,
+    deleteCustomField,
+    updatePreferences
+  } = useWorkspace();
 
   const [fields, setFields] = useState<ApiCustomField[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [editing, setEditing] = useState<EditState | null>(null);
-  const [newField, setNewField] = useState<{ name: string; type: CustomFieldType; required: boolean } | null>(null);
+  const [newField, setNewField] = useState<{
+    name: string;
+    type: CustomFieldType;
+    required: boolean;
+    allowAiGeneration: boolean;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [savingAiFieldId, setSavingAiFieldId] = useState<string | null>(null);
+
+  const customFieldBySlug = useMemo(
+    () =>
+      fields.reduce<Record<string, ApiCustomField>>((acc, field) => {
+        acc[field.slug] = field;
+        return acc;
+      }, {}),
+    [fields]
+  );
+
+  const allFields = useMemo(() => {
+    const merged = mergeCardFieldDefinitions(
+      Array.isArray(snapshot?.boardConfig.fieldDefinitions) ? snapshot.boardConfig.fieldDefinitions : []
+    );
+
+    return applyFieldCapabilityOverrides(merged, snapshot?.preferences.settings);
+  }, [snapshot?.boardConfig.fieldDefinitions, snapshot?.preferences.settings]);
+
+  const fieldCapabilitiesById = useMemo(
+    () => readFieldCapabilitiesById(snapshot?.preferences.settings),
+    [snapshot?.preferences.settings]
+  );
+
+  const settingsRows = useMemo<SettingsFieldRow[]>(
+    () =>
+      allFields.map(field => {
+        const isCustom = !isSystemCardFieldId(field.id);
+        const customDefinition = isCustom ? customFieldBySlug[field.id] : undefined;
+        const explicitSystemCapability = fieldCapabilitiesById[field.id]?.aiEnhance;
+        const allowAiGeneration =
+          typeof explicitSystemCapability === "boolean"
+            ? explicitSystemCapability
+            : field.capabilities?.aiEnhance === true || field.type === "text_ai";
+
+        return {
+          id: field.id,
+          label: field.label,
+          type: field.type,
+          source: isCustom ? "custom" : "system",
+          required: customDefinition?.required ?? false,
+          optionsCount: customDefinition?.options.length ?? field.options?.length ?? 0,
+          allowAiGeneration,
+          editableAi: canToggleAiByType(field.type) && (!isCustom || Boolean(customDefinition))
+        };
+      }),
+    [allFields, customFieldBySlug, fieldCapabilitiesById]
+  );
 
   const loadFields = useCallback(async () => {
     setLoadingList(true);
@@ -56,7 +195,13 @@ export function CustomFieldsSettings() {
   }, [loadFields]);
 
   const handleStartEdit = (field: ApiCustomField) => {
-    setEditing({ id: field.id, name: field.name, type: field.type as CustomFieldType, required: field.required });
+    setEditing({
+      id: field.id,
+      name: field.name,
+      type: field.type as CustomFieldType,
+      required: field.required,
+      allowAiGeneration: readAllowAiGeneration(field.settings)
+    });
     setNewField(null);
   };
 
@@ -66,7 +211,14 @@ export function CustomFieldsSettings() {
     if (!editing || !editing.name.trim()) return;
     setSaving(true);
     try {
-      await updateCustomField(editing.id, { name: editing.name.trim(), type: editing.type, required: editing.required });
+      await updateCustomField(editing.id, {
+        name: editing.name.trim(),
+        type: editing.type,
+        required: editing.required,
+        settings: {
+          allowAiGeneration: supportsAiGeneration(editing.type) ? editing.allowAiGeneration : false
+        }
+      });
       setEditing(null);
       await loadFields();
     } finally {
@@ -88,11 +240,56 @@ export function CustomFieldsSettings() {
     if (!newField || !newField.name.trim()) return;
     setSaving(true);
     try {
-      await createCustomField({ name: newField.name.trim(), type: newField.type, required: newField.required });
+      await createCustomField({
+        name: newField.name.trim(),
+        type: newField.type,
+        required: newField.required,
+        settings: {
+          allowAiGeneration: supportsAiGeneration(newField.type) ? newField.allowAiGeneration : false
+        }
+      });
       setNewField(null);
       await loadFields();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleFieldAi = async (row: SettingsFieldRow, nextValue: boolean) => {
+    setSavingAiFieldId(row.id);
+    try {
+      if (row.source === "custom") {
+        const customDefinition = customFieldBySlug[row.id];
+        if (!customDefinition) {
+          return;
+        }
+
+        await updateCustomField(customDefinition.id, {
+          settings: {
+            allowAiGeneration: nextValue
+          }
+        });
+
+        await loadFields();
+        return;
+      }
+
+      const currentMap = readFieldCapabilitiesById(snapshot?.preferences.settings);
+      const nextMap = {
+        ...currentMap,
+        [row.id]: {
+          ...(currentMap[row.id] ?? {}),
+          aiEnhance: nextValue
+        }
+      };
+
+      await updatePreferences({
+        settings: {
+          fieldCapabilitiesById: nextMap
+        }
+      });
+    } finally {
+      setSavingAiFieldId(null);
     }
   };
 
@@ -103,13 +300,66 @@ export function CustomFieldsSettings() {
         subtitle="Adicione campos extras aos work items para capturar informacoes especificas do seu processo."
         actions={
           !newField ? (
-            <Button type="button" size="sm" onClick={() => { setNewField({ name: "", type: "text", required: false }); setEditing(null); }}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setNewField({ name: "", type: "text", required: false, allowAiGeneration: false });
+                setEditing(null);
+              }}
+            >
               Novo campo
             </Button>
           ) : undefined
         }
       >
         <div className="custom-fields-settings__list">
+          <div className="custom-fields-settings__all-fields">
+            <p className="custom-fields-settings__all-fields-title">
+              Todos os campos (sistema + template + customizados)
+            </p>
+            <p className="custom-fields-settings__all-fields-subtitle">
+              Configure por campo se o input textual pode gerar conteudo com IA.
+            </p>
+
+            <div className="custom-fields-settings__all-fields-grid">
+              {settingsRows.map(row => (
+                <div key={row.id} className="custom-fields-settings__all-field-row">
+                  <div className="custom-fields-settings__all-field-meta">
+                    <span className="custom-fields-settings__type-badge">
+                      {getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}
+                    </span>
+                    <span className="custom-fields-settings__row-name">{row.label}</span>
+                    <span className={`custom-fields-settings__source custom-fields-settings__source--${row.source}`}>
+                      {row.source === "system" ? "Sistema" : "Campo"}
+                    </span>
+                    {row.required ? <span className="custom-fields-settings__required">obrigatorio</span> : null}
+                    {row.optionsCount > 0 ? (
+                      <span className="custom-fields-settings__options-hint">{row.optionsCount} opcoes</span>
+                    ) : null}
+                  </div>
+                  <div className="custom-fields-settings__all-field-actions">
+                    <label className="custom-fields-settings__checkbox">
+                      <input
+                        type="checkbox"
+                        checked={row.allowAiGeneration}
+                        disabled={!row.editableAi || savingAiFieldId === row.id}
+                        onChange={event => void handleToggleFieldAi(row, event.target.checked)}
+                      />
+                      <span>
+                        {row.editableAi
+                          ? savingAiFieldId === row.id
+                            ? "Salvando..."
+                            : "Permitir IA"
+                          : "Nao se aplica"}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {newField !== null && (
             <div className="custom-fields-settings__form-row">
               <div className="custom-fields-settings__form-fields">
@@ -128,7 +378,14 @@ export function CustomFieldsSettings() {
                 <FormField label="Tipo">
                   <Select
                     value={newField.type}
-                    onChange={e => setNewField({ ...newField, type: e.target.value as CustomFieldType })}
+                    onChange={e => {
+                      const nextType = e.target.value as CustomFieldType;
+                      setNewField({
+                        ...newField,
+                        type: nextType,
+                        allowAiGeneration: supportsAiGeneration(nextType) ? newField.allowAiGeneration : false
+                      });
+                    }}
                   >
                     {FIELD_TYPE_OPTIONS.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -143,6 +400,21 @@ export function CustomFieldsSettings() {
                       onChange={e => setNewField({ ...newField, required: e.target.checked })}
                     />
                     <span>Campo obrigatorio</span>
+                  </label>
+                </FormField>
+                <FormField label="IA no input">
+                  <label className="custom-fields-settings__checkbox">
+                    <input
+                      type="checkbox"
+                      checked={newField.allowAiGeneration}
+                      disabled={!supportsAiGeneration(newField.type)}
+                      onChange={e => setNewField({ ...newField, allowAiGeneration: e.target.checked })}
+                    />
+                    <span>
+                      {supportsAiGeneration(newField.type)
+                        ? "Permitir gerar conteudo com IA"
+                        : "Disponivel apenas para campos de texto"}
+                    </span>
                   </label>
                 </FormField>
               </div>
@@ -182,7 +454,14 @@ export function CustomFieldsSettings() {
                     <FormField label="Tipo">
                       <Select
                         value={editing.type}
-                        onChange={e => setEditing({ ...editing, type: e.target.value as CustomFieldType })}
+                        onChange={e => {
+                          const nextType = e.target.value as CustomFieldType;
+                          setEditing({
+                            ...editing,
+                            type: nextType,
+                            allowAiGeneration: supportsAiGeneration(nextType) ? editing.allowAiGeneration : false
+                          });
+                        }}
                       >
                         {FIELD_TYPE_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -197,6 +476,21 @@ export function CustomFieldsSettings() {
                           onChange={e => setEditing({ ...editing, required: e.target.checked })}
                         />
                         <span>Campo obrigatorio</span>
+                      </label>
+                    </FormField>
+                    <FormField label="IA no input">
+                      <label className="custom-fields-settings__checkbox">
+                        <input
+                          type="checkbox"
+                          checked={editing.allowAiGeneration}
+                          disabled={!supportsAiGeneration(editing.type)}
+                          onChange={e => setEditing({ ...editing, allowAiGeneration: e.target.checked })}
+                        />
+                        <span>
+                          {supportsAiGeneration(editing.type)
+                            ? "Permitir gerar conteudo com IA"
+                            : "Disponivel apenas para campos de texto"}
+                        </span>
                       </label>
                     </FormField>
                   </div>
@@ -218,6 +512,9 @@ export function CustomFieldsSettings() {
                     <span className="custom-fields-settings__row-name">{field.name}</span>
                     {field.required && (
                       <span className="custom-fields-settings__required">obrigatorio</span>
+                    )}
+                    {readAllowAiGeneration(field.settings) && (
+                      <span className="custom-fields-settings__ai-enabled">IA habilitada</span>
                     )}
                     {field.options.length > 0 && (
                       <span className="custom-fields-settings__options-hint">

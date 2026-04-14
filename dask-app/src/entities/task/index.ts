@@ -1,5 +1,14 @@
 export { priorityMeta, taskPriorityOptions } from "@/entities/task/model/task-statuses";
 export { factoryBoardConfig, buildTaskTypeMetaMap } from "@/entities/task/model/board-config";
+export {
+  applyFieldCapabilityOverrides,
+  CARD_FIELDS_SCHEMA_VERSION,
+  getTaskFieldTypeLabel,
+  inferCapabilitiesByType,
+  isSystemCardFieldId,
+  mergeCardFieldDefinitions,
+  resolveVisibleCardFieldIds
+} from "@/entities/task/model/card-fields";
 export { initialTasks } from "@/entities/task/model/mock-tasks";
 export {
   groupTasksByStatus,

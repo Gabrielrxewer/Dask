@@ -41,6 +41,10 @@ import { buildAuditRoutes } from '@/modules/audit/http/routes';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
+import Stripe from 'stripe';
+import { BillingService } from '@/modules/billing/application/billing-service';
+import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
+import { buildBillingRoutes } from '@/modules/billing/http/routes';
 
 function parseAllowedOrigins(raw: string): string[] {
   const values = raw
@@ -105,6 +109,9 @@ export const createApp = (): Express => {
     })
   );
 
+  // Raw body for Stripe webhook validation — must be registered before express.json()
+  app.use(`${env.API_PREFIX}/billing/webhook`, express.raw({ type: 'application/json' }));
+
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
 
@@ -143,6 +150,23 @@ export const createApp = (): Express => {
   const automationEventDispatcher = new AutomationEventDispatcher(eventBus, jobQueue);
   const integrationService = new IntegrationService(eventPublisher);
   const auditService = new AuditService(prisma, eventBus);
+
+  const billingRepo = new PrismaBillingRepository(prisma);
+  const stripeClient = env.STRIPE_SECRET_KEY
+    ? new Stripe(env.STRIPE_SECRET_KEY)
+    : null;
+  const billingService = stripeClient
+    ? new BillingService({
+        repo: billingRepo,
+        stripe: stripeClient,
+        appPublicUrl: env.APP_PUBLIC_URL,
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        priceIds: {
+          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
+          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+        }
+      })
+    : null;
 
   automationEventDispatcher.registerListeners();
   auditService.registerEventListeners();
@@ -190,6 +214,10 @@ export const createApp = (): Express => {
       workspaceWorkItemsService
     })
   );
+
+  if (billingService) {
+    app.use(env.API_PREFIX, buildBillingRoutes({ billingService }));
+  }
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

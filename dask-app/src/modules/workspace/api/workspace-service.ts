@@ -1,5 +1,6 @@
 import { apiClient } from "@/shared/api/http-client";
 import { isApiError } from "@/shared/api/http-client";
+import { CARD_FIELDS_SCHEMA_VERSION } from "@/entities/task";
 import type {
   ApiBoardColumn,
   ApiCustomField,
@@ -15,6 +16,7 @@ import type {
   WorkspaceService,
   WorkspaceSnapshot,
   WorkspaceSummary,
+  WorkspaceTemplateKey,
   WorkspaceTemplateOption
 } from "@/modules/workspace/model/types";
 
@@ -105,6 +107,20 @@ async function fetchSnapshot(workspaceSlug: string): Promise<WorkspaceSnapshot> 
 function getCachedTask(workspaceSlug: string, taskId: string) {
   const snapshot = snapshotByWorkspaceSlug.get(workspaceSlug);
   return snapshot?.tasks.find((task) => task.id === taskId) ?? null;
+}
+
+async function patchWorkItem(
+  workspaceSlug: string,
+  taskId: string,
+  payload: Record<string, unknown>
+): Promise<WorkspaceSnapshot> {
+  const workspaceId = await resolveWorkspaceId(workspaceSlug);
+  await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, payload, {
+    authMode: "required",
+    retryOnUnauthorized: true
+  });
+
+  return fetchSnapshot(workspaceSlug);
 }
 
 export const workspaceService: WorkspaceService = {
@@ -227,33 +243,33 @@ export const workspaceService: WorkspaceService = {
   },
 
   async updateTaskPriority(workspaceSlug, taskId, priority) {
-    const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+    return patchWorkItem(workspaceSlug, taskId, {
       metadata: { priority }
-    }, {
-      authMode: "required",
-      retryOnUnauthorized: true
     });
+  },
 
-    return fetchSnapshot(workspaceSlug);
+  async updateTaskTitle(workspaceSlug, taskId, title) {
+    return patchWorkItem(workspaceSlug, taskId, {
+      title
+    });
+  },
+
+  async updateTaskDescription(workspaceSlug, taskId, description) {
+    return patchWorkItem(workspaceSlug, taskId, {
+      description
+    });
   },
 
   async updateTaskCustomField(workspaceSlug, taskId, fieldId, value) {
-    const workspaceId = await resolveWorkspaceId(workspaceSlug);
     const current = getCachedTask(workspaceSlug, taskId);
     const nextFields = {
       ...(current?.customFields ?? {}),
       [fieldId]: value
     };
 
-    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+    return patchWorkItem(workspaceSlug, taskId, {
       fields: nextFields
-    }, {
-      authMode: "required",
-      retryOnUnauthorized: true
     });
-
-    return fetchSnapshot(workspaceSlug);
   },
 
   async toggleChecklistItem(workspaceSlug, taskId, itemId) {
@@ -299,6 +315,20 @@ export const workspaceService: WorkspaceService = {
       ...snapshot,
       preferences
     };
+  },
+
+  async resetWorkspaceTemplate(workspaceSlug: string, templateKey?: WorkspaceTemplateKey) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(
+      `/workspaces/${workspaceId}/reset-template`,
+      templateKey ? { templateKey } : {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+
+    return fetchSnapshot(workspaceSlug);
   },
 
   // ─── Board Config — Fetch com UUIDs reais ────────────────────────────────
@@ -420,7 +450,7 @@ export const workspaceService: WorkspaceService = {
 
   async setCardFieldVisibility(workspaceSlug, fieldId, visible) {
     const snapshot = snapshotByWorkspaceSlug.get(workspaceSlug) ?? (await fetchSnapshot(workspaceSlug));
-    const visibleFields = new Set(snapshot.preferences.visibleCardFieldIds);
+    const visibleFields = new Set(snapshot.preferences.visibleCardFieldIds ?? []);
 
     if (visible) {
       visibleFields.add(fieldId);
@@ -429,7 +459,10 @@ export const workspaceService: WorkspaceService = {
     }
 
     return workspaceService.updatePreferences(workspaceSlug, {
-      visibleCardFieldIds: Array.from(visibleFields)
+      visibleCardFieldIds: Array.from(visibleFields),
+      settings: {
+        cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION
+      }
     });
   },
 
@@ -449,7 +482,33 @@ export const workspaceService: WorkspaceService = {
     byType[typeId] = Array.from(currentIds);
 
     return workspaceService.updatePreferences(workspaceSlug, {
-      visibleFieldsByType: byType
+      visibleFieldsByType: byType,
+      settings: {
+        cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION
+      }
+    });
+  },
+
+  async setTypeDetailFieldVisibility(workspaceSlug: string, typeId: string, fieldId: string, visible: boolean) {
+    const snapshot = snapshotByWorkspaceSlug.get(workspaceSlug) ?? (await fetchSnapshot(workspaceSlug));
+    const byType: Record<string, string[]> = {
+      ...(snapshot.preferences.detailVisibleFieldsByType ?? {})
+    };
+    const currentIds = new Set<string>(byType[typeId] ?? []);
+
+    if (visible) {
+      currentIds.add(fieldId);
+    } else {
+      currentIds.delete(fieldId);
+    }
+
+    byType[typeId] = Array.from(currentIds);
+
+    return workspaceService.updatePreferences(workspaceSlug, {
+      detailVisibleFieldsByType: byType,
+      settings: {
+        cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION
+      }
     });
   }
 };

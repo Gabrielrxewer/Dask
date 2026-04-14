@@ -26,6 +26,7 @@ import {
   patchCustomFieldDto,
   patchItemTypeDto,
   patchPreferencesDto,
+  resetWorkspaceTemplateDto,
   patchTagDto,
   patchWorkflowStateDto,
   patchWorkItemCustomFieldValueDto,
@@ -306,6 +307,20 @@ export const buildWorkspacePlatformRoutes = (deps: {
         payload
       });
       res.status(200).json(preferences);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/reset-template',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const payload = resetWorkspaceTemplateDto.parse(req.body ?? {});
+      const config = await deps.workspaceConfigService.resetWorkspaceToTemplate({
+        workspaceId: req.workspace!.id,
+        userId: req.auth!.userId,
+        templateKey: payload.templateKey
+      });
+      res.status(200).json(config);
     })
   );
 

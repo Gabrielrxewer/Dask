@@ -3,7 +3,14 @@ import type { DragEvent } from "react";
 import type { MembersById } from "@/entities/member";
 import { MemberAvatar } from "@/entities/member";
 import { TaskCard, groupTasksByStatus } from "@/entities/task";
-import type { BoardConfig, Task, TaskPriority, TaskStatus, TaskStatusId } from "@/entities/task";
+import type {
+  BoardConfig,
+  Task,
+  TaskCustomFieldValue,
+  TaskPriority,
+  TaskStatus,
+  TaskStatusId
+} from "@/entities/task";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
@@ -14,9 +21,16 @@ interface BoardColumnsProps {
   boardConfig: BoardConfig;
   membersById: MembersById;
   compactCards?: boolean;
-  onMoveTask: (taskId: string, statusId: TaskStatusId) => void;
-  onUpdatePriority: (taskId: string, priority: TaskPriority) => void;
-  onToggleChecklistItem: (taskId: string, itemId: string) => void;
+  onMoveTask: (taskId: string, statusId: TaskStatusId) => Promise<void> | void;
+  onUpdatePriority: (taskId: string, priority: TaskPriority) => Promise<void> | void;
+  onUpdateTaskTitle: (taskId: string, title: string) => Promise<void> | void;
+  onUpdateTaskDescription: (taskId: string, description: string) => Promise<void> | void;
+  onUpdateTaskCustomField: (
+    taskId: string,
+    fieldId: string,
+    value: TaskCustomFieldValue
+  ) => Promise<void> | void;
+  onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
 }
 
 export function BoardColumns({
@@ -27,6 +41,9 @@ export function BoardColumns({
   compactCards = false,
   onMoveTask,
   onUpdatePriority,
+  onUpdateTaskTitle,
+  onUpdateTaskDescription,
+  onUpdateTaskCustomField,
   onToggleChecklistItem
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
@@ -42,7 +59,6 @@ export function BoardColumns({
     () => (selectedTask ? statuses.find(status => status.id === selectedTask.status) ?? null : null),
     [selectedTask, statuses]
   );
-
   const resolveCreatorName = (task: Task): string => {
     const createdBy = task.customFields["createdBy"];
     if (typeof createdBy === "string" && createdBy.trim()) {
@@ -55,6 +71,7 @@ export function BoardColumns({
 
     return membersById[task.assignee]?.name ?? "Usuario";
   };
+  const selectedCreatorName = selectedTask ? resolveCreatorName(selectedTask) : "Usuario";
 
   const handleDragStart = (event: DragEvent<HTMLElement>, taskId: string) => {
     setDraggingTaskId(taskId);
@@ -115,6 +132,7 @@ export function BoardColumns({
                       task={task}
                       boardConfig={boardConfig}
                       compact={compactCards}
+                      statusLabel={status.label}
                       creatorName={resolveCreatorName(task)}
                       assigneeName={membersById[task.assignee]?.name ?? "Usuario"}
                       assigneeSlot={<MemberAvatar member={membersById[task.assignee]} />}
@@ -136,9 +154,15 @@ export function BoardColumns({
         <TaskDetailsModal
           task={selectedTask}
           status={selectedStatus}
+          statuses={statuses}
           assignee={membersById[selectedTask.assignee]}
+          creatorName={selectedCreatorName}
           boardConfig={boardConfig}
           onUpdatePriority={onUpdatePriority}
+          onUpdateTitle={onUpdateTaskTitle}
+          onUpdateDescription={onUpdateTaskDescription}
+          onUpdateCustomField={onUpdateTaskCustomField}
+          onUpdateStatus={onMoveTask}
           onToggleChecklistItem={onToggleChecklistItem}
           onClose={() => setSelectedTaskId("")}
         />

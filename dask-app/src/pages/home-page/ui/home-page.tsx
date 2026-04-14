@@ -1,6 +1,7 @@
 import { type MouseEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router";
+import { useAuth } from "@/features/auth/model";
 import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
 import {
   focusPanel,
@@ -153,7 +154,81 @@ function UseCaseCard({ useCase }: { useCase: HomeUseCase }) {
   );
 }
 
+function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSONAL" | "BUSINESS") => void }) {
+  return (
+    <section className="home-page__section home-page__pricing-section" id="precos" aria-label="Planos e precos">
+      <header className="home-page__section-intro">
+        <p className="home-page__section-eyebrow">Planos</p>
+        <h2 className="home-page__section-title">Simples, direto e sem surpresas.</h2>
+        <p className="home-page__section-description">
+          Escolha o plano que melhor se encaixa na sua operacao. Cobranca mensal recorrente, cancele quando quiser.
+        </p>
+      </header>
+
+      <div className="home-page__pricing-cards">
+        <article className="home-page__pricing-card">
+          <p className="home-page__pricing-plan-name">Pessoal</p>
+          <div className="home-page__pricing-price">
+            <strong>R$ 19,90</strong>
+            <span>/mes</span>
+          </div>
+          <p className="home-page__pricing-description">
+            Para uso individual com boards, IA e automacoes basicas.
+          </p>
+          <ul className="home-page__pricing-features">
+            {["1 workspace pessoal", "Boards, listas e timeline", "IA para melhorias", "Automacoes basicas", "Busca semantica"].map(f => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <button
+            className="home-page__action home-page__action--secondary home-page__pricing-btn"
+            onClick={() => onSubscribeClick("PERSONAL")}
+            type="button"
+          >
+            Assinar Pessoal
+          </button>
+        </article>
+
+        <article className="home-page__pricing-card home-page__pricing-card--featured">
+          <span className="home-page__pricing-badge">Popular</span>
+          <p className="home-page__pricing-plan-name">Business</p>
+          <div className="home-page__pricing-price">
+            <strong>R$ 99,00</strong>
+            <span>/mes</span>
+          </div>
+          <p className="home-page__pricing-description">
+            Para equipes e operacoes corporativas com recursos avancados.
+          </p>
+          <ul className="home-page__pricing-features">
+            {["Multiplos workspaces", "Suporte a equipes", "Boards, listas e timeline", "IA avancada e automacoes", "Campos personalizados", "Auditoria e integrações", "Suporte prioritario"].map(f => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <button
+            className="home-page__action home-page__action--primary home-page__pricing-btn"
+            onClick={() => onSubscribeClick("BUSINESS")}
+            type="button"
+          >
+            Assinar Business
+          </button>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 export function HomePage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  function handleSubscribeClick(_plan: "PERSONAL" | "BUSINESS") {
+    if (isAuthenticated) {
+      navigate(routePaths.choosePlan);
+    } else {
+      navigate(routePaths.login, { state: { from: { pathname: routePaths.choosePlan } } });
+    }
+  }
+
   const scrollToSection = (event: MouseEvent<HTMLAnchorElement>, targetId: string) => {
     event.preventDefault();
 
@@ -417,6 +492,8 @@ export function HomePage() {
             </div>
           </div>
         </section>
+
+        <PricingSection onSubscribeClick={handleSubscribeClick} />
 
         <section className="home-page__section">
           <div className="home-page__cta-shell">

@@ -99,14 +99,22 @@ export class WorkspaceWorkItemsService {
       fieldDefinitions: config.customFieldDefinitions
         .filter((field) => field.isActive)
         .sort((left, right) => left.order - right.order)
-        .map((field) => ({
-          id: field.slug,
-          label: field.name,
-          type: mapCustomFieldTypeToFrontend(this.toPrismaFieldType(field.type)),
-          options: field.options.map((option) => option.label)
-        })),
+        .map((field) => {
+          const type = mapCustomFieldTypeToFrontend(this.toPrismaFieldType(field.type));
+          const aiEnhance = this.isAiEnabledInFieldSettings(field.settings);
+
+          return {
+            id: field.slug,
+            label: field.name,
+            type,
+            options: field.options.map((option) => option.label),
+            capabilities: aiEnhance ? { aiEnhance: true } : undefined
+          };
+        }),
       cardLayout: {
-        visibleFieldIds: config.preferences.visibleCardFieldIds
+        visibleFieldIds: config.preferences.visibleCardFieldIds,
+        visibleFieldIdsByType: config.preferences.visibleFieldsByType ?? {},
+        detailVisibleFieldIdsByType: config.preferences.detailVisibleFieldsByType ?? {}
       },
       perspectives: this.resolveBoardPerspectivesFromSettings(config.preferences.settings, statuses)
     };
@@ -1182,6 +1190,14 @@ export class WorkspaceWorkItemsService {
       default:
         return CustomFieldType.TEXT;
     }
+  }
+
+  private isAiEnabledInFieldSettings(settings: unknown): boolean {
+    if (!isRecord(settings)) {
+      return false;
+    }
+
+    return settings.allowAiGeneration === true || settings.aiEnhance === true;
   }
 
   private resolveBoardPerspectivesFromSettings(

@@ -123,6 +123,26 @@
   font-size: var(--font-size-xs);
   color: #365a7f;
   margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-types-settings__fields-meta {
+  font-size: 10px;
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.item-types-settings__fields-actions {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 10px;
+  flex-wrap: wrap;
 }
 
 .item-types-settings__fields-empty {
@@ -175,6 +195,36 @@
   color: #8aadcc;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.item-types-settings__panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.item-types-settings__panel-footer-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.item-types-settings__pending {
+  font-size: 11px;
+  color: #1d4ed8;
+}
+
+.item-types-settings__saved {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.item-types-settings__error {
+  font-size: 11px;
+  color: #b91c1c;
 }
 
 @media (max-width: 600px) {

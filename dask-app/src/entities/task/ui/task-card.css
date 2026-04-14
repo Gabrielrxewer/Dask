@@ -248,14 +248,13 @@
 .task-card__fields {
   margin-top: 10px;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
 .task-card__field {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  gap: 4px;
   border: 1px solid #e4edf8;
   border-radius: 10px;
   padding: 6px 8px;
@@ -267,6 +266,17 @@
 .task-card__field strong {
   font-weight: 700;
   color: #587796;
+  font-size: 0.64rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.task-card__field-value {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #274868;
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .task-card__footer {
@@ -335,6 +345,10 @@
 
 @media (max-width: 520px) {
   .task-card__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .task-card__fields {
     grid-template-columns: 1fr;
   }
 }

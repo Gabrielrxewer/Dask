@@ -16,7 +16,8 @@ import type {
   UpdateItemTypeInput,
   WorkspaceAutomation,
   WorkspacePreferences,
-  WorkspaceSnapshot
+  WorkspaceSnapshot,
+  WorkspaceTemplateKey
 } from "@/modules/workspace/model";
 
 interface WorkspaceContextValue {
@@ -25,12 +26,16 @@ interface WorkspaceContextValue {
   createTask: (input: CreateTaskInput) => Promise<void>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<void>;
   updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<void>;
+  updateTaskTitle: (taskId: string, title: string) => Promise<void>;
+  updateTaskDescription: (taskId: string, description: string) => Promise<void>;
   updateTaskCustomField: (taskId: string, fieldId: string, value: TaskCustomFieldValue) => Promise<void>;
   toggleChecklistItem: (taskId: string, itemId: string) => Promise<void>;
   setAutomationStatus: (automationId: string, status: WorkspaceAutomation["status"]) => Promise<void>;
   updatePreferences: (patch: Partial<WorkspacePreferences>) => Promise<void>;
+  resetWorkspaceTemplate: (templateKey?: WorkspaceTemplateKey) => Promise<void>;
   setCardFieldVisibility: (fieldId: string, visible: boolean) => Promise<void>;
   setTypeFieldVisibility: (typeId: string, fieldId: string, visible: boolean) => Promise<void>;
+  setTypeDetailFieldVisibility: (typeId: string, fieldId: string, visible: boolean) => Promise<void>;
 
   fetchBoardColumns: () => Promise<ApiBoardColumn[]>;
   fetchWorkflowStates: () => Promise<ApiWorkflowState[]>;
@@ -117,6 +122,24 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
+  const updateTaskTitle = useCallback(async (taskId: string, title: string) => {
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.updateTaskTitle(workspaceSlug, taskId, title);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const updateTaskDescription = useCallback(async (taskId: string, description: string) => {
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.updateTaskDescription(workspaceSlug, taskId, description);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
   const updateTaskCustomField = useCallback(
     async (taskId: string, fieldId: string, value: TaskCustomFieldValue) => {
       if (!workspaceSlug) {
@@ -159,6 +182,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
+  const resetWorkspaceTemplate = useCallback(async (templateKey?: WorkspaceTemplateKey) => {
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.resetWorkspaceTemplate(workspaceSlug, templateKey);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
   const setCardFieldVisibility = useCallback(async (fieldId: string, visible: boolean) => {
     if (!workspaceSlug) {
       return;
@@ -172,6 +204,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     async (typeId: string, fieldId: string, visible: boolean) => {
       if (!workspaceSlug) return;
       const nextSnapshot = await workspaceService.setTypeFieldVisibility(workspaceSlug, typeId, fieldId, visible);
+      setSnapshot(nextSnapshot);
+    },
+    [workspaceSlug]
+  );
+
+  const setTypeDetailFieldVisibility = useCallback(
+    async (typeId: string, fieldId: string, visible: boolean) => {
+      if (!workspaceSlug) return;
+      const nextSnapshot = await workspaceService.setTypeDetailFieldVisibility(workspaceSlug, typeId, fieldId, visible);
       setSnapshot(nextSnapshot);
     },
     [workspaceSlug]
@@ -258,12 +299,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createTask,
       moveTask,
       updateTaskPriority,
+      updateTaskTitle,
+      updateTaskDescription,
       updateTaskCustomField,
       toggleChecklistItem,
       setAutomationStatus,
       updatePreferences,
+      resetWorkspaceTemplate,
       setCardFieldVisibility,
       setTypeFieldVisibility,
+      setTypeDetailFieldVisibility,
       fetchBoardColumns,
       fetchWorkflowStates,
       fetchItemTypes,
@@ -284,12 +329,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createTask,
       moveTask,
       updateTaskPriority,
+      updateTaskTitle,
+      updateTaskDescription,
       updateTaskCustomField,
       toggleChecklistItem,
       setAutomationStatus,
       updatePreferences,
+      resetWorkspaceTemplate,
       setCardFieldVisibility,
       setTypeFieldVisibility,
+      setTypeDetailFieldVisibility,
       fetchBoardColumns,
       fetchWorkflowStates,
       fetchItemTypes,

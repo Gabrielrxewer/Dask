@@ -50,6 +50,7 @@ export function CreateTaskButton({ onCreate, typeOptions }: CreateTaskButtonProp
   const [priority, setPriority] = useState<TaskPriority>(2);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionSuggestion, setDescriptionSuggestion] = useState("");
 
   useEffect(() => {
     if (!resolvedTypeOptions.some(option => option.id === type)) {
@@ -69,6 +70,7 @@ export function CreateTaskButton({ onCreate, typeOptions }: CreateTaskButtonProp
     setPriority(2);
     setTitle("");
     setDescription("");
+    setDescriptionSuggestion("");
   };
 
   const modal = (
@@ -125,18 +127,39 @@ export function CreateTaskButton({ onCreate, typeOptions }: CreateTaskButtonProp
           <FormField label="Descricao" className="create-item-modal__field">
             <Textarea
               value={description}
-              onChange={event => setDescription(event.target.value)}
+              onChange={event => {
+                setDescription(event.target.value);
+              }}
               placeholder="Descreva contexto, objetivo e resultado esperado"
             />
           </FormField>
 
-          <button
-            type="button"
-            className="create-item-modal__ai"
-            onClick={() => setDescription(prev => improveDescriptionMock(prev))}
-          >
-            Aprimorar descricao com IA
-          </button>
+          <div className="create-item-modal__actions">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setDescriptionSuggestion(improveDescriptionMock(description))}
+            >
+              Aprimorar descricao
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!descriptionSuggestion}
+              onClick={() => {
+                setDescription(descriptionSuggestion);
+                setDescriptionSuggestion("");
+              }}
+            >
+              Usar sugestao
+            </Button>
+          </div>
+
+          {descriptionSuggestion ? (
+            <pre className="create-item-modal__suggestion">{descriptionSuggestion}</pre>
+          ) : null}
         </div>
 
         <footer className="create-item-modal__footer">

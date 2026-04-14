@@ -42,6 +42,22 @@ enum WorkspaceKind {
   CORPORATE
 }
 
+enum SubscriptionPlan {
+  PERSONAL
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+}
+
 model User {
   id                       String                    @id @default(uuid())
   email                    String                    @unique
@@ -53,6 +69,13 @@ model User {
   loginFailureCount        Int                       @default(0)
   lockedUntil              DateTime?
   preferences              Json?
+  // Billing / Stripe
+  stripeCustomerId         String?                   @unique
+  subscriptionPlan         SubscriptionPlan?
+  subscriptionStatus       SubscriptionStatus?
+  subscriptionId           String?
+  currentPeriodEnd         DateTime?
+  hasActiveSubscription    Boolean                   @default(false)
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   organizations            OrganizationMembership[]
@@ -68,6 +91,30 @@ model User {
   resetTokens              PasswordResetToken[]
   verificationTokens       EmailVerificationToken[]
   externalIdentities       ExternalIdentity[]
+  subscriptions            Subscription[]
+}
+
+model Subscription {
+  id                       String             @id @default(uuid())
+  userId                   String
+  stripeCustomerId         String
+  stripeSubscriptionId     String             @unique
+  stripeCheckoutSessionId  String?
+  planCode                 SubscriptionPlan
+  status                   SubscriptionStatus
+  currency                 String             @default("brl")
+  amount                   Int                // in cents
+  interval                 String             @default("month")
+  currentPeriodStart       DateTime?
+  currentPeriodEnd         DateTime?
+  cancelAtPeriodEnd        Boolean            @default(false)
+  lastWebhookEvent         String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stripeCustomerId])
 }
 
 model ExternalIdentity {

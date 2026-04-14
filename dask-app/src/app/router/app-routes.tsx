@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { GlobalLayout } from "@/app/layout";
-import { ProtectedRoute, PublicRoute } from "@/features/auth";
+import { ProtectedRoute, PublicRoute, SubscribedRoute } from "@/features/auth";
+import { BillingProvider } from "@/app/providers/billing-provider";
 import { WorkspaceProvider, workspaceService } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { LoadingState } from "@/shared/ui";
 import {
   AutomationsPage,
+  BillingCancelPage,
+  BillingSuccessPage,
   BoardPage,
+  ChoosePlanPage,
   ColumnsSettingsPage,
   CustomFieldsSettingsPage,
   GeneralSettingsPage,
@@ -19,6 +23,7 @@ import {
   PerspectivesSettingsPage,
   ResetPasswordPage,
   SettingsShellPage,
+  SubscriptionBlockedPage,
   TimelinePage,
   VerifyEmailPage,
   WorkflowStatesSettingsPage
@@ -54,16 +59,23 @@ function WorkspaceEntryRedirect() {
 
         setRedirectTo(buildWorkspaceBoardPath(fallbackWorkspace.slug));
       })
-      .catch((error) => {
-        if (active) {
-          if (isApiError(error) && (error.status === 401 || error.status === 403)) {
-            setRedirectTo(routePaths.login);
-            return;
-          }
+        .catch((error) => {
+          if (active) {
+            if (isApiError(error)) {
+              if (error.status === 401) {
+                setRedirectTo(routePaths.login);
+                return;
+              }
+              if (error.status === 403) {
+                // Authenticated user without active subscription should go to plan selection.
+                setRedirectTo(routePaths.choosePlan);
+                return;
+              }
+            }
 
-          setRedirectTo(routePaths.noWorkspace);
-        }
-      });
+            setRedirectTo(routePaths.noWorkspace);
+          }
+        });
 
     return () => {
       active = false;
@@ -102,13 +114,22 @@ export function AppRoutes() {
         {/*
           Rota pública sem guard de sessão.
           O usuário chega aqui via link de e-mail — sem cookie de refresh válido.
-          Não pode estar dentro de PublicRoute (que bloqueia autenticados) nem
-          de ProtectedRoute (que exige sessão). Apenas o GlobalLayout envolve.
         */}
         <Route path={routePaths.resetPassword} element={<ResetPasswordPage />} />
         <Route path={routePaths.verifyEmail} element={<VerifyEmailPage />} />
 
+        {/* Billing routes — authenticated but subscription not required */}
         <Route element={<ProtectedRoute />}>
+          <Route element={<BillingProvider />}>
+            <Route path={routePaths.choosePlan} element={<ChoosePlanPage />} />
+            <Route path={routePaths.billingSuccess} element={<BillingSuccessPage />} />
+            <Route path={routePaths.billingCancel} element={<BillingCancelPage />} />
+            <Route path={routePaths.subscriptionBlocked} element={<SubscriptionBlockedPage />} />
+          </Route>
+        </Route>
+
+        {/* Platform routes — require active subscription */}
+        <Route element={<SubscribedRoute />}>
           <Route element={<WorkspaceBoundary />}>
             <Route path={routePaths.workspaceEntry} element={<WorkspaceEntryRedirect />} />
             <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />

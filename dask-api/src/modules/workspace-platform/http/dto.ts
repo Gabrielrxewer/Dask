@@ -12,6 +12,12 @@ const customFieldTypeEnum = z.enum([
   'user'
 ]);
 
+const workspaceTemplateKeyEnum = z.enum([
+  'software_delivery',
+  'product_discovery',
+  'operations_kanban'
+]);
+
 const nonEmptyPatch = (message: string) =>
   z
     .object({})
@@ -142,11 +148,17 @@ export const patchPreferencesDto = z
     defaultBoardMode: z.string().min(1).optional(),
     dateFormat: z.string().min(1).optional(),
     visibleCardFieldIds: z.array(z.string().min(1)).optional(),
+    visibleFieldsByType: z.record(z.array(z.string().min(1))).optional(),
+    detailVisibleFieldsByType: z.record(z.array(z.string().min(1))).optional(),
     settings: z.record(z.unknown()).optional()
   })
   .refine((obj) => Object.keys(obj).length > 0, {
     message: 'At least one field is required'
   });
+
+export const resetWorkspaceTemplateDto = z.object({
+  templateKey: workspaceTemplateKeyEnum.optional()
+});
 
 export const workItemParamsDto = z.object({
   workspaceId: z.string().uuid(),

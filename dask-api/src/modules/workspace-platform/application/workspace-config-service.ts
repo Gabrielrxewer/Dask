@@ -2,6 +2,10 @@ import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import {
+  getWorkspaceTemplateByKey,
+  type WorkspaceTemplateKey
+} from '@/modules/workspaces/application/workspace-template-catalog';
+import {
   mapCustomFieldTypeToInput,
   mapInputTypeToPrisma,
   sanitizeHexColor,
@@ -537,6 +541,8 @@ export class WorkspaceConfigService {
       defaultBoardMode?: string;
       dateFormat?: string;
       visibleCardFieldIds?: string[];
+      visibleFieldsByType?: Record<string, string[]>;
+      detailVisibleFieldsByType?: Record<string, string[]>;
       settings?: JsonRecord;
     };
   }) {
@@ -544,9 +550,18 @@ export class WorkspaceConfigService {
 
     const current = await this.prisma.workspacePreferences.findUnique({ where: { workspaceId: input.workspaceId } });
 
-    const mergedSettings = {
-      ...(current?.settings && typeof current.settings === 'object' && !Array.isArray(current.settings)
+    const currentSettings =
+      current?.settings && typeof current.settings === 'object' && !Array.isArray(current.settings)
         ? (current.settings as JsonRecord)
+        : {};
+
+    const mergedSettings = {
+      ...currentSettings,
+      ...(input.payload.visibleFieldsByType !== undefined
+        ? { visibleFieldsByType: input.payload.visibleFieldsByType }
+        : {}),
+      ...(input.payload.detailVisibleFieldsByType !== undefined
+        ? { detailVisibleFieldsByType: input.payload.detailVisibleFieldsByType }
         : {}),
       ...(input.payload.settings ?? {})
     };
@@ -567,11 +582,110 @@ export class WorkspaceConfigService {
           input.payload.visibleCardFieldIds !== undefined
             ? toJsonValue(input.payload.visibleCardFieldIds)
             : undefined,
-        settings: input.payload.settings !== undefined ? toJsonValue(mergedSettings) : undefined
+        settings:
+          input.payload.settings !== undefined ||
+          input.payload.visibleFieldsByType !== undefined ||
+          input.payload.detailVisibleFieldsByType !== undefined
+            ? toJsonValue(mergedSettings)
+            : undefined
       }
     });
 
     return this.serializePreferences(preferences);
+  }
+
+  public async resetWorkspaceToTemplate(input: {
+    workspaceId: string;
+    userId: string;
+    templateKey?: WorkspaceTemplateKey;
+  }) {
+    await this.ensureConfigWritableWorkspace(input.workspaceId, input.userId);
+
+    const selectedTemplateKey = input.templateKey ?? 'software_delivery';
+    const selectedTemplate = getWorkspaceTemplateByKey(selectedTemplateKey);
+    if (!selectedTemplate) {
+      throw new AppError('Invalid workspace template', 422);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.item.updateMany({
+        where: { workspaceId: input.workspaceId },
+        data: {
+          fields: toJsonValue({})
+        }
+      });
+
+      await tx.workItemViewPlacement.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.automationView.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+
+      await tx.columnStateMapping.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.customFieldDefinition.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.tagDefinition.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.boardColumn.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.workflowState.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.workItemType.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.workspacePreferences.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+      await tx.columnDefinition.deleteMany({
+        where: {
+          board: { workspaceId: input.workspaceId }
+        }
+      });
+      await tx.boardTemplate.deleteMany({
+        where: { workspaceId: input.workspaceId }
+      });
+
+      const { defaultBoardId } = await ensureWorkspaceDefaultConfiguration(tx, {
+        workspaceId: input.workspaceId,
+        ownerUserId: input.userId,
+        templateKey: selectedTemplate.key
+      });
+
+      const boardTemplate = await tx.boardTemplate.create({
+        data: {
+          workspaceId: input.workspaceId,
+          name: selectedTemplate.name,
+          description: selectedTemplate.description,
+          schema: toJsonValue(selectedTemplate.schema),
+          rules: toJsonValue(selectedTemplate.rules)
+        }
+      });
+
+      await tx.board.update({
+        where: { id: defaultBoardId },
+        data: {
+          templateId: boardTemplate.id,
+          name: selectedTemplate.boardName,
+          description: selectedTemplate.boardDescription
+        }
+      });
+    });
+
+    const access = await this.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const config = await this.loadWorkspaceConfig(input.workspaceId);
+
+    return {
+      workspace: access.workspace,
+      templateKey: selectedTemplate.key,
+      ...config
+    };
   }
 
   public async ensureReadableWorkspace(workspaceId: string, userId: string): Promise<WorkspaceAccess> {
@@ -1008,6 +1122,11 @@ export class WorkspaceConfigService {
     settings: unknown;
     updatedAt: Date;
   }) {
+    const settings =
+      preferences.settings && typeof preferences.settings === 'object' && !Array.isArray(preferences.settings)
+        ? (preferences.settings as Record<string, unknown>)
+        : {};
+
     return {
       workspaceId: preferences.workspaceId,
       defaultBoardMode: preferences.defaultBoardMode,
@@ -1015,11 +1134,26 @@ export class WorkspaceConfigService {
       visibleCardFieldIds: Array.isArray(preferences.visibleCardFieldIds)
         ? preferences.visibleCardFieldIds.filter((value): value is string => typeof value === 'string')
         : [],
-      settings:
-        preferences.settings && typeof preferences.settings === 'object' && !Array.isArray(preferences.settings)
-          ? preferences.settings
-          : {},
+      visibleFieldsByType: this.extractFieldMap(settings.visibleFieldsByType),
+      detailVisibleFieldsByType: this.extractFieldMap(settings.detailVisibleFieldsByType),
+      settings,
       updatedAt: preferences.updatedAt
     };
+  }
+
+  private extractFieldMap(input: unknown): Record<string, string[]> {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return {};
+    }
+
+    return Object.entries(input as Record<string, unknown>).reduce<Record<string, string[]>>((acc, [key, value]) => {
+      if (!Array.isArray(value)) {
+        return acc;
+      }
+
+      const fieldIds = value.filter((entry): entry is string => typeof entry === 'string');
+      acc[key] = fieldIds;
+      return acc;
+    }, {});
   }
 }

@@ -79,16 +79,21 @@
   min-height: 130px;
 }
 
-.create-item-modal__ai {
-  border: 1px solid #b8d5f4;
-  background: linear-gradient(135deg, #eef8ff 0%, #e7fff6 100%);
-  color: #154b74;
-  border-radius: 12px;
-  min-height: var(--control-height-md);
-  padding: 0 14px;
-  text-align: left;
-  font-weight: 600;
-  cursor: pointer;
+.create-item-modal__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.create-item-modal__suggestion {
+  margin: 0;
+  border: 1px solid var(--line);
+  background: var(--surface-raised-2);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  color: var(--text);
+  font-size: var(--font-size-sm);
 }
 
 .create-item-modal__footer {

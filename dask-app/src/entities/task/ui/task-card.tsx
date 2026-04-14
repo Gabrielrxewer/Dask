@@ -1,5 +1,11 @@
 import type { DragEvent, ReactNode } from "react";
-import { buildTaskChecklistSummary, buildTaskTypeMetaMap, getTaskTypeDisplayMeta, priorityMeta } from "@/entities/task";
+import {
+  buildTaskChecklistSummary,
+  buildTaskTypeMetaMap,
+  getTaskTypeDisplayMeta,
+  isSystemCardFieldId,
+  priorityMeta
+} from "@/entities/task";
 import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
 import { cn } from "@/shared/lib/cn";
 import { formatShortDate } from "@/shared/lib/date/format-date";
@@ -11,6 +17,7 @@ interface TaskCardProps {
   compact?: boolean;
   creatorName?: string;
   assigneeName?: string;
+  statusLabel?: string;
   assigneeSlot?: ReactNode;
   onDragStart: (event: DragEvent<HTMLElement>, taskId: string) => void;
   onDragEnd: () => void;
@@ -52,6 +59,7 @@ export function TaskCard({
   compact = false,
   creatorName,
   assigneeName,
+  statusLabel,
   assigneeSlot = null,
   onDragStart,
   onDragEnd,
@@ -68,21 +76,31 @@ export function TaskCard({
     return acc;
   }, {});
 
-  // Usa visibilidade específica do tipo, com fallback para a global
-  const effectiveVisibleFieldIds =
-    boardConfig.cardLayout.visibleFieldIdsByType?.[task.type] ??
-    boardConfig.cardLayout.visibleFieldIds;
+  const effectiveVisibleFieldIds = boardConfig.cardLayout.visibleFieldIdsByType?.[task.type] ?? [];
+  const visibleFieldIdSet = new Set(effectiveVisibleFieldIds);
+  const visibleCustomFieldIds = effectiveVisibleFieldIds.filter(fieldId => !isSystemCardFieldId(fieldId));
 
-  const visibleFields = effectiveVisibleFieldIds
+  const visibleFields = visibleCustomFieldIds
     .map(fieldId => ({
       definition: fieldMap[fieldId],
       value: task.customFields[fieldId]
     }))
     .filter(
       (item): item is { definition: TaskFieldDefinition; value: TaskCustomFieldValue } =>
-        Boolean(item.definition) && typeof item.value !== "undefined"
-    )
-    .slice(0, 3);
+        Boolean(item.definition)
+    );
+
+  const showType = visibleFieldIdSet.has("sys:type");
+  const showPriority = visibleFieldIdSet.has("sys:priority");
+  const showStatus = visibleFieldIdSet.has("sys:status");
+  const showTitle = visibleFieldIdSet.has("sys:title");
+  const showDescription = visibleFieldIdSet.has("sys:description");
+  const showCreatedBy = visibleFieldIdSet.has("sys:created-by");
+  const showAssignee = visibleFieldIdSet.has("sys:assignee");
+  const showTags = visibleFieldIdSet.has("sys:tags");
+  const showChecklist = visibleFieldIdSet.has("sys:checklist");
+  const showDueDate = visibleFieldIdSet.has("sys:due-date");
+  const hasMetaFooter = showChecklist || showDueDate;
 
   const canOpen = typeof onOpen === "function";
   const canUpdatePriority = typeof onUpdatePriority === "function";
@@ -120,34 +138,43 @@ export function TaskCard({
     >
       <header className="task-card__head">
         <div className="task-card__badges">
-          <span className="task-card__type-icon" aria-hidden="true">
-            {typeIcon}
-          </span>
-          <span
-            className="task-card__type"
-            style={{
-              backgroundColor: type.background,
-              borderColor: type.border,
-              color: type.text
-            }}
-          >
-            {type.label}
-          </span>
-          <button
-            type="button"
-            className={cn("task-card__priority", priority.className)}
-            aria-label={`Prioridade atual ${priority.label}. Clique para mudar.`}
-            disabled={!canUpdatePriority}
-            onClick={event => {
-              event.stopPropagation();
-              if (!canUpdatePriority) {
-                return;
-              }
-              onUpdatePriority(task.id, nextPriority);
-            }}
-          >
-            {priority.label}
-          </button>
+          {showType ? (
+            <>
+              <span className="task-card__type-icon" aria-hidden="true">
+                {typeIcon}
+              </span>
+              <span
+                className="task-card__type"
+                style={{
+                  backgroundColor: type.background,
+                  borderColor: type.border,
+                  color: type.text
+                }}
+              >
+                {type.label}
+              </span>
+            </>
+          ) : null}
+
+          {showPriority ? (
+            <button
+              type="button"
+              className={cn("task-card__priority", priority.className)}
+              aria-label={`Prioridade atual ${priority.label}. Clique para mudar.`}
+              disabled={!canUpdatePriority}
+              onClick={event => {
+                event.stopPropagation();
+                if (!canUpdatePriority) {
+                  return;
+                }
+                onUpdatePriority(task.id, nextPriority);
+              }}
+            >
+              {priority.label}
+            </button>
+          ) : null}
+
+          {showStatus ? <span className="task-card__tag">{statusLabel ?? task.status}</span> : null}
         </div>
         <button
           className="task-card__ghost"
@@ -159,53 +186,67 @@ export function TaskCard({
         </button>
       </header>
 
-      <h4 className="task-card__title">{task.title}</h4>
-      {task.text ? <p className="task-card__text">{task.text}</p> : null}
+      {showTitle ? <h4 className="task-card__title">{task.title}</h4> : null}
+      {showDescription && task.text ? <p className="task-card__text">{task.text}</p> : null}
 
-      <div className="task-card__summary">
-        <span className="task-card__summary-item">
-          <strong>Criado por</strong>
-          <span>{authorLabel}</span>
-        </span>
-        <span className="task-card__summary-item">
-          <strong>Responsavel</strong>
-          <span>{ownerLabel}</span>
-        </span>
-      </div>
+      {showCreatedBy || showAssignee ? (
+        <div className="task-card__summary">
+          {showCreatedBy ? (
+            <span className="task-card__summary-item">
+              <strong>Criado por</strong>
+              <span>{authorLabel}</span>
+            </span>
+          ) : null}
+          {showAssignee ? (
+            <span className="task-card__summary-item">
+              <strong>Responsavel</strong>
+              <span>{ownerLabel}</span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className="task-card__tags">
-        {displayTags.map(tag => (
-          <span className="task-card__tag" key={tag}>
-            {tag}
-          </span>
-        ))}
-        {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
-      </div>
+      {showTags ? (
+        <div className="task-card__tags">
+          {displayTags.map(tag => (
+            <span className="task-card__tag" key={tag}>
+              {tag}
+            </span>
+          ))}
+          {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
+        </div>
+      ) : null}
 
       {visibleFields.length > 0 ? (
         <div className="task-card__fields">
           {visibleFields.map(({ definition, value }) => (
             <span className="task-card__field" key={definition.id}>
               <strong>{definition.label}</strong>
-              {formatCustomFieldValue(value, definition)}
+              <span className="task-card__field-value">{formatCustomFieldValue(value, definition)}</span>
             </span>
           ))}
         </div>
       ) : null}
 
-      <footer className="task-card__footer">
-        <div className="task-card__owner">
-          {assigneeSlot}
-          <div className="task-card__owner-text">
-            <strong>Responsavel</strong>
-            <span>{ownerLabel}</span>
-          </div>
-        </div>
-        <div className="task-card__meta">
-          <span>{`Checklist ${checklist.done}/${checklist.total}`}</span>
-          <span>{`Prazo ${formatShortDate(task.due)}`}</span>
-        </div>
-      </footer>
+      {showAssignee || hasMetaFooter ? (
+        <footer className="task-card__footer">
+          {showAssignee ? (
+            <div className="task-card__owner">
+              {assigneeSlot}
+              <div className="task-card__owner-text">
+                <strong>Responsavel</strong>
+                <span>{ownerLabel}</span>
+              </div>
+            </div>
+          ) : null}
+          {hasMetaFooter ? (
+            <div className="task-card__meta">
+              {showChecklist ? <span>{`Checklist ${checklist.done}/${checklist.total}`}</span> : null}
+              {showDueDate ? <span>{`Prazo ${formatShortDate(task.due)}`}</span> : null}
+            </div>
+          ) : null}
+        </footer>
+      ) : null}
     </article>
   );
 }

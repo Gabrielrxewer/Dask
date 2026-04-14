@@ -16,8 +16,10 @@ export interface WorkspacePreferences {
   defaultBoardMode: WorkspaceBoardMode;
   dateFormat: WorkspaceDateFormat;
   visibleCardFieldIds: string[];
-  /** Campos visíveis por tipo de work item. Sobrepõe visibleCardFieldIds para aquele tipo. */
+  /** Campos visiveis por tipo de work item. Sobrepoe visibleCardFieldIds para aquele tipo. */
   visibleFieldsByType?: Record<string, string[]>;
+  /** Campos visiveis no detalhe expandido por tipo de work item. */
+  detailVisibleFieldsByType?: Record<string, string[]>;
   settings?: Record<string, unknown>;
 }
 
@@ -49,8 +51,10 @@ export interface WorkspaceSummary {
   role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 }
 
+export type WorkspaceTemplateKey = "software_delivery" | "product_discovery" | "operations_kanban";
+
 export interface WorkspaceTemplateOption {
-  key: "software_delivery" | "product_discovery" | "operations_kanban";
+  key: WorkspaceTemplateKey;
   name: string;
   description?: string;
 }
@@ -98,7 +102,13 @@ export interface ApiCustomField {
   type: string;
   required: boolean;
   isActive: boolean;
+  settings?: CustomFieldSettings | null;
   options: Array<{ id: string; label: string; value: string; color: string | null }>;
+}
+
+export interface CustomFieldSettings {
+  allowAiGeneration?: boolean;
+  [key: string]: unknown;
 }
 
 // ─── Board Config Input Types ────────────────────────────────────────────────
@@ -107,6 +117,7 @@ export interface CreateBoardColumnInput {
   name: string;
   order?: number;
   wipLimit?: number | null;
+  stateIds?: string[];
 }
 
 export interface UpdateBoardColumnInput {
@@ -114,6 +125,7 @@ export interface UpdateBoardColumnInput {
   order?: number;
   wipLimit?: number | null;
   isActive?: boolean;
+  stateIds?: string[];
 }
 
 export interface CreateItemTypeInput {
@@ -152,6 +164,7 @@ export interface CreateCustomFieldInput {
   type: CustomFieldType;
   description?: string;
   required?: boolean;
+  settings?: CustomFieldSettings;
   options?: CustomFieldOptionInput[];
 }
 
@@ -161,6 +174,7 @@ export interface UpdateCustomFieldInput {
   description?: string;
   required?: boolean;
   isActive?: boolean;
+  settings?: CustomFieldSettings;
   options?: CustomFieldOptionInput[];
 }
 
@@ -184,6 +198,16 @@ export interface WorkspaceService {
     taskId: string,
     priority: TaskPriority
   ) => Promise<WorkspaceSnapshot>;
+  updateTaskTitle: (
+    workspaceSlug: string,
+    taskId: string,
+    title: string
+  ) => Promise<WorkspaceSnapshot>;
+  updateTaskDescription: (
+    workspaceSlug: string,
+    taskId: string,
+    description: string
+  ) => Promise<WorkspaceSnapshot>;
   updateTaskCustomField: (
     workspaceSlug: string,
     taskId: string,
@@ -204,12 +228,22 @@ export interface WorkspaceService {
     workspaceSlug: string,
     patch: Partial<WorkspacePreferences>
   ) => Promise<WorkspaceSnapshot>;
+  resetWorkspaceTemplate: (
+    workspaceSlug: string,
+    templateKey?: WorkspaceTemplateKey
+  ) => Promise<WorkspaceSnapshot>;
   setCardFieldVisibility: (
     workspaceSlug: string,
     fieldId: string,
     visible: boolean
   ) => Promise<WorkspaceSnapshot>;
   setTypeFieldVisibility: (
+    workspaceSlug: string,
+    typeId: string,
+    fieldId: string,
+    visible: boolean
+  ) => Promise<WorkspaceSnapshot>;
+  setTypeDetailFieldVisibility: (
     workspaceSlug: string,
     typeId: string,
     fieldId: string,

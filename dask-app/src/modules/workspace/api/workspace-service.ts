@@ -9,7 +9,10 @@ import type {
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  AutomationExecution,
+  AutomationRule,
   CreateAiAgentInput,
+  CreateAutomationRuleInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
   CreateItemTypeInput,
@@ -450,6 +453,46 @@ export const workspaceService: WorkspaceService = {
       retryOnUnauthorized: true
     });
     return fetchSnapshot(workspaceSlug);
+  },
+
+  async listAutomationRules(workspaceSlug: string, options?: { includeDisabled?: boolean }): Promise<AutomationRule[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const qs = options?.includeDisabled ? "?includeDisabled=true" : "";
+    return apiClient.get<AutomationRule[]>(`/automation/workspaces/${workspaceId}/rules${qs}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listAutomationExecutions(workspaceSlug: string, options?: { limit?: number }): Promise<AutomationExecution[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const qs = typeof options?.limit === "number" ? `?limit=${options.limit}` : "";
+    return apiClient.get<AutomationExecution[]>(`/automation/workspaces/${workspaceId}/executions${qs}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async runAutomationRule(workspaceSlug: string, ruleId: string, context?: Record<string, unknown>): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/automation/rules/${ruleId}/run`, {
+      workspaceId,
+      context: context ?? {}
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createAutomationRule(workspaceSlug: string, input: CreateAutomationRuleInput): Promise<AutomationRule> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationRule>("/automation/rules", {
+      workspaceId,
+      ...input
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
   },
 
   async listAiAgents(workspaceSlug: string): Promise<AiAgentSummary[]> {

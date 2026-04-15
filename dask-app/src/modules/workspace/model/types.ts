@@ -269,6 +269,11 @@ export interface WorkspaceService {
   updateCustomField: (workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) => Promise<WorkspaceSnapshot>;
   deleteCustomField: (workspaceSlug: string, fieldId: string) => Promise<WorkspaceSnapshot>;
 
+  listAutomationRules: (workspaceSlug: string, options?: { includeDisabled?: boolean }) => Promise<AutomationRule[]>;
+  listAutomationExecutions: (workspaceSlug: string, options?: { limit?: number }) => Promise<AutomationExecution[]>;
+  runAutomationRule: (workspaceSlug: string, ruleId: string, context?: Record<string, unknown>) => Promise<void>;
+  createAutomationRule: (workspaceSlug: string, input: CreateAutomationRuleInput) => Promise<AutomationRule>;
+
   listAiAgents: (workspaceSlug: string) => Promise<AiAgentSummary[]>;
   listAiRuns: (
     workspaceSlug: string,
@@ -292,6 +297,54 @@ export interface WorkspaceService {
     itemId: string,
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
+}
+
+export interface AutomationRule {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string | null;
+  triggerType: string;
+  trigger: unknown;
+  conditions: unknown;
+  actions: unknown;
+  enabled: boolean;
+  priority: number;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationExecution {
+  id: string;
+  workspaceId: string;
+  ruleId: string;
+  eventName: string | null;
+  eventId: string | null;
+  status: string;
+  attempts: number;
+  context: unknown;
+  error: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  rule: {
+    id: string;
+    name: string;
+    triggerType: string;
+    enabled: boolean;
+  };
+}
+
+export interface CreateAutomationRuleInput {
+  name: string;
+  description?: string;
+  trigger: { type: string; [key: string]: unknown };
+  conditions?: Record<string, unknown>;
+  actions: Array<{ type: string; [key: string]: unknown }>;
+  enabled?: boolean;
+  priority?: number;
 }
 
 export interface AiAgentSummary {

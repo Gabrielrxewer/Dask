@@ -75,3 +75,63 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Card description ──────────────────────────────────────────────────── */
+
+.automations-view__card-desc {
+  color: #8a9db5;
+  font-style: italic;
+}
+
+/* ─── Create modal ──────────────────────────────────────────────────────── */
+
+.automations-create-modal {
+  width: 480px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.automations-create-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.automations-create-modal__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #173553;
+}
+
+.automations-create-modal__header button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #5f7790;
+  font-size: 1rem;
+  padding: 4px 6px;
+}
+
+.automations-create-modal__form {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.automations-create-modal__error {
+  margin: 0;
+  color: #c0392b;
+  font-size: var(--font-size-xs);
+}
+
+.automations-create-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}

@@ -1,45 +1,58 @@
 .shared-button {
-  border: var(--control-border);
-  background: var(--control-surface);
-  color: var(--text);
-  font-weight: 600;
-  border-radius: var(--radius-sm);
-  min-height: var(--control-height-md);
-  padding: 0 var(--control-padding-x);
-  font-size: var(--font-size-sm);
-  letter-spacing: 0.01em;
+  border: 1px solid rgba(182, 209, 231, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
+  color: #214d78;
+  font-weight: 700;
+  border-radius: 14px;
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 0.92rem;
+  letter-spacing: 0;
   cursor: pointer;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow:
+    0 12px 24px rgba(12, 42, 71, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.84) inset;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .shared-button:hover {
-  border-color: var(--line-strong);
-  background: var(--control-surface-hover);
-  box-shadow: var(--shadow-1);
+  transform: translateY(-1px);
+  border-color: rgba(151, 190, 224, 0.98);
+  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  color: #17446f;
+  box-shadow:
+    0 16px 28px rgba(12, 42, 71, 0.11),
+    0 1px 0 rgba(255, 255, 255, 0.88) inset;
 }
 
 .shared-button:active {
-  background: var(--control-surface-active);
   transform: translateY(1px);
 }
 
 .shared-button--primary {
-  border-color: transparent;
-  background: var(--brand-gradient-main);
-  color: #eaf7ff;
-  box-shadow: 0 14px 28px rgba(8, 56, 93, 0.16), 0 1px 0 rgba(255, 255, 255, 0.22) inset;
+  border-color: rgba(42, 119, 196, 0.28);
+  background: linear-gradient(135deg, #07559d 0%, #1d72c9 58%, #31c8d4 100%);
+  color: #f4fbff;
+  box-shadow:
+    0 16px 30px rgba(8, 80, 145, 0.22),
+    0 8px 16px rgba(34, 173, 201, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
 
 .shared-button--primary:hover {
-  box-shadow: 0 16px 30px rgba(8, 54, 89, 0.22), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
-  background: var(--brand-gradient-main-hover);
+  border-color: rgba(42, 119, 196, 0.32);
+  background: linear-gradient(135deg, #064f92 0%, #1a68bb 58%, #2db9c5 100%);
+  color: #ffffff;
+  box-shadow:
+    0 18px 34px rgba(8, 80, 145, 0.26),
+    0 10px 18px rgba(34, 173, 201, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 .shared-button--outline {
-  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
-  background: rgba(255, 255, 255, 0.82);
-  color: #1b4a76;
+  border-color: rgba(182, 209, 231, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
+  color: #214d78;
 }
 
 .shared-button--outline.active {
@@ -49,13 +62,14 @@
 }
 
 .shared-button--sm {
-  min-height: var(--control-height-sm);
-  padding: 0 10px;
+  min-height: 38px;
+  padding: 0 14px;
   font-size: var(--font-size-xs);
+  border-radius: 12px;
 }
 
 .shared-button--md {
-  min-height: var(--control-height-md);
+  min-height: 48px;
 }
 
 .shared-button:disabled {

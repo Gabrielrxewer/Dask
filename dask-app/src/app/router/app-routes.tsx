@@ -95,11 +95,7 @@ export function AppRoutes() {
       <Route element={<GlobalLayout />}>
         <Route
           path={routePaths.home}
-          element={
-            <PublicRoute>
-              <HomePage />
-            </PublicRoute>
-          }
+          element={<HomePage />}
         />
 
         <Route

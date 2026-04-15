@@ -5,6 +5,7 @@ import { useAuth } from "@/features/auth";
 import { workspaceService, type WorkspaceTemplateOption } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { Button, Card, FormField, Select, TextInput } from "@/shared/ui";
+import "./no-workspace-page.css";
 
 type WorkspaceKind = "PERSONAL" | "CORPORATE";
 
@@ -133,30 +134,36 @@ export function NoWorkspacePage() {
     }
   };
 
-  return (
-    <main style={{ minHeight: "60vh", display: "grid", placeItems: "center", padding: "24px" }}>
-      <section aria-label="Criar workspace" style={{ width: "min(760px, 100%)" }}>
-        <Card>
-          <h1>Crie seu workspace</h1>
-          <p>
-            {user?.email
-              ? `A conta ${user.email} ainda nao possui workspace. Configure um pessoal ou corporativo para comecar.`
-              : "Configure um workspace pessoal ou corporativo para comecar."}
-          </p>
+  const selectedTemplateDescription = templates.find((item) => item.key === templateKey)?.description ?? "";
 
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-            <FormField label="Tipo de workspace">
+  return (
+    <main className="no-workspace-page">
+      <div className="no-workspace-page__backdrop" aria-hidden="true" />
+      <section className="no-workspace-page__shell" aria-label="Criar workspace">
+        <Card className="no-workspace-page__card">
+          <div className="no-workspace-page__header">
+            <p className="no-workspace-page__eyebrow">Novo ambiente Dask</p>
+            <h1 className="no-workspace-page__title">Crie seu workspace</h1>
+            <p className="no-workspace-page__description">
+              {user?.email
+                ? `A conta ${user.email} ainda nao possui workspace. Configure um pessoal ou corporativo para comecar.`
+                : "Configure um workspace pessoal ou corporativo para comecar."}
+            </p>
+          </div>
+
+          <div className="no-workspace-page__form-grid">
+            <FormField label="Tipo de workspace" className="no-workspace-page__field">
               <Select value={kind} onChange={(event) => setKind(event.target.value as WorkspaceKind)}>
                 <option value="PERSONAL">Pessoal</option>
                 <option value="CORPORATE">Corporativo</option>
               </Select>
             </FormField>
 
-            <FormField label="Nome do workspace">
+            <FormField label="Nome do workspace" className="no-workspace-page__field">
               <TextInput value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} />
             </FormField>
 
-            <FormField label="Template padrao">
+            <FormField label="Template padrao" className="no-workspace-page__field no-workspace-page__field--wide">
               <Select
                 value={templateKey}
                 onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
@@ -173,7 +180,7 @@ export function NoWorkspacePage() {
             </FormField>
 
             {kind === "CORPORATE" ? (
-              <FormField label="Nome da organizacao">
+              <FormField label="Nome da organizacao" className="no-workspace-page__field no-workspace-page__field--wide">
                 <TextInput
                   value={organizationName}
                   onChange={(event) => setOrganizationName(event.target.value)}
@@ -183,21 +190,27 @@ export function NoWorkspacePage() {
             ) : null}
           </div>
 
-          {templates.length > 0 ? (
-            <p style={{ marginTop: 8, color: "#475467" }}>
-              {templates.find((item) => item.key === templateKey)?.description ?? ""}
-            </p>
+          {selectedTemplateDescription ? (
+            <p className="no-workspace-page__support-text">{selectedTemplateDescription}</p>
           ) : null}
 
-          {templateNotice ? <p style={{ marginTop: 8, color: "#475467" }}>{templateNotice}</p> : null}
-          {errorMessage ? <p style={{ color: "#b42318", marginTop: 12 }}>{errorMessage}</p> : null}
+          {templateNotice ? <p className="no-workspace-page__support-text">{templateNotice}</p> : null}
+          {errorMessage ? <p className="no-workspace-page__error">{errorMessage}</p> : null}
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-            <Button type="button" variant="primary" onClick={handleCreateWorkspace} disabled={isCreating}>
+          <div className="no-workspace-page__actions">
+            <Button
+              className="no-workspace-page__submit"
+              type="button"
+              variant="primary"
+              onClick={handleCreateWorkspace}
+              disabled={isCreating}
+            >
               {isCreating ? "Provisionando workspace..." : "Criar workspace"}
             </Button>
-            <Link to={routePaths.home}>
-              <Button type="button">Voltar para home</Button>
+            <Link className="no-workspace-page__home-link" to={routePaths.home}>
+              <Button className="no-workspace-page__secondary" type="button">
+                Voltar para home
+              </Button>
             </Link>
           </div>
         </Card>

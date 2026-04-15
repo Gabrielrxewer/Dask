@@ -256,31 +256,26 @@
 .no-workspace-page__submit.shared-button {
   width: 100%;
   min-height: 48px;
-  border-radius: 19px;
-  background: linear-gradient(135deg, #0f3f70 0%, #2c78e6 38%, #7d61ee 68%, #28cfc7 100%);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #07559d 0%, #1d72c9 58%, #31c8d4 100%);
   color: #f4fbff;
-  border-color: rgba(78, 126, 206, 0.18);
-  font-size: 0.96rem;
-  letter-spacing: 0.03em;
+  border-color: rgba(42, 119, 196, 0.28);
+  font-size: 0.92rem;
+  letter-spacing: 0;
   box-shadow:
-    0 18px 32px rgba(74, 87, 184, 0.2),
-    0 10px 18px rgba(22, 120, 180, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.22) inset;
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    background 0.22s ease,
-    filter 0.22s ease;
+    0 16px 30px rgba(8, 80, 145, 0.22),
+    0 8px 16px rgba(34, 173, 201, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
 
 .no-workspace-page__submit.shared-button:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #0e3a66 0%, #276dd5 38%, #7357df 68%, #25bfb9 100%);
+  border-color: rgba(42, 119, 196, 0.32);
+  background: linear-gradient(135deg, #064f92 0%, #1a68bb 58%, #2db9c5 100%);
   box-shadow:
-    0 22px 36px rgba(67, 79, 171, 0.24),
-    0 12px 20px rgba(22, 120, 180, 0.2),
+    0 18px 34px rgba(8, 80, 145, 0.26),
+    0 10px 18px rgba(34, 173, 201, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.18) inset;
-  filter: saturate(1.03);
 }
 
 .no-workspace-page__submit.shared-button:focus-visible {
@@ -291,19 +286,19 @@
 }
 
 .no-workspace-page__secondary.shared-button {
-  color: #24577f;
-  border-color: rgba(173, 204, 229, 0.88);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(239, 247, 255, 0.68) 100%);
+  color: #214d78;
+  border-color: rgba(182, 209, 231, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
   box-shadow:
     0 12px 24px rgba(17, 74, 118, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.86) inset;
+    0 1px 0 rgba(255, 255, 255, 0.84) inset;
 }
 
 .no-workspace-page__secondary.shared-button:hover {
   transform: translateY(-1px);
-  color: #153f67;
-  border-color: rgba(91, 156, 213, 0.76);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(231, 244, 255, 0.82) 100%);
+  color: #17446f;
+  border-color: rgba(151, 190, 224, 0.98);
+  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
 }
 
 @media (max-width: 760px) {

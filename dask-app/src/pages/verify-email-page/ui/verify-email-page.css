@@ -190,11 +190,11 @@
 }
 
 .verify-email-page__cta.shared-button--primary {
-  background: linear-gradient(135deg, #0f3f70 0%, #2c78e6 38%, #7d61ee 68%, #28cfc7 100%);
+  background: linear-gradient(135deg, #07559d 0%, #1d72c9 58%, #31c8d4 100%);
 }
 
 .verify-email-page__cta.shared-button--primary:hover {
-  background: linear-gradient(135deg, #0e3a66 0%, #276dd5 38%, #7357df 68%, #25bfb9 100%);
+  background: linear-gradient(135deg, #064f92 0%, #1a68bb 58%, #2db9c5 100%);
   transform: translateY(-1px);
 }
 

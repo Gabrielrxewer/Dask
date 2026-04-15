@@ -1,0 +1,114 @@
+import Stripe from 'stripe';
+import { EventPublisher } from '@/core/events/event-publisher';
+import { env } from '@/core/config/env';
+import { prisma } from '@/infra/db/prisma';
+import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
+import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
+import { ResendEmailService } from '@/infra/email/resend-email-service';
+import { AuthService } from '@/modules/identity/application/auth-service';
+import { OrganizationService } from '@/modules/identity/application/organization-service';
+import { PasswordService } from '@/modules/identity/application/password-service';
+import { RoleAuthorizationService } from '@/modules/identity/application/role-authorization-service';
+import { PrismaIdentityRepository } from '@/modules/identity/repositories/prisma-identity-repository';
+import { WorkspacesService } from '@/modules/workspaces/application/workspaces-service';
+import { PrismaWorkspacesRepository } from '@/modules/workspaces/repositories/prisma-workspaces-repository';
+import { ItemsService } from '@/modules/items/application/items-service';
+import { PrismaItemsRepository } from '@/modules/items/repositories/prisma-items-repository';
+import { ImprovementRequestService } from '@/modules/ai/application/improvement-request-service';
+import { IndexingRequestService } from '@/modules/search/application/indexing-request-service';
+import { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
+import { AutomationService } from '@/modules/automation/application/automation-service';
+import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
+import { IntegrationService } from '@/modules/integration/application/integration-service';
+import { AuditService } from '@/modules/audit/application/audit-service';
+import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
+import { BillingService } from '@/modules/billing/application/billing-service';
+import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
+
+export type AppContainer = {
+  roleAuthorizationService: RoleAuthorizationService;
+  authService: AuthService;
+  organizationService: OrganizationService;
+  workspacesService: WorkspacesService;
+  itemsService: ItemsService;
+  improvementRequestService: ImprovementRequestService;
+  indexingRequestService: IndexingRequestService;
+  hybridSearchService: HybridSearchService;
+  automationService: AutomationService;
+  automationViewService: AutomationViewService;
+  integrationService: IntegrationService;
+  auditService: AuditService;
+  workspaceConfigService: WorkspaceConfigService;
+  workspaceWorkItemsService: WorkspaceWorkItemsService;
+  billingService: BillingService | null;
+};
+
+export function buildAppContainer(): AppContainer {
+  const outboxRepository = new PrismaOutboxRepository(prisma);
+  const eventPublisher = new EventPublisher(outboxRepository, prisma);
+  const jobQueue = new BullMqJobQueue();
+
+  const identityRepository = new PrismaIdentityRepository(prisma);
+  const workspacesRepository = new PrismaWorkspacesRepository(prisma);
+  const itemsRepository = new PrismaItemsRepository(prisma);
+
+  const passwordService = new PasswordService(env.HASH_PEPPER);
+  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : undefined;
+  const authService = new AuthService(identityRepository, passwordService, emailService);
+  const organizationService = new OrganizationService(identityRepository, eventPublisher);
+  const roleAuthorizationService = new RoleAuthorizationService(prisma);
+  const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
+  const itemsService = new ItemsService(itemsRepository, eventPublisher, prisma);
+  const workspaceConfigService = new WorkspaceConfigService(prisma);
+  const workspaceWorkItemsService = new WorkspaceWorkItemsService(
+    prisma,
+    workspaceConfigService,
+    eventPublisher
+  );
+  const improvementRequestService = new ImprovementRequestService(itemsRepository, eventPublisher);
+  const indexingRequestService = new IndexingRequestService(itemsRepository, eventPublisher);
+  const hybridSearchService = new HybridSearchService(prisma);
+  const automationService = new AutomationService(
+    prisma,
+    eventPublisher,
+    jobQueue,
+    workspaceConfigService
+  );
+  const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
+  const integrationService = new IntegrationService(eventPublisher);
+  const auditService = new AuditService(prisma);
+
+  const billingRepo = new PrismaBillingRepository(prisma);
+  const stripeClient = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
+  const billingService = stripeClient
+    ? new BillingService({
+        repo: billingRepo,
+        stripe: stripeClient,
+        appPublicUrl: env.APP_PUBLIC_URL,
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        priceIds: {
+          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
+          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+        }
+      })
+    : null;
+
+  return {
+    roleAuthorizationService,
+    authService,
+    organizationService,
+    workspacesService,
+    itemsService,
+    improvementRequestService,
+    indexingRequestService,
+    hybridSearchService,
+    automationService,
+    automationViewService,
+    integrationService,
+    auditService,
+    workspaceConfigService,
+    workspaceWorkItemsService,
+    billingService
+  };
+}

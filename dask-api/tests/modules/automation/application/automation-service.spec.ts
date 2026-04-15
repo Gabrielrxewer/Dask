@@ -5,6 +5,7 @@ import { DomainEventNames } from '@/core/events/event-names';
 
 function makeDeps() {
   const prisma = {
+    $transaction: vi.fn(async (fn: (db: any) => Promise<unknown>) => fn(prisma as any)),
     automationRule: {
       findMany: vi.fn(),
       create: vi.fn(),
@@ -18,7 +19,12 @@ function makeDeps() {
   };
 
   const eventPublisher = {
-    publish: vi.fn().mockResolvedValue(undefined)
+    publish: vi.fn().mockResolvedValue(undefined),
+    publishInTransaction: vi.fn().mockResolvedValue(undefined),
+    runInTransaction: vi.fn(
+      async (fn: (db: any, publisher: { publishInTransaction: (...args: unknown[]) => Promise<void> }) => Promise<unknown>) =>
+        fn(prisma as any, eventPublisher as any)
+    )
   };
 
   const jobQueue = {
@@ -142,8 +148,10 @@ describe('AutomationService', () => {
 
     expect(created.triggerType).toBe('item.moved');
     expect(prisma.automationRule.create).toHaveBeenCalled();
-    expect(eventPublisher.publish).toHaveBeenCalledWith(
+    expect(eventPublisher.publishInTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ name: DomainEventNames.AutomationRuleCreated })
+      ,
+      expect.anything()
     );
   });
 
@@ -246,8 +254,10 @@ describe('AutomationService', () => {
     });
 
     expect(updated.version).toBe(3);
-    expect(eventPublisher.publish).toHaveBeenCalledWith(
+    expect(eventPublisher.publishInTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ name: DomainEventNames.AutomationRuleUpdated })
+      ,
+      expect.anything()
     );
   });
 

@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { PrismaClient } from '@prisma/client';
-import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
+import type { SubscriptionStatus } from '../domain/types';
 import type {
   BillingRepository,
   BillingUser,

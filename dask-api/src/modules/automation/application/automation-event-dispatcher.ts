@@ -1,5 +1,4 @@
 import type { DomainEvent } from '@/core/events/domain-event';
-import type { EventBus } from '@/core/events/event-bus';
 import type { JobQueue } from '@/core/jobs/job-queue';
 import { DomainEventNames } from '@/core/events/event-names';
 
@@ -20,20 +19,17 @@ function extractWorkspaceId(payload: unknown): string | null {
 }
 
 export class AutomationEventDispatcher {
-  public constructor(
-    private readonly eventBus: EventBus,
-    private readonly jobQueue: JobQueue
-  ) {}
+  public constructor(private readonly jobQueue: JobQueue) {}
 
-  public registerListeners(): void {
-    for (const eventName of automationTriggerEvents) {
-      this.eventBus.subscribe(eventName, async (event) => {
-        await this.enqueueEvent(event);
-      });
+  public async dispatch(event: DomainEvent, idempotencyKey?: string): Promise<void> {
+    if (!automationTriggerEvents.includes(event.name as (typeof automationTriggerEvents)[number])) {
+      return;
     }
+
+    await this.enqueueEvent(event, idempotencyKey);
   }
 
-  private async enqueueEvent(event: DomainEvent): Promise<void> {
+  private async enqueueEvent(event: DomainEvent, idempotencyKey?: string): Promise<void> {
     const workspaceId = extractWorkspaceId(event.payload);
 
     if (!workspaceId) {
@@ -45,6 +41,8 @@ export class AutomationEventDispatcher {
       eventName: event.name,
       workspaceId,
       payload: event.payload
+    }, {
+      jobId: idempotencyKey ? `automation.process-event:${idempotencyKey}` : undefined
     });
   }
 }

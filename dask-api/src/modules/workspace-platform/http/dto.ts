@@ -18,12 +18,6 @@ const workspaceTemplateKeyEnum = z.enum([
   'operations_kanban'
 ]);
 
-const nonEmptyPatch = (message: string) =>
-  z
-    .object({})
-    .passthrough()
-    .refine((payload) => Object.keys(payload).length > 0, { message });
-
 export const workspaceIdParamsDto = z.object({
   workspaceId: z.string().uuid()
 });

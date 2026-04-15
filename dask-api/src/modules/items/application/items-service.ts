@@ -2,7 +2,7 @@ import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import type { ItemsRepository } from '@/modules/items/repositories/items-repository';
 
 export class ItemsService {
@@ -60,21 +60,27 @@ export class ItemsService {
       await this.ensureItemBelongsToWorkspace(input.workspaceId, input.parentId, 'Parent item not found');
     }
 
-    const item = await this.itemsRepository.createItem(input);
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: DomainEventNames.ItemCreated,
-      aggregateType: 'item',
-      aggregateId: item.id,
-      occurredAt: new Date(),
-      payload: {
-        itemId: item.id,
-        workspaceId: item.workspaceId,
-        boardId: item.boardId,
-        type: item.type,
-        typeId: item.typeId,
-        stateId: item.stateId
-      }
+    const item = await this.prisma.$transaction(async (db) => {
+      const created = await this.itemsRepository.createItem(input, db);
+      await this.eventPublisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: DomainEventNames.ItemCreated,
+          aggregateType: 'item',
+          aggregateId: created.id,
+          occurredAt: new Date(),
+          payload: {
+            itemId: created.id,
+            workspaceId: created.workspaceId,
+            boardId: created.boardId,
+            type: created.type,
+            typeId: created.typeId,
+            stateId: created.stateId
+          }
+        },
+        db
+      );
+      return created;
     });
     return item;
   }
@@ -133,43 +139,58 @@ export class ItemsService {
       await this.ensureItemBelongsToWorkspace(workspaceId, patch.parentId, 'Parent item not found');
     }
 
-    const updated = await this.itemsRepository.updateItem(itemId, patch);
-    if (updated.workspaceId !== workspaceId) {
-      throw new AppError('Cross-workspace mutation blocked', 400);
-    }
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: DomainEventNames.ItemUpdated,
-      aggregateType: 'item',
-      aggregateId: itemId,
-      occurredAt: new Date(),
-      payload: {
-        itemId,
-        workspaceId: updated.workspaceId,
-        boardId: updated.boardId,
-        patch
+    const updated = await this.prisma.$transaction(async (db) => {
+      const next = await this.itemsRepository.updateItem(itemId, patch, db);
+      if (next.workspaceId !== workspaceId) {
+        throw new AppError('Cross-workspace mutation blocked', 400);
       }
-    });
 
-    const nextColumnId = patch.boardColumnId ?? patch.columnId;
-    const previousColumnId = current.boardColumnId ?? current.columnId;
-
-    if (nextColumnId && nextColumnId !== previousColumnId) {
-      await this.eventPublisher.publish({
-        id: uuid(),
-        name: DomainEventNames.ItemMoved,
-        aggregateType: 'item',
-        aggregateId: itemId,
-        occurredAt: new Date(),
-        payload: {
-          itemId,
-          fromColumnId: previousColumnId,
-          toColumnId: nextColumnId,
-          workspaceId: updated.workspaceId,
-          boardId: updated.boardId
+      const events = [
+        {
+          id: uuid(),
+          name: DomainEventNames.ItemUpdated,
+          aggregateType: 'item',
+          aggregateId: itemId,
+          occurredAt: new Date(),
+          payload: {
+            itemId,
+            workspaceId: next.workspaceId,
+            boardId: next.boardId,
+            patch
+          }
         }
-      });
-    }
+      ] as const;
+
+      const nextColumnId = patch.boardColumnId ?? patch.columnId;
+      const previousColumnId = current.boardColumnId ?? current.columnId;
+
+      if (nextColumnId && nextColumnId !== previousColumnId) {
+        await this.eventPublisher.publishManyInTransaction(
+          [
+            ...events,
+            {
+              id: uuid(),
+              name: DomainEventNames.ItemMoved,
+              aggregateType: 'item',
+              aggregateId: itemId,
+              occurredAt: new Date(),
+              payload: {
+                itemId,
+                fromColumnId: previousColumnId,
+                toColumnId: nextColumnId,
+                workspaceId: next.workspaceId,
+                boardId: next.boardId
+              }
+            }
+          ],
+          db
+        );
+      } else {
+        await this.eventPublisher.publishManyInTransaction([...events], db);
+      }
+
+      return next;
+    });
 
     return updated;
   }

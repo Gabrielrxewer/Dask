@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '@/core/http/async-handler';
-import { authMiddleware } from '@/core/http/auth-middleware';
 import type { AutomationService } from '@/modules/automation/application/automation-service';
 import type { AutomationViewService } from '@/modules/automation/application/automation-view-service';
 import {
@@ -28,7 +27,6 @@ export const buildAutomationRoutes = (deps: {
   automationViewService: AutomationViewService;
 }): Router => {
   const router = Router();
-  router.use(authMiddleware);
 
   router.get(
     '/automation/workspaces/:workspaceId/rules',

@@ -1,4 +1,5 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import type { Prisma} from '@prisma/client';
+import { type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import {
   automationRuleSpecSchema,

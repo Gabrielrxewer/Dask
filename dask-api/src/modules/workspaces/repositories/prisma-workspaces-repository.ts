@@ -1,7 +1,8 @@
+import type {
+  Prisma,
+  WorkspaceKind} from '@prisma/client';
 import {
   MembershipRole,
-  Prisma,
-  WorkspaceKind,
   type Board,
   type BoardTemplate,
   type PrismaClient,
@@ -31,8 +32,8 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     templateKey?: WorkspaceTemplateKey;
     config?: Record<string, unknown>;
     ownerUserId: string;
-  }): Promise<Workspace> {
-    return this.prisma.$transaction(async (tx) => {
+  }, db?: Prisma.TransactionClient): Promise<Workspace> {
+    const execute = async (tx: Prisma.TransactionClient): Promise<Workspace> => {
       const workspace = await tx.workspace.create({
         data: {
           organizationId: input.organizationId ?? null,
@@ -88,7 +89,13 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
       }
 
       return workspace;
-    });
+    };
+
+    if (db) {
+      return execute(db);
+    }
+
+    return this.prisma.$transaction(execute);
   }
 
   public createBoard(input: {
@@ -97,8 +104,8 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     name: string;
     description?: string;
     config?: Record<string, unknown>;
-  }): Promise<Board> {
-    return this.prisma.$transaction(async (tx) => {
+  }, db?: Prisma.TransactionClient): Promise<Board> {
+    const execute = async (tx: Prisma.TransactionClient): Promise<Board> => {
       const workspace = await tx.workspace.findUnique({
         where: { id: input.workspaceId },
         select: { id: true }
@@ -132,7 +139,13 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
           config: input.config as Prisma.InputJsonValue | undefined
         }
       });
-    });
+    };
+
+    if (db) {
+      return execute(db);
+    }
+
+    return this.prisma.$transaction(execute);
   }
 
   public createTemplate(input: {
@@ -141,8 +154,8 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     description?: string;
     schema: Record<string, unknown>;
     rules?: Record<string, unknown>;
-  }): Promise<BoardTemplate> {
-    return this.prisma.$transaction(async (tx) => {
+  }, db?: Prisma.TransactionClient): Promise<BoardTemplate> {
+    const execute = async (tx: Prisma.TransactionClient): Promise<BoardTemplate> => {
       const workspace = await tx.workspace.findUnique({
         where: { id: input.workspaceId },
         select: { id: true }
@@ -161,7 +174,13 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
           rules: input.rules as Prisma.InputJsonValue | undefined
         }
       });
-    });
+    };
+
+    if (db) {
+      return execute(db);
+    }
+
+    return this.prisma.$transaction(execute);
   }
 
   public async listUserWorkspaces(userId: string): Promise<UserWorkspaceSummary[]> {

@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 
 export class IntegrationService {
   public constructor(private readonly eventPublisher: EventPublisher) {}

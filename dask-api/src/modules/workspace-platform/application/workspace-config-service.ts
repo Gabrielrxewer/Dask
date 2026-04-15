@@ -1,4 +1,4 @@
-import { MembershipRole, type PrismaClient } from '@prisma/client';
+import { MembershipRole, type CustomFieldType, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import {
@@ -1072,7 +1072,7 @@ export class WorkspaceConfigService {
     name: string;
     slug: string;
     description: string | null;
-    type: import('@prisma/client').CustomFieldType;
+    type: CustomFieldType;
     required: boolean;
     position: number;
     isActive: boolean;

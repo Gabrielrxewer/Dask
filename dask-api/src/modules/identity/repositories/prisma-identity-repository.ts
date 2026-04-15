@@ -1,6 +1,7 @@
+import type {
+  Prisma} from '@prisma/client';
 import {
   MembershipRole,
-  Prisma,
   type Organization,
   type PrismaClient,
   type User
@@ -169,8 +170,8 @@ export class PrismaIdentityRepository implements IdentityRepository {
     slug: string;
     ownerUserId: string;
     settings?: Record<string, unknown>;
-  }): Promise<Organization> {
-    return this.prisma.$transaction(async (tx) => {
+  }, db?: Prisma.TransactionClient): Promise<Organization> {
+    const execute = async (tx: Prisma.TransactionClient): Promise<Organization> => {
       const organization = await tx.organization.create({
         data: {
           name: input.name,
@@ -188,7 +189,13 @@ export class PrismaIdentityRepository implements IdentityRepository {
       });
 
       return organization;
-    });
+    };
+
+    if (db) {
+      return execute(db);
+    }
+
+    return this.prisma.$transaction(execute);
   }
 
   public async getUserRoles(userId: string): Promise<MembershipRole[]> {

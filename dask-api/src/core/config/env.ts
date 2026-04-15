@@ -46,6 +46,9 @@ const envSchema = z.object({
     .string()
     .default('true')
     .transform((value) => value === 'true'),
+  OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().min(100).default(1000),
+  OUTBOX_RELAY_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
+  OUTBOX_RELAY_MAX_RETRIES: z.coerce.number().int().min(1).max(1000).default(20),
 
   // Stripe Billing
   STRIPE_SECRET_KEY: z.string().optional(),

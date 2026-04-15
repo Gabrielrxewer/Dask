@@ -1,4 +1,4 @@
-import type { MembershipRole, Organization, User } from '@prisma/client';
+import type { MembershipRole, Organization, Prisma, User } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // Stored-token types (independent of Prisma generation state)
@@ -89,7 +89,7 @@ export interface IdentityRepository {
     slug: string;
     ownerUserId: string;
     settings?: Record<string, unknown>;
-  }): Promise<Organization>;
+  }, db?: Prisma.TransactionClient): Promise<Organization>;
 
   getUserRoles(userId: string): Promise<MembershipRole[]>;
 

@@ -23,10 +23,16 @@ export function createSubscriptionMiddleware(prisma: PrismaClient) {
 
     // NOTE: `hasActiveSubscription` and `subscriptionStatus` are added by the billing migration.
     // Run `prisma migrate dev` and `prisma generate` before using this middleware.
-    const user = await (prisma.user.findUnique as Function)({
+    type FindUserWithSubscription = (args: {
+      where: { id: string };
+      select: { hasActiveSubscription: true; subscriptionStatus: true };
+    }) => Promise<{ hasActiveSubscription: boolean; subscriptionStatus: string | null } | null>;
+    const findUserWithSubscription = prisma.user.findUnique as unknown as FindUserWithSubscription;
+
+    const user = await findUserWithSubscription({
       where: { id: userId },
       select: { hasActiveSubscription: true, subscriptionStatus: true }
-    }) as { hasActiveSubscription: boolean; subscriptionStatus: string | null } | null;
+    });
 
     if (!user) {
       next(new AppError('User not found', 404));
@@ -35,11 +41,10 @@ export function createSubscriptionMiddleware(prisma: PrismaClient) {
 
     if (!isSubscriptionActive(user.subscriptionStatus as SubscriptionStatus | null)) {
       next(
-        new AppError(
-          'Subscription required. Choose a plan to access this resource.',
-          402,
-          { code: 'SUBSCRIPTION_REQUIRED', status: user.subscriptionStatus ?? 'NONE' }
-        )
+        new AppError('Subscription required. Choose a plan to access this resource.', 402, {
+          code: 'SUBSCRIPTION_REQUIRED',
+          status: user.subscriptionStatus ?? 'NONE'
+        })
       );
       return;
     }

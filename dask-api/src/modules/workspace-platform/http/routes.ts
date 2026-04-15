@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
-import { authMiddleware } from '@/core/http/auth-middleware';
 import {
   requireWorkspacePermission,
   requireWorkspaceRole,
@@ -47,7 +46,6 @@ export const buildWorkspacePlatformRoutes = (deps: {
   workspaceWorkItemsService: WorkspaceWorkItemsService;
 }): Router => {
   const router = Router();
-  router.use(authMiddleware);
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
   const requireWorkspaceRead = requireWorkspacePermission(deps.authorizationService, 'workspace.read');
   const requireConfigWrite = [

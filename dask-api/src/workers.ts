@@ -1,4 +1,5 @@
 import { type Job, Worker } from 'bullmq';
+import { startOutboxRelayWorker, type RelayWorkerHandle } from '@/bootstrap/outbox-relay-worker';
 import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
 import { prisma } from '@/infra/db/prisma';
@@ -8,7 +9,9 @@ import { MockEmbeddingProvider } from '@/infra/providers/ai/mock-embedding-provi
 import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orchestration-service';
 import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
 
-export const startWorkers = (): Worker[] => {
+type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
+
+export const startWorkers = (): WorkerHandle[] => {
   if (!env.ENABLE_WORKERS) {
     logger.info('Workers are disabled by configuration');
     return [];
@@ -128,5 +131,7 @@ export const startWorkers = (): Worker[] => {
     logger.info({ jobId: job.id, jobName: job.name }, 'Worker job completed');
   });
 
-  return [worker];
+  const outboxRelayWorker = startOutboxRelayWorker(prisma);
+
+  return [worker, outboxRelayWorker];
 };

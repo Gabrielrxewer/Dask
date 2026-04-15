@@ -1,15 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
-import { EventPublisher } from '@/core/events/event-publisher';
-import type { JobQueue } from '@/core/jobs/job-queue';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import type { ItemsRepository } from '@/modules/items/repositories/items-repository';
 
 export class IndexingRequestService {
   public constructor(
     private readonly itemsRepository: ItemsRepository,
-    private readonly eventPublisher: EventPublisher,
-    private readonly jobQueue: JobQueue
+    private readonly eventPublisher: EventPublisher
   ) {}
 
   public async requestIndexing(input: { itemId: string; requestedBy: string }): Promise<void> {
@@ -30,12 +28,6 @@ export class IndexingRequestService {
         boardId: item.boardId,
         requestedBy: input.requestedBy
       }
-    });
-
-    await this.jobQueue.enqueue('search.index-item', {
-      itemId: item.id,
-      workspaceId: item.workspaceId,
-      boardId: item.boardId
     });
   }
 }

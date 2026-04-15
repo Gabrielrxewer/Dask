@@ -1,18 +1,9 @@
-import { AuditSeverity, Prisma, type PrismaClient } from '@prisma/client';
+import type { Prisma} from '@prisma/client';
+import { AuditSeverity, type PrismaClient } from '@prisma/client';
 import type { DomainEvent } from '@/core/events/domain-event';
-import type { EventBus } from '@/core/events/event-bus';
 
 export class AuditService {
-  public constructor(
-    private readonly prisma: PrismaClient,
-    private readonly eventBus: EventBus
-  ) {}
-
-  public registerEventListeners(): void {
-    this.eventBus.subscribe('*', async (event) => {
-      await this.recordEvent(event);
-    });
-  }
+  public constructor(private readonly prisma: PrismaClient) {}
 
   public async recordEvent(event: DomainEvent): Promise<void> {
     await this.prisma.auditEvent.create({
@@ -28,6 +19,14 @@ export class AuditService {
 
   public listLatest(limit = 50) {
     return this.prisma.auditEvent.findMany({
+      orderBy: { happenedAt: 'desc' },
+      take: limit
+    });
+  }
+
+  public listLatestByWorkspace(workspaceId: string, limit = 50) {
+    return this.prisma.auditEvent.findMany({
+      where: { workspaceId },
       orderBy: { happenedAt: 'desc' },
       take: limit
     });

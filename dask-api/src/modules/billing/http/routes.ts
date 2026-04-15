@@ -12,7 +12,6 @@ interface BillingRouteDeps {
 export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router {
   const router = Router();
 
-  // POST /billing/checkout-session — create Stripe Checkout session
   router.post(
     '/billing/checkout-session',
     authMiddleware,
@@ -28,22 +27,6 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
     })
   );
 
-  // POST /billing/webhook — Stripe webhook (raw body required)
-  router.post(
-    '/billing/webhook',
-    asyncHandler(async (req: Request, res: Response) => {
-      const signature = req.headers['stripe-signature'];
-      if (!signature || typeof signature !== 'string') {
-        throw new AppError('Missing stripe-signature header', 400);
-      }
-
-      // req.body is a Buffer because we mount this route before express.json()
-      await billingService.handleWebhook(req.body as Buffer, signature);
-      res.status(200).json({ received: true });
-    })
-  );
-
-  // GET /billing/status — current subscription status for authenticated user
   router.get(
     '/billing/status',
     authMiddleware,
@@ -53,7 +36,6 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
     })
   );
 
-  // GET /billing/me — alias for /billing/status
   router.get(
     '/billing/me',
     authMiddleware,

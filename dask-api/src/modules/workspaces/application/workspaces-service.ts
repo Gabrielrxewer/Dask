@@ -2,7 +2,7 @@ import { MembershipRole, WorkspaceKind } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import {
   getWorkspaceTemplateByKey,
   type WorkspaceTemplateKey
@@ -52,18 +52,24 @@ export class WorkspacesService {
       throw new AppError('Personal workspace must not be linked to an organization', 422);
     }
 
-    const workspace = await this.workspacesRepository.createWorkspace(input);
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: 'workspace.created',
-      aggregateType: 'workspace',
-      aggregateId: workspace.id,
-      occurredAt: new Date(),
-      payload: {
-        workspaceId: workspace.id,
-        organizationId: input.organizationId ?? null,
-        kind: input.kind
-      }
+    const workspace = await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      const created = await this.workspacesRepository.createWorkspace(input, db);
+      await publisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: 'workspace.created',
+          aggregateType: 'workspace',
+          aggregateId: created.id,
+          occurredAt: new Date(),
+          payload: {
+            workspaceId: created.id,
+            organizationId: input.organizationId ?? null,
+            kind: input.kind
+          }
+        },
+        db
+      );
+      return created;
     });
     return workspace;
   }
@@ -78,23 +84,31 @@ export class WorkspacesService {
   }) {
     await this.ensureWorkspaceBoardWritableByUser(input.workspaceId, input.userId);
 
-    const board = await this.workspacesRepository.createBoard({
-      workspaceId: input.workspaceId,
-      templateId: input.templateId,
-      name: input.name,
-      description: input.description,
-      config: input.config
-    });
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: DomainEventNames.BoardCreated,
-      aggregateType: 'board',
-      aggregateId: board.id,
-      occurredAt: new Date(),
-      payload: {
-        boardId: board.id,
-        workspaceId: input.workspaceId
-      }
+    const board = await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      const created = await this.workspacesRepository.createBoard({
+        workspaceId: input.workspaceId,
+        templateId: input.templateId,
+        name: input.name,
+        description: input.description,
+        config: input.config
+      }, db);
+
+      await publisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: DomainEventNames.BoardCreated,
+          aggregateType: 'board',
+          aggregateId: created.id,
+          occurredAt: new Date(),
+          payload: {
+            boardId: created.id,
+            workspaceId: input.workspaceId
+          }
+        },
+        db
+      );
+
+      return created;
     });
     return board;
   }
@@ -109,23 +123,30 @@ export class WorkspacesService {
   }) {
     await this.ensureWorkspaceConfigWritableByUser(input.workspaceId, input.userId);
 
-    const template = await this.workspacesRepository.createTemplate({
-      workspaceId: input.workspaceId,
-      name: input.name,
-      description: input.description,
-      schema: input.schema,
-      rules: input.rules
-    });
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: DomainEventNames.TemplateCreated,
-      aggregateType: 'template',
-      aggregateId: template.id,
-      occurredAt: new Date(),
-      payload: {
-        templateId: template.id,
-        workspaceId: input.workspaceId
-      }
+    const template = await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      const created = await this.workspacesRepository.createTemplate({
+        workspaceId: input.workspaceId,
+        name: input.name,
+        description: input.description,
+        schema: input.schema,
+        rules: input.rules
+      }, db);
+
+      await publisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: DomainEventNames.TemplateCreated,
+          aggregateType: 'template',
+          aggregateId: created.id,
+          occurredAt: new Date(),
+          payload: {
+            templateId: created.id,
+            workspaceId: input.workspaceId
+          }
+        },
+        db
+      );
+      return created;
     });
     return template;
   }

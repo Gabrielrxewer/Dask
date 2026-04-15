@@ -1,6 +1,6 @@
 import { type Prisma, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
-import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 
 function toSlug(value: string): string {
   return value

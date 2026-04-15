@@ -1,10 +1,11 @@
-import { CustomFieldType, Prisma, type PrismaClient } from '@prisma/client';
+import type { Prisma} from '@prisma/client';
+import { CustomFieldType, type PrismaClient } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
-import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import {
   addHexAlpha,
   getColorFromId,
@@ -18,6 +19,49 @@ import {
   toSlug,
   type JsonRecord
 } from '@/modules/workspace-platform/application/shared';
+
+type SerializedWorkItemSource = {
+  id: string;
+  workspaceId: string;
+  boardId: string;
+  title: string;
+  description: string | null;
+  typeId: string | null;
+  type: string;
+  typeDefinition: { id: string; slug: string; name: string; color: string } | null;
+  stateId: string | null;
+  workflowState: { id: string; slug: string; name: string; color: string; category: string | null } | null;
+  status: string;
+  boardColumn: { id: string; slug: string; name: string } | null;
+  boardColumnId: string | null;
+  columnId: string | null;
+  assigneeId: string | null;
+  parentId: string | null;
+  dueDate: Date | null;
+  position: number;
+  checklist: unknown;
+  tags: Array<{
+    tag: {
+      id: string;
+      name: string;
+      slug: string;
+      color: string;
+    };
+  }>;
+  customFieldValues: Array<{
+    fieldId: string;
+    value: unknown;
+    field: {
+      slug: string;
+    };
+  }>;
+  fields: unknown;
+  metadata: unknown;
+  createdBy: string;
+  updatedBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export class WorkspaceWorkItemsService {
   public constructor(
@@ -208,7 +252,7 @@ export class WorkspaceWorkItemsService {
 
     const defaultPosition = await this.getNextItemPosition(input.workspaceId, context.column.id);
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const createdItem = await this.prisma.$transaction(async (tx) => {
       const item = await tx.item.create({
         data: {
           boardId: context.boardId,
@@ -255,15 +299,15 @@ export class WorkspaceWorkItemsService {
         });
       }
 
-      return item.id;
-    });
+      const serialized = await this.getSerializedWorkItemById(input.workspaceId, item.id, tx);
+      await this.publishItemCreatedEvent({
+        workspaceId: input.workspaceId,
+        item: serialized,
+        requestedBy: input.userId,
+        db: tx
+      });
 
-    const createdItem = await this.getSerializedWorkItemById(input.workspaceId, created);
-
-    await this.publishItemCreatedEvent({
-      workspaceId: input.workspaceId,
-      item: createdItem,
-      requestedBy: input.userId
+      return serialized;
     });
 
     return createdItem;
@@ -318,7 +362,7 @@ export class WorkspaceWorkItemsService {
       ? await this.resolveBoardColumn(input.workspaceId, input.payload.columnId)
       : await this.resolveColumnForState(input.workspaceId, state.id, current.boardColumnId ?? current.columnId);
 
-    await this.prisma.$transaction(async (tx) => {
+    const updatedItem = await this.prisma.$transaction(async (tx) => {
       await tx.item.update({
         where: { id: current.id },
         data: {
@@ -354,40 +398,44 @@ export class WorkspaceWorkItemsService {
           mutateLegacyFields: true
         });
       }
-    });
+      const serialized = await this.getSerializedWorkItemById(input.workspaceId, current.id, tx);
+      const previousColumnId = current.boardColumnId ?? current.columnId;
+      const nextColumnId = serialized.column.id;
+      const previousStateId = current.stateId;
+      const nextStateId = serialized.stateId;
 
-    const updatedItem = await this.getSerializedWorkItemById(input.workspaceId, current.id);
-    const previousColumnId = current.boardColumnId ?? current.columnId;
-    const nextColumnId = updatedItem.column.id;
-    const previousStateId = current.stateId;
-    const nextStateId = updatedItem.stateId;
-
-    await this.publishItemUpdatedEvent({
-      workspaceId: input.workspaceId,
-      item: updatedItem,
-      patch: input.payload as Record<string, unknown>,
-      requestedBy: input.userId
-    });
-
-    if (previousColumnId !== nextColumnId) {
-      await this.publishItemMovedEvent({
+      await this.publishItemUpdatedEvent({
         workspaceId: input.workspaceId,
-        item: updatedItem,
-        fromColumnId: previousColumnId,
-        toColumnId: nextColumnId,
-        requestedBy: input.userId
+        item: serialized,
+        patch: input.payload as Record<string, unknown>,
+        requestedBy: input.userId,
+        db: tx
       });
-    }
 
-    if (previousStateId !== nextStateId) {
-      await this.publishItemStateChangedEvent({
-        workspaceId: input.workspaceId,
-        item: updatedItem,
-        fromStateId: previousStateId,
-        toStateId: nextStateId,
-        requestedBy: input.userId
-      });
-    }
+      if (previousColumnId !== nextColumnId) {
+        await this.publishItemMovedEvent({
+          workspaceId: input.workspaceId,
+          item: serialized,
+          fromColumnId: previousColumnId,
+          toColumnId: nextColumnId,
+          requestedBy: input.userId,
+          db: tx
+        });
+      }
+
+      if (previousStateId !== nextStateId) {
+        await this.publishItemStateChangedEvent({
+          workspaceId: input.workspaceId,
+          item: serialized,
+          fromStateId: previousStateId,
+          toStateId: nextStateId,
+          requestedBy: input.userId,
+          db: tx
+        });
+      }
+
+      return serialized;
+    });
 
     return updatedItem;
   }
@@ -425,37 +473,43 @@ export class WorkspaceWorkItemsService {
       ? await this.resolveWorkflowState(input.workspaceId, input.payload.stateId)
       : await this.resolveDefaultStateForColumn(input.workspaceId, column.id, current.stateId);
 
-    await this.prisma.item.update({
-      where: { id: current.id },
-      data: {
-        boardColumnId: column.id,
-        columnId: column.id,
-        stateId: state.id,
-        status: state.slug,
-        position: input.payload.position ?? (await this.getNextItemPosition(input.workspaceId, column.id)),
-        updatedBy: input.userId
-      }
-    });
-
-    const movedItem = await this.getSerializedWorkItemById(input.workspaceId, current.id);
-
-    await this.publishItemMovedEvent({
-      workspaceId: input.workspaceId,
-      item: movedItem,
-      fromColumnId: current.boardColumnId ?? null,
-      toColumnId: movedItem.column.id,
-      requestedBy: input.userId
-    });
-
-    if (current.stateId !== movedItem.stateId) {
-      await this.publishItemStateChangedEvent({
-        workspaceId: input.workspaceId,
-        item: movedItem,
-        fromStateId: current.stateId,
-        toStateId: movedItem.stateId,
-        requestedBy: input.userId
+    const movedItem = await this.prisma.$transaction(async (tx) => {
+      await tx.item.update({
+        where: { id: current.id },
+        data: {
+          boardColumnId: column.id,
+          columnId: column.id,
+          stateId: state.id,
+          status: state.slug,
+          position: input.payload.position ?? (await this.getNextItemPosition(input.workspaceId, column.id)),
+          updatedBy: input.userId
+        }
       });
-    }
+
+      const serialized = await this.getSerializedWorkItemById(input.workspaceId, current.id, tx);
+
+      await this.publishItemMovedEvent({
+        workspaceId: input.workspaceId,
+        item: serialized,
+        fromColumnId: current.boardColumnId ?? null,
+        toColumnId: serialized.column.id,
+        requestedBy: input.userId,
+        db: tx
+      });
+
+      if (current.stateId !== serialized.stateId) {
+        await this.publishItemStateChangedEvent({
+          workspaceId: input.workspaceId,
+          item: serialized,
+          fromStateId: current.stateId,
+          toStateId: serialized.stateId,
+          requestedBy: input.userId,
+          db: tx
+        });
+      }
+
+      return serialized;
+    });
 
     return movedItem;
   }
@@ -493,38 +547,44 @@ export class WorkspaceWorkItemsService {
       ? await this.resolveBoardColumn(input.workspaceId, input.payload.columnId)
       : await this.resolveColumnForState(input.workspaceId, state.id, current.boardColumnId ?? current.columnId);
 
-    await this.prisma.item.update({
-      where: { id: current.id },
-      data: {
-        stateId: state.id,
-        status: state.slug,
-        boardColumnId: column.id,
-        columnId: column.id,
-        updatedBy: input.userId
-      }
-    });
-
-    const transitionedItem = await this.getSerializedWorkItemById(input.workspaceId, current.id);
-    const previousColumnId = current.boardColumnId ?? current.columnId;
-    const nextColumnId = transitionedItem.column.id;
-
-    await this.publishItemStateChangedEvent({
-      workspaceId: input.workspaceId,
-      item: transitionedItem,
-      fromStateId: current.stateId,
-      toStateId: transitionedItem.stateId,
-      requestedBy: input.userId
-    });
-
-    if (previousColumnId !== nextColumnId) {
-      await this.publishItemMovedEvent({
-        workspaceId: input.workspaceId,
-        item: transitionedItem,
-        fromColumnId: previousColumnId,
-        toColumnId: nextColumnId,
-        requestedBy: input.userId
+    const transitionedItem = await this.prisma.$transaction(async (tx) => {
+      await tx.item.update({
+        where: { id: current.id },
+        data: {
+          stateId: state.id,
+          status: state.slug,
+          boardColumnId: column.id,
+          columnId: column.id,
+          updatedBy: input.userId
+        }
       });
-    }
+
+      const serialized = await this.getSerializedWorkItemById(input.workspaceId, current.id, tx);
+      const previousColumnId = current.boardColumnId ?? current.columnId;
+      const nextColumnId = serialized.column.id;
+
+      await this.publishItemStateChangedEvent({
+        workspaceId: input.workspaceId,
+        item: serialized,
+        fromStateId: current.stateId,
+        toStateId: serialized.stateId,
+        requestedBy: input.userId,
+        db: tx
+      });
+
+      if (previousColumnId !== nextColumnId) {
+        await this.publishItemMovedEvent({
+          workspaceId: input.workspaceId,
+          item: serialized,
+          fromColumnId: previousColumnId,
+          toColumnId: nextColumnId,
+          requestedBy: input.userId,
+          db: tx
+        });
+      }
+
+      return serialized;
+    });
 
     return transitionedItem;
   }
@@ -930,8 +990,14 @@ export class WorkspaceWorkItemsService {
     }
   }
 
-  private async getSerializedWorkItemById(workspaceId: string, itemId: string) {
-    const item = await this.prisma.item.findFirst({
+  private async getSerializedWorkItemById(
+    workspaceId: string,
+    itemId: string,
+    db?: PrismaClient | Prisma.TransactionClient
+  ) {
+    const client = db ?? this.prisma;
+
+    const item = await client.item.findFirst({
       where: { id: itemId, workspaceId },
       include: this.itemInclude()
     });
@@ -952,14 +1018,14 @@ export class WorkspaceWorkItemsService {
     return (aggregate._max.position ?? -1) + 1;
   }
 
-  private serializeWorkItem(item: any) {
-    const customFieldValuesById = item.customFieldValues.reduce((acc: Record<string, unknown>, entry: any) => {
+  private serializeWorkItem(item: SerializedWorkItemSource) {
+    const customFieldValuesById = item.customFieldValues.reduce((acc: Record<string, unknown>, entry) => {
       acc[entry.fieldId] = entry.value;
       return acc;
     }, {});
 
     const customFieldValuesBySlug = item.customFieldValues.reduce(
-      (acc: Record<string, unknown>, entry: any) => {
+      (acc: Record<string, unknown>, entry) => {
         acc[entry.field.slug] = entry.value;
         return acc;
       },
@@ -1020,7 +1086,7 @@ export class WorkspaceWorkItemsService {
       dueDate: item.dueDate,
       position: item.position,
       checklist: parseChecklist(item.checklist),
-      tags: item.tags.map((entry: any) => ({
+      tags: item.tags.map((entry) => ({
         id: entry.tag.id,
         name: entry.tag.name,
         slug: entry.tag.slug,
@@ -1063,8 +1129,10 @@ export class WorkspaceWorkItemsService {
     workspaceId: string;
     item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>;
     requestedBy: string;
+    db?: Prisma.TransactionClient;
   }): Promise<void> {
-    await this.eventPublisher.publish({
+    await this.publishEvent(
+      {
       id: uuid(),
       name: DomainEventNames.ItemCreated,
       aggregateType: 'item',
@@ -1074,7 +1142,9 @@ export class WorkspaceWorkItemsService {
         ...this.toAutomationEventPayload(input.workspaceId, input.item),
         requestedBy: input.requestedBy
       }
-    });
+      },
+      input.db
+    );
   }
 
   private async publishItemUpdatedEvent(input: {
@@ -1082,8 +1152,10 @@ export class WorkspaceWorkItemsService {
     item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>;
     patch: Record<string, unknown>;
     requestedBy: string;
+    db?: Prisma.TransactionClient;
   }): Promise<void> {
-    await this.eventPublisher.publish({
+    await this.publishEvent(
+      {
       id: uuid(),
       name: DomainEventNames.ItemUpdated,
       aggregateType: 'item',
@@ -1094,7 +1166,9 @@ export class WorkspaceWorkItemsService {
         patch: input.patch,
         requestedBy: input.requestedBy
       }
-    });
+      },
+      input.db
+    );
   }
 
   private async publishItemMovedEvent(input: {
@@ -1103,8 +1177,10 @@ export class WorkspaceWorkItemsService {
     fromColumnId: string | null;
     toColumnId: string | null;
     requestedBy: string;
+    db?: Prisma.TransactionClient;
   }): Promise<void> {
-    await this.eventPublisher.publish({
+    await this.publishEvent(
+      {
       id: uuid(),
       name: DomainEventNames.ItemMoved,
       aggregateType: 'item',
@@ -1119,7 +1195,9 @@ export class WorkspaceWorkItemsService {
         toColumnKey: input.item.column.slug,
         requestedBy: input.requestedBy
       }
-    });
+      },
+      input.db
+    );
   }
 
   private async publishItemStateChangedEvent(input: {
@@ -1128,8 +1206,10 @@ export class WorkspaceWorkItemsService {
     fromStateId: string | null;
     toStateId: string | null;
     requestedBy: string;
+    db?: Prisma.TransactionClient;
   }): Promise<void> {
-    await this.eventPublisher.publish({
+    await this.publishEvent(
+      {
       id: uuid(),
       name: DomainEventNames.ItemStateChanged,
       aggregateType: 'item',
@@ -1141,7 +1221,28 @@ export class WorkspaceWorkItemsService {
         toStateId: input.toStateId,
         requestedBy: input.requestedBy
       }
-    });
+      },
+      input.db
+    );
+  }
+
+  private async publishEvent(
+    event: {
+      id: string;
+      name: string;
+      aggregateType: string;
+      aggregateId: string;
+      occurredAt: Date;
+      payload: Record<string, unknown>;
+    },
+    db?: Prisma.TransactionClient
+  ): Promise<void> {
+    if (db) {
+      await this.eventPublisher.publishInTransaction(event, db);
+      return;
+    }
+
+    await this.eventPublisher.publish(event);
   }
 
   private toAutomationEventPayload(

@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { DomainEvent } from '@/core/events/domain-event';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import type { IdentityRepository } from '@/modules/identity/repositories/identity-repository';
 
 export class OrganizationService {
@@ -15,21 +15,25 @@ export class OrganizationService {
     ownerUserId: string;
     settings?: Record<string, unknown>;
   }) {
-    const organization = await this.identityRepository.createOrganization(input);
+    const organization = await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      const created = await this.identityRepository.createOrganization(input, db);
 
-    const event: DomainEvent = {
-      id: uuid(),
-      name: 'organization.created',
-      aggregateType: 'organization',
-      aggregateId: organization.id,
-      occurredAt: new Date(),
-      payload: {
-        organizationId: organization.id,
-        ownerUserId: input.ownerUserId
-      }
-    };
+      const event: DomainEvent = {
+        id: uuid(),
+        name: 'organization.created',
+        aggregateType: 'organization',
+        aggregateId: created.id,
+        occurredAt: new Date(),
+        payload: {
+          organizationId: created.id,
+          ownerUserId: input.ownerUserId
+        }
+      };
 
-    await this.eventPublisher.publish(event);
+      await publisher.publishInTransaction(event, db);
+      return created;
+    });
+
     return organization;
   }
 }

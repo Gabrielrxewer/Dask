@@ -698,7 +698,12 @@ model DomainOutbox {
   occurredAt      DateTime
   processedAt     DateTime?
   retries         Int                       @default(0)
+  nextAttemptAt   DateTime                  @default(now())
+  deadLetteredAt  DateTime?
+  lastError       String?
   createdAt       DateTime                  @default(now())
+
+  @@index([processedAt, deadLetteredAt, nextAttemptAt])
 }
 
 model AuditEvent {

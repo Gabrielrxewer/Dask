@@ -11,9 +11,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mocked } from 'vitest';
-import { BillingService } from './billing-service';
-import type { BillingRepository, BillingUser, Subscription } from '../repositories/billing-repository';
-import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
+import { BillingService } from '@/modules/billing/application/billing-service';
+import type {
+  BillingRepository,
+  BillingUser,
+  Subscription
+} from '@/modules/billing/repositories/billing-repository';
+import type { SubscriptionPlan, SubscriptionStatus } from '@/modules/billing/domain/types';
 
 // Minimal Stripe client mock — avoids importing the full SDK namespace
 type MockStripeInstance = {

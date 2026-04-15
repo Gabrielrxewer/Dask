@@ -1,4 +1,4 @@
-import type { Item } from '@prisma/client';
+import type { Item, Prisma } from '@prisma/client';
 
 export interface ItemsRepository {
   createItem(input: {
@@ -21,7 +21,7 @@ export interface ItemsRepository {
     position?: number;
     createdBy: string;
     updatedBy?: string;
-  }): Promise<Item>;
+  }, db?: Prisma.TransactionClient): Promise<Item>;
   updateItem(
     itemId: string,
     patch: {
@@ -41,7 +41,8 @@ export interface ItemsRepository {
       dueDate?: Date | null;
       position?: number;
       updatedBy?: string;
-    }
+    },
+    db?: Prisma.TransactionClient
   ): Promise<Item>;
   findItemById(itemId: string): Promise<Item | null>;
 }

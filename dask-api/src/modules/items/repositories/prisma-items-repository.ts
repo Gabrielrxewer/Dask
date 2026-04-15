@@ -1,4 +1,5 @@
-import { Prisma, type Item, type PrismaClient } from '@prisma/client';
+import type { Prisma} from '@prisma/client';
+import { type Item, type PrismaClient } from '@prisma/client';
 import type { ItemsRepository } from '@/modules/items/repositories/items-repository';
 
 export class PrismaItemsRepository implements ItemsRepository {
@@ -24,8 +25,10 @@ export class PrismaItemsRepository implements ItemsRepository {
     position?: number;
     createdBy: string;
     updatedBy?: string;
-  }): Promise<Item> {
-    return this.prisma.item.create({
+  }, db?: Prisma.TransactionClient): Promise<Item> {
+    const client = db ?? this.prisma;
+
+    return client.item.create({
       data: {
         ...input,
         fields: input.fields as Prisma.InputJsonValue | undefined,
@@ -54,9 +57,12 @@ export class PrismaItemsRepository implements ItemsRepository {
       dueDate?: Date | null;
       position?: number;
       updatedBy?: string;
-    }
+    },
+    db?: Prisma.TransactionClient
   ): Promise<Item> {
-    return this.prisma.item.update({
+    const client = db ?? this.prisma;
+
+    return client.item.update({
       where: { id: itemId },
       data: {
         ...patch,

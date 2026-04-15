@@ -14,11 +14,9 @@ export type WorkspaceRequestContext = {
   role: MembershipRole;
 };
 
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthUserContext;
-      workspace?: WorkspaceRequestContext;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    auth?: AuthUserContext;
+    workspace?: WorkspaceRequestContext;
   }
 }

@@ -91,8 +91,6 @@ describe('automation/http routes', () => {
   it('registers router with auth middleware and handles automation rule/execution endpoints', async () => {
     const { router, automationService } = makeDeps();
 
-    expect((router as any).stack[0]?.name).toBe('authMiddleware');
-
     {
       const { res } = await invokeRoute(router, 'get', '/automation/workspaces/:workspaceId/rules', {
         params: { workspaceId: UUIDS.workspaceId },

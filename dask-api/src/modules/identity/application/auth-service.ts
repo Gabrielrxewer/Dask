@@ -23,7 +23,7 @@ import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
 import { validatePassword, normalizeEmail } from '@/modules/identity/domain/password-policy';
-import { PasswordService } from '@/modules/identity/application/password-service';
+import type { PasswordService } from '@/modules/identity/application/password-service';
 import type { EmailService } from '@/infra/email/email-service';
 import type {
   ExternalAuthProvider,

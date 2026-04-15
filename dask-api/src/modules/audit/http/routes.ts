@@ -1,16 +1,34 @@
 import { Router } from 'express';
+import type { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
-import { authMiddleware } from '@/core/http/auth-middleware';
+import {
+  requireWorkspacePermission,
+  workspaceScopeMiddleware
+} from '@/core/http/workspace-scope-middleware';
+import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { AuditService } from '@/modules/audit/application/audit-service';
+import {
+  listWorkspaceAuditEventsQueryDto,
+  workspaceAuditParamsDto
+} from '@/modules/audit/http/dto';
 
-export const buildAuditRoutes = (deps: { auditService: AuditService }): Router => {
+export const buildAuditRoutes = (deps: {
+  prisma: PrismaClient;
+  authorizationService: AuthorizationService;
+  auditService: AuditService;
+}): Router => {
   const router = Router();
-  router.use(authMiddleware);
+  const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
+  const requireWorkspaceRead = requireWorkspacePermission(deps.authorizationService, 'workspace.read');
 
   router.get(
-    '/audit/events',
+    '/audit/workspaces/:workspaceId/events',
+    resolveWorkspaceScope,
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
-      const events = await deps.auditService.listLatest(100);
+      const { workspaceId } = workspaceAuditParamsDto.parse(req.params);
+      const { limit } = listWorkspaceAuditEventsQueryDto.parse(req.query);
+      const events = await deps.auditService.listLatestByWorkspace(workspaceId, limit ?? 100);
       res.status(200).json(events);
     })
   );

@@ -3,48 +3,25 @@ import cors from 'cors';
 import express, { type Express, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
+import { buildAppContainer } from '@/bootstrap/build-app-container';
 import { env } from '@/core/config/env';
-import { EventPublisher } from '@/core/events/event-publisher';
-import { InMemoryEventBus } from '@/core/events/in-memory-event-bus';
 import { asyncHandler } from '@/core/http/async-handler';
+import { authMiddleware } from '@/core/http/auth-middleware';
 import { errorMiddleware } from '@/core/http/error-middleware';
 import { notFoundMiddleware } from '@/core/http/not-found-middleware';
 import { logger } from '@/core/logging/logger';
-import { prisma } from '@/infra/db/prisma';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
-import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
-import { AuthService } from '@/modules/identity/application/auth-service';
-import { ResendEmailService } from '@/infra/email/resend-email-service';
-import { OrganizationService } from '@/modules/identity/application/organization-service';
-import { PasswordService } from '@/modules/identity/application/password-service';
-import { RoleAuthorizationService } from '@/modules/identity/application/role-authorization-service';
-import { PrismaIdentityRepository } from '@/modules/identity/repositories/prisma-identity-repository';
+import { prisma } from '@/infra/db/prisma';
+import { createSubscriptionMiddleware } from '@/modules/billing/http/subscription-middleware';
 import { buildIdentityRoutes } from '@/modules/identity/http/routes';
-import { PrismaWorkspacesRepository } from '@/modules/workspaces/repositories/prisma-workspaces-repository';
-import { WorkspacesService } from '@/modules/workspaces/application/workspaces-service';
 import { buildWorkspacesRoutes } from '@/modules/workspaces/http/routes';
-import { PrismaItemsRepository } from '@/modules/items/repositories/prisma-items-repository';
-import { ItemsService } from '@/modules/items/application/items-service';
 import { buildItemsRoutes } from '@/modules/items/http/routes';
-import { ImprovementRequestService } from '@/modules/ai/application/improvement-request-service';
 import { buildAiRoutes } from '@/modules/ai/http/routes';
-import { IndexingRequestService } from '@/modules/search/application/indexing-request-service';
-import { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
 import { buildSearchRoutes } from '@/modules/search/http/routes';
-import { AutomationService } from '@/modules/automation/application/automation-service';
-import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
-import { AutomationEventDispatcher } from '@/modules/automation/application/automation-event-dispatcher';
 import { buildAutomationRoutes } from '@/modules/automation/http/routes';
-import { IntegrationService } from '@/modules/integration/application/integration-service';
 import { buildIntegrationRoutes } from '@/modules/integration/http/routes';
-import { AuditService } from '@/modules/audit/application/audit-service';
 import { buildAuditRoutes } from '@/modules/audit/http/routes';
-import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
-import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
-import Stripe from 'stripe';
-import { BillingService } from '@/modules/billing/application/billing-service';
-import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
 import { buildBillingRoutes } from '@/modules/billing/http/routes';
 
 function parseAllowedOrigins(raw: string): string[] {
@@ -116,69 +93,59 @@ export const createApp = (): Express => {
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
 
-  const eventBus = new InMemoryEventBus();
-  const outboxRepository = new PrismaOutboxRepository(prisma);
-  const eventPublisher = new EventPublisher(eventBus, outboxRepository);
-  const jobQueue = new BullMqJobQueue();
-
-  const identityRepository = new PrismaIdentityRepository(prisma);
-  const workspacesRepository = new PrismaWorkspacesRepository(prisma);
-  const itemsRepository = new PrismaItemsRepository(prisma);
-
-  const passwordService = new PasswordService(env.HASH_PEPPER);
-  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : undefined;
-  const authService = new AuthService(identityRepository, passwordService, emailService);
-  const organizationService = new OrganizationService(identityRepository, eventPublisher);
-  const roleAuthorizationService = new RoleAuthorizationService(prisma);
-  const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
-  const itemsService = new ItemsService(itemsRepository, eventPublisher, prisma);
-  const workspaceConfigService = new WorkspaceConfigService(prisma);
-  const workspaceWorkItemsService = new WorkspaceWorkItemsService(
-    prisma,
+  const {
+    roleAuthorizationService,
+    authService,
+    organizationService,
+    workspacesService,
+    itemsService,
+    improvementRequestService,
+    indexingRequestService,
+    hybridSearchService,
+    automationService,
+    automationViewService,
+    integrationService,
+    auditService,
     workspaceConfigService,
-    eventPublisher
-  );
-  const improvementRequestService = new ImprovementRequestService(itemsRepository, eventPublisher, jobQueue);
-  const indexingRequestService = new IndexingRequestService(itemsRepository, eventPublisher, jobQueue);
-  const hybridSearchService = new HybridSearchService(prisma);
-  const automationService = new AutomationService(
-    prisma,
-    eventPublisher,
-    jobQueue,
-    workspaceConfigService
-  );
-  const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
-  const automationEventDispatcher = new AutomationEventDispatcher(eventBus, jobQueue);
-  const integrationService = new IntegrationService(eventPublisher);
-  const auditService = new AuditService(prisma, eventBus);
+    workspaceWorkItemsService,
+    billingService
+  } = buildAppContainer();
+  const requireSubscription = createSubscriptionMiddleware(prisma);
+  const outboxRepository = new PrismaOutboxRepository(prisma);
 
-  const billingRepo = new PrismaBillingRepository(prisma);
-  const stripeClient = env.STRIPE_SECRET_KEY
-    ? new Stripe(env.STRIPE_SECRET_KEY)
-    : null;
-  const billingService = stripeClient
-    ? new BillingService({
-        repo: billingRepo,
-        stripe: stripeClient,
-        appPublicUrl: env.APP_PUBLIC_URL,
-        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
-        priceIds: {
-          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
-          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+  app.get(
+    '/health',
+    asyncHandler(async (_req: Request, res: Response) => {
+      let metrics = {
+        pendingCount: 0,
+        retryPendingCount: 0,
+        deadLetterCount: 0,
+        oldestPendingAgeSeconds: null as number | null
+      };
+
+      try {
+        metrics = await outboxRepository.getRelayMetrics();
+      } catch (error) {
+        logger.warn({ event: 'health.outbox_metrics.failed', err: error });
+      }
+
+      const retryRate =
+        metrics.pendingCount > 0 ? Number((metrics.retryPendingCount / metrics.pendingCount).toFixed(4)) : 0;
+
+      res.status(200).json({
+        status: 'ok',
+        service: 'dask-backend',
+        env: env.NODE_ENV,
+        outbox: {
+          pending: metrics.pendingCount,
+          retryPending: metrics.retryPendingCount,
+          deadLetter: metrics.deadLetterCount,
+          oldestPendingAgeSeconds: metrics.oldestPendingAgeSeconds,
+          retryRate
         }
-      })
-    : null;
-
-  automationEventDispatcher.registerListeners();
-  auditService.registerEventListeners();
-
-  app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).json({
-      status: 'ok',
-      service: 'dask-backend',
-      env: env.NODE_ENV
-    });
-  });
+      });
+    })
+  );
 
   // Stripe webhook — must be registered directly on `app` BEFORE any router that applies
   // router.use(authMiddleware) globally, otherwise those routers intercept the request
@@ -204,6 +171,8 @@ export const createApp = (): Express => {
   );
   app.use(
     env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
     buildWorkspacesRoutes({
       prisma,
       authorizationService: roleAuthorizationService,
@@ -213,19 +182,42 @@ export const createApp = (): Express => {
   );
   app.use(
     env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
     buildItemsRoutes({
       prisma,
       authorizationService: roleAuthorizationService,
       itemsService
     })
   );
-  app.use(env.API_PREFIX, buildAiRoutes({ improvementRequestService }));
-  app.use(env.API_PREFIX, buildSearchRoutes({ indexingRequestService, hybridSearchService }));
-  app.use(env.API_PREFIX, buildAutomationRoutes({ automationService, automationViewService }));
-  app.use(env.API_PREFIX, buildIntegrationRoutes({ integrationService }));
-  app.use(env.API_PREFIX, buildAuditRoutes({ auditService }));
+  app.use(env.API_PREFIX, authMiddleware, requireSubscription, buildAiRoutes({ improvementRequestService }));
   app.use(
     env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
+    buildSearchRoutes({ indexingRequestService, hybridSearchService })
+  );
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
+    buildAutomationRoutes({ automationService, automationViewService })
+  );
+  app.use(env.API_PREFIX, buildIntegrationRoutes({ integrationService }));
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
+    buildAuditRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      auditService
+    })
+  );
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
     buildWorkspacePlatformRoutes({
       prisma,
       authorizationService: roleAuthorizationService,

@@ -1,9 +1,30 @@
-import { MembershipRole, type PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '@/core/errors/app-error';
-import type { AuthorizationService, Permission } from '@/modules/identity/domain/authorization';
 
-const roleRank: Record<MembershipRole, number> = {
+type WorkspaceMembershipRole = 'VIEWER' | 'MEMBER' | 'ADMIN' | 'OWNER';
+
+export type Permission =
+  | 'workspace.read'
+  | 'workspace.write'
+  | 'board.read'
+  | 'board.write'
+  | 'item.read'
+  | 'item.write'
+  | 'ai.use';
+
+type PermissionContext = {
+  organizationId?: string;
+  workspaceId?: string;
+  boardId?: string;
+  itemId?: string;
+};
+
+export interface AuthorizationService {
+  can(userId: string, permission: Permission, context: PermissionContext): Promise<boolean>;
+}
+
+const roleRank: Record<WorkspaceMembershipRole, number> = {
   VIEWER: 1,
   MEMBER: 2,
   ADMIN: 3,
@@ -60,7 +81,7 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
   };
 };
 
-export const requireWorkspaceRole = (minimumRole: MembershipRole) => {
+export const requireWorkspaceRole = (minimumRole: WorkspaceMembershipRole) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.workspace) {
       next(new AppError('Workspace context missing', 500));

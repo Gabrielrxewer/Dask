@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { asyncHandler } from '@/core/http/async-handler';
-import { authMiddleware } from '@/core/http/auth-middleware';
 import type { IndexingRequestService } from '@/modules/search/application/indexing-request-service';
 import type { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
 import { searchQueryDto } from '@/modules/search/http/dto';
@@ -10,7 +9,6 @@ export const buildSearchRoutes = (deps: {
   hybridSearchService: HybridSearchService;
 }): Router => {
   const router = Router();
-  router.use(authMiddleware);
 
   router.post(
     '/items/:itemId/search/index',

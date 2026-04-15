@@ -5,6 +5,14 @@ export type JobName =
   | 'automation.run-rule'
   | 'automation.process-event';
 
+export type JobEnqueueOptions = {
+  jobId?: string;
+};
+
 export interface JobQueue {
-  enqueue<TPayload extends object>(jobName: JobName, payload: TPayload): Promise<void>;
+  enqueue<TPayload extends object>(
+    jobName: JobName,
+    payload: TPayload,
+    options?: JobEnqueueOptions
+  ): Promise<void>;
 }

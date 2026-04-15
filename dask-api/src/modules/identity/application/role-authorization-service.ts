@@ -1,4 +1,5 @@
-import { MembershipRole, type PrismaClient } from '@prisma/client';
+import type { MembershipRole} from '@prisma/client';
+import { type PrismaClient } from '@prisma/client';
 import type {
   AuthorizationService,
   Permission,

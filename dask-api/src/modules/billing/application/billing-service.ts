@@ -1,7 +1,7 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { logger } from '@/core/logging/logger';
 import { AppError } from '@/core/errors/app-error';
-import type { BillingRepository, BillingUser } from '../repositories/billing-repository';
+import type { BillingRepository } from '../repositories/billing-repository';
 import {
   PLAN_AMOUNTS_BRL,
   PLAN_PRICE_IDS,
@@ -12,6 +12,7 @@ import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
 
 // Stripe v22 exports as `export = StripeConstructor` — use InstanceType to get the instance type
 type StripeInstance = InstanceType<typeof Stripe>;
+type StripeRetrieveSubscription = (subscriptionId: string) => Promise<StripeSubscriptionObject>;
 
 // Minimal local interfaces for Stripe event payloads (avoids namespace type conflicts)
 interface StripeCheckoutSession {
@@ -267,7 +268,9 @@ export class BillingService {
       typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
 
     // Fetch full subscription object (cast to our local interface as Stripe v22 moved period fields)
-    const stripeSub = await (this.stripe.subscriptions.retrieve as Function)(stripeSubId) as StripeSubscriptionObject;
+    const retrieveSubscription = this.stripe.subscriptions
+      .retrieve as unknown as StripeRetrieveSubscription;
+    const stripeSub = await retrieveSubscription(stripeSubId);
     logger.info({
       event: 'billing.debug.subscription_shape',
       stripeSubId,
@@ -377,7 +380,9 @@ export class BillingService {
     const existing = await this.repo.findSubscriptionByStripeId(subscriptionId);
     if (!existing) return;
 
-    const stripeSub = await (this.stripe.subscriptions.retrieve as Function)(subscriptionId) as StripeSubscriptionObject;
+    const retrieveSubscription = this.stripe.subscriptions
+      .retrieve as unknown as StripeRetrieveSubscription;
+    const stripeSub = await retrieveSubscription(subscriptionId);
     const { start, end } = extractPeriodDates(stripeSub);
     const updated = await this.repo.updateSubscription(subscriptionId, {
       status: mapStripeStatus(stripeSub.status),

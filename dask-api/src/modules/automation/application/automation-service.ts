@@ -1,10 +1,10 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import type { JobQueue } from '@/core/jobs/job-queue';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
-import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import { parseRuleSpec } from '@/modules/automation/application/rule-schema';
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
@@ -68,33 +68,40 @@ export class AutomationService {
       actions: input.actions
     });
 
-    const rule = await this.prisma.automationRule.create({
-      data: {
-        workspaceId: input.workspaceId,
-        name: input.name,
-        description: input.description,
-        triggerType: spec.trigger.type,
-        trigger: toJsonValue(spec.trigger),
-        conditions: spec.conditions ? toJsonValue(spec.conditions) : undefined,
-        actions: toJsonValue(spec.actions),
-        enabled: input.enabled ?? true,
-        priority: input.priority ?? 100,
-        version: 1
-      }
-    });
+    const rule = await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      const created = await db.automationRule.create({
+        data: {
+          workspaceId: input.workspaceId,
+          name: input.name,
+          description: input.description,
+          triggerType: spec.trigger.type,
+          trigger: toJsonValue(spec.trigger),
+          conditions: spec.conditions ? toJsonValue(spec.conditions) : undefined,
+          actions: toJsonValue(spec.actions),
+          enabled: input.enabled ?? true,
+          priority: input.priority ?? 100,
+          version: 1
+        }
+      });
 
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: DomainEventNames.AutomationRuleCreated,
-      aggregateType: 'automation-rule',
-      aggregateId: rule.id,
-      occurredAt: new Date(),
-      payload: {
-        ruleId: rule.id,
-        workspaceId: input.workspaceId,
-        triggerType: rule.triggerType,
-        requestedBy: input.userId
-      }
+      await publisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: DomainEventNames.AutomationRuleCreated,
+          aggregateType: 'automation-rule',
+          aggregateId: created.id,
+          occurredAt: new Date(),
+          payload: {
+            ruleId: created.id,
+            workspaceId: input.workspaceId,
+            triggerType: created.triggerType,
+            requestedBy: input.userId
+          }
+        },
+        db
+      );
+
+      return created;
     });
 
     return this.serializeRule(rule);
@@ -155,36 +162,43 @@ export class AutomationService {
 
     const nextVersion = isSpecPatch ? current.version + 1 : current.version;
 
-    const updated = await this.prisma.automationRule.update({
-      where: {
-        id: current.id
-      },
-      data: {
-        name: input.payload.name,
-        description: input.payload.description,
-        trigger,
-        conditions,
-        actions,
-        triggerType,
-        enabled: input.payload.enabled,
-        priority: input.payload.priority,
-        version: nextVersion
-      }
-    });
+    const updated = await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      const next = await db.automationRule.update({
+        where: {
+          id: current.id
+        },
+        data: {
+          name: input.payload.name,
+          description: input.payload.description,
+          trigger,
+          conditions,
+          actions,
+          triggerType,
+          enabled: input.payload.enabled,
+          priority: input.payload.priority,
+          version: nextVersion
+        }
+      });
 
-    await this.eventPublisher.publish({
-      id: uuid(),
-      name: DomainEventNames.AutomationRuleUpdated,
-      aggregateType: 'automation-rule',
-      aggregateId: updated.id,
-      occurredAt: new Date(),
-      payload: {
-        ruleId: updated.id,
-        workspaceId: input.workspaceId,
-        triggerType: updated.triggerType,
-        requestedBy: input.userId,
-        version: updated.version
-      }
+      await publisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: DomainEventNames.AutomationRuleUpdated,
+          aggregateType: 'automation-rule',
+          aggregateId: next.id,
+          occurredAt: new Date(),
+          payload: {
+            ruleId: next.id,
+            workspaceId: input.workspaceId,
+            triggerType: next.triggerType,
+            requestedBy: input.userId,
+            version: next.version
+          }
+        },
+        db
+      );
+
+      return next;
     });
 
     return this.serializeRule(updated);

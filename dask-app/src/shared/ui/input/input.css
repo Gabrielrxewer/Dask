@@ -1,13 +1,13 @@
 .shared-input {
   width: 100%;
   min-height: 46px;
-  border: var(--control-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(243, 248, 255, 0.72) 100%);
-  border-radius: 16px;
+  border: 1px solid #9bbbd8;
+  background: #ffffff;
+  border-radius: var(--radius-xs);
   padding: 0 14px;
   font-size: var(--font-size-sm);
-  color: var(--text);
-  font-weight: 600;
+  color: #071f35;
+  font-weight: 700;
   box-shadow:
     0 12px 24px rgba(12, 42, 71, 0.055),
     0 1px 0 rgba(255, 255, 255, 0.76) inset;
@@ -15,21 +15,22 @@
 }
 
 .shared-input:focus {
-  border-color: var(--control-border-strong);
-  background: #fcfeff;
+  border-color: #0a86e8;
+  background: #ffffff;
   box-shadow:
     0 0 0 4px rgba(10, 134, 232, 0.14),
     0 16px 32px rgba(18, 86, 137, 0.1);
 }
 
 .shared-input:hover {
-  border-color: rgba(153, 194, 225, 0.96);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 247, 255, 0.84) 100%);
+  border-color: #5d99ca;
+  background: #ffffff;
   box-shadow:
     0 16px 30px rgba(12, 42, 71, 0.075),
     0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .shared-input::placeholder {
-  color: var(--text-muted);
+  color: #496781;
+  font-weight: 600;
 }

@@ -14,33 +14,39 @@ import "./settings-shell.css";
 
 const NAV_ITEMS = [
   {
-    label: "Geral",
-    description: "Preferencias do workspace",
+    step: "1",
+    label: "Comece aqui",
+    description: "Resumo, template e preferencias",
     buildPath: buildWorkspaceSettingsPath
   },
   {
+    step: "2",
     label: "Perspectivas",
-    description: "Criar perspectivas e colunas visiveis",
+    description: "Visoes para cada equipe ou rotina",
     buildPath: buildWorkspaceSettingsPerspectivesPath
   },
   {
-    label: "Workflow States",
-    description: "Status que aparecem no board",
+    step: "3",
+    label: "Estados",
+    description: "Etapas reais do fluxo de trabalho",
     buildPath: buildWorkspaceSettingsWorkflowStatesPath
   },
   {
-    label: "Colunas (agrupamentos)",
-    description: "Agrupar states em colunas visuais",
+    step: "4",
+    label: "Colunas",
+    description: "Como os estados aparecem no board",
     buildPath: buildWorkspaceSettingsColumnsPath
   },
   {
-    label: "Tipos de work item",
-    description: "Tipos e campos visiveis por tipo",
+    step: "5",
+    label: "Work items",
+    description: "Tipos, campos e preview do card",
     buildPath: buildWorkspaceSettingsItemTypesPath
   },
   {
-    label: "Campos customizados",
-    description: "Definir campos para work items",
+    step: "6",
+    label: "Campos",
+    description: "Informacoes extras dos work items",
     buildPath: buildWorkspaceSettingsCustomFieldsPath
   }
 ];
@@ -60,9 +66,13 @@ export function SettingsShell() {
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes" pageLabel="Admin">
       <div className="settings-shell">
-        <nav className="settings-shell__nav">
+        <nav className="settings-shell__nav" aria-label="Configuracoes do workspace">
           <div className="settings-shell__nav-header">
-            <span className="settings-shell__nav-title">Configuracoes</span>
+            <span className="settings-shell__eyebrow">Workspace</span>
+            <span className="settings-shell__nav-title">Configurar board</span>
+            <p className="settings-shell__nav-intro">
+              Siga as etapas para criar um fluxo simples, visual e pronto para uso.
+            </p>
           </div>
 
           <ul className="settings-shell__nav-list">
@@ -75,8 +85,11 @@ export function SettingsShell() {
                     `settings-shell__nav-link${isActive ? " is-active" : ""}`
                   }
                 >
-                  <span className="settings-shell__nav-link-label">{item.label}</span>
-                  <span className="settings-shell__nav-link-desc">{item.description}</span>
+                  <span className="settings-shell__nav-step">{item.step}</span>
+                  <span className="settings-shell__nav-copy">
+                    <span className="settings-shell__nav-link-label">{item.label}</span>
+                    <span className="settings-shell__nav-link-desc">{item.description}</span>
+                  </span>
                 </NavLink>
               </li>
             ))}

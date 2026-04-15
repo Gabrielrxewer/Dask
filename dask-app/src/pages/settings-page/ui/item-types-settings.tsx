@@ -56,6 +56,23 @@ function areSameIdSets(left: string[], right: string[]): boolean {
   return left.every(value => rightSet.has(value));
 }
 
+function getPreviewValue(fieldId: string): string {
+  const values: Record<string, string> = {
+    "sys:type": "Tipo selecionado",
+    "sys:priority": "Media",
+    "sys:status": "Em progresso",
+    "sys:title": "Ajustar experiencia do cliente",
+    "sys:description": "Resumo claro do trabalho e do resultado esperado.",
+    "sys:created-by": "Debora",
+    "sys:assignee": "Equipe Dask",
+    "sys:tags": "produto, melhoria",
+    "sys:checklist": "2 de 4 itens",
+    "sys:due-date": "24/04/2026"
+  };
+
+  return values[fieldId] ?? "Valor de exemplo";
+}
+
 export function ItemTypesSettings() {
   const {
     snapshot,
@@ -595,6 +612,57 @@ export function ItemTypesSettings() {
                               </label>
                             );
                           })}
+                        </div>
+
+                        <div className="item-types-settings__visual-editor">
+                          <div className="item-types-settings__preview-card">
+                            <div className="item-types-settings__preview-topline">
+                              <span
+                                className="item-types-settings__badge"
+                                style={{ background: `${type.color}22`, borderColor: `${type.color}66`, color: type.color }}
+                              >
+                                {type.name}
+                              </span>
+                              <span>Preview do card</span>
+                            </div>
+                            <strong>Ajustar experiencia do cliente</strong>
+                            <p>Veja como o card fechado aparece no board.</p>
+                            <div className="item-types-settings__preview-fields">
+                              {allFields
+                                .filter(field => typeCardFields.has(field.id))
+                                .slice(0, 6)
+                                .map(field => (
+                                  <span key={`preview-card-${type.slug}-${field.id}`}>
+                                    <small>{field.label}</small>
+                                    {getPreviewValue(field.id)}
+                                  </span>
+                                ))}
+                              {typeCardFields.size === 0 ? (
+                                <em>Nenhum campo selecionado para o card.</em>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="item-types-settings__preview-detail">
+                            <div className="item-types-settings__preview-topline">
+                              <span>Work item expandido</span>
+                              <small>{typeDetailFields.size} campos</small>
+                            </div>
+                            <div className="item-types-settings__detail-grid">
+                              {allFields
+                                .filter(field => typeDetailFields.has(field.id))
+                                .slice(0, 10)
+                                .map(field => (
+                                  <span key={`preview-detail-${type.slug}-${field.id}`}>
+                                    <small>{field.label}</small>
+                                    {getPreviewValue(field.id)}
+                                  </span>
+                                ))}
+                              {typeDetailFields.size === 0 ? (
+                                <em>Nenhum campo selecionado para o item expandido.</em>
+                              ) : null}
+                            </div>
+                          </div>
                         </div>
 
                         <div className="item-types-settings__panel-footer">

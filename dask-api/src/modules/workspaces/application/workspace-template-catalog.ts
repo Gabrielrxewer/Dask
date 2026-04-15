@@ -34,10 +34,10 @@ const operationsStatuses = [
 export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
   {
     key: 'software_delivery',
-    name: 'Software Delivery',
-    description: 'Template padrao para squads de engenharia e produto.',
-    boardName: 'Engineering Delivery',
-    boardDescription: 'Fluxo padrao para planejamento, execucao e validacao de entregas.',
+    name: 'Entrega de software',
+    description: 'Backlog, execucao, revisao e pronto. Uma base objetiva para times de produto e engenharia.',
+    boardName: 'Entrega',
+    boardDescription: 'Fluxo simples para planejar, executar e validar entregas.',
     schema: {
       lanes: ['backlog', 'doing', 'review', 'done'],
       issueTypes: ['bug', 'task', 'user-story', 'epic', 'spike'],
@@ -77,10 +77,10 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
   },
   {
     key: 'product_discovery',
-    name: 'Product Discovery',
-    description: 'Template para descoberta de produto e validacao de hipoteses.',
-    boardName: 'Product Discovery',
-    boardDescription: 'Mapeie oportunidades, teste hipoteses e consolide aprendizados.',
+    name: 'Descoberta de produto',
+    description: 'Oportunidades, hipoteses, experimentos e aprendizados sem excesso de etapas.',
+    boardName: 'Descoberta',
+    boardDescription: 'Organize ideias, testes e aprendizados de produto.',
     schema: {
       lanes: ['backlog', 'discovery', 'experiment', 'validated'],
       issueTypes: ['opportunity', 'hypothesis', 'experiment', 'insight'],
@@ -110,10 +110,10 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
   },
   {
     key: 'operations_kanban',
-    name: 'Operations Kanban',
-    description: 'Template para operacoes, incidentes e manutencao.',
-    boardName: 'Operations Control',
-    boardDescription: 'Gerencie fila operacional, triagem e resolucao com SLA.',
+    name: 'Operacoes',
+    description: 'Fila, triagem, execucao e resolucao para rotinas operacionais.',
+    boardName: 'Operacoes',
+    boardDescription: 'Controle demandas operacionais com clareza.',
     schema: {
       lanes: ['queue', 'triage', 'execution', 'resolved'],
       issueTypes: ['incident', 'request', 'maintenance', 'problem'],

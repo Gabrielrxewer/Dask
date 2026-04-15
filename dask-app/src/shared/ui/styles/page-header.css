@@ -9,19 +9,18 @@
 
 .shared-page-header__label {
   margin: 0;
-  color: #6c84a0;
+  color: #31506d;
   font-size: var(--font-size-2xs);
   text-transform: uppercase;
-  letter-spacing: 0.14em;
   font-weight: 700;
 }
 
 .shared-page-header__title {
   margin: 2px 0 0;
   font-size: clamp(1.42rem, 1.12rem + 0.72vw, 1.9rem);
-  line-height: 0.92;
-  letter-spacing: -0.04em;
-  color: #10233f;
+  line-height: 1.08;
+  letter-spacing: 0;
+  color: #071f35;
 }
 
 .shared-filter-bar {

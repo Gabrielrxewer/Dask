@@ -280,17 +280,20 @@
     0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
 
-.auth-login__submit.shared-button--primary {
-  background: linear-gradient(135deg, #07559d 0%, #1d72c9 58%, #31c8d4 100%);
+.auth-login-panel[aria-label="Acesso ao Dask"] .auth-login__submit.shared-button--primary,
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__submit.shared-button--primary {
+  background: var(--brand-gradient-login);
 }
 
-.auth-login__submit.shared-button--primary:hover {
-  background: linear-gradient(135deg, #064f92 0%, #1a68bb 58%, #2db9c5 100%);
+.auth-login-panel[aria-label="Acesso ao Dask"] .auth-login__submit.shared-button--primary:hover,
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__submit.shared-button--primary:hover {
+  background: var(--brand-gradient-login-hover);
   box-shadow:
-    0 18px 34px rgba(8, 80, 145, 0.26),
-    0 10px 18px rgba(34, 173, 201, 0.16),
+    0 18px 34px rgba(8, 31, 53, 0.26),
+    0 10px 18px rgba(40, 207, 199, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.18) inset;
   transform: translateY(-1px);
+  filter: saturate(1.04) brightness(1.02);
 }
 
 .auth-login__submit:focus-visible {

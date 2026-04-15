@@ -100,6 +100,26 @@ export function ColumnsSettings() {
 
   return (
     <div className="columns-settings">
+      <section className="columns-settings__board-preview" aria-label="Preview das colunas">
+        <div className="columns-settings__preview-copy">
+          <span>Editor de board</span>
+          <strong>Organize as colunas como o usuario vai enxergar no dia a dia.</strong>
+          <p>Cada coluna pode apontar para um estado automatico. Ao mover o card, o estado muda junto.</p>
+        </div>
+        <div className="columns-settings__preview-board">
+          {columns.slice(0, 6).map(col => (
+            <div key={`preview-${col.id}`} className="columns-settings__preview-column">
+              <span>{col.name}</span>
+              <small>{activeStates.find(state => state.id === col.stateIds[0])?.name ?? "Sem estado"}</small>
+              <div />
+            </div>
+          ))}
+          {columns.length === 0 && !loadingList ? (
+            <div className="columns-settings__preview-empty">Crie a primeira coluna para visualizar o board.</div>
+          ) : null}
+        </div>
+      </section>
+
       <Section
         title="Colunas do board"
         subtitle="Gerencie as colunas do board e o state automatico aplicado ao mover cards para cada coluna."

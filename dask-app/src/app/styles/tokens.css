@@ -19,6 +19,8 @@
   --brand-gradient-main-hover: linear-gradient(130deg, #09375e 0%, #096aaa 52%, #0c8f89 100%);
   --brand-gradient-login: linear-gradient(135deg, #0f3f70 0%, #2c78e6 38%, #7d61ee 68%, #28cfc7 100%);
   --brand-gradient-login-hover: linear-gradient(135deg, #0e3a66 0%, #276dd5 38%, #7357df 68%, #25bfb9 100%);
+  --button-gradient-main: linear-gradient(135deg, #0b426f 0%, #0a86e8 100%);
+  --button-gradient-main-hover: linear-gradient(135deg, #09375e 0%, #0a79bd 100%);
   --ambient-surface:
     radial-gradient(circle at 16% 24%, rgba(247, 145, 159, 0.16) 0%, rgba(247, 145, 159, 0.02) 26%, transparent 44%),
     radial-gradient(circle at 80% 20%, rgba(125, 97, 238, 0.13) 0%, rgba(125, 97, 238, 0.02) 24%, transparent 42%),

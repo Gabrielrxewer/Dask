@@ -1,24 +1,33 @@
 .shared-input {
   width: 100%;
-  min-height: var(--control-height-md);
+  min-height: 46px;
   border: var(--control-border);
-  background: var(--control-surface);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--control-padding-x);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(243, 248, 255, 0.72) 100%);
+  border-radius: 16px;
+  padding: 0 14px;
   font-size: var(--font-size-sm);
   color: var(--text);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  font-weight: 600;
+  box-shadow:
+    0 12px 24px rgba(12, 42, 71, 0.055),
+    0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .shared-input:focus {
   border-color: var(--control-border-strong);
   background: #fcfeff;
-  box-shadow: var(--focus-strong);
+  box-shadow:
+    0 0 0 4px rgba(10, 134, 232, 0.14),
+    0 16px 32px rgba(18, 86, 137, 0.1);
 }
 
 .shared-input:hover {
-  background: var(--control-surface-hover);
+  border-color: rgba(153, 194, 225, 0.96);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 247, 255, 0.84) 100%);
+  box-shadow:
+    0 16px 30px rgba(12, 42, 71, 0.075),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .shared-input::placeholder {

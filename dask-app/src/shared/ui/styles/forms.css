@@ -1,17 +1,134 @@
-.shared-select,
+.shared-select__control,
 .shared-textarea {
   width: 100%;
   border: var(--control-border);
-  background: var(--control-surface);
-  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(243, 248, 255, 0.72) 100%);
+  border-radius: 16px;
   color: var(--text);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  box-shadow:
+    0 12px 24px rgba(12, 42, 71, 0.055),
+    0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .shared-select {
+  position: relative;
   min-height: var(--control-height-md);
-  padding: 0 var(--control-padding-x);
+  width: 100%;
+}
+
+.shared-select--open {
+  z-index: 240;
+}
+
+.shared-select__native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shared-select__control {
+  position: relative;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.shared-select__value {
+  min-width: 0;
+  overflow: hidden;
+  color: #173653;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-select__value--muted {
+  color: var(--text-muted);
+}
+
+.shared-select__chevron {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-right: 2px solid #2d6b9c;
+  border-bottom: 2px solid #2d6b9c;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.18s ease;
+}
+
+.shared-select--open .shared-select__chevron {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.shared-select__menu {
+  position: absolute;
+  z-index: 500;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  max-height: min(280px, 42vh);
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid rgba(176, 205, 228, 0.82);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(44, 120, 230, 0.08) 0%, transparent 34%),
+    radial-gradient(circle at 88% 16%, rgba(125, 97, 238, 0.08) 0%, transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
+  box-shadow:
+    0 26px 56px rgba(12, 42, 71, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.86) inset;
+  backdrop-filter: blur(16px) saturate(124%);
+}
+
+.shared-select__option {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0 11px;
+  background: transparent;
+  color: #315d84;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-align: left;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.shared-select__option:hover,
+.shared-select__option:focus-visible {
+  border-color: rgba(174, 206, 230, 0.74);
+  background: linear-gradient(135deg, rgba(44, 120, 230, 0.08), rgba(48, 213, 205, 0.08));
+  color: #174f7e;
+}
+
+.shared-select__option--selected {
+  border-color: rgba(146, 203, 255, 0.6);
+  background: linear-gradient(135deg, rgba(44, 120, 230, 0.12), rgba(125, 97, 238, 0.1), rgba(48, 213, 205, 0.1));
+  color: #103f67;
+  box-shadow: 0 10px 20px rgba(12, 42, 71, 0.06);
+}
+
+.shared-select__option:disabled,
+.shared-select--disabled .shared-select__control {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
 }
 
 .shared-textarea {
@@ -22,16 +139,20 @@
   line-height: 1.5;
 }
 
-.shared-select:focus,
+.shared-select__control:focus,
 .shared-textarea:focus {
   border-color: var(--control-border-strong);
   background: #fcfeff;
   box-shadow: var(--focus-strong);
 }
 
-.shared-select:hover,
+.shared-select__control:hover,
 .shared-textarea:hover {
-  background: var(--control-surface-hover);
+  border-color: rgba(153, 194, 225, 0.96);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 247, 255, 0.84) 100%);
+  box-shadow:
+    0 16px 30px rgba(12, 42, 71, 0.075),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .shared-textarea::placeholder {
@@ -45,7 +166,7 @@
 
 .shared-form-field__label {
   font-size: var(--font-size-label);
-  color: var(--text-soft);
-  font-weight: 600;
+  color: #2a628f;
+  font-weight: 700;
   letter-spacing: 0.01em;
 }

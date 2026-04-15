@@ -12,14 +12,30 @@ export const daskQueue = new Queue('dask-jobs', { connection });
 const queueLogger = getLogger('queue');
 const queueDebug = createDebugLogger('queue.enqueue');
 
+function sanitizeJobId(jobId: string | undefined): string | undefined {
+  if (!jobId) {
+    return undefined;
+  }
+
+  const normalized = jobId.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  // BullMQ rejects custom IDs containing ":".
+  return normalized.replace(/:/g, '__');
+}
+
 export class BullMqJobQueue implements JobQueue {
   public async enqueue<TPayload extends object>(
     jobName: JobName,
     payload: TPayload,
     options?: JobEnqueueOptions
   ): Promise<void> {
+    const safeJobId = sanitizeJobId(options?.jobId);
+
     await daskQueue.add(jobName, payload, {
-      jobId: options?.jobId,
+      jobId: safeJobId,
       removeOnComplete: 500,
       removeOnFail: 500
     });
@@ -27,7 +43,7 @@ export class BullMqJobQueue implements JobQueue {
     queueDebug.log(
       {
         jobName,
-        jobId: options?.jobId ?? null
+        jobId: safeJobId ?? null
       },
       'Job enqueued'
     );

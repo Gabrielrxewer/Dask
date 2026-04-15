@@ -593,6 +593,10 @@
   padding: 0;
 }
 
+.global-layout__main--admin {
+  padding: 0;
+}
+
 .global-layout__main--no-scroll {
   box-sizing: border-box;
   flex: 1 1 auto;

@@ -10,9 +10,12 @@ import { authMiddleware } from '@/core/http/auth-middleware';
 import { errorMiddleware } from '@/core/http/error-middleware';
 import { notFoundMiddleware } from '@/core/http/not-found-middleware';
 import { requirePlatformAdminMiddleware } from '@/core/http/require-platform-admin-middleware';
+import { telemetryHttpMiddleware } from '@/core/http/telemetry-http-middleware';
 import { createDebugLogger, createRequestId, getLogger, logger } from '@/core/logging/logger';
+import { setTelemetryRecorder } from '@/core/telemetry/telemetry-recorder';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { prisma } from '@/infra/db/prisma';
+import { createPrismaTelemetryRecorder } from '@/modules/telemetry/infra/prisma-telemetry-recorder';
 import { createSubscriptionMiddleware } from '@/modules/billing/http/subscription-middleware';
 import { buildIdentityRoutes } from '@/modules/identity/http/routes';
 import { buildWorkspacesRoutes } from '@/modules/workspaces/http/routes';
@@ -48,6 +51,7 @@ function parseAllowedOrigins(raw: string): string[] {
 const allowedOrigins = parseAllowedOrigins(env.CORS_ALLOWED_ORIGINS);
 const httpLogger = getLogger('http');
 const httpRequestDebug = createDebugLogger('http.request');
+setTelemetryRecorder(createPrismaTelemetryRecorder(prisma));
 
 export const createApp = (): Express => {
   const app = express();
@@ -90,6 +94,7 @@ export const createApp = (): Express => {
       }
     })
   );
+  app.use(telemetryHttpMiddleware);
 
   app.use((req, _res, next) => {
     httpRequestDebug.log(

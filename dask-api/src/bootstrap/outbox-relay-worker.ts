@@ -3,6 +3,7 @@ import { env } from '@/core/config/env';
 import type { DomainEvent } from '@/core/events/domain-event';
 import type { OutboxPendingEvent } from '@/core/events/outbox-repository';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
+import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
 import { AiEventDispatcher } from '@/modules/ai/application/ai-event-dispatcher';
@@ -28,6 +29,10 @@ function extractActorId(payload: Record<string, unknown>): string | null {
 
 function extractWorkspaceId(payload: Record<string, unknown>): string | null {
   return typeof payload.workspaceId === 'string' ? payload.workspaceId : null;
+}
+
+function extractRouteFromPayload(payload: Record<string, unknown>): string | null {
+  return typeof payload.route === 'string' ? payload.route : null;
 }
 
 function toDomainEvent(row: OutboxPendingEvent): DomainEvent {
@@ -94,6 +99,7 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
       }
 
       const event = toDomainEvent(row);
+      const payload = event.payload as Record<string, unknown>;
       relayDebug.log(
         {
           outboxId: row.id,
@@ -103,6 +109,18 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
         'Outbox event claimed for processing'
       );
       try {
+        void recordTelemetryEvent({
+          category: 'domain',
+          eventName: event.name,
+          success: true,
+          userId: extractActorId(payload),
+          workspaceId: extractWorkspaceId(payload),
+          route: extractRouteFromPayload(payload),
+          metadata: {
+            aggregateType: event.aggregateType,
+            aggregateId: event.aggregateId
+          }
+        });
         await recordAuditEvent(db, event);
         await automationDispatcher.dispatch(event, row.id);
         await aiDispatcher.dispatch(event, row.id);
@@ -111,6 +129,19 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
       } catch (error) {
         const nextRetries = row.retries + 1;
         const errorMessage = sanitizeErrorMessage(error);
+        void recordTelemetryEvent({
+          category: 'domain',
+          eventName: `${event.name}.failed`,
+          success: false,
+          userId: extractActorId(payload),
+          workspaceId: extractWorkspaceId(payload),
+          reason: errorMessage,
+          metadata: {
+            aggregateType: event.aggregateType,
+            aggregateId: event.aggregateId,
+            retries: nextRetries
+          }
+        });
         if (nextRetries >= env.OUTBOX_RELAY_MAX_RETRIES) {
           await outboxRepository.markDeadLetter({
             outboxId: row.id,

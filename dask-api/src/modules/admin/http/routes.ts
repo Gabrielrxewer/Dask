@@ -10,6 +10,23 @@ function asNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'bigint') {
     return Number(value);
   }
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const candidate = (value as { toNumber?: () => number; toString?: () => string });
+
+    if (typeof candidate.toNumber === 'function') {
+      const parsed = candidate.toNumber();
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    if (typeof candidate.toString === 'function') {
+      const parsed = Number.parseFloat(candidate.toString());
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+  }
   return fallback;
 }
 
@@ -171,16 +188,25 @@ export const buildAdminRoutes = (deps: { prisma: PrismaClient }): Router => {
           ORDER BY total DESC, hour_of_day ASC
           LIMIT 3
         `,
-        deps.prisma.$queryRaw<Array<{ avg_ms: number; p95_ms: number; p99_ms: number }>>`
+        deps.prisma.$queryRaw<Array<{ avg_ms: number | string; p95_ms: number | string; p99_ms: number | string }>>`
+          WITH latency_samples AS (
+            SELECT
+              COALESCE(
+                "durationNs"::numeric,
+                ("durationMs"::numeric * 1000000)
+              ) AS duration_ns
+            FROM "TelemetryEvent"
+            WHERE "category" = 'http'
+              AND "eventName" = 'http.request'
+              AND "occurredAt" >= ${dayStart}
+          )
           SELECT
-            COALESCE(ROUND(AVG("durationMs")::numeric, 2), 0) AS avg_ms,
-            COALESCE(ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "durationMs")::numeric, 2), 0) AS p95_ms,
-            COALESCE(ROUND(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY "durationMs")::numeric, 2), 0) AS p99_ms
-          FROM "TelemetryEvent"
-          WHERE "category" = 'http'
-            AND "eventName" = 'http.request'
-            AND "durationMs" IS NOT NULL
-            AND "occurredAt" >= ${dayStart}
+            COALESCE(ROUND((AVG(duration_ns) / 1000000.0)::numeric, 12), 0) AS avg_ms,
+            COALESCE(ROUND((PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ns) / 1000000.0)::numeric, 12), 0) AS p95_ms,
+            COALESCE(ROUND((PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ns) / 1000000.0)::numeric, 12), 0) AS p99_ms
+          FROM latency_samples
+          WHERE duration_ns IS NOT NULL
+            AND duration_ns > 0
         `,
         deps.prisma.$queryRaw<Array<{ status_bucket: string; total: number }>>`
           SELECT

@@ -75,6 +75,8 @@ export function GlobalLayout() {
   const isResetPasswordRoute = location.pathname === routePaths.resetPassword;
   const isPublicGuestRoute = isHomeRoute || isLoginRoute || isResetPasswordRoute;
   const isAppRoute = !isPublicGuestRoute;
+  const isAdminRoute = location.pathname === routePaths.admin;
+  const shouldDisableMainScroll = isAppRoute && !isAdminRoute;
   const isAuthenticated = status === "authenticated";
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
@@ -395,7 +397,8 @@ export function GlobalLayout() {
           <main
             className={cn(
               "global-layout__main",
-              isAppRoute && "global-layout__main--no-scroll",
+              isAdminRoute && "global-layout__main--admin",
+              shouldDisableMainScroll && "global-layout__main--no-scroll",
               isPublicGuestRoute && "global-layout__main--public"
             )}
           >

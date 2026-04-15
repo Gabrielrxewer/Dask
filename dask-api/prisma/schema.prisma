@@ -771,3 +771,33 @@ model AuditEvent {
   metadata        Json?
   happenedAt      DateTime                  @default(now())
 }
+
+model TelemetryEvent {
+  id          String   @id
+  category    String
+  eventName   String
+  success     Boolean?
+  userId      String?
+  workspaceId String?
+  method      String?
+  route       String?
+  statusCode  Int?
+  durationMs  Int?
+  durationNs  BigInt?
+  reason      String?
+  provider    String?
+  ipHash      String?
+  country     String?
+  city        String?
+  userAgent   String?
+  browser     String?
+  os          String?
+  deviceType  String?
+  metadata    Json?
+  occurredAt  DateTime @default(now())
+
+  @@index([category, eventName, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([workspaceId, occurredAt])
+  @@index([route, occurredAt])
+}

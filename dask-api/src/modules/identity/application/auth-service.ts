@@ -22,6 +22,7 @@ import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
+import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 import { validatePassword, normalizeEmail } from '@/modules/identity/domain/password-policy';
 import type { PasswordService } from '@/modules/identity/application/password-service';
 import type { EmailService } from '@/infra/email/email-service';
@@ -155,12 +156,38 @@ function logAuthEvent(
   event: AuthEvent,
   fields: { userId?: string; context?: RequestContext; extra?: Record<string, unknown> }
 ): void {
+  const reason = typeof fields.extra?.reason === 'string' ? fields.extra.reason : null;
+  const provider = typeof fields.extra?.provider === 'string' ? fields.extra.provider : null;
+  const failedEvents: AuthEvent[] = [
+    'auth.login.failure',
+    'auth.login.locked',
+    'auth.login.email_not_verified',
+    'auth.refresh.reuse_detected',
+    'auth.refresh.invalid',
+    'auth.password_reset.invalid',
+    'auth.email_verification.invalid'
+  ];
+
   logger.info({
     event,
     userId: fields.userId,
     ip: fields.context?.ip,
     userAgent: fields.context?.userAgent,
     ...fields.extra
+  });
+
+  void recordTelemetryEvent({
+    category: 'auth',
+    eventName: event,
+    success: !failedEvents.includes(event),
+    userId: fields.userId ?? null,
+    method: null,
+    route: null,
+    reason,
+    provider,
+    ipHash: fields.context?.ip ?? null,
+    userAgent: fields.context?.userAgent ?? null,
+    metadata: fields.extra ?? null
   });
 }
 

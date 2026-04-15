@@ -1,5 +1,6 @@
 import { env } from '@/core/config/env';
 import { AppError } from '@/core/errors/app-error';
+import { createDebugLogger, getLogger } from '@/core/logging/logger';
 import type { AIProvider } from '@/modules/ai/domain/providers';
 
 type ChatCompletionResponse = {
@@ -24,6 +25,8 @@ type ChatCompletionResponse = {
 
 export class OpenAIAIProvider implements AIProvider {
   private readonly endpoint = `${env.OPENAI_BASE_URL}/chat/completions`;
+  private readonly aiLogger = getLogger('ai.openai.chat');
+  private readonly aiDebug = createDebugLogger('ai.openai.chat');
 
   public async generateText(input: {
     systemPrompt: string;
@@ -42,6 +45,15 @@ export class OpenAIAIProvider implements AIProvider {
   }> {
     const start = Date.now();
     const selectedModel = input.model ?? env.AI_CHAT_MODEL;
+    this.aiDebug.log(
+      {
+        model: selectedModel,
+        hasTools: Boolean(input.tools?.length),
+        requireJsonOutput: Boolean(input.requireJsonOutput)
+      },
+      'Dispatching OpenAI chat completion'
+    );
+
     const response = await fetch(this.endpoint, {
       method: 'POST',
       headers: {
@@ -69,6 +81,13 @@ export class OpenAIAIProvider implements AIProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
+      this.aiLogger.error(
+        {
+          model: selectedModel,
+          status: response.status
+        },
+        'OpenAI chat completion request failed'
+      );
       throw new AppError(`OpenAI chat failed: ${errorText.slice(0, 400)}`, 502);
     }
 
@@ -98,12 +117,25 @@ export class OpenAIAIProvider implements AIProvider {
     const inputTokens = payload.usage?.prompt_tokens ?? 0;
     const outputTokens = payload.usage?.completion_tokens ?? 0;
     const totalTokens = payload.usage?.total_tokens ?? inputTokens + outputTokens;
+    const latencyMs = Date.now() - start;
+
+    this.aiDebug.log(
+      {
+        model: payload.model ?? selectedModel,
+        latencyMs,
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        toolCalls: toolCalls.length
+      },
+      'OpenAI chat completion finished'
+    );
 
     return {
       content,
       model: payload.model ?? selectedModel,
       provider: 'openai',
-      latencyMs: Date.now() - start,
+      latencyMs,
       usage: {
         inputTokens,
         outputTokens,

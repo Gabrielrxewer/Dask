@@ -3,6 +3,32 @@ import { z } from 'zod';
 
 dotenv.config();
 
+const LOG_LEVEL_VALUES = ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'] as const;
+
+const logLevelSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  z.enum(LOG_LEVEL_VALUES).default('info')
+);
+
+const logPrettySchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  z.enum(['auto', 'always', 'never']).default('auto')
+);
+
+const debugChannelsSchema = z
+  .string()
+  .default('')
+  .transform((raw) =>
+    Array.from(
+      new Set(
+        raw
+          .split(',')
+          .map((entry) => entry.trim().toLowerCase())
+          .filter(Boolean)
+      )
+    )
+  );
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(3333),
@@ -41,7 +67,18 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default('Dask <noreply@dask.app>'),
   APP_URL: z.string().default('http://localhost:5173'),
 
-  LOG_LEVEL: z.string().default('info'),
+  LOG_LEVEL: logLevelSchema,
+  LOG_PRETTY: logPrettySchema,
+  LOG_DEBUG_CHANNELS: debugChannelsSchema,
+  LOG_DB_QUERY_MIN_DURATION_MS: z.coerce.number().int().min(0).default(10),
+  LOG_DB_QUERY_INCLUDE_TX_CONTROL: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
+  LOG_DB_QUERY_INCLUDE_OUTBOX_POLL: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
   ENABLE_WORKERS: z
     .string()
     .default('true')

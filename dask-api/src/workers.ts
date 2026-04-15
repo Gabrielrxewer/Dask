@@ -1,7 +1,7 @@
 import { type Job, Worker } from 'bullmq';
 import { startOutboxRelayWorker, type RelayWorkerHandle } from '@/bootstrap/outbox-relay-worker';
 import { env } from '@/core/config/env';
-import { logger } from '@/core/logging/logger';
+import { createDebugLogger, getLogger } from '@/core/logging/logger';
 import { prisma } from '@/infra/db/prisma';
 import { queueConnection } from '@/infra/queue/bullmq-job-queue';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
@@ -9,6 +9,8 @@ import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orch
 import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
 
 type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
+const workerLogger = getLogger('worker');
+const workerDebug = createDebugLogger('worker.jobs');
 
 function chunkText(value: string, chunkSize: number, overlap: number): string[] {
   const normalized = value.trim();
@@ -31,7 +33,7 @@ function chunkText(value: string, chunkSize: number, overlap: number): string[] 
 
 export const startWorkers = (): WorkerHandle[] => {
   if (!env.ENABLE_WORKERS) {
-    logger.info('Workers are disabled by configuration');
+    workerLogger.info('Workers are disabled by configuration');
     return [];
   }
 
@@ -42,6 +44,15 @@ export const startWorkers = (): WorkerHandle[] => {
   const worker = new Worker(
     'dask-jobs',
     async (job: Job) => {
+      workerDebug.log(
+        {
+          jobId: job.id,
+          jobName: job.name,
+          attemptsMade: job.attemptsMade
+        },
+        'Worker started processing job'
+      );
+
       if (job.name === 'ai.improve-description') {
         const itemId = job.data.itemId as string;
         const item = await prisma.item.findUnique({ where: { id: itemId } });
@@ -168,11 +179,11 @@ export const startWorkers = (): WorkerHandle[] => {
   );
 
   worker.on('failed', (job: Job | undefined, err: Error) => {
-    logger.error({ jobId: job?.id, jobName: job?.name, err }, 'Worker job failed');
+    workerLogger.error({ jobId: job?.id, jobName: job?.name, err }, 'Worker job failed');
   });
 
   worker.on('completed', (job: Job) => {
-    logger.info({ jobId: job.id, jobName: job.name }, 'Worker job completed');
+    workerLogger.info({ jobId: job.id, jobName: job.name }, 'Worker job completed');
   });
 
   const outboxRelayWorker = startOutboxRelayWorker(prisma);

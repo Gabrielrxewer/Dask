@@ -9,7 +9,7 @@ import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
 import { errorMiddleware } from '@/core/http/error-middleware';
 import { notFoundMiddleware } from '@/core/http/not-found-middleware';
-import { logger } from '@/core/logging/logger';
+import { createDebugLogger, createRequestId, getLogger, logger } from '@/core/logging/logger';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { prisma } from '@/infra/db/prisma';
 import { createSubscriptionMiddleware } from '@/modules/billing/http/subscription-middleware';
@@ -44,12 +44,64 @@ function parseAllowedOrigins(raw: string): string[] {
 }
 
 const allowedOrigins = parseAllowedOrigins(env.CORS_ALLOWED_ORIGINS);
+const httpLogger = getLogger('http');
+const httpRequestDebug = createDebugLogger('http.request');
 
 export const createApp = (): Express => {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(pinoHttp({ logger }));
+  app.use(
+    pinoHttp({
+      logger: httpLogger,
+      autoLogging: {
+        ignore(req) {
+          return req.url === '/health';
+        }
+      },
+      quietReqLogger: true,
+      quietResLogger: true,
+      genReqId(req, res) {
+        const requestIdHeader = req.headers['x-request-id'];
+        const requestId =
+          typeof requestIdHeader === 'string' && requestIdHeader.trim()
+            ? requestIdHeader.trim()
+            : createRequestId();
+
+        res.setHeader('x-request-id', requestId);
+        return requestId;
+      },
+      customLogLevel(_req, res, err) {
+        if (err || res.statusCode >= 500) {
+          return 'error';
+        }
+        if (res.statusCode >= 400) {
+          return 'warn';
+        }
+        return 'info';
+      },
+      customSuccessMessage(req, res) {
+        return `${req.method} ${req.url} -> ${res.statusCode}`;
+      },
+      customErrorMessage(req, res) {
+        return `${req.method} ${req.url} -> ${res.statusCode}`;
+      }
+    })
+  );
+
+  app.use((req, _res, next) => {
+    httpRequestDebug.log(
+      {
+        requestId: req.id,
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      },
+      'Incoming request detail'
+    );
+    next();
+  });
 
   app.use(
     cors({

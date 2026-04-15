@@ -2,7 +2,7 @@ import { AuditSeverity, type Prisma, type PrismaClient } from '@prisma/client';
 import { env } from '@/core/config/env';
 import type { DomainEvent } from '@/core/events/domain-event';
 import type { OutboxPendingEvent } from '@/core/events/outbox-repository';
-import { logger } from '@/core/logging/logger';
+import { createDebugLogger, getLogger } from '@/core/logging/logger';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
 import { AiEventDispatcher } from '@/modules/ai/application/ai-event-dispatcher';
@@ -12,6 +12,9 @@ import { SearchEventDispatcher } from '@/modules/search/application/search-event
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+const relayLogger = getLogger('outbox-relay');
+const relayDebug = createDebugLogger('outbox.relay');
 
 function normalizePayload(payload: Prisma.JsonValue): Record<string, unknown> {
   return typeof payload === 'object' && payload !== null && !Array.isArray(payload)
@@ -91,6 +94,14 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
       }
 
       const event = toDomainEvent(row);
+      relayDebug.log(
+        {
+          outboxId: row.id,
+          eventName: row.eventName,
+          retries: row.retries
+        },
+        'Outbox event claimed for processing'
+      );
       try {
         await recordAuditEvent(db, event);
         await automationDispatcher.dispatch(event, row.id);
@@ -118,7 +129,7 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
           });
         }
 
-        logger.error(
+        relayLogger.error(
           {
             event: 'outbox.relay.failed',
             outboxId: row.id,
@@ -160,7 +171,7 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
       const now = Date.now();
       if (now - lastMetricsLogAt >= 60_000) {
         const metrics = await outboxRepository.getRelayMetrics();
-        logger.info(
+        relayLogger.info(
           {
             event: 'outbox.relay.metrics',
             pending: metrics.pendingCount,

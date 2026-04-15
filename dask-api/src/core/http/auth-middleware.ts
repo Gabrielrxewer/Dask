@@ -9,6 +9,7 @@ type AuthTokenPayload = JwtPayload & {
   email: string;
   emailVerified?: boolean;
   roles?: string[];
+  isPlatformAdmin?: boolean;
 };
 
 export const authMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
@@ -33,7 +34,8 @@ export const authMiddleware = (req: Request, _res: Response, next: NextFunction)
     req.auth = {
       userId: payload.sub,
       email: payload.email,
-      roles: (payload.roles ?? []) as MembershipRole[]
+      roles: (payload.roles ?? []) as MembershipRole[],
+      isPlatformAdmin: payload.isPlatformAdmin === true
     };
     next();
   } catch {

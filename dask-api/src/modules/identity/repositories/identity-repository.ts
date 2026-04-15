@@ -92,6 +92,7 @@ export interface IdentityRepository {
   }, db?: Prisma.TransactionClient): Promise<Organization>;
 
   getUserRoles(userId: string): Promise<MembershipRole[]>;
+  getIsPlatformAdmin(userId: string): Promise<boolean>;
 
   // ── Refresh tokens ────────────────────────────────────────────────────────
   createRefreshToken(input: {

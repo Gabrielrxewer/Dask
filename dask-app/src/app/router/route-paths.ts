@@ -7,6 +7,7 @@ export const routePaths = {
   billingSuccess: "/billing/success",
   billingCancel: "/billing/cancel",
   subscriptionBlocked: "/subscription-blocked",
+  admin: "/admin",
   workspaceEntry: "/w",
   noWorkspace: "/w/no-workspace",
   workspaceBase: "/w/:workspaceSlug",

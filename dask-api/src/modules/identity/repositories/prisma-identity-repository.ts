@@ -206,6 +206,17 @@ export class PrismaIdentityRepository implements IdentityRepository {
     return memberships.map((m) => m.role);
   }
 
+  public async getIsPlatformAdmin(userId: string): Promise<boolean> {
+    const rows = await this.prisma.$queryRaw<Array<{ is_platform_admin: boolean | null }>>`
+      SELECT "isPlatformAdmin" AS is_platform_admin
+      FROM "User"
+      WHERE id = ${userId}
+      LIMIT 1
+    `;
+
+    return rows[0]?.is_platform_admin === true;
+  }
+
   // ── Refresh tokens ────────────────────────────────────────────────────────
 
   public async createRefreshToken(input: {

@@ -20,6 +20,7 @@ import {
   ListPage,
   LoginPage,
   NoWorkspacePage,
+  PlatformAdminPage,
   PerspectivesSettingsPage,
   ResetPasswordPage,
   SettingsShellPage,
@@ -116,6 +117,7 @@ export function AppRoutes() {
 
         {/* Billing routes — authenticated but subscription not required */}
         <Route element={<ProtectedRoute />}>
+          <Route path={routePaths.admin} element={<PlatformAdminPage />} />
           <Route element={<BillingProvider />}>
             <Route path={routePaths.choosePlan} element={<ChoosePlanPage />} />
             <Route path={routePaths.billingSuccess} element={<BillingSuccessPage />} />

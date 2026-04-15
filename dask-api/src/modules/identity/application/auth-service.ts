@@ -50,6 +50,7 @@ export type UserProfile = {
   email: string;
   name: string;
   emailVerified: boolean;
+  isPlatformAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -94,19 +95,23 @@ function parseDurationMs(value: string): number {
   return amount * (ms[unit] ?? 1_000);
 }
 
-function toUserProfile(user: {
+function toUserProfile(
+  user: {
   id: string;
   email: string;
   name: string;
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
-}): UserProfile {
+  },
+  isPlatformAdmin: boolean
+): UserProfile {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     emailVerified: user.emailVerified,
+    isPlatformAdmin,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
   };
@@ -204,8 +209,14 @@ export class AuthService {
     });
 
     let tokens: AuthTokens | null = null;
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
     if (user.emailVerified) {
-      tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified);
+      tokens = await this.issueTokenPair(
+        user.id,
+        user.email,
+        user.emailVerified,
+        isPlatformAdmin
+      );
     }
 
     logAuthEvent('auth.register.success', {
@@ -221,7 +232,7 @@ export class AuthService {
     });
 
     return {
-      user: toUserProfile(user),
+      user: toUserProfile(user, isPlatformAdmin),
       accessToken: tokens?.accessToken ?? null,
       refreshToken: tokens?.refreshToken ?? null
     };
@@ -331,9 +342,15 @@ export class AuthService {
       });
     }
 
-    const tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified);
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
+    const tokens = await this.issueTokenPair(
+      user.id,
+      user.email,
+      user.emailVerified,
+      isPlatformAdmin
+    );
     logAuthEvent('auth.login.success', { userId: user.id, context });
-    return { user: toUserProfile(user), ...tokens };
+    return { user: toUserProfile(user, isPlatformAdmin), ...tokens };
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
@@ -389,14 +406,20 @@ export class AuthService {
 
     await this.identityRepository.resetLoginFailures(user.id);
 
-    const tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified);
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
+    const tokens = await this.issueTokenPair(
+      user.id,
+      user.email,
+      user.emailVerified,
+      isPlatformAdmin
+    );
     logAuthEvent('auth.login.success', {
       userId: user.id,
       context,
       extra: { provider: input.provider, oauth: true }
     });
 
-    return { user: toUserProfile(user), ...tokens };
+    return { user: toUserProfile(user, isPlatformAdmin), ...tokens };
   }
 
   public async refresh(
@@ -474,7 +497,14 @@ export class AuthService {
     }
 
     // Issue new token pair, reusing the same familyId (rotation)
-    const tokens = await this.issueTokenPair(user.id, user.email, user.emailVerified, stored.familyId);
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
+    const tokens = await this.issueTokenPair(
+      user.id,
+      user.email,
+      user.emailVerified,
+      isPlatformAdmin,
+      stored.familyId
+    );
     logAuthEvent('auth.refresh.success', { userId: user.id, context });
     return tokens;
   }
@@ -503,7 +533,8 @@ export class AuthService {
     if (!user) {
       throw new AppError('User not found.', 404);
     }
-    return toUserProfile(user);
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
+    return toUserProfile(user, isPlatformAdmin);
   }
 
   // ── Password reset (scaffold) ─────────────────────────────────────────────
@@ -690,11 +721,12 @@ export class AuthService {
     userId: string,
     email: string,
     emailVerified: boolean,
+    isPlatformAdmin: boolean,
     existingFamilyId?: string
   ): Promise<AuthTokens> {
     const roles = await this.identityRepository.getUserRoles(userId);
 
-    const accessToken = jwt.sign({ email, roles, emailVerified }, env.JWT_SECRET, {
+    const accessToken = jwt.sign({ email, roles, emailVerified, isPlatformAdmin }, env.JWT_SECRET, {
       subject: userId,
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
     });

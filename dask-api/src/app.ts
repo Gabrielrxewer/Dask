@@ -9,6 +9,7 @@ import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
 import { errorMiddleware } from '@/core/http/error-middleware';
 import { notFoundMiddleware } from '@/core/http/not-found-middleware';
+import { requirePlatformAdminMiddleware } from '@/core/http/require-platform-admin-middleware';
 import { createDebugLogger, createRequestId, getLogger, logger } from '@/core/logging/logger';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { prisma } from '@/infra/db/prisma';
@@ -23,6 +24,7 @@ import { buildIntegrationRoutes } from '@/modules/integration/http/routes';
 import { buildAuditRoutes } from '@/modules/audit/http/routes';
 import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
 import { buildBillingRoutes } from '@/modules/billing/http/routes';
+import { buildAdminRoutes } from '@/modules/admin/http/routes';
 
 function parseAllowedOrigins(raw: string): string[] {
   const values = raw
@@ -292,6 +294,15 @@ export const createApp = (): Express => {
   if (billingService) {
     app.use(env.API_PREFIX, buildBillingRoutes({ billingService }));
   }
+
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requirePlatformAdminMiddleware,
+    buildAdminRoutes({
+      prisma
+    })
+  );
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

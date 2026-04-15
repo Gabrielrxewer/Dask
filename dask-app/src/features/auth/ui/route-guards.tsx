@@ -1,9 +1,14 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { routePaths } from "@/app/router/route-paths";
 import { AuthRouteFallback } from "@/features/auth/ui/auth-route-fallback";
+import { useAuth } from "@/features/auth/model";
 import { useProtectedRouteGuard, usePublicRouteGuard } from "@/features/auth/model/use-auth-route-guard";
 
 interface PublicRouteProps {
+  children: JSX.Element;
+}
+
+interface AdminRouteProps {
   children: JSX.Element;
 }
 
@@ -51,6 +56,25 @@ export function PublicRoute({ children }: PublicRouteProps) {
     const redirectTo = isValidAppPath ? `${fromPath}${fromSearch}` : fallbackPath;
 
     return <Navigate replace to={redirectTo} />;
+  }
+
+  return children;
+}
+
+export function AdminRoute({ children }: AdminRouteProps) {
+  const guard = useProtectedRouteGuard();
+  const auth = useAuth();
+
+  if (guard.mode === "loading") {
+    return <AuthRouteFallback />;
+  }
+
+  if (guard.mode === "redirect") {
+    return <Navigate replace to={guard.redirectTo ?? routePaths.login} state={guard.redirectState} />;
+  }
+
+  if (!auth.user?.isPlatformAdmin) {
+    return <Navigate replace to={routePaths.workspaceEntry} />;
   }
 
   return children;

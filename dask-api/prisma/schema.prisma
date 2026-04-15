@@ -63,6 +63,7 @@ model User {
   email                    String                    @unique
   name                     String
   emailVerified            Boolean                   @default(false)
+  isPlatformAdmin          Boolean                   @default(false)
   passwordHash             String?
   // 0 = legacy plain-bcrypt (pre-migration), 1 = HMAC-SHA256+bcrypt with pepper
   passwordHashVersion      Int                       @default(0)

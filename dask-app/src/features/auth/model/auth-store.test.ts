@@ -25,6 +25,7 @@ const mockUser = {
   email: "ana@example.com",
   name: "Ana",
   emailVerified: true,
+  isPlatformAdmin: false,
   createdAt: "2026-04-01T00:00:00.000Z",
   updatedAt: "2026-04-01T00:00:00.000Z"
 };

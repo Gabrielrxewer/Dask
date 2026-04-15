@@ -4,6 +4,7 @@ export type AuthUserContext = {
   userId: string;
   email: string;
   roles: MembershipRole[];
+  isPlatformAdmin: boolean;
 };
 
 export type WorkspaceRequestContext = {

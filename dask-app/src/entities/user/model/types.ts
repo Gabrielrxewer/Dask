@@ -3,6 +3,7 @@ export interface AuthenticatedUser {
   email: string;
   name: string;
   emailVerified: boolean;
+  isPlatformAdmin: boolean;
   createdAt: string;
   updatedAt: string;
 }

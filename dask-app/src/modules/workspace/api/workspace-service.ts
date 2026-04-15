@@ -2,10 +2,14 @@ import { apiClient } from "@/shared/api/http-client";
 import { isApiError } from "@/shared/api/http-client";
 import { CARD_FIELDS_SCHEMA_VERSION } from "@/entities/task";
 import type {
+  AiAgentSummary,
+  AiObservability,
+  AiRunSummary,
   ApiBoardColumn,
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  CreateAiAgentInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
   CreateItemTypeInput,
@@ -446,6 +450,104 @@ export const workspaceService: WorkspaceService = {
       retryOnUnauthorized: true
     });
     return fetchSnapshot(workspaceSlug);
+  },
+
+  async listAiAgents(workspaceSlug: string): Promise<AiAgentSummary[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AiAgentSummary[]>(`/ai/workspaces/${workspaceId}/agents`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listAiRuns(
+    workspaceSlug: string,
+    input?: { itemId?: string; limit?: number }
+  ): Promise<AiRunSummary[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (input?.itemId) {
+      query.set("itemId", input.itemId);
+    }
+    if (typeof input?.limit === "number") {
+      query.set("limit", String(input.limit));
+    }
+    const qs = query.toString();
+    return apiClient.get<AiRunSummary[]>(
+      `/ai/workspaces/${workspaceId}/runs${qs.length > 0 ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async getAiObservability(workspaceSlug: string): Promise<AiObservability> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AiObservability>(`/ai/workspaces/${workspaceId}/observability`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createAiAgent(workspaceSlug: string, input: CreateAiAgentInput): Promise<{ id: string }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<{ id: string }>(`/ai/workspaces/${workspaceId}/agents`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateAiAgent(
+    workspaceSlug: string,
+    agentId: string,
+    patch: Partial<CreateAiAgentInput> & { description?: string | null }
+  ): Promise<{ id: string }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<{ id: string }>(`/ai/workspaces/${workspaceId}/agents/${agentId}`, patch, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async runAiAgentOnItem(
+    workspaceSlug: string,
+    itemId: string,
+    agentId: string,
+    input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+  ): Promise<{ runId: string; content: string }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<{ runId: string; content: string }>(
+      `/ai/workspaces/${workspaceId}/items/${itemId}/agents/${agentId}/run`,
+      {
+        instruction: input.instruction,
+        includeSemanticContext: input.includeSemanticContext ?? true,
+        topKContextDocs: input.topKContextDocs ?? 5
+      },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async runAiRiskAnalysis(
+    workspaceSlug: string,
+    itemId: string,
+    input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+  ): Promise<{ runId: string; content: string }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<{ runId: string; content: string }>(
+      `/ai/workspaces/${workspaceId}/items/${itemId}/risk-analysis`,
+      {
+        includeSemanticContext: input?.includeSemanticContext ?? true,
+        topKContextDocs: input?.topKContextDocs ?? 5
+      },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
   },
 
   async setCardFieldVisibility(workspaceSlug, fieldId, visible) {

@@ -11,6 +11,7 @@ import type {
   TaskStatus,
   TaskStatusId
 } from "@/entities/task";
+import type { AiAgentSummary } from "@/modules/workspace/model";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
@@ -31,6 +32,16 @@ interface BoardColumnsProps {
     value: TaskCustomFieldValue
   ) => Promise<void> | void;
   onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
+  aiAgents: AiAgentSummary[];
+  onRunAiAgentOnItem: (
+    itemId: string,
+    agentId: string,
+    input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+  onRunAiRiskAnalysis: (
+    itemId: string,
+    input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
 }
 
 export function BoardColumns({
@@ -44,7 +55,10 @@ export function BoardColumns({
   onUpdateTaskTitle,
   onUpdateTaskDescription,
   onUpdateTaskCustomField,
-  onToggleChecklistItem
+  onToggleChecklistItem,
+  aiAgents,
+  onRunAiAgentOnItem,
+  onRunAiRiskAnalysis
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
   const [dropTargetStatus, setDropTargetStatus] = useState<TaskStatusId | "">("");
@@ -164,6 +178,9 @@ export function BoardColumns({
           onUpdateCustomField={onUpdateTaskCustomField}
           onUpdateStatus={onMoveTask}
           onToggleChecklistItem={onToggleChecklistItem}
+          aiAgents={aiAgents}
+          onRunAiAgentOnItem={onRunAiAgentOnItem}
+          onRunAiRiskAnalysis={onRunAiRiskAnalysis}
           onClose={() => setSelectedTaskId("")}
         />
       ) : null}

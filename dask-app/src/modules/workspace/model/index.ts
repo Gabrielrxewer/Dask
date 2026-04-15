@@ -5,10 +5,14 @@ export {
 } from "@/modules/workspace/model/mock-workspace";
 export { useWorkspaceTaskPage } from "@/modules/workspace/model/use-workspace-task-page";
 export type {
+  AiAgentSummary,
+  AiObservability,
+  AiRunSummary,
   ApiBoardColumn,
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  CreateAiAgentInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
   CreateItemTypeInput,

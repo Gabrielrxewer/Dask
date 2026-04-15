@@ -20,7 +20,7 @@ import {
   useDashboardFilter
 } from "@/features/dashboard-filter";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
-import type { ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
+import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
 import "./board-page.css";
 
@@ -87,7 +87,10 @@ export function BoardPage() {
     updateTaskCustomField,
     toggleChecklistItem,
     fetchBoardColumns,
-    fetchWorkflowStates
+    fetchWorkflowStates,
+    listAiAgents,
+    runAiAgentOnItem,
+    runAiRiskAnalysis
   } = useWorkspace();
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
@@ -95,12 +98,14 @@ export function BoardPage() {
 
   const [apiBoardCols, setApiBoardCols] = useState<ApiBoardColumn[]>([]);
   const [apiWorkflowStates, setApiWorkflowStates] = useState<ApiWorkflowState[]>([]);
+  const [aiAgents, setAiAgents] = useState<AiAgentSummary[]>([]);
 
   const loadBoardConfig = useCallback(async () => {
-    const [cols, states] = await Promise.all([fetchBoardColumns(), fetchWorkflowStates()]);
+    const [cols, states, agents] = await Promise.all([fetchBoardColumns(), fetchWorkflowStates(), listAiAgents()]);
     setApiBoardCols(cols.filter(c => c.isActive).sort((a, b) => a.order - b.order));
     setApiWorkflowStates(states.filter(s => s.isActive));
-  }, [fetchBoardColumns, fetchWorkflowStates]);
+    setAiAgents(agents.filter(agent => agent.isActive));
+  }, [fetchBoardColumns, fetchWorkflowStates, listAiAgents]);
 
   useEffect(() => {
     void loadBoardConfig();
@@ -374,6 +379,9 @@ export function BoardPage() {
               onUpdateTaskDescription={handleUpdateTaskDescription}
               onUpdateTaskCustomField={handleUpdateTaskCustomField}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
+              aiAgents={aiAgents}
+              onRunAiAgentOnItem={runAiAgentOnItem}
+              onRunAiRiskAnalysis={runAiRiskAnalysis}
             />
           )}
         </Section>

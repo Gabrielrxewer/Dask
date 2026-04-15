@@ -3,10 +3,14 @@ import { useParams } from "react-router-dom";
 import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api";
 import type {
+  AiAgentSummary,
+  AiObservability,
+  AiRunSummary,
   ApiBoardColumn,
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  CreateAiAgentInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
   CreateItemTypeInput,
@@ -53,6 +57,23 @@ interface WorkspaceContextValue {
   createCustomField: (input: CreateCustomFieldInput) => Promise<void>;
   updateCustomField: (fieldId: string, input: UpdateCustomFieldInput) => Promise<void>;
   deleteCustomField: (fieldId: string) => Promise<void>;
+  listAiAgents: () => Promise<AiAgentSummary[]>;
+  listAiRuns: (input?: { itemId?: string; limit?: number }) => Promise<AiRunSummary[]>;
+  getAiObservability: () => Promise<AiObservability>;
+  createAiAgent: (input: CreateAiAgentInput) => Promise<{ id: string }>;
+  updateAiAgent: (
+    agentId: string,
+    patch: Partial<CreateAiAgentInput> & { description?: string | null }
+  ) => Promise<{ id: string }>;
+  runAiAgentOnItem: (
+    itemId: string,
+    agentId: string,
+    input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+  runAiRiskAnalysis: (
+    itemId: string,
+    input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -292,6 +313,83 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
+  const listAiAgents = useCallback(async (): Promise<AiAgentSummary[]> => {
+    if (!workspaceSlug) return [];
+    return workspaceService.listAiAgents(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const listAiRuns = useCallback(
+    async (input?: { itemId?: string; limit?: number }): Promise<AiRunSummary[]> => {
+      if (!workspaceSlug) return [];
+      return workspaceService.listAiRuns(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const getAiObservability = useCallback(async (): Promise<AiObservability> => {
+    if (!workspaceSlug) {
+      return {
+        totals: {
+          runs24h: 0,
+          failed24h: 0,
+          failureRate24h: 0,
+          avgLatencyMs24h: 0,
+          tokens24h: 0,
+          estimatedCostUsd24h: 0
+        },
+        byProvider: []
+      };
+    }
+    return workspaceService.getAiObservability(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const createAiAgent = useCallback(async (input: CreateAiAgentInput): Promise<{ id: string }> => {
+    if (!workspaceSlug) {
+      return { id: "" };
+    }
+    return workspaceService.createAiAgent(workspaceSlug, input);
+  }, [workspaceSlug]);
+
+  const updateAiAgent = useCallback(
+    async (
+      agentId: string,
+      patch: Partial<CreateAiAgentInput> & { description?: string | null }
+    ): Promise<{ id: string }> => {
+      if (!workspaceSlug) {
+        return { id: "" };
+      }
+      return workspaceService.updateAiAgent(workspaceSlug, agentId, patch);
+    },
+    [workspaceSlug]
+  );
+
+  const runAiAgentOnItem = useCallback(
+    async (
+      itemId: string,
+      agentId: string,
+      input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+    ): Promise<{ runId: string; content: string }> => {
+      if (!workspaceSlug) {
+        return { runId: "", content: "" };
+      }
+      return workspaceService.runAiAgentOnItem(workspaceSlug, itemId, agentId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const runAiRiskAnalysis = useCallback(
+    async (
+      itemId: string,
+      input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+    ): Promise<{ runId: string; content: string }> => {
+      if (!workspaceSlug) {
+        return { runId: "", content: "" };
+      }
+      return workspaceService.runAiRiskAnalysis(workspaceSlug, itemId, input);
+    },
+    [workspaceSlug]
+  );
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       snapshot,
@@ -321,7 +419,14 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       deleteItemType,
       createCustomField,
       updateCustomField,
-      deleteCustomField
+      deleteCustomField,
+      listAiAgents,
+      listAiRuns,
+      getAiObservability,
+      createAiAgent,
+      updateAiAgent,
+      runAiAgentOnItem,
+      runAiRiskAnalysis
     }),
     [
       snapshot,
@@ -351,7 +456,14 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       deleteItemType,
       createCustomField,
       updateCustomField,
-      deleteCustomField
+      deleteCustomField,
+      listAiAgents,
+      listAiRuns,
+      getAiObservability,
+      createAiAgent,
+      updateAiAgent,
+      runAiAgentOnItem,
+      runAiRiskAnalysis
     ]
   );
 

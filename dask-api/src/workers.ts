@@ -4,12 +4,30 @@ import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
 import { prisma } from '@/infra/db/prisma';
 import { queueConnection } from '@/infra/queue/bullmq-job-queue';
-import { MockAIProvider } from '@/infra/providers/ai/mock-ai-provider';
-import { MockEmbeddingProvider } from '@/infra/providers/ai/mock-embedding-provider';
+import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orchestration-service';
 import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
 
 type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
+
+function chunkText(value: string, chunkSize: number, overlap: number): string[] {
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    return [];
+  }
+
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < normalized.length) {
+    const end = Math.min(start + chunkSize, normalized.length);
+    chunks.push(normalized.slice(start, end));
+    if (end >= normalized.length) {
+      break;
+    }
+    start = Math.max(0, end - overlap);
+  }
+  return chunks;
+}
 
 export const startWorkers = (): WorkerHandle[] => {
   if (!env.ENABLE_WORKERS) {
@@ -17,8 +35,7 @@ export const startWorkers = (): WorkerHandle[] => {
     return [];
   }
 
-  const aiProvider = new MockAIProvider();
-  const embeddingProvider = new MockEmbeddingProvider();
+  const { aiProvider, embeddingProvider } = buildAIProviderStack();
   const promptService = new PromptOrchestrationService();
   const automationRuntimeService = new AutomationRuntimeService(prisma);
 
@@ -68,18 +85,48 @@ export const startWorkers = (): WorkerHandle[] => {
 
       if (job.name === 'search.index-item') {
         const itemId = job.data.itemId as string;
-        const item = await prisma.item.findUnique({ where: { id: itemId } });
+        const item = await prisma.item.findUnique({
+          where: { id: itemId },
+          include: {
+            history: {
+              orderBy: { createdAt: 'desc' },
+              take: 12
+            }
+          }
+        });
         if (!item) {
           return;
         }
 
-        const content = `${item.title}\n${item.description ?? ''}`.trim();
-        const embedding = await embeddingProvider.embed({ content });
+        const fullContent = [
+          `Title: ${item.title}`,
+          `Description: ${item.description ?? ''}`,
+          `Status: ${item.status}`,
+          `Type: ${item.type}`,
+          `Metadata: ${JSON.stringify(item.metadata ?? {})}`,
+          `Fields: ${JSON.stringify(item.fields ?? {})}`,
+          'History:',
+          ...item.history.map((entry) => `${entry.createdAt.toISOString()} ${entry.eventName}`)
+        ].join('\n');
 
-        await prisma.searchDocument.upsert({
-          where: { id: itemId },
-          create: {
-            id: itemId,
+        const chunks = chunkText(
+          fullContent,
+          env.AI_EMBEDDING_CHUNK_SIZE,
+          env.AI_EMBEDDING_CHUNK_OVERLAP
+        );
+        const embeddings = await Promise.all(
+          chunks.map((content) => embeddingProvider.embed({ content }))
+        );
+
+        await prisma.searchDocument.deleteMany({
+          where: {
+            itemId: item.id
+          }
+        });
+
+        await prisma.searchDocument.createMany({
+          data: chunks.map((content, index) => ({
+            id: `${item.id}:${env.AI_EMBEDDING_VERSION}:${index}`,
             itemId: item.id,
             workspaceId: item.workspaceId,
             boardId: item.boardId,
@@ -87,17 +134,14 @@ export const startWorkers = (): WorkerHandle[] => {
             metadata: {
               status: item.status,
               type: item.type,
-              vectorPreview: embedding.slice(0, 8)
-            }
-          },
-          update: {
-            content,
-            metadata: {
-              status: item.status,
-              type: item.type,
-              vectorPreview: embedding.slice(0, 8)
-            }
-          }
+              chunkIndex: index,
+              chunkTotal: chunks.length,
+              embeddingVersion: env.AI_EMBEDDING_VERSION,
+              embeddingModel: env.AI_EMBEDDING_MODEL,
+              vectorPreview: embeddings[index].slice(0, 8)
+            },
+            embedding: embeddings[index]
+          }))
         });
       }
 

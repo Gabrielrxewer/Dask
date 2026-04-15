@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
+import type { AiAgentSummary } from "@/modules/workspace/model";
 import {
   DataTable,
   DataTableBody,
@@ -24,7 +25,13 @@ export function ListPage() {
     createTask,
     moveTask,
     updateTaskPriority,
+    updateTaskTitle,
+    updateTaskDescription,
+    updateTaskCustomField,
     toggleChecklistItem,
+    listAiAgents,
+    runAiAgentOnItem,
+    runAiRiskAnalysis,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -37,7 +44,20 @@ export function ListPage() {
     selectTask,
     clearSelectedTask
   } = useWorkspaceTaskPage();
+  const [agents, setAgents] = useState<AiAgentSummary[]>([]);
   const taskTypeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
+
+  useEffect(() => {
+    let mounted = true;
+    void listAiAgents().then((result) => {
+      if (mounted) {
+        setAgents(result.filter(agent => agent.isActive));
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [listAiAgents]);
 
   const handleStatusChange = (taskId: string, statusId: TaskStatusId) => {
     void moveTask(taskId, statusId);
@@ -141,10 +161,18 @@ export function ListPage() {
         <TaskDetailsModal
           task={selectedTask}
           status={selectedStatus}
+          statuses={boardConfig.statuses}
           assignee={activeMembers[selectedTask.assignee]}
           boardConfig={boardConfig}
           onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
+          onUpdateStatus={(taskId, statusId) => void moveTask(taskId, statusId)}
+          onUpdateTitle={(taskId, title) => void updateTaskTitle(taskId, title)}
+          onUpdateDescription={(taskId, description) => void updateTaskDescription(taskId, description)}
+          onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
+          aiAgents={agents}
+          onRunAiAgentOnItem={runAiAgentOnItem}
+          onRunAiRiskAnalysis={runAiRiskAnalysis}
           onClose={clearSelectedTask}
         />
       ) : null}

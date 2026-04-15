@@ -18,6 +18,7 @@ import type {
   TaskStatusId
 } from "@/entities/task";
 import type { Member } from "@/entities/member";
+import type { AiAgentSummary } from "@/modules/workspace/model";
 import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
 import "./task-details-modal.css";
 
@@ -38,6 +39,16 @@ interface TaskDetailsModalProps {
     value: TaskCustomFieldValue
   ) => Promise<void> | void;
   onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
+  aiAgents: AiAgentSummary[];
+  onRunAiAgentOnItem: (
+    itemId: string,
+    agentId: string,
+    input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+  onRunAiRiskAnalysis: (
+    itemId: string,
+    input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
   onClose: () => void;
 }
 
@@ -160,6 +171,9 @@ export function TaskDetailsModal({
   onUpdateDescription,
   onUpdateCustomField,
   onToggleChecklistItem,
+  aiAgents,
+  onRunAiAgentOnItem,
+  onRunAiRiskAnalysis,
   onClose
 }: TaskDetailsModalProps) {
   const checklistItems = task.checklist.items;
@@ -172,6 +186,8 @@ export function TaskDetailsModal({
   const [aiSuggestionByFieldId, setAiSuggestionByFieldId] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [isRunningAi, setIsRunningAi] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: `${task.id}-assistant-1`,
@@ -227,6 +243,13 @@ export function TaskDetailsModal({
     );
 
     setChatInput("");
+    setSelectedAgentId(current => {
+      if (current && aiAgents.some(agent => agent.id === current && agent.isActive)) {
+        return current;
+      }
+      const fallback = aiAgents.find(agent => agent.isDefault && agent.isActive) ?? aiAgents.find(agent => agent.isActive);
+      return fallback?.id ?? "";
+    });
     setChatMessages([
       {
         id: `${task.id}-assistant-1`,
@@ -234,7 +257,7 @@ export function TaskDetailsModal({
         text: initialAssistantMessage
       }
     ]);
-  }, [task.id, task.title, task.text, task.customFields, visibleCustomFields]);
+  }, [task.id, task.title, task.text, task.customFields, visibleCustomFields, aiAgents]);
 
   const runMutation = async (key: string, mutation: () => Promise<void> | void) => {
     setSavingKey(key);
@@ -289,9 +312,9 @@ export function TaskDetailsModal({
     });
   };
 
-  const handleSendChat = () => {
+  const handleSendChat = async () => {
     const trimmed = chatInput.trim();
-    if (!trimmed) {
+    if (!trimmed || !selectedAgentId || isRunningAi) {
       return;
     }
 
@@ -301,14 +324,69 @@ export function TaskDetailsModal({
       text: trimmed
     };
 
-    const assistantMessage: ChatMessage = {
-      id: `${task.id}-assistant-${Date.now() + 1}`,
-      role: "assistant",
-      text: `Entendido. Sobre "${task.title}", vou considerar esse ponto e sugerir uma proxima acao objetiva para o time.`
-    };
-
-    setChatMessages(prev => [...prev, userMessage, assistantMessage]);
+    setChatMessages(prev => [...prev, userMessage]);
     setChatInput("");
+
+    setIsRunningAi(true);
+    try {
+      const result = await onRunAiAgentOnItem(task.id, selectedAgentId, {
+        instruction: trimmed,
+        includeSemanticContext: true,
+        topKContextDocs: 5
+      });
+
+      const assistantMessage: ChatMessage = {
+        id: `${task.id}-assistant-${Date.now() + 1}`,
+        role: "assistant",
+        text: result.content
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch {
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: `${task.id}-assistant-error-${Date.now()}`,
+          role: "assistant",
+          text: "Nao consegui executar o agente agora. Tente novamente em alguns segundos."
+        }
+      ]);
+    } finally {
+      setIsRunningAi(false);
+    }
+  };
+
+  const handleRunRiskAnalysis = async () => {
+    if (isRunningAi) {
+      return;
+    }
+
+    setIsRunningAi(true);
+    try {
+      const result = await onRunAiRiskAnalysis(task.id, {
+        includeSemanticContext: true,
+        topKContextDocs: 5
+      });
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: `${task.id}-assistant-risk-${Date.now()}`,
+          role: "assistant",
+          text: result.content
+        }
+      ]);
+    } catch {
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: `${task.id}-assistant-risk-error-${Date.now()}`,
+          role: "assistant",
+          text: "Nao consegui gerar a analise de risco no momento."
+        }
+      ]);
+    } finally {
+      setIsRunningAi(false);
+    }
   };
 
   const renderCustomFieldInput = (definition: TaskFieldDefinition) => {
@@ -724,15 +802,41 @@ export function TaskDetailsModal({
               ))}
             </div>
             <div className="task-details__chat-input-wrap">
+              <FormField label="Agente">
+                <Select
+                  value={selectedAgentId}
+                  onChange={event => setSelectedAgentId(event.target.value)}
+                  disabled={isRunningAi || aiAgents.length === 0}
+                >
+                  {aiAgents.length === 0 ? <option value="">Nenhum agente ativo</option> : null}
+                  {aiAgents
+                    .filter(agent => agent.isActive)
+                    .map(agent => (
+                      <option value={agent.id} key={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))}
+                </Select>
+              </FormField>
               <Textarea
                 className="task-details__chat-input"
                 placeholder="Pergunte algo sobre este card"
                 value={chatInput}
                 onChange={event => setChatInput(event.target.value)}
               />
-              <Button type="button" size="sm" onClick={handleSendChat}>
-                Enviar
-              </Button>
+              <div className="task-details__actions-row">
+                <Button type="button" size="sm" variant="outline" onClick={() => void handleRunRiskAnalysis()} disabled={isRunningAi}>
+                  {isRunningAi ? "Processando..." : "Analisar riscos"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void handleSendChat()}
+                  disabled={isRunningAi || chatInput.trim().length === 0 || selectedAgentId.length === 0}
+                >
+                  {isRunningAi ? "Processando..." : "Enviar"}
+                </Button>
+              </div>
             </div>
           </section>
 

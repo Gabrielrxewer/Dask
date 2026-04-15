@@ -248,6 +248,8 @@ model Workspace {
   automationViewColumns  AutomationViewColumn[]
   itemViewPlacements     WorkItemViewPlacement[]
   automationExecutions   AutomationExecution[]
+  aiAgents               AIAgent[]
+  aiAgentRuns            AIAgentRun[]
 
   @@unique([organizationId, key])
 }
@@ -505,6 +507,7 @@ model Item {
   customFieldValues CustomFieldValue[]
   tags              WorkItemTag[]
   viewPlacements    WorkItemViewPlacement[]
+  aiAgentRuns       AIAgentRun[]
 
   @@index([workspaceId, typeId])
   @@index([workspaceId, stateId])
@@ -681,12 +684,64 @@ model SearchDocument {
   workspaceId     String
   boardId         String
   content         String
+  embedding       Float[]                  @default([])
   metadata        Json?
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
   item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, boardId])
+}
+
+model AIAgent {
+  id            String       @id @default(uuid())
+  workspaceId   String
+  key           String
+  name          String
+  description   String?
+  model         String
+  temperature   Float        @default(0.2)
+  systemPrompt  String
+  config        Json?
+  isActive      Boolean      @default(true)
+  isDefault     Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs          AIAgentRun[]
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, isActive, updatedAt])
+}
+
+model AIAgentRun {
+  id            String    @id @default(uuid())
+  workspaceId   String
+  agentId       String
+  itemId        String?
+  requestedBy   String
+  status        String
+  input         Json
+  output        Json?
+  error         String?
+  provider      String?
+  model         String?
+  latencyMs     Int?
+  inputTokens   Int?
+  outputTokens  Int?
+  totalTokens   Int?
+  estimatedCostUsd Float?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agent         AIAgent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  item          Item?     @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([agentId, createdAt])
+  @@index([itemId, createdAt])
 }
 
 model DomainOutbox {

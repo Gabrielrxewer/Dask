@@ -12,6 +12,31 @@ export class PrismaOutboxRepository implements OutboxRepository {
 
   public constructor(private readonly prisma: PrismaClient) {}
 
+  private async ensureRelayColumnsAvailability(): Promise<boolean> {
+    if (this.relayColumnsAvailable !== null) {
+      return this.relayColumnsAvailable;
+    }
+
+    try {
+      await this.prisma.$queryRaw<Array<{ ok: number }>>`
+        SELECT 1 AS ok
+        FROM "DomainOutbox"
+        WHERE "deadLetteredAt" IS NULL
+          AND "nextAttemptAt" IS NOT NULL
+          AND ("lastError" IS NULL OR "lastError" IS NOT NULL)
+        LIMIT 1
+      `;
+      this.relayColumnsAvailable = true;
+    } catch (error) {
+      if (!this.isMissingOutboxRelayColumnError(error)) {
+        throw error;
+      }
+      this.relayColumnsAvailable = false;
+    }
+
+    return this.relayColumnsAvailable;
+  }
+
   public append(event: DomainEvent, db?: OutboxDbClient): Promise<DomainOutbox> {
     const client = db ?? this.prisma;
 
@@ -36,6 +61,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
   }
 
   public async claimNextPending(maxRetries: number, db: OutboxDbClient): Promise<OutboxPendingEvent | null> {
+    const hasRelayColumns = await this.ensureRelayColumnsAvailability();
     const claimWithRelayColumns = () =>
       db.$queryRaw<OutboxPendingEvent[]>`
         SELECT *
@@ -60,21 +86,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
         LIMIT 1
       `;
 
-    let rows: OutboxPendingEvent[];
-    if (this.relayColumnsAvailable === false) {
-      rows = await claimLegacy();
-    } else {
-      try {
-        rows = await claimWithRelayColumns();
-        this.relayColumnsAvailable = true;
-      } catch (error) {
-        if (!this.isMissingOutboxRelayColumnError(error)) {
-          throw error;
-        }
-        this.relayColumnsAvailable = false;
-        rows = await claimLegacy();
-      }
-    }
+    const rows = hasRelayColumns ? await claimWithRelayColumns() : await claimLegacy();
 
     return rows[0] ?? null;
   }
@@ -86,7 +98,8 @@ export class PrismaOutboxRepository implements OutboxRepository {
     errorMessage: string;
     db: OutboxDbClient;
   }): Promise<void> {
-    if (this.relayColumnsAvailable === false) {
+    const hasRelayColumns = await this.ensureRelayColumnsAvailability();
+    if (!hasRelayColumns) {
       await input.db.domainOutbox.updateMany({
         where: { id: input.outboxId, processedAt: null },
         data: { retries: input.retries }
@@ -94,30 +107,18 @@ export class PrismaOutboxRepository implements OutboxRepository {
       return;
     }
 
-    try {
-      await input.db.domainOutbox.updateMany({
-        where: {
-          id: input.outboxId,
-          processedAt: null,
-          deadLetteredAt: null
-        } as Prisma.DomainOutboxWhereInput,
-        data: {
-          retries: input.retries,
-          nextAttemptAt: input.nextAttemptAt,
-          lastError: input.errorMessage
-        } as Prisma.DomainOutboxUpdateManyMutationInput
-      });
-      this.relayColumnsAvailable = true;
-    } catch (error) {
-      if (!this.isMissingOutboxRelayColumnError(error)) {
-        throw error;
-      }
-      this.relayColumnsAvailable = false;
-      await input.db.domainOutbox.updateMany({
-        where: { id: input.outboxId, processedAt: null },
-        data: { retries: input.retries }
-      });
-    }
+    await input.db.domainOutbox.updateMany({
+      where: {
+        id: input.outboxId,
+        processedAt: null,
+        deadLetteredAt: null
+      } as Prisma.DomainOutboxWhereInput,
+      data: {
+        retries: input.retries,
+        nextAttemptAt: input.nextAttemptAt,
+        lastError: input.errorMessage
+      } as Prisma.DomainOutboxUpdateManyMutationInput
+    });
   }
 
   public async markDeadLetter(input: {
@@ -126,7 +127,8 @@ export class PrismaOutboxRepository implements OutboxRepository {
     errorMessage: string;
     db: OutboxDbClient;
   }): Promise<void> {
-    if (this.relayColumnsAvailable === false) {
+    const hasRelayColumns = await this.ensureRelayColumnsAvailability();
+    if (!hasRelayColumns) {
       await input.db.domainOutbox.updateMany({
         where: { id: input.outboxId, processedAt: null },
         data: { retries: input.retries, processedAt: new Date() }
@@ -134,30 +136,18 @@ export class PrismaOutboxRepository implements OutboxRepository {
       return;
     }
 
-    try {
-      await input.db.domainOutbox.updateMany({
-        where: {
-          id: input.outboxId,
-          processedAt: null,
-          deadLetteredAt: null
-        } as Prisma.DomainOutboxWhereInput,
-        data: {
-          retries: input.retries,
-          deadLetteredAt: new Date(),
-          lastError: input.errorMessage
-        } as Prisma.DomainOutboxUpdateManyMutationInput
-      });
-      this.relayColumnsAvailable = true;
-    } catch (error) {
-      if (!this.isMissingOutboxRelayColumnError(error)) {
-        throw error;
-      }
-      this.relayColumnsAvailable = false;
-      await input.db.domainOutbox.updateMany({
-        where: { id: input.outboxId, processedAt: null },
-        data: { retries: input.retries, processedAt: new Date() }
-      });
-    }
+    await input.db.domainOutbox.updateMany({
+      where: {
+        id: input.outboxId,
+        processedAt: null,
+        deadLetteredAt: null
+      } as Prisma.DomainOutboxWhereInput,
+      data: {
+        retries: input.retries,
+        deadLetteredAt: new Date(),
+        lastError: input.errorMessage
+      } as Prisma.DomainOutboxUpdateManyMutationInput
+    });
   }
 
   public async incrementRetries(outboxId: string, db?: OutboxDbClient): Promise<void> {
@@ -171,6 +161,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
 
   public async getRelayMetrics(db?: OutboxDbClient): Promise<OutboxRelayMetrics> {
     const client = db ?? this.prisma;
+    const hasRelayColumns = await this.ensureRelayColumnsAvailability();
     let rows: Array<{
       pending_count: number;
       retry_pending_count: number;
@@ -178,7 +169,7 @@ export class PrismaOutboxRepository implements OutboxRepository {
       oldest_pending_age_seconds: number | null;
     }>;
 
-    if (this.relayColumnsAvailable === false) {
+    if (!hasRelayColumns) {
       rows = await client.$queryRaw<Array<{
         pending_count: number;
         retry_pending_count: number;
@@ -193,40 +184,19 @@ export class PrismaOutboxRepository implements OutboxRepository {
         FROM "DomainOutbox"
       `;
     } else {
-      try {
-        rows = await client.$queryRaw<Array<{
-          pending_count: number;
-          retry_pending_count: number;
-          dead_letter_count: number;
-          oldest_pending_age_seconds: number | null;
-        }>>`
-          SELECT
-            CAST(COUNT(*) FILTER (WHERE "processedAt" IS NULL AND "deadLetteredAt" IS NULL) AS INTEGER) AS pending_count,
-            CAST(COUNT(*) FILTER (WHERE "processedAt" IS NULL AND "deadLetteredAt" IS NULL AND "retries" > 0) AS INTEGER) AS retry_pending_count,
-            CAST(COUNT(*) FILTER (WHERE "deadLetteredAt" IS NOT NULL) AS INTEGER) AS dead_letter_count,
-            CAST(MAX(EXTRACT(EPOCH FROM (NOW() - "createdAt"))) FILTER (WHERE "processedAt" IS NULL AND "deadLetteredAt" IS NULL) AS INTEGER) AS oldest_pending_age_seconds
-          FROM "DomainOutbox"
-        `;
-        this.relayColumnsAvailable = true;
-      } catch (error) {
-        if (!this.isMissingOutboxRelayColumnError(error)) {
-          throw error;
-        }
-        this.relayColumnsAvailable = false;
-        rows = await client.$queryRaw<Array<{
-          pending_count: number;
-          retry_pending_count: number;
-          dead_letter_count: number;
-          oldest_pending_age_seconds: number | null;
-        }>>`
-          SELECT
-            CAST(COUNT(*) FILTER (WHERE "processedAt" IS NULL) AS INTEGER) AS pending_count,
-            CAST(COUNT(*) FILTER (WHERE "processedAt" IS NULL AND "retries" > 0) AS INTEGER) AS retry_pending_count,
-            0 AS dead_letter_count,
-            CAST(MAX(EXTRACT(EPOCH FROM (NOW() - "createdAt"))) FILTER (WHERE "processedAt" IS NULL) AS INTEGER) AS oldest_pending_age_seconds
-          FROM "DomainOutbox"
-        `;
-      }
+      rows = await client.$queryRaw<Array<{
+        pending_count: number;
+        retry_pending_count: number;
+        dead_letter_count: number;
+        oldest_pending_age_seconds: number | null;
+      }>>`
+        SELECT
+          CAST(COUNT(*) FILTER (WHERE "processedAt" IS NULL AND "deadLetteredAt" IS NULL) AS INTEGER) AS pending_count,
+          CAST(COUNT(*) FILTER (WHERE "processedAt" IS NULL AND "deadLetteredAt" IS NULL AND "retries" > 0) AS INTEGER) AS retry_pending_count,
+          CAST(COUNT(*) FILTER (WHERE "deadLetteredAt" IS NOT NULL) AS INTEGER) AS dead_letter_count,
+          CAST(MAX(EXTRACT(EPOCH FROM (NOW() - "createdAt"))) FILTER (WHERE "processedAt" IS NULL AND "deadLetteredAt" IS NULL) AS INTEGER) AS oldest_pending_age_seconds
+        FROM "DomainOutbox"
+      `;
     }
 
     const row = rows[0];

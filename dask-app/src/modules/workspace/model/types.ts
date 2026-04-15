@@ -268,4 +268,85 @@ export interface WorkspaceService {
   createCustomField: (workspaceSlug: string, input: CreateCustomFieldInput) => Promise<WorkspaceSnapshot>;
   updateCustomField: (workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) => Promise<WorkspaceSnapshot>;
   deleteCustomField: (workspaceSlug: string, fieldId: string) => Promise<WorkspaceSnapshot>;
+
+  listAiAgents: (workspaceSlug: string) => Promise<AiAgentSummary[]>;
+  listAiRuns: (
+    workspaceSlug: string,
+    input?: { itemId?: string; limit?: number }
+  ) => Promise<AiRunSummary[]>;
+  getAiObservability: (workspaceSlug: string) => Promise<AiObservability>;
+  createAiAgent: (workspaceSlug: string, input: CreateAiAgentInput) => Promise<{ id: string }>;
+  updateAiAgent: (
+    workspaceSlug: string,
+    agentId: string,
+    patch: Partial<CreateAiAgentInput> & { description?: string | null }
+  ) => Promise<{ id: string }>;
+  runAiAgentOnItem: (
+    workspaceSlug: string,
+    itemId: string,
+    agentId: string,
+    input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+  runAiRiskAnalysis: (
+    workspaceSlug: string,
+    itemId: string,
+    input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+}
+
+export interface AiAgentSummary {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  model: string;
+  temperature: number;
+  isActive: boolean;
+  isDefault: boolean;
+  updatedAt: string;
+}
+
+export interface CreateAiAgentInput {
+  key: string;
+  name: string;
+  description?: string;
+  model?: string;
+  temperature?: number;
+  systemPrompt: string;
+  config?: Record<string, unknown>;
+  isActive?: boolean;
+}
+
+export interface AiRunSummary {
+  id: string;
+  agentId: string;
+  itemId: string | null;
+  status: string;
+  provider: string | null;
+  model: string | null;
+  latencyMs: number | null;
+  totalTokens: number | null;
+  estimatedCostUsd: number | null;
+  createdAt: string;
+  finishedAt: string | null;
+  error: string | null;
+}
+
+export interface AiObservability {
+  totals: {
+    runs24h: number;
+    failed24h: number;
+    failureRate24h: number;
+    avgLatencyMs24h: number;
+    tokens24h: number;
+    estimatedCostUsd24h: number;
+  };
+  byProvider: Array<{
+    provider: string;
+    runs24h: number;
+    failed24h: number;
+    avgLatencyMs24h: number;
+    tokens24h: number;
+    estimatedCostUsd24h: number;
+  }>;
 }

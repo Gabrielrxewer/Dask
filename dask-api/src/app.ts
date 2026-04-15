@@ -100,6 +100,7 @@ export const createApp = (): Express => {
     workspacesService,
     itemsService,
     improvementRequestService,
+    aiAgentService,
     indexingRequestService,
     hybridSearchService,
     automationService,
@@ -190,7 +191,17 @@ export const createApp = (): Express => {
       itemsService
     })
   );
-  app.use(env.API_PREFIX, authMiddleware, requireSubscription, buildAiRoutes({ improvementRequestService }));
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
+    buildAiRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      improvementRequestService,
+      aiAgentService
+    })
+  );
   app.use(
     env.API_PREFIX,
     authMiddleware,

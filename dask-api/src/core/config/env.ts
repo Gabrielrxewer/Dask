@@ -56,7 +56,18 @@ const envSchema = z.object({
   STRIPE_PRICE_ID_PERSONAL_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ID_BUSINESS_MONTHLY: z.string().optional(),
   APP_PUBLIC_URL: z.string().default('http://localhost:5173'),
-  API_PUBLIC_URL: z.string().default('http://localhost:3333')
+  API_PUBLIC_URL: z.string().default('http://localhost:3333'),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
+  AI_CHAT_MODEL: z.string().default('gpt-4.1-mini'),
+  AI_EMBEDDING_MODEL: z.string().default('text-embedding-3-large'),
+  AI_MAX_REQUESTS_PER_MIN_WORKSPACE: z.coerce.number().int().min(1).default(120),
+  AI_MAX_REQUESTS_PER_MIN_AGENT: z.coerce.number().int().min(1).default(40),
+  AI_MAX_TOKENS_PER_DAY_WORKSPACE: z.coerce.number().int().min(1000).default(2_500_000),
+  AI_MAX_TOKENS_PER_DAY_AGENT: z.coerce.number().int().min(1000).default(900_000),
+  AI_EMBEDDING_CHUNK_SIZE: z.coerce.number().int().min(100).max(4000).default(900),
+  AI_EMBEDDING_CHUNK_OVERLAP: z.coerce.number().int().min(0).max(1000).default(140),
+  AI_EMBEDDING_VERSION: z.string().default('v1')
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -423,6 +423,40 @@
   outline-offset: 2px;
 }
 
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login {
+  align-content: start;
+  gap: 24px;
+  grid-template-rows: auto 1fr;
+}
+
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__header {
+  gap: 12px;
+}
+
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__title {
+  max-width: 8ch;
+}
+
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__subtitle {
+  max-width: 33ch;
+  line-height: 1.68;
+}
+
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__form {
+  gap: 16px;
+  align-content: start;
+  align-self: center;
+  width: 100%;
+}
+
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__submit {
+  margin-top: 10px;
+}
+
+.auth-login-panel[aria-label="Recuperar senha"] .auth-login__switch-cta {
+  margin-top: 2px;
+}
+
 @media (max-width: 480px) {
   .auth-login {
     width: 100%;

@@ -15,6 +15,30 @@ const homeNavigationItems = [
   { id: "precos", label: "Planos" }
 ];
 
+const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
+
+function getHomeSectionFromHash(hash: string): string {
+  const sectionId = hash.replace("#", "");
+  return homeNavigationIds.has(sectionId) ? sectionId : "top";
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getHomeScrollTarget(sectionId: string): HTMLElement | null {
+  const target = document.getElementById(sectionId);
+  if (!target) {
+    return null;
+  }
+
+  return target.closest(".home-page__view") ?? target;
+}
+
 function isCompactViewport(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
@@ -56,7 +80,7 @@ export function GlobalLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
-  const [activeHomeSection, setActiveHomeSection] = useState("top");
+  const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -83,7 +107,7 @@ export function GlobalLayout() {
     const updateActiveSection = () => {
       const containerRect = scrollContainer.getBoundingClientRect();
       const currentSection = homeNavigationItems.reduce((activeId, item) => {
-        const target = document.getElementById(item.id);
+        const target = getHomeScrollTarget(item.id);
         if (!target) {
           return activeId;
         }
@@ -104,6 +128,32 @@ export function GlobalLayout() {
       window.removeEventListener("resize", updateActiveSection);
     };
   }, [isHomeRoute]);
+
+  useEffect(() => {
+    if (!isHomeRoute) {
+      return;
+    }
+
+    const targetId = getHomeSectionFromHash(location.hash);
+    const scrollContainer = document.querySelector(".global-layout__main");
+    const target = getHomeScrollTarget(targetId);
+    if (!(scrollContainer instanceof HTMLElement) || !target) {
+      return;
+    }
+
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const sectionTopSpacing = targetId === "top" ? 0 : 14;
+    const nextTop =
+      targetId === "top" ? 0 : targetRect.top - containerRect.top + scrollContainer.scrollTop - sectionTopSpacing;
+
+    window.requestAnimationFrame(() => {
+      scrollContainer.scrollTo({
+        top: Math.max(0, nextTop),
+        behavior: prefersReducedMotion() ? "auto" : "smooth"
+      });
+    });
+  }, [isHomeRoute, location.hash]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -158,25 +208,31 @@ export function GlobalLayout() {
     setIsSidebarOpen(false);
   };
 
-  const scrollToHomeSection = (targetId: string) => {
-    const container = document.querySelector(".global-layout__main");
-    const target = document.getElementById(targetId);
-    if (!(container instanceof HTMLElement) || !target) {
+  const selectHomeSection = (targetId: string) => {
+    const nextPath = targetId === "top" ? routePaths.home : `${routePaths.home}#${targetId}`;
+
+    setActiveHomeSection(targetId);
+    setIsHomeNavOpen(false);
+
+    if (`${location.pathname}${location.hash}` === nextPath) {
+      const container = document.querySelector(".global-layout__main");
+      const target = getHomeScrollTarget(targetId);
+      if (container instanceof HTMLElement && target) {
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const sectionTopSpacing = targetId === "top" ? 0 : 14;
+        const nextTop =
+          targetId === "top" ? 0 : targetRect.top - containerRect.top + container.scrollTop - sectionTopSpacing;
+
+        container.scrollTo({
+          top: Math.max(0, nextTop),
+          behavior: prefersReducedMotion() ? "auto" : "smooth"
+        });
+      }
       return;
     }
 
-    const containerRect = container.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const sectionTopSpacing = 14;
-    const nextTop =
-      targetId === "top" ? 0 : targetRect.top - containerRect.top + container.scrollTop - sectionTopSpacing;
-
-    container.scrollTo({
-      top: Math.max(0, nextTop),
-      behavior: "smooth"
-    });
-    setActiveHomeSection(targetId);
-    setIsHomeNavOpen(false);
+    navigate(nextPath);
   };
 
   const profileLabel = user?.name ?? user?.email ?? "Visitante";
@@ -232,7 +288,7 @@ export function GlobalLayout() {
                       "global-header__home-link",
                       activeHomeSection === item.id && "global-header__home-link--active"
                     )}
-                    onClick={() => scrollToHomeSection(item.id)}
+                    onClick={() => selectHomeSection(item.id)}
                   >
                     {item.label}
                   </button>
@@ -327,7 +383,7 @@ export function GlobalLayout() {
                       "global-header__home-menu-link",
                       activeHomeSection === item.id && "global-header__home-menu-link--active"
                     )}
-                    onClick={() => scrollToHomeSection(item.id)}
+                    onClick={() => selectHomeSection(item.id)}
                   >
                     {item.label}
                   </button>

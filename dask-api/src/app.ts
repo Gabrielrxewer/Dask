@@ -224,6 +224,10 @@ export const createApp = (): Express => {
         res.status(200).json({ received: true });
       })
     );
+
+    // Billing routes must be mounted before any global subscription guard layers.
+    // Otherwise checkout/status requests are blocked with 402 before reaching billing handlers.
+    app.use(env.API_PREFIX, buildBillingRoutes({ billingService }));
   }
 
   app.use(
@@ -297,10 +301,6 @@ export const createApp = (): Express => {
       workspaceInvitesService
     })
   );
-
-  if (billingService) {
-    app.use(env.API_PREFIX, buildBillingRoutes({ billingService }));
-  }
 
   app.use(
     env.API_PREFIX,

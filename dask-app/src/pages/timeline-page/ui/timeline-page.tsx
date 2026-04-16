@@ -21,19 +21,6 @@ import { cn } from "@/shared/lib/cn";
 import "./timeline-page.css";
 
 type TimelineMode = "agenda" | "coluna";
-type AgendaSegment = {
-  task: Task;
-  start: number;
-  end: number;
-  lane: number;
-  laneCount: number;
-};
-
-const MINUTE_MS = 1000 * 60;
-const DAY_MS = 1000 * 60 * 60 * 24;
-const AGENDA_START_HOUR = 6;
-const AGENDA_END_HOUR = 22;
-const AGENDA_ROW_HEIGHT = 56;
 
 function toDateStamp(value: string): number {
   const date = new Date(value);
@@ -53,14 +40,6 @@ function toDateTimeLabel(value: number): string {
   }).format(new Date(value));
 }
 
-function toHourLabel(value: number): string {
-  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
-
-function toAgendaDayLabel(value: number): string {
-  return new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" }).format(new Date(value));
-}
-
 function parseDateTime(value: string | null | undefined): number | null {
   if (!value || value.trim().length === 0) {
     return null;
@@ -68,23 +47,6 @@ function parseDateTime(value: string | null | undefined): number | null {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
-}
-
-function startOfDay(value: number): number {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
-function startOfWeek(value: number): number {
-  const dayStart = startOfDay(value);
-  const weekday = new Date(dayStart).getDay();
-  const distanceToMonday = (weekday + 6) % 7;
-  return dayStart - distanceToMonday * DAY_MS;
-}
-
-function addDays(value: number, days: number): number {
-  return value + days * DAY_MS;
 }
 
 function resolvePlannedWindow(task: Task): { start: number; end: number; explicit: boolean } | null {
@@ -195,52 +157,6 @@ export function TimelinePage() {
 
   const range = Math.max(dateRange.max - dateRange.min, 1000 * 60 * 60);
   const rangeLabel = `${toDateTimeLabel(dateRange.min)} - ${toDateTimeLabel(dateRange.max)}`;
-  const agendaAnchor = tasksWithWindow.find(({ window }) => window?.explicit)?.window?.start ?? dateRange.min;
-  const weekStart = startOfWeek(agendaAnchor);
-  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
-  const hourRows = Array.from({ length: AGENDA_END_HOUR - AGENDA_START_HOUR }, (_, index) => AGENDA_START_HOUR + index);
-  const agendaStartOffset = AGENDA_START_HOUR * 60 * MINUTE_MS;
-  const agendaEndOffset = AGENDA_END_HOUR * 60 * MINUTE_MS;
-  const agendaHeight = (AGENDA_END_HOUR - AGENDA_START_HOUR) * AGENDA_ROW_HEIGHT;
-
-  const agendaByDay = useMemo(
-    () =>
-      weekDays.map((dayStart) => {
-        const visibleStart = dayStart + agendaStartOffset;
-        const visibleEnd = dayStart + agendaEndOffset;
-
-        const segments: AgendaSegment[] = tasksWithWindow
-          .flatMap(({ task, window }) => {
-            if (!window) {
-              return [];
-            }
-
-            if (window.end <= visibleStart || window.start >= visibleEnd) {
-              return [];
-            }
-
-            const segmentStart = Math.max(window.start, visibleStart);
-            const segmentEnd = Math.max(Math.min(window.end, visibleEnd), segmentStart + 20 * MINUTE_MS);
-
-            return [{ task, start: segmentStart, end: segmentEnd, lane: 0, laneCount: 1 }];
-          })
-          .sort((left, right) => left.start - right.start);
-
-        const laneEndByIndex: number[] = [];
-        let laneCount = 1;
-
-        segments.forEach((segment) => {
-          const freeLane = laneEndByIndex.findIndex((laneEnd) => segment.start >= laneEnd);
-          const lane = freeLane === -1 ? laneEndByIndex.length : freeLane;
-          laneEndByIndex[lane] = segment.end;
-          laneCount = Math.max(laneCount, lane + 1);
-          segment.lane = lane;
-        });
-
-        return segments.map((segment) => ({ ...segment, laneCount }));
-      }),
-    [agendaEndOffset, agendaStartOffset, tasksWithWindow, weekDays]
-  );
 
   return (
     <AppShell
@@ -371,76 +287,6 @@ export function TimelinePage() {
               </DataTableBody>
             </DataTable>
 
-            {mode === "agenda" ? (
-              <div className="timeline-view__scheduler">
-                <header className="timeline-view__scheduler-header">
-                  <h3>Agenda semanal</h3>
-                  <p>O planejado do board aparece no horario exato da semana.</p>
-                </header>
-
-                <div className="timeline-view__scheduler-scroller">
-                  <div className="timeline-view__scheduler-grid">
-                    <div className="timeline-view__scheduler-time-head" />
-                    {weekDays.map(day => (
-                      <div key={day} className="timeline-view__scheduler-day-head">
-                        {toAgendaDayLabel(day)}
-                      </div>
-                    ))}
-
-                    <div className="timeline-view__scheduler-time-column">
-                      {hourRows.map(hour => (
-                        <span key={`hour-${hour}`}>{`${hour.toString().padStart(2, "0")}:00`}</span>
-                      ))}
-                    </div>
-
-                    {weekDays.map((day, dayIndex) => (
-                      <div key={`day-${day}`} className="timeline-view__scheduler-day">
-                        <div
-                          className="timeline-view__scheduler-canvas"
-                          style={{ height: `${agendaHeight}px` }}
-                        >
-                          {agendaByDay[dayIndex]?.map((segment) => {
-                            const statusLabel = statusLabelById[segment.task.status] ?? segment.task.status;
-                            const type = getTaskTypeDisplayMeta(typeMap, segment.task.type);
-                            const member = activeMembers[segment.task.assignee];
-                            const top =
-                              (((segment.start - (day + agendaStartOffset)) / MINUTE_MS / 60) * AGENDA_ROW_HEIGHT);
-                            const height = Math.max(
-                              (((segment.end - segment.start) / MINUTE_MS / 60) * AGENDA_ROW_HEIGHT),
-                              24
-                            );
-                            const width = 100 / segment.laneCount;
-                            const left = segment.lane * width;
-
-                            return (
-                              <button
-                                key={`${segment.task.id}-${segment.start}`}
-                                type="button"
-                                className="timeline-view__scheduler-event"
-                                style={{
-                                  top: `${top}px`,
-                                  height: `${height}px`,
-                                  left: `calc(${left}% + 3px)`,
-                                  width: `calc(${width}% - 6px)`,
-                                  background: type.background,
-                                  borderColor: type.border,
-                                  color: type.text
-                                }}
-                                onClick={() => selectTask(segment.task.id)}
-                              >
-                                <strong>{toHourLabel(segment.start)}</strong>
-                                <span>{segment.task.title}</span>
-                                <small>{`${statusLabel} - ${member?.name ?? "Sem responsavel"}`}</small>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </Section>
       </div>

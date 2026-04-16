@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import {
+  buildWorkspaceAgendaPath,
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
   buildWorkspaceListPath,
@@ -142,7 +143,8 @@ export function AppShell({
       items: [
         { to: buildWorkspaceBoardPath(workspaceSlug), label: "Board", icon: "board" as const, tone: "blue" as const },
         { to: buildWorkspaceListPath(workspaceSlug), label: "List", icon: "list" as const, tone: "mint" as const },
-        { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline", icon: "timeline" as const, tone: "amber" as const }
+        { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline", icon: "timeline" as const, tone: "amber" as const },
+        { to: buildWorkspaceAgendaPath(workspaceSlug), label: "Agenda", icon: "timeline" as const, tone: "amber" as const }
       ]
     },
     {

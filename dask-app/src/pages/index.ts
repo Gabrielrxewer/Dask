@@ -13,6 +13,7 @@ export { LoginPage } from "@/pages/login-page";
 export { NoWorkspacePage } from "@/pages/no-workspace-page";
 export { WorkspaceSelectorPage } from "@/pages/workspace-selector-page";
 export { TimelinePage } from "@/pages/timeline-page";
+export { AgendaPage } from "@/pages/agenda-page";
 
 // Settings — shell + seções individuais
 export {

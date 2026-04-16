@@ -8,6 +8,7 @@ import { isApiError } from "@/shared/api/http-client";
 import { LoadingState } from "@/shared/ui";
 import {
   AutomationsPage,
+  AgendaPage,
   BillingCancelPage,
   BillingSuccessPage,
   BoardPage,
@@ -142,6 +143,7 @@ export function AppRoutes() {
             <Route path={routePaths.board} element={<BoardPage />} />
             <Route path={routePaths.list} element={<ListPage />} />
             <Route path={routePaths.timeline} element={<TimelinePage />} />
+            <Route path={routePaths.agenda} element={<AgendaPage />} />
             <Route path={routePaths.automations} element={<AutomationsPage />} />
 
             {/* Settings — nested routes com layout compartilhado */}

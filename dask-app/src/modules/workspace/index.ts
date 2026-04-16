@@ -1,4 +1,4 @@
-export { workspaceService } from "@/modules/workspace/api";
+export { calendarFeedService, workspaceService } from "@/modules/workspace/api";
 export {
   cloneWorkspaceSnapshot,
   createInitialWorkspaceSnapshot,
@@ -6,7 +6,12 @@ export {
   useWorkspaceTaskPage
 } from "@/modules/workspace/model";
 export type {
+  CalendarFeedSnapshot,
+  CalendarIntegrationProvider,
+  CalendarIntegrationStatus,
   CreateTaskInput,
+  ExternalCalendarEvent,
+  TaskScheduleInput,
   WorkspaceAutomation,
   WorkspaceBoardMode,
   WorkspaceDateFormat,

@@ -15,6 +15,7 @@ export const routePaths = {
   board: "/w/:workspaceSlug/board",
   list: "/w/:workspaceSlug/list",
   timeline: "/w/:workspaceSlug/timeline",
+  agenda: "/w/:workspaceSlug/agenda",
   automations: "/w/:workspaceSlug/automations",
   settings: "/w/:workspaceSlug/settings",
   settingsMembers: "/w/:workspaceSlug/settings/members",
@@ -48,6 +49,10 @@ export function buildWorkspaceListPath(workspaceSlug: string): string {
 
 export function buildWorkspaceTimelinePath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/timeline");
+}
+
+export function buildWorkspaceAgendaPath(workspaceSlug: string): string {
+  return buildWorkspacePath(workspaceSlug, "/agenda");
 }
 
 export function buildWorkspaceAutomationsPath(workspaceSlug: string): string {

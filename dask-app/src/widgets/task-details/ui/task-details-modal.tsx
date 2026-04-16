@@ -19,6 +19,7 @@ import type {
 } from "@/entities/task";
 import type { Member } from "@/entities/member";
 import type { AiAgentSummary } from "@/modules/workspace/model";
+import type { TaskScheduleInput } from "@/modules/workspace/model";
 import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
 import "./task-details-modal.css";
 
@@ -38,6 +39,7 @@ interface TaskDetailsModalProps {
     fieldId: string,
     value: TaskCustomFieldValue
   ) => Promise<void> | void;
+  onUpdateSchedule: (taskId: string, input: TaskScheduleInput) => Promise<void> | void;
   onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
   aiAgents: AiAgentSummary[];
   onRunAiAgentOnItem: (
@@ -56,6 +58,11 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+}
+
+interface ScheduleDraft {
+  plannedStartAt: string;
+  plannedEndAt: string;
 }
 
 const initialAssistantMessage =
@@ -83,6 +90,41 @@ function toInputString(value: TaskCustomFieldValue): string {
   }
 
   return String(value);
+}
+
+function parseDateTime(value: string | null | undefined): number | null {
+  if (!value || value.trim().length === 0) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+function normalizeDateTimeInput(value: string | null | undefined): string {
+  if (!value || value.trim().length === 0) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  const pad = (entry: number) => entry.toString().padStart(2, "0");
+  const year = parsed.getFullYear();
+  const month = pad(parsed.getMonth() + 1);
+  const day = pad(parsed.getDate());
+  const hours = pad(parsed.getHours());
+  const minutes = pad(parsed.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function buildScheduleDraft(task: Task): ScheduleDraft {
+  return {
+    plannedStartAt: normalizeDateTimeInput(task.plannedStartAt),
+    plannedEndAt: normalizeDateTimeInput(task.plannedEndAt)
+  };
 }
 
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
@@ -170,6 +212,7 @@ export function TaskDetailsModal({
   onUpdateTitle,
   onUpdateDescription,
   onUpdateCustomField,
+  onUpdateSchedule,
   onToggleChecklistItem,
   aiAgents,
   onRunAiAgentOnItem,
@@ -185,6 +228,8 @@ export function TaskDetailsModal({
   const [customFieldDrafts, setCustomFieldDrafts] = useState<Record<string, TaskCustomFieldValue>>({});
   const [aiSuggestionByFieldId, setAiSuggestionByFieldId] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft>(() => buildScheduleDraft(task));
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [isRunningAi, setIsRunningAi] = useState(false);
@@ -232,6 +277,8 @@ export function TaskDetailsModal({
   useEffect(() => {
     setTitleDraft(task.title);
     setDescriptionDraft(task.text);
+    setScheduleDraft(buildScheduleDraft(task));
+    setScheduleError(null);
     setAiSuggestionByFieldId({});
     setSavingKey(null);
 
@@ -257,7 +304,7 @@ export function TaskDetailsModal({
         text: initialAssistantMessage
       }
     ]);
-  }, [task.id, task.title, task.text, task.customFields, visibleCustomFields, aiAgents]);
+  }, [task.id, task.title, task.text, task.plannedStartAt, task.plannedEndAt, task.customFields, visibleCustomFields, aiAgents]);
 
   const runMutation = async (key: string, mutation: () => Promise<void> | void) => {
     setSavingKey(key);
@@ -296,6 +343,26 @@ export function TaskDetailsModal({
       ...current,
       [fieldId]: buildAiSuggestion(fieldLabel, content, task.title)
     }));
+  };
+
+  const handleSaveSchedule = async () => {
+    const startValue = scheduleDraft.plannedStartAt.trim();
+    const endValue = scheduleDraft.plannedEndAt.trim();
+    const startStamp = parseDateTime(startValue);
+    const endStamp = parseDateTime(endValue);
+
+    if (startStamp !== null && endStamp !== null && endStamp <= startStamp) {
+      setScheduleError("A hora final precisa ser maior que a hora inicial.");
+      return;
+    }
+
+    setScheduleError(null);
+    await runMutation("sys:schedule", () =>
+      onUpdateSchedule(task.id, {
+        plannedStartAt: startValue.length > 0 ? startValue : null,
+        plannedEndAt: endValue.length > 0 ? endValue : null
+      })
+    );
   };
 
   const handleApplyAiSuggestion = (fieldId: string, apply: (value: string) => void) => {
@@ -690,6 +757,42 @@ export function TaskDetailsModal({
               ) : null}
             </section>
           ) : null}
+
+          <section className="task-details__section">
+            <div className="task-details__section-head">
+              <h3>Planejamento</h3>
+              <Button type="button" size="sm" onClick={() => void handleSaveSchedule()} disabled={savingKey === "sys:schedule"}>
+                {savingKey === "sys:schedule" ? "Salvando..." : "Salvar horario"}
+              </Button>
+            </div>
+            <div className="task-details__schedule-grid">
+              <FormField label="Inicio">
+                <TextInput
+                  type="datetime-local"
+                  value={scheduleDraft.plannedStartAt}
+                  onChange={event => {
+                    setScheduleDraft(current => ({ ...current, plannedStartAt: event.target.value }));
+                    if (scheduleError) {
+                      setScheduleError(null);
+                    }
+                  }}
+                />
+              </FormField>
+              <FormField label="Fim">
+                <TextInput
+                  type="datetime-local"
+                  value={scheduleDraft.plannedEndAt}
+                  onChange={event => {
+                    setScheduleDraft(current => ({ ...current, plannedEndAt: event.target.value }));
+                    if (scheduleError) {
+                      setScheduleError(null);
+                    }
+                  }}
+                />
+              </FormField>
+            </div>
+            {scheduleError ? <p className="task-details__error">{scheduleError}</p> : null}
+          </section>
 
           {visibleFieldIdSet.has("sys:created-by") ? (
             <section className="task-details__section">

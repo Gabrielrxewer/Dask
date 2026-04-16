@@ -1109,6 +1109,10 @@ export class WorkspaceWorkItemsService {
 
   private serializeLegacyTask(workItem: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>) {
     const metadata = isRecord(workItem.metadata) ? workItem.metadata : {};
+    const plannedStartAt =
+      typeof workItem.customFields.plannedStartAt === 'string' ? workItem.customFields.plannedStartAt : null;
+    const plannedEndAt =
+      typeof workItem.customFields.plannedEndAt === 'string' ? workItem.customFields.plannedEndAt : null;
 
     return {
       id: workItem.id,
@@ -1121,6 +1125,8 @@ export class WorkspaceWorkItemsService {
       assignee: workItem.assigneeId ?? workItem.createdBy,
       checklist: workItem.checklist,
       due: workItem.dueDate ? workItem.dueDate.toISOString().slice(0, 10) : '',
+      plannedStartAt,
+      plannedEndAt,
       customFields: workItem.customFields
     };
   }

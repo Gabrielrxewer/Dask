@@ -30,6 +30,7 @@ export function ListPage() {
     updateTaskTitle,
     updateTaskDescription,
     updateTaskCustomField,
+    updateTaskSchedule,
     toggleChecklistItem,
     listAiAgents,
     runAiAgentOnItem,
@@ -181,6 +182,7 @@ export function ListPage() {
           onUpdateTitle={(taskId, title) => void updateTaskTitle(taskId, title)}
           onUpdateDescription={(taskId, description) => void updateTaskDescription(taskId, description)}
           onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
+          onUpdateSchedule={(taskId, input) => void updateTaskSchedule(taskId, input)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}

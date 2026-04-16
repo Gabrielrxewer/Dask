@@ -12,7 +12,7 @@ import type {
   TaskStatusId
 } from "@/entities/task";
 import type { AiAgentSummary } from "@/modules/workspace/model";
-import type { CreateTaskInput } from "@/modules/workspace";
+import type { CreateTaskInput, TaskScheduleInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { CreateTaskButton } from "@/features/create-task";
 import { TaskDetailsModal } from "@/widgets/task-details";
@@ -33,6 +33,7 @@ interface BoardColumnsProps {
     fieldId: string,
     value: TaskCustomFieldValue
   ) => Promise<void> | void;
+  onUpdateTaskSchedule: (taskId: string, input: TaskScheduleInput) => Promise<void> | void;
   onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
   onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
   createTaskTypes?: Array<{ id: string; label: string }>;
@@ -59,6 +60,7 @@ export function BoardColumns({
   onUpdateTaskTitle,
   onUpdateTaskDescription,
   onUpdateTaskCustomField,
+  onUpdateTaskSchedule,
   onToggleChecklistItem,
   onCreateTask,
   createTaskTypes,
@@ -193,6 +195,7 @@ export function BoardColumns({
           onUpdateTitle={onUpdateTaskTitle}
           onUpdateDescription={onUpdateTaskDescription}
           onUpdateCustomField={onUpdateTaskCustomField}
+          onUpdateSchedule={onUpdateTaskSchedule}
           onUpdateStatus={onMoveTask}
           onToggleChecklistItem={onToggleChecklistItem}
           aiAgents={aiAgents}

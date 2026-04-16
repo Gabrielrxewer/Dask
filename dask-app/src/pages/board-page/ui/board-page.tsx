@@ -86,6 +86,7 @@ export function BoardPage() {
     updateTaskTitle,
     updateTaskDescription,
     updateTaskCustomField,
+    updateTaskSchedule,
     toggleChecklistItem,
     fetchBoardColumns,
     fetchWorkflowStates,
@@ -328,6 +329,13 @@ export function BoardPage() {
     return updateTaskCustomField(taskId, fieldId, value);
   };
 
+  const handleUpdateTaskSchedule = (
+    taskId: string,
+    input: { plannedStartAt?: string | null; plannedEndAt?: string | null }
+  ) => {
+    return updateTaskSchedule(taskId, input);
+  };
+
   const boardSubtitle =
     activeBoardTasks.length === 0 && filter.query.trim().length > 0
       ? "Nenhum item encontrado para essa busca."
@@ -387,6 +395,7 @@ export function BoardPage() {
               onUpdateTaskTitle={handleUpdateTaskTitle}
               onUpdateTaskDescription={handleUpdateTaskDescription}
               onUpdateTaskCustomField={handleUpdateTaskCustomField}
+              onUpdateTaskSchedule={handleUpdateTaskSchedule}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
               aiAgents={aiAgents}
               onRunAiAgentOnItem={runAiAgentOnItem}

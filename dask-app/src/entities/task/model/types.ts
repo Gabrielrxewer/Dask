@@ -48,6 +48,8 @@ export interface Task {
   assignee: MemberId;
   checklist: TaskChecklist;
   due: string;
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
   customFields: TaskCustomFields;
 }
 

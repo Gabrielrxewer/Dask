@@ -19,6 +19,7 @@ import type {
   UpdateBoardColumnInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
+  TaskScheduleInput,
   WorkspacePreferences,
   WorkspaceProfile,
   WorkspaceInvite,
@@ -277,6 +278,19 @@ export const workspaceService: WorkspaceService = {
     const nextFields = {
       ...(current?.customFields ?? {}),
       [fieldId]: value
+    };
+
+    return patchWorkItem(workspaceSlug, taskId, {
+      fields: nextFields
+    });
+  },
+
+  async updateTaskSchedule(workspaceSlug: string, taskId: string, input: TaskScheduleInput) {
+    const current = getCachedTask(workspaceSlug, taskId);
+    const nextFields = {
+      ...(current?.customFields ?? {}),
+      plannedStartAt: input.plannedStartAt ?? null,
+      plannedEndAt: input.plannedEndAt ?? null
     };
 
     return patchWorkItem(workspaceSlug, taskId, {

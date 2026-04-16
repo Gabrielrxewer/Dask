@@ -12,11 +12,14 @@ export const systemCardFieldDefinitions: TaskFieldDefinition[] = [
   { id: "sys:assignee", label: "Responsavel", type: "user", source: "system", capabilities: { selectable: true } },
   { id: "sys:tags", label: "Tags", type: "multi_select", source: "system", capabilities: { multiSelectable: true } },
   { id: "sys:checklist", label: "Checklist", type: "text", source: "system" },
+  { id: "sys:schedule", label: "Planejamento", type: "datetime", source: "system" },
   { id: "sys:due-date", label: "Prazo", type: "date", source: "system" }
 ];
 
 const systemFieldIdSet = new Set(systemCardFieldDefinitions.map(field => field.id));
-const defaultSystemFieldIds = systemCardFieldDefinitions.map(field => field.id);
+const defaultSystemFieldIds = systemCardFieldDefinitions
+  .filter(field => field.id !== "sys:schedule")
+  .map(field => field.id);
 
 function uniqueNonEmptyIds(fieldIds: string[]): string[] {
   return Array.from(
@@ -59,6 +62,19 @@ export function resolveVisibleCardFieldIds(
   }
 
   return uniqueNonEmptyIds([...defaultSystemFieldIds, ...normalized]);
+}
+
+export function resolveFieldIdsForTaskType(
+  typeId: string,
+  fieldIdsByType: Record<string, string[]> | undefined,
+  fallbackFieldIds: string[]
+): string[] {
+  const scoped = fieldIdsByType?.[typeId];
+  if (Array.isArray(scoped)) {
+    return uniqueNonEmptyIds(scoped);
+  }
+
+  return uniqueNonEmptyIds(fallbackFieldIds);
 }
 
 export function inferCapabilitiesByType(type: TaskFieldDefinition["type"]) {

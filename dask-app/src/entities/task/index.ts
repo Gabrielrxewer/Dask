@@ -7,6 +7,7 @@ export {
   inferCapabilitiesByType,
   isSystemCardFieldId,
   mergeCardFieldDefinitions,
+  resolveFieldIdsForTaskType,
   resolveVisibleCardFieldIds
 } from "@/entities/task/model/card-fields";
 export { initialTasks } from "@/entities/task/model/mock-tasks";

@@ -88,6 +88,7 @@ export function BoardPage() {
     updateTaskDescription,
     updateTaskCustomField,
     updateTaskSchedule,
+    updateTask,
     toggleChecklistItem,
     fetchBoardColumns,
     fetchWorkflowStates,
@@ -394,6 +395,7 @@ export function BoardPage() {
               onUpdateTaskDescription={handleUpdateTaskDescription}
               onUpdateTaskCustomField={handleUpdateTaskCustomField}
               onUpdateTaskSchedule={handleUpdateTaskSchedule}
+              onSaveTask={updateTask}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
               aiAgents={aiAgents}
               onRunAiAgentOnItem={runAiAgentOnItem}

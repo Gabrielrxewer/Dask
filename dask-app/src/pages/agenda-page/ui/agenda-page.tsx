@@ -133,6 +133,7 @@ export function AgendaPage() {
     updateTaskDescription,
     updateTaskCustomField,
     updateTaskSchedule,
+    updateTask,
     toggleChecklistItem,
     listAiAgents,
     runAiAgentOnItem,
@@ -583,6 +584,7 @@ export function AgendaPage() {
           onUpdateDescription={(taskId, description) => void updateTaskDescription(taskId, description)}
           onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
           onUpdateSchedule={(taskId, input) => void updateTaskSchedule(taskId, input)}
+          onSaveTask={(taskId, input) => void updateTask(taskId, input)}
           onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}

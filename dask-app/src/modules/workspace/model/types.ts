@@ -35,6 +35,14 @@ export interface TaskScheduleInput {
   plannedEndAt?: string | null;
 }
 
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string;
+  stateId?: TaskStatusId;
+  priority?: TaskPriority;
+  fields?: Record<string, unknown>;
+}
+
 export type CalendarIntegrationProvider = "teams" | "google-calendar" | "outlook-calendar" | "zoom" | "manual";
 
 export interface ExternalCalendarEvent {
@@ -353,6 +361,11 @@ export interface WorkspaceService {
     workspaceSlug: string,
     taskId: string,
     input: TaskScheduleInput
+  ) => Promise<WorkspaceSnapshot>;
+  updateTask: (
+    workspaceSlug: string,
+    taskId: string,
+    input: UpdateTaskInput
   ) => Promise<WorkspaceSnapshot>;
   toggleChecklistItem: (
     workspaceSlug: string,

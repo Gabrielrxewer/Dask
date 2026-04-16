@@ -4,7 +4,8 @@ import {
   buildTaskTypeMetaMap,
   getTaskTypeDisplayMeta,
   isSystemCardFieldId,
-  priorityMeta
+  priorityMeta,
+  resolveFieldIdsForTaskType
 } from "@/entities/task";
 import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
 import { cn } from "@/shared/lib/cn";
@@ -76,7 +77,11 @@ export function TaskCard({
     return acc;
   }, {});
 
-  const effectiveVisibleFieldIds = boardConfig.cardLayout.visibleFieldIdsByType?.[task.type] ?? [];
+  const effectiveVisibleFieldIds = resolveFieldIdsForTaskType(
+    task.type,
+    boardConfig.cardLayout.visibleFieldIdsByType,
+    boardConfig.cardLayout.visibleFieldIds
+  );
   const visibleFieldIdSet = new Set(effectiveVisibleFieldIds);
   const visibleCustomFieldIds = effectiveVisibleFieldIds.filter(fieldId => !isSystemCardFieldId(fieldId));
 

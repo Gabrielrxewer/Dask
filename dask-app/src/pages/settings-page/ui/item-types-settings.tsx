@@ -5,7 +5,8 @@ import {
   CARD_FIELDS_SCHEMA_VERSION,
   factoryBoardConfig,
   getTaskFieldTypeLabel,
-  mergeCardFieldDefinitions
+  mergeCardFieldDefinitions,
+  resolveFieldIdsForTaskType
 } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { Button, FormField, TextInput } from "@/shared/ui";
@@ -68,6 +69,7 @@ function getPreviewValue(fieldId: string): string {
     "sys:assignee": "Equipe Dask",
     "sys:tags": "produto, melhoria",
     "sys:checklist": "2 de 4 itens",
+    "sys:schedule": "23/04/2026 09:00 - 24/04/2026 16:30",
     "sys:due-date": "24/04/2026"
   };
 
@@ -174,13 +176,15 @@ export function ItemTypesSettings() {
   };
 
   const resolveEffectiveCardFields = useCallback(
-    (typeSlug: string): string[] => visibleFieldsByType[typeSlug] ?? [],
-    [visibleFieldsByType]
+    (typeSlug: string): string[] =>
+      resolveFieldIdsForTaskType(typeSlug, visibleFieldsByType, boardConfig.cardLayout.visibleFieldIds),
+    [visibleFieldsByType, boardConfig.cardLayout.visibleFieldIds]
   );
 
   const resolveEffectiveDetailFields = useCallback(
-    (typeSlug: string): string[] => detailVisibleFieldsByType[typeSlug] ?? visibleFieldsByType[typeSlug] ?? [],
-    [detailVisibleFieldsByType, visibleFieldsByType]
+    (typeSlug: string): string[] =>
+      resolveFieldIdsForTaskType(typeSlug, detailVisibleFieldsByType, resolveEffectiveCardFields(typeSlug)),
+    [detailVisibleFieldsByType, resolveEffectiveCardFields]
   );
 
   const resolveDraft = useCallback(

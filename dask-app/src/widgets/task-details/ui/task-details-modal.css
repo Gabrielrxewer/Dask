@@ -27,6 +27,14 @@
   color: #55708f;
 }
 
+.task-details__save-center {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-inline: auto;
+}
+
 .task-details__close {
   width: 34px;
   height: 34px;

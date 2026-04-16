@@ -19,6 +19,7 @@ import type {
   CreateItemTypeInput,
   CreateTaskInput,
   TaskScheduleInput,
+  UpdateTaskInput,
   UpdateBoardColumnInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
@@ -39,6 +40,7 @@ interface WorkspaceContextValue {
   updateTaskDescription: (taskId: string, description: string) => Promise<void>;
   updateTaskCustomField: (taskId: string, fieldId: string, value: TaskCustomFieldValue) => Promise<void>;
   updateTaskSchedule: (taskId: string, input: TaskScheduleInput) => Promise<void>;
+  updateTask: (taskId: string, input: UpdateTaskInput) => Promise<void>;
   toggleChecklistItem: (taskId: string, itemId: string) => Promise<void>;
   setAutomationStatus: (automationId: string, status: WorkspaceAutomation["status"]) => Promise<void>;
   updatePreferences: (patch: Partial<WorkspacePreferences>) => Promise<void>;
@@ -199,6 +201,18 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       }
 
       const nextSnapshot = await workspaceService.updateTaskSchedule(workspaceSlug, taskId, input);
+      setSnapshot(nextSnapshot);
+    },
+    [workspaceSlug]
+  );
+
+  const updateTask = useCallback(
+    async (taskId: string, input: UpdateTaskInput) => {
+      if (!workspaceSlug) {
+        return;
+      }
+
+      const nextSnapshot = await workspaceService.updateTask(workspaceSlug, taskId, input);
       setSnapshot(nextSnapshot);
     },
     [workspaceSlug]
@@ -465,6 +479,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       updateTaskDescription,
       updateTaskCustomField,
       updateTaskSchedule,
+      updateTask,
       toggleChecklistItem,
       setAutomationStatus,
       updatePreferences,
@@ -508,6 +523,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       updateTaskDescription,
       updateTaskCustomField,
       updateTaskSchedule,
+      updateTask,
       toggleChecklistItem,
       setAutomationStatus,
       updatePreferences,

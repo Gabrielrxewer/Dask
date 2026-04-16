@@ -23,6 +23,7 @@ export type {
   CreateCustomFieldInput,
   CreateItemTypeInput,
   CreateTaskInput,
+  UpdateTaskInput,
   ExternalCalendarEvent,
   TaskScheduleInput,
   CustomFieldSettings,

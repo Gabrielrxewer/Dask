@@ -6,10 +6,12 @@ export {
   useWorkspaceTaskPage
 } from "@/modules/workspace/model";
 export type {
+  AiAgentSummary,
   CalendarFeedSnapshot,
   CalendarIntegrationProvider,
   CalendarIntegrationStatus,
   CreateTaskInput,
+  UpdateTaskInput,
   ExternalCalendarEvent,
   TaskScheduleInput,
   WorkspaceAutomation,

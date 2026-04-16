@@ -95,6 +95,7 @@ const defaultSystemDetailFieldIds = [
   'sys:assignee',
   'sys:tags',
   'sys:checklist',
+  'sys:schedule',
   'sys:due-date'
 ];
 

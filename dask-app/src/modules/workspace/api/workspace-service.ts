@@ -20,6 +20,7 @@ import type {
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
   TaskScheduleInput,
+  UpdateTaskInput,
   WorkspacePreferences,
   WorkspaceProfile,
   WorkspaceInvite,
@@ -309,6 +310,32 @@ export const workspaceService: WorkspaceService = {
     return patchWorkItem(workspaceSlug, taskId, {
       fields: nextFields
     });
+  },
+
+  async updateTask(workspaceSlug: string, taskId: string, input: UpdateTaskInput) {
+    const payload: Record<string, unknown> = {};
+
+    if (input.title !== undefined) {
+      payload.title = input.title;
+    }
+
+    if (input.description !== undefined) {
+      payload.description = input.description;
+    }
+
+    if (input.stateId !== undefined) {
+      payload.stateSlug = input.stateId;
+    }
+
+    if (input.priority !== undefined) {
+      payload.metadata = { priority: input.priority };
+    }
+
+    if (input.fields !== undefined) {
+      payload.fields = input.fields;
+    }
+
+    return patchWorkItem(workspaceSlug, taskId, payload);
   },
 
   async toggleChecklistItem(workspaceSlug, taskId, itemId) {

@@ -16,7 +16,7 @@
 
 .automations-view__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 14px;
 }
 
@@ -51,21 +51,35 @@
   margin-top: 6px;
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 @media (min-width: 1141px) {
   .app-shell--no-scroll .automations-view {
+    min-height: 0;
     height: 100%;
   }
 
   .app-shell--no-scroll .automations-view__section {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
   }
 
   .app-shell--no-scroll .automations-view__section .shared-section__content {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .app-shell--no-scroll .automations-view__section:last-of-type {
     flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .app-shell--no-scroll .automations-view__section:last-of-type .shared-section__content {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: auto;
   }
 }
@@ -127,6 +141,17 @@
   margin: 0;
   color: #c0392b;
   font-size: var(--font-size-xs);
+}
+
+.automations-create-modal__hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: #3b4f63;
+  background: #f1f6fb;
+  border: 1px solid #d4e3f5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  line-height: 1.45;
 }
 
 .automations-create-modal__footer {

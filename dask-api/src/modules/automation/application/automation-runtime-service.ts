@@ -16,10 +16,16 @@ export type QueuedAutomationEvent = {
   payload: Record<string, unknown>;
 };
 
-function toSlug(value: string): string {
+function toSlug(value: unknown): string {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
   return value
     .trim()
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
@@ -85,7 +91,10 @@ function toContext(
 }
 
 export class AutomationRuntimeService {
-  public constructor(private readonly prisma: PrismaClient) {}
+  public constructor(
+    private readonly prisma: PrismaClient,
+    private readonly ensureDefaultViews?: (workspaceId: string) => Promise<void>
+  ) {}
 
   public async processEvent(event: QueuedAutomationEvent): Promise<void> {
     const rules = await this.prisma.automationRule.findMany({
@@ -226,6 +235,10 @@ export class AutomationRuntimeService {
 
     switch (action.type) {
       case 'set_view_column': {
+        if (this.ensureDefaultViews) {
+          await this.ensureDefaultViews(context.workspaceId);
+        }
+
         const view = await this.resolveView({
           workspaceId: context.workspaceId,
           viewId: action.targetViewId,
@@ -268,10 +281,22 @@ export class AutomationRuntimeService {
             updatedBy: typeof rawPayload.requestedBy === 'string' ? rawPayload.requestedBy : null
           }
         });
+
+        await this.syncItemBoardPositionFromViewColumn({
+          workspaceId: context.workspaceId,
+          itemId,
+          columnKey: column.key ?? action.targetColumnKey ?? '',
+          columnName: column.name ?? action.targetColumnKey ?? '',
+          requestedBy: typeof rawPayload.requestedBy === 'string' ? rawPayload.requestedBy : null
+        });
         return;
       }
 
       case 'remove_from_view': {
+        if (this.ensureDefaultViews) {
+          await this.ensureDefaultViews(context.workspaceId);
+        }
+
         const view = await this.resolveView({
           workspaceId: context.workspaceId,
           viewId: action.targetViewId,
@@ -291,6 +316,7 @@ export class AutomationRuntimeService {
       case 'set_work_item_state': {
         let statusToSet: string | undefined = action.status;
         let stateIdToSet: string | undefined = action.stateId;
+        let boardColumnIdToSet: string | undefined;
 
         if (!stateIdToSet && action.stateSlug) {
           const state = await this.prisma.workflowState.findFirst({
@@ -314,11 +340,37 @@ export class AutomationRuntimeService {
           }
         }
 
+        if (stateIdToSet) {
+          const mapping = this.prisma.columnStateMapping
+            ? await this.prisma.columnStateMapping.findFirst({
+                where: {
+                  workspaceId: context.workspaceId,
+                  stateId: stateIdToSet
+                },
+                orderBy: [{ position: 'asc' }],
+                include: {
+                  column: {
+                    select: {
+                      id: true,
+                      isActive: true
+                    }
+                  }
+                }
+              })
+            : null;
+
+          if (mapping?.column?.isActive) {
+            boardColumnIdToSet = mapping.column.id;
+          }
+        }
+
         await this.prisma.item.update({
           where: { id: itemId },
           data: {
             stateId: stateIdToSet,
             status: statusToSet,
+            boardColumnId: boardColumnIdToSet,
+            columnId: boardColumnIdToSet,
             updatedBy: typeof rawPayload.requestedBy === 'string' ? rawPayload.requestedBy : undefined
           }
         });
@@ -346,15 +398,29 @@ export class AutomationRuntimeService {
     }
 
     if (input.viewKey) {
+      const normalizedKey = toSlug(input.viewKey);
       const byKey = await this.prisma.automationView.findFirst({
         where: {
           workspaceId: input.workspaceId,
-          key: toSlug(input.viewKey)
+          key: normalizedKey
         }
       });
 
       if (byKey) {
         return byKey;
+      }
+
+      const candidates = await this.prisma.automationView.findMany({
+        where: { workspaceId: input.workspaceId },
+        select: { id: true, key: true, name: true }
+      });
+
+      const fallback = candidates.find((view) => {
+        return toSlug(view.name) === normalizedKey || toSlug(view.key) === normalizedKey;
+      });
+
+      if (fallback) {
+        return fallback;
       }
     }
 
@@ -382,19 +448,173 @@ export class AutomationRuntimeService {
     }
 
     if (input.columnKey) {
+      const normalizedColumnKey = toSlug(input.columnKey);
+
       const byKey = await this.prisma.automationViewColumn.findFirst({
         where: {
           workspaceId: input.workspaceId,
           viewId: input.viewId,
-          key: toSlug(input.columnKey)
+          key: normalizedColumnKey
         }
       });
 
       if (byKey) {
         return byKey;
       }
+
+      const aggregate = await this.prisma.automationViewColumn.aggregate({
+        where: {
+          workspaceId: input.workspaceId,
+          viewId: input.viewId
+        },
+        _max: { position: true }
+      });
+
+      const created = await this.prisma.automationViewColumn.upsert({
+        where: {
+          viewId_key: {
+            viewId: input.viewId,
+            key: normalizedColumnKey
+          }
+        },
+        create: {
+          workspaceId: input.workspaceId,
+          viewId: input.viewId,
+          key: normalizedColumnKey,
+          name: this.humanizeColumnName(input.columnKey),
+          color: '#64748b',
+          position: (aggregate._max.position ?? -1) + 1,
+          isActive: true
+        },
+        update: {
+          isActive: true
+        }
+      });
+
+      return created;
     }
 
     throw new AppError('Target automation view column not found.', 404);
+  }
+
+  private humanizeColumnName(value: string): string {
+    const normalized = value
+      .trim()
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ');
+
+    if (!normalized) {
+      return 'Column';
+    }
+
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  }
+
+  private async syncItemBoardPositionFromViewColumn(input: {
+    workspaceId: string;
+    itemId: string;
+    columnKey: string;
+    columnName: string;
+    requestedBy: string | null;
+  }): Promise<void> {
+    const normalizedColumnKey = toSlug(input.columnKey || input.columnName);
+    if (!normalizedColumnKey) {
+      return;
+    }
+
+    const prismaAny = this.prisma as any;
+    if (!prismaAny.workflowState?.findFirst) {
+      return;
+    }
+
+    let targetState = await prismaAny.workflowState.findFirst({
+      where: {
+        workspaceId: input.workspaceId,
+        slug: normalizedColumnKey,
+        isActive: true
+      },
+      select: {
+        id: true,
+        slug: true
+      }
+    });
+
+    let targetBoardColumn = prismaAny.boardColumn?.findFirst
+      ? await prismaAny.boardColumn.findFirst({
+          where: {
+            workspaceId: input.workspaceId,
+            slug: normalizedColumnKey,
+            isActive: true
+          },
+          select: {
+            id: true
+          }
+        })
+      : null;
+
+    if (!targetBoardColumn && targetState && prismaAny.columnStateMapping?.findFirst) {
+      const stateMapping = await prismaAny.columnStateMapping.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          stateId: targetState.id
+        },
+        orderBy: [{ position: 'asc' }],
+        include: {
+          column: {
+            select: {
+              id: true,
+              isActive: true
+            }
+          }
+        }
+      });
+
+      if (stateMapping?.column?.isActive) {
+        targetBoardColumn = {
+          id: stateMapping.column.id
+        };
+      }
+    }
+
+    if (!targetState && targetBoardColumn && prismaAny.columnStateMapping?.findFirst) {
+      const columnMapping = await prismaAny.columnStateMapping.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          columnId: targetBoardColumn.id
+        },
+        orderBy: [{ position: 'asc' }],
+        include: {
+          state: {
+            select: {
+              id: true,
+              slug: true,
+              isActive: true
+            }
+          }
+        }
+      });
+
+      if (columnMapping?.state?.isActive) {
+        targetState = {
+          id: columnMapping.state.id,
+          slug: columnMapping.state.slug
+        };
+      }
+    }
+
+    if (!targetState && !targetBoardColumn) {
+      return;
+    }
+
+    await this.prisma.item.update({
+      where: { id: input.itemId },
+      data: {
+        stateId: targetState?.id,
+        status: targetState?.slug,
+        boardColumnId: targetBoardColumn?.id,
+        columnId: targetBoardColumn?.id,
+        updatedBy: input.requestedBy ?? undefined
+      }
+    });
   }
 }

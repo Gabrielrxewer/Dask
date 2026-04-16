@@ -6,6 +6,8 @@ function toSlug(value: string): string {
   return value
     .trim()
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
@@ -62,7 +64,11 @@ export class AutomationViewService {
           isActive: true
         },
         update: {
-          isSystem: true
+          isSystem: true,
+          isActive: true,
+          name: viewSeed.name,
+          description: viewSeed.description,
+          position: viewSeed.position
         }
       });
 
@@ -84,7 +90,11 @@ export class AutomationViewService {
             isTerminal: Boolean(columnSeed.isTerminal)
           },
           update: {
-            isTerminal: Boolean(columnSeed.isTerminal)
+            isTerminal: Boolean(columnSeed.isTerminal),
+            isActive: true,
+            name: columnSeed.name,
+            color: columnSeed.color,
+            position: columnSeed.position
           }
         });
       }
@@ -92,6 +102,7 @@ export class AutomationViewService {
   }
 
   private async resolveDefaultViewSeeds(workspaceId: string): Promise<DefaultViewSeed[]> {
+    const boardFallbackColumns = await this.resolveBoardFallbackColumns(workspaceId);
     const preferences = await this.prisma.workspacePreferences.findUnique({
       where: { workspaceId },
       select: { settings: true }
@@ -130,8 +141,7 @@ export class AutomationViewService {
         const statusRecord = status as Record<string, unknown>;
         if (
           typeof statusRecord.id !== 'string' ||
-          typeof statusRecord.label !== 'string' ||
-          typeof statusRecord.dot !== 'string'
+          typeof statusRecord.label !== 'string'
         ) {
           continue;
         }
@@ -139,10 +149,19 @@ export class AutomationViewService {
         columns.push({
           key: toSlug(statusRecord.id),
           name: statusRecord.label,
-          color: normalizeHexColor(statusRecord.dot, '#64748b'),
+          color: normalizeHexColor(typeof statusRecord.dot === 'string' ? statusRecord.dot : undefined, '#64748b'),
           position: statusIndex,
           isTerminal: statusIndex === rawStatuses.length - 1
         });
+      }
+
+      if (columns.length === 0 && boardFallbackColumns.length > 0) {
+        columns.push(
+          ...boardFallbackColumns.map((column, columnIndex) => ({
+            ...column,
+            position: columnIndex
+          }))
+        );
       }
 
       if (columns.length === 0) {
@@ -180,9 +199,118 @@ export class AutomationViewService {
     ];
   }
 
+  private async ensureColumnsForViewsWithoutColumns(workspaceId: string): Promise<void> {
+    const views = await this.prisma.automationView.findMany({
+      where: { workspaceId },
+      include: {
+        columns: {
+          where: { isActive: true },
+          select: { id: true }
+        }
+      }
+    });
+
+    if (views.length === 0) {
+      return;
+    }
+
+    const defaultSeeds = await this.resolveDefaultViewSeeds(workspaceId);
+    const seedColumnsByKey = new Map<string, DefaultColumnSeed[]>();
+    for (const seed of defaultSeeds) {
+      seedColumnsByKey.set(toSlug(seed.key), seed.columns);
+    }
+
+    const boardFallbackColumns = await this.resolveBoardFallbackColumns(workspaceId);
+
+    for (const view of views) {
+      if (view.columns.length > 0) {
+        continue;
+      }
+
+      const columns =
+        seedColumnsByKey.get(toSlug(view.key)) ??
+        seedColumnsByKey.get(toSlug(view.name)) ??
+        boardFallbackColumns;
+
+      if (!columns || columns.length === 0) {
+        continue;
+      }
+
+      for (const [index, columnSeed] of columns.entries()) {
+        await this.prisma.automationViewColumn.upsert({
+          where: {
+            viewId_key: {
+              viewId: view.id,
+              key: columnSeed.key
+            }
+          },
+          create: {
+            workspaceId,
+            viewId: view.id,
+            key: columnSeed.key,
+            name: columnSeed.name,
+            color: columnSeed.color,
+            position: typeof columnSeed.position === 'number' ? columnSeed.position : index,
+            isTerminal: Boolean(columnSeed.isTerminal),
+            isActive: true
+          },
+          update: {
+            name: columnSeed.name,
+            color: columnSeed.color,
+            position: typeof columnSeed.position === 'number' ? columnSeed.position : index,
+            isTerminal: Boolean(columnSeed.isTerminal),
+            isActive: true
+          }
+        });
+      }
+    }
+  }
+
+  private async resolveBoardFallbackColumns(workspaceId: string): Promise<DefaultColumnSeed[]> {
+    const prismaAny = this.prisma as any;
+    if (!prismaAny.boardColumn?.findMany) {
+      return [];
+    }
+
+    const columns = (await prismaAny.boardColumn.findMany({
+      where: {
+        workspaceId,
+        isActive: true
+      },
+      include: {
+        stateMappings: {
+          orderBy: [{ position: 'asc' }],
+          include: {
+            state: {
+              select: {
+                slug: true,
+                name: true,
+                color: true,
+                isTerminal: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }]
+    })) as Array<any>;
+
+    return columns.map((column: any, index: number) => {
+      const firstState = column.stateMappings[0]?.state;
+      return {
+        key: toSlug(firstState?.slug ?? column.slug),
+        name: firstState?.name ?? column.name,
+        color: normalizeHexColor(firstState?.color, '#64748b'),
+        position: index,
+        isTerminal: Boolean(firstState?.isTerminal)
+      };
+    });
+  }
+
   public async listViews(input: { workspaceId: string; userId: string }) {
     await this.workspaceConfigService.ensureReadableWorkspace(input.workspaceId, input.userId);
     await this.ensureDefaultViews(input.workspaceId);
+    await this.ensureColumnsForViewsWithoutColumns(input.workspaceId);
 
     const views = await this.prisma.automationView.findMany({
       where: {

@@ -45,3 +45,8 @@ export const createOrganizationDto = z.object({
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/),
   settings: z.record(z.unknown()).optional()
 });
+
+export const updateUserAvatarDto = z.object({
+  manualAvatarDataUrl: z.string().min(1).max(3_000_000).nullable(),
+  removeProviderAvatar: z.boolean().optional()
+});

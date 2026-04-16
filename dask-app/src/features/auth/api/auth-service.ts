@@ -83,5 +83,12 @@ export const authService: AuthServiceContract = {
       authMode: "none",
       retryOnUnauthorized: false
     });
+  },
+
+  updateUserAvatar(input) {
+    return apiClient.patch<AuthenticatedUser>("/auth/me/avatar", input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
   }
 };

@@ -58,6 +58,7 @@ export interface IdentityRepository {
 
   findUserByEmail(email: string): Promise<User | null>;
   findUserById(id: string): Promise<User | null>;
+  updateUserPreferences(userId: string, preferences: unknown): Promise<User>;
   findUserByExternalIdentity(input: {
     provider: ExternalAuthProvider;
     providerSubject: string;

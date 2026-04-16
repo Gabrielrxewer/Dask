@@ -58,6 +58,12 @@
   box-shadow: 0 8px 18px rgba(12, 42, 71, 0.05);
 }
 
+.dashboard-filter__mine-button,
+.dashboard-filter__mine-button:hover,
+.dashboard-filter__mine-button:focus-visible {
+  color: #ffffff !important;
+}
+
 @media (max-width: 760px) {
   .dashboard-filter {
     width: 100%;

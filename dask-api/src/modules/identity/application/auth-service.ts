@@ -53,6 +53,10 @@ export type UserProfile = {
   name: string;
   emailVerified: boolean;
   isPlatformAdmin: boolean;
+  avatarUrl: string | null;
+  avatarSource: 'manual' | 'provider' | null;
+  manualAvatarUrl: string | null;
+  providerAvatarUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -65,6 +69,7 @@ export type ExternalAuthInput = {
   inviteToken?: string;
   providerTenantId?: string | null;
   emailVerified?: boolean | null;
+  providerAvatarUrl?: string | null;
 };
 
 /**
@@ -104,20 +109,140 @@ function toUserProfile(
   email: string;
   name: string;
   emailVerified: boolean;
+  preferences?: unknown;
   createdAt: Date;
   updatedAt: Date;
   },
   isPlatformAdmin: boolean
 ): UserProfile {
+  const avatar = resolveAvatarPreferences(user.preferences);
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     emailVerified: user.emailVerified,
     isPlatformAdmin,
+    avatarUrl: avatar.avatarUrl,
+    avatarSource: avatar.avatarSource,
+    manualAvatarUrl: avatar.manualAvatarUrl,
+    providerAvatarUrl: avatar.providerAvatarUrl,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
   };
+}
+
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const avatarDataUrlPattern = /^data:image\/(jpeg|jpg|png|webp);base64,([a-z0-9+/=]+)$/i;
+
+type AvatarPreferences = {
+  manualAvatarUrl: string | null;
+  providerAvatarUrl: string | null;
+  avatarProvider: string | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getStringPreference(preferences: Record<string, unknown>, key: string): string | null {
+  const value = preferences[key];
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function readAvatarPreferences(preferences: unknown): AvatarPreferences {
+  if (!isRecord(preferences)) {
+    return {
+      manualAvatarUrl: null,
+      providerAvatarUrl: null,
+      avatarProvider: null
+    };
+  }
+
+  return {
+    manualAvatarUrl: getStringPreference(preferences, 'manualAvatarUrl'),
+    providerAvatarUrl: getStringPreference(preferences, 'providerAvatarUrl'),
+    avatarProvider: getStringPreference(preferences, 'avatarProvider')
+  };
+}
+
+function resolveAvatarPreferences(preferences: unknown): {
+  avatarUrl: string | null;
+  avatarSource: 'manual' | 'provider' | null;
+  manualAvatarUrl: string | null;
+  providerAvatarUrl: string | null;
+} {
+  const avatar = readAvatarPreferences(preferences);
+  if (avatar.manualAvatarUrl) {
+    return {
+      avatarUrl: avatar.manualAvatarUrl,
+      avatarSource: 'manual',
+      manualAvatarUrl: avatar.manualAvatarUrl,
+      providerAvatarUrl: avatar.providerAvatarUrl
+    };
+  }
+
+  if (avatar.providerAvatarUrl) {
+    return {
+      avatarUrl: avatar.providerAvatarUrl,
+      avatarSource: 'provider',
+      manualAvatarUrl: null,
+      providerAvatarUrl: avatar.providerAvatarUrl
+    };
+  }
+
+  return {
+    avatarUrl: null,
+    avatarSource: null,
+    manualAvatarUrl: null,
+    providerAvatarUrl: null
+  };
+}
+
+function buildUpdatedAvatarPreferences(
+  preferences: unknown,
+  patch: Partial<AvatarPreferences>
+): Record<string, unknown> {
+  const next = isRecord(preferences) ? { ...preferences } : {};
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null || value === undefined || value === '') {
+      delete next[key];
+    } else {
+      next[key] = value;
+    }
+  }
+
+  return next;
+}
+
+function normalizeProviderAvatarUrl(value?: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function validateManualAvatarDataUrl(value: string): string {
+  const normalized = value.trim();
+  const match = normalized.match(avatarDataUrlPattern);
+
+  if (!match) {
+    throw new AppError('A foto deve ser JPG, PNG ou WEBP.', 422, { code: 'INVALID_AVATAR_FORMAT' });
+  }
+
+  const base64 = match[2];
+  const sizeInBytes = Buffer.byteLength(base64, 'base64');
+  if (sizeInBytes > MAX_AVATAR_BYTES) {
+    throw new AppError('A foto deve ter no maximo 2 MB.', 413, { code: 'AVATAR_TOO_LARGE' });
+  }
+
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
@@ -438,6 +563,17 @@ export class AuthService {
       emailVerified: input.emailVerified ?? null
     });
 
+    const providerAvatarUrl = normalizeProviderAvatarUrl(input.providerAvatarUrl);
+    if (providerAvatarUrl) {
+      user = await this.identityRepository.updateUserPreferences(
+        user.id,
+        buildUpdatedAvatarPreferences(user.preferences, {
+          providerAvatarUrl,
+          avatarProvider: input.provider
+        })
+      );
+    }
+
     // External/OIDC authentication is treated as verified identity for this session.
     // Persisting this avoids refresh immediately failing with EMAIL_NOT_VERIFIED.
     if (!user.emailVerified) {
@@ -581,6 +717,28 @@ export class AuthService {
     }
     const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
     return toUserProfile(user, isPlatformAdmin);
+  }
+
+  public async updateAvatar(
+    userId: string,
+    input: { manualAvatarDataUrl: string | null; removeProviderAvatar?: boolean }
+  ): Promise<UserProfile> {
+    const user = await this.identityRepository.findUserById(userId);
+    if (!user) {
+      throw new AppError('User not found.', 404);
+    }
+
+    const manualAvatarUrl = input.manualAvatarDataUrl === null ? null : validateManualAvatarDataUrl(input.manualAvatarDataUrl);
+    const updated = await this.identityRepository.updateUserPreferences(
+      user.id,
+      buildUpdatedAvatarPreferences(user.preferences, {
+        manualAvatarUrl,
+        ...(input.removeProviderAvatar ? { providerAvatarUrl: null, avatarProvider: null } : {})
+      })
+    );
+
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(updated.id);
+    return toUserProfile(updated, isPlatformAdmin);
   }
 
   // ── Password reset (scaffold) ─────────────────────────────────────────────

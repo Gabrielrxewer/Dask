@@ -20,6 +20,7 @@ import {
   DashboardFilter,
   useDashboardFilter
 } from "@/features/dashboard-filter";
+import { useAuth } from "@/features/auth";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
@@ -77,6 +78,7 @@ function buildBoardColumnsView(
 }
 
 export function BoardPage() {
+  const { user } = useAuth();
   const {
     snapshot,
     isLoading,
@@ -158,8 +160,32 @@ export function BoardPage() {
     perspectives: rawPerspectives
   };
 
-  const activeMembers = snapshot?.membersById ?? membersById;
   const activeUser = snapshot?.currentUserId ?? currentUserId;
+  const activeMembers = useMemo(() => {
+    const sourceMembers = snapshot?.membersById ?? membersById;
+    const userAvatarUrl = user?.avatarUrl ?? null;
+
+    if (!userAvatarUrl) {
+      return sourceMembers;
+    }
+
+    const authMemberId = user?.id ?? "";
+    const memberId = authMemberId && sourceMembers[authMemberId] ? authMemberId : activeUser;
+    const member = sourceMembers[memberId];
+
+    if (!member) {
+      return sourceMembers;
+    }
+
+    return {
+      ...sourceMembers,
+      [memberId]: {
+        ...member,
+        name: user?.name ?? member.name,
+        avatarUrl: userAvatarUrl
+      }
+    };
+  }, [activeUser, snapshot?.membersById, user?.avatarUrl, user?.id, user?.name]);
 
   const boardPerspectives =
     boardConfig.perspectives.length > 0

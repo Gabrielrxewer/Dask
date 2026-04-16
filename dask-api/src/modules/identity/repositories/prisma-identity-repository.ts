@@ -54,6 +54,13 @@ export class PrismaIdentityRepository implements IdentityRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  public updateUserPreferences(userId: string, preferences: unknown): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { preferences: preferences as Prisma.InputJsonValue }
+    });
+  }
+
   public async findUserByExternalIdentity(input: {
     provider: ExternalAuthProvider;
     providerSubject: string;

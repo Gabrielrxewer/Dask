@@ -1,7 +1,8 @@
 import { isApiError } from "@/shared/api/http-client";
 import { createSessionTransport, type SessionTransport } from "@/shared/lib/auth/session-transport";
 import { authService } from "@/features/auth/api/auth-service";
-import type { AuthServiceContract, LoginInput, RegisterInput } from "@/features/auth/api/types";
+import type { AuthServiceContract, LoginInput, RegisterInput, UpdateUserAvatarInput } from "@/features/auth/api/types";
+import type { AuthenticatedUser } from "@/entities/user";
 import type { AuthSnapshot, AuthState } from "@/features/auth/model/types";
 
 const SESSION_EXPIRED_NOTICE = "Sua sessao expirou. Faca login novamente para continuar.";
@@ -264,6 +265,17 @@ export class AuthStore {
       status: prev.status === "session_expired" ? "unauthenticated" : prev.status,
       sessionNotice: null
     }));
+  }
+
+  public async updateUserAvatar(input: UpdateUserAvatarInput): Promise<AuthenticatedUser> {
+    const user = await this.authService.updateUserAvatar(input);
+    this.setState(prev => ({
+      ...prev,
+      user,
+      status: prev.status === "refreshing" ? "authenticated" : prev.status,
+      errorMessage: null
+    }));
+    return user;
   }
 
   public getAccessToken(): string | null {

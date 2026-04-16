@@ -25,7 +25,8 @@ import {
   createOrganizationDto,
   loginDto,
   registerDto,
-  requestPasswordResetDto
+  requestPasswordResetDto,
+  updateUserAvatarDto
 } from '@/modules/identity/http/dto';
 
 const registerLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 10 });
@@ -575,6 +576,7 @@ async function fetchGoogleUserProfile(accessToken: string): Promise<{
   email: string;
   name: string;
   emailVerified: boolean | null;
+  pictureUrl: string | null;
 }> {
   const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -589,6 +591,7 @@ async function fetchGoogleUserProfile(accessToken: string): Promise<{
   const email = payload.email;
   const name = payload.name;
   const emailVerified = payload.email_verified;
+  const picture = payload.picture;
 
   if (typeof subject !== 'string' || typeof email !== 'string' || subject.length === 0 || email.length === 0) {
     throw new AppError('Google profile is missing required fields.', 400);
@@ -598,7 +601,8 @@ async function fetchGoogleUserProfile(accessToken: string): Promise<{
     subject,
     email,
     name: typeof name === 'string' && name.length > 0 ? name : email,
-    emailVerified: typeof emailVerified === 'boolean' ? emailVerified : null
+    emailVerified: typeof emailVerified === 'boolean' ? emailVerified : null,
+    pictureUrl: typeof picture === 'string' && picture.length > 0 ? picture : null
   };
 }
 
@@ -656,6 +660,7 @@ async function fetchMicrosoftUserProfile(accessToken: string): Promise<{
   email: string;
   name: string;
   tenantId: string | null;
+  pictureUrl: string | null;
 }> {
   const response = await fetch('https://graph.microsoft.com/oidc/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -670,6 +675,7 @@ async function fetchMicrosoftUserProfile(accessToken: string): Promise<{
   const email = payload.email ?? payload.preferred_username;
   const name = payload.name;
   const tenantId = payload.tid;
+  const picture = payload.picture;
 
   if (typeof subject !== 'string' || typeof email !== 'string' || subject.length === 0 || email.length === 0) {
     throw new AppError('Microsoft profile is missing required fields.', 400);
@@ -679,7 +685,8 @@ async function fetchMicrosoftUserProfile(accessToken: string): Promise<{
     subject,
     email,
     name: typeof name === 'string' && name.length > 0 ? name : email,
-    tenantId: typeof tenantId === 'string' && tenantId.length > 0 ? tenantId : null
+    tenantId: typeof tenantId === 'string' && tenantId.length > 0 ? tenantId : null,
+    pictureUrl: typeof picture === 'string' && picture.length > 0 ? picture : null
   };
 }
 
@@ -826,6 +833,7 @@ export const buildIdentityRoutes = (deps: {
               email: profile.email,
               name: profile.name,
               emailVerified: profile.emailVerified,
+              providerAvatarUrl: profile.pictureUrl,
               inviteToken
             },
             extractContext(req)
@@ -928,6 +936,7 @@ export const buildIdentityRoutes = (deps: {
               email: profile.email,
               name: profile.name,
               providerTenantId: profile.tenantId,
+              providerAvatarUrl: profile.pictureUrl,
               inviteToken
             },
             extractContext(req)
@@ -1011,6 +1020,18 @@ export const buildIdentityRoutes = (deps: {
     authMiddleware,
     asyncHandler(async (req, res) => {
       const user = await deps.authService.me(req.auth!.userId);
+      setNoStore(res);
+      res.status(200).json(user);
+    })
+  );
+
+  router.patch(
+    '/auth/me/avatar',
+    authMiddleware,
+    csrfGuard,
+    asyncHandler(async (req, res) => {
+      const input = updateUserAvatarDto.parse(req.body);
+      const user = await deps.authService.updateAvatar(req.auth!.userId, input);
       setNoStore(res);
       res.status(200).json(user);
     })

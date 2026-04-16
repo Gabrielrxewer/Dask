@@ -46,6 +46,11 @@ export interface ResendVerificationEmailInput {
   email: string;
 }
 
+export interface UpdateUserAvatarInput {
+  manualAvatarDataUrl: string | null;
+  removeProviderAvatar?: boolean;
+}
+
 export interface AuthServiceContract {
   register: (input: RegisterInput) => Promise<AuthSuccessResponse>;
   login: (input: LoginInput) => Promise<AuthSuccessResponse>;
@@ -57,4 +62,5 @@ export interface AuthServiceContract {
   confirmPasswordReset: (input: ConfirmPasswordResetInput) => Promise<void>;
   resendVerificationEmail: (input: ResendVerificationEmailInput) => Promise<void>;
   verifyEmail: (token: string) => Promise<void>;
+  updateUserAvatar: (input: UpdateUserAvatarInput) => Promise<AuthenticatedUser>;
 }

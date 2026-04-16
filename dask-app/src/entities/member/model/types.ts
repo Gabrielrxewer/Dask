@@ -5,6 +5,7 @@ export interface Member {
   name: string;
   initials: string;
   color: string;
+  avatarUrl?: string | null;
   role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 }
 

@@ -2,7 +2,7 @@
 .shared-textarea {
   width: 100%;
   border: var(--control-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(243, 248, 255, 0.72) 100%);
+  background: var(--control-surface);
   border-radius: 16px;
   color: var(--text);
   box-shadow:
@@ -83,10 +83,7 @@
   padding: 8px;
   border: 1px solid rgba(176, 205, 228, 0.82);
   border-radius: 18px;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(44, 120, 230, 0.08) 0%, transparent 34%),
-    radial-gradient(circle at 88% 16%, rgba(125, 97, 238, 0.08) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
+  background: var(--surface-raised);
   box-shadow:
     0 26px 56px rgba(12, 42, 71, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.86) inset;
@@ -102,7 +99,7 @@
   border-radius: 12px;
   padding: 0 11px;
   background: transparent;
-  color: #224f73;
+  color: var(--text-soft);
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-sm);
@@ -114,14 +111,14 @@
 .shared-select__option:hover,
 .shared-select__option:focus-visible {
   border-color: rgba(174, 206, 230, 0.74);
-  background: linear-gradient(135deg, rgba(44, 120, 230, 0.08), rgba(48, 213, 205, 0.08));
-  color: #174f7e;
+  background: var(--state-hover);
+  color: var(--text-strong);
 }
 
 .shared-select__option--selected {
   border-color: rgba(146, 203, 255, 0.6);
-  background: linear-gradient(135deg, rgba(44, 120, 230, 0.12), rgba(125, 97, 238, 0.1), rgba(48, 213, 205, 0.1));
-  color: #103f67;
+  background: var(--state-active);
+  color: var(--text-strong);
   box-shadow: 0 10px 20px rgba(12, 42, 71, 0.06);
 }
 
@@ -142,14 +139,14 @@
 .shared-select__control:focus,
 .shared-textarea:focus {
   border-color: var(--control-border-strong);
-  background: #fcfeff;
+  background: var(--control-surface-active);
   box-shadow: var(--focus-strong);
 }
 
 .shared-select__control:hover,
 .shared-textarea:hover {
   border-color: rgba(153, 194, 225, 0.96);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 247, 255, 0.84) 100%);
+  background: var(--control-surface-hover);
   box-shadow:
     0 16px 30px rgba(12, 42, 71, 0.075),
     0 1px 0 rgba(255, 255, 255, 0.8) inset;

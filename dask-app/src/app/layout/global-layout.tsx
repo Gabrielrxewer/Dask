@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { buildWorkspaceSelectorPath, buildWorkspaceSettingsPath, routePaths } from "@/app/router/route-paths";
+import { buildWorkspaceSelectorPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { billingService, PLAN_DISPLAY, type BillingStatus } from "@/modules/billing";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
+import { ModalShell, Select, UserAvatar } from "@/shared/ui";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
@@ -17,6 +18,89 @@ const homeNavigationItems = [
 ];
 
 const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
+const userProfileStorageKey = "dask:user-profile-preferences";
+const maxProfileAvatarBytes = 2 * 1024 * 1024;
+const userProfileThemes = new Set(["light", "dark", "system"]);
+
+type UserProfileTheme = "light" | "dark" | "system";
+
+interface UserProfilePreferences {
+  autoSave: boolean;
+  density: string;
+  language: string;
+  notifications: boolean;
+  theme: string;
+}
+
+function normalizeUserProfileTheme(theme: unknown): UserProfileTheme {
+  return typeof theme === "string" && userProfileThemes.has(theme) ? (theme as UserProfileTheme) : "system";
+}
+
+function getSystemResolvedTheme(): "light" | "dark" {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "light";
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyUserProfileTheme(theme: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const normalizedTheme = normalizeUserProfileTheme(theme);
+  const resolvedTheme = normalizedTheme === "system" ? getSystemResolvedTheme() : normalizedTheme;
+  document.documentElement.dataset.theme = resolvedTheme;
+  document.documentElement.dataset.themePreference = normalizedTheme;
+  document.documentElement.style.colorScheme = resolvedTheme;
+}
+
+function getStoredUserProfilePreferences(): UserProfilePreferences | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawPreferences = window.localStorage.getItem(userProfileStorageKey);
+    if (!rawPreferences) {
+      return null;
+    }
+
+    const parsed = JSON.parse(rawPreferences) as Partial<UserProfilePreferences> | null;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    return {
+      autoSave: parsed.autoSave ?? true,
+      density: parsed.density ?? "comfortable",
+      language: parsed.language ?? "pt-BR",
+      notifications: parsed.notifications ?? true,
+      theme: normalizeUserProfileTheme(parsed.theme)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeUserProfilePreferences(preferences: UserProfilePreferences): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      userProfileStorageKey,
+      JSON.stringify({
+        ...preferences,
+        theme: normalizeUserProfileTheme(preferences.theme)
+      })
+    );
+  } catch {
+    // Preferencias locais nao bloqueiam a UI quando o storage indisponivel.
+  }
+}
 
 function getHomeSectionFromHash(hash: string): string {
   const sectionId = hash.replace("#", "");
@@ -61,6 +145,22 @@ function getUserInitials(nameOrEmail?: string): string {
   return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Nao foi possivel ler a imagem."));
+    };
+    reader.onerror = () => reject(new Error("Nao foi possivel ler a imagem."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function extractWorkspaceSlug(pathname: string): string | null {
   const matched = pathname.match(/^\/w\/([^/]+)/i);
   return matched?.[1] ?? null;
@@ -82,7 +182,7 @@ function formatBillingDate(value: string | null): string {
 export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, status } = useAuth();
+  const { user, status, updateUserAvatar } = useAuth();
   const { logout, isSubmitting } = useLogout();
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
@@ -95,12 +195,22 @@ export function GlobalLayout() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
   const [billingLoadState, setBillingLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [billingError, setBillingError] = useState<string | null>(null);
   const [isUpgradingToBusiness, setIsUpgradingToBusiness] = useState(false);
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
+  const [profileTheme, setProfileTheme] = useState(() => getStoredUserProfilePreferences()?.theme ?? "system");
+  const [profileLanguage, setProfileLanguage] = useState(() => getStoredUserProfilePreferences()?.language ?? "pt-BR");
+  const [profileDensity, setProfileDensity] = useState(() => getStoredUserProfilePreferences()?.density ?? "comfortable");
+  const [profileNotifications, setProfileNotifications] = useState(
+    () => getStoredUserProfilePreferences()?.notifications ?? true
+  );
+  const [profileAutoSave, setProfileAutoSave] = useState(() => getStoredUserProfilePreferences()?.autoSave ?? true);
+  const [profileAvatarState, setProfileAvatarState] = useState<"idle" | "saving" | "error">("idle");
+  const [profileAvatarError, setProfileAvatarError] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -112,6 +222,22 @@ export function GlobalLayout() {
     }
     setIsSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    applyUserProfileTheme(profileTheme);
+
+    if (normalizeUserProfileTheme(profileTheme) !== "system" || typeof window === "undefined") {
+      return;
+    }
+
+    const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemThemeChange = () => applyUserProfileTheme("system");
+    systemThemeQuery.addEventListener("change", handleSystemThemeChange);
+
+    return () => {
+      systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
+    };
+  }, [profileTheme]);
 
   useEffect(() => {
     if (!isHomeRoute) {
@@ -241,6 +367,20 @@ export function GlobalLayout() {
       });
   }, [isAuthenticated, isUserMenuOpen]);
 
+  useEffect(() => {
+    if (!profileAutoSave) {
+      return;
+    }
+
+    storeUserProfilePreferences({
+      autoSave: profileAutoSave,
+      density: profileDensity,
+      language: profileLanguage,
+      notifications: profileNotifications,
+      theme: profileTheme
+    });
+  }, [profileAutoSave, profileDensity, profileLanguage, profileNotifications, profileTheme]);
+
   const toggleNavigation = () => {
     if (isCompactViewport()) {
       setIsSidebarOpen(prev => !prev);
@@ -285,8 +425,12 @@ export function GlobalLayout() {
   const profileSubLabel = status === "authenticated" ? "Sessao ativa" : "Nao autenticado";
   const profileEmail = user?.email ?? "Sem e-mail";
   const profileInitials = getUserInitials(profileLabel);
+  const profileAvatarUrl = user?.avatarUrl ?? null;
+  const hasManualProfileAvatar = user?.avatarSource === "manual";
+  const hasProfileAvatar = Boolean(profileAvatarUrl);
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
   const activeWorkspaceSlug = extractWorkspaceSlug(location.pathname);
+  const currentWorkspaceLabel = activeWorkspaceSlug ? activeWorkspaceSlug.replace(/-/g, " ") : "Nenhum workspace ativo";
   const currentPlanLabel = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].name : "Sem plano";
   const currentPlanPrice = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].price : "--";
   const nextBillingDate = formatBillingDate(billingStatus?.currentPeriodEnd ?? null);
@@ -309,6 +453,47 @@ export function GlobalLayout() {
     } catch {
       setBillingError("Nao foi possivel iniciar upgrade agora.");
       setIsUpgradingToBusiness(false);
+    }
+  };
+
+  const saveUserProfilePreferences = () => {
+    storeUserProfilePreferences({
+      autoSave: profileAutoSave,
+      density: profileDensity,
+      language: profileLanguage,
+      notifications: profileNotifications,
+      theme: profileTheme
+    });
+    setIsUserProfileOpen(false);
+  };
+
+  const handleProfileAvatarUpload = async (file: File) => {
+    setProfileAvatarState("saving");
+    setProfileAvatarError(null);
+
+    try {
+      const manualAvatarDataUrl = await readFileAsDataUrl(file);
+      await updateUserAvatar({ manualAvatarDataUrl });
+      setProfileAvatarState("idle");
+    } catch (error) {
+      setProfileAvatarState("error");
+      setProfileAvatarError(error instanceof Error ? error.message : "Nao foi possivel salvar a foto.");
+    }
+  };
+
+  const handleProfileAvatarRemove = async () => {
+    setProfileAvatarState("saving");
+    setProfileAvatarError(null);
+
+    try {
+      await updateUserAvatar({
+        manualAvatarDataUrl: null,
+        removeProviderAvatar: user?.avatarSource === "provider"
+      });
+      setProfileAvatarState("idle");
+    } catch (error) {
+      setProfileAvatarState("error");
+      setProfileAvatarError(error instanceof Error ? error.message : "Nao foi possivel remover a foto.");
     }
   };
 
@@ -372,16 +557,26 @@ export function GlobalLayout() {
                   aria-expanded={isUserMenuOpen}
                   onClick={() => setIsUserMenuOpen(prev => !prev)}
                 >
-                  <span className="global-header__user-avatar" aria-hidden="true">
-                    <span className="global-header__user-avatar-icon" />
-                  </span>
+                  <UserAvatar
+                    alt={`Foto de ${profileLabel}`}
+                    imageUrl={profileAvatarUrl}
+                    initials={profileInitials}
+                    size="sm"
+                    className="global-header__user-avatar"
+                  />
                   <span className="global-header__user-name">{profileLabel}</span>
                 </button>
 
                 {isUserMenuOpen ? (
                   <div className="global-header__user-menu" role="menu" aria-label="Menu de perfil do usuario">
                     <header className="global-header__user-menu-head">
-                      <span className="global-header__user-menu-avatar">{profileInitials}</span>
+                      <UserAvatar
+                        alt={`Foto de ${profileLabel}`}
+                        imageUrl={profileAvatarUrl}
+                        initials={profileInitials}
+                        size="md"
+                        className="global-header__user-menu-avatar"
+                      />
                       <div>
                         <p>{profileLabel}</p>
                         <small>{profileEmail}</small>
@@ -431,11 +626,7 @@ export function GlobalLayout() {
                         type="button"
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          navigate(
-                            activeWorkspaceSlug
-                              ? buildWorkspaceSettingsPath(activeWorkspaceSlug)
-                              : routePaths.workspaceEntry
-                          );
+                          setIsUserProfileOpen(true);
                         }}
                       >
                         Abrir perfil do usuario
@@ -511,6 +702,175 @@ export function GlobalLayout() {
               Dask
             </span>
           </footer>
+
+          {isUserProfileOpen ? (
+            <ModalShell
+              titleId="user-profile-title"
+              className="user-profile-modal"
+              onClose={() => setIsUserProfileOpen(false)}
+            >
+              <header className="user-profile-modal__header">
+                <div className="user-profile-modal__identity">
+                  <UserAvatar
+                    alt={`Foto de ${profileLabel}`}
+                    imageUrl={profileAvatarUrl}
+                    initials={profileInitials}
+                    size="lg"
+                    editable
+                    canRemove={hasProfileAvatar || hasManualProfileAvatar}
+                    isLoading={profileAvatarState === "saving"}
+                    error={profileAvatarError}
+                    maxSizeBytes={maxProfileAvatarBytes}
+                    onUpload={handleProfileAvatarUpload}
+                    onRemove={handleProfileAvatarRemove}
+                    className="user-profile-modal__avatar"
+                  />
+                  <div className="user-profile-modal__identity-copy">
+                    <span className="user-profile-modal__eyebrow">Perfil do usuario</span>
+                    <h2 id="user-profile-title">{profileLabel}</h2>
+                    <p>{profileEmail}</p>
+                    <span className="user-profile-modal__plan-badge">{currentPlanLabel}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="user-profile-modal__close"
+                  aria-label="Fechar perfil do usuario"
+                  onClick={() => setIsUserProfileOpen(false)}
+                >
+                  x
+                </button>
+              </header>
+
+              <div className="user-profile-modal__body">
+                <section className="user-profile-modal__panel user-profile-modal__panel--summary">
+                  <div className="user-profile-modal__section-head">
+                    <span className="user-profile-modal__section-icon" aria-hidden="true">
+                      ID
+                    </span>
+                    <div>
+                      <span className="user-profile-modal__section-label">Conta</span>
+                      <p>Resumo de acesso, plano e workspace atual.</p>
+                    </div>
+                  </div>
+                  <div className="user-profile-modal__summary-grid">
+                    <div>
+                      <small>Plano</small>
+                      <strong>{currentPlanLabel}</strong>
+                    </div>
+                    <div>
+                      <small>Workspace atual</small>
+                      <strong>{currentWorkspaceLabel}</strong>
+                    </div>
+                    <div>
+                      <small>Status</small>
+                      <strong>{profileSubLabel}</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="user-profile-modal__panel">
+                  <div className="user-profile-modal__section-head">
+                    <span className="user-profile-modal__section-icon" aria-hidden="true">
+                      UI
+                    </span>
+                    <div>
+                      <span className="user-profile-modal__section-label">Aparencia</span>
+                      <p>Preferencias visuais aplicadas somente ao seu usuario.</p>
+                    </div>
+                  </div>
+                  <div className="user-profile-modal__option-grid" role="radiogroup" aria-label="Tema">
+                    {[
+                      { value: "light", label: "Claro", description: "Interface luminosa" },
+                      { value: "dark", label: "Escuro", description: "Menos brilho" },
+                      { value: "system", label: "Sistema", description: `Usar ${getSystemResolvedTheme() === "dark" ? "escuro" : "claro"} do dispositivo` }
+                    ].map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={cn(
+                          "user-profile-modal__choice",
+                          profileTheme === option.value && "user-profile-modal__choice--active"
+                        )}
+                        role="radio"
+                        aria-checked={profileTheme === option.value}
+                        onClick={() => setProfileTheme(option.value)}
+                      >
+                        <span className={cn("user-profile-modal__theme-preview", `user-profile-modal__theme-preview--${option.value}`)} aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                        </span>
+                        <span className="user-profile-modal__choice-copy">
+                          <span>{option.label}</span>
+                          <small>{option.description}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="user-profile-modal__panel">
+                  <div className="user-profile-modal__section-head">
+                    <span className="user-profile-modal__section-icon" aria-hidden="true">
+                      PX
+                    </span>
+                    <div>
+                      <span className="user-profile-modal__section-label">Preferencias gerais</span>
+                      <p>Idioma, densidade e comportamento padrao do sistema.</p>
+                    </div>
+                  </div>
+                  <label className="user-profile-modal__field">
+                    <span>Idioma</span>
+                    <Select value={profileLanguage} onChange={event => setProfileLanguage(event.target.value)}>
+                      <option value="pt-BR">Portugues (Brasil)</option>
+                      <option value="en-US">English (US)</option>
+                      <option value="es-ES">Espanol</option>
+                    </Select>
+                  </label>
+                  <label className="user-profile-modal__field">
+                    <span>Densidade da interface</span>
+                    <Select value={profileDensity} onChange={event => setProfileDensity(event.target.value)}>
+                      <option value="comfortable">Confortavel</option>
+                      <option value="compact">Compacta</option>
+                      <option value="spacious">Espacosa</option>
+                    </Select>
+                  </label>
+                  <label className="user-profile-modal__toggle">
+                    <span>
+                      <strong>Notificacoes do sistema</strong>
+                      <small>Receber avisos importantes do Dask.</small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={profileNotifications}
+                      onChange={event => setProfileNotifications(event.target.checked)}
+                    />
+                  </label>
+                  <label className="user-profile-modal__toggle">
+                    <span>
+                      <strong>Salvar preferencias automaticamente</strong>
+                      <small>Manter ajustes pessoais sincronizados quando disponivel.</small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={profileAutoSave}
+                      onChange={event => setProfileAutoSave(event.target.checked)}
+                    />
+                  </label>
+                </section>
+              </div>
+
+              <footer className="user-profile-modal__footer">
+                <button type="button" className="user-profile-modal__secondary" onClick={() => setIsUserProfileOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="button" className="user-profile-modal__primary" onClick={saveUserProfilePreferences}>
+                  Salvar preferencias
+                </button>
+              </footer>
+            </ModalShell>
+          ) : null}
         </div>
       </div>
     </GlobalChromeProvider>

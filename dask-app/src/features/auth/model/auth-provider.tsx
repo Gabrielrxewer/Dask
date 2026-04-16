@@ -12,6 +12,8 @@ import { setHttpAuthBridge } from "@/shared/api/http-client";
 import { createAuthStore, type AuthStore } from "@/features/auth/model/auth-store";
 import { useAuthBootstrap } from "@/features/auth/model/use-auth-bootstrap";
 import type { LoginInput, RegisterInput } from "@/features/auth/api/types";
+import type { UpdateUserAvatarInput } from "@/features/auth/api/types";
+import type { AuthenticatedUser } from "@/entities/user";
 import type { AuthSnapshot } from "@/features/auth/model/types";
 
 interface AuthContextValue extends AuthSnapshot {
@@ -22,6 +24,7 @@ interface AuthContextValue extends AuthSnapshot {
   logoutAll: () => Promise<void>;
   refresh: () => Promise<string | null>;
   clearSessionNotice: () => void;
+  updateUserAvatar: (input: UpdateUserAvatarInput) => Promise<AuthenticatedUser>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -68,6 +71,7 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
   const logoutAll = useCallback(() => store.logoutAll(), [store]);
   const refresh = useCallback(() => store.refreshAccessToken(), [store]);
   const clearSessionNotice = useCallback(() => store.clearSessionNotice(), [store]);
+  const updateUserAvatar = useCallback((input: UpdateUserAvatarInput) => store.updateUserAvatar(input), [store]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -78,9 +82,10 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
       logout,
       logoutAll,
       refresh,
-      clearSessionNotice
+      clearSessionNotice,
+      updateUserAvatar
     }),
-    [snapshot, bootstrap, login, register, logout, logoutAll, refresh, clearSessionNotice]
+    [snapshot, bootstrap, login, register, logout, logoutAll, refresh, clearSessionNotice, updateUserAvatar]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

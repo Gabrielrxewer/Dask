@@ -15,6 +15,7 @@ export { Tabs } from "@/shared/ui/tabs";
 export { LoadingState } from "@/shared/ui/loading-state";
 export { PageHeader } from "@/shared/ui/page-header";
 export { FilterBar } from "@/shared/ui/filter-bar";
+export { UserAvatar } from "@/shared/ui/user-avatar";
 export {
   DataTable,
   DataTableHeader,

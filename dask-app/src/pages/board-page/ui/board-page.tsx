@@ -337,7 +337,7 @@ export function BoardPage() {
   const boardSubtitle =
     activeBoardTasks.length === 0 && filter.query.trim().length > 0
       ? "Nenhum item encontrado para essa busca."
-      : activePerspective?.caption ?? "Acompanhe o andamento das entregas em colunas.";
+      : "Controle das atividades com uma visao clara da fila de atendimento.";
 
   const topNavigation = (
     <section className="board-top-nav" aria-label="Navegacao de perspectivas">
@@ -362,7 +362,7 @@ export function BoardPage() {
         <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
 
         <Section
-          title={activePerspective ? `Quadro ${activePerspective.label}` : "Quadro"}
+          title="Board"
           subtitle={boardSubtitle}
           actions={
             <div className="board-view__section-actions">

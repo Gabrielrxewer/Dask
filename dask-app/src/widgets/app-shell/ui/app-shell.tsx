@@ -19,7 +19,7 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "automation" | "settings";
+type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "automation" | "settings";
 type SidebarTone = "blue" | "mint" | "amber" | "rose" | "violet" | "slate";
 
 interface AppShellProps {
@@ -89,6 +89,20 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     );
   }
 
+  if (name === "agenda") {
+    return (
+      <svg {...commonProps}>
+        <rect x="4" y="5.5" width="16" height="14" rx="3" />
+        <path d="M8 4v3" />
+        <path d="M16 4v3" />
+        <path d="M4 9.5h16" />
+        <path d="M8 13h3" />
+        <path d="M13.5 13h2.5" />
+        <path d="M8 16h3" />
+      </svg>
+    );
+  }
+
   if (name === "automation") {
     return (
       <svg {...commonProps}>
@@ -143,7 +157,7 @@ export function AppShell({
         { to: buildWorkspaceBoardPath(workspaceSlug), label: "Board", icon: "board" as const, tone: "blue" as const },
         { to: buildWorkspaceListPath(workspaceSlug), label: "List", icon: "list" as const, tone: "mint" as const },
         { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline", icon: "timeline" as const, tone: "amber" as const },
-        { to: buildWorkspaceAgendaPath(workspaceSlug), label: "Agenda", icon: "timeline" as const, tone: "amber" as const }
+        { to: buildWorkspaceAgendaPath(workspaceSlug), label: "Agenda", icon: "agenda" as const, tone: "violet" as const }
       ]
     },
     {

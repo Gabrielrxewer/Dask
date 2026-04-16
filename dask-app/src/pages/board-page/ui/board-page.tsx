@@ -82,6 +82,7 @@ export function BoardPage() {
     isLoading,
     createTask,
     moveTask,
+    moveTaskToColumn,
     updateTaskPriority,
     updateTaskTitle,
     updateTaskDescription,
@@ -298,11 +299,8 @@ export function BoardPage() {
   const handleMoveTask = (taskId: string, statusId: TaskStatusId) => {
     if (useBoardColumnsProjection && apiBoardCols.length > 0) {
       const col = apiBoardCols.find(c => c.id === statusId);
-      if (col && col.stateIds.length > 0) {
-        const firstState = apiWorkflowStates.find(s => s.id === col.stateIds[0]);
-        if (firstState) {
-          return moveTask(taskId, firstState.slug);
-        }
+      if (col) {
+        return moveTaskToColumn(taskId, col.id, col.stateIds[0]);
       }
     }
 

@@ -109,7 +109,7 @@ export function BoardColumns({
 
   const handleDrop = (event: DragEvent<HTMLElement>, statusId: TaskStatusId) => {
     event.preventDefault();
-    const taskId = getTaskDragPayload(event);
+    const taskId = getTaskDragPayload(event) || draggingTaskId;
     if (taskId) {
       onMoveTask(taskId, statusId);
     }
@@ -132,6 +132,7 @@ export function BoardColumns({
               key={status.id}
               onDragOver={event => {
                 event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
                 setDropTargetStatus(status.id);
               }}
               onDragLeave={() => {

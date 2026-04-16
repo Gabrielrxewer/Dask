@@ -6,6 +6,7 @@ export const TASK_DRAG_KEY = "application/x-dask-task-id";
 export function setTaskDragPayload(event: DragEvent<HTMLElement>, taskId: string): void {
   event.dataTransfer.effectAllowed = "move";
   event.dataTransfer.setData(TASK_DRAG_KEY, taskId);
+  event.dataTransfer.setData("text/plain", taskId);
 
   const source = event.currentTarget;
   const rect = source.getBoundingClientRect();
@@ -32,7 +33,7 @@ export function setTaskDragPayload(event: DragEvent<HTMLElement>, taskId: string
 }
 
 export function getTaskDragPayload(event: DragEvent<HTMLElement>): string {
-  return event.dataTransfer.getData(TASK_DRAG_KEY) || "";
+  return event.dataTransfer.getData(TASK_DRAG_KEY) || event.dataTransfer.getData("text/plain") || "";
 }
 
 export function moveTaskToStatus(

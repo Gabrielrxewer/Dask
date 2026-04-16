@@ -322,6 +322,12 @@ export interface WorkspaceService {
   getSnapshot: (workspaceSlug: string) => Promise<WorkspaceSnapshot>;
   createTask: (workspaceSlug: string, input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
   moveTask: (workspaceSlug: string, taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
+  moveTaskToColumn: (
+    workspaceSlug: string,
+    taskId: string,
+    columnId: string,
+    stateId?: string
+  ) => Promise<WorkspaceSnapshot>;
   updateTaskPriority: (
     workspaceSlug: string,
     taskId: string,

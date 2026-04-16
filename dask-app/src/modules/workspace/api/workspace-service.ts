@@ -255,6 +255,19 @@ export const workspaceService: WorkspaceService = {
     return fetchSnapshot(workspaceSlug);
   },
 
+  async moveTaskToColumn(workspaceSlug, taskId, columnId, stateId) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/work-items/${taskId}/move`, {
+      columnId,
+      ...(stateId ? { stateId } : {})
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
   async updateTaskPriority(workspaceSlug, taskId, priority) {
     return patchWorkItem(workspaceSlug, taskId, {
       metadata: { priority }

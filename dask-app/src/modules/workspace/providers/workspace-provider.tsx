@@ -33,6 +33,7 @@ interface WorkspaceContextValue {
   isLoading: boolean;
   createTask: (input: CreateTaskInput) => Promise<void>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<void>;
+  moveTaskToColumn: (taskId: string, columnId: string, stateId?: string) => Promise<void>;
   updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<void>;
   updateTaskTitle: (taskId: string, title: string) => Promise<void>;
   updateTaskDescription: (taskId: string, description: string) => Promise<void>;
@@ -140,6 +141,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
 
     const nextSnapshot = await workspaceService.moveTask(workspaceSlug, taskId, nextStatus);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const moveTaskToColumn = useCallback(async (taskId: string, columnId: string, stateId?: string) => {
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.moveTaskToColumn(workspaceSlug, taskId, columnId, stateId);
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
@@ -449,6 +459,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       isLoading,
       createTask,
       moveTask,
+      moveTaskToColumn,
       updateTaskPriority,
       updateTaskTitle,
       updateTaskDescription,
@@ -491,6 +502,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       isLoading,
       createTask,
       moveTask,
+      moveTaskToColumn,
       updateTaskPriority,
       updateTaskTitle,
       updateTaskDescription,

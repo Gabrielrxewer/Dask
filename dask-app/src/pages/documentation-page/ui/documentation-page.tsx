@@ -516,7 +516,16 @@ export function DocumentationPage() {
 
           <div ref={messagesRef} className="documentation-page__messages">
             {activeMessages.length === 0 ? (
-              <p className="documentation-page__messages-empty">Este chat ainda nao tem historico para esta doc.</p>
+              <div className="documentation-page__messages-empty-state">
+                <div className="documentation-page__messages-empty-avatar" aria-hidden="true">
+                  AI
+                </div>
+                <h3>Vamos comecar esta doc?</h3>
+                <p>
+                  Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu atualizo o conteudo da
+                  doc automaticamente.
+                </p>
+              </div>
             ) : (
               activeMessages.map((message) => (
                 <article
@@ -564,7 +573,7 @@ export function DocumentationPage() {
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={handlePromptKeyDown}
-                placeholder="Digite livremente. Ex.: Reescreva esta doc deixando mais objetiva."
+                placeholder="Converse com a IA sobre esta doc. Ex.: Reescreva de forma mais objetiva."
                 className="documentation-page__composer-input"
               />
               <button
@@ -575,14 +584,8 @@ export function DocumentationPage() {
                 onClick={() => void handleRunAssistant()}
               >
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M12 5v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  <path
-                    d="m7.5 9 4.5-4 4.5 4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                  <path d="M5 19 19 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M9 5h10v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>

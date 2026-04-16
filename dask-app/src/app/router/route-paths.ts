@@ -9,6 +9,7 @@ export const routePaths = {
   subscriptionBlocked: "/subscription-blocked",
   admin: "/admin",
   workspaceEntry: "/w",
+  workspaceSelector: "/w/select",
   noWorkspace: "/w/no-workspace",
   workspaceBase: "/w/:workspaceSlug",
   board: "/w/:workspaceSlug/board",
@@ -35,6 +36,10 @@ export function buildWorkspacePath(workspaceSlug: string, path: string): string 
 
 export function buildWorkspaceBoardPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/board");
+}
+
+export function buildWorkspaceSelectorPath(): string {
+  return routePaths.workspaceSelector;
 }
 
 export function buildWorkspaceListPath(workspaceSlug: string): string {

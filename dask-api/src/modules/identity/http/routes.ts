@@ -19,6 +19,7 @@ import { createRateLimiter } from '@/core/http/rate-limit-middleware';
 import { env } from '@/core/config/env';
 import type { AuthService, RequestContext } from '@/modules/identity/application/auth-service';
 import type { OrganizationService } from '@/modules/identity/application/organization-service';
+import type { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import {
   confirmPasswordResetDto,
   createOrganizationDto,
@@ -307,14 +308,14 @@ function getClearOauthCookieOptions(): CookieOptions {
   };
 }
 
-function oauthCookieName(provider: OAuthProvider, key: 'state' | 'nonce' | 'pkce' | 'return'): string {
+function oauthCookieName(provider: OAuthProvider, key: 'state' | 'nonce' | 'pkce' | 'return' | 'invite'): string {
   return `dask-oauth-${provider}-${key}`;
 }
 
 function setOauthFlowCookies(
   res: Response,
   provider: OAuthProvider,
-  values: { state: string; nonce: string; pkceVerifier: string; returnOrigin?: string }
+  values: { state: string; nonce: string; pkceVerifier: string; returnOrigin?: string; inviteToken?: string }
 ): void {
   const options = getOauthCookieOptions();
   res.cookie(oauthCookieName(provider, 'state'), values.state, options);
@@ -322,6 +323,9 @@ function setOauthFlowCookies(
   res.cookie(oauthCookieName(provider, 'pkce'), values.pkceVerifier, options);
   if (values.returnOrigin) {
     res.cookie(oauthCookieName(provider, 'return'), values.returnOrigin, options);
+  }
+  if (values.inviteToken) {
+    res.cookie(oauthCookieName(provider, 'invite'), values.inviteToken, options);
   }
 }
 
@@ -331,6 +335,7 @@ function clearOauthFlowCookies(res: Response, provider: OAuthProvider): void {
   res.clearCookie(oauthCookieName(provider, 'nonce'), clearOptions);
   res.clearCookie(oauthCookieName(provider, 'pkce'), clearOptions);
   res.clearCookie(oauthCookieName(provider, 'return'), clearOptions);
+  res.clearCookie(oauthCookieName(provider, 'invite'), clearOptions);
 }
 
 function assertRedirectUriPathMatchesExpected(value: string | undefined, expectedPath: string, providerLabel: string): string {
@@ -681,6 +686,7 @@ async function fetchMicrosoftUserProfile(accessToken: string): Promise<{
 export const buildIdentityRoutes = (deps: {
   authService: AuthService;
   organizationService: OrganizationService;
+  workspaceInvitesService: WorkspaceInvitesService;
   allowedOrigins: string[];
 }): Router => {
   const router = Router();
@@ -726,6 +732,24 @@ export const buildIdentityRoutes = (deps: {
   );
 
   router.get(
+    '/auth/workspace-invite/:token',
+    asyncHandler(async (req, res) => {
+      const token = req.params.token;
+      if (!token || typeof token !== 'string') {
+        throw new AppError('Missing invite token.', 400);
+      }
+
+      const invite = await deps.workspaceInvitesService.getInviteByToken(token);
+      if (!invite) {
+        res.status(404).json({ message: 'Invite not found.' });
+        return;
+      }
+
+      res.status(200).json(invite);
+    })
+  );
+
+  router.get(
     '/auth/google',
     asyncHandler(async (req, res) => {
       const state = randomBase64Url(32);
@@ -734,12 +758,13 @@ export const buildIdentityRoutes = (deps: {
       const codeChallenge = sha256Base64Url(pkceVerifier);
       const redirectOriginFromQuery =
         typeof req.query.redirect_origin === 'string' ? req.query.redirect_origin : undefined;
+      const inviteTokenFromQuery = typeof req.query.invite === 'string' ? req.query.invite : undefined;
       const returnOrigin =
         resolveAllowedOrigin(redirectOriginFromQuery, deps.allowedOrigins) ??
         resolveAllowedOrigin(req.headers.origin as string | undefined, deps.allowedOrigins) ??
         resolveAllowedOrigin(req.headers.referer as string | undefined, deps.allowedOrigins);
 
-      setOauthFlowCookies(res, 'google', { state, nonce, pkceVerifier, returnOrigin });
+      setOauthFlowCookies(res, 'google', { state, nonce, pkceVerifier, returnOrigin, inviteToken: inviteTokenFromQuery });
       res.redirect(302, buildGoogleAuthorizeUrl({ state, nonce, codeChallenge }));
     })
   );
@@ -777,6 +802,7 @@ export const buildIdentityRoutes = (deps: {
         const expectedState = req.cookies?.[oauthCookieName('google', 'state')] as string | undefined;
         const expectedNonce = req.cookies?.[oauthCookieName('google', 'nonce')] as string | undefined;
         const pkceVerifier = req.cookies?.[oauthCookieName('google', 'pkce')] as string | undefined;
+        const inviteToken = req.cookies?.[oauthCookieName('google', 'invite')] as string | undefined;
 
         clearOauthFlowCookies(res, 'google');
 
@@ -799,7 +825,8 @@ export const buildIdentityRoutes = (deps: {
               providerSubject: profile.subject,
               email: profile.email,
               name: profile.name,
-              emailVerified: profile.emailVerified
+              emailVerified: profile.emailVerified,
+              inviteToken
             },
             extractContext(req)
           );
@@ -833,12 +860,13 @@ export const buildIdentityRoutes = (deps: {
       const codeChallenge = sha256Base64Url(pkceVerifier);
       const redirectOriginFromQuery =
         typeof req.query.redirect_origin === 'string' ? req.query.redirect_origin : undefined;
+      const inviteTokenFromQuery = typeof req.query.invite === 'string' ? req.query.invite : undefined;
       const returnOrigin =
         resolveAllowedOrigin(redirectOriginFromQuery, deps.allowedOrigins) ??
         resolveAllowedOrigin(req.headers.origin as string | undefined, deps.allowedOrigins) ??
         resolveAllowedOrigin(req.headers.referer as string | undefined, deps.allowedOrigins);
 
-      setOauthFlowCookies(res, 'microsoft', { state, nonce, pkceVerifier, returnOrigin });
+      setOauthFlowCookies(res, 'microsoft', { state, nonce, pkceVerifier, returnOrigin, inviteToken: inviteTokenFromQuery });
       res.redirect(302, buildMicrosoftAuthorizeUrl({ state, nonce, codeChallenge }));
     })
   );
@@ -876,6 +904,7 @@ export const buildIdentityRoutes = (deps: {
         const expectedState = req.cookies?.[oauthCookieName('microsoft', 'state')] as string | undefined;
         const expectedNonce = req.cookies?.[oauthCookieName('microsoft', 'nonce')] as string | undefined;
         const pkceVerifier = req.cookies?.[oauthCookieName('microsoft', 'pkce')] as string | undefined;
+        const inviteToken = req.cookies?.[oauthCookieName('microsoft', 'invite')] as string | undefined;
 
         clearOauthFlowCookies(res, 'microsoft');
 
@@ -898,7 +927,8 @@ export const buildIdentityRoutes = (deps: {
               providerSubject: profile.subject,
               email: profile.email,
               name: profile.name,
-              providerTenantId: profile.tenantId
+              providerTenantId: profile.tenantId,
+              inviteToken
             },
             extractContext(req)
           );

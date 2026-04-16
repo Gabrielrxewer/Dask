@@ -70,6 +70,13 @@
   color: #6d86a1;
 }
 
+.members-settings__row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .members-settings__role-editor {
   display: grid;
   gap: 8px;

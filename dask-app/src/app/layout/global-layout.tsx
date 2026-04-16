@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { buildWorkspaceSettingsPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
+import { billingService, PLAN_DISPLAY, type BillingStatus } from "@/modules/billing";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
@@ -65,6 +66,19 @@ function extractWorkspaceSlug(pathname: string): string | null {
   return matched?.[1] ?? null;
 }
 
+function formatBillingDate(value: string | null): string {
+  if (!value) {
+    return "Nao disponivel";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Nao disponivel";
+  }
+
+  return date.toLocaleDateString("pt-BR");
+}
+
 export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -81,6 +95,10 @@ export function GlobalLayout() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
+  const [billingLoadState, setBillingLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [isUpgradingToBusiness, setIsUpgradingToBusiness] = useState(false);
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
   const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -197,6 +215,32 @@ export function GlobalLayout() {
     };
   }, [isUserMenuOpen]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setBillingStatus(null);
+      setBillingLoadState("idle");
+      setBillingError(null);
+      return;
+    }
+
+    if (!isUserMenuOpen) {
+      return;
+    }
+
+    setBillingLoadState("loading");
+    setBillingError(null);
+    billingService
+      .getStatus()
+      .then((statusResponse) => {
+        setBillingStatus(statusResponse);
+        setBillingLoadState("loaded");
+      })
+      .catch(() => {
+        setBillingLoadState("error");
+        setBillingError("Nao foi possivel carregar os dados de assinatura.");
+      });
+  }, [isAuthenticated, isUserMenuOpen]);
+
   const toggleNavigation = () => {
     if (isCompactViewport()) {
       setIsSidebarOpen(prev => !prev);
@@ -243,10 +287,29 @@ export function GlobalLayout() {
   const profileInitials = getUserInitials(profileLabel);
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
   const activeWorkspaceSlug = extractWorkspaceSlug(location.pathname);
+  const currentPlanLabel = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].name : "Sem plano";
+  const currentPlanPrice = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].price : "--";
+  const nextBillingDate = formatBillingDate(billingStatus?.currentPeriodEnd ?? null);
+  const canUpgradeToBusiness = billingStatus?.plan !== "BUSINESS";
   const chromeValue = {
     isSidebarOpen,
     toggleNavigation,
     closeNavigation
+  };
+
+  const handleUpgradeToBusiness = async () => {
+    if (isUpgradingToBusiness) {
+      return;
+    }
+
+    setIsUpgradingToBusiness(true);
+    try {
+      const { url } = await billingService.createCheckoutSession("BUSINESS");
+      window.location.href = url;
+    } catch {
+      setBillingError("Nao foi possivel iniciar upgrade agora.");
+      setIsUpgradingToBusiness(false);
+    }
   };
 
   return (
@@ -324,6 +387,44 @@ export function GlobalLayout() {
                         <small>{profileEmail}</small>
                       </div>
                     </header>
+
+                    <section className="global-header__billing-card" aria-label="Plano atual">
+                      <div className="global-header__billing-copy">
+                        <span>Plano atual</span>
+                        <strong>{currentPlanLabel}</strong>
+                        <small>{currentPlanPrice}/mes</small>
+                      </div>
+                      <div className="global-header__billing-metadata">
+                        {billingLoadState === "loading" ? <p>Carregando assinatura...</p> : null}
+                        {billingLoadState === "error" && billingError ? <p>{billingError}</p> : null}
+                        {billingLoadState === "loaded" ? (
+                          <>
+                            <p>Proxima cobranca: {nextBillingDate}</p>
+                            <p>Status: {billingStatus?.status ?? "Nao definido"}</p>
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="global-header__billing-actions">
+                        {canUpgradeToBusiness ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleUpgradeToBusiness()}
+                            disabled={isUpgradingToBusiness || billingLoadState === "loading"}
+                          >
+                            {isUpgradingToBusiness ? "Abrindo checkout..." : "Fazer upgrade para Business"}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            navigate(routePaths.choosePlan);
+                          }}
+                        >
+                          Gerenciar plano
+                        </button>
+                      </div>
+                    </section>
 
                     <nav className="global-header__user-menu-actions" aria-label="Acoes do perfil">
                       <button

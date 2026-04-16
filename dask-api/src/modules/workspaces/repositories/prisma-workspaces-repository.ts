@@ -24,6 +24,45 @@ import type {
 export class PrismaWorkspacesRepository implements WorkspacesRepository {
   public constructor(private readonly prisma: PrismaClient) {}
 
+  public findWorkspaceById(workspaceId: string): Promise<Workspace | null> {
+    return this.prisma.workspace.findUnique({
+      where: { id: workspaceId }
+    });
+  }
+
+  public updateWorkspace(input: {
+    workspaceId: string;
+    name?: string;
+    key?: string;
+    config?: Record<string, unknown>;
+  }, db?: Prisma.TransactionClient): Promise<Workspace> {
+    const execute = async (tx: Prisma.TransactionClient): Promise<Workspace> => {
+      const workspace = await tx.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { id: true }
+      });
+
+      if (!workspace) {
+        throw new AppError('Workspace not found', 404);
+      }
+
+      return tx.workspace.update({
+        where: { id: input.workspaceId },
+        data: {
+          name: input.name,
+          key: input.key,
+          config: input.config as Prisma.InputJsonValue | undefined
+        }
+      });
+    };
+
+    if (db) {
+      return execute(db);
+    }
+
+    return this.prisma.$transaction(execute);
+  }
+
   public createWorkspace(input: {
     organizationId?: string;
     kind: WorkspaceKind;
@@ -217,6 +256,25 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
       createdAt: membership.workspace.createdAt,
       updatedAt: membership.workspace.updatedAt
     }));
+  }
+
+  public async getUserSubscriptionAccess(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        hasActiveSubscription: true,
+        subscriptionPlan: true
+      }
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      hasActiveSubscription: user.hasActiveSubscription,
+      subscriptionPlan: user.subscriptionPlan as 'PERSONAL' | 'BUSINESS' | null
+    };
   }
 
   public async getOrganizationRoleForUser(

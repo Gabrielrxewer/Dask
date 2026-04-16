@@ -20,6 +20,9 @@ import type {
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
   WorkspacePreferences,
+  WorkspaceProfile,
+  WorkspaceInvite,
+  PublicWorkspaceInvite,
   WorkspacePermissionKey,
   WorkspaceAccessControlSnapshot,
   WorkspaceService,
@@ -598,6 +601,71 @@ export const workspaceService: WorkspaceService = {
   async getAccessControl(workspaceSlug: string): Promise<WorkspaceAccessControlSnapshot> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.get<WorkspaceAccessControlSnapshot>(`/workspaces/${workspaceId}/access-control`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listWorkspaceInvites(workspaceSlug: string): Promise<WorkspaceInvite[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkspaceInvite[]>(`/workspaces/${workspaceId}/invites`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createWorkspaceInvite(
+    workspaceSlug: string,
+    input: { email: string; role: "ADMIN" | "MEMBER" | "VIEWER" }
+  ): Promise<WorkspaceInvite> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkspaceInvite>(`/workspaces/${workspaceId}/invites`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async resendWorkspaceInvite(workspaceSlug: string, inviteId: string): Promise<WorkspaceInvite> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkspaceInvite>(`/workspaces/${workspaceId}/invites/${inviteId}/resend`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async revokeWorkspaceInvite(workspaceSlug: string, inviteId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/invites/${inviteId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async getWorkspaceInviteByToken(token: string): Promise<PublicWorkspaceInvite> {
+    return apiClient.get<PublicWorkspaceInvite>(`/auth/workspace-invite/${encodeURIComponent(token)}`, {
+      authMode: "none",
+      retryOnUnauthorized: false
+    });
+  },
+
+  async getWorkspaceProfile(workspaceSlug: string): Promise<WorkspaceProfile> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkspaceProfile>(`/workspaces/${workspaceId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateWorkspaceProfile(
+    workspaceSlug: string,
+    patch: {
+      name?: string;
+      key?: string;
+      info?: { description?: string; company?: string; website?: string };
+    }
+  ): Promise<WorkspaceProfile> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<WorkspaceProfile>(`/workspaces/${workspaceId}`, patch, {
       authMode: "required",
       retryOnUnauthorized: true
     });

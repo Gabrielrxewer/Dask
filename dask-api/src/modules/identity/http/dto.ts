@@ -14,6 +14,7 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '@/modules/identity/dom
 export const registerDto = z.object({
   email: z.string().email(),
   name: z.string().min(2).max(100).trim(),
+  inviteToken: z.string().min(1).optional(),
   password: z
     .string()
     .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`)
@@ -22,6 +23,7 @@ export const registerDto = z.object({
 
 export const loginDto = z.object({
   email: z.string().email(),
+  inviteToken: z.string().min(1).optional(),
   // Do not enforce register-time password constraints at login.
   password: z.string().min(1)
 });

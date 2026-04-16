@@ -8,9 +8,11 @@ import {
 } from '@/core/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import type { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import type { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import {
   boardColumnParamsDto,
+  createWorkspaceInviteDto,
   createBoardColumnDto,
   createCustomFieldDto,
   createItemTypeDto,
@@ -35,6 +37,7 @@ import {
   transitionWorkItemDto,
   workflowStateParamsDto,
   workspaceMemberAccessParamsDto,
+  workspaceInviteParamsDto,
   workItemParamsDto,
   workItemTagParamsDto,
   workspaceIdParamsDto,
@@ -47,6 +50,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   authorizationService: AuthorizationService;
   workspaceConfigService: WorkspaceConfigService;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
+  workspaceInvitesService: WorkspaceInvitesService;
 }): Router => {
   const router = Router();
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
@@ -189,6 +193,56 @@ export const buildWorkspacePlatformRoutes = (deps: {
       });
 
       res.status(200).json(updated);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/invites',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const invites = await deps.workspaceInvitesService.listWorkspaceInvites({ workspaceId });
+      res.status(200).json(invites);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/invites',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = createWorkspaceInviteDto.parse(req.body);
+      const invite = await deps.workspaceInvitesService.createOrResendInvite({
+        workspaceId,
+        email: payload.email,
+        role: payload.role,
+        invitedByUserId: req.auth!.userId
+      });
+      res.status(201).json(invite);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/invites/:inviteId/resend',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, inviteId } = workspaceInviteParamsDto.parse(req.params);
+      const invite = await deps.workspaceInvitesService.resendInvite({
+        workspaceId,
+        inviteId,
+        requestedByUserId: req.auth!.userId
+      });
+      res.status(200).json(invite);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/invites/:inviteId',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, inviteId } = workspaceInviteParamsDto.parse(req.params);
+      await deps.workspaceInvitesService.revokeInvite({ workspaceId, inviteId });
+      res.status(204).send();
     })
   );
 

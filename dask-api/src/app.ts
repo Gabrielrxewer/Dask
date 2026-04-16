@@ -168,6 +168,7 @@ export const createApp = (): Express => {
     auditService,
     workspaceConfigService,
     workspaceWorkItemsService,
+    workspaceInvitesService,
     billingService
   } = buildAppContainer();
   const requireSubscription = createSubscriptionMiddleware(prisma);
@@ -227,7 +228,7 @@ export const createApp = (): Express => {
 
   app.use(
     env.API_PREFIX,
-    buildIdentityRoutes({ authService, organizationService, allowedOrigins })
+    buildIdentityRoutes({ authService, organizationService, workspaceInvitesService, allowedOrigins })
   );
   app.use(
     env.API_PREFIX,
@@ -292,7 +293,8 @@ export const createApp = (): Express => {
       prisma,
       authorizationService: roleAuthorizationService,
       workspaceConfigService,
-      workspaceWorkItemsService
+      workspaceWorkItemsService,
+      workspaceInvitesService
     })
   );
 

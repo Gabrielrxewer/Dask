@@ -95,3 +95,32 @@ export function emailVerificationTemplate(name: string, verifyUrl: string): { ht
 
   return { html, text };
 }
+
+export function workspaceInviteTemplate(input: {
+  workspaceName: string;
+  inviterName: string;
+  inviteUrl: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+}): { html: string; text: string } {
+  const inviterFirstName = input.inviterName.split(' ')[0];
+
+  const html = baseLayout(
+    'Convite para workspace â€” Dask',
+    `<p class="greeting">Voce recebeu um convite no Dask.</p>
+    <p class="text"><strong>${input.inviterName}</strong> convidou voce para entrar no workspace <strong>${input.workspaceName}</strong> com role inicial <strong>${input.role}</strong>.</p>
+    <div class="btn-wrap">
+      <a href="${input.inviteUrl}" class="btn">Aceitar convite</a>
+    </div>
+    <p class="text">Ao abrir o link, voce pode criar conta ou entrar. Se o e-mail da conta for este e-mail convidado, o acesso ao workspace sera liberado automaticamente.</p>
+    <hr class="divider" />
+    <p class="fallback">Se o botao nao funcionar, copie e cole este link no navegador:<br /><a href="${input.inviteUrl}">${input.inviteUrl}</a></p>`
+  );
+
+  const text =
+    `Voce recebeu um convite no Dask.\n\n` +
+    `${inviterFirstName} convidou voce para entrar no workspace ${input.workspaceName} com role inicial ${input.role}.\n\n` +
+    `Abra este link para aceitar:\n${input.inviteUrl}\n\n` +
+    `Ao entrar ou criar conta com este e-mail convidado, o acesso ao workspace sera liberado automaticamente.`;
+
+  return { html, text };
+}

@@ -3,12 +3,14 @@ import type { AuthenticatedUser } from "@/entities/user";
 export interface LoginInput {
   email: string;
   password: string;
+  inviteToken?: string;
 }
 
 export interface RegisterInput {
   email: string;
   name: string;
   password: string;
+  inviteToken?: string;
 }
 
 export interface RefreshInput {

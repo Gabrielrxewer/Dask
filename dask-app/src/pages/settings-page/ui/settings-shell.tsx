@@ -17,37 +17,31 @@ import "./settings-shell.css";
 
 const NAV_ITEMS = [
   {
-    step: "1",
     label: "Comece aqui",
     description: "Resumo, template e preferencias",
     buildPath: buildWorkspaceSettingsPath
   },
   {
-    step: "2",
     label: "Perspectivas",
     description: "Visoes para cada equipe ou rotina",
     buildPath: buildWorkspaceSettingsPerspectivesPath
   },
   {
-    step: "3",
     label: "Estados",
     description: "Etapas reais do fluxo de trabalho",
     buildPath: buildWorkspaceSettingsWorkflowStatesPath
   },
   {
-    step: "4",
     label: "Colunas",
     description: "Como os estados aparecem no board",
     buildPath: buildWorkspaceSettingsColumnsPath
   },
   {
-    step: "5",
     label: "Work items",
     description: "Tipos, campos e preview do card",
     buildPath: buildWorkspaceSettingsItemTypesPath
   },
   {
-    step: "6",
     label: "Campos",
     description: "Informacoes extras dos work items",
     buildPath: buildWorkspaceSettingsCustomFieldsPath
@@ -118,7 +112,7 @@ export function SettingsShell() {
           </div>
 
           <ul className="settings-shell__nav-list">
-            {navItems.map(item => (
+            {navItems.map((item, index) => (
               <li key={item.label}>
                 <NavLink
                   to={item.buildPath(workspaceSlug)}
@@ -127,7 +121,7 @@ export function SettingsShell() {
                     `settings-shell__nav-link${isActive ? " is-active" : ""}`
                   }
                 >
-                  <span className="settings-shell__nav-step">{item.step}</span>
+                  <span className="settings-shell__nav-step">{String(index + 1)}</span>
                   <span className="settings-shell__nav-copy">
                     <span className="settings-shell__nav-link-label">{item.label}</span>
                     <span className="settings-shell__nav-link-desc">{item.description}</span>

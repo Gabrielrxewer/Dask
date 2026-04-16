@@ -1,4 +1,27 @@
-# Deploy Dask em `/dask` sem derrubar o Atlas atual
+# Deploy & Atualização — Dask
+
+## Atualizar o servidor (setup atual com docker-compose)
+
+```bash
+git pull origin main && \
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build && \
+docker exec dask-api npx prisma migrate deploy
+```
+
+**O que cada passo faz:**
+- `git pull` — traz o código novo (frontend + backend)
+- `up -d --build` — reconstrói as imagens `dask-api` e `dask-app` e sobe todos os serviços; postgres, redis, nginx e cloudflared continuam rodando sem parar
+- `--env-file .env.prod` — necessário para resolver as variáveis do compose (`POSTGRES_PASSWORD`, `DOMAIN`, `CLOUDFLARE_TUNNEL_TOKEN`, etc.)
+- `prisma migrate deploy` — aplica migrations novas no banco
+
+**Acompanhar logs após deploy:**
+```bash
+docker compose -f docker-compose.prod.yml logs -f api app
+```
+
+---
+
+# Deploy Dask em `/dask` sem derrubar o Atlas atual (setup legado)
 
 ## 1) Ver containers atuais
 ```bash

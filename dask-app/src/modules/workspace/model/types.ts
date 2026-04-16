@@ -59,6 +59,43 @@ export interface WorkspaceTemplateOption {
   description?: string;
 }
 
+export interface WorkspaceProfile {
+  id: string;
+  name: string;
+  key: string;
+  kind: "PERSONAL" | "CORPORATE";
+  organizationId: string | null;
+  info: {
+    description: string;
+    company: string;
+    website: string;
+  };
+}
+
+export interface WorkspaceInvite {
+  id: string;
+  email: string;
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+  expiresAt: string;
+  sentAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface PublicWorkspaceInvite {
+  email: string;
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  workspace: {
+    id: string;
+    name: string;
+    key: string;
+  };
+  status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+  expiresAt: string;
+}
+
 export type WorkspacePermissionKey =
   | "workspace.read"
   | "workspace.manage"
@@ -368,6 +405,23 @@ export interface WorkspaceService {
       permissions?: { allow?: WorkspacePermissionKey[]; deny?: WorkspacePermissionKey[] };
     }
   ) => Promise<void>;
+  listWorkspaceInvites: (workspaceSlug: string) => Promise<WorkspaceInvite[]>;
+  createWorkspaceInvite: (
+    workspaceSlug: string,
+    input: { email: string; role: "ADMIN" | "MEMBER" | "VIEWER" }
+  ) => Promise<WorkspaceInvite>;
+  resendWorkspaceInvite: (workspaceSlug: string, inviteId: string) => Promise<WorkspaceInvite>;
+  revokeWorkspaceInvite: (workspaceSlug: string, inviteId: string) => Promise<void>;
+  getWorkspaceInviteByToken: (token: string) => Promise<PublicWorkspaceInvite>;
+  getWorkspaceProfile: (workspaceSlug: string) => Promise<WorkspaceProfile>;
+  updateWorkspaceProfile: (
+    workspaceSlug: string,
+    patch: {
+      name?: string;
+      key?: string;
+      info?: { description?: string; company?: string; website?: string };
+    }
+  ) => Promise<WorkspaceProfile>;
 }
 
 export interface AutomationRule {

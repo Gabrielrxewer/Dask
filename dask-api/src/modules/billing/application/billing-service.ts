@@ -169,11 +169,12 @@ export class BillingService {
     }
 
     if (process.env.NODE_ENV !== 'production') {
+      const developmentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       return {
         hasActiveSubscription: true,
-        plan: (user.subscriptionPlan as SubscriptionPlan | null) ?? null,
-        status: (user.subscriptionStatus as SubscriptionStatus | null) ?? null,
-        currentPeriodEnd: user.currentPeriodEnd ?? null,
+        plan: (user.subscriptionPlan as SubscriptionPlan | null) ?? 'BUSINESS',
+        status: (user.subscriptionStatus as SubscriptionStatus | null) ?? 'ACTIVE',
+        currentPeriodEnd: user.currentPeriodEnd ?? developmentPeriodEnd,
         canAccessPlatform: true,
         canCreateWorkspace: true,
         message: null

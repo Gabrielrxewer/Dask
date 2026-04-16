@@ -39,7 +39,8 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
               id: true,
               key: true,
               name: true,
-              organizationId: true
+              organizationId: true,
+              kind: true
             }
           }
         }
@@ -48,6 +49,25 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
       if (!membership) {
         next(new AppError('Workspace not found', 404));
         return;
+      }
+
+      if (membership.workspace.kind === 'CORPORATE') {
+        const userAccess = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            hasActiveSubscription: true,
+            subscriptionPlan: true
+          }
+        });
+        const hasCorporateAccess = process.env.NODE_ENV !== 'production'
+          ? true
+          : userAccess?.hasActiveSubscription === true &&
+            userAccess.subscriptionPlan === 'BUSINESS';
+
+        if (!hasCorporateAccess) {
+          next(new AppError('Corporate workspace requires an active BUSINESS plan', 403));
+          return;
+        }
       }
 
       req.workspace = {

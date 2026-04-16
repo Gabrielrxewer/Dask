@@ -86,3 +86,24 @@ export const boardSnapshotParamsDto = z.object({
 export const boardSnapshotQueryDto = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional()
 });
+
+export const patchWorkspaceDto = z
+  .object({
+    name: z.string().min(2).optional(),
+    key: z
+      .string()
+      .min(2)
+      .max(20)
+      .regex(/^[A-Z0-9]+$/)
+      .optional(),
+    info: z
+      .object({
+        description: z.string().max(500).optional(),
+        company: z.string().max(120).optional(),
+        website: z.string().url().max(255).optional()
+      })
+      .optional()
+  })
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: 'At least one field is required'
+  });

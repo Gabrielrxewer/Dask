@@ -551,6 +551,54 @@
   gap: 6px;
 }
 
+.global-header__billing-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(197, 218, 235, 0.84);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(241, 249, 255, 0.86) 100%);
+}
+
+.global-header__billing-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.global-header__billing-copy span {
+  color: #6d87a0;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.global-header__billing-copy strong {
+  color: #173653;
+  font-size: 0.86rem;
+}
+
+.global-header__billing-copy small {
+  color: #5e7891;
+  font-size: 0.7rem;
+}
+
+.global-header__billing-metadata {
+  display: grid;
+  gap: 2px;
+}
+
+.global-header__billing-metadata p {
+  margin: 0;
+  color: #4f6983;
+  font-size: 0.7rem;
+}
+
+.global-header__billing-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.global-header__billing-actions button,
 .global-header__user-menu-actions button {
   border: 1px solid rgba(205, 222, 236, 0.9);
   background: rgba(255, 255, 255, 0.88);
@@ -564,15 +612,18 @@
   cursor: pointer;
 }
 
+.global-header__billing-actions button:hover:not(:disabled),
 .global-header__user-menu-actions button:hover:not(:disabled) {
   background: #f7fbff;
 }
 
+.global-header__billing-actions button:focus-visible,
 .global-header__user-menu-actions button:focus-visible {
   border-color: rgba(106, 157, 197, 0.76);
   box-shadow: 0 0 0 3px rgba(10, 134, 232, 0.14);
 }
 
+.global-header__billing-actions button:disabled,
 .global-header__user-menu-actions button:disabled {
   opacity: 0.72;
   cursor: wait;

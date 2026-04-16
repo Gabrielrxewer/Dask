@@ -252,3 +252,13 @@ export const patchWorkspaceMemberAccessDto = z
   .refine((obj) => obj.role !== undefined || obj.permissions !== undefined, {
     message: 'At least one field is required'
   });
+
+export const workspaceInviteParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  inviteId: z.string().uuid()
+});
+
+export const createWorkspaceInviteDto = z.object({
+  email: z.string().email(),
+  role: z.enum(['ADMIN', 'MEMBER', 'VIEWER']).default('MEMBER')
+});

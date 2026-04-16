@@ -1,19 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { workspaceService } from "@/modules/workspace/api";
 import { useWorkspace } from "@/modules/workspace";
-import type { WorkspaceAccessControlSnapshot, WorkspacePermissionKey } from "@/modules/workspace/model";
+import type { WorkspaceAccessControlSnapshot, WorkspaceInvite, WorkspacePermissionKey } from "@/modules/workspace/model";
 import { Button, FormField, Section, Select, TextInput, Textarea } from "@/shared/ui";
 import "./members-settings.css";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
-
-interface PendingInvite {
-  id: string;
-  email: string;
-  role: WorkspaceRole;
-  createdAt: string;
-}
 
 const ASSIGNABLE_ROLE_OPTIONS: Array<{ value: WorkspaceRole; label: string }> = [
   { value: "ADMIN", label: "Admin" },
@@ -38,11 +31,15 @@ export function MembersSettings() {
   const [isCorporateWorkspace, setIsCorporateWorkspace] = useState(false);
   const [isLoadingWorkspaceInfo, setIsLoadingWorkspaceInfo] = useState(true);
   const [isLoadingAccessControl, setIsLoadingAccessControl] = useState(false);
+  const [isLoadingInvites, setIsLoadingInvites] = useState(false);
+  const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
+  const [isResendingInviteId, setIsResendingInviteId] = useState<string | null>(null);
+  const [isRevokingInviteId, setIsRevokingInviteId] = useState<string | null>(null);
   const [accessControl, setAccessControl] = useState<WorkspaceAccessControlSnapshot | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>("MEMBER");
-  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<WorkspaceInvite[]>([]);
 
   const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<string, WorkspaceRole>>({});
   const [allowDraftByUserId, setAllowDraftByUserId] = useState<Record<string, string>>({});
@@ -116,6 +113,39 @@ export function MembersSettings() {
   }, [isCorporateWorkspace, workspaceSlug]);
 
   useEffect(() => {
+    if (!isCorporateWorkspace || !workspaceSlug) {
+      setPendingInvites([]);
+      return;
+    }
+
+    let mounted = true;
+    setIsLoadingInvites(true);
+
+    workspaceService
+      .listWorkspaceInvites(workspaceSlug)
+      .then((invites) => {
+        if (!mounted) {
+          return;
+        }
+        setPendingInvites(invites.filter((invite) => invite.status === "PENDING"));
+      })
+      .catch(() => {
+        if (mounted) {
+          setError("Nao foi possivel carregar os convites pendentes.");
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsLoadingInvites(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isCorporateWorkspace, workspaceSlug]);
+
+  useEffect(() => {
     if (!accessControl) {
       setRoleDraftByUserId({});
       setAllowDraftByUserId({});
@@ -149,7 +179,12 @@ export function MembersSettings() {
     effectivePermissions: []
   }));
 
-  const handleInvite = () => {
+  const refreshPendingInvites = async () => {
+    const invites = await workspaceService.listWorkspaceInvites(workspaceSlug);
+    setPendingInvites(invites.filter((invite) => invite.status === "PENDING"));
+  };
+
+  const handleInvite = async () => {
     const normalizedEmail = inviteEmail.trim().toLowerCase();
     if (!EMAIL_REGEX.test(normalizedEmail)) {
       setError("Informe um e-mail valido para enviar o convite.");
@@ -157,30 +192,62 @@ export function MembersSettings() {
       return;
     }
 
-    if (pendingInvites.some(invite => invite.email === normalizedEmail)) {
+    if (pendingInvites.some(invite => invite.email === normalizedEmail && invite.status === "PENDING")) {
       setError("Este e-mail ja possui um convite pendente.");
       setFeedback("");
       return;
     }
 
-    const newInvite: PendingInvite = {
-      id: `${Date.now()}`,
-      email: normalizedEmail,
-      role: inviteRole,
-      createdAt: new Date().toISOString()
-    };
-
-    setPendingInvites(current => [newInvite, ...current]);
-    setInviteEmail("");
-    setInviteRole("MEMBER");
+    setIsSubmittingInvite(true);
     setError("");
-    setFeedback("Convite preparado. Na proxima etapa conectamos com envio de e-mail real.");
+    setFeedback("");
+
+    try {
+      await workspaceService.createWorkspaceInvite(workspaceSlug, {
+        email: normalizedEmail,
+        role: inviteRole === "OWNER" ? "ADMIN" : inviteRole
+      });
+      await refreshPendingInvites();
+      setInviteEmail("");
+      setInviteRole("MEMBER");
+      setFeedback("Convite enviado por e-mail.");
+    } catch {
+      setError("Nao foi possivel enviar o convite agora.");
+    } finally {
+      setIsSubmittingInvite(false);
+    }
   };
 
-  const handleRevokeInvite = (inviteId: string) => {
-    setPendingInvites(current => current.filter(invite => invite.id !== inviteId));
-    setFeedback("Convite pendente removido.");
+  const handleResendInvite = async (inviteId: string) => {
+    setIsResendingInviteId(inviteId);
+    setFeedback("");
     setError("");
+
+    try {
+      await workspaceService.resendWorkspaceInvite(workspaceSlug, inviteId);
+      await refreshPendingInvites();
+      setFeedback("Convite reenviado por e-mail.");
+    } catch {
+      setError("Nao foi possivel reenviar o convite.");
+    } finally {
+      setIsResendingInviteId(null);
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    setIsRevokingInviteId(inviteId);
+    setFeedback("");
+    setError("");
+
+    try {
+      await workspaceService.revokeWorkspaceInvite(workspaceSlug, inviteId);
+      await refreshPendingInvites();
+      setFeedback("Convite pendente removido.");
+    } catch {
+      setError("Nao foi possivel remover o convite.");
+    } finally {
+      setIsRevokingInviteId(null);
+    }
   };
 
   const handleApplyAccessControl = async (memberUserId: string) => {
@@ -270,8 +337,8 @@ export function MembersSettings() {
         </div>
 
         <div className="members-settings__actions">
-          <Button type="button" onClick={handleInvite}>
-            Adicionar convite
+          <Button type="button" onClick={() => void handleInvite()} disabled={isSubmittingInvite}>
+            {isSubmittingInvite ? "Enviando..." : "Enviar convite"}
           </Button>
           {feedback ? <span className="members-settings__feedback">{feedback}</span> : null}
           {error ? <span className="members-settings__error">{error}</span> : null}
@@ -280,10 +347,12 @@ export function MembersSettings() {
 
       <Section
         title="Convites pendentes"
-        subtitle="Base pronta para integrar envio real por e-mail."
+        subtitle="Convites ativos enviados por e-mail."
         className="members-settings__card"
       >
-        {pendingInvites.length === 0 ? (
+        {isLoadingInvites ? <p className="members-settings__hint">Carregando convites...</p> : null}
+
+        {!isLoadingInvites && pendingInvites.length === 0 ? (
           <p className="members-settings__hint">Nenhum convite pendente.</p>
         ) : (
           <div className="members-settings__list">
@@ -291,11 +360,28 @@ export function MembersSettings() {
               <div key={invite.id} className="members-settings__row">
                 <div className="members-settings__row-content">
                   <strong>{invite.email}</strong>
-                  <span>{invite.role} - {new Date(invite.createdAt).toLocaleString()}</span>
+                  <span>{invite.role} - enviado em {new Date(invite.sentAt).toLocaleString()}</span>
                 </div>
-                <Button type="button" size="sm" variant="outline" onClick={() => handleRevokeInvite(invite.id)}>
-                  Remover
-                </Button>
+                <div className="members-settings__row-actions">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleResendInvite(invite.id)}
+                    disabled={isResendingInviteId === invite.id || isRevokingInviteId === invite.id}
+                  >
+                    {isResendingInviteId === invite.id ? "Reenviando..." : "Reenviar"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleRevokeInvite(invite.id)}
+                    disabled={isResendingInviteId === invite.id || isRevokingInviteId === invite.id}
+                  >
+                    {isRevokingInviteId === invite.id ? "Removendo..." : "Remover"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -390,7 +476,7 @@ export function MembersSettings() {
 
       <Section
         title="Matriz role x permissao"
-        subtitle="Cat�logo completo para controle de acesso do workspace."
+        subtitle="Catálogo completo para controle de acesso do workspace."
         className="members-settings__card"
       >
         {!accessControl ? (

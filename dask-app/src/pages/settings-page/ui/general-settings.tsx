@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { Link, useParams } from "react-router-dom";
 import { factoryBoardConfig, mergeCardFieldDefinitions } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api";
 import { useWorkspace } from "@/modules/workspace";
-import type { WorkspaceTemplateOption } from "@/modules/workspace/model";
-import { Button, FormField, Select } from "@/shared/ui";
+import type { WorkspaceProfile, WorkspaceTemplateOption } from "@/modules/workspace/model";
+import { buildWorkspaceSettingsMembersPath, buildWorkspaceSelectorPath } from "@/app/router";
+import { Button, FormField, Select, Textarea, TextInput } from "@/shared/ui";
 import "./general-settings.css";
 
 type BoardPerspective = {
@@ -76,14 +78,23 @@ function getTemplatePreview(templateKey: WorkspaceTemplateOption["key"]): string
 }
 
 export function GeneralSettings() {
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot, updatePreferences, resetWorkspaceTemplate } = useWorkspace();
   const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplateOption["key"]>("software_delivery");
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isResettingTemplate, setIsResettingTemplate] = useState(false);
+  const [isCorporateWorkspace, setIsCorporateWorkspace] = useState(false);
   const [templateToConfirm, setTemplateToConfirm] = useState<WorkspaceTemplateOption | null>(null);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [workspaceProfile, setWorkspaceProfile] = useState<WorkspaceProfile | null>(null);
+  const [workspaceNameDraft, setWorkspaceNameDraft] = useState("");
+  const [workspaceKeyDraft, setWorkspaceKeyDraft] = useState("");
+  const [workspaceDescriptionDraft, setWorkspaceDescriptionDraft] = useState("");
+  const [workspaceCompanyDraft, setWorkspaceCompanyDraft] = useState("");
+  const [workspaceWebsiteDraft, setWorkspaceWebsiteDraft] = useState("");
+  const [isSavingWorkspaceProfile, setIsSavingWorkspaceProfile] = useState(false);
 
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const perspectives = useMemo(() => resolvePerspectives(rawBoardConfig), [rawBoardConfig]);
@@ -130,6 +141,63 @@ export function GeneralSettings() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    workspaceService
+      .listWorkspaces()
+      .then(workspaces => {
+        if (!mounted) {
+          return;
+        }
+
+        const currentWorkspace = workspaces.find(workspace => workspace.slug === workspaceSlug);
+        setIsCorporateWorkspace(currentWorkspace?.kind === "CORPORATE");
+      })
+      .catch(() => {
+        if (mounted) {
+          setIsCorporateWorkspace(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    workspaceService
+      .getWorkspaceProfile(workspaceSlug)
+      .then((profile) => {
+        if (!mounted) {
+          return;
+        }
+        setWorkspaceProfile(profile);
+        setWorkspaceNameDraft(profile.name);
+        setWorkspaceKeyDraft(profile.key);
+        setWorkspaceDescriptionDraft(profile.info.description);
+        setWorkspaceCompanyDraft(profile.info.company);
+        setWorkspaceWebsiteDraft(profile.info.website);
+      })
+      .catch(() => {
+        if (mounted) {
+          setError("Nao foi possivel carregar os dados do workspace.");
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceSlug]);
+
+  const members = useMemo(() => Object.values(snapshot?.membersById ?? {}), [snapshot?.membersById]);
+  const adminsCount = useMemo(
+    () => members.filter(member => member.role === "OWNER" || member.role === "ADMIN").length,
+    [members]
+  );
+
   const handleResetTemplate = async (template: WorkspaceTemplateOption) => {
     setSelectedTemplate(template.key);
     setIsResettingTemplate(true);
@@ -144,6 +212,51 @@ export function GeneralSettings() {
       setError("Nao foi possivel aplicar o template agora.");
     } finally {
       setIsResettingTemplate(false);
+    }
+  };
+
+  const handleSaveWorkspaceProfile = async () => {
+    const normalizedName = workspaceNameDraft.trim();
+    const normalizedKey = workspaceKeyDraft.trim().toUpperCase();
+
+    if (normalizedName.length < 2) {
+      setError("O nome do workspace precisa ter pelo menos 2 caracteres.");
+      setFeedback("");
+      return;
+    }
+
+    if (normalizedKey.length < 2) {
+      setError("A chave do workspace precisa ter pelo menos 2 caracteres.");
+      setFeedback("");
+      return;
+    }
+
+    setIsSavingWorkspaceProfile(true);
+    setFeedback("");
+    setError("");
+
+    try {
+      const updated = await workspaceService.updateWorkspaceProfile(workspaceSlug, {
+        name: normalizedName,
+        key: normalizedKey,
+        info: {
+          description: workspaceDescriptionDraft.trim(),
+          company: workspaceCompanyDraft.trim(),
+          website: workspaceWebsiteDraft.trim()
+        }
+      });
+
+      setWorkspaceProfile(updated);
+      setWorkspaceNameDraft(updated.name);
+      setWorkspaceKeyDraft(updated.key);
+      setWorkspaceDescriptionDraft(updated.info.description);
+      setWorkspaceCompanyDraft(updated.info.company);
+      setWorkspaceWebsiteDraft(updated.info.website);
+      setFeedback("Dados do workspace atualizados.");
+    } catch {
+      setError("Nao foi possivel salvar os dados do workspace agora.");
+    } finally {
+      setIsSavingWorkspaceProfile(false);
     }
   };
 
@@ -221,6 +334,76 @@ export function GeneralSettings() {
             <span><strong>{fields.length}</strong> campos</span>
             <span className="general-settings__summary-wide"><strong>{tasksCount}</strong> itens</span>
           </div>
+          <div className="general-settings__members-cta">
+            <strong>Membros e acesso</strong>
+            {isCorporateWorkspace ? (
+              <>
+                <p>
+                  {members.length} membro(s) no workspace, sendo {adminsCount} com perfil administrativo.
+                </p>
+                <Link to={buildWorkspaceSettingsMembersPath(workspaceSlug)}>
+                  Abrir configuracao de membros
+                </Link>
+                <Link to={buildWorkspaceSelectorPath()}>
+                  Trocar workspace
+                </Link>
+              </>
+            ) : (
+              <p>Workspace pessoal: controle de membros disponivel apenas em workspaces corporativos.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="general-settings__workspace-profile">
+        <header>
+          <span>Workspace</span>
+          <h2>Nome e informacoes</h2>
+          <p>Defina a identidade do workspace e mantenha os dados institucionais atualizados.</p>
+        </header>
+        <div className="general-settings__workspace-profile-grid">
+          <FormField label="Nome do workspace">
+            <TextInput
+              value={workspaceNameDraft}
+              onChange={(event) => setWorkspaceNameDraft(event.target.value)}
+              placeholder="Ex.: Produto Core"
+            />
+          </FormField>
+          <FormField label="Chave do workspace (A-Z e 0-9)">
+            <TextInput
+              value={workspaceKeyDraft}
+              onChange={(event) => setWorkspaceKeyDraft(event.target.value.toUpperCase())}
+              placeholder="PRODCORE"
+            />
+          </FormField>
+          <FormField label="Empresa">
+            <TextInput
+              value={workspaceCompanyDraft}
+              onChange={(event) => setWorkspaceCompanyDraft(event.target.value)}
+              placeholder="Ex.: Dask Labs"
+            />
+          </FormField>
+          <FormField label="Website">
+            <TextInput
+              value={workspaceWebsiteDraft}
+              onChange={(event) => setWorkspaceWebsiteDraft(event.target.value)}
+              placeholder="https://suaempresa.com"
+            />
+          </FormField>
+          <FormField label="Descricao">
+            <Textarea
+              value={workspaceDescriptionDraft}
+              onChange={(event) => setWorkspaceDescriptionDraft(event.target.value)}
+              placeholder="Resumo da area, objetivo ou contexto deste workspace."
+              rows={4}
+            />
+          </FormField>
+        </div>
+        <div className="general-settings__workspace-profile-actions">
+          <Button type="button" onClick={() => void handleSaveWorkspaceProfile()} disabled={isSavingWorkspaceProfile}>
+            {isSavingWorkspaceProfile ? "Salvando..." : "Salvar dados do workspace"}
+          </Button>
+          {workspaceProfile?.kind ? <small>Tipo atual: {workspaceProfile.kind}</small> : null}
         </div>
       </section>
 

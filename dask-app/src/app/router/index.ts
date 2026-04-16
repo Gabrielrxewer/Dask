@@ -2,6 +2,7 @@ export { AppRoutes } from "@/app/router/app-routes";
 export {
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
+  buildWorkspaceSelectorPath,
   buildWorkspaceListPath,
   buildWorkspacePath,
   buildWorkspaceSettingsColumnsPath,

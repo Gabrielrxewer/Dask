@@ -46,7 +46,8 @@
 
 .general-settings__builder-copy > span,
 .general-settings__templates header span,
-.general-settings__active-panel header span {
+.general-settings__active-panel header span,
+.general-settings__workspace-profile header span {
   color: var(--builder-accent);
   font-size: var(--font-size-2xs);
   font-weight: 900;
@@ -284,6 +285,7 @@
 .general-settings__active-panel,
 .general-settings__preference-card,
 .general-settings__summary-card,
+.general-settings__workspace-profile,
 .general-settings__templates {
   border: 1px solid var(--builder-line);
   border-radius: var(--radius-xs);
@@ -309,6 +311,7 @@
 .general-settings__active-panel h2,
 .general-settings__preference-card h2,
 .general-settings__summary-card h2,
+.general-settings__workspace-profile h2,
 .general-settings__templates h2 {
   margin: 0;
   color: var(--builder-text);
@@ -403,6 +406,7 @@
 
 .general-settings__preference-card,
 .general-settings__summary-card,
+.general-settings__workspace-profile,
 .general-settings__templates {
   padding: 18px;
 }
@@ -442,6 +446,72 @@
 
 .general-settings__summary-wide {
   grid-column: 1 / -1;
+}
+
+.general-settings__members-cta {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+}
+
+.general-settings__members-cta strong {
+  color: var(--builder-text);
+  font-size: var(--font-size-sm);
+  font-weight: 900;
+}
+
+.general-settings__members-cta p {
+  margin: 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.general-settings__workspace-profile {
+  display: grid;
+  gap: 14px;
+}
+
+.general-settings__workspace-profile header {
+  display: grid;
+  gap: 4px;
+}
+
+.general-settings__workspace-profile header p {
+  margin: 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.general-settings__workspace-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.general-settings__workspace-profile-grid .shared-form-field:last-child {
+  grid-column: 1 / -1;
+}
+
+.general-settings__workspace-profile-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.general-settings__workspace-profile-actions small {
+  color: var(--builder-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
 }
 
 .general-settings__templates {
@@ -695,6 +765,7 @@
   .general-settings__active-panel,
   .general-settings__preference-card,
   .general-settings__summary-card,
+  .general-settings__workspace-profile,
   .general-settings__templates {
     padding: 14px;
   }
@@ -702,6 +773,7 @@
   .general-settings__live-preview,
   .general-settings__form-grid,
   .general-settings__summary-grid,
+  .general-settings__workspace-profile-grid,
   .general-settings__template-grid {
     grid-template-columns: 1fr;
   }

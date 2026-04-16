@@ -27,6 +27,7 @@ import {
   SettingsShellPage,
   SubscriptionBlockedPage,
   TimelinePage,
+  WorkspaceSelectorPage,
   VerifyEmailPage,
   WorkflowStatesSettingsPage
 } from "@/pages";
@@ -56,6 +57,11 @@ function WorkspaceEntryRedirect() {
         const fallbackWorkspace = workspaces[0];
         if (!fallbackWorkspace) {
           setRedirectTo(routePaths.noWorkspace);
+          return;
+        }
+
+        if (workspaces.length > 1) {
+          setRedirectTo(routePaths.workspaceSelector);
           return;
         }
 
@@ -131,6 +137,7 @@ export function AppRoutes() {
         <Route element={<SubscribedRoute />}>
           <Route element={<WorkspaceBoundary />}>
             <Route path={routePaths.workspaceEntry} element={<WorkspaceEntryRedirect />} />
+            <Route path={routePaths.workspaceSelector} element={<WorkspaceSelectorPage />} />
             <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />
             <Route path={routePaths.board} element={<BoardPage />} />
             <Route path={routePaths.list} element={<ListPage />} />

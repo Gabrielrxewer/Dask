@@ -26,6 +26,7 @@ import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 import { validatePassword, normalizeEmail } from '@/modules/identity/domain/password-policy';
 import type { PasswordService } from '@/modules/identity/application/password-service';
 import type { EmailService } from '@/infra/email/email-service';
+import type { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import type {
   ExternalAuthProvider,
   IdentityRepository
@@ -61,6 +62,7 @@ export type ExternalAuthInput = {
   providerSubject: string;
   email: string;
   name: string;
+  inviteToken?: string;
   providerTenantId?: string | null;
   emailVerified?: boolean | null;
 };
@@ -199,13 +201,14 @@ export class AuthService {
   public constructor(
     private readonly identityRepository: IdentityRepository,
     private readonly passwordService: PasswordService,
-    private readonly emailService?: EmailService
+    private readonly emailService?: EmailService,
+    private readonly workspaceInvitesService?: WorkspaceInvitesService
   ) {}
 
   // ── Register ──────────────────────────────────────────────────────────────
 
   public async register(
-    input: { email: string; name: string; password: string },
+    input: { email: string; name: string; password: string; inviteToken?: string },
     context?: RequestContext
   ): Promise<RegisterResult> {
     // 1. Policy validation (length + blocklist) — NIST §5.1.1.2
@@ -233,6 +236,12 @@ export class AuthService {
       name: input.name,
       passwordHash: hash,
       passwordHashVersion: version
+    });
+
+    await this.tryAcceptWorkspaceInvite({
+      inviteToken: input.inviteToken,
+      userId: user.id,
+      userEmail: user.email
     });
 
     let tokens: AuthTokens | null = null;
@@ -268,7 +277,7 @@ export class AuthService {
   // ── Login ─────────────────────────────────────────────────────────────────
 
   public async login(
-    input: { email: string; password: string },
+    input: { email: string; password: string; inviteToken?: string },
     context?: RequestContext
   ): Promise<{ user: UserProfile } & AuthTokens> {
     const email = normalizeEmail(input.email);
@@ -376,6 +385,11 @@ export class AuthService {
       user.emailVerified,
       isPlatformAdmin
     );
+    await this.tryAcceptWorkspaceInvite({
+      inviteToken: input.inviteToken,
+      userId: user.id,
+      userEmail: user.email
+    });
     logAuthEvent('auth.login.success', { userId: user.id, context });
     return { user: toUserProfile(user, isPlatformAdmin), ...tokens };
   }
@@ -440,6 +454,11 @@ export class AuthService {
       user.emailVerified,
       isPlatformAdmin
     );
+    await this.tryAcceptWorkspaceInvite({
+      inviteToken: input.inviteToken,
+      userId: user.id,
+      userEmail: user.email
+    });
     logAuthEvent('auth.login.success', {
       userId: user.id,
       context,
@@ -771,6 +790,30 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken: rawRefreshToken };
+  }
+
+  private async tryAcceptWorkspaceInvite(input: {
+    inviteToken?: string;
+    userId: string;
+    userEmail: string;
+  }): Promise<void> {
+    if (!this.workspaceInvitesService || !input.inviteToken) {
+      return;
+    }
+
+    try {
+      await this.workspaceInvitesService.tryAcceptInviteByToken({
+        rawToken: input.inviteToken,
+        userId: input.userId,
+        userEmail: input.userEmail
+      });
+    } catch (error) {
+      logger.warn({
+        event: 'workspace.invite.auto_accept.failed',
+        userId: input.userId,
+        err: error
+      });
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
 import { useAuth, useLogin } from "@/features/auth";
@@ -7,6 +7,8 @@ import { cn } from "@/shared/lib/cn";
 import { buildApiUrl } from "@/shared/config/env";
 import { isApiError } from "@/shared/api/http-client";
 import { routePaths } from "@/app/router/route-paths";
+import { workspaceService } from "@/modules/workspace/api";
+import type { PublicWorkspaceInvite } from "@/modules/workspace/model";
 import "./login-form.css";
 
 interface LoginLocationState {
@@ -115,6 +117,8 @@ export function LoginForm() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [forgotStatus, setForgotStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<PublicWorkspaceInvite | null>(null);
+  const [inviteInfoError, setInviteInfoError] = useState<string | null>(null);
 
   const locationState = (location.state as LoginLocationState | null) ?? null;
   const searchParams = new URLSearchParams(location.search);
@@ -122,12 +126,63 @@ export function LoginForm() {
   const oauthError = searchParams.get("oauth") === "error";
   const oauthProvider = searchParams.get("provider");
   const oauthErrorCode = searchParams.get("error");
+  const inviteToken = searchParams.get("invite") ?? undefined;
+  const invitedEmail = searchParams.get("email");
   const isRegisterStep = authStep === "register";
   const isForgotStep = authStep === "forgot-password";
+
+  useEffect(() => {
+    if (!inviteToken) {
+      setInviteInfo(null);
+      setInviteInfoError(null);
+      return;
+    }
+
+    let mounted = true;
+    workspaceService
+      .getWorkspaceInviteByToken(inviteToken)
+      .then((data) => {
+        if (!mounted) {
+          return;
+        }
+        setInviteInfo(data);
+        setInviteInfoError(null);
+        if (!email && data.email) {
+          setEmail(data.email);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setInviteInfo(null);
+          setInviteInfoError("Este convite nao e mais valido. Voce ainda pode entrar normalmente.");
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [inviteToken]);
+
+  useEffect(() => {
+    if (!inviteToken || !invitedEmail) {
+      return;
+    }
+    if (!email) {
+      setEmail(invitedEmail);
+    }
+  }, [inviteToken, invitedEmail, email]);
 
   const hintMessage = useMemo(() => {
     if (registerError) {
       return registerError;
+    }
+
+    if (inviteInfoError) {
+      return inviteInfoError;
+    }
+
+    if (inviteInfo && inviteInfo.status === "PENDING") {
+      return `Convite para ${inviteInfo.workspace.name} (${inviteInfo.role}). Entre ou crie conta com ${inviteInfo.email} para aceitar automaticamente.`;
     }
 
     if (isRegisterStep) {
@@ -162,7 +217,9 @@ export function LoginForm() {
     oauthErrorCode,
     oauthLinkRequired,
     oauthProvider,
-    registerError
+    registerError,
+    inviteInfoError,
+    inviteInfo
   ]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -185,7 +242,8 @@ export function LoginForm() {
         await auth.register({
           email: email.trim(),
           name: trimmedName,
-          password
+          password,
+          inviteToken
         });
         navigate(`${routePaths.verifyEmail}?email=${encodeURIComponent(email.trim())}`);
       } catch (error) {
@@ -198,7 +256,8 @@ export function LoginForm() {
     try {
       await login({
         email: email.trim(),
-        password
+        password,
+        inviteToken
       });
     } catch (error) {
       if (
@@ -213,7 +272,8 @@ export function LoginForm() {
 
   const handleSocialLogin = (providerId: SocialProvider["id"]) => {
     const redirectOrigin = encodeURIComponent(window.location.origin);
-    window.location.assign(buildApiUrl(`/auth/${providerId}?redirect_origin=${redirectOrigin}`));
+    const inviteQuery = inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : "";
+    window.location.assign(buildApiUrl(`/auth/${providerId}?redirect_origin=${redirectOrigin}${inviteQuery}`));
   };
 
   const handleStepChange = (step: AuthStep) => {

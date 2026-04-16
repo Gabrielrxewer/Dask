@@ -4,6 +4,7 @@ import {
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
   buildWorkspaceListPath,
+  buildWorkspaceSelectorPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceTimelinePath
 } from "@/app/router/route-paths";
@@ -62,6 +63,12 @@ export function AppShell({
       items: [
         { to: buildWorkspaceAutomationsPath(workspaceSlug), label: "Automations" },
         { to: buildWorkspaceSettingsPath(workspaceSlug), label: "Settings" }
+      ]
+    },
+    {
+      title: "Conta",
+      items: [
+        { to: buildWorkspaceSelectorPath(), label: "Trocar workspace" }
       ]
     }
   ];

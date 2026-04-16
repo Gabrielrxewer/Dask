@@ -93,6 +93,8 @@ model User {
   verificationTokens       EmailVerificationToken[]
   externalIdentities       ExternalIdentity[]
   subscriptions            Subscription[]
+  sentWorkspaceInvites     WorkspaceInvite[]        @relation("WorkspaceInviteSentBy")
+  acceptedWorkspaceInvites WorkspaceInvite[]        @relation("WorkspaceInviteAcceptedBy")
 }
 
 model Subscription {
@@ -251,8 +253,31 @@ model Workspace {
   automationExecutions   AutomationExecution[]
   aiAgents               AIAgent[]
   aiAgentRuns            AIAgentRun[]
+  invites                WorkspaceInvite[]
 
   @@unique([organizationId, key])
+}
+
+model WorkspaceInvite {
+  id               String         @id @default(uuid())
+  workspaceId      String
+  email            String
+  role             MembershipRole @default(MEMBER)
+  tokenHash        String         @unique
+  invitedByUserId  String
+  acceptedByUserId String?
+  expiresAt        DateTime
+  sentAt           DateTime       @default(now())
+  acceptedAt       DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  workspace        Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy        User           @relation("WorkspaceInviteSentBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy       User?          @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, email])
+  @@index([workspaceId, expiresAt, revokedAt, acceptedAt])
 }
 
 model WorkspaceMembership {

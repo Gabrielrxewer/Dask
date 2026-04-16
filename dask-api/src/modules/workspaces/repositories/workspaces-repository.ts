@@ -12,6 +12,11 @@ export type UserWorkspaceSummary = {
   updatedAt: Date;
 };
 
+export type UserSubscriptionAccess = {
+  hasActiveSubscription: boolean;
+  subscriptionPlan: 'PERSONAL' | 'BUSINESS' | null;
+};
+
 export type WorkspaceBoardSummary = {
   id: string;
   workspaceId: string;
@@ -74,6 +79,13 @@ export type BoardSnapshot = {
 };
 
 export interface WorkspacesRepository {
+  findWorkspaceById(workspaceId: string): Promise<Workspace | null>;
+  updateWorkspace(input: {
+    workspaceId: string;
+    name?: string;
+    key?: string;
+    config?: Record<string, unknown>;
+  }, db?: Prisma.TransactionClient): Promise<Workspace>;
   createWorkspace(input: {
     organizationId?: string;
     kind: WorkspaceKind;
@@ -98,6 +110,7 @@ export interface WorkspacesRepository {
     rules?: Record<string, unknown>;
   }, db?: Prisma.TransactionClient): Promise<BoardTemplate>;
   listUserWorkspaces(userId: string): Promise<UserWorkspaceSummary[]>;
+  getUserSubscriptionAccess(userId: string): Promise<UserSubscriptionAccess | null>;
   getOrganizationRoleForUser(organizationId: string, userId: string): Promise<MembershipRole | null>;
   getWorkspaceRoleForUser(workspaceId: string, userId: string): Promise<MembershipRole | null>;
   listBoardsByWorkspace(workspaceId: string): Promise<WorkspaceBoardSummary[]>;

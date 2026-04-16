@@ -25,6 +25,7 @@ import { IntegrationService } from '@/modules/integration/application/integratio
 import { AuditService } from '@/modules/audit/application/audit-service';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
+import { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import { BillingService } from '@/modules/billing/application/billing-service';
 import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
@@ -45,6 +46,7 @@ export type AppContainer = {
   auditService: AuditService;
   workspaceConfigService: WorkspaceConfigService;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
+  workspaceInvitesService: WorkspaceInvitesService;
   billingService: BillingService | null;
 };
 
@@ -59,7 +61,8 @@ export function buildAppContainer(): AppContainer {
 
   const passwordService = new PasswordService(env.HASH_PEPPER);
   const emailService = env.RESEND_API_KEY ? new ResendEmailService() : undefined;
-  const authService = new AuthService(identityRepository, passwordService, emailService);
+  const workspaceInvitesService = new WorkspaceInvitesService(prisma, emailService);
+  const authService = new AuthService(identityRepository, passwordService, emailService, workspaceInvitesService);
   const organizationService = new OrganizationService(identityRepository, eventPublisher);
   const roleAuthorizationService = new RoleAuthorizationService(prisma);
   const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
@@ -124,6 +127,7 @@ export function buildAppContainer(): AppContainer {
     auditService,
     workspaceConfigService,
     workspaceWorkItemsService,
+    workspaceInvitesService,
     billingService
   };
 }

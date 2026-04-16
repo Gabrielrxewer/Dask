@@ -9,6 +9,8 @@ import {
 } from '@/modules/workspaces/application/workspace-template-catalog';
 import type { WorkspacesRepository } from '@/modules/workspaces/repositories/workspaces-repository';
 
+const BUSINESS_WORKSPACE_CREATION_LIMIT = 3;
+
 export class WorkspacesService {
   public constructor(
     private readonly workspacesRepository: WorkspacesRepository,
@@ -24,12 +26,28 @@ export class WorkspacesService {
     config?: Record<string, unknown>;
     ownerUserId: string;
   }) {
+    const [subscriptionAccess, ownedWorkspaces] = await Promise.all([
+      this.workspacesRepository.getUserSubscriptionAccess(input.ownerUserId),
+      this.workspacesRepository.listUserWorkspaces(input.ownerUserId)
+    ]);
+    const hasCorporateAccess = process.env.NODE_ENV !== 'production'
+      ? true
+      : subscriptionAccess?.hasActiveSubscription === true &&
+        subscriptionAccess.subscriptionPlan === 'BUSINESS';
+    const isBusinessSubscriber =
+      subscriptionAccess?.hasActiveSubscription === true &&
+      subscriptionAccess.subscriptionPlan === 'BUSINESS';
+
     const template = getWorkspaceTemplateByKey(input.templateKey);
     if (input.templateKey && !template) {
       throw new AppError('Invalid workspace template', 422);
     }
 
     if (input.kind === WorkspaceKind.CORPORATE) {
+      if (!hasCorporateAccess) {
+        throw new AppError('Corporate workspace requires an active BUSINESS plan', 403);
+      }
+
       if (!input.organizationId) {
         throw new AppError('organizationId is required for corporate workspace', 422);
       }
@@ -50,6 +68,16 @@ export class WorkspacesService {
 
     if (input.kind === WorkspaceKind.PERSONAL && input.organizationId) {
       throw new AppError('Personal workspace must not be linked to an organization', 422);
+    }
+
+    if (isBusinessSubscriber) {
+      const ownedWorkspaceCount = ownedWorkspaces.filter((workspace) => workspace.role === MembershipRole.OWNER).length;
+      if (ownedWorkspaceCount >= BUSINESS_WORKSPACE_CREATION_LIMIT) {
+        throw new AppError(
+          `BUSINESS plan allows up to ${BUSINESS_WORKSPACE_CREATION_LIMIT} owned workspaces.`,
+          422
+        );
+      }
     }
 
     const workspace = await this.eventPublisher.runInTransaction(async (db, publisher) => {
@@ -152,7 +180,101 @@ export class WorkspacesService {
   }
 
   public async listUserWorkspaces(userId: string) {
-    return this.workspacesRepository.listUserWorkspaces(userId);
+    const [workspaces, subscriptionAccess] = await Promise.all([
+      this.workspacesRepository.listUserWorkspaces(userId),
+      this.workspacesRepository.getUserSubscriptionAccess(userId)
+    ]);
+    const hasCorporateAccess = process.env.NODE_ENV !== 'production'
+      ? true
+      : subscriptionAccess?.hasActiveSubscription === true &&
+        subscriptionAccess.subscriptionPlan === 'BUSINESS';
+
+    if (hasCorporateAccess) {
+      return workspaces;
+    }
+
+    return workspaces.filter((workspace) => workspace.kind !== WorkspaceKind.CORPORATE);
+  }
+
+  public async getWorkspaceProfile(input: { workspaceId: string; userId: string }) {
+    await this.ensureWorkspaceReadableByUser(input.workspaceId, input.userId);
+    const workspace = await this.workspacesRepository.findWorkspaceById(input.workspaceId);
+    if (!workspace) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    const info =
+      workspace.config && typeof workspace.config === 'object'
+        ? ((workspace.config as Record<string, unknown>).info as Record<string, unknown> | undefined)
+        : undefined;
+
+    return {
+      id: workspace.id,
+      name: workspace.name,
+      key: workspace.key,
+      kind: workspace.kind,
+      organizationId: workspace.organizationId,
+      info: {
+        description: typeof info?.description === 'string' ? info.description : '',
+        company: typeof info?.company === 'string' ? info.company : '',
+        website: typeof info?.website === 'string' ? info.website : ''
+      }
+    };
+  }
+
+  public async updateWorkspaceProfile(input: {
+    workspaceId: string;
+    userId: string;
+    patch: {
+      name?: string;
+      key?: string;
+      info?: { description?: string; company?: string; website?: string };
+    };
+  }) {
+    await this.ensureWorkspaceConfigWritableByUser(input.workspaceId, input.userId);
+    const current = await this.workspacesRepository.findWorkspaceById(input.workspaceId);
+    if (!current) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    const currentConfig =
+      current.config && typeof current.config === 'object'
+        ? (current.config as Record<string, unknown>)
+        : {};
+    const currentInfo =
+      currentConfig.info && typeof currentConfig.info === 'object'
+        ? (currentConfig.info as Record<string, unknown>)
+        : {};
+
+    const nextInfo = {
+      ...currentInfo,
+      ...(input.patch.info ?? {})
+    };
+
+    const nextConfig = {
+      ...currentConfig,
+      info: nextInfo
+    };
+
+    const updated = await this.workspacesRepository.updateWorkspace({
+      workspaceId: input.workspaceId,
+      name: input.patch.name,
+      key: input.patch.key,
+      config: nextConfig
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      key: updated.key,
+      kind: updated.kind,
+      organizationId: updated.organizationId,
+      info: {
+        description: typeof nextInfo.description === 'string' ? nextInfo.description : '',
+        company: typeof nextInfo.company === 'string' ? nextInfo.company : '',
+        website: typeof nextInfo.website === 'string' ? nextInfo.website : ''
+      }
+    };
   }
 
   public async listWorkspaceBoards(input: { workspaceId: string; userId: string }) {

@@ -19,6 +19,7 @@ import {
   createBoardDto,
   createTemplateDto,
   createWorkspaceDto,
+  patchWorkspaceDto,
   provisionWorkspaceDto,
   workspaceTemplateCatalogQueryDto
 } from '@/modules/workspaces/http/dto';
@@ -92,6 +93,25 @@ export const buildWorkspacesRoutes = (deps: {
     '/workspaces/provision',
     asyncHandler(async (req, res) => {
       const input = provisionWorkspaceDto.parse(req.body);
+
+      if (input.kind === 'CORPORATE') {
+        const userAccess = await deps.prisma.user.findUnique({
+          where: { id: req.auth!.userId },
+          select: {
+            hasActiveSubscription: true,
+            subscriptionPlan: true
+          }
+        });
+        const hasCorporateAccess = process.env.NODE_ENV !== 'production'
+          ? true
+          : userAccess?.hasActiveSubscription === true &&
+            userAccess.subscriptionPlan === 'BUSINESS';
+
+        if (!hasCorporateAccess) {
+          res.status(403).json({ message: 'Corporate workspace requires an active BUSINESS plan.' });
+          return;
+        }
+      }
 
       const selectedTemplate = getWorkspaceTemplateByKey(input.templateKey);
       if (input.templateKey && !selectedTemplate) {
@@ -175,6 +195,35 @@ export const buildWorkspacesRoutes = (deps: {
         userId: req.auth!.userId
       });
       res.status(201).json(board);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId',
+    resolveWorkspaceScope,
+    requireWorkspaceRead,
+    asyncHandler(async (req, res) => {
+      const profile = await deps.workspacesService.getWorkspaceProfile({
+        workspaceId: req.workspace!.id,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(profile);
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId',
+    resolveWorkspaceScope,
+    requireWorkspacePermission(deps.authorizationService, 'workspace.write'),
+    requireWorkspaceRole(MembershipRole.ADMIN),
+    asyncHandler(async (req, res) => {
+      const payload = patchWorkspaceDto.parse(req.body);
+      const profile = await deps.workspacesService.updateWorkspaceProfile({
+        workspaceId: req.workspace!.id,
+        userId: req.auth!.userId,
+        patch: payload
+      });
+      res.status(200).json(profile);
     })
   );
 

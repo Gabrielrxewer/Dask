@@ -4,35 +4,95 @@
   gap: 16px;
 }
 
-.workflow-states-settings__list {
+.workflow-states-settings__hero,
+.workflow-states-settings__top-row {
+  align-items: stretch;
+}
+
+.workflow-states-settings__preview {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.workflow-states-settings__preview-column {
+  min-height: 136px;
+}
+
+.workflow-states-settings__create-header {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflow-states-settings__create-header > div {
+  min-width: 0;
+}
+
+.workflow-states-settings__create-header p {
+  margin: 5px 0 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.workflow-states-settings__create-header .shared-button,
+.workflow-states-settings__row-actions .shared-button,
+.workflow-states-settings__form-actions .shared-button {
+  border-color: #9fc2e2;
+  background: #ffffff;
+  color: #214d78;
+}
+
+.workflow-states-settings__create-header .shared-button {
+  flex: 0 0 auto;
+}
+
+.workflow-states-settings__panel {
+  gap: 16px;
+}
+
+.workflow-states-settings__list {
+  display: grid;
+  gap: 10px;
 }
 
 .workflow-states-settings__empty {
-  color: #8aadcc;
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text-soft);
   font-size: var(--font-size-sm);
-  padding: 20px 0 8px;
+  font-weight: 700;
 }
 
 .workflow-states-settings__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(187, 209, 230, 0.32);
+  min-height: 62px;
+  padding: 12px;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.055);
+  transition: border-color 0.16s, background 0.16s, box-shadow 0.16s;
 }
 
-.workflow-states-settings__row:last-child {
-  border-bottom: none;
+.workflow-states-settings__row:hover {
+  border-color: var(--builder-line-strong);
+  background: #f8fbff;
+  box-shadow: 0 12px 22px rgba(12, 35, 63, 0.08);
 }
 
 .workflow-states-settings__row-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex: 1 1 0;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -40,77 +100,117 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 3px rgba(10, 134, 232, 0.08);
 }
 
 .workflow-states-settings__row-name {
+  min-width: 0;
+  color: var(--builder-text);
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: #1e3a5f;
-  white-space: nowrap;
+  font-weight: 900;
+  overflow-wrap: anywhere;
 }
 
 .workflow-states-settings__row-slug {
-  font-size: 11px;
-  color: #b0c8e0;
-  white-space: nowrap;
+  color: var(--builder-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .workflow-states-settings__tag {
-  font-size: 10px;
-  color: #64748b;
-  background: rgba(100, 116, 139, 0.1);
-  border: 1px solid rgba(100, 116, 139, 0.2);
-  border-radius: 10px;
-  padding: 1px 7px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .workflow-states-settings__row-actions {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .workflow-states-settings__form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 0;
+  display: grid;
+  gap: 12px;
   width: 100%;
-  border-bottom: 1px solid rgba(187, 209, 230, 0.32);
+}
+
+.workflow-states-settings__form-row--create {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+}
+
+.workflow-states-settings__row > .workflow-states-settings__form-row {
+  grid-column: 1 / -1;
 }
 
 .workflow-states-settings__form-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+  gap: 12px;
 }
 
 .workflow-states-settings__color-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 
 .workflow-states-settings__color-picker {
-  width: 36px;
-  height: 36px;
-  border: 1px solid rgba(187, 209, 230, 0.64);
-  border-radius: 6px;
-  padding: 2px;
+  width: 46px;
+  height: 46px;
+  padding: 4px;
+  border: 1px solid #9bbbd8;
+  border-radius: var(--radius-xs);
+  background: #ffffff;
   cursor: pointer;
-  background: none;
-  flex-shrink: 0;
+  box-shadow:
+    0 12px 24px rgba(12, 42, 71, 0.055),
+    0 1px 0 rgba(255, 255, 255, 0.76) inset;
 }
 
 .workflow-states-settings__form-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
+  .workflow-states-settings__create-header,
+  .workflow-states-settings__row {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-states-settings__create-header {
+    flex-direction: column;
+  }
+
+  .workflow-states-settings__create-header .shared-button,
+  .workflow-states-settings__row-actions,
+  .workflow-states-settings__row-actions .shared-button,
+  .workflow-states-settings__form-actions .shared-button {
+    width: 100%;
+  }
+
+  .workflow-states-settings__row-actions {
+    justify-content: stretch;
+  }
+
   .workflow-states-settings__form-fields {
     grid-template-columns: 1fr;
   }

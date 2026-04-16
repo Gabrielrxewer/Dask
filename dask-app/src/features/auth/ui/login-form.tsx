@@ -322,7 +322,13 @@ export function LoginForm() {
   }
 
   return (
-    <section className="auth-login-panel" aria-label="Acesso ao Dask">
+    <section
+      className={cn(
+        "auth-login-panel",
+        isRegisterStep && hintMessage && "auth-login-panel--register-message"
+      )}
+      aria-label="Acesso ao Dask"
+    >
       <div className="auth-login">
         <div className="auth-login__header">
           <h1 className="auth-login__title">{isRegisterStep ? "Crie sua conta" : "Entrar na plataforma"}</h1>

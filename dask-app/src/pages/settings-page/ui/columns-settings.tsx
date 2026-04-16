@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { useWorkspace } from "@/modules/workspace";
-import { Button, FormField, Section, Select, TextInput } from "@/shared/ui";
+import { Button, FormField, Select, TextInput } from "@/shared/ui";
+import "./general-settings.css";
 import "./columns-settings.css";
 
 interface EditState {
@@ -98,62 +99,97 @@ export function ColumnsSettings() {
     }
   };
 
+  const activeColumns = columns.filter(column => column.isActive !== false);
+  const columnsWithState = activeColumns.filter(column => column.stateIds.length > 0).length;
+  const wipColumns = activeColumns.filter(column => column.wipLimit !== null).length;
+  const progressWidth = Math.min(100, Math.max(12, activeColumns.length * 22));
+
   return (
-    <div className="columns-settings">
-      <section className="columns-settings__board-preview" aria-label="Preview das colunas">
-        <div className="columns-settings__preview-copy">
-          <span>Editor de board</span>
-          <strong>Organize as colunas como o usuario vai enxergar no dia a dia.</strong>
-          <p>Cada coluna pode apontar para um estado automatico. Ao mover o card, o estado muda junto.</p>
+    <div className="general-settings columns-settings">
+      <section className="general-settings__builder-hero columns-settings__hero">
+        <div className="general-settings__builder-copy">
+          <span>Colunas</span>
+          <h1>Organize o board como o usuario trabalha.</h1>
+          <p>
+            Cada coluna pode apontar para um estado automatico. Ao mover um card, o estado muda junto.
+          </p>
         </div>
-        <div className="columns-settings__preview-board">
-          {columns.slice(0, 6).map(col => (
-            <div key={`preview-${col.id}`} className="columns-settings__preview-column">
-              <span>{col.name}</span>
-              <small>{activeStates.find(state => state.id === col.stateIds[0])?.name ?? "Sem estado"}</small>
-              <div />
+
+        <div className="general-settings__live-preview columns-settings__preview" aria-label="Preview das colunas">
+          {activeColumns.slice(0, 6).map(col => (
+            <div key={`preview-${col.id}`} className="general-settings__preview-column columns-settings__preview-column">
+              <span>
+                <i style={{ background: activeStates.find(state => state.id === col.stateIds[0])?.color ?? "#0a86e8" }} />
+                {col.name}
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>{activeStates.find(state => state.id === col.stateIds[0])?.name ?? "Sem estado"}</strong>
+                <small>{col.wipLimit !== null ? `WIP ${col.wipLimit}` : `/${col.slug}`}</small>
+              </div>
             </div>
           ))}
-          {columns.length === 0 && !loadingList ? (
-            <div className="columns-settings__preview-empty">Crie a primeira coluna para visualizar o board.</div>
-          ) : null}
+
+          {activeColumns.length === 0 && !loadingList && (
+            <div className="general-settings__preview-column columns-settings__preview-column">
+              <span>
+                <i style={{ background: "#0a86e8" }} />
+                Nova coluna
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>Board vazio</strong>
+                <small>Crie a primeira coluna</small>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="general-settings__progress">
+          <div>
+            <strong>{activeColumns.length} colunas ativas</strong>
+            <small>{columnsWithState} com estado automatico</small>
+          </div>
+          <span><i style={{ width: `${progressWidth}%` }} /></span>
         </div>
       </section>
 
-      <Section
-        title="Colunas do board"
-        subtitle="Gerencie as colunas do board e o state automatico aplicado ao mover cards para cada coluna."
-        actions={
-          newName === null ? (
-            <Button type="button" size="sm" onClick={() => { setNewName(""); setEditing(null); }}>
-              Nova coluna
-            </Button>
-          ) : undefined
-        }
-      >
-        <div className="columns-settings__list">
-          {newName !== null && (
-            <div className="columns-settings__form-row">
-              <FormField label="Nome da nova coluna">
-                <TextInput
-                  value={newName}
-                  placeholder="Ex: Em validacao"
-                  autoFocus
-                  onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") void handleCreate();
-                    if (e.key === "Escape") setNewName(null);
-                  }}
-                />
-              </FormField>
+      <section className="general-settings__preferences-row columns-settings__top-row">
+        <div className="general-settings__preference-card">
+          <div className="columns-settings__create-header">
+            <div>
+              <h2>Nova coluna</h2>
+              <p>Crie uma coluna e defina qual estado sera aplicado aos cards movidos para ela.</p>
+            </div>
+            {newName === null ? (
+              <Button type="button" size="sm" onClick={() => { setNewName(""); setEditing(null); }}>
+                Nova coluna
+              </Button>
+            ) : null}
+          </div>
 
-              <FormField label="State automatico da coluna">
-                <Select value={newDefaultStateId} onChange={e => setNewDefaultStateId(e.target.value)}>
-                  {activeStates.map(state => (
-                    <option key={state.id} value={state.id}>{state.name}</option>
-                  ))}
-                </Select>
-              </FormField>
+          {newName !== null ? (
+            <div className="columns-settings__form-row columns-settings__form-row--create">
+              <div className="columns-settings__form-fields">
+                <FormField label="Nome da nova coluna">
+                  <TextInput
+                    value={newName}
+                    placeholder="Ex: Em validacao"
+                    autoFocus
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") void handleCreate();
+                      if (e.key === "Escape") setNewName(null);
+                    }}
+                  />
+                </FormField>
+
+                <FormField label="State automatico da coluna">
+                  <Select value={newDefaultStateId} onChange={e => setNewDefaultStateId(e.target.value)}>
+                    {activeStates.map(state => (
+                      <option key={state.id} value={state.id}>{state.name}</option>
+                    ))}
+                  </Select>
+                </FormField>
+              </div>
 
               <div className="columns-settings__form-actions">
                 <Button type="button" size="sm" onClick={() => void handleCreate()} disabled={saving || !newName.trim()}>
@@ -164,8 +200,27 @@ export function ColumnsSettings() {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
+        </div>
 
+        <div className="general-settings__summary-card">
+          <h2>Resumo</h2>
+          <div className="general-settings__summary-grid">
+            <span><strong>{activeColumns.length}</strong> ativas</span>
+            <span><strong>{columnsWithState}</strong> com estado</span>
+            <span><strong>{wipColumns}</strong> com WIP</span>
+            <span><strong>{activeStates.length}</strong> estados</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="general-settings__templates columns-settings__panel">
+        <header>
+          <span>Board</span>
+          <h2>Colunas do board</h2>
+        </header>
+
+        <div className="columns-settings__list">
           {loadingList && <p className="columns-settings__empty">Carregando...</p>}
 
           {!loadingList && columns.length === 0 && newName === null && (
@@ -176,28 +231,30 @@ export function ColumnsSettings() {
             <div key={col.id} className="columns-settings__row">
               {editing?.id === col.id ? (
                 <div className="columns-settings__form-row">
-                  <FormField label="Nome da coluna">
-                    <TextInput
-                      value={editing.name}
-                      autoFocus
-                      onChange={e => setEditing({ ...editing, name: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") void handleSaveEdit();
-                        if (e.key === "Escape") handleCancelEdit();
-                      }}
-                    />
-                  </FormField>
+                  <div className="columns-settings__form-fields">
+                    <FormField label="Nome da coluna">
+                      <TextInput
+                        value={editing.name}
+                        autoFocus
+                        onChange={e => setEditing({ ...editing, name: e.target.value })}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") void handleSaveEdit();
+                          if (e.key === "Escape") handleCancelEdit();
+                        }}
+                      />
+                    </FormField>
 
-                  <FormField label="State automatico da coluna">
-                    <Select
-                      value={editing.defaultStateId}
-                      onChange={e => setEditing({ ...editing, defaultStateId: e.target.value })}
-                    >
-                      {activeStates.map(state => (
-                        <option key={state.id} value={state.id}>{state.name}</option>
-                      ))}
-                    </Select>
-                  </FormField>
+                    <FormField label="State automatico da coluna">
+                      <Select
+                        value={editing.defaultStateId}
+                        onChange={e => setEditing({ ...editing, defaultStateId: e.target.value })}
+                      >
+                        {activeStates.map(state => (
+                          <option key={state.id} value={state.id}>{state.name}</option>
+                        ))}
+                      </Select>
+                    </FormField>
+                  </div>
 
                   <div className="columns-settings__form-actions">
                     <Button type="button" size="sm" onClick={() => void handleSaveEdit()} disabled={saving || !editing.name.trim()}>
@@ -239,7 +296,7 @@ export function ColumnsSettings() {
             </div>
           ))}
         </div>
-      </Section>
+      </section>
     </div>
   );
 }

@@ -9,7 +9,7 @@
 
 .shared-page-header__label {
   margin: 0;
-  color: #31506d;
+  color: #1f4666;
   font-size: var(--font-size-2xs);
   text-transform: uppercase;
   font-weight: 700;
@@ -20,7 +20,7 @@
   font-size: clamp(1.42rem, 1.12rem + 0.72vw, 1.9rem);
   line-height: 1.08;
   letter-spacing: 0;
-  color: #071f35;
+  color: var(--text-strong);
 }
 
 .shared-filter-bar {

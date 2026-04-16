@@ -589,6 +589,11 @@
   scroll-padding-bottom: calc(var(--global-footer-height) + 28px);
 }
 
+.global-layout__main:not(.global-layout__main--public) {
+  color: var(--text);
+  text-rendering: geometricPrecision;
+}
+
 .global-layout__main--public {
   padding: 0;
 }

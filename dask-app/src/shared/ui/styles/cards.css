@@ -37,13 +37,14 @@
 
 .shared-metric-card p {
   margin: 0;
-  color: #5f7790;
+  color: var(--text-soft);
   font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .shared-metric-card h3 {
   margin: 8px 0 0;
   font-size: clamp(1.22rem, 1.05rem + 0.28vw, 1.38rem);
   letter-spacing: -0.035em;
-  color: #173553;
+  color: var(--text-strong);
 }

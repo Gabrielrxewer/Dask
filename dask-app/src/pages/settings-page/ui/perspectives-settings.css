@@ -1,26 +1,79 @@
-﻿.perspectives-settings {
+.perspectives-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.perspectives-settings__hero {
+  align-items: stretch;
+}
+
+.perspectives-settings__preview {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.perspectives-settings__preview-card {
+  min-height: 136px;
+}
+
+.perspectives-settings__top-row {
+  align-items: stretch;
+}
+
+.perspectives-settings .general-settings__summary-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.perspectives-settings__create-row {
   display: grid;
-  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.perspectives-settings__create-row .shared-form-field {
+  min-width: 0;
+}
+
+.perspectives-settings__create-row .shared-button {
+  min-height: 46px;
+}
+
+.perspectives-settings__list {
+  gap: 16px;
+}
+
+.perspectives-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .perspectives-settings__card {
   min-width: 0;
 }
 
-.perspectives-settings__create-row {
+.perspectives-settings__card-header {
   display: flex;
-  gap: 10px;
-  align-items: end;
-}
-
-.perspectives-settings__create-row .shared-form-field {
-  flex: 1 1 auto;
-}
-
-.perspectives-settings__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
+}
+
+.perspectives-settings__card-header > div {
+  min-width: 0;
+}
+
+.perspectives-settings__card-header p {
+  overflow-wrap: anywhere;
+}
+
+.perspectives-settings__card-header .shared-button {
+  flex: 0 0 auto;
+  border-color: #9fc2e2;
+  background: #ffffff;
+  color: #214d78;
 }
 
 .perspectives-settings__column-list {
@@ -29,38 +82,84 @@
 }
 
 .perspectives-settings__checkbox-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  border: 1px solid rgba(187, 209, 230, 0.64);
-  border-radius: 16px;
-  padding: 11px 12px;
-  color: #365a7f;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text);
   font-size: var(--font-size-xs);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
-  box-shadow:
-    0 12px 24px rgba(18, 54, 90, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  font-weight: 800;
   cursor: pointer;
+  transition: border-color 0.16s, background 0.16s, box-shadow 0.16s;
+}
+
+.perspectives-settings__checkbox-row:hover,
+.perspectives-settings__checkbox-row:focus-within {
+  border-color: var(--builder-line-strong);
+  background: #eef7ff;
+  box-shadow: 0 10px 18px rgba(12, 35, 63, 0.06);
 }
 
 .perspectives-settings__checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
   margin: 0;
+  accent-color: var(--builder-accent);
+}
+
+.perspectives-settings__checkbox-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.perspectives-settings__checkbox-row small {
+  color: var(--builder-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .perspectives-settings__empty {
   margin: 0;
-  color: #5f7790;
-  font-size: var(--font-size-xs);
+  padding: 12px;
+  border: 1px dashed var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
 }
 
-@media (max-width: 860px) {
-  .perspectives-settings__create-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
+@media (max-width: 1180px) {
   .perspectives-settings__grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .perspectives-settings__create-row {
+    grid-template-columns: 1fr;
+  }
+
+  .perspectives-settings__card-header,
+  .perspectives-settings__checkbox-row {
+    grid-template-columns: 1fr;
+  }
+
+  .perspectives-settings__card-header {
+    flex-direction: column;
+  }
+
+  .perspectives-settings__card-header .shared-button {
+    width: 100%;
+  }
+
+  .perspectives-settings__checkbox-row {
+    align-items: flex-start;
   }
 }

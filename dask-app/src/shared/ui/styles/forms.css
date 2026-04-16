@@ -45,7 +45,7 @@
 .shared-select__value {
   min-width: 0;
   overflow: hidden;
-  color: #173653;
+  color: var(--text-strong);
   font-size: var(--font-size-sm);
   font-weight: 600;
   text-overflow: ellipsis;
@@ -102,7 +102,7 @@
   border-radius: 12px;
   padding: 0 11px;
   background: transparent;
-  color: #315d84;
+  color: #224f73;
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-sm);
@@ -166,7 +166,7 @@
 
 .shared-form-field__label {
   font-size: var(--font-size-label);
-  color: #2a628f;
+  color: #174f7e;
   font-weight: 700;
   letter-spacing: 0.01em;
 }

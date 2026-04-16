@@ -8,7 +8,8 @@ import {
   mergeCardFieldDefinitions
 } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
-import { Button, FormField, Section, TextInput } from "@/shared/ui";
+import { Button, FormField, TextInput } from "@/shared/ui";
+import "./general-settings.css";
 import "./item-types-settings.css";
 
 const DEFAULT_COLOR = "#0369a1";
@@ -350,22 +351,75 @@ export function ItemTypesSettings() {
     toggleDraftField(typeSlug, "detail", fieldId, checked);
   };
 
+  const activeItemTypes = itemTypes.filter(type => type.isActive !== false);
+  const configuredCardTypes = activeItemTypes.filter(type => resolveEffectiveCardFields(type.slug).length > 0).length;
+  const configuredDetailTypes = activeItemTypes.filter(type => resolveEffectiveDetailFields(type.slug).length > 0).length;
+  const progressWidth = Math.min(100, Math.max(12, activeItemTypes.length * 22));
+
   return (
-    <div className="item-types-settings">
-      <Section
-        title="Tipos de work item"
-        subtitle="Defina os tipos e quais campos aparecem no card e no workitem expandido para cada tipo."
-        actions={
-          !newType ? (
-            <Button type="button" size="sm" onClick={() => { setNewType({ name: "", color: DEFAULT_COLOR }); setEditing(null); setExpandedFieldsFor(null); }}>
-              Novo tipo
-            </Button>
-          ) : undefined
-        }
-      >
-        <div className="item-types-settings__list">
-          {newType !== null && (
-            <div className="item-types-settings__form-row">
+    <div className="general-settings item-types-settings">
+      <section className="general-settings__builder-hero item-types-settings__hero">
+        <div className="general-settings__builder-copy">
+          <span>Work items</span>
+          <h1>Defina os tipos e campos de cada item.</h1>
+          <p>
+            Configure como cada tipo aparece no card fechado e no work item expandido, mantendo a leitura do board consistente.
+          </p>
+        </div>
+
+        <div className="general-settings__live-preview item-types-settings__hero-preview" aria-label="Preview dos tipos de work item">
+          {activeItemTypes.slice(0, 6).map(type => (
+            <div key={`preview-${type.id}`} className="general-settings__preview-column item-types-settings__hero-column">
+              <span>
+                <i style={{ background: type.color || DEFAULT_COLOR }} />
+                {type.name}
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>{resolveEffectiveCardFields(type.slug).length} campos no card</strong>
+                <small>{resolveEffectiveDetailFields(type.slug).length} no expandido</small>
+              </div>
+            </div>
+          ))}
+
+          {activeItemTypes.length === 0 && !loadingList && (
+            <div className="general-settings__preview-column item-types-settings__hero-column">
+              <span>
+                <i style={{ background: DEFAULT_COLOR }} />
+                Novo tipo
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>Sem tipos</strong>
+                <small>Crie o primeiro work item</small>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="general-settings__progress">
+          <div>
+            <strong>{activeItemTypes.length} tipos ativos</strong>
+            <small>{configuredCardTypes} com campos no card</small>
+          </div>
+          <span><i style={{ width: `${progressWidth}%` }} /></span>
+        </div>
+      </section>
+
+      <section className="general-settings__preferences-row item-types-settings__top-row">
+        <div className="general-settings__preference-card">
+          <div className="item-types-settings__create-header">
+            <div>
+              <h2>Novo tipo</h2>
+              <p>Crie uma categoria de work item e escolha a cor usada nos cards.</p>
+            </div>
+            {!newType ? (
+              <Button type="button" size="sm" onClick={() => { setNewType({ name: "", color: DEFAULT_COLOR }); setEditing(null); setExpandedFieldsFor(null); }}>
+                Novo tipo
+              </Button>
+            ) : null}
+          </div>
+
+          {newType !== null ? (
+            <div className="item-types-settings__form-row item-types-settings__form-row--create">
               <div className="item-types-settings__form-fields">
                 <FormField label="Nome do tipo">
                   <TextInput
@@ -404,8 +458,27 @@ export function ItemTypesSettings() {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
+        </div>
 
+        <div className="general-settings__summary-card">
+          <h2>Resumo</h2>
+          <div className="general-settings__summary-grid">
+            <span><strong>{activeItemTypes.length}</strong> tipos ativos</span>
+            <span><strong>{allFields.length}</strong> campos</span>
+            <span><strong>{configuredCardTypes}</strong> com card</span>
+            <span><strong>{configuredDetailTypes}</strong> expandidos</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="general-settings__templates item-types-settings__panel">
+        <header>
+          <span>Tipos</span>
+          <h2>Tipos de work item</h2>
+        </header>
+
+        <div className="item-types-settings__list">
           {loadingList && <p className="item-types-settings__empty">Carregando...</p>}
 
           {!loadingList && itemTypes.length === 0 && !newType && (
@@ -711,7 +784,7 @@ export function ItemTypesSettings() {
             );
           })}
         </div>
-      </Section>
+      </section>
     </div>
   );
 }

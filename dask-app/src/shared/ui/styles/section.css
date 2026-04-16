@@ -35,13 +35,14 @@
   margin: 0;
   font-size: var(--font-size-title-sm);
   letter-spacing: -0.03em;
-  color: #173553;
+  color: var(--text-strong);
 }
 
 .shared-section__subtitle {
   margin: 4px 0 0;
-  color: #5f7790;
+  color: var(--text-soft);
   font-size: var(--font-size-sm);
+  font-weight: 500;
 }
 
 .shared-section__content {
@@ -54,7 +55,8 @@
   margin: 0;
   border: 1px dashed rgba(177, 203, 225, 0.9);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
-  color: #5f7790;
+  color: var(--text-soft);
   border-radius: 18px;
   padding: var(--space-5);
+  font-weight: 600;
 }

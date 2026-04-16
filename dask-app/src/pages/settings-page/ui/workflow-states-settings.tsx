@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { useWorkspace } from "@/modules/workspace";
-import { Button, FormField, Section, TextInput } from "@/shared/ui";
+import { Button, FormField, TextInput } from "@/shared/ui";
 import { apiClient } from "@/shared/api/http-client";
 import { workspaceService } from "@/modules/workspace/api";
 import { useParams } from "react-router-dom";
+import "./general-settings.css";
 import "./workflow-states-settings.css";
 
 interface ApiWorkflowState {
@@ -27,7 +27,6 @@ const DEFAULT_COLOR = "#64748b";
 
 export function WorkflowStatesSettings() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
-  const { createBoardColumn } = useWorkspace(); // reutiliza snapshot refresh via updateBoardColumn
 
   const [states, setStates] = useState<ApiWorkflowState[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -119,22 +118,75 @@ export function WorkflowStatesSettings() {
     }
   };
 
+  const activeStates = states.filter(state => state.isActive !== false);
+  const terminalStates = activeStates.filter(state => state.isTerminal).length;
+  const editableStates = activeStates.filter(state => state.isEditable !== false).length;
+  const progressWidth = Math.min(100, Math.max(12, activeStates.length * 22));
+
   return (
-    <div className="workflow-states-settings">
-      <Section
-        title="Workflow States"
-        subtitle="Estados que aparecem como colunas no board. Cada tarefa avanca entre esses estados."
-        actions={
-          !newState ? (
-            <Button type="button" size="sm" onClick={() => { setNewState({ name: "", color: DEFAULT_COLOR }); setEditing(null); }}>
-              Novo estado
-            </Button>
-          ) : undefined
-        }
-      >
-        <div className="workflow-states-settings__list">
-          {newState !== null && (
-            <div className="workflow-states-settings__form-row">
+    <div className="general-settings workflow-states-settings">
+      <section className="general-settings__builder-hero workflow-states-settings__hero">
+        <div className="general-settings__builder-copy">
+          <span>Estados</span>
+          <h1>Defina o fluxo de trabalho do board.</h1>
+          <p>
+            Estados aparecem como etapas do processo. Cada tarefa avanca por esse fluxo ate chegar a um estado final.
+          </p>
+        </div>
+
+        <div className="general-settings__live-preview workflow-states-settings__preview" aria-label="Preview dos estados">
+          {(activeStates.length > 0 ? activeStates : states).slice(0, 6).map(state => (
+            <div key={state.id} className="general-settings__preview-column workflow-states-settings__preview-column">
+              <span>
+                <i style={{ background: state.color || DEFAULT_COLOR }} />
+                {state.name}
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>{state.isTerminal ? "Final" : "Em fluxo"}</strong>
+                <small>/{state.slug}</small>
+              </div>
+            </div>
+          ))}
+
+          {!loadingList && states.length === 0 && (
+            <div className="general-settings__preview-column workflow-states-settings__preview-column">
+              <span>
+                <i style={{ background: DEFAULT_COLOR }} />
+                Novo estado
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>Fluxo vazio</strong>
+                <small>Crie o primeiro estado</small>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="general-settings__progress">
+          <div>
+            <strong>{activeStates.length} estados ativos</strong>
+            <small>{terminalStates} finais no fluxo</small>
+          </div>
+          <span><i style={{ width: `${progressWidth}%` }} /></span>
+        </div>
+      </section>
+
+      <section className="general-settings__preferences-row workflow-states-settings__top-row">
+        <div className="general-settings__preference-card">
+          <div className="workflow-states-settings__create-header">
+            <div>
+              <h2>Novo estado</h2>
+              <p>Adicione uma etapa com nome e cor para identificar o fluxo.</p>
+            </div>
+            {!newState ? (
+              <Button type="button" size="sm" onClick={() => { setNewState({ name: "", color: DEFAULT_COLOR }); setEditing(null); }}>
+                Novo estado
+              </Button>
+            ) : null}
+          </div>
+
+          {newState !== null ? (
+            <div className="workflow-states-settings__form-row workflow-states-settings__form-row--create">
               <div className="workflow-states-settings__form-fields">
                 <FormField label="Nome do estado">
                   <TextInput
@@ -173,8 +225,27 @@ export function WorkflowStatesSettings() {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
+        </div>
 
+        <div className="general-settings__summary-card">
+          <h2>Resumo</h2>
+          <div className="general-settings__summary-grid">
+            <span><strong>{activeStates.length}</strong> ativos</span>
+            <span><strong>{terminalStates}</strong> finais</span>
+            <span><strong>{editableStates}</strong> editaveis</span>
+            <span><strong>{states.length}</strong> cadastrados</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="general-settings__templates workflow-states-settings__panel">
+        <header>
+          <span>Fluxo</span>
+          <h2>Estados do board</h2>
+        </header>
+
+        <div className="workflow-states-settings__list">
           {loadingList && <p className="workflow-states-settings__empty">Carregando...</p>}
 
           {!loadingList && states.length === 0 && !newState && (
@@ -251,7 +322,7 @@ export function WorkflowStatesSettings() {
             </div>
           ))}
         </div>
-      </Section>
+      </section>
     </div>
   );
 }

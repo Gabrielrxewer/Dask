@@ -7,7 +7,8 @@ import {
 import type { ApiCustomField } from "@/modules/workspace/model";
 import type { CustomFieldType } from "@/modules/workspace/model";
 import { useWorkspace } from "@/modules/workspace";
-import { Button, FormField, Section, Select, TextInput } from "@/shared/ui";
+import { Button, FormField, Select, TextInput } from "@/shared/ui";
+import "./general-settings.css";
 import "./custom-fields-settings.css";
 
 const FIELD_TYPE_OPTIONS: Array<{ value: CustomFieldType; label: string }> = [
@@ -293,75 +294,82 @@ export function CustomFieldsSettings() {
     }
   };
 
-  return (
-    <div className="custom-fields-settings">
-      <Section
-        title="Campos customizados"
-        subtitle="Adicione campos extras aos work items para capturar informacoes especificas do seu processo."
-        actions={
-          !newField ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                setNewField({ name: "", type: "text", required: false, allowAiGeneration: false });
-                setEditing(null);
-              }}
-            >
-              Novo campo
-            </Button>
-          ) : undefined
-        }
-      >
-        <div className="custom-fields-settings__list">
-          <div className="custom-fields-settings__all-fields">
-            <p className="custom-fields-settings__all-fields-title">
-              Todos os campos (sistema + template + customizados)
-            </p>
-            <p className="custom-fields-settings__all-fields-subtitle">
-              Configure por campo se o input textual pode gerar conteudo com IA.
-            </p>
+  const activeCustomFields = fields.filter(field => field.isActive !== false);
+  const requiredCustomFields = activeCustomFields.filter(field => field.required).length;
+  const aiEnabledFields = settingsRows.filter(row => row.allowAiGeneration).length;
+  const progressWidth = Math.min(100, Math.max(12, settingsRows.length * 8));
 
-            <div className="custom-fields-settings__all-fields-grid">
-              {settingsRows.map(row => (
-                <div key={row.id} className="custom-fields-settings__all-field-row">
-                  <div className="custom-fields-settings__all-field-meta">
-                    <span className="custom-fields-settings__type-badge">
-                      {getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}
-                    </span>
-                    <span className="custom-fields-settings__row-name">{row.label}</span>
-                    <span className={`custom-fields-settings__source custom-fields-settings__source--${row.source}`}>
-                      {row.source === "system" ? "Sistema" : "Campo"}
-                    </span>
-                    {row.required ? <span className="custom-fields-settings__required">obrigatorio</span> : null}
-                    {row.optionsCount > 0 ? (
-                      <span className="custom-fields-settings__options-hint">{row.optionsCount} opcoes</span>
-                    ) : null}
-                  </div>
-                  <div className="custom-fields-settings__all-field-actions">
-                    <label className="custom-fields-settings__checkbox">
-                      <input
-                        type="checkbox"
-                        checked={row.allowAiGeneration}
-                        disabled={!row.editableAi || savingAiFieldId === row.id}
-                        onChange={event => void handleToggleFieldAi(row, event.target.checked)}
-                      />
-                      <span>
-                        {row.editableAi
-                          ? savingAiFieldId === row.id
-                            ? "Salvando..."
-                            : "Permitir IA"
-                          : "Nao se aplica"}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              ))}
+  return (
+    <div className="general-settings custom-fields-settings">
+      <section className="general-settings__builder-hero custom-fields-settings__hero">
+        <div className="general-settings__builder-copy">
+          <span>Campos</span>
+          <h1>Padronize os dados dos work items.</h1>
+          <p>
+            Adicione campos extras, marque obrigatoriedade e controle quais inputs textuais podem gerar conteudo com IA.
+          </p>
+        </div>
+
+        <div className="general-settings__live-preview custom-fields-settings__hero-preview" aria-label="Preview dos campos">
+          {settingsRows.slice(0, 6).map(row => (
+            <div key={`preview-${row.id}`} className="general-settings__preview-column custom-fields-settings__hero-column">
+              <span>
+                <i style={{ background: row.allowAiGeneration ? "#12a99e" : "#0a86e8" }} />
+                {row.label}
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>{getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}</strong>
+                <small>{row.source === "system" ? "Sistema" : "Customizado"}</small>
+              </div>
             </div>
+          ))}
+
+          {settingsRows.length === 0 && !loadingList && (
+            <div className="general-settings__preview-column custom-fields-settings__hero-column">
+              <span>
+                <i style={{ background: "#0a86e8" }} />
+                Novo campo
+              </span>
+              <div className="general-settings__preview-card">
+                <strong>Sem campos</strong>
+                <small>Crie o primeiro campo</small>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="general-settings__progress">
+          <div>
+            <strong>{settingsRows.length} campos no workspace</strong>
+            <small>{aiEnabledFields} com IA habilitada</small>
+          </div>
+          <span><i style={{ width: `${progressWidth}%` }} /></span>
+        </div>
+      </section>
+
+      <section className="general-settings__preferences-row custom-fields-settings__top-row">
+        <div className="general-settings__preference-card">
+          <div className="custom-fields-settings__create-header">
+            <div>
+              <h2>Novo campo</h2>
+              <p>Crie um campo customizado para capturar informacoes especificas do processo.</p>
+            </div>
+            {!newField ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setNewField({ name: "", type: "text", required: false, allowAiGeneration: false });
+                  setEditing(null);
+                }}
+              >
+                Novo campo
+              </Button>
+            ) : null}
           </div>
 
-          {newField !== null && (
-            <div className="custom-fields-settings__form-row">
+          {newField !== null ? (
+            <div className="custom-fields-settings__form-row custom-fields-settings__form-row--create">
               <div className="custom-fields-settings__form-fields">
                 <FormField label="Nome do campo">
                   <TextInput
@@ -427,7 +435,72 @@ export function CustomFieldsSettings() {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
+        </div>
+
+        <div className="general-settings__summary-card">
+          <h2>Resumo</h2>
+          <div className="general-settings__summary-grid">
+            <span><strong>{settingsRows.length}</strong> campos</span>
+            <span><strong>{activeCustomFields.length}</strong> customizados</span>
+            <span><strong>{requiredCustomFields}</strong> obrigatorios</span>
+            <span><strong>{aiEnabledFields}</strong> com IA</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="general-settings__templates custom-fields-settings__panel">
+        <header>
+          <span>Campos</span>
+          <h2>Campos do workspace</h2>
+        </header>
+
+        <div className="custom-fields-settings__list">
+          <div className="custom-fields-settings__all-fields">
+            <p className="custom-fields-settings__all-fields-title">
+              Todos os campos (sistema + template + customizados)
+            </p>
+            <p className="custom-fields-settings__all-fields-subtitle">
+              Configure por campo se o input textual pode gerar conteudo com IA.
+            </p>
+
+            <div className="custom-fields-settings__all-fields-grid">
+              {settingsRows.map(row => (
+                <div key={row.id} className="custom-fields-settings__all-field-row">
+                  <div className="custom-fields-settings__all-field-meta">
+                    <span className="custom-fields-settings__type-badge">
+                      {getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}
+                    </span>
+                    <span className="custom-fields-settings__row-name">{row.label}</span>
+                    <span className={`custom-fields-settings__source custom-fields-settings__source--${row.source}`}>
+                      {row.source === "system" ? "Sistema" : "Campo"}
+                    </span>
+                    {row.required ? <span className="custom-fields-settings__required">obrigatorio</span> : null}
+                    {row.optionsCount > 0 ? (
+                      <span className="custom-fields-settings__options-hint">{row.optionsCount} opcoes</span>
+                    ) : null}
+                  </div>
+                  <div className="custom-fields-settings__all-field-actions">
+                    <label className="custom-fields-settings__checkbox">
+                      <input
+                        type="checkbox"
+                        checked={row.allowAiGeneration}
+                        disabled={!row.editableAi || savingAiFieldId === row.id}
+                        onChange={event => void handleToggleFieldAi(row, event.target.checked)}
+                      />
+                      <span>
+                        {row.editableAi
+                          ? savingAiFieldId === row.id
+                            ? "Salvando..."
+                            : "Permitir IA"
+                          : "Nao se aplica"}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {loadingList && <p className="custom-fields-settings__empty">Carregando...</p>}
 
@@ -541,7 +614,7 @@ export function CustomFieldsSettings() {
             </div>
           ))}
         </div>
-      </Section>
+      </section>
     </div>
   );
 }

@@ -54,13 +54,14 @@
   margin: 0;
   font-size: var(--font-size-sm);
   letter-spacing: 0.01em;
+  color: var(--text-strong);
 }
 
 .board-column__counter {
   background: #ebf3ff;
-  color: #1b4d82;
+  color: #0f3f6d;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 999px;
   padding: 2px 8px;
 }
@@ -83,6 +84,7 @@
   background: #f6faff;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
+  font-weight: 600;
   padding: 12px;
 }
 

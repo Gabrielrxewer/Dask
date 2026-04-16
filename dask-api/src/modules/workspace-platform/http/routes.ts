@@ -8,6 +8,7 @@ import {
 } from '@/core/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import type { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
 import type { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import type { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import {
@@ -38,10 +39,13 @@ import {
   workflowStateParamsDto,
   workspaceMemberAccessParamsDto,
   workspaceInviteParamsDto,
+  workspaceDocumentParamsDto,
   workItemParamsDto,
   workItemTagParamsDto,
   workspaceIdParamsDto,
-  workspaceSnapshotQueryDto
+  workspaceSnapshotQueryDto,
+  createWorkspaceDocumentDto,
+  patchWorkspaceDocumentDto
 } from '@/modules/workspace-platform/http/dto';
 import { permissionCatalog, resolvePermissionsForMembership, rolePermissionPresets } from '@/modules/identity/domain/permissions';
 
@@ -49,6 +53,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   prisma: PrismaClient;
   authorizationService: AuthorizationService;
   workspaceConfigService: WorkspaceConfigService;
+  workspaceDocumentsService: WorkspaceDocumentsService;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
   workspaceInvitesService: WorkspaceInvitesService;
 }): Router => {
@@ -521,6 +526,64 @@ export const buildWorkspacePlatformRoutes = (deps: {
         userId: req.auth!.userId
       });
       res.status(200).json(items);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/documents',
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const documents = await deps.workspaceDocumentsService.listDocuments({
+        workspaceId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(documents);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/documents',
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = createWorkspaceDocumentDto.parse(req.body);
+      const document = await deps.workspaceDocumentsService.createDocument({
+        workspaceId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(201).json(document);
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/documents/:documentId',
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
+      const payload = patchWorkspaceDocumentDto.parse(req.body);
+      const document = await deps.workspaceDocumentsService.updateDocument({
+        workspaceId,
+        documentId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(document);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/documents/:documentId',
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
+      await deps.workspaceDocumentsService.deleteDocument({
+        workspaceId,
+        documentId,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
     })
   );
 

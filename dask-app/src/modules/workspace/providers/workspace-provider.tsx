@@ -27,6 +27,7 @@ import type {
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
   WorkspaceAutomation,
+  WorkspaceDocument,
   WorkspacePreferences,
   WorkspaceSnapshot,
   WorkspaceTemplateKey
@@ -98,6 +99,13 @@ interface WorkspaceContextValue {
   runDocumentationAssistant: (
     input: RunDocumentationAssistantInput
   ) => Promise<RunDocumentationAssistantResult>;
+  listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+  createWorkspaceDocument: (input: { title: string; content?: string; position?: number }) => Promise<WorkspaceDocument>;
+  updateWorkspaceDocument: (
+    documentId: string,
+    input: { title?: string; content?: string; position?: number }
+  ) => Promise<WorkspaceDocument>;
+  deleteWorkspaceDocument: (documentId: string) => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -513,6 +521,43 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [workspaceSlug]
   );
 
+  const listWorkspaceDocuments = useCallback(async (): Promise<WorkspaceDocument[]> => {
+    if (!workspaceSlug) {
+      return [];
+    }
+    return workspaceService.listWorkspaceDocuments(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const createWorkspaceDocument = useCallback(
+    async (input: { title: string; content?: string; position?: number }): Promise<WorkspaceDocument> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.createWorkspaceDocument(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const updateWorkspaceDocument = useCallback(
+    async (documentId: string, input: { title?: string; content?: string; position?: number }): Promise<WorkspaceDocument> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.updateWorkspaceDocument(workspaceSlug, documentId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const deleteWorkspaceDocument = useCallback(
+    async (documentId: string): Promise<void> => {
+      if (!workspaceSlug) {
+        return;
+      }
+      await workspaceService.deleteWorkspaceDocument(workspaceSlug, documentId);
+    },
+    [workspaceSlug]
+  );
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       snapshot,
@@ -560,7 +605,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       updateAiAgent,
       runAiAgentOnItem,
       runAiRiskAnalysis,
-      runDocumentationAssistant
+      runDocumentationAssistant,
+      listWorkspaceDocuments,
+      createWorkspaceDocument,
+      updateWorkspaceDocument,
+      deleteWorkspaceDocument
     }),
     [
       snapshot,
@@ -608,7 +657,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       updateAiAgent,
       runAiAgentOnItem,
       runAiRiskAnalysis,
-      runDocumentationAssistant
+      runDocumentationAssistant,
+      listWorkspaceDocuments,
+      createWorkspaceDocument,
+      updateWorkspaceDocument,
+      deleteWorkspaceDocument
     ]
   );
 

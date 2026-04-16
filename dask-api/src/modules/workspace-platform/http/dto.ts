@@ -27,6 +27,27 @@ export const workspaceSnapshotQueryDto = z.object({
   limit: z.coerce.number().int().min(1).max(1000).optional()
 });
 
+export const workspaceDocumentParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  documentId: z.string().uuid()
+});
+
+export const createWorkspaceDocumentDto = z.object({
+  title: z.string().trim().min(1).max(180),
+  content: z.string().max(200_000).optional(),
+  position: z.number().int().nonnegative().optional()
+});
+
+export const patchWorkspaceDocumentDto = z
+  .object({
+    title: z.string().trim().min(1).max(180).optional(),
+    content: z.string().max(200_000).optional(),
+    position: z.number().int().nonnegative().optional()
+  })
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: 'At least one field is required'
+  });
+
 export const itemTypeParamsDto = z.object({
   workspaceId: z.string().uuid(),
   typeId: z.string().uuid()

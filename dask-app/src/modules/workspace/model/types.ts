@@ -93,6 +93,18 @@ export interface WorkspaceTag {
   isActive?: boolean;
 }
 
+export interface WorkspaceDocument {
+  id: string;
+  workspaceId: string;
+  title: string;
+  content: string;
+  position: number;
+  createdBy: string;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorkspaceSummary {
   id: string;
   organizationId: string | null;
@@ -447,6 +459,17 @@ export interface WorkspaceService {
     input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
   ) => Promise<AutomationRule>;
   deleteAutomationRule: (workspaceSlug: string, ruleId: string) => Promise<void>;
+  listWorkspaceDocuments: (workspaceSlug: string) => Promise<WorkspaceDocument[]>;
+  createWorkspaceDocument: (
+    workspaceSlug: string,
+    input: { title: string; content?: string; position?: number }
+  ) => Promise<WorkspaceDocument>;
+  updateWorkspaceDocument: (
+    workspaceSlug: string,
+    documentId: string,
+    input: { title?: string; content?: string; position?: number }
+  ) => Promise<WorkspaceDocument>;
+  deleteWorkspaceDocument: (workspaceSlug: string, documentId: string) => Promise<void>;
 
   listAiAgents: (workspaceSlug: string) => Promise<AiAgentSummary[]>;
   listAiRuns: (

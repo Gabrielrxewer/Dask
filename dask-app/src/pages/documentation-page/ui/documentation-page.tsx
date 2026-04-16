@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { buildBoardMetrics } from "@/entities/task";
-import { useWorkspace, type DocumentationAssistantMode } from "@/modules/workspace";
+import { useWorkspace, type DocumentationAssistantMode, type WorkspaceDocument } from "@/modules/workspace";
 import { Button, StatusBadge, TextInput, Textarea } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./documentation-page.css";
@@ -13,20 +13,6 @@ interface AssistantMessage {
   mode: DocumentationAssistantMode;
   content: string;
   createdAt: string;
-}
-
-interface DocPage {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface StoredDocumentationState {
-  docs: DocPage[];
-  activeDocId: string | null;
-  chatsByDoc: Record<string, AssistantMessage[]>;
 }
 
 const DEFAULT_INSTRUCTIONS: Record<DocumentationAssistantMode, string> = {
@@ -54,17 +40,6 @@ function formatRelativeDate(iso: string): string {
   });
 }
 
-function createDefaultDoc(): DocPage {
-  const now = new Date().toISOString();
-  return {
-    id: createId(),
-    title: "Nova doc",
-    content: "",
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
 function createMessage(role: AssistantRole, mode: DocumentationAssistantMode, content: string): AssistantMessage {
   return {
     id: createId(),
@@ -90,40 +65,23 @@ function inferIntentMode(prompt: string, fallback: DocumentationAssistantMode): 
   return fallback;
 }
 
-function buildStoredState(raw: string | null): StoredDocumentationState {
-  if (!raw) {
-    const defaultDoc = createDefaultDoc();
-    return {
-      docs: [defaultDoc],
-      activeDocId: defaultDoc.id,
-      chatsByDoc: {}
-    };
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<StoredDocumentationState>;
-    const docs = Array.isArray(parsed.docs) && parsed.docs.length > 0 ? parsed.docs : [createDefaultDoc()];
-    const activeDocId = docs.some((doc) => doc.id === parsed.activeDocId)
-      ? (parsed.activeDocId ?? docs[0].id)
-      : docs[0].id;
-    const chatsByDoc = parsed.chatsByDoc && typeof parsed.chatsByDoc === "object" ? parsed.chatsByDoc : {};
-    return { docs, activeDocId, chatsByDoc };
-  } catch {
-    const defaultDoc = createDefaultDoc();
-    return {
-      docs: [defaultDoc],
-      activeDocId: defaultDoc.id,
-      chatsByDoc: {}
-    };
-  }
-}
-
 export function DocumentationPage() {
-  const { snapshot, isLoading, runDocumentationAssistant } = useWorkspace();
+  const {
+    snapshot,
+    isLoading,
+    runDocumentationAssistant,
+    listWorkspaceDocuments,
+    createWorkspaceDocument,
+    updateWorkspaceDocument,
+    deleteWorkspaceDocument
+  } = useWorkspace();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
-  const storageKey = useMemo(() => `dask-doc-v2:${snapshot?.id ?? "workspace"}`, [snapshot?.id]);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const dirtyDocIdsRef = useRef<Set<string>>(new Set());
+  const saveSeqByDocRef = useRef<Record<string, number>>({});
 
-  const [docs, setDocs] = useState<DocPage[]>([createDefaultDoc()]);
+  const [docs, setDocs] = useState<WorkspaceDocument[]>([]);
+  const [isDocsLoading, setIsDocsLoading] = useState(true);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
@@ -131,30 +89,10 @@ export function DocumentationPage() {
   const [prompt, setPrompt] = useState("");
   const [includeSemanticContext, setIncludeSemanticContext] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSavingDocId, setIsSavingDocId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = buildStoredState(localStorage.getItem(storageKey));
-    setDocs(stored.docs);
-    setActiveDocId(stored.activeDocId);
-    setChatsByDoc(stored.chatsByDoc);
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!activeDocId || docs.some((doc) => doc.id === activeDocId)) {
-      return;
-    }
-    setActiveDocId(docs[0]?.id ?? null);
-  }, [activeDocId, docs]);
-
-  useEffect(() => {
-    const state: StoredDocumentationState = {
-      docs,
-      activeDocId,
-      chatsByDoc
-    };
-    localStorage.setItem(storageKey, JSON.stringify(state));
-  }, [storageKey, docs, activeDocId, chatsByDoc]);
 
   const activeDoc = useMemo(() => {
     return docs.find((doc) => doc.id === activeDocId) ?? docs[0] ?? null;
@@ -167,81 +105,222 @@ export function DocumentationPage() {
     return chatsByDoc[activeDoc.id] ?? [];
   }, [chatsByDoc, activeDoc]);
 
-  function updateDoc(docId: string, patch: Partial<Pick<DocPage, "title" | "content">>) {
+  const pushMessage = useCallback((docId: string, message: AssistantMessage) => {
+    setChatsByDoc((previous) => ({
+      ...previous,
+      [docId]: [...(previous[docId] ?? []), message]
+    }));
+  }, []);
+
+  const updateDocDraft = useCallback((docId: string, patch: Partial<Pick<WorkspaceDocument, "title" | "content">>) => {
     setDocs((previous) =>
       previous.map((doc) =>
         doc.id === docId
           ? {
               ...doc,
-              ...patch,
-              updatedAt: new Date().toISOString()
+              ...patch
             }
           : doc
       )
     );
-  }
+    dirtyDocIdsRef.current.add(docId);
+  }, []);
 
-  function pushMessage(docId: string, message: AssistantMessage) {
-    setChatsByDoc((previous) => ({
-      ...previous,
-      [docId]: [...(previous[docId] ?? []), message]
-    }));
-  }
+  const appendDocDraft = useCallback((docId: string, chunk: string) => {
+    setDocs((previous) =>
+      previous.map((doc) => {
+        if (doc.id !== docId) {
+          return doc;
+        }
+        return {
+          ...doc,
+          content: doc.content.trim().length === 0 ? chunk : `${doc.content.trimEnd()}\n\n${chunk}`
+        };
+      })
+    );
+    dirtyDocIdsRef.current.add(docId);
+  }, []);
 
-  function createNewDoc() {
-    const now = new Date().toISOString();
-    const nextDoc: DocPage = {
-      id: createId(),
-      title: `Nova doc ${docs.length + 1}`,
-      content: "",
-      createdAt: now,
-      updatedAt: now
-    };
-    setDocs((previous) => [nextDoc, ...previous]);
-    setActiveDocId(nextDoc.id);
+  const replaceDocWithServerVersion = useCallback((nextDoc: WorkspaceDocument) => {
+    setDocs((previous) => previous.map((doc) => (doc.id === nextDoc.id ? nextDoc : doc)));
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    setIsDocsLoading(true);
+    setLoadError(null);
+    setSaveError(null);
     setRunError(null);
     setSelectedSnippet("");
-  }
+    dirtyDocIdsRef.current = new Set();
+    saveSeqByDocRef.current = {};
 
-  function duplicateActiveDoc() {
-    if (!activeDoc) {
-      return;
-    }
+    listWorkspaceDocuments()
+      .then((fetchedDocs) => {
+        if (!mounted) {
+          return;
+        }
+        setDocs(fetchedDocs);
+        setActiveDocId((current) => {
+          if (current && fetchedDocs.some((doc) => doc.id === current)) {
+            return current;
+          }
+          return fetchedDocs[0]?.id ?? null;
+        });
+        setChatsByDoc((previous) => {
+          const next: Record<string, AssistantMessage[]> = {};
+          fetchedDocs.forEach((doc) => {
+            if (previous[doc.id]) {
+              next[doc.id] = previous[doc.id];
+            }
+          });
+          return next;
+        });
+      })
+      .catch((error) => {
+        if (!mounted) {
+          return;
+        }
+        setLoadError(error instanceof Error ? error.message : "Falha ao carregar docs.");
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsDocsLoading(false);
+        }
+      });
 
-    const now = new Date().toISOString();
-    const duplicated: DocPage = {
-      ...activeDoc,
-      id: createId(),
-      title: `${activeDoc.title} (copia)`,
-      createdAt: now,
-      updatedAt: now
+    return () => {
+      mounted = false;
     };
+  }, [listWorkspaceDocuments]);
 
-    setDocs((previous) => [duplicated, ...previous]);
-    setActiveDocId(duplicated.id);
-  }
+  useEffect(() => {
+    setSelectedSnippet("");
+    setSaveError(null);
+    setRunError(null);
+  }, [activeDoc?.id]);
 
-  function removeActiveDoc() {
+  useEffect(() => {
+    if (!messagesRef.current) {
+      return;
+    }
+    messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+  }, [activeMessages.length, isRunning, activeDoc?.id]);
+
+  const persistDocDraft = useCallback(
+    async (document: WorkspaceDocument, sequence: number) => {
+      setIsSavingDocId(document.id);
+      try {
+        const updated = await updateWorkspaceDocument(document.id, {
+          title: document.title,
+          content: document.content
+        });
+
+        if (saveSeqByDocRef.current[document.id] !== sequence) {
+          return;
+        }
+
+        dirtyDocIdsRef.current.delete(document.id);
+        replaceDocWithServerVersion(updated);
+        setSaveError(null);
+      } catch (error) {
+        if (saveSeqByDocRef.current[document.id] !== sequence) {
+          return;
+        }
+
+        setSaveError(error instanceof Error ? error.message : "Falha ao salvar esta doc.");
+      } finally {
+        if (saveSeqByDocRef.current[document.id] === sequence) {
+          setIsSavingDocId((current) => (current === document.id ? null : current));
+        }
+      }
+    },
+    [replaceDocWithServerVersion, updateWorkspaceDocument]
+  );
+
+  useEffect(() => {
     if (!activeDoc) {
       return;
     }
 
-    if (docs.length <= 1) {
-      const replacement = createDefaultDoc();
-      setDocs([replacement]);
-      setActiveDocId(replacement.id);
-      setChatsByDoc({});
+    if (!dirtyDocIdsRef.current.has(activeDoc.id)) {
       return;
     }
 
-    const nextDocs = docs.filter((doc) => doc.id !== activeDoc.id);
-    setDocs(nextDocs);
-    setActiveDocId(nextDocs[0]?.id ?? null);
-    setChatsByDoc((previous) => {
-      const next = { ...previous };
-      delete next[activeDoc.id];
-      return next;
-    });
+    const docSnapshot = { ...activeDoc };
+    const timeoutHandle = setTimeout(() => {
+      const nextSequence = (saveSeqByDocRef.current[docSnapshot.id] ?? 0) + 1;
+      saveSeqByDocRef.current[docSnapshot.id] = nextSequence;
+      void persistDocDraft(docSnapshot, nextSequence);
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutHandle);
+    };
+  }, [activeDoc, persistDocDraft]);
+
+  async function createNewDoc() {
+    setRunError(null);
+    setSaveError(null);
+
+    try {
+      const created = await createWorkspaceDocument({
+        title: `Nova doc ${docs.length + 1}`,
+        content: "",
+        position: docs.length
+      });
+      setDocs((previous) => [...previous, created]);
+      setActiveDocId(created.id);
+      setSelectedSnippet("");
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Falha ao criar doc.");
+    }
+  }
+
+  async function duplicateActiveDoc() {
+    if (!activeDoc) {
+      return;
+    }
+
+    setRunError(null);
+    setSaveError(null);
+
+    try {
+      const duplicated = await createWorkspaceDocument({
+        title: `${activeDoc.title} (copia)`,
+        content: activeDoc.content,
+        position: docs.length
+      });
+      setDocs((previous) => [...previous, duplicated]);
+      setActiveDocId(duplicated.id);
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Falha ao duplicar doc.");
+    }
+  }
+
+  async function removeActiveDoc() {
+    if (!activeDoc) {
+      return;
+    }
+
+    setRunError(null);
+    setSaveError(null);
+
+    try {
+      await deleteWorkspaceDocument(activeDoc.id);
+      dirtyDocIdsRef.current.delete(activeDoc.id);
+      delete saveSeqByDocRef.current[activeDoc.id];
+      const nextDocs = docs.filter((doc) => doc.id !== activeDoc.id);
+      setDocs(nextDocs);
+      setActiveDocId(nextDocs[0]?.id ?? null);
+      setChatsByDoc((previous) => {
+        const next = { ...previous };
+        delete next[activeDoc.id];
+        return next;
+      });
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Falha ao excluir doc.");
+    }
   }
 
   function handleEditorSelection(textarea: HTMLTextAreaElement) {
@@ -254,9 +333,13 @@ export function DocumentationPage() {
       return;
     }
 
+    const docId = activeDoc.id;
+    const docTitle = activeDoc.title;
+    const docContent = activeDoc.content;
     const instruction = (prompt.trim() || DEFAULT_INSTRUCTIONS[activeMode]).slice(0, 6000);
     const inferredMode = inferIntentMode(instruction, activeMode);
-    pushMessage(activeDoc.id, createMessage("user", inferredMode, instruction));
+
+    pushMessage(docId, createMessage("user", inferredMode, instruction));
     setRunError(null);
     setIsRunning(true);
 
@@ -264,48 +347,51 @@ export function DocumentationPage() {
       const result = await runDocumentationAssistant({
         mode: inferredMode,
         instruction,
-        documentTitle: activeDoc.title,
-        documentContent: activeDoc.content,
+        documentTitle: docTitle,
+        documentContent: docContent,
         selection: selectedSnippet || undefined,
         includeSemanticContext,
         topKContextDocs: 5
       });
 
-      pushMessage(activeDoc.id, createMessage("assistant", inferredMode, result.content));
+      pushMessage(docId, createMessage("assistant", inferredMode, result.content));
 
       if (result.action === "replace_document" && result.updatedDocument) {
-        updateDoc(activeDoc.id, { content: result.updatedDocument });
-        pushMessage(
-          activeDoc.id,
-          createMessage("system", inferredMode, "A IA atualizou esta doc automaticamente.")
-        );
+        updateDocDraft(docId, { content: result.updatedDocument });
+        pushMessage(docId, createMessage("system", inferredMode, "A IA atualizou esta doc automaticamente."));
       }
 
       if (result.action === "append_document" && result.updatedDocument) {
-        const nextContent =
-          activeDoc.content.trim().length === 0
-            ? result.updatedDocument
-            : `${activeDoc.content.trimEnd()}\n\n${result.updatedDocument}`;
-        updateDoc(activeDoc.id, { content: nextContent });
-        pushMessage(
-          activeDoc.id,
-          createMessage("system", inferredMode, "A IA anexou novo trecho nesta doc.")
-        );
+        appendDocDraft(docId, result.updatedDocument);
+        pushMessage(docId, createMessage("system", inferredMode, "A IA anexou novo trecho nesta doc."));
       }
 
       setPrompt("");
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "Falha ao processar IA de documentacao.");
-      pushMessage(
-        activeDoc.id,
-        createMessage("system", inferredMode, "Nao foi possivel processar sua solicitacao agora.")
-      );
+      pushMessage(docId, createMessage("system", inferredMode, "Nao foi possivel processar sua solicitacao agora."));
     } finally {
       setIsRunning(false);
     }
   }
 
-  const canDeleteDoc = docs.length > 1;
+  const canDeleteDoc = docs.length > 0;
+  const canSend = !isRunning && !isLoading && !isDocsLoading && Boolean(activeDoc);
+  const assistantStatus = isRunning
+    ? "Pensando"
+    : activeDoc && isSavingDocId === activeDoc.id
+      ? "Salvando"
+      : "Pronta";
+  const assistantTone = isRunning || (activeDoc && isSavingDocId === activeDoc.id) ? "warning" : "success";
+
+  function handlePromptKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (canSend) {
+        void handleRunAssistant();
+      }
+    }
+  }
 
   return (
     <AppShell
@@ -322,21 +408,27 @@ export function DocumentationPage() {
               <p>Documentos</p>
               <h2>{docs.length} docs</h2>
             </div>
-            <Button type="button" size="sm" onClick={createNewDoc}>
+            <Button type="button" size="sm" onClick={() => void createNewDoc()} disabled={isDocsLoading || isLoading}>
               Nova doc
             </Button>
           </header>
 
           <div className="documentation-page__files-actions">
-            <Button type="button" size="sm" variant="outline" onClick={duplicateActiveDoc} disabled={!activeDoc}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void duplicateActiveDoc()}
+              disabled={!activeDoc || isDocsLoading || isLoading}
+            >
               Duplicar
             </Button>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={removeActiveDoc}
-              disabled={!activeDoc || !canDeleteDoc}
+              onClick={() => void removeActiveDoc()}
+              disabled={!activeDoc || !canDeleteDoc || isDocsLoading || isLoading}
             >
               Excluir
             </Button>
@@ -354,6 +446,9 @@ export function DocumentationPage() {
                 <span>{`Atualizado em ${formatRelativeDate(doc.updatedAt)}`}</span>
               </button>
             ))}
+            {!isDocsLoading && docs.length === 0 ? (
+              <p className="documentation-page__messages-empty">Nenhuma doc criada ainda.</p>
+            ) : null}
           </nav>
         </aside>
 
@@ -364,7 +459,7 @@ export function DocumentationPage() {
                 <div className="documentation-page__editor-title">
                   <TextInput
                     value={activeDoc.title}
-                    onChange={(event) => updateDoc(activeDoc.id, { title: event.target.value })}
+                    onChange={(event) => updateDocDraft(activeDoc.id, { title: event.target.value })}
                     placeholder="Titulo da doc"
                   />
                   <p>{`Ultima edicao: ${formatRelativeDate(activeDoc.updatedAt)}`}</p>
@@ -377,7 +472,7 @@ export function DocumentationPage() {
 
               <Textarea
                 value={activeDoc.content}
-                onChange={(event) => updateDoc(activeDoc.id, { content: event.target.value })}
+                onChange={(event) => updateDocDraft(activeDoc.id, { content: event.target.value })}
                 onMouseUp={(event) => handleEditorSelection(event.currentTarget)}
                 onKeyUp={(event) => handleEditorSelection(event.currentTarget)}
                 placeholder="Escreva livremente. O chat conversa somente sobre a doc selecionada."
@@ -393,7 +488,7 @@ export function DocumentationPage() {
               </footer>
             </>
           ) : (
-            <p>Nenhuma doc selecionada.</p>
+            <p className="documentation-page__messages-empty">Crie ou selecione uma doc para editar.</p>
           )}
         </section>
 
@@ -403,9 +498,7 @@ export function DocumentationPage() {
               <h2>Chat IA</h2>
               <p>{activeDoc ? `ON: ${activeDoc.title}` : "Selecione uma doc"}</p>
             </div>
-            <StatusBadge tone={isRunning ? "warning" : "success"}>
-              {isRunning ? "Executando" : "Pronta"}
-            </StatusBadge>
+            <StatusBadge tone={assistantTone}>{assistantStatus}</StatusBadge>
           </header>
 
           <div className="documentation-page__modes">
@@ -421,34 +514,79 @@ export function DocumentationPage() {
             ))}
           </div>
 
-          <div className="documentation-page__messages">
+          <div ref={messagesRef} className="documentation-page__messages">
             {activeMessages.length === 0 ? (
-              <p className="documentation-page__messages-empty">
-                Este chat ainda nao tem historico para esta doc.
-              </p>
+              <p className="documentation-page__messages-empty">Este chat ainda nao tem historico para esta doc.</p>
             ) : (
               activeMessages.map((message) => (
                 <article
                   key={message.id}
                   className={`documentation-page__message documentation-page__message--${message.role}`}
                 >
-                  <header>
-                    <strong>{message.role === "assistant" ? "Dask AI" : message.role === "user" ? "Voce" : "Sistema"}</strong>
-                    <span>{`${MODE_LABELS[message.mode]} • ${formatRelativeDate(message.createdAt)}`}</span>
-                  </header>
-                  <p>{message.content}</p>
+                  <div className="documentation-page__message-avatar" aria-hidden="true">
+                    {message.role === "assistant" ? "AI" : message.role === "user" ? "VO" : "SI"}
+                  </div>
+                  <div className="documentation-page__message-bubble">
+                    <header>
+                      <strong>{message.role === "assistant" ? "Dask AI" : message.role === "user" ? "Voce" : "Sistema"}</strong>
+                      <span>{`${MODE_LABELS[message.mode]} - ${formatRelativeDate(message.createdAt)}`}</span>
+                    </header>
+                    <p>{message.content}</p>
+                  </div>
                 </article>
               ))
             )}
+
+            {isRunning ? (
+              <article className="documentation-page__message documentation-page__message--thinking">
+                <div className="documentation-page__message-avatar" aria-hidden="true">
+                  AI
+                </div>
+                <div className="documentation-page__message-bubble">
+                  <header>
+                    <strong>Dask AI</strong>
+                    <span>Pensando...</span>
+                  </header>
+                  <div className="documentation-page__thinking-dots" aria-label="IA pensando">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              </article>
+            ) : null}
           </div>
 
           <div className="documentation-page__composer">
-            <Textarea
-              rows={4}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              placeholder="Digite livremente. Ex.: Reescreva esta doc deixando mais objetiva."
-            />
+            <div className="documentation-page__composer-shell">
+              <Textarea
+                rows={3}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={handlePromptKeyDown}
+                placeholder="Digite livremente. Ex.: Reescreva esta doc deixando mais objetiva."
+                className="documentation-page__composer-input"
+              />
+              <button
+                type="button"
+                className="documentation-page__send-button"
+                aria-label="Enviar mensagem"
+                disabled={!canSend}
+                onClick={() => void handleRunAssistant()}
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 5v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="m7.5 9 4.5-4 4.5 4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            <p className="documentation-page__composer-hint">Enter envia - Shift + Enter quebra linha</p>
             <label className="documentation-page__composer-checkbox">
               <input
                 type="checkbox"
@@ -457,20 +595,13 @@ export function DocumentationPage() {
               />
               Enriquecer com contexto do workspace
             </label>
-            <Button
-              type="button"
-              disabled={isRunning || isLoading || !activeDoc}
-              onClick={() => void handleRunAssistant()}
-            >
-              {isRunning ? "Processando..." : "Enviar para IA"}
-            </Button>
+            {loadError ? <p className="documentation-page__error">{loadError}</p> : null}
+            {saveError ? <p className="documentation-page__error">{saveError}</p> : null}
             {runError ? <p className="documentation-page__error">{runError}</p> : null}
           </div>
 
           <div className="documentation-page__assistant-footer">
-            <p>
-              Se voce pedir para reescrever/editar, a IA atualiza a doc automaticamente.
-            </p>
+            <p>Se voce pedir para reescrever ou editar, a IA atualiza a doc automaticamente.</p>
           </div>
         </aside>
       </div>

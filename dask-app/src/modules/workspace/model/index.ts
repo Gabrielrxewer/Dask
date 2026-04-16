@@ -40,6 +40,7 @@ export type {
   UpdateItemTypeInput,
   WorkspaceAutomation,
   WorkspaceBoardMode,
+  WorkspaceDocument,
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceProfile,

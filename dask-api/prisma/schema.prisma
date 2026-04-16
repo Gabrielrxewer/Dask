@@ -254,8 +254,25 @@ model Workspace {
   aiAgents               AIAgent[]
   aiAgentRuns            AIAgentRun[]
   invites                WorkspaceInvite[]
+  documents              WorkspaceDocument[]
 
   @@unique([organizationId, key])
+}
+
+model WorkspaceDocument {
+  id          String    @id @default(uuid())
+  workspaceId String
+  title       String
+  content     String
+  position    Int       @default(0)
+  createdBy   String
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, updatedAt])
+  @@index([workspaceId, position])
 }
 
 model WorkspaceInvite {

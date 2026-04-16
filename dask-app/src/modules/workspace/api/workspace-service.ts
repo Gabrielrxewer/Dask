@@ -24,6 +24,7 @@ import type {
   UpdateItemTypeInput,
   TaskScheduleInput,
   UpdateTaskInput,
+  WorkspaceDocument,
   WorkspacePreferences,
   WorkspaceProfile,
   WorkspaceInvite,
@@ -655,6 +656,45 @@ export const workspaceService: WorkspaceService = {
   async deleteAutomationRule(workspaceSlug: string, ruleId: string): Promise<void> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.delete(`/automation/workspaces/${workspaceId}/rules/${ruleId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listWorkspaceDocuments(workspaceSlug: string): Promise<WorkspaceDocument[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkspaceDocument[]>(`/workspaces/${workspaceId}/documents`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createWorkspaceDocument(
+    workspaceSlug: string,
+    input: { title: string; content?: string; position?: number }
+  ): Promise<WorkspaceDocument> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkspaceDocument>(`/workspaces/${workspaceId}/documents`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateWorkspaceDocument(
+    workspaceSlug: string,
+    documentId: string,
+    input: { title?: string; content?: string; position?: number }
+  ): Promise<WorkspaceDocument> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<WorkspaceDocument>(`/workspaces/${workspaceId}/documents/${documentId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async deleteWorkspaceDocument(workspaceSlug: string, documentId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/documents/${documentId}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });

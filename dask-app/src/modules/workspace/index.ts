@@ -20,6 +20,7 @@ export type {
   TaskScheduleInput,
   WorkspaceAutomation,
   WorkspaceBoardMode,
+  WorkspaceDocument,
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceProfile,

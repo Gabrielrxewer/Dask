@@ -1,11 +1,14 @@
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useParams } from "react-router-dom";
 import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
+import { workspaceService } from "@/modules/workspace/api";
 import { AppShell } from "@/widgets/app-shell";
 import {
   buildWorkspaceSettingsColumnsPath,
   buildWorkspaceSettingsCustomFieldsPath,
   buildWorkspaceSettingsItemTypesPath,
+  buildWorkspaceSettingsMembersPath,
   buildWorkspaceSettingsPerspectivesPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceSettingsWorkflowStatesPath
@@ -54,6 +57,31 @@ const NAV_ITEMS = [
 export function SettingsShell() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot } = useWorkspace();
+  const [isCorporateWorkspace, setIsCorporateWorkspace] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    workspaceService
+      .listWorkspaces()
+      .then(workspaces => {
+        if (!mounted) {
+          return;
+        }
+
+        const currentWorkspace = workspaces.find(workspace => workspace.slug === workspaceSlug);
+        setIsCorporateWorkspace(currentWorkspace?.kind === "CORPORATE");
+      })
+      .catch(() => {
+        if (mounted) {
+          setIsCorporateWorkspace(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceSlug]);
 
   const tasks = snapshot?.tasks ?? [];
   const metrics = buildBoardMetrics(tasks);
@@ -62,6 +90,20 @@ export function SettingsShell() {
   const columnsCount = boardConfig.statuses.length;
   const typesCount = boardConfig.taskTypes.length;
   const fieldsCount = boardConfig.fieldDefinitions.length;
+  const navItems = useMemo(() => {
+    if (!isCorporateWorkspace) {
+      return NAV_ITEMS;
+    }
+
+    return [
+      {
+        label: "Pessoas e acesso",
+        description: "Convites, roles e permissoes",
+        buildPath: buildWorkspaceSettingsMembersPath
+      },
+      ...NAV_ITEMS
+    ];
+  }, [isCorporateWorkspace]);
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes" pageLabel="Admin">
@@ -76,7 +118,7 @@ export function SettingsShell() {
           </div>
 
           <ul className="settings-shell__nav-list">
-            {NAV_ITEMS.map(item => (
+            {navItems.map(item => (
               <li key={item.label}>
                 <NavLink
                   to={item.buildPath(workspaceSlug)}

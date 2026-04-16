@@ -22,5 +22,6 @@ export {
   ItemTypesSettingsPage,
   PerspectivesSettingsPage,
   CustomFieldsSettingsPage,
+  MembersSettingsPage,
   SettingsPage
 } from "@/pages/settings-page";

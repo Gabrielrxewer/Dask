@@ -59,6 +59,68 @@ export interface WorkspaceTemplateOption {
   description?: string;
 }
 
+export type WorkspacePermissionKey =
+  | "workspace.read"
+  | "workspace.manage"
+  | "workspace.delete"
+  | "member.read"
+  | "member.invite"
+  | "member.update_role"
+  | "member.remove"
+  | "role.read"
+  | "role.manage"
+  | "permission.manage"
+  | "project.read"
+  | "project.create"
+  | "project.update"
+  | "project.delete"
+  | "board.read"
+  | "board.configure"
+  | "item.read"
+  | "item.create"
+  | "item.update"
+  | "item.delete"
+  | "item.transition"
+  | "comment.read"
+  | "comment.create"
+  | "comment.delete"
+  | "file.read"
+  | "file.upload"
+  | "file.delete"
+  | "automation.read"
+  | "automation.create"
+  | "automation.update"
+  | "automation.delete"
+  | "automation.run"
+  | "integration.read"
+  | "integration.manage"
+  | "billing.read"
+  | "billing.manage"
+  | "audit.read"
+  | "ai.use"
+  | "ai.configure"
+  | "workspace.write"
+  | "board.write"
+  | "item.write";
+
+export interface WorkspaceAccessControlMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  overrides: {
+    allow: WorkspacePermissionKey[];
+    deny: WorkspacePermissionKey[];
+  };
+  effectivePermissions: WorkspacePermissionKey[];
+}
+
+export interface WorkspaceAccessControlSnapshot {
+  catalog: WorkspacePermissionKey[];
+  rolePresets: Record<"OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "MANAGER" | "GUEST", WorkspacePermissionKey[]>;
+  members: WorkspaceAccessControlMember[];
+}
+
 // ─── Board Config API Response Types ─────────────────────────────────────────
 // Retornados pelos endpoints GET /board-columns, /item-types, /custom-fields
 // Contêm os UUIDs reais necessários para PATCH/DELETE
@@ -297,6 +359,15 @@ export interface WorkspaceService {
     itemId: string,
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
+  getAccessControl: (workspaceSlug: string) => Promise<WorkspaceAccessControlSnapshot>;
+  updateMemberAccessControl: (
+    workspaceSlug: string,
+    memberUserId: string,
+    patch: {
+      role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+      permissions?: { allow?: WorkspacePermissionKey[]; deny?: WorkspacePermissionKey[] };
+    }
+  ) => Promise<void>;
 }
 
 export interface AutomationRule {

@@ -5,6 +5,7 @@ export interface Member {
   name: string;
   initials: string;
   color: string;
+  role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 }
 
 export type MembersById = Record<MemberId, Member>;

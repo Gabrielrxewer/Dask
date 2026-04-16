@@ -1,0 +1,192 @@
+.members-settings {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.members-settings__card {
+  width: 100%;
+}
+
+.members-settings__invite-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
+.members-settings__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.members-settings__feedback {
+  color: #1f6b43;
+  font-size: var(--font-size-xs);
+}
+
+.members-settings__error {
+  color: #ad2f2f;
+  font-size: var(--font-size-xs);
+}
+
+.members-settings__hint {
+  margin: 0;
+  color: #5f7790;
+  font-size: var(--font-size-xs);
+}
+
+.members-settings__list {
+  display: grid;
+  gap: 8px;
+}
+
+.members-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 16px;
+  padding: 11px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
+}
+
+.members-settings__row-content {
+  display: grid;
+  gap: 2px;
+}
+
+.members-settings__row-content strong {
+  font-size: var(--font-size-sm);
+  color: #1e3a5f;
+  font-weight: 600;
+}
+
+.members-settings__row-content span {
+  font-size: var(--font-size-xs);
+  color: #6d86a1;
+}
+
+.members-settings__role-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.members-settings__member-card {
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 16px;
+  padding: 11px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.members-settings__permissions-table {
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.members-settings__permissions-header,
+.members-settings__permissions-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(6, minmax(72px, 1fr));
+}
+
+.members-settings__permissions-header {
+  background: rgba(233, 244, 255, 0.86);
+}
+
+.members-settings__permissions-row:nth-child(even) {
+  background: rgba(248, 252, 255, 0.72);
+}
+
+.members-settings__permissions-header span,
+.members-settings__permissions-row span {
+  padding: 10px 12px;
+  font-size: var(--font-size-xs);
+  color: #35597d;
+  border-right: 1px solid rgba(187, 209, 230, 0.46);
+}
+
+.members-settings__permissions-header span {
+  font-weight: 700;
+  color: #173553;
+}
+
+.members-settings__permissions-header span:last-child,
+.members-settings__permissions-row span:last-child {
+  border-right: none;
+}
+
+.members-settings__permissions-row + .members-settings__permissions-row {
+  border-top: 1px solid rgba(187, 209, 230, 0.46);
+}
+
+.members-settings__permissions-row span:not(:first-child),
+.members-settings__permissions-header span:not(:first-child) {
+  text-align: center;
+}
+
+.members-settings__permissions-row span:first-child,
+.members-settings__permissions-header span:first-child {
+  text-align: left;
+}
+
+.members-settings__permissions-row span:first-child {
+  color: #49698b;
+}
+
+.members-settings__permission-card {
+  border: 1px solid rgba(187, 209, 230, 0.64);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  display: grid;
+  gap: 6px;
+}
+
+.members-settings__permission-card h3 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: #173553;
+}
+
+.members-settings__permission-card p {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: #587391;
+  line-height: 1.4;
+}
+
+.members-settings__permission-card span {
+  font-size: 11px;
+  color: #8aadcc;
+}
+
+@media (max-width: 860px) {
+  .members-settings__invite-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .members-settings__row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .members-settings__role-editor {
+    width: 100%;
+  }
+
+  .members-settings__permissions-table {
+    overflow-x: auto;
+  }
+
+  .members-settings__permissions-header,
+  .members-settings__permissions-row {
+    min-width: 760px;
+  }
+}

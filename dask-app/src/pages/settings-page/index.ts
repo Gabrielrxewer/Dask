@@ -5,6 +5,7 @@ export { WorkflowStatesSettings as WorkflowStatesSettingsPage } from "@/pages/se
 export { ItemTypesSettings as ItemTypesSettingsPage } from "@/pages/settings-page/ui/item-types-settings";
 export { CustomFieldsSettings as CustomFieldsSettingsPage } from "@/pages/settings-page/ui/custom-fields-settings";
 export { PerspectivesSettings as PerspectivesSettingsPage } from "@/pages/settings-page/ui/perspectives-settings";
+export { MembersSettings as MembersSettingsPage } from "@/pages/settings-page/ui/members-settings";
 
 // Manter compatibilidade com imports existentes
 export { SettingsShell as SettingsPage } from "@/pages/settings-page/ui/settings-shell";

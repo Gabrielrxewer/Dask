@@ -20,6 +20,8 @@ import type {
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
   WorkspacePreferences,
+  WorkspacePermissionKey,
+  WorkspaceAccessControlSnapshot,
   WorkspaceService,
   WorkspaceSnapshot,
   WorkspaceSummary,
@@ -591,6 +593,29 @@ export const workspaceService: WorkspaceService = {
         retryOnUnauthorized: true
       }
     );
+  },
+
+  async getAccessControl(workspaceSlug: string): Promise<WorkspaceAccessControlSnapshot> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkspaceAccessControlSnapshot>(`/workspaces/${workspaceId}/access-control`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateMemberAccessControl(
+    workspaceSlug: string,
+    memberUserId: string,
+    patch: {
+      role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+      permissions?: { allow?: WorkspacePermissionKey[]; deny?: WorkspacePermissionKey[] };
+    }
+  ): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/members/${memberUserId}/access-control`, patch, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
   },
 
   async setCardFieldVisibility(workspaceSlug, fieldId, visible) {

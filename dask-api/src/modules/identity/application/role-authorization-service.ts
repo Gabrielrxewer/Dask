@@ -1,17 +1,10 @@
-import type { MembershipRole} from '@prisma/client';
 import { type PrismaClient } from '@prisma/client';
 import type {
   AuthorizationService,
   Permission,
   PermissionContext
 } from '@/modules/identity/domain/authorization';
-
-const rolePermissions: Record<MembershipRole, Permission[]> = {
-  OWNER: ['workspace.read', 'workspace.write', 'board.read', 'board.write', 'item.read', 'item.write', 'ai.use'],
-  ADMIN: ['workspace.read', 'workspace.write', 'board.read', 'board.write', 'item.read', 'item.write', 'ai.use'],
-  MEMBER: ['workspace.read', 'board.read', 'item.read', 'item.write', 'ai.use'],
-  VIEWER: ['workspace.read', 'board.read', 'item.read']
-};
+import { resolvePermissionsForMembership, type PermissionOverrides } from '@/modules/identity/domain/permissions';
 
 export class RoleAuthorizationService implements AuthorizationService {
   public constructor(private readonly prisma: PrismaClient) {}
@@ -26,13 +19,18 @@ export class RoleAuthorizationService implements AuthorizationService {
         workspaceId: context.workspaceId,
         userId
       },
-      select: { role: true }
+      select: { role: true, permissions: true }
     });
 
     if (!membership) {
       return false;
     }
 
-    return rolePermissions[membership.role].includes(permission);
+    const overrides =
+      membership.permissions && typeof membership.permissions === 'object'
+        ? (membership.permissions as Partial<PermissionOverrides>)
+        : null;
+    const effectivePermissions = resolvePermissionsForMembership(membership.role, overrides);
+    return effectivePermissions.includes(permission);
   }
 }

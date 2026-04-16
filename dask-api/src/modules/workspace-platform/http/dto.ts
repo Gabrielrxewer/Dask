@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isPermission } from '@/modules/identity/domain/permissions';
 
 const customFieldTypeEnum = z.enum([
   'text',
@@ -227,3 +228,27 @@ export const workItemTagParamsDto = z.object({
   itemId: z.string().uuid(),
   tagId: z.string().uuid()
 });
+
+export const workspaceMemberAccessParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  memberUserId: z.string().uuid()
+});
+
+const permissionStringDto = z
+  .string()
+  .min(1)
+  .refine((value) => isPermission(value), { message: 'Invalid permission key' });
+
+export const patchWorkspaceMemberAccessDto = z
+  .object({
+    role: z.enum(['OWNER', 'ADMIN', 'MEMBER', 'VIEWER']).optional(),
+    permissions: z
+      .object({
+        allow: z.array(permissionStringDto).optional(),
+        deny: z.array(permissionStringDto).optional()
+      })
+      .optional()
+  })
+  .refine((obj) => obj.role !== undefined || obj.permissions !== undefined, {
+    message: 'At least one field is required'
+  });

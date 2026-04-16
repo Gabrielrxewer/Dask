@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { MembershipRole, type PrismaClient } from '@prisma/client';
+import { MembershipRole, Prisma, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspacePermission,
@@ -28,16 +28,19 @@ import {
   resetWorkspaceTemplateDto,
   patchTagDto,
   patchWorkflowStateDto,
+  patchWorkspaceMemberAccessDto,
   patchWorkItemCustomFieldValueDto,
   patchWorkItemDto,
   tagParamsDto,
   transitionWorkItemDto,
   workflowStateParamsDto,
+  workspaceMemberAccessParamsDto,
   workItemParamsDto,
   workItemTagParamsDto,
   workspaceIdParamsDto,
   workspaceSnapshotQueryDto
 } from '@/modules/workspace-platform/http/dto';
+import { permissionCatalog, resolvePermissionsForMembership, rolePermissionPresets } from '@/modules/identity/domain/permissions';
 
 export const buildWorkspacePlatformRoutes = (deps: {
   prisma: PrismaClient;
@@ -69,6 +72,123 @@ export const buildWorkspacePlatformRoutes = (deps: {
         userId: req.auth!.userId
       });
       res.status(200).json(config);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/access-control',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const memberships = await deps.prisma.workspaceMembership.findMany({
+        where: { workspaceId },
+        select: {
+          userId: true,
+          role: true,
+          permissions: true,
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'asc'
+        }
+      });
+
+      res.status(200).json({
+        catalog: permissionCatalog,
+        rolePresets: rolePermissionPresets,
+        members: memberships.map((membership) => {
+          const permissions =
+            membership.permissions && typeof membership.permissions === 'object'
+              ? (membership.permissions as { allow?: string[]; deny?: string[] })
+              : {};
+          return {
+            userId: membership.userId,
+            name: membership.user.name,
+            email: membership.user.email,
+            role: membership.role,
+            overrides: {
+              allow: permissions.allow ?? [],
+              deny: permissions.deny ?? []
+            },
+            effectivePermissions: resolvePermissionsForMembership(membership.role, {
+              allow: (permissions.allow ?? []).filter((value): value is (typeof permissionCatalog)[number] =>
+                permissionCatalog.includes(value as (typeof permissionCatalog)[number])
+              ),
+              deny: (permissions.deny ?? []).filter((value): value is (typeof permissionCatalog)[number] =>
+                permissionCatalog.includes(value as (typeof permissionCatalog)[number])
+              )
+            })
+          };
+        })
+      });
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/members/:memberUserId/access-control',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, memberUserId } = workspaceMemberAccessParamsDto.parse(req.params);
+      const payload = patchWorkspaceMemberAccessDto.parse(req.body);
+
+      const membership = await deps.prisma.workspaceMembership.findFirst({
+        where: {
+          workspaceId,
+          userId: memberUserId
+        },
+        select: {
+          role: true
+        }
+      });
+
+      if (!membership) {
+        res.status(404).json({ message: 'Workspace membership not found.' });
+        return;
+      }
+
+      if (req.workspace?.role !== MembershipRole.OWNER) {
+        if (payload.role === MembershipRole.OWNER || membership.role === MembershipRole.OWNER) {
+          res.status(403).json({ message: 'Only owner can assign or edit owner access.' });
+          return;
+        }
+      }
+
+      const allow = payload.permissions?.allow ?? [];
+      const deny = payload.permissions?.deny ?? [];
+      const uniqueAllow = Array.from(new Set(allow));
+      const uniqueDeny = Array.from(new Set(deny));
+      const nextPermissions =
+        uniqueAllow.length > 0 || uniqueDeny.length > 0
+          ? {
+              allow: uniqueAllow,
+              deny: uniqueDeny
+            }
+          : Prisma.JsonNull;
+
+      const updated = await deps.prisma.workspaceMembership.update({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: memberUserId
+          }
+        },
+        data: {
+          role: payload.role,
+          permissions: nextPermissions
+        },
+        select: {
+          userId: true,
+          role: true,
+          permissions: true
+        }
+      });
+
+      res.status(200).json(updated);
     })
   );
 

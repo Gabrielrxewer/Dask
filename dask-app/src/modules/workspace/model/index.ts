@@ -30,8 +30,11 @@ export type {
   WorkspaceBoardMode,
   WorkspaceDateFormat,
   WorkspacePreferences,
+  WorkspacePermissionKey,
   WorkspaceSummary,
   WorkspaceTemplateKey,
   WorkspaceTemplateOption,
-  WorkspaceSnapshot
+  WorkspaceSnapshot,
+  WorkspaceAccessControlMember,
+  WorkspaceAccessControlSnapshot
 } from "@/modules/workspace/model/types";

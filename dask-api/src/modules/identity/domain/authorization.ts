@@ -1,11 +1,5 @@
-export type Permission =
-  | 'workspace.read'
-  | 'workspace.write'
-  | 'board.read'
-  | 'board.write'
-  | 'item.read'
-  | 'item.write'
-  | 'ai.use';
+import type { Permission } from '@/modules/identity/domain/permissions';
+export type { Permission } from '@/modules/identity/domain/permissions';
 
 export type PermissionContext = {
   organizationId?: string;

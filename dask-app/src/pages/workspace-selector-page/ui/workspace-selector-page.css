@@ -1,69 +1,52 @@
-.workspace-selector-page {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-}
-
 .workspace-selector-page__shell {
   width: min(980px, 100%);
 }
 
-.workspace-selector-page__card {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
-.workspace-selector-page__header {
-  display: grid;
-  gap: 6px;
-}
-
-.workspace-selector-page__eyebrow {
-  margin: 0;
-  color: #0a86e8;
-  font-size: var(--font-size-2xs);
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.workspace-selector-page__header h1 {
-  margin: 0;
-  font-size: var(--font-size-title-lg);
-  color: #102b45;
-}
-
-.workspace-selector-page__header p {
-  margin: 0;
-  color: #4f6983;
-  font-size: var(--font-size-sm);
-}
-
 .workspace-selector-page__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-top: 0;
+}
+
+.workspace-selector-page__toolbar--create-open {
+  grid-template-columns: minmax(360px, 1fr) auto;
 }
 
 .workspace-selector-page__toolbar .shared-input {
-  flex: 1 1 auto;
+  width: 100%;
+}
+
+.workspace-selector-page__toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: max-content;
+}
+
+.workspace-selector-page__toolbar-actions .shared-button {
+  min-width: 142px;
 }
 
 .workspace-selector-page__create-card {
-  border: 1px solid rgba(187, 209, 230, 0.72);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 249, 255, 0.82) 100%);
-  padding: 12px;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(194, 219, 239, 0.82);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(232, 243, 254, 0.62), rgba(232, 251, 248, 0.54));
+  padding: 20px;
   display: grid;
-  gap: 10px;
+  gap: 18px;
 }
 
 .workspace-selector-page__create-grid {
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+  align-items: end;
+}
+
+.workspace-selector-page__field--wide {
+  grid-column: 1 / -1;
 }
 
 .workspace-selector-page__create-actions {
@@ -73,35 +56,49 @@
   flex-wrap: wrap;
 }
 
+.workspace-selector-page__feedback,
+.workspace-selector-page__state,
+.workspace-selector-page__error,
+.workspace-selector-page__list {
+  position: relative;
+  z-index: 1;
+}
+
 .workspace-selector-page__feedback {
   margin: 0;
   color: #1f6b43;
   font-size: var(--font-size-xs);
+  font-weight: 600;
 }
 
 .workspace-selector-page__list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .workspace-selector-page__workspace {
-  border: 1px solid rgba(187, 209, 230, 0.72);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(244, 249, 255, 0.74) 100%);
-  padding: 12px;
+  border: 1px solid rgba(194, 219, 239, 0.82);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(232, 246, 255, 0.68));
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
+  box-shadow:
+    0 12px 24px rgba(17, 74, 118, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.84) inset;
 }
 
 .workspace-selector-page__workspace-copy {
   display: grid;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .workspace-selector-page__workspace-copy strong {
-  color: #173553;
+  color: #0b2035;
+  font-size: 1rem;
 }
 
 .workspace-selector-page__workspace-copy span,
@@ -116,22 +113,38 @@
 }
 
 .workspace-selector-page__error {
-  margin: 0;
-  color: #ad2f2f;
+  border: 1px solid rgba(230, 145, 145, 0.68);
+  border-radius: 18px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(255, 240, 240, 0.92), rgba(255, 247, 247, 0.72));
+  color: #a63737;
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 @media (max-width: 760px) {
-  .workspace-selector-page__toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
+  .workspace-selector-page__toolbar,
+  .workspace-selector-page__toolbar--create-open,
   .workspace-selector-page__create-grid {
     grid-template-columns: 1fr;
   }
 
+  .workspace-selector-page__toolbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-selector-page__toolbar-actions .shared-button {
+    width: 100%;
+  }
+
+  .workspace-selector-page__field--wide {
+    grid-column: auto;
+  }
+
   .workspace-selector-page__workspace {
-    flex-direction: column;
     align-items: stretch;
+    flex-direction: column;
   }
 }

@@ -159,11 +159,7 @@ export function NoWorkspacePage() {
               </Select>
             </FormField>
 
-            <FormField label="Nome do workspace" className="no-workspace-page__field">
-              <TextInput value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} />
-            </FormField>
-
-            <FormField label="Template padrao" className="no-workspace-page__field no-workspace-page__field--wide">
+            <FormField label="Template padrao" className="no-workspace-page__field">
               <Select
                 value={templateKey}
                 onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
@@ -177,6 +173,10 @@ export function NoWorkspacePage() {
                   </option>
                 ))}
               </Select>
+            </FormField>
+
+            <FormField label="Nome do workspace" className="no-workspace-page__field no-workspace-page__field--wide">
+              <TextInput value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} />
             </FormField>
 
             {kind === "CORPORATE" ? (

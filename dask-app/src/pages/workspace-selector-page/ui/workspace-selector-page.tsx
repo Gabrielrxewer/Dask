@@ -4,6 +4,7 @@ import { buildWorkspaceBoardPath } from "@/app/router";
 import { workspaceService, type WorkspaceSummary, type WorkspaceTemplateOption } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { Button, Card, FormField, Select, TextInput } from "@/shared/ui";
+import "../../no-workspace-page/ui/no-workspace-page.css";
 import "./workspace-selector-page.css";
 
 type WorkspaceKind = "PERSONAL" | "CORPORATE";
@@ -159,24 +160,42 @@ export function WorkspaceSelectorPage() {
   };
 
   return (
-    <main className="workspace-selector-page">
-      <section className="workspace-selector-page__shell" aria-label="Selecionar workspace">
-        <Card className="workspace-selector-page__card">
-          <header className="workspace-selector-page__header">
-            <p className="workspace-selector-page__eyebrow">Trocar workspace</p>
-            <h1>Selecione onde voce quer trabalhar</h1>
-            <p>Voce pode participar de varios workspaces. Escolha um para abrir o board.</p>
+    <main className="no-workspace-page workspace-selector-page">
+      <div className="no-workspace-page__backdrop" aria-hidden="true" />
+      <section className="no-workspace-page__shell workspace-selector-page__shell" aria-label="Selecionar workspace">
+        <Card className="no-workspace-page__card workspace-selector-page__card">
+          <header className="no-workspace-page__header">
+            <p className="no-workspace-page__eyebrow">Trocar workspace</p>
+            <h1 className="no-workspace-page__title">Selecione onde voce quer trabalhar</h1>
+            <p className="no-workspace-page__description">
+              Voce pode participar de varios workspaces. Escolha um para abrir o board.
+            </p>
           </header>
 
-          <div className="workspace-selector-page__toolbar">
+          <div
+            className={`no-workspace-page__actions workspace-selector-page__toolbar${
+              isCreateOpen ? " workspace-selector-page__toolbar--create-open" : ""
+            }`}
+          >
             <TextInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar por nome, slug ou chave"
             />
-            <Button type="button" onClick={() => setIsCreateOpen((current) => !current)}>
-              {isCreateOpen ? "Fechar criacao" : "Criar novo workspace"}
-            </Button>
+            <div className="workspace-selector-page__toolbar-actions">
+              <Button
+                className="no-workspace-page__secondary"
+                type="button"
+                onClick={() => setIsCreateOpen((current) => !current)}
+              >
+                {isCreateOpen ? "Fechar criacao" : "Criar novo workspace"}
+              </Button>
+              {isCreateOpen ? (
+                <Button type="button" onClick={() => void handleCreateWorkspace()} disabled={isCreating}>
+                  {isCreating ? "Criando..." : "Criar workspace"}
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           {isCreateOpen ? (
@@ -187,13 +206,6 @@ export function WorkspaceSelectorPage() {
                     <option value="PERSONAL">Pessoal</option>
                     <option value="CORPORATE">Corporativo</option>
                   </Select>
-                </FormField>
-                <FormField label="Nome do workspace">
-                  <TextInput
-                    value={workspaceName}
-                    onChange={(event) => setWorkspaceName(event.target.value)}
-                    placeholder="Ex.: Produto Core"
-                  />
                 </FormField>
                 <FormField label="Template">
                   <Select
@@ -208,8 +220,15 @@ export function WorkspaceSelectorPage() {
                     ))}
                   </Select>
                 </FormField>
+                <FormField label="Nome do workspace" className="workspace-selector-page__field--wide">
+                  <TextInput
+                    value={workspaceName}
+                    onChange={(event) => setWorkspaceName(event.target.value)}
+                    placeholder="Ex.: Produto Core"
+                  />
+                </FormField>
                 {kind === "CORPORATE" ? (
-                  <FormField label="Organizacao">
+                  <FormField label="Organizacao" className="workspace-selector-page__field--wide">
                     <TextInput
                       value={organizationName}
                       onChange={(event) => setOrganizationName(event.target.value)}
@@ -219,9 +238,6 @@ export function WorkspaceSelectorPage() {
                 ) : null}
               </div>
               <div className="workspace-selector-page__create-actions">
-                <Button type="button" onClick={() => void handleCreateWorkspace()} disabled={isCreating}>
-                  {isCreating ? "Criando..." : "Criar workspace"}
-                </Button>
                 {createFeedback ? <p className="workspace-selector-page__feedback">{createFeedback}</p> : null}
                 {createError ? <p className="workspace-selector-page__error">{createError}</p> : null}
               </div>
@@ -245,6 +261,7 @@ export function WorkspaceSelectorPage() {
                     <small>{workspace.slug}</small>
                   </div>
                   <Button
+                    className="no-workspace-page__secondary"
                     type="button"
                     onClick={() => navigate(buildWorkspaceBoardPath(workspace.slug))}
                   >

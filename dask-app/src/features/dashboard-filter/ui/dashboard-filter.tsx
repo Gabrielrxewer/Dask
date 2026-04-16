@@ -22,16 +22,19 @@ export function DashboardFilter({
 
   return (
     <FilterBar className="dashboard-filter">
-      <TextInput
-        type="search"
-        value={query}
-        onChange={handleChange}
-        placeholder="Buscar tarefa, tag ou responsavel..."
-        aria-label="Buscar tarefa"
-      />
+      <div className="dashboard-filter__search">
+        <TextInput
+          type="search"
+          value={query}
+          onChange={handleChange}
+          placeholder="Buscar tarefa, tag ou responsavel..."
+          aria-label="Buscar tarefa"
+        />
+      </div>
 
       <Button
         variant="outline"
+        size="sm"
         className={mineOnly ? "active" : ""}
         onClick={onMineToggle}
         aria-pressed={mineOnly}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
+import { DashboardFilter } from "@/features/dashboard-filter";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import type { AiAgentSummary } from "@/modules/workspace/model";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
+import { CreateTaskButton } from "@/features/create-task";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
 
@@ -69,11 +71,6 @@ export function ListPage() {
       noPageScroll
       hideSidebarBrandMark
       pageTitle="Lista de itens"
-      filter={filter}
-      onFilterQueryChange={setFilterQuery}
-      onMineToggle={toggleMineFilter}
-      onCreateTask={input => void createTask(input)}
-      createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
     >
       <div className="list-view">
         <BoardMetrics metrics={metrics} className="list-view__metrics" />
@@ -81,7 +78,22 @@ export function ListPage() {
         <Section
           title="Itens do workspace"
           subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
-          actions={<StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>}
+          actions={
+            <div className="list-view__actions">
+              <DashboardFilter
+                query={filter.query}
+                mineOnly={filter.mineOnly}
+                onQueryChange={setFilterQuery}
+                onMineToggle={toggleMineFilter}
+              />
+              <StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>
+              <CreateTaskButton
+                className="list-view__create-task"
+                onCreate={input => void createTask(input)}
+                typeOptions={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
+              />
+            </div>
+          }
           className="list-view__section"
         >
           <DataTable

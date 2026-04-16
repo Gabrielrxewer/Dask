@@ -1,10 +1,32 @@
 .board-view {
+  --builder-text: #071f35;
+  --builder-text-soft: #1f405e;
+  --builder-text-muted: #365b7a;
+  --builder-line: #b8cada;
+  --builder-line-strong: #83afd5;
+  --builder-surface: #ffffff;
+  --builder-surface-soft: #f8fafc;
+  --builder-accent: #075f9d;
+  --builder-accent-strong: #064f85;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 12px;
   min-height: 0;
   width: 100%;
   margin-inline: auto;
+  color: var(--builder-text);
+}
+
+.workspace:has(.board-view) {
+  background: #f8fafc;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.05);
+  backdrop-filter: none;
+}
+
+.workspace:has(.board-view)::before {
+  content: none;
 }
 
 .board-top-nav {
@@ -29,8 +51,9 @@
   flex-wrap: nowrap;
   gap: 0;
   overflow: hidden;
-  border-bottom: 1px solid rgba(187, 209, 230, 0.64);
-  background: transparent;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: #ffffff;
 }
 
 .board-top-nav__tabs .shared-tabs__item {
@@ -39,41 +62,128 @@
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 8px;
-  color: #58728e;
+  color: var(--builder-text-muted);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 800;
   text-align: center;
 }
 
 .board-top-nav__tabs .shared-tabs__item:hover {
-  background: rgba(255, 255, 255, 0.4);
-  color: #234667;
+  background: #eef7ff;
+  color: var(--builder-accent-strong);
 }
 
 .board-top-nav__tabs .shared-tabs__item--active {
-  background: transparent;
-  color: #2c78e6;
-  border-bottom-color: #2c78e6;
+  background: #f8fbff;
+  color: var(--builder-accent);
+  border-bottom-color: var(--builder-accent);
 }
 
 .board-view__metrics .shared-metric-card {
-  min-height: 66px;
-  padding: 8px 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  backdrop-filter: none;
+}
+
+.board-view__metrics .shared-metric-card p {
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
 }
 
 .board-view__metrics .shared-metric-card h3 {
   margin-top: 4px;
   font-size: 1.08rem;
+  color: var(--builder-text);
+  letter-spacing: 0;
+}
+
+.board-view__canvas.shared-section {
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.045);
+  backdrop-filter: none;
+}
+
+.board-view__canvas.shared-section::before {
+  content: none;
 }
 
 .board-view__canvas .shared-section__header {
-  padding: var(--space-2) var(--space-2) 0;
+  padding: 12px 14px;
+  border-bottom-color: var(--builder-line);
+  background: #ffffff;
+}
+
+.board-view__canvas .shared-section__title {
+  color: var(--builder-text);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-title-md);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.board-view__canvas .shared-section__subtitle {
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.board-view__section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.board-view__section-actions .dashboard-filter {
+  width: min(520px, 52vw);
+}
+
+.board-view__section-actions .dashboard-filter .shared-input,
+.board-view__section-actions .dashboard-filter .shared-button {
+  border-color: #9fc2e2;
+  background-color: #ffffff;
+  box-shadow: 0 8px 18px rgba(12, 42, 71, 0.06);
+}
+
+.board-view__section-actions .dashboard-filter .shared-input {
+  color: var(--builder-text);
+  font-weight: 700;
+}
+
+.board-view__section-actions .dashboard-filter .shared-button {
+  color: #214d78;
+}
+
+.board-view__section-actions .shared-status-badge {
+  border-color: var(--builder-line);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text-muted);
 }
 
 .board-view__canvas .shared-section__content {
-  padding: var(--space-2);
+  padding: 10px;
+  background: #f8fafc;
+}
+
+@media (max-width: 760px) {
+  .board-view__section-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .board-view__section-actions .dashboard-filter {
+    width: 100%;
+  }
 }
 
 @media (min-width: 1141px) {

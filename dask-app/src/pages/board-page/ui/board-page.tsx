@@ -17,6 +17,7 @@ import {
 import { currentUserId, membersById } from "@/entities/member";
 import {
   applyDashboardFilter,
+  DashboardFilter,
   useDashboardFilter
 } from "@/features/dashboard-filter";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
@@ -347,13 +348,9 @@ export function BoardPage() {
     <AppShell
       metrics={devMetrics}
       noPageScroll
+      hidePageHeader
       hideSidebarBrandMark
       topNavigation={topNavigation}
-      filter={filter}
-      onFilterQueryChange={setQuery}
-      onMineToggle={toggleMineOnly}
-      onCreateTask={input => void createTask(input)}
-      createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
     >
       <div className="board-view">
         <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
@@ -361,7 +358,17 @@ export function BoardPage() {
         <Section
           title={activePerspective ? `Quadro ${activePerspective.label}` : "Quadro"}
           subtitle={boardSubtitle}
-          actions={<StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>}
+          actions={
+            <div className="board-view__section-actions">
+              <DashboardFilter
+                query={filter.query}
+                mineOnly={filter.mineOnly}
+                onQueryChange={setQuery}
+                onMineToggle={toggleMineOnly}
+              />
+              <StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>
+            </div>
+          }
           className="board-view__canvas"
         >
           {isLoading ? (
@@ -373,6 +380,8 @@ export function BoardPage() {
               tasks={activeBoardTasks}
               membersById={activeMembers}
               compactCards={Boolean(activePerspective?.compactCards)}
+              onCreateTask={input => void createTask(input)}
+              createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
               onMoveTask={handleMoveTask}
               onUpdatePriority={handleUpdatePriority}
               onUpdateTaskTitle={handleUpdateTaskTitle}

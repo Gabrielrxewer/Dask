@@ -12,7 +12,9 @@ import type {
   TaskStatusId
 } from "@/entities/task";
 import type { AiAgentSummary } from "@/modules/workspace/model";
+import type { CreateTaskInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
+import { CreateTaskButton } from "@/features/create-task";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
 
@@ -32,6 +34,8 @@ interface BoardColumnsProps {
     value: TaskCustomFieldValue
   ) => Promise<void> | void;
   onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
+  onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
+  createTaskTypes?: Array<{ id: string; label: string }>;
   aiAgents: AiAgentSummary[];
   onRunAiAgentOnItem: (
     itemId: string,
@@ -56,6 +60,8 @@ export function BoardColumns({
   onUpdateTaskDescription,
   onUpdateTaskCustomField,
   onToggleChecklistItem,
+  onCreateTask,
+  createTaskTypes,
   aiAgents,
   onRunAiAgentOnItem,
   onRunAiRiskAnalysis
@@ -114,6 +120,9 @@ export function BoardColumns({
         {statuses.map(status => {
           const statusTasks = columns[status.id] ?? [];
           const isTarget = dropTargetStatus === status.id;
+          const isBacklogColumn =
+            status.id.trim().toLowerCase() === "backlog" ||
+            status.label.trim().toLowerCase() === "backlog";
 
           return (
             <section
@@ -137,6 +146,14 @@ export function BoardColumns({
               </header>
 
               <div className="board-column__list">
+                {isBacklogColumn && onCreateTask ? (
+                  <CreateTaskButton
+                    className="board-column__create-task"
+                    onCreate={onCreateTask}
+                    typeOptions={createTaskTypes}
+                  />
+                ) : null}
+
                 {statusTasks.length === 0 ? (
                   <p className="board-column__empty">Sem itens nesta etapa.</p>
                 ) : (

@@ -29,6 +29,25 @@
   min-height: 0;
 }
 
+.timeline-view__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timeline-view__create-task {
+  min-height: 34px;
+}
+
+@media (max-width: 760px) {
+  .timeline-view__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+}
+
 .timeline-view__table {
   border: 0;
   border-radius: 0;

@@ -19,6 +19,9 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
+type SidebarIconName = "board" | "list" | "timeline" | "automation" | "settings" | "workspace";
+type SidebarTone = "blue" | "mint" | "amber" | "rose" | "violet" | "slate";
+
 interface AppShellProps {
   metrics: BoardMetrics;
   pageLabel?: string;
@@ -30,8 +33,91 @@ interface AppShellProps {
   onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
   createTaskTypes?: Array<{ id: string; label: string }>;
   noPageScroll?: boolean;
+  hidePageHeader?: boolean;
   hideSidebarBrandMark?: boolean;
   children: ReactNode;
+}
+
+function SidebarIcon({ name }: { name: SidebarIconName }) {
+  const commonProps = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.9,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+    focusable: false
+  };
+
+  if (name === "board") {
+    return (
+      <svg {...commonProps}>
+        <rect x="4" y="4" width="16" height="16" rx="3.5" />
+        <path d="M9 4v16" />
+        <path d="M15 4v16" />
+        <path d="M4 10h5" />
+        <path d="M15 14h5" />
+      </svg>
+    );
+  }
+
+  if (name === "list") {
+    return (
+      <svg {...commonProps}>
+        <path d="M9 6h10" />
+        <path d="M9 12h10" />
+        <path d="M9 18h10" />
+        <path d="M5 6h.01" />
+        <path d="M5 12h.01" />
+        <path d="M5 18h.01" />
+      </svg>
+    );
+  }
+
+  if (name === "timeline") {
+    return (
+      <svg {...commonProps}>
+        <path d="M4 18h16" />
+        <path d="M7 18V8" />
+        <path d="M12 18V5" />
+        <path d="M17 18v-7" />
+        <circle cx="7" cy="8" r="2" />
+        <circle cx="12" cy="5" r="2" />
+        <circle cx="17" cy="11" r="2" />
+      </svg>
+    );
+  }
+
+  if (name === "automation") {
+    return (
+      <svg {...commonProps}>
+        <path d="M8 7.2A6.4 6.4 0 0 1 18.2 10" />
+        <path d="M16.6 10h2.9V7.1" />
+        <path d="M16 16.8A6.4 6.4 0 0 1 5.8 14" />
+        <path d="M7.4 14H4.5v2.9" />
+        <path d="m11 8 3 4h-3l2 4" />
+      </svg>
+    );
+  }
+
+  if (name === "settings") {
+    return (
+      <svg {...commonProps}>
+        <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z" />
+        <path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.2-2-3.4-2.2 1a8 8 0 0 0-2.6-1.5L14.3 3h-4.1l-.4 2.4a8 8 0 0 0-2.6 1.5l-2.2-1-2 3.4 2 1.2a7.7 7.7 0 0 0 0 3l-2 1.2 2 3.4 2.2-1a8 8 0 0 0 2.6 1.5l.4 2.4h4.1l.4-2.4a8 8 0 0 0 2.6-1.5l2.2 1 2-3.4-2.1-1.2Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...commonProps}>
+      <rect x="4" y="7" width="16" height="13" rx="3" />
+      <path d="M8 7V5.8A2.8 2.8 0 0 1 10.8 3h2.4A2.8 2.8 0 0 1 16 5.8V7" />
+      <path d="M4 12h16" />
+      <path d="M10 15h4" />
+    </svg>
+  );
 }
 
 export function AppShell({
@@ -45,6 +131,7 @@ export function AppShell({
   onCreateTask,
   createTaskTypes,
   noPageScroll = false,
+  hidePageHeader = false,
   hideSidebarBrandMark = false,
   children
 }: AppShellProps) {
@@ -53,22 +140,37 @@ export function AppShell({
     {
       title: "Planejamento",
       items: [
-        { to: buildWorkspaceBoardPath(workspaceSlug), label: "Board" },
-        { to: buildWorkspaceListPath(workspaceSlug), label: "List" },
-        { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline" }
+        { to: buildWorkspaceBoardPath(workspaceSlug), label: "Board", icon: "board" as const, tone: "blue" as const },
+        { to: buildWorkspaceListPath(workspaceSlug), label: "List", icon: "list" as const, tone: "mint" as const },
+        { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline", icon: "timeline" as const, tone: "amber" as const }
       ]
     },
     {
       title: "Operacao",
       items: [
-        { to: buildWorkspaceAutomationsPath(workspaceSlug), label: "Automations" },
-        { to: buildWorkspaceSettingsPath(workspaceSlug), label: "Settings" }
+        {
+          to: buildWorkspaceAutomationsPath(workspaceSlug),
+          label: "Automations",
+          icon: "automation" as const,
+          tone: "rose" as const
+        },
+        {
+          to: buildWorkspaceSettingsPath(workspaceSlug),
+          label: "Settings",
+          icon: "settings" as const,
+          tone: "violet" as const
+        }
       ]
     },
     {
       title: "Conta",
       items: [
-        { to: buildWorkspaceSelectorPath(), label: "Trocar workspace" }
+        {
+          to: buildWorkspaceSelectorPath(),
+          label: "Trocar workspace",
+          icon: "workspace" as const,
+          tone: "slate" as const
+        }
       ]
     }
   ];
@@ -112,10 +214,27 @@ export function AppShell({
                   key={item.to}
                   to={item.to}
                   onClick={closeNavigation}
-                  className={({ isActive }) => cn("sidebar__menu-link", isActive && "sidebar__menu-link--active")}
+                  className={({ isActive }) =>
+                    cn(
+                      "sidebar__menu-link",
+                      `sidebar__menu-link--tone-${item.tone as SidebarTone}`,
+                      isActive && "sidebar__menu-link--active"
+                    )
+                  }
                 >
-                  <span className="sidebar__menu-link-mark" />
-                  {item.label}
+                  <span
+                    className={cn(
+                      "sidebar__menu-icon",
+                      `sidebar__menu-icon--${item.icon as SidebarIconName}`,
+                      `sidebar__menu-icon--tone-${item.tone as SidebarTone}`
+                    )}
+                    aria-hidden="true"
+                  >
+                    <SidebarIcon name={item.icon as SidebarIconName} />
+                  </span>
+                  <span className="sidebar__menu-link-copy">
+                    <span className="sidebar__menu-link-label">{item.label}</span>
+                  </span>
                 </NavLink>
               ))}
             </section>
@@ -136,7 +255,9 @@ export function AppShell({
 
       <div className="workspace">
         {topNavigation ? <div className="workspace__top-nav">{topNavigation}</div> : null}
-        <PageHeader label={pageLabel} title={pageTitle} actions={filterProps ? <DashboardFilter {...filterProps} /> : null} />
+        {hidePageHeader ? null : (
+          <PageHeader label={pageLabel} title={pageTitle} actions={filterProps ? <DashboardFilter {...filterProps} /> : null} />
+        )}
 
         <main className="workspace__content">{children}</main>
       </div>

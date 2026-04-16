@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { priorityMeta, taskPriorityOptions, type TaskPriority } from "@/entities/task";
 import type { CreateTaskInput } from "@/modules/workspace";
+import { cn } from "@/shared/lib/cn";
 import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
 import "./create-task-button.css";
 
 interface CreateTaskButtonProps {
   onCreate: (input: CreateTaskInput) => void | Promise<void>;
   typeOptions?: Array<{ id: string; label: string }>;
+  className?: string;
 }
 
 const fallbackTypeOptions: Array<{ id: string; label: string }> = [
@@ -42,7 +44,7 @@ function improveDescriptionMock(description: string): string {
   ].join("\n");
 }
 
-export function CreateTaskButton({ onCreate, typeOptions }: CreateTaskButtonProps) {
+export function CreateTaskButton({ onCreate, typeOptions, className }: CreateTaskButtonProps) {
   const resolvedTypeOptions =
     typeOptions && typeOptions.length > 0 ? typeOptions : fallbackTypeOptions;
   const [isOpen, setIsOpen] = useState(false);
@@ -175,7 +177,7 @@ export function CreateTaskButton({ onCreate, typeOptions }: CreateTaskButtonProp
 
   return (
     <>
-      <Button variant="primary" onClick={() => setIsOpen(true)}>
+      <Button className={cn("create-task-button", className)} variant="primary" onClick={() => setIsOpen(true)}>
         + Nova tarefa
       </Button>
       {isOpen ? createPortal(modal, document.body) : null}

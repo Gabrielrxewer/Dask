@@ -642,6 +642,7 @@
 
 .global-layout__main:not(.global-layout__main--public) {
   color: var(--text);
+  background: #f7f9fb;
   text-rendering: geometricPrecision;
 }
 

@@ -495,8 +495,7 @@
 .app-theme[data-theme="dark"] :where(
   .task-card__summary-item,
   .task-card__field,
-  .task-card__tag,
-  .task-card__type-icon
+  .task-card__tag
 ) {
   background: color-mix(in oklab, var(--panel-soft) 88%, transparent) !important;
   border-color: color-mix(in oklab, var(--accent) 20%, var(--line)) !important;

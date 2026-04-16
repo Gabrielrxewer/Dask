@@ -97,26 +97,21 @@
 }
 
 .task-card__type-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: #ecf4ff;
-  border: 1px solid #d8e8fb;
-  font-size: 0.64rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   color: #325779;
 }
 
-.task-card__type {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  padding: 4px 8px;
+.task-card__type-icon svg {
+  width: 23px;
+  height: 23px;
 }
 
 .task-card__priority {

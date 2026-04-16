@@ -7,6 +7,10 @@ export {
 } from "@/modules/workspace/model";
 export type {
   AiAgentSummary,
+  DocumentationAssistantMode,
+  DocumentationAssistantAction,
+  RunDocumentationAssistantInput,
+  RunDocumentationAssistantResult,
   CalendarFeedSnapshot,
   CalendarIntegrationProvider,
   CalendarIntegrationStatus,

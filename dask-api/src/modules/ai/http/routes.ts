@@ -17,7 +17,8 @@ import {
   patchAiAgentDto,
   listAiRunsQueryDto,
   runAgentOnItemDto,
-  runRiskAnalysisDto
+  runRiskAnalysisDto,
+  runDocumentationAssistantDto
 } from '@/modules/ai/http/dto';
 
 export const buildAiRoutes = (deps: {
@@ -147,6 +148,27 @@ export const buildAiRoutes = (deps: {
         workspaceId: params.workspaceId,
         itemId: params.itemId,
         requestedBy: req.auth!.userId,
+        includeSemanticContext: payload.includeSemanticContext,
+        topKContextDocs: payload.topKContextDocs
+      });
+      res.status(200).json(run);
+    })
+  );
+
+  router.post(
+    '/ai/workspaces/:workspaceId/documentation/run',
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = aiWorkspaceParamsDto.parse(req.params);
+      const payload = runDocumentationAssistantDto.parse(req.body ?? {});
+      const run = await deps.aiAgentService.runDocumentationAssistant({
+        workspaceId,
+        requestedBy: req.auth!.userId,
+        mode: payload.mode,
+        instruction: payload.instruction,
+        documentTitle: payload.documentTitle,
+        documentPath: payload.documentPath,
+        documentContent: payload.documentContent,
+        selection: payload.selection,
         includeSemanticContext: payload.includeSemanticContext,
         topKContextDocs: payload.topKContextDocs
       });

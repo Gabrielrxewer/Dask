@@ -4,6 +4,7 @@ import {
   buildWorkspaceAgendaPath,
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
+  buildWorkspaceDocumentationPath,
   buildWorkspaceListPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceTimelinePath
@@ -19,7 +20,7 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "automation" | "settings";
+type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "automation" | "settings";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
 
 interface AppShellProps {
@@ -115,6 +116,17 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     );
   }
 
+  if (name === "documentation") {
+    return (
+      <svg {...commonProps}>
+        <path d="M8 4.8h7.1L19 8.7V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.8a2 2 0 0 1 2-2Z" />
+        <path d="M15.1 4.8V9H19" />
+        <path d="M9.5 12.3h5" />
+        <path d="M9.5 15.5h5" />
+      </svg>
+    );
+  }
+
   if (name === "settings") {
     return (
       <svg {...commonProps}>
@@ -163,6 +175,12 @@ export function AppShell({
     {
       title: "Operacao",
       items: [
+        {
+          to: buildWorkspaceDocumentationPath(workspaceSlug),
+          label: "Documentation",
+          icon: "documentation" as const,
+          tone: "slate" as const
+        },
         {
           to: buildWorkspaceAutomationsPath(workspaceSlug),
           label: "Automations",

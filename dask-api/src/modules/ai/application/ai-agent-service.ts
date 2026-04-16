@@ -29,6 +29,25 @@ type RunAgentInput = {
   riskStrictMode?: boolean;
 };
 
+type RunDocumentationAssistantInput = {
+  workspaceId: string;
+  requestedBy: string;
+  mode: 'chat' | 'write' | 'maintain';
+  instruction: string;
+  documentTitle?: string;
+  documentPath?: string;
+  documentContent: string;
+  selection?: string;
+  includeSemanticContext: boolean;
+  topKContextDocs: number;
+};
+
+const documentationAssistantOutputSchema = z.object({
+  response: z.string().min(1).max(20_000),
+  action: z.enum(['chat', 'replace_document', 'append_document']).default('chat'),
+  updatedDocument: z.string().max(180_000).nullable().optional()
+});
+
 // ─── Agent config schema (validated, not cast) ─────────────────────────────
 const agentConfigSchema = z
   .object({
@@ -80,6 +99,30 @@ function estimateTokensFromText(value: string): number {
 
 function floorToUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+}
+
+function buildDocumentationModeGuidance(mode: RunDocumentationAssistantInput['mode']): string {
+  if (mode === 'write') {
+    return [
+      '- Write clear and structured technical documentation in markdown.',
+      '- Prefer sections, short paragraphs, and practical examples.',
+      '- Keep terminology consistent with the existing content.'
+    ].join('\n');
+  }
+
+  if (mode === 'maintain') {
+    return [
+      '- Review and improve the existing document for clarity, consistency and freshness.',
+      '- Highlight outdated or contradictory sections and provide corrected content.',
+      '- Preserve intent and avoid unnecessary rewrites.'
+    ].join('\n');
+  }
+
+  return [
+    '- Answer questions about the document objectively and directly.',
+    '- Reference the current document content when possible.',
+    '- If information is missing, state assumptions explicitly.'
+  ].join('\n');
 }
 
 export class AIAgentService {
@@ -500,6 +543,171 @@ export class AIAgentService {
       return {
         runId: run.id,
         content: finalContent
+      };
+    } catch (error) {
+      await this.prisma.aIAgentRun.update({
+        where: { id: run.id },
+        data: {
+          status: 'failed',
+          error:
+            error instanceof Error
+              ? error.message.slice(0, RUN_ERROR_MAX_LENGTH)
+              : String(error).slice(0, RUN_ERROR_MAX_LENGTH),
+          finishedAt: new Date()
+        }
+      });
+      throw error;
+    }
+  }
+
+  public async runDocumentationAssistant(
+    input: RunDocumentationAssistantInput
+  ): Promise<{
+    runId: string;
+    content: string;
+    action: 'chat' | 'replace_document' | 'append_document';
+    updatedDocument: string | null;
+  }> {
+    await this.ensureDefaultAgent(input.workspaceId);
+    const agent = await this.agentRepository.findTopActive(input.workspaceId);
+
+    if (!agent) {
+      throw new AppError('No active AI agent configured for this workspace', 400);
+    }
+
+    const config = parseAgentConfig(agent.config);
+    const redactSensitive = config.guardrails?.redactSensitive !== false;
+    const redact = (value: string): string => (redactSensitive ? redactSensitiveText(value) : value);
+
+    const documentTitle = redact((input.documentTitle ?? '').trim());
+    const documentPath = redact((input.documentPath ?? '').trim());
+    const instruction = redact(input.instruction);
+    const selection = input.selection ? redact(input.selection) : '';
+    const documentContent = redact(input.documentContent);
+    const modeGuidance = buildDocumentationModeGuidance(input.mode);
+
+    let semanticContext = '';
+    if (input.includeSemanticContext && documentContent.trim().length > 0) {
+      const query = [documentTitle, instruction, documentContent.slice(0, 3000)]
+        .filter(Boolean)
+        .join('\n');
+
+      const relatedDocs = await this.hybridSearchService.search({
+        query,
+        filters: { workspaceId: input.workspaceId },
+        limit: input.topKContextDocs
+      });
+
+      semanticContext = redact(
+        relatedDocs
+          .map(
+            (doc, index) =>
+              `${index + 1}. itemId=${doc.itemId} score=${doc.score.toFixed(4)}\n${doc.content.slice(0, 600)}`
+          )
+          .join('\n\n')
+      );
+    }
+
+    const promptBody = [
+      `Mode: ${input.mode}`,
+      documentTitle ? `Document title: ${documentTitle}` : '',
+      documentPath ? `Document path: ${documentPath}` : '',
+      `Instruction:\n${instruction}`,
+      selection ? `Current selection:\n${selection}` : '',
+      `Current document:\n${documentContent || '(empty document)'}`,
+      semanticContext ? `Related workspace context:\n${semanticContext}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    await this.enforceRunLimits({
+      workspaceId: input.workspaceId,
+      agentId: agent.id,
+      estimatedTokens: estimateTokensFromText(agent.systemPrompt + promptBody),
+      config
+    });
+
+    const run = await this.prisma.aIAgentRun.create({
+      data: {
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        itemId: null,
+        requestedBy: input.requestedBy,
+        status: 'running',
+        input: {
+          type: 'documentation_assistant',
+          mode: input.mode,
+          instruction,
+          documentTitle,
+          documentPath,
+          selection,
+          includeSemanticContext: input.includeSemanticContext,
+          topKContextDocs: input.topKContextDocs
+        },
+        startedAt: new Date()
+      }
+    });
+
+    try {
+      const generation = await this.aiProvider.generateText({
+        model: agent.model,
+        temperature: agent.temperature,
+        systemPrompt: [
+          agent.systemPrompt,
+          '',
+          'You are a documentation copilot integrated in a work management platform.',
+          'You must always return a JSON object with the exact keys: response, action, updatedDocument.',
+          'action options:',
+          '- "chat": only answer/explain. updatedDocument must be null.',
+          '- "replace_document": user asked to rewrite/edit/update existing content. updatedDocument must contain the full final document.',
+          '- "append_document": user asked to add a new section/snippet. updatedDocument must contain only the new snippet to append.',
+          'When user asks to reescrever, revisar, atualizar, corrigir, editar or melhorar documentation content, prefer "replace_document".',
+          'Keep response concise and practical.',
+          '',
+          `Mode guidance:\n${modeGuidance}`
+        ].join('\n'),
+        userPrompt: promptBody,
+        requireJsonOutput: true
+      });
+
+      const parsed = documentationAssistantOutputSchema.safeParse(parseJsonObject(generation.content));
+      const structuredOutput = parsed.success
+        ? parsed.data
+        : {
+            response: generation.content,
+            action: 'chat' as const,
+            updatedDocument: null
+          };
+
+      const estimatedCostUsd = Number(((generation.usage.totalTokens / 1_000_000) * 0.8).toFixed(6));
+
+      await this.prisma.aIAgentRun.update({
+        where: { id: run.id },
+        data: {
+          status: 'completed',
+          output: {
+            type: 'documentation_assistant',
+            mode: input.mode,
+            content: structuredOutput.response,
+            action: structuredOutput.action,
+            updatedDocument: structuredOutput.updatedDocument ?? null
+          } as Prisma.InputJsonValue,
+          provider: generation.provider,
+          model: generation.model,
+          latencyMs: generation.latencyMs,
+          inputTokens: generation.usage.inputTokens,
+          outputTokens: generation.usage.outputTokens,
+          totalTokens: generation.usage.totalTokens,
+          estimatedCostUsd,
+          finishedAt: new Date()
+        }
+      });
+
+      return {
+        runId: run.id,
+        content: structuredOutput.response,
+        action: structuredOutput.action,
+        updatedDocument: structuredOutput.updatedDocument ?? null
       };
     } catch (error) {
       await this.prisma.aIAgentRun.update({

@@ -13,6 +13,8 @@ import type {
   AutomationExecution,
   AutomationRule,
   CreateAiAgentInput,
+  RunDocumentationAssistantInput,
+  RunDocumentationAssistantResult,
   CreateAutomationRuleInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
@@ -748,6 +750,30 @@ export const workspaceService: WorkspaceService = {
       {
         includeSemanticContext: input?.includeSemanticContext ?? true,
         topKContextDocs: input?.topKContextDocs ?? 5
+      },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async runDocumentationAssistant(
+    workspaceSlug: string,
+    input: RunDocumentationAssistantInput
+  ): Promise<RunDocumentationAssistantResult> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<RunDocumentationAssistantResult>(
+      `/ai/workspaces/${workspaceId}/documentation/run`,
+      {
+        mode: input.mode,
+        instruction: input.instruction,
+        documentTitle: input.documentTitle,
+        documentPath: input.documentPath,
+        documentContent: input.documentContent,
+        selection: input.selection,
+        includeSemanticContext: input.includeSemanticContext ?? true,
+        topKContextDocs: input.topKContextDocs ?? 5
       },
       {
         authMode: "required",

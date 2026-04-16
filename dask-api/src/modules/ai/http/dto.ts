@@ -60,6 +60,17 @@ export const runRiskAnalysisDto = z.object({
   topKContextDocs: z.number().int().min(1).max(10).default(5)
 });
 
+export const runDocumentationAssistantDto = z.object({
+  mode: z.enum(['chat', 'write', 'maintain']).default('chat'),
+  instruction: z.string().min(2).max(6000),
+  documentTitle: z.string().trim().min(1).max(180).optional(),
+  documentPath: z.string().trim().min(1).max(240).optional(),
+  documentContent: z.string().max(120_000).default(''),
+  selection: z.string().max(20_000).optional(),
+  includeSemanticContext: z.boolean().default(true),
+  topKContextDocs: z.number().int().min(1).max(10).default(5)
+});
+
 export const listAiRunsQueryDto = z.object({
   itemId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(200).optional()

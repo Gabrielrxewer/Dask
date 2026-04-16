@@ -15,6 +15,7 @@ import {
   ChoosePlanPage,
   ColumnsSettingsPage,
   CustomFieldsSettingsPage,
+  DocumentationPage,
   GeneralSettingsPage,
   HomePage,
   ItemTypesSettingsPage,
@@ -144,6 +145,7 @@ export function AppRoutes() {
             <Route path={routePaths.list} element={<ListPage />} />
             <Route path={routePaths.timeline} element={<TimelinePage />} />
             <Route path={routePaths.agenda} element={<AgendaPage />} />
+            <Route path={routePaths.documentation} element={<DocumentationPage />} />
             <Route path={routePaths.automations} element={<AutomationsPage />} />
 
             {/* Settings — nested routes com layout compartilhado */}

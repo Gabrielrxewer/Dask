@@ -14,6 +14,8 @@ import type {
   AutomationExecution,
   AutomationRule,
   CreateAiAgentInput,
+  RunDocumentationAssistantInput,
+  RunDocumentationAssistantResult,
   CreateAutomationRuleInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
@@ -93,6 +95,9 @@ interface WorkspaceContextValue {
     itemId: string,
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
+  runDocumentationAssistant: (
+    input: RunDocumentationAssistantInput
+  ) => Promise<RunDocumentationAssistantResult>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -498,6 +503,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [workspaceSlug]
   );
 
+  const runDocumentationAssistant = useCallback(
+    async (input: RunDocumentationAssistantInput): Promise<RunDocumentationAssistantResult> => {
+      if (!workspaceSlug) {
+        return { runId: "", content: "", action: "chat", updatedDocument: null };
+      }
+      return workspaceService.runDocumentationAssistant(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       snapshot,
@@ -544,7 +559,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createAiAgent,
       updateAiAgent,
       runAiAgentOnItem,
-      runAiRiskAnalysis
+      runAiRiskAnalysis,
+      runDocumentationAssistant
     }),
     [
       snapshot,
@@ -591,7 +607,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createAiAgent,
       updateAiAgent,
       runAiAgentOnItem,
-      runAiRiskAnalysis
+      runAiRiskAnalysis,
+      runDocumentationAssistant
     ]
   );
 

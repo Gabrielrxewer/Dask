@@ -1,0 +1,349 @@
+.documentation-page {
+  --doc-line: #d9e6f0;
+  --doc-ink: #143652;
+  --doc-muted: #668097;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.5fr) minmax(320px, 1fr);
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+.documentation-page__files-pane,
+.documentation-page__editor-pane,
+.documentation-page__assistant-pane {
+  border-radius: 16px;
+  border: 1px solid var(--doc-line);
+  background:
+    radial-gradient(circle at top right, rgba(148, 199, 255, 0.2), transparent 50%),
+    radial-gradient(circle at bottom left, rgba(138, 232, 204, 0.16), transparent 52%),
+    #ffffff;
+  box-shadow: 0 16px 34px rgba(10, 42, 71, 0.07);
+  min-height: 0;
+}
+
+.documentation-page__hidden-input {
+  display: none;
+}
+
+.documentation-page__files-pane {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+}
+
+.documentation-page__files-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.documentation-page__files-header p {
+  margin: 0;
+  color: #6e879d;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+.documentation-page__files-header h2 {
+  margin: 2px 0 0;
+  color: var(--doc-ink);
+  font-size: 1rem;
+}
+
+.documentation-page__files-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.documentation-page__files-actions .shared-button {
+  width: 100%;
+}
+
+.documentation-page__files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.documentation-page__file-item {
+  border: 1px solid #dbe8f3;
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 9px 10px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.documentation-page__file-item strong {
+  font-size: 0.8rem;
+  color: #1a405f;
+  font-weight: 780;
+}
+
+.documentation-page__file-item span {
+  color: #6d869d;
+  font-size: 0.68rem;
+  word-break: break-all;
+}
+
+.documentation-page__file-item--active {
+  border-color: #aacdf1;
+  background: #ebf5ff;
+  box-shadow: 0 10px 24px rgba(10, 72, 121, 0.08);
+}
+
+.documentation-page__editor-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.documentation-page__editor-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e3edf6;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.documentation-page__editor-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.documentation-page__editor-title .shared-input {
+  font-weight: 760;
+}
+
+.documentation-page__editor-title p {
+  margin: 6px 0 0;
+  color: var(--doc-muted);
+  font-size: 0.71rem;
+}
+
+.documentation-page__editor-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.documentation-page__editor-textarea {
+  border: 0;
+  border-radius: 0;
+  resize: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px;
+  font-size: 0.95rem;
+  line-height: 1.68;
+}
+
+.documentation-page__editor-textarea:focus {
+  box-shadow: none;
+}
+
+.documentation-page__editor-footer {
+  border-top: 1px solid #e3edf6;
+  padding: 10px 14px;
+  background: #f8fcff;
+}
+
+.documentation-page__editor-footer p {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #627d94;
+}
+
+.documentation-page__assistant-pane {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  padding: 12px;
+}
+
+.documentation-page__assistant-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.documentation-page__assistant-header h2 {
+  margin: 0;
+  color: var(--doc-ink);
+  font-size: 1rem;
+}
+
+.documentation-page__assistant-header p {
+  margin: 2px 0 0;
+  color: var(--doc-muted);
+  font-size: 0.73rem;
+}
+
+.documentation-page__modes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.documentation-page__mode-chip {
+  border: 1px solid #d2e2ee;
+  border-radius: 999px;
+  background: #f5fbff;
+  color: #50708a;
+  font-size: 0.72rem;
+  font-weight: 760;
+  cursor: pointer;
+  padding: 6px 11px;
+}
+
+.documentation-page__mode-chip--active {
+  color: #0f5f9f;
+  border-color: #9fc6ec;
+  background: #e8f3ff;
+}
+
+.documentation-page__messages {
+  border: 1px solid #d9e8f2;
+  background: #f8fbfd;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.documentation-page__messages-empty {
+  margin: auto 0;
+  color: #617d94;
+  font-size: 0.76rem;
+}
+
+.documentation-page__message {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 9px 10px;
+  background: #ffffff;
+}
+
+.documentation-page__message header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.documentation-page__message header strong {
+  color: #1f4565;
+  font-size: 0.74rem;
+}
+
+.documentation-page__message header span {
+  color: #7a92a8;
+  font-size: 0.67rem;
+}
+
+.documentation-page__message p {
+  margin: 0;
+  color: #2a4660;
+  font-size: 0.78rem;
+  line-height: 1.52;
+  white-space: pre-wrap;
+}
+
+.documentation-page__message--assistant {
+  background: #f3f9ff;
+  border-color: #cfe5fa;
+}
+
+.documentation-page__message--user {
+  background: #f3fbf4;
+  border-color: #d4ead3;
+}
+
+.documentation-page__message--system {
+  background: #fff9ef;
+  border-color: #f4e2c8;
+}
+
+.documentation-page__composer {
+  display: grid;
+  gap: 8px;
+}
+
+.documentation-page__composer .shared-textarea {
+  min-height: 98px;
+}
+
+.documentation-page__composer-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #57738a;
+  font-size: 0.72rem;
+}
+
+.documentation-page__composer-checkbox input {
+  accent-color: #0b86e8;
+}
+
+.documentation-page__error {
+  margin: 0;
+  color: #b74242;
+  font-size: 0.73rem;
+}
+
+.documentation-page__assistant-footer {
+  border-top: 1px solid #e1ecf4;
+  padding-top: 10px;
+}
+
+.documentation-page__assistant-footer p {
+  margin: 0;
+  color: #5d7990;
+  font-size: 0.73rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 1380px) {
+  .documentation-page {
+    grid-template-columns: minmax(220px, 0.68fr) minmax(0, 1.3fr) minmax(290px, 0.95fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .documentation-page {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .documentation-page__files-pane,
+  .documentation-page__assistant-pane {
+    min-height: 380px;
+  }
+
+  .documentation-page__editor-pane {
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 760px) {
+  .documentation-page__files-actions {
+    grid-template-columns: 1fr;
+  }
+}

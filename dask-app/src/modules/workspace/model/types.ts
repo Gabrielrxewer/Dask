@@ -471,6 +471,10 @@ export interface WorkspaceService {
     itemId: string,
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
+  runDocumentationAssistant: (
+    workspaceSlug: string,
+    input: RunDocumentationAssistantInput
+  ) => Promise<RunDocumentationAssistantResult>;
   getAccessControl: (workspaceSlug: string) => Promise<WorkspaceAccessControlSnapshot>;
   updateMemberAccessControl: (
     workspaceSlug: string,
@@ -589,6 +593,27 @@ export interface AiAgentSummary {
   isActive: boolean;
   isDefault: boolean;
   updatedAt: string;
+}
+
+export type DocumentationAssistantMode = "chat" | "write" | "maintain";
+export type DocumentationAssistantAction = "chat" | "replace_document" | "append_document";
+
+export interface RunDocumentationAssistantInput {
+  mode: DocumentationAssistantMode;
+  instruction: string;
+  documentTitle?: string;
+  documentPath?: string;
+  documentContent: string;
+  selection?: string;
+  includeSemanticContext?: boolean;
+  topKContextDocs?: number;
+}
+
+export interface RunDocumentationAssistantResult {
+  runId: string;
+  content: string;
+  action: DocumentationAssistantAction;
+  updatedDocument: string | null;
 }
 
 export interface CreateAiAgentInput {

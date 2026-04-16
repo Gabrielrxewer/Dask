@@ -873,6 +873,12 @@ export async function seedWorkspaceConfigurationDefaults(
   });
 
   for (const [index, customFieldSeed] of preset.customFields.entries()) {
+    const templateFieldSettings = {
+      ...(customFieldSeed.settings ?? {}),
+      source: 'seed.default',
+      templateKey: preset.templateKey
+    };
+
     const customField = await prisma.customFieldDefinition.upsert({
       where: {
         workspaceId_slug: {
@@ -888,17 +894,12 @@ export async function seedWorkspaceConfigurationDefaults(
         type: customFieldSeed.type,
         required: Boolean(customFieldSeed.required),
         position: index,
-        settings: customFieldSeed.settings
-          ? toPrismaJson(customFieldSeed.settings)
-          : undefined
+        settings: toPrismaJson(templateFieldSettings)
       },
       update: {
         position: index,
         isActive: true,
-        settings:
-          customFieldSeed.settings !== undefined
-            ? toPrismaJson(customFieldSeed.settings)
-            : undefined
+        settings: toPrismaJson(templateFieldSettings)
       }
     });
 

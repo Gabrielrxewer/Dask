@@ -9,6 +9,7 @@ import type {
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  AutomationView,
   AutomationExecution,
   AutomationRule,
   CreateAiAgentInput,
@@ -41,6 +42,13 @@ type ApiWorkspaceSummary = {
   name: string;
   key: string;
   role: WorkspaceSummary["role"];
+};
+
+type ApiTagDefinition = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
 };
 
 function toWorkspaceSlug(workspace: Pick<ApiWorkspaceSummary, "key" | "name" | "id">): string {
@@ -313,7 +321,9 @@ export const workspaceService: WorkspaceService = {
   },
 
   async updateTask(workspaceSlug: string, taskId: string, input: UpdateTaskInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
     const payload: Record<string, unknown> = {};
+    let hasTagChanges = false;
 
     if (input.title !== undefined) {
       payload.title = input.title;
@@ -327,6 +337,18 @@ export const workspaceService: WorkspaceService = {
       payload.stateSlug = input.stateId;
     }
 
+    if (input.typeSlug !== undefined) {
+      payload.typeSlug = input.typeSlug;
+    }
+
+    if (input.assigneeId !== undefined) {
+      payload.assigneeId = input.assigneeId;
+    }
+
+    if (input.dueDate !== undefined) {
+      payload.dueDate = input.dueDate;
+    }
+
     if (input.priority !== undefined) {
       payload.metadata = { priority: input.priority };
     }
@@ -335,7 +357,61 @@ export const workspaceService: WorkspaceService = {
       payload.fields = input.fields;
     }
 
-    return patchWorkItem(workspaceSlug, taskId, payload);
+    if (input.tags !== undefined) {
+      const current = getCachedTask(workspaceSlug, taskId);
+      const currentTagNames = new Set((current?.tags ?? []).map(name => name.trim()).filter(Boolean));
+      const nextTagNames = new Set(input.tags.map(name => name.trim()).filter(Boolean));
+
+      const [workspaceTags] = await Promise.all([
+        apiClient.get<ApiTagDefinition[]>(`/workspaces/${workspaceId}/tags`, {
+          authMode: "required",
+          retryOnUnauthorized: true
+        })
+      ]);
+
+      const tagIdByName = new Map(workspaceTags.map(tag => [tag.name, tag.id]));
+      const currentTagIds = Array.from(currentTagNames)
+        .map(name => tagIdByName.get(name))
+        .filter((tagId): tagId is string => Boolean(tagId));
+      const nextTagIds = Array.from(nextTagNames)
+        .map(name => tagIdByName.get(name))
+        .filter((tagId): tagId is string => Boolean(tagId));
+
+      const currentTagIdSet = new Set(currentTagIds);
+      const nextTagIdSet = new Set(nextTagIds);
+      const tagIdsToAdd = nextTagIds.filter(tagId => !currentTagIdSet.has(tagId));
+      const tagIdsToRemove = currentTagIds.filter(tagId => !nextTagIdSet.has(tagId));
+
+      if (tagIdsToAdd.length > 0 || tagIdsToRemove.length > 0) {
+        hasTagChanges = true;
+      }
+
+      await Promise.all([
+        ...tagIdsToAdd.map(tagId =>
+          apiClient.post(`/workspaces/${workspaceId}/work-items/${taskId}/tags/${tagId}`, undefined, {
+            authMode: "required",
+            retryOnUnauthorized: true
+          })
+        ),
+        ...tagIdsToRemove.map(tagId =>
+          apiClient.delete(`/workspaces/${workspaceId}/work-items/${taskId}/tags/${tagId}`, {
+            authMode: "required",
+            retryOnUnauthorized: true
+          })
+        )
+      ]);
+    }
+
+    if (Object.keys(payload).length > 0) {
+      await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, payload, {
+        authMode: "required",
+        retryOnUnauthorized: true
+      });
+    } else if (!hasTagChanges) {
+      return fetchSnapshot(workspaceSlug);
+    }
+
+    return fetchSnapshot(workspaceSlug);
   },
 
   async toggleChecklistItem(workspaceSlug, taskId, itemId) {
@@ -532,6 +608,14 @@ export const workspaceService: WorkspaceService = {
     });
   },
 
+  async listAutomationViews(workspaceSlug: string): Promise<AutomationView[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AutomationView[]>(`/automation/workspaces/${workspaceId}/views`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
   async runAutomationRule(workspaceSlug: string, ruleId: string, context?: Record<string, unknown>): Promise<void> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.post(`/automation/rules/${ruleId}/run`, {
@@ -549,6 +633,26 @@ export const workspaceService: WorkspaceService = {
       workspaceId,
       ...input
     }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateAutomationRule(
+    workspaceSlug: string,
+    ruleId: string,
+    input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
+  ): Promise<AutomationRule> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<AutomationRule>(`/automation/workspaces/${workspaceId}/rules/${ruleId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async deleteAutomationRule(workspaceSlug: string, ruleId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/automation/workspaces/${workspaceId}/rules/${ruleId}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });

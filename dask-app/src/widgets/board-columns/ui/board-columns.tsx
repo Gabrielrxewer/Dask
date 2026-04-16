@@ -39,6 +39,7 @@ interface BoardColumnsProps {
   onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
   createTaskTypes?: Array<{ id: string; label: string }>;
   aiAgents: AiAgentSummary[];
+  availableTags?: Array<{ id: string; name: string; color: string }>;
   onRunAiAgentOnItem: (
     itemId: string,
     agentId: string,
@@ -67,6 +68,7 @@ export function BoardColumns({
   onCreateTask,
   createTaskTypes,
   aiAgents,
+  availableTags = [],
   onRunAiAgentOnItem,
   onRunAiRiskAnalysis
 }: BoardColumnsProps) {
@@ -192,6 +194,8 @@ export function BoardColumns({
           status={selectedStatus}
           statuses={statuses}
           assignee={membersById[selectedTask.assignee]}
+          membersById={membersById}
+          availableTags={availableTags}
           creatorName={selectedCreatorName}
           boardConfig={boardConfig}
           onUpdatePriority={onUpdatePriority}

@@ -7,6 +7,8 @@ import { queueConnection } from '@/infra/queue/bullmq-job-queue';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orchestration-service';
 import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
+import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
+import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 
 type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
 const workerLogger = getLogger('worker');
@@ -39,7 +41,12 @@ export const startWorkers = (): WorkerHandle[] => {
 
   const { aiProvider, embeddingProvider } = buildAIProviderStack();
   const promptService = new PromptOrchestrationService();
-  const automationRuntimeService = new AutomationRuntimeService(prisma);
+  const workspaceConfigService = new WorkspaceConfigService(prisma);
+  const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
+  const automationRuntimeService = new AutomationRuntimeService(
+    prisma,
+    async (workspaceId: string) => automationViewService.ensureDefaultViews(workspaceId)
+  );
 
   const worker = new Worker(
     'dask-jobs',

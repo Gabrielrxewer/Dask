@@ -15,6 +15,8 @@ export type {
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  AutomationView,
+  AutomationViewColumn,
   AutomationExecution,
   AutomationRule,
   CreateAiAgentInput,
@@ -43,6 +45,7 @@ export type {
   WorkspaceSummary,
   WorkspaceTemplateKey,
   WorkspaceTemplateOption,
+  WorkspaceTag,
   WorkspaceSnapshot,
   WorkspaceAccessControlMember,
   WorkspaceAccessControlSnapshot

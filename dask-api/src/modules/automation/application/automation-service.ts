@@ -235,6 +235,30 @@ export class AutomationService {
     });
   }
 
+  public async deleteRule(input: {
+    workspaceId: string;
+    ruleId: string;
+    userId: string;
+  }): Promise<void> {
+    await this.workspaceConfigService.ensureConfigWritableWorkspace(input.workspaceId, input.userId);
+
+    const current = await this.prisma.automationRule.findFirst({
+      where: {
+        id: input.ruleId,
+        workspaceId: input.workspaceId
+      },
+      select: { id: true }
+    });
+
+    if (!current) {
+      throw new AppError('Automation rule not found.', 404);
+    }
+
+    await this.prisma.automationRule.delete({
+      where: { id: current.id }
+    });
+  }
+
   public async listExecutions(input: {
     workspaceId: string;
     userId: string;

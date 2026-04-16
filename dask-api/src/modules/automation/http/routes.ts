@@ -78,6 +78,19 @@ export const buildAutomationRoutes = (deps: {
     })
   );
 
+  router.delete(
+    '/automation/workspaces/:workspaceId/rules/:ruleId',
+    asyncHandler(async (req, res) => {
+      const params = automationRuleParamsDto.parse(req.params);
+      await deps.automationService.deleteRule({
+        workspaceId: params.workspaceId,
+        ruleId: params.ruleId,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
+    })
+  );
+
   router.post(
     '/automation/rules/:ruleId/run',
     asyncHandler(async (req, res) => {

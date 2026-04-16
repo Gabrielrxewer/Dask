@@ -4,7 +4,6 @@ import {
   buildTaskTypeMetaMap,
   getTaskTypeDisplayMeta,
   isSystemCardFieldId,
-  priorityMeta,
   resolveFieldIdsForTaskType
 } from "@/entities/task";
 import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
@@ -26,17 +25,6 @@ interface TaskCardProps {
   onOpen?: (taskId: string) => void;
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
 }
-
-const taskTypeIconById: Record<string, string> = {
-  bug: "B",
-  "user-story": "US",
-  incident: "I",
-  epic: "E",
-  hotfix: "H",
-  improvement: "M",
-  spike: "S",
-  research: "R"
-};
 
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
   if (Array.isArray(value)) {
@@ -69,7 +57,6 @@ export function TaskCard({
   onUpdatePriority
 }: TaskCardProps) {
   const checklist = buildTaskChecklistSummary(task);
-  const priority = priorityMeta[task.priority] ?? priorityMeta[2];
   const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
   const type = getTaskTypeDisplayMeta(typeMap, task.type);
   const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>((acc, field) => {
@@ -96,7 +83,6 @@ export function TaskCard({
     );
 
   const showType = visibleFieldIdSet.has("sys:type");
-  const showPriority = visibleFieldIdSet.has("sys:priority");
   const showStatus = visibleFieldIdSet.has("sys:status");
   const showTitle = visibleFieldIdSet.has("sys:title");
   const showDescription = visibleFieldIdSet.has("sys:description");
@@ -108,11 +94,8 @@ export function TaskCard({
   const hasMetaFooter = showChecklist || showDueDate;
 
   const canOpen = typeof onOpen === "function";
-  const canUpdatePriority = typeof onUpdatePriority === "function";
-  const nextPriority: TaskPriority = task.priority === 4 ? 0 : ((task.priority + 1) as TaskPriority);
   const authorLabel = creatorName ?? "Usuario";
   const ownerLabel = assigneeName ?? authorLabel;
-  const typeIcon = taskTypeIconById[task.type] ?? "T";
   const displayTags = task.tags.slice(0, 4);
   const hiddenTagsCount = Math.max(task.tags.length - displayTags.length, 0);
 
@@ -144,39 +127,16 @@ export function TaskCard({
       <header className="task-card__head">
         <div className="task-card__badges">
           {showType ? (
-            <>
-              <span className="task-card__type-icon" aria-hidden="true">
-                {typeIcon}
-              </span>
-              <span
-                className="task-card__type"
-                style={{
-                  backgroundColor: type.background,
-                  borderColor: type.border,
-                  color: type.text
-                }}
-              >
-                {type.label}
-              </span>
-            </>
-          ) : null}
-
-          {showPriority ? (
-            <button
-              type="button"
-              className={cn("task-card__priority", priority.className)}
-              aria-label={`Prioridade atual ${priority.label}. Clique para mudar.`}
-              disabled={!canUpdatePriority}
-              onClick={event => {
-                event.stopPropagation();
-                if (!canUpdatePriority) {
-                  return;
-                }
-                onUpdatePriority(task.id, nextPriority);
+            <span
+              className="task-card__type"
+              style={{
+                backgroundColor: type.background,
+                borderColor: type.border,
+                color: type.text
               }}
             >
-              {priority.label}
-            </button>
+              {type.label}
+            </span>
           ) : null}
 
           {showStatus ? <span className="task-card__tag">{statusLabel ?? task.status}</span> : null}

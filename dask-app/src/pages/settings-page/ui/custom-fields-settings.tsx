@@ -59,17 +59,23 @@ interface EditState {
   type: CustomFieldType;
   required: boolean;
   allowAiGeneration: boolean;
+  options: FieldOptionDraft[];
 }
 
 interface SettingsFieldRow {
   id: string;
   label: string;
   type: string;
-  source: "system" | "custom";
+  source: "template" | "custom";
   required: boolean;
   optionsCount: number;
   allowAiGeneration: boolean;
-  editableAi: boolean;
+}
+
+interface FieldOptionDraft {
+  id: string;
+  label: string;
+  value: string;
 }
 
 function supportsAiGeneration(type: CustomFieldType): boolean {
@@ -86,6 +92,180 @@ function readAllowAiGeneration(settings: ApiCustomField["settings"]): boolean {
 
 function canToggleAiByType(type: string): boolean {
   return type === "text" || type === "text_ai";
+}
+
+const KNOWN_TEMPLATE_FIELD_SLUGS = new Set(["story-points", "severity", "confidence", "impact", "sla-hours"]);
+
+function isTemplateField(field: ApiCustomField | undefined, fallbackSlug?: string): boolean {
+  if (!field) {
+    return fallbackSlug ? KNOWN_TEMPLATE_FIELD_SLUGS.has(fallbackSlug) : false;
+  }
+
+  if (KNOWN_TEMPLATE_FIELD_SLUGS.has(field.slug)) {
+    return true;
+  }
+
+  if (!field.settings || typeof field.settings !== "object" || Array.isArray(field.settings)) {
+    return false;
+  }
+
+  const source = (field.settings as { source?: unknown }).source;
+  if (typeof source === "string" && source.trim().toLowerCase().startsWith("seed.")) {
+    return true;
+  }
+
+  return false;
+}
+
+function supportsSelectableOptions(type: CustomFieldType): boolean {
+  return type === "select" || type === "multi_select";
+}
+
+function sanitizeOptionValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function mapApiOptionsToDraft(options: ApiCustomField["options"]): FieldOptionDraft[] {
+  if (!Array.isArray(options) || options.length === 0) {
+    return [];
+  }
+
+  return options.map(option => ({
+    id: option.id,
+    label: option.label,
+    value: option.value
+  }));
+}
+
+function normalizeOptionInputs(options: FieldOptionDraft[]): Array<{ label: string; value: string }> {
+  const seen = new Set<string>();
+  const normalized: Array<{ label: string; value: string }> = [];
+
+  for (const [index, option] of options.entries()) {
+    const label = option.label.trim();
+    if (!label) {
+      continue;
+    }
+
+    const baseValue = sanitizeOptionValue(option.value) || sanitizeOptionValue(label) || `opcao_${index + 1}`;
+    let value = baseValue;
+    let suffix = 2;
+    while (seen.has(value)) {
+      value = `${baseValue}_${suffix}`;
+      suffix += 1;
+    }
+
+    seen.add(value);
+    normalized.push({ label, value });
+  }
+
+  return normalized;
+}
+
+function createEmptyOptionDraft(index: number): FieldOptionDraft {
+  return {
+    id: `new-${Date.now()}-${index}`,
+    label: "",
+    value: ""
+  };
+}
+
+interface SelectOptionsEditorProps {
+  type: CustomFieldType;
+  options: FieldOptionDraft[];
+  onChange: (options: FieldOptionDraft[]) => void;
+}
+
+function SelectOptionsEditor({ type, options, onChange }: SelectOptionsEditorProps) {
+  if (!supportsSelectableOptions(type)) {
+    return null;
+  }
+
+  const normalizedPreview = normalizeOptionInputs(options);
+
+  return (
+    <div className="custom-fields-settings__options-editor">
+      <div className="custom-fields-settings__options-header">
+        <p>Opcoes do campo</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => onChange([...options, createEmptyOptionDraft(options.length + 1)])}
+        >
+          Adicionar opcao
+        </Button>
+      </div>
+
+      {options.length === 0 ? (
+        <p className="custom-fields-settings__options-empty">
+          Adicione ao menos uma opcao para esse campo.
+        </p>
+      ) : (
+        <div className="custom-fields-settings__options-grid">
+          {options.map((option, index) => (
+            <div className="custom-fields-settings__option-row" key={option.id}>
+              <FormField label={`Opcao ${index + 1}`}>
+                <TextInput
+                  value={option.label}
+                  placeholder="Label visivel"
+                  onChange={event => {
+                    const next = [...options];
+                    next[index] = { ...next[index], label: event.target.value };
+                    onChange(next);
+                  }}
+                />
+              </FormField>
+              <FormField label="Valor">
+                <TextInput
+                  value={option.value}
+                  placeholder="valor_interno (opcional)"
+                  onChange={event => {
+                    const next = [...options];
+                    next[index] = { ...next[index], value: event.target.value };
+                    onChange(next);
+                  }}
+                />
+              </FormField>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onChange(options.filter((_, optionIndex) => optionIndex !== index))}
+              >
+                Remover
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="custom-fields-settings__options-preview">
+        <p>Visualizacao das opcoes</p>
+        <Select value="" disabled>
+          <option value="">Selecione...</option>
+          {normalizedPreview.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        {type === "multi_select" && normalizedPreview.length > 0 ? (
+          <div className="custom-fields-settings__options-tags" aria-label="Preview multi selecao">
+            {normalizedPreview.map(option => (
+              <span key={`tag-${option.value}`}>{option.label}</span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function readFieldCapabilitiesById(settings?: Record<string, unknown>): Record<string, { aiEnhance?: boolean }> {
@@ -117,8 +297,7 @@ export function CustomFieldsSettings() {
     fetchCustomFields,
     createCustomField,
     updateCustomField,
-    deleteCustomField,
-    updatePreferences
+    deleteCustomField
   } = useWorkspace();
 
   const [fields, setFields] = useState<ApiCustomField[]>([]);
@@ -129,10 +308,11 @@ export function CustomFieldsSettings() {
     type: CustomFieldType;
     required: boolean;
     allowAiGeneration: boolean;
+    options: FieldOptionDraft[];
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [savingAiFieldId, setSavingAiFieldId] = useState<string | null>(null);
+  const [formError, setFormError] = useState("");
 
   const customFieldBySlug = useMemo(
     () =>
@@ -171,11 +351,10 @@ export function CustomFieldsSettings() {
           id: field.id,
           label: field.label,
           type: field.type,
-          source: isCustom ? "custom" : "system",
+          source: isCustom ? (isTemplateField(customDefinition, field.id) ? "template" : "custom") : "template",
           required: customDefinition?.required ?? false,
           optionsCount: customDefinition?.options.length ?? field.options?.length ?? 0,
-          allowAiGeneration,
-          editableAi: canToggleAiByType(field.type) && (!isCustom || Boolean(customDefinition))
+          allowAiGeneration
         };
       }),
     [allFields, customFieldBySlug, fieldCapabilitiesById]
@@ -196,20 +375,32 @@ export function CustomFieldsSettings() {
   }, [loadFields]);
 
   const handleStartEdit = (field: ApiCustomField) => {
+    setFormError("");
     setEditing({
       id: field.id,
       name: field.name,
       type: field.type as CustomFieldType,
       required: field.required,
-      allowAiGeneration: readAllowAiGeneration(field.settings)
+      allowAiGeneration: readAllowAiGeneration(field.settings),
+      options: mapApiOptionsToDraft(field.options)
     });
     setNewField(null);
   };
 
-  const handleCancelEdit = () => setEditing(null);
+  const handleCancelEdit = () => {
+    setEditing(null);
+    setFormError("");
+  };
 
   const handleSaveEdit = async () => {
     if (!editing || !editing.name.trim()) return;
+    const normalizedOptions = normalizeOptionInputs(editing.options);
+    if (supportsSelectableOptions(editing.type) && normalizedOptions.length === 0) {
+      setFormError("Campos de selecao precisam de ao menos uma opcao.");
+      return;
+    }
+
+    setFormError("");
     setSaving(true);
     try {
       await updateCustomField(editing.id, {
@@ -218,7 +409,8 @@ export function CustomFieldsSettings() {
         required: editing.required,
         settings: {
           allowAiGeneration: supportsAiGeneration(editing.type) ? editing.allowAiGeneration : false
-        }
+        },
+        options: supportsSelectableOptions(editing.type) ? normalizedOptions : []
       });
       setEditing(null);
       await loadFields();
@@ -239,6 +431,13 @@ export function CustomFieldsSettings() {
 
   const handleCreate = async () => {
     if (!newField || !newField.name.trim()) return;
+    const normalizedOptions = normalizeOptionInputs(newField.options);
+    if (supportsSelectableOptions(newField.type) && normalizedOptions.length === 0) {
+      setFormError("Campos de selecao precisam de ao menos uma opcao.");
+      return;
+    }
+
+    setFormError("");
     setSaving(true);
     try {
       await createCustomField({
@@ -247,7 +446,8 @@ export function CustomFieldsSettings() {
         required: newField.required,
         settings: {
           allowAiGeneration: supportsAiGeneration(newField.type) ? newField.allowAiGeneration : false
-        }
+        },
+        options: supportsSelectableOptions(newField.type) ? normalizedOptions : []
       });
       setNewField(null);
       await loadFields();
@@ -256,45 +456,8 @@ export function CustomFieldsSettings() {
     }
   };
 
-  const handleToggleFieldAi = async (row: SettingsFieldRow, nextValue: boolean) => {
-    setSavingAiFieldId(row.id);
-    try {
-      if (row.source === "custom") {
-        const customDefinition = customFieldBySlug[row.id];
-        if (!customDefinition) {
-          return;
-        }
-
-        await updateCustomField(customDefinition.id, {
-          settings: {
-            allowAiGeneration: nextValue
-          }
-        });
-
-        await loadFields();
-        return;
-      }
-
-      const currentMap = readFieldCapabilitiesById(snapshot?.preferences.settings);
-      const nextMap = {
-        ...currentMap,
-        [row.id]: {
-          ...(currentMap[row.id] ?? {}),
-          aiEnhance: nextValue
-        }
-      };
-
-      await updatePreferences({
-        settings: {
-          fieldCapabilitiesById: nextMap
-        }
-      });
-    } finally {
-      setSavingAiFieldId(null);
-    }
-  };
-
   const activeCustomFields = fields.filter(field => field.isActive !== false);
+  const editableTemplateAndCustomFields = fields;
   const requiredCustomFields = activeCustomFields.filter(field => field.required).length;
   const aiEnabledFields = settingsRows.filter(row => row.allowAiGeneration).length;
   const progressWidth = Math.min(100, Math.max(12, settingsRows.length * 8));
@@ -319,7 +482,7 @@ export function CustomFieldsSettings() {
               </span>
               <div className="general-settings__preview-card">
                 <strong>{getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}</strong>
-                <small>{row.source === "system" ? "Sistema" : "Customizado"}</small>
+                <small>{row.source === "template" ? "Template" : "Customizado"}</small>
               </div>
             </div>
           ))}
@@ -359,8 +522,9 @@ export function CustomFieldsSettings() {
                 type="button"
                 size="sm"
                 onClick={() => {
-                  setNewField({ name: "", type: "text", required: false, allowAiGeneration: false });
+                  setNewField({ name: "", type: "text", required: false, allowAiGeneration: false, options: [] });
                   setEditing(null);
+                  setFormError("");
                 }}
               >
                 Novo campo
@@ -426,11 +590,25 @@ export function CustomFieldsSettings() {
                   </label>
                 </FormField>
               </div>
+              <SelectOptionsEditor
+                type={newField.type}
+                options={newField.options}
+                onChange={options => setNewField({ ...newField, options })}
+              />
+              {formError ? <p className="custom-fields-settings__form-error">{formError}</p> : null}
               <div className="custom-fields-settings__form-actions">
                 <Button type="button" size="sm" onClick={() => void handleCreate()} disabled={saving || !newField.name.trim()}>
                   {saving ? "Criando..." : "Criar"}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setNewField(null)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setNewField(null);
+                    setFormError("");
+                  }}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -458,7 +636,7 @@ export function CustomFieldsSettings() {
         <div className="custom-fields-settings__list">
           <div className="custom-fields-settings__all-fields">
             <p className="custom-fields-settings__all-fields-title">
-              Todos os campos (sistema + template + customizados)
+              Todos os campos (template + customizados)
             </p>
             <p className="custom-fields-settings__all-fields-subtitle">
               Configure por campo se o input textual pode gerar conteudo com IA.
@@ -473,29 +651,12 @@ export function CustomFieldsSettings() {
                     </span>
                     <span className="custom-fields-settings__row-name">{row.label}</span>
                     <span className={`custom-fields-settings__source custom-fields-settings__source--${row.source}`}>
-                      {row.source === "system" ? "Sistema" : "Campo"}
+                      {row.source === "template" ? "Template" : "Campo"}
                     </span>
                     {row.required ? <span className="custom-fields-settings__required">obrigatorio</span> : null}
                     {row.optionsCount > 0 ? (
                       <span className="custom-fields-settings__options-hint">{row.optionsCount} opcoes</span>
                     ) : null}
-                  </div>
-                  <div className="custom-fields-settings__all-field-actions">
-                    <label className="custom-fields-settings__checkbox">
-                      <input
-                        type="checkbox"
-                        checked={row.allowAiGeneration}
-                        disabled={!row.editableAi || savingAiFieldId === row.id}
-                        onChange={event => void handleToggleFieldAi(row, event.target.checked)}
-                      />
-                      <span>
-                        {row.editableAi
-                          ? savingAiFieldId === row.id
-                            ? "Salvando..."
-                            : "Permitir IA"
-                          : "Nao se aplica"}
-                      </span>
-                    </label>
                   </div>
                 </div>
               ))}
@@ -504,11 +665,11 @@ export function CustomFieldsSettings() {
 
           {loadingList && <p className="custom-fields-settings__empty">Carregando...</p>}
 
-          {!loadingList && fields.length === 0 && !newField && (
+          {!loadingList && editableTemplateAndCustomFields.length === 0 && !newField && (
             <p className="custom-fields-settings__empty">Nenhum campo customizado configurado.</p>
           )}
 
-          {fields.map(field => (
+          {editableTemplateAndCustomFields.map(field => (
             <div key={field.id} className="custom-fields-settings__row">
               {editing?.id === field.id ? (
                 <div className="custom-fields-settings__form-row">
@@ -567,6 +728,12 @@ export function CustomFieldsSettings() {
                       </label>
                     </FormField>
                   </div>
+                  <SelectOptionsEditor
+                    type={editing.type}
+                    options={editing.options}
+                    onChange={options => setEditing({ ...editing, options })}
+                  />
+                  {formError ? <p className="custom-fields-settings__form-error">{formError}</p> : null}
                   <div className="custom-fields-settings__form-actions">
                     <Button type="button" size="sm" onClick={() => void handleSaveEdit()} disabled={saving || !editing.name.trim()}>
                       {saving ? "Salvando..." : "Salvar"}

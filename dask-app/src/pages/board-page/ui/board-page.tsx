@@ -160,6 +160,9 @@ export function BoardPage() {
     perspectives: rawPerspectives
   };
 
+  const availableTags = (snapshot?.tags ?? [])
+    .filter(tag => tag.isActive !== false)
+    .map(tag => ({ id: tag.id, name: tag.name, color: tag.color }));
   const activeUser = snapshot?.currentUserId ?? currentUserId;
   const activeMembers = useMemo(() => {
     const sourceMembers = snapshot?.membersById ?? membersById;
@@ -424,6 +427,7 @@ export function BoardPage() {
               onSaveTask={updateTask}
               onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
               aiAgents={aiAgents}
+              availableTags={availableTags}
               onRunAiAgentOnItem={runAiAgentOnItem}
               onRunAiRiskAnalysis={runAiRiskAnalysis}
             />

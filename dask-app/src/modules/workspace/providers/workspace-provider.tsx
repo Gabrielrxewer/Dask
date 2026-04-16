@@ -10,6 +10,7 @@ import type {
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  AutomationView,
   AutomationExecution,
   AutomationRule,
   CreateAiAgentInput,
@@ -67,8 +68,14 @@ interface WorkspaceContextValue {
   deleteCustomField: (fieldId: string) => Promise<void>;
   listAutomationRules: (options?: { includeDisabled?: boolean }) => Promise<AutomationRule[]>;
   listAutomationExecutions: (options?: { limit?: number }) => Promise<AutomationExecution[]>;
+  listAutomationViews: () => Promise<AutomationView[]>;
   runAutomationRule: (ruleId: string, context?: Record<string, unknown>) => Promise<void>;
   createAutomationRule: (input: CreateAutomationRuleInput) => Promise<AutomationRule>;
+  updateAutomationRule: (
+    ruleId: string,
+    input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
+  ) => Promise<AutomationRule>;
+  deleteAutomationRule: (ruleId: string) => Promise<void>;
   listAiAgents: () => Promise<AiAgentSummary[]>;
   listAiRuns: (input?: { itemId?: string; limit?: number }) => Promise<AiRunSummary[]>;
   getAiObservability: () => Promise<AiObservability>;
@@ -374,6 +381,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [workspaceSlug]
   );
 
+  const listAutomationViews = useCallback(async (): Promise<AutomationView[]> => {
+    if (!workspaceSlug) return [];
+    return workspaceService.listAutomationViews(workspaceSlug);
+  }, [workspaceSlug]);
+
   const runAutomationRule = useCallback(
     async (ruleId: string, context?: Record<string, unknown>): Promise<void> => {
       if (!workspaceSlug) return;
@@ -386,6 +398,25 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     async (input: CreateAutomationRuleInput): Promise<AutomationRule> => {
       if (!workspaceSlug) throw new Error("No workspace");
       return workspaceService.createAutomationRule(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const updateAutomationRule = useCallback(
+    async (
+      ruleId: string,
+      input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
+    ): Promise<AutomationRule> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.updateAutomationRule(workspaceSlug, ruleId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const deleteAutomationRule = useCallback(
+    async (ruleId: string): Promise<void> => {
+      if (!workspaceSlug) return;
+      await workspaceService.deleteAutomationRule(workspaceSlug, ruleId);
     },
     [workspaceSlug]
   );
@@ -502,8 +533,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       deleteCustomField,
       listAutomationRules,
       listAutomationExecutions,
+      listAutomationViews,
       runAutomationRule,
       createAutomationRule,
+      updateAutomationRule,
+      deleteAutomationRule,
       listAiAgents,
       listAiRuns,
       getAiObservability,
@@ -546,8 +580,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       deleteCustomField,
       listAutomationRules,
       listAutomationExecutions,
+      listAutomationViews,
       runAutomationRule,
       createAutomationRule,
+      updateAutomationRule,
+      deleteAutomationRule,
       listAiAgents,
       listAiRuns,
       getAiObservability,

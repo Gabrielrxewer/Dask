@@ -39,6 +39,10 @@ export interface UpdateTaskInput {
   title?: string;
   description?: string;
   stateId?: TaskStatusId;
+  typeSlug?: string;
+  assigneeId?: MemberId | null;
+  dueDate?: string | null;
+  tags?: string[];
   priority?: TaskPriority;
   fields?: Record<string, unknown>;
 }
@@ -74,9 +78,19 @@ export interface WorkspaceSnapshot {
   currentUserId: MemberId;
   membersById: MembersById;
   tasks: Task[];
+  tags?: WorkspaceTag[];
   boardConfig: BoardConfig;
   automations: WorkspaceAutomation[];
   preferences: WorkspacePreferences;
+}
+
+export interface WorkspaceTag {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  description?: string | null;
+  isActive?: boolean;
 }
 
 export interface WorkspaceSummary {
@@ -424,8 +438,15 @@ export interface WorkspaceService {
 
   listAutomationRules: (workspaceSlug: string, options?: { includeDisabled?: boolean }) => Promise<AutomationRule[]>;
   listAutomationExecutions: (workspaceSlug: string, options?: { limit?: number }) => Promise<AutomationExecution[]>;
+  listAutomationViews: (workspaceSlug: string) => Promise<AutomationView[]>;
   runAutomationRule: (workspaceSlug: string, ruleId: string, context?: Record<string, unknown>) => Promise<void>;
   createAutomationRule: (workspaceSlug: string, input: CreateAutomationRuleInput) => Promise<AutomationRule>;
+  updateAutomationRule: (
+    workspaceSlug: string,
+    ruleId: string,
+    input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
+  ) => Promise<AutomationRule>;
+  deleteAutomationRule: (workspaceSlug: string, ruleId: string) => Promise<void>;
 
   listAiAgents: (workspaceSlug: string) => Promise<AiAgentSummary[]>;
   listAiRuns: (
@@ -513,7 +534,39 @@ export interface AutomationExecution {
     name: string;
     triggerType: string;
     enabled: boolean;
-  };
+  } | null;
+}
+
+export interface AutomationViewColumn {
+  id: string;
+  workspaceId: string;
+  viewId: string;
+  key: string;
+  name: string;
+  description: string | null;
+  color: string;
+  position: number;
+  isActive: boolean;
+  isTerminal: boolean;
+  settings: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationView {
+  id: string;
+  workspaceId: string;
+  key: string;
+  name: string;
+  description: string | null;
+  position: number;
+  isSystem: boolean;
+  isActive: boolean;
+  settings: unknown;
+  placementsCount: number;
+  columns: AutomationViewColumn[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateAutomationRuleInput {

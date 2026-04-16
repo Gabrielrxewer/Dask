@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { buildWorkspaceSettingsPath, routePaths } from "@/app/router/route-paths";
+import { buildWorkspaceSelectorPath, buildWorkspaceSettingsPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { billingService, PLAN_DISPLAY, type BillingStatus } from "@/modules/billing";
 import { GlobalChromeProvider } from "@/app/layout";
@@ -83,7 +83,7 @@ export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, status } = useAuth();
-  const { logout, logoutAll, isSubmitting } = useLogout();
+  const { logout, isSubmitting } = useLogout();
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
   const isResetPasswordRoute = location.pathname === routePaths.resetPassword;
@@ -444,21 +444,21 @@ export function GlobalLayout() {
                         type="button"
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          void logout();
+                          navigate(buildWorkspaceSelectorPath());
                         }}
                         disabled={isAuthBusy}
                       >
-                        {isAuthBusy ? "Saindo..." : "Sair"}
+                        Trocar workspace
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          void logoutAll();
+                          void logout();
                         }}
                         disabled={isAuthBusy}
                       >
-                        Sair de todos
+                        {isAuthBusy ? "Saindo..." : "Sair"}
                       </button>
                     </nav>
                   </div>

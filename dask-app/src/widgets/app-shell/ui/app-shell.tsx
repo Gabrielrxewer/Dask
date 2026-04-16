@@ -5,7 +5,6 @@ import {
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
   buildWorkspaceListPath,
-  buildWorkspaceSelectorPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceTimelinePath
 } from "@/app/router/route-paths";
@@ -20,7 +19,7 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "automation" | "settings" | "workspace";
+type SidebarIconName = "board" | "list" | "timeline" | "automation" | "settings";
 type SidebarTone = "blue" | "mint" | "amber" | "rose" | "violet" | "slate";
 
 interface AppShellProps {
@@ -161,17 +160,6 @@ export function AppShell({
           label: "Settings",
           icon: "settings" as const,
           tone: "violet" as const
-        }
-      ]
-    },
-    {
-      title: "Conta",
-      items: [
-        {
-          to: buildWorkspaceSelectorPath(),
-          label: "Trocar workspace",
-          icon: "workspace" as const,
-          tone: "slate" as const
         }
       ]
     }

@@ -739,7 +739,7 @@ export function GlobalLayout() {
           {isUserProfileOpen ? (
             <ModalShell
               titleId="user-profile-title"
-              className="user-profile-modal"
+              className={cn("user-profile-modal", `user-profile-modal--${resolvedProfileTheme}`)}
               onClose={() => setIsUserProfileOpen(false)}
             >
               <header className="user-profile-modal__header">

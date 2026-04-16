@@ -7,17 +7,17 @@ const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
   PERSONAL: [
     "1 workspace pessoal",
     "Boards, listas e timeline",
-    "IA para melhorias de itens",
+    "IA para melhorias",
     "Automacoes basicas",
     "Busca semantica"
   ],
   BUSINESS: [
     "Multiplos workspaces",
-    "Suporte a equipes e organizacoes",
+    "Suporte a equipes",
     "Boards, listas e timeline",
     "IA avancada e automacoes",
-    "Busca semantica e auditoria",
-    "Campos e tipos personalizados",
+    "Campos personalizados",
+    "Auditoria e integracoes",
     "Suporte prioritario"
   ]
 };

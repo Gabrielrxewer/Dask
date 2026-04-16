@@ -21,6 +21,13 @@ const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
 const userProfileStorageKey = "dask:user-profile-preferences";
 const maxProfileAvatarBytes = 2 * 1024 * 1024;
 const userProfileThemes = new Set(["light", "dark", "system"]);
+const defaultUserProfilePreferences: UserProfilePreferences = {
+  autoSave: true,
+  density: "comfortable",
+  language: "pt-BR",
+  notifications: true,
+  theme: "system"
+};
 
 type UserProfileTheme = "light" | "dark" | "system";
 
@@ -44,25 +51,22 @@ function getSystemResolvedTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function applyUserProfileTheme(theme: string): void {
-  if (typeof document === "undefined") {
-    return;
-  }
-
+function resolveUserProfileTheme(theme: string, systemTheme: "light" | "dark"): "light" | "dark" {
   const normalizedTheme = normalizeUserProfileTheme(theme);
-  const resolvedTheme = normalizedTheme === "system" ? getSystemResolvedTheme() : normalizedTheme;
-  document.documentElement.dataset.theme = resolvedTheme;
-  document.documentElement.dataset.themePreference = normalizedTheme;
-  document.documentElement.style.colorScheme = resolvedTheme;
+  return normalizedTheme === "system" ? systemTheme : normalizedTheme;
 }
 
-function getStoredUserProfilePreferences(): UserProfilePreferences | null {
-  if (typeof window === "undefined") {
+function buildUserProfileStorageKey(userId: string): string {
+  return `${userProfileStorageKey}:${userId}`;
+}
+
+function getStoredUserProfilePreferences(userId: string | null | undefined): UserProfilePreferences | null {
+  if (typeof window === "undefined" || !userId) {
     return null;
   }
 
   try {
-    const rawPreferences = window.localStorage.getItem(userProfileStorageKey);
+    const rawPreferences = window.localStorage.getItem(buildUserProfileStorageKey(userId));
     if (!rawPreferences) {
       return null;
     }
@@ -73,10 +77,10 @@ function getStoredUserProfilePreferences(): UserProfilePreferences | null {
     }
 
     return {
-      autoSave: parsed.autoSave ?? true,
-      density: parsed.density ?? "comfortable",
-      language: parsed.language ?? "pt-BR",
-      notifications: parsed.notifications ?? true,
+      autoSave: parsed.autoSave ?? defaultUserProfilePreferences.autoSave,
+      density: parsed.density ?? defaultUserProfilePreferences.density,
+      language: parsed.language ?? defaultUserProfilePreferences.language,
+      notifications: parsed.notifications ?? defaultUserProfilePreferences.notifications,
       theme: normalizeUserProfileTheme(parsed.theme)
     };
   } catch {
@@ -84,14 +88,14 @@ function getStoredUserProfilePreferences(): UserProfilePreferences | null {
   }
 }
 
-function storeUserProfilePreferences(preferences: UserProfilePreferences): void {
-  if (typeof window === "undefined") {
+function storeUserProfilePreferences(userId: string | null | undefined, preferences: UserProfilePreferences): void {
+  if (typeof window === "undefined" || !userId) {
     return;
   }
 
   try {
     window.localStorage.setItem(
-      userProfileStorageKey,
+      buildUserProfileStorageKey(userId),
       JSON.stringify({
         ...preferences,
         theme: normalizeUserProfileTheme(preferences.theme)
@@ -187,11 +191,13 @@ export function GlobalLayout() {
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
   const isResetPasswordRoute = location.pathname === routePaths.resetPassword;
-  const isPublicGuestRoute = isHomeRoute || isLoginRoute || isResetPasswordRoute;
-  const isAppRoute = !isPublicGuestRoute;
+  const isVerifyEmailRoute = location.pathname === routePaths.verifyEmail;
+  const isPublicRoute = isHomeRoute || isLoginRoute || isResetPasswordRoute || isVerifyEmailRoute;
+  const isAppRoute = !isPublicRoute;
   const isAdminRoute = location.pathname === routePaths.admin;
   const shouldDisableMainScroll = isAppRoute && !isAdminRoute;
   const isAuthenticated = status === "authenticated";
+  const isAuthenticatedArea = isAuthenticated && !isPublicRoute;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -202,16 +208,19 @@ export function GlobalLayout() {
   const [isUpgradingToBusiness, setIsUpgradingToBusiness] = useState(false);
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
-  const [profileTheme, setProfileTheme] = useState(() => getStoredUserProfilePreferences()?.theme ?? "system");
-  const [profileLanguage, setProfileLanguage] = useState(() => getStoredUserProfilePreferences()?.language ?? "pt-BR");
-  const [profileDensity, setProfileDensity] = useState(() => getStoredUserProfilePreferences()?.density ?? "comfortable");
-  const [profileNotifications, setProfileNotifications] = useState(
-    () => getStoredUserProfilePreferences()?.notifications ?? true
-  );
-  const [profileAutoSave, setProfileAutoSave] = useState(() => getStoredUserProfilePreferences()?.autoSave ?? true);
+  const [profileTheme, setProfileTheme] = useState<UserProfileTheme>(defaultUserProfilePreferences.theme);
+  const [profileLanguage, setProfileLanguage] = useState(defaultUserProfilePreferences.language);
+  const [profileDensity, setProfileDensity] = useState(defaultUserProfilePreferences.density);
+  const [profileNotifications, setProfileNotifications] = useState(defaultUserProfilePreferences.notifications);
+  const [profileAutoSave, setProfileAutoSave] = useState(defaultUserProfilePreferences.autoSave);
+  const [profilePreferencesOwnerId, setProfilePreferencesOwnerId] = useState<string | null>(null);
+  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => getSystemResolvedTheme());
   const [profileAvatarState, setProfileAvatarState] = useState<"idle" | "saving" | "error">("idle");
   const [profileAvatarError, setProfileAvatarError] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const normalizedProfileTheme = normalizeUserProfileTheme(profileTheme);
+  const resolvedProfileTheme = resolveUserProfileTheme(profileTheme, systemTheme);
 
   useEffect(() => {
     setIsUserMenuOpen(false);
@@ -224,20 +233,39 @@ export function GlobalLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    applyUserProfileTheme(profileTheme);
-
-    if (normalizeUserProfileTheme(profileTheme) !== "system" || typeof window === "undefined") {
+    if (typeof window === "undefined") {
       return;
     }
 
     const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleSystemThemeChange = () => applyUserProfileTheme("system");
+    const handleSystemThemeChange = () => setSystemTheme(getSystemResolvedTheme());
+    handleSystemThemeChange();
     systemThemeQuery.addEventListener("change", handleSystemThemeChange);
 
     return () => {
       systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
     };
-  }, [profileTheme]);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setProfileTheme(defaultUserProfilePreferences.theme);
+      setProfileLanguage(defaultUserProfilePreferences.language);
+      setProfileDensity(defaultUserProfilePreferences.density);
+      setProfileNotifications(defaultUserProfilePreferences.notifications);
+      setProfileAutoSave(defaultUserProfilePreferences.autoSave);
+      setProfilePreferencesOwnerId(null);
+      return;
+    }
+
+    const storedPreferences = getStoredUserProfilePreferences(user.id) ?? defaultUserProfilePreferences;
+    setProfileTheme(normalizeUserProfileTheme(storedPreferences.theme));
+    setProfileLanguage(storedPreferences.language);
+    setProfileDensity(storedPreferences.density);
+    setProfileNotifications(storedPreferences.notifications);
+    setProfileAutoSave(storedPreferences.autoSave);
+    setProfilePreferencesOwnerId(user.id);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isHomeRoute) {
@@ -368,18 +396,18 @@ export function GlobalLayout() {
   }, [isAuthenticated, isUserMenuOpen]);
 
   useEffect(() => {
-    if (!profileAutoSave) {
+    if (!profileAutoSave || !user?.id || profilePreferencesOwnerId !== user.id) {
       return;
     }
 
-    storeUserProfilePreferences({
+    storeUserProfilePreferences(user.id, {
       autoSave: profileAutoSave,
       density: profileDensity,
       language: profileLanguage,
       notifications: profileNotifications,
       theme: profileTheme
     });
-  }, [profileAutoSave, profileDensity, profileLanguage, profileNotifications, profileTheme]);
+  }, [profileAutoSave, profileDensity, profileLanguage, profileNotifications, profileTheme, profilePreferencesOwnerId, user?.id]);
 
   const toggleNavigation = () => {
     if (isCompactViewport()) {
@@ -457,7 +485,7 @@ export function GlobalLayout() {
   };
 
   const saveUserProfilePreferences = () => {
-    storeUserProfilePreferences({
+    storeUserProfilePreferences(user?.id, {
       autoSave: profileAutoSave,
       density: profileDensity,
       language: profileLanguage,
@@ -499,7 +527,12 @@ export function GlobalLayout() {
 
   return (
     <GlobalChromeProvider value={chromeValue}>
-      <div className="global-layout">
+      <div
+        className={cn("global-layout", isAuthenticatedArea && "app-theme")}
+        data-theme={isAuthenticatedArea ? resolvedProfileTheme : undefined}
+        data-theme-preference={isAuthenticatedArea ? normalizedProfileTheme : undefined}
+        style={isAuthenticatedArea ? { colorScheme: resolvedProfileTheme } : undefined}
+      >
         <div className="global-layout__surface">
           <header className={cn("global-header", isHomeRoute && "global-header--home")}>
             <div className="global-header__left">
@@ -508,8 +541,8 @@ export function GlobalLayout() {
                 className="global-header__menu"
                 aria-label={isHomeRoute ? "Alternar menu da Home" : "Alternar menu de navegacao"}
                 aria-expanded={isHomeRoute ? isHomeNavOpen : isSidebarOpen}
-                onClick={isHomeRoute ? () => setIsHomeNavOpen(prev => !prev) : isPublicGuestRoute ? undefined : toggleNavigation}
-                disabled={isPublicGuestRoute && !isHomeRoute}
+                onClick={isHomeRoute ? () => setIsHomeNavOpen(prev => !prev) : isPublicRoute ? undefined : toggleNavigation}
+                disabled={isPublicRoute && !isHomeRoute}
               >
                 <span className="global-header__menu-grid">
                   <i />
@@ -691,7 +724,7 @@ export function GlobalLayout() {
               "global-layout__main",
               isAdminRoute && "global-layout__main--admin",
               shouldDisableMainScroll && "global-layout__main--no-scroll",
-              isPublicGuestRoute && "global-layout__main--public"
+              isPublicRoute && "global-layout__main--public"
             )}
           >
             <Outlet />
@@ -783,7 +816,7 @@ export function GlobalLayout() {
                     {[
                       { value: "light", label: "Claro", description: "Interface luminosa" },
                       { value: "dark", label: "Escuro", description: "Menos brilho" },
-                      { value: "system", label: "Sistema", description: `Usar ${getSystemResolvedTheme() === "dark" ? "escuro" : "claro"} do dispositivo` }
+                      { value: "system", label: "Sistema", description: `Usar ${systemTheme === "dark" ? "escuro" : "claro"} do dispositivo` }
                     ].map(option => (
                       <button
                         key={option.value}

@@ -3,10 +3,10 @@
   width: 100%;
   border: var(--control-border);
   background: var(--control-surface);
-  border-radius: 16px;
-  color: var(--text);
+  border-radius: 14px;
+  color: var(--text-strong);
   box-shadow:
-    0 12px 24px rgba(12, 42, 71, 0.055),
+    var(--shadow-1),
     0 1px 0 rgba(255, 255, 255, 0.76) inset;
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -47,7 +47,7 @@
   overflow: hidden;
   color: var(--text-strong);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -60,8 +60,8 @@
   width: 9px;
   height: 9px;
   flex: 0 0 auto;
-  border-right: 2px solid #2d6b9c;
-  border-bottom: 2px solid #2d6b9c;
+  border-right: 2px solid color-mix(in oklab, var(--accent-strong) 72%, var(--text-soft));
+  border-bottom: 2px solid color-mix(in oklab, var(--accent-strong) 72%, var(--text-soft));
   transform: translateY(-2px) rotate(45deg);
   transition: transform 0.18s ease;
 }
@@ -81,11 +81,11 @@
   max-height: min(280px, 42vh);
   overflow: auto;
   padding: 8px;
-  border: 1px solid rgba(176, 205, 228, 0.82);
+  border: 1px solid color-mix(in oklab, var(--line) 92%, white 8%);
   border-radius: 18px;
   background: var(--surface-raised);
   box-shadow:
-    0 26px 56px rgba(12, 42, 71, 0.16),
+    var(--shadow-3),
     0 1px 0 rgba(255, 255, 255, 0.86) inset;
   backdrop-filter: blur(16px) saturate(124%);
 }
@@ -110,16 +110,16 @@
 
 .shared-select__option:hover,
 .shared-select__option:focus-visible {
-  border-color: rgba(174, 206, 230, 0.74);
+  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
   background: var(--state-hover);
   color: var(--text-strong);
 }
 
 .shared-select__option--selected {
-  border-color: rgba(146, 203, 255, 0.6);
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
   background: var(--state-active);
   color: var(--text-strong);
-  box-shadow: 0 10px 20px rgba(12, 42, 71, 0.06);
+  box-shadow: 0 10px 20px color-mix(in oklab, var(--accent) 10%, transparent);
 }
 
 .shared-select__option:disabled,
@@ -145,10 +145,10 @@
 
 .shared-select__control:hover,
 .shared-textarea:hover {
-  border-color: rgba(153, 194, 225, 0.96);
+  border-color: color-mix(in oklab, var(--accent) 22%, var(--line));
   background: var(--control-surface-hover);
   box-shadow:
-    0 16px 30px rgba(12, 42, 71, 0.075),
+    0 16px 30px color-mix(in oklab, var(--text-strong) 6%, transparent),
     0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
@@ -163,7 +163,7 @@
 
 .shared-form-field__label {
   font-size: var(--font-size-label);
-  color: #174f7e;
+  color: color-mix(in oklab, var(--text-strong) 72%, var(--accent-strong));
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.015em;
 }

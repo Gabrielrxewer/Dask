@@ -1,50 +1,52 @@
 .shared-card {
-  border: 1px solid rgba(182, 208, 229, 0.72);
+  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
   background:
-    radial-gradient(circle at 16% 0%, rgba(44, 120, 230, 0.08) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(244, 249, 255, 0.58) 100%);
+    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(246, 250, 255, 0.72) 100%);
   border-radius: 28px;
   box-shadow:
-    0 18px 38px rgba(12, 42, 71, 0.065),
-    0 1px 0 rgba(255, 255, 255, 0.76) inset;
-  padding: var(--space-4);
-  backdrop-filter: blur(10px);
+    var(--shadow-1),
+    0 1px 0 rgba(255, 255, 255, 0.78) inset;
+  padding: 18px;
+  backdrop-filter: blur(12px) saturate(118%);
 }
 
 .shared-card--interactive {
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
 .shared-card--interactive:hover {
-  transform: translateY(-1px);
-  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
   box-shadow: var(--shadow-2);
 }
 
 .shared-metric-card {
-  border: 1px solid rgba(182, 208, 229, 0.72);
+  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
   border-radius: 24px;
   background:
-    radial-gradient(circle at 16% 0%, rgba(44, 120, 230, 0.08) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(244, 249, 255, 0.58) 100%);
+    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(246, 250, 255, 0.74) 100%);
   box-shadow:
-    0 18px 38px rgba(12, 42, 71, 0.065),
+    var(--shadow-1),
     0 1px 0 rgba(255, 255, 255, 0.76) inset;
   min-height: 78px;
-  padding: 14px 16px;
-  backdrop-filter: blur(10px);
+  padding: 16px 18px;
+  backdrop-filter: blur(12px) saturate(118%);
 }
 
 .shared-metric-card p {
   margin: 0;
-  color: var(--text-soft);
+  color: var(--text-muted);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .shared-metric-card h3 {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   font-size: clamp(1.22rem, 1.05rem + 0.28vw, 1.38rem);
   letter-spacing: -0.035em;
   color: var(--text-strong);
+  line-height: 1.05;
 }

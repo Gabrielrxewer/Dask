@@ -1213,66 +1213,66 @@
   text-rendering: geometricPrecision;
 }
 
-[data-theme="dark"] .global-layout .global-layout__surface::before {
+.app-theme[data-theme="dark"] .global-layout__surface::before {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 
-[data-theme="dark"] .global-layout__main:not(.global-layout__main--public) {
+.app-theme[data-theme="dark"] .global-layout__main:not(.global-layout__main--public) {
   background: #081827;
 }
 
-[data-theme="dark"] .global-header__user-menu,
-[data-theme="dark"] .global-header__billing-menu,
-[data-theme="dark"] .user-profile-modal {
+.app-theme[data-theme="dark"] .global-header__user-menu,
+.app-theme[data-theme="dark"] .global-header__billing-menu,
+.app-theme[data-theme="dark"] .user-profile-modal {
   border-color: rgba(65, 102, 130, 0.82);
   background: linear-gradient(180deg, rgba(15, 34, 51, 0.98) 0%, rgba(10, 28, 43, 0.96) 100%);
   color: var(--text);
 }
 
-[data-theme="dark"] .user-profile-modal__header {
+.app-theme[data-theme="dark"] .user-profile-modal__header {
   border-bottom-color: rgba(65, 102, 130, 0.72);
   background: linear-gradient(132deg, rgba(18, 43, 64, 0.98) 0%, rgba(13, 37, 57, 0.94) 52%, rgba(10, 48, 47, 0.9) 100%);
 }
 
-[data-theme="dark"] .user-profile-modal__body,
-[data-theme="dark"] .user-profile-modal__footer {
+.app-theme[data-theme="dark"] .user-profile-modal__body,
+.app-theme[data-theme="dark"] .user-profile-modal__footer {
   background: linear-gradient(180deg, rgba(9, 25, 39, 0.96) 0%, rgba(8, 22, 35, 0.94) 100%);
 }
 
-[data-theme="dark"] .user-profile-modal__panel,
-[data-theme="dark"] .user-profile-modal__summary-grid div,
-[data-theme="dark"] .user-profile-modal__choice,
-[data-theme="dark"] .user-profile-modal__toggle {
+.app-theme[data-theme="dark"] .user-profile-modal__panel,
+.app-theme[data-theme="dark"] .user-profile-modal__summary-grid div,
+.app-theme[data-theme="dark"] .user-profile-modal__choice,
+.app-theme[data-theme="dark"] .user-profile-modal__toggle {
   border-color: rgba(65, 102, 130, 0.76);
   background: var(--surface-raised);
 }
 
-[data-theme="dark"] .user-profile-modal__header h2,
-[data-theme="dark"] .user-profile-modal__summary-grid strong,
-[data-theme="dark"] .user-profile-modal__choice,
-[data-theme="dark"] .user-profile-modal__toggle strong,
-[data-theme="dark"] .shared-select__value {
+.app-theme[data-theme="dark"] .user-profile-modal__header h2,
+.app-theme[data-theme="dark"] .user-profile-modal__summary-grid strong,
+.app-theme[data-theme="dark"] .user-profile-modal__choice,
+.app-theme[data-theme="dark"] .user-profile-modal__toggle strong,
+.app-theme[data-theme="dark"] .shared-select__value {
   color: var(--text-strong);
 }
 
-[data-theme="dark"] .user-profile-modal__header p,
-[data-theme="dark"] .user-profile-modal__section-head p,
-[data-theme="dark"] .user-profile-modal__choice-copy small,
-[data-theme="dark"] .user-profile-modal__toggle small,
-[data-theme="dark"] .user-profile-modal__summary-grid small,
-[data-theme="dark"] .global-header__user-menu-head small {
+.app-theme[data-theme="dark"] .user-profile-modal__header p,
+.app-theme[data-theme="dark"] .user-profile-modal__section-head p,
+.app-theme[data-theme="dark"] .user-profile-modal__choice-copy small,
+.app-theme[data-theme="dark"] .user-profile-modal__toggle small,
+.app-theme[data-theme="dark"] .user-profile-modal__summary-grid small,
+.app-theme[data-theme="dark"] .global-header__user-menu-head small {
   color: var(--text-muted);
 }
 
-[data-theme="dark"] .user-profile-modal__choice--active {
+.app-theme[data-theme="dark"] .user-profile-modal__choice--active {
   border-color: rgba(90, 183, 255, 0.62);
   background: linear-gradient(135deg, rgba(14, 55, 83, 0.98), rgba(9, 62, 60, 0.94));
   box-shadow: 0 0 0 3px rgba(90, 183, 255, 0.12), 0 18px 30px rgba(0, 0, 0, 0.22);
 }
 
-[data-theme="dark"] .user-profile-modal__secondary,
-[data-theme="dark"] .user-profile-modal__close,
-[data-theme="dark"] .shared-user-avatar__actions button {
+.app-theme[data-theme="dark"] .user-profile-modal__secondary,
+.app-theme[data-theme="dark"] .user-profile-modal__close,
+.app-theme[data-theme="dark"] .shared-user-avatar__actions button {
   border-color: rgba(65, 102, 130, 0.82);
   background: rgba(18, 43, 64, 0.72);
   color: var(--text-strong);

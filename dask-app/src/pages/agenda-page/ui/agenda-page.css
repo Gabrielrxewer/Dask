@@ -49,7 +49,90 @@
   color: var(--text-soft);
 }
 
-.agenda-view__grid-scroller {
+.agenda-view__person-shell,
+.agenda-view__availability {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.agenda-view__person-toolbar,
+.agenda-view__availability-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: color-mix(in oklab, var(--surface-soft) 38%, white);
+}
+
+.agenda-view__person-toolbar span {
+  font-size: var(--font-size-xs);
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.agenda-view__ghost-button {
+  border: 1px solid var(--border-soft);
+  background: white;
+  color: var(--text-strong);
+  border-radius: 999px;
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.agenda-view__switch {
+  display: inline-flex;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  overflow: hidden;
+  background: white;
+}
+
+.agenda-view__switch button {
+  border: 0;
+  background: transparent;
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  padding: 7px 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.agenda-view__switch button.is-active {
+  background: color-mix(in oklab, var(--accent) 14%, white);
+  color: var(--accent);
+}
+
+.agenda-view__day-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.agenda-view__day-tabs button {
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: white;
+  color: var(--text-soft);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.agenda-view__day-tabs button.is-active {
+  border-color: color-mix(in oklab, var(--accent) 34%, transparent);
+  background: color-mix(in oklab, var(--accent) 12%, white);
+  color: var(--accent);
+}
+
+.agenda-view__grid-scroller,
+.agenda-view__availability-scroll {
   overflow-x: auto;
   overflow-y: auto;
 }
@@ -151,6 +234,94 @@
 .agenda-view__event:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(17, 44, 70, 0.22);
+}
+
+.agenda-view__availability-table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+}
+
+.agenda-view__availability-table th,
+.agenda-view__availability-table td {
+  border: 1px solid color-mix(in oklab, var(--border-soft) 78%, transparent);
+  padding: 0;
+}
+
+.agenda-view__availability-table thead th {
+  height: 34px;
+  background: color-mix(in oklab, white 93%, var(--surface-soft));
+  font-size: var(--font-size-2xs);
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.agenda-view__availability-table thead th:first-child {
+  min-width: 220px;
+  text-align: left;
+  padding: 0 10px;
+}
+
+.agenda-view__row-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.agenda-view__row-name {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-strong);
+  cursor: pointer;
+  padding: 0;
+}
+
+.agenda-view__row-name:disabled {
+  cursor: default;
+  color: var(--text-soft);
+}
+
+.agenda-view__row-head small {
+  font-size: 10px;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.agenda-view__cell {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.agenda-view__cell--free {
+  background: color-mix(in oklab, #5abf90 14%, white);
+  color: #0f6f4c;
+}
+
+.agenda-view__cell--busy {
+  background: color-mix(in oklab, #f08b8b 24%, white);
+  color: #8c2a2a;
+}
+
+@media (max-width: 900px) {
+  .agenda-view__person-toolbar,
+  .agenda-view__availability-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .agenda-view__day-tabs {
+    justify-content: flex-start;
+  }
 }
 
 @media (min-width: 1141px) {

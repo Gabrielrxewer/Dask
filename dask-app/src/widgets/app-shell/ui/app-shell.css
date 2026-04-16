@@ -203,6 +203,12 @@
   --sidebar-item-line: #f2dfb9;
 }
 
+.sidebar__menu-link--tone-cyan {
+  --sidebar-item: #0e7490;
+  --sidebar-item-soft: #ecfeff;
+  --sidebar-item-line: #bdeff5;
+}
+
 .sidebar__menu-link--tone-rose {
   --sidebar-item: #c45a72;
   --sidebar-item-soft: #fff1f4;

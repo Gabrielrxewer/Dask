@@ -24,6 +24,18 @@
   padding: 0;
 }
 
+.agenda-view__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agenda-view__create-task {
+  min-height: 34px;
+}
+
 .agenda-view__surface {
   display: flex;
   flex-direction: column;
@@ -313,6 +325,11 @@
 }
 
 @media (max-width: 900px) {
+  .agenda-view__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
   .agenda-view__person-toolbar,
   .agenda-view__availability-toolbar {
     flex-direction: column;

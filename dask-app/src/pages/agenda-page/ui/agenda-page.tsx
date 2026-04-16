@@ -7,6 +7,8 @@ import {
   type AiAgentSummary,
   type CalendarFeedSnapshot
 } from "@/modules/workspace";
+import { DashboardFilter } from "@/features/dashboard-filter";
+import { CreateTaskButton } from "@/features/create-task";
 import { EmptyState, LoadingState, Section, StatusBadge } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
@@ -370,11 +372,6 @@ export function AgendaPage() {
       noPageScroll
       hideSidebarBrandMark
       pageTitle="Agenda"
-      filter={filter}
-      onFilterQueryChange={setFilterQuery}
-      onMineToggle={toggleMineFilter}
-      onCreateTask={input => void createTask(input)}
-      createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
     >
       <div className="agenda-view">
         <BoardMetrics metrics={metrics} className="agenda-view__metrics" />
@@ -386,7 +383,22 @@ export function AgendaPage() {
               ? "Detalhe semanal das atividades planejadas da pessoa selecionada."
               : "Sem selecao de pessoa: Pessoas/Recursos nas linhas e horarios nas colunas."
           }
-          actions={<StatusBadge>{`${plannedTasks.length} atividades planejadas`}</StatusBadge>}
+          actions={
+            <div className="agenda-view__actions">
+              <DashboardFilter
+                query={filter.query}
+                mineOnly={filter.mineOnly}
+                onQueryChange={setFilterQuery}
+                onMineToggle={toggleMineFilter}
+              />
+              <StatusBadge>{`${plannedTasks.length} atividades planejadas`}</StatusBadge>
+              <CreateTaskButton
+                className="agenda-view__create-task"
+                onCreate={input => void createTask(input)}
+                typeOptions={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
+              />
+            </div>
+          }
           className="agenda-view__section"
         >
           {isLoading || isCalendarFeedLoading ? (

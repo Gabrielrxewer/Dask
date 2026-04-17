@@ -527,8 +527,49 @@
   color: var(--text-muted) !important;
 }
 
+.app-theme[data-theme="dark"] .task-card {
+  background:
+    linear-gradient(180deg, rgba(8, 23, 36, 0.82) 0%, rgba(7, 20, 32, 0.94) 100%),
+    linear-gradient(135deg, var(--task-card-priority-soft-strong) 0%, var(--task-card-priority-soft) 58%, rgba(255, 255, 255, 0.04) 100%) !important;
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 24%, var(--line)) !important;
+  border-left-color: var(--task-card-priority-border) !important;
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.app-theme[data-theme="dark"] .task-card--priority-0 {
+  --task-card-priority-soft: rgba(255, 91, 91, 0.14);
+  --task-card-priority-soft-strong: rgba(255, 91, 91, 0.28);
+  --task-card-priority-border: #ff6b6b;
+}
+
+.app-theme[data-theme="dark"] .task-card--priority-1 {
+  --task-card-priority-soft: rgba(255, 159, 67, 0.14);
+  --task-card-priority-soft-strong: rgba(255, 159, 67, 0.26);
+  --task-card-priority-border: #ff9f43;
+}
+
+.app-theme[data-theme="dark"] .task-card--priority-2 {
+  --task-card-priority-soft: rgba(255, 214, 92, 0.12);
+  --task-card-priority-soft-strong: rgba(255, 214, 92, 0.24);
+  --task-card-priority-border: #ffd65c;
+}
+
+.app-theme[data-theme="dark"] .task-card--priority-3 {
+  --task-card-priority-soft: rgba(72, 187, 120, 0.13);
+  --task-card-priority-soft-strong: rgba(72, 187, 120, 0.26);
+  --task-card-priority-border: #48bb78;
+}
+
+.app-theme[data-theme="dark"] .task-card--priority-4 {
+  --task-card-priority-soft: rgba(100, 181, 246, 0.13);
+  --task-card-priority-soft-strong: rgba(100, 181, 246, 0.26);
+  --task-card-priority-border: #64b5f6;
+}
+
 .app-theme[data-theme="dark"] .task-card:hover {
-  border-color: color-mix(in oklab, var(--accent) 38%, var(--line)) !important;
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 48%, var(--line)) !important;
   box-shadow: var(--shadow-2);
 }
 

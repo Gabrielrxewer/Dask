@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import { MembershipRole, Prisma, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
+  requireWorkspaceModule,
   requireWorkspacePermission,
   requireWorkspaceRole,
   workspaceScopeMiddleware
@@ -26,7 +28,10 @@ import {
   moveWorkItemDto,
   patchBoardColumnDto,
   patchCustomFieldDto,
+  createWorkspaceAccessGroupDto,
   patchItemTypeDto,
+  patchWorkspaceAccessGroupDto,
+  patchWorkspaceModuleEntitlementsDto,
   patchPreferencesDto,
   resetWorkspaceTemplateDto,
   patchTagDto,
@@ -36,6 +41,7 @@ import {
   patchWorkItemDto,
   tagParamsDto,
   transitionWorkItemDto,
+  workspaceAccessGroupParamsDto,
   workflowStateParamsDto,
   workspaceMemberAccessParamsDto,
   workspaceInviteParamsDto,
@@ -47,7 +53,16 @@ import {
   createWorkspaceDocumentDto,
   patchWorkspaceDocumentDto
 } from '@/modules/workspace-platform/http/dto';
-import { permissionCatalog, resolvePermissionsForMembership, rolePermissionPresets } from '@/modules/identity/domain/permissions';
+import { permissionCatalog, rolePermissionPresets } from '@/modules/identity/domain/permissions';
+import {
+  parseMembershipAccessOverrides,
+  parseWorkspaceAccessControlConfig,
+  resolveWorkspaceAccessPolicy,
+  upsertWorkspaceAccessControlConfig,
+  workspaceModuleCatalog,
+  type WorkspaceAccessGroup,
+  type WorkspaceModuleKey
+} from '@/modules/identity/domain/access-policy';
 
 export const buildWorkspacePlatformRoutes = (deps: {
   prisma: PrismaClient;
@@ -98,7 +113,8 @@ export const buildWorkspacePlatformRoutes = (deps: {
           user: {
             select: {
               name: true,
-              email: true
+              email: true,
+              subscriptionPlan: true
             }
           }
         },
@@ -107,34 +123,264 @@ export const buildWorkspacePlatformRoutes = (deps: {
         }
       });
 
+      const workspace = await deps.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { config: true }
+      });
+      const accessControlConfig = parseWorkspaceAccessControlConfig(workspace?.config);
+      const moduleEntitlements = resolveWorkspaceAccessPolicy({
+        role: MembershipRole.OWNER,
+        membershipPermissions: {},
+        workspaceConfig: workspace?.config,
+        subscriptionPlan: memberships[0]?.user.subscriptionPlan ?? null
+      }).moduleEntitlements;
+
       res.status(200).json({
         catalog: permissionCatalog,
+        moduleCatalog: workspaceModuleCatalog,
+        moduleEntitlements,
+        groups: accessControlConfig.groups,
         rolePresets: rolePermissionPresets,
         members: memberships.map((membership) => {
-          const permissions =
-            membership.permissions && typeof membership.permissions === 'object'
-              ? (membership.permissions as { allow?: string[]; deny?: string[] })
-              : {};
+          const overrides = parseMembershipAccessOverrides(membership.permissions);
+          const policy = resolveWorkspaceAccessPolicy({
+            role: membership.role,
+            membershipPermissions: membership.permissions,
+            workspaceConfig: workspace?.config,
+            subscriptionPlan: membership.user.subscriptionPlan
+          });
+
           return {
             userId: membership.userId,
             name: membership.user.name,
             email: membership.user.email,
             role: membership.role,
             overrides: {
-              allow: permissions.allow ?? [],
-              deny: permissions.deny ?? []
+              allow: overrides.allow ?? [],
+              deny: overrides.deny ?? [],
+              groupIds: overrides.groupIds ?? [],
+              allowedModules: overrides.allowedModules ?? [],
+              allowedBoardViewKeys: overrides.allowedBoardViewKeys ?? [],
+              ownCardsOnly: overrides.ownCardsOnly ?? false
             },
-            effectivePermissions: resolvePermissionsForMembership(membership.role, {
-              allow: (permissions.allow ?? []).filter((value): value is (typeof permissionCatalog)[number] =>
-                permissionCatalog.includes(value as (typeof permissionCatalog)[number])
-              ),
-              deny: (permissions.deny ?? []).filter((value): value is (typeof permissionCatalog)[number] =>
-                permissionCatalog.includes(value as (typeof permissionCatalog)[number])
-              )
-            })
+            effectivePermissions: policy.permissions,
+            effectiveModules: policy.allowedModules,
+            effectiveOwnCardsOnly: policy.ownCardsOnly,
+            effectiveBoardViewKeys: policy.allowedBoardViewKeys
           };
         })
       });
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/module-entitlements',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = patchWorkspaceModuleEntitlementsDto.parse(req.body);
+      const workspace = await deps.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { config: true }
+      });
+
+      if (!workspace) {
+        res.status(404).json({ message: 'Workspace not found.' });
+        return;
+      }
+
+      const current = parseWorkspaceAccessControlConfig(workspace.config);
+      const nextModuleEntitlements = {
+        ...current.moduleEntitlements,
+        ...payload.moduleEntitlements
+      } as Partial<Record<WorkspaceModuleKey, boolean>>;
+      const nextConfig = upsertWorkspaceAccessControlConfig(workspace.config, {
+        ...current,
+        moduleEntitlements: nextModuleEntitlements
+      });
+
+      await deps.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: {
+          config: nextConfig as Prisma.InputJsonValue
+        }
+      });
+
+      res.status(200).json({
+        moduleCatalog: workspaceModuleCatalog,
+        moduleEntitlements: nextModuleEntitlements
+      });
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/access-groups',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = createWorkspaceAccessGroupDto.parse(req.body);
+      const workspace = await deps.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { config: true }
+      });
+
+      if (!workspace) {
+        res.status(404).json({ message: 'Workspace not found.' });
+        return;
+      }
+
+      const current = parseWorkspaceAccessControlConfig(workspace.config);
+      const createdGroup: WorkspaceAccessGroup = {
+        id: randomUUID(),
+        name: payload.name.trim(),
+        description: payload.description,
+        allow: payload.allow,
+        deny: payload.deny,
+        allowedModules: payload.allowedModules as WorkspaceModuleKey[] | undefined,
+        allowedBoardViewKeys: payload.allowedBoardViewKeys?.map((value) => value.trim()),
+        ownCardsOnly: payload.ownCardsOnly
+      };
+      const nextConfig = upsertWorkspaceAccessControlConfig(workspace.config, {
+        ...current,
+        groups: [...current.groups, createdGroup]
+      });
+
+      await deps.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: {
+          config: nextConfig as Prisma.InputJsonValue
+        }
+      });
+
+      res.status(201).json(createdGroup);
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/access-groups/:groupId',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, groupId } = workspaceAccessGroupParamsDto.parse(req.params);
+      const payload = patchWorkspaceAccessGroupDto.parse(req.body);
+      const workspace = await deps.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { config: true }
+      });
+
+      if (!workspace) {
+        res.status(404).json({ message: 'Workspace not found.' });
+        return;
+      }
+
+      const current = parseWorkspaceAccessControlConfig(workspace.config);
+      const existing = current.groups.find((group) => group.id === groupId);
+      if (!existing) {
+        res.status(404).json({ message: 'Access group not found.' });
+        return;
+      }
+
+      const patchedGroup: WorkspaceAccessGroup = {
+        ...existing,
+        ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
+        ...(payload.description !== undefined ? { description: payload.description } : {}),
+        ...(payload.allow !== undefined ? { allow: payload.allow } : {}),
+        ...(payload.deny !== undefined ? { deny: payload.deny } : {}),
+        ...(payload.allowedModules !== undefined
+          ? { allowedModules: payload.allowedModules as WorkspaceModuleKey[] }
+          : {}),
+        ...(payload.allowedBoardViewKeys !== undefined
+          ? { allowedBoardViewKeys: payload.allowedBoardViewKeys.map((value) => value.trim()) }
+          : {}),
+        ...(payload.ownCardsOnly !== undefined ? { ownCardsOnly: payload.ownCardsOnly } : {})
+      };
+
+      const nextConfig = upsertWorkspaceAccessControlConfig(workspace.config, {
+        ...current,
+        groups: current.groups.map((group) => (group.id === groupId ? patchedGroup : group))
+      });
+
+      await deps.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: {
+          config: nextConfig as Prisma.InputJsonValue
+        }
+      });
+
+      res.status(200).json(patchedGroup);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/access-groups/:groupId',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, groupId } = workspaceAccessGroupParamsDto.parse(req.params);
+      const workspace = await deps.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { config: true }
+      });
+
+      if (!workspace) {
+        res.status(404).json({ message: 'Workspace not found.' });
+        return;
+      }
+
+      const current = parseWorkspaceAccessControlConfig(workspace.config);
+      const exists = current.groups.some((group) => group.id === groupId);
+      if (!exists) {
+        res.status(404).json({ message: 'Access group not found.' });
+        return;
+      }
+
+      const nextConfig = upsertWorkspaceAccessControlConfig(workspace.config, {
+        ...current,
+        groups: current.groups.filter((group) => group.id !== groupId)
+      });
+
+      await deps.prisma.$transaction(async (tx) => {
+        await tx.workspace.update({
+          where: { id: workspaceId },
+          data: {
+            config: nextConfig as Prisma.InputJsonValue
+          }
+        });
+
+        const memberships = await tx.workspaceMembership.findMany({
+          where: { workspaceId },
+          select: { userId: true, permissions: true }
+        });
+
+        for (const membership of memberships) {
+          const overrides = parseMembershipAccessOverrides(membership.permissions);
+          const nextGroupIds = (overrides.groupIds ?? []).filter((id) => id !== groupId);
+          const nextOverrides = {
+            ...overrides,
+            groupIds: nextGroupIds
+          };
+
+          const hasAnyOverride =
+            (nextOverrides.allow?.length ?? 0) > 0 ||
+            (nextOverrides.deny?.length ?? 0) > 0 ||
+            (nextOverrides.groupIds?.length ?? 0) > 0 ||
+            (nextOverrides.allowedModules?.length ?? 0) > 0 ||
+            (nextOverrides.allowedBoardViewKeys?.length ?? 0) > 0 ||
+            nextOverrides.ownCardsOnly === true;
+
+          await tx.workspaceMembership.update({
+            where: {
+              workspaceId_userId: {
+                workspaceId,
+                userId: membership.userId
+              }
+            },
+            data: {
+              permissions: hasAnyOverride ? (nextOverrides as Prisma.InputJsonValue) : Prisma.JsonNull
+            }
+          });
+        }
+      });
+
+      res.status(204).send();
     })
   );
 
@@ -167,17 +413,58 @@ export const buildWorkspacePlatformRoutes = (deps: {
         }
       }
 
-      const allow = payload.permissions?.allow ?? [];
-      const deny = payload.permissions?.deny ?? [];
-      const uniqueAllow = Array.from(new Set(allow));
-      const uniqueDeny = Array.from(new Set(deny));
-      const nextPermissions =
-        uniqueAllow.length > 0 || uniqueDeny.length > 0
-          ? {
-              allow: uniqueAllow,
-              deny: uniqueDeny
-            }
-          : Prisma.JsonNull;
+      const currentMembership = await deps.prisma.workspaceMembership.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: memberUserId
+          }
+        },
+        select: {
+          permissions: true
+        }
+      });
+      const existingOverrides = parseMembershipAccessOverrides(currentMembership?.permissions);
+
+      const workspace = await deps.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { config: true }
+      });
+      const groups = parseWorkspaceAccessControlConfig(workspace?.config).groups;
+
+      const nextGroupIdsInput = payload.permissions?.groupIds ?? existingOverrides.groupIds ?? [];
+      const nextGroupIds = Array.from(new Set(nextGroupIdsInput));
+      const unknownGroup = nextGroupIds.find((groupId) => !groups.some((group) => group.id === groupId));
+      if (unknownGroup) {
+        res.status(422).json({ message: `Unknown access group id '${unknownGroup}'.` });
+        return;
+      }
+
+      const nextPermissionsObject = {
+        allow: Array.from(new Set(payload.permissions?.allow ?? existingOverrides.allow ?? [])),
+        deny: Array.from(new Set(payload.permissions?.deny ?? existingOverrides.deny ?? [])),
+        groupIds: nextGroupIds,
+        allowedModules: Array.from(
+          new Set(payload.permissions?.allowedModules ?? existingOverrides.allowedModules ?? [])
+        ),
+        allowedBoardViewKeys: Array.from(
+          new Set(payload.permissions?.allowedBoardViewKeys ?? existingOverrides.allowedBoardViewKeys ?? [])
+        ),
+        ownCardsOnly:
+          payload.permissions?.ownCardsOnly !== undefined
+            ? payload.permissions.ownCardsOnly
+            : existingOverrides.ownCardsOnly
+      };
+
+      const hasAnyOverride =
+        nextPermissionsObject.allow.length > 0 ||
+        nextPermissionsObject.deny.length > 0 ||
+        nextPermissionsObject.groupIds.length > 0 ||
+        nextPermissionsObject.allowedModules.length > 0 ||
+        nextPermissionsObject.allowedBoardViewKeys.length > 0 ||
+        nextPermissionsObject.ownCardsOnly === true;
+
+      const nextPermissions = hasAnyOverride ? nextPermissionsObject : Prisma.JsonNull;
 
       const updated = await deps.prisma.workspaceMembership.update({
         where: {
@@ -503,6 +790,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.get(
     '/workspaces/:workspaceId/snapshot',
+    requireWorkspaceModule('board'),
     requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
@@ -518,6 +806,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.get(
     '/workspaces/:workspaceId/work-items',
+    requireWorkspaceModule('board'),
     requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
@@ -531,6 +820,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.get(
     '/workspaces/:workspaceId/documents',
+    requireWorkspaceModule('documentation'),
     requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
@@ -544,6 +834,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/documents',
+    requireWorkspaceModule('documentation'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
@@ -559,6 +850,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/documents/:documentId',
+    requireWorkspaceModule('documentation'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
@@ -575,6 +867,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.delete(
     '/workspaces/:workspaceId/documents/:documentId',
+    requireWorkspaceModule('documentation'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
@@ -589,6 +882,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const payload = createWorkItemDto.parse(req.body);
@@ -603,6 +897,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/work-items/:itemId',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { itemId } = workItemParamsDto.parse(req.params);
@@ -619,6 +914,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/move',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { itemId } = workItemParamsDto.parse(req.params);
@@ -635,6 +931,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/transitions',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { itemId } = workItemParamsDto.parse(req.params);
@@ -651,6 +948,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/work-items/:itemId/custom-fields/:fieldId',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { itemId, fieldId } = fieldValueParamsDto.parse(req.params);
@@ -668,6 +966,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/tags/:tagId',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { itemId, tagId } = workItemTagParamsDto.parse(req.params);
@@ -683,6 +982,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.delete(
     '/workspaces/:workspaceId/work-items/:itemId/tags/:tagId',
+    requireWorkspaceModule('board'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { itemId, tagId } = workItemTagParamsDto.parse(req.params);

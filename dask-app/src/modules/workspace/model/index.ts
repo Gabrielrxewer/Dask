@@ -45,6 +45,8 @@ export type {
   WorkspacePreferences,
   WorkspaceProfile,
   WorkspacePermissionKey,
+  WorkspaceModuleKey,
+  WorkspaceAccessGroup,
   WorkspaceInvite,
   PublicWorkspaceInvite,
   WorkspaceSummary,

@@ -86,6 +86,12 @@ export interface WorkspaceSnapshot {
   boardConfig: BoardConfig;
   automations: WorkspaceAutomation[];
   preferences: WorkspacePreferences;
+  access?: {
+    ownCardsOnly: boolean;
+    allowedModules: WorkspaceModuleKey[];
+    moduleEntitlements: Partial<Record<WorkspaceModuleKey, boolean>>;
+    allowedBoardViewKeys: string[] | null;
+  };
 }
 
 export interface WorkspaceTag {
@@ -208,6 +214,19 @@ export type WorkspacePermissionKey =
   | "board.write"
   | "item.write";
 
+export type WorkspaceModuleKey = "board" | "automation" | "documentation" | "ai" | "settings";
+
+export interface WorkspaceAccessGroup {
+  id: string;
+  name: string;
+  description?: string;
+  allow?: WorkspacePermissionKey[];
+  deny?: WorkspacePermissionKey[];
+  allowedModules?: WorkspaceModuleKey[];
+  allowedBoardViewKeys?: string[];
+  ownCardsOnly?: boolean;
+}
+
 export interface WorkspaceAccessControlMember {
   userId: string;
   name: string;
@@ -216,12 +235,22 @@ export interface WorkspaceAccessControlMember {
   overrides: {
     allow: WorkspacePermissionKey[];
     deny: WorkspacePermissionKey[];
+    groupIds?: string[];
+    allowedModules?: WorkspaceModuleKey[];
+    allowedBoardViewKeys?: string[];
+    ownCardsOnly?: boolean;
   };
   effectivePermissions: WorkspacePermissionKey[];
+  effectiveModules?: WorkspaceModuleKey[];
+  effectiveOwnCardsOnly?: boolean;
+  effectiveBoardViewKeys?: string[] | null;
 }
 
 export interface WorkspaceAccessControlSnapshot {
   catalog: WorkspacePermissionKey[];
+  moduleCatalog?: WorkspaceModuleKey[];
+  moduleEntitlements?: Partial<Record<WorkspaceModuleKey, boolean>>;
+  groups?: WorkspaceAccessGroup[];
   rolePresets: Record<"OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "MANAGER" | "GUEST", WorkspacePermissionKey[]>;
   members: WorkspaceAccessControlMember[];
 }
@@ -509,9 +538,46 @@ export interface WorkspaceService {
     memberUserId: string,
     patch: {
       role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
-      permissions?: { allow?: WorkspacePermissionKey[]; deny?: WorkspacePermissionKey[] };
+      permissions?: {
+        allow?: WorkspacePermissionKey[];
+        deny?: WorkspacePermissionKey[];
+        groupIds?: string[];
+        allowedModules?: WorkspaceModuleKey[];
+        allowedBoardViewKeys?: string[];
+        ownCardsOnly?: boolean;
+      };
     }
   ) => Promise<void>;
+  updateWorkspaceModuleEntitlements: (
+    workspaceSlug: string,
+    moduleEntitlements: Partial<Record<WorkspaceModuleKey, boolean>>
+  ) => Promise<void>;
+  createWorkspaceAccessGroup: (
+    workspaceSlug: string,
+    input: {
+      name: string;
+      description?: string;
+      allow?: WorkspacePermissionKey[];
+      deny?: WorkspacePermissionKey[];
+      allowedModules?: WorkspaceModuleKey[];
+      allowedBoardViewKeys?: string[];
+      ownCardsOnly?: boolean;
+    }
+  ) => Promise<void>;
+  updateWorkspaceAccessGroup: (
+    workspaceSlug: string,
+    groupId: string,
+    patch: {
+      name?: string;
+      description?: string;
+      allow?: WorkspacePermissionKey[];
+      deny?: WorkspacePermissionKey[];
+      allowedModules?: WorkspaceModuleKey[];
+      allowedBoardViewKeys?: string[];
+      ownCardsOnly?: boolean;
+    }
+  ) => Promise<void>;
+  deleteWorkspaceAccessGroup: (workspaceSlug: string, groupId: string) => Promise<void>;
   listWorkspaceInvites: (workspaceSlug: string) => Promise<WorkspaceInvite[]>;
   createWorkspaceInvite: (
     workspaceSlug: string,

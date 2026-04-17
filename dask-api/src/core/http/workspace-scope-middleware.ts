@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '@/core/errors/app-error';
 import type { AuthorizationService, Permission } from '@/modules/identity/domain/authorization';
+import { resolveWorkspaceAccessPolicy, type WorkspaceModuleKey } from '@/modules/identity/domain/access-policy';
 
 type WorkspaceMembershipRole = 'VIEWER' | 'MEMBER' | 'ADMIN' | 'OWNER';
 
@@ -34,13 +35,15 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
         },
         select: {
           role: true,
+          permissions: true,
           workspace: {
             select: {
               id: true,
               key: true,
               name: true,
               organizationId: true,
-              kind: true
+              kind: true,
+              config: true
             }
           }
         }
@@ -51,14 +54,14 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
         return;
       }
 
+      const userAccess = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          hasActiveSubscription: true,
+          subscriptionPlan: true
+        }
+      });
       if (membership.workspace.kind === 'CORPORATE') {
-        const userAccess = await prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            hasActiveSubscription: true,
-            subscriptionPlan: true
-          }
-        });
         const hasCorporateAccess = process.env.NODE_ENV !== 'production'
           ? true
           : userAccess?.hasActiveSubscription === true &&
@@ -70,9 +73,24 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
         }
       }
 
+      const policy = resolveWorkspaceAccessPolicy({
+        role: membership.role,
+        membershipPermissions: membership.permissions,
+        workspaceConfig: membership.workspace.config,
+        subscriptionPlan: userAccess?.subscriptionPlan ?? null
+      });
+
       req.workspace = {
-        ...membership.workspace,
-        role: membership.role
+        id: membership.workspace.id,
+        key: membership.workspace.key,
+        name: membership.workspace.name,
+        organizationId: membership.workspace.organizationId,
+        role: membership.role,
+        effectivePermissions: policy.permissions,
+        allowedModules: policy.allowedModules,
+        moduleEntitlements: policy.moduleEntitlements,
+        allowedBoardViewKeys: policy.allowedBoardViewKeys,
+        ownCardsOnly: policy.ownCardsOnly
       };
 
       next();
@@ -117,6 +135,15 @@ export const requireWorkspacePermission = (
         return;
       }
 
+      if (workspace.effectivePermissions && !workspace.effectivePermissions.includes(permission)) {
+        next(new AppError('Forbidden', 403));
+        return;
+      }
+      if (workspace.effectivePermissions) {
+        next();
+        return;
+      }
+
       const allowed = await authorizationService.can(userId, permission, {
         workspaceId: workspace.id,
         organizationId: workspace.organizationId ?? undefined
@@ -131,5 +158,21 @@ export const requireWorkspacePermission = (
     } catch (error) {
       next(error);
     }
+  };
+};
+
+export const requireWorkspaceModule = (moduleKey: WorkspaceModuleKey) => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.workspace) {
+      next(new AppError('Workspace context missing', 500));
+      return;
+    }
+
+    if (!req.workspace.allowedModules?.includes(moduleKey)) {
+      next(new AppError(`Module '${moduleKey}' is not available for this member or plan`, 403));
+      return;
+    }
+
+    next();
   };
 };

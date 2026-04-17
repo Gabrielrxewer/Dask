@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
+  requireWorkspaceModule,
   requireWorkspacePermission,
   requireWorkspaceRole,
   workspaceScopeMiddleware
@@ -35,6 +36,8 @@ export const buildWorkspacesRoutes = (deps: {
   const requireWorkspaceRead = requireWorkspacePermission(deps.authorizationService, 'workspace.read');
   const requireBoardRead = requireWorkspacePermission(deps.authorizationService, 'board.read');
   const requireBoardWrite = requireWorkspacePermission(deps.authorizationService, 'board.write');
+  const requireBoardModule = requireWorkspaceModule('board');
+  const requireSettingsModule = requireWorkspaceModule('settings');
 
   const slugify = (value: string): string =>
     value
@@ -151,6 +154,7 @@ export const buildWorkspacesRoutes = (deps: {
     '/workspaces/:workspaceId/boards',
     resolveWorkspaceScope,
     requireWorkspaceRead,
+    requireBoardModule,
     requireBoardRead,
     asyncHandler(async (req, res) => {
       const boards = await deps.workspacesService.listWorkspaceBoards({
@@ -165,6 +169,7 @@ export const buildWorkspacesRoutes = (deps: {
     '/workspaces/:workspaceId/boards/:boardId/snapshot',
     resolveWorkspaceScope,
     requireWorkspaceRead,
+    requireBoardModule,
     requireBoardRead,
     asyncHandler(async (req, res) => {
       const { boardId } = boardSnapshotParamsDto.parse(req.params);
@@ -182,6 +187,7 @@ export const buildWorkspacesRoutes = (deps: {
   router.post(
     '/workspaces/:workspaceId/boards',
     resolveWorkspaceScope,
+    requireBoardModule,
     requireBoardWrite,
     requireWorkspaceRole(MembershipRole.MEMBER),
     asyncHandler(async (req, res) => {
@@ -201,6 +207,7 @@ export const buildWorkspacesRoutes = (deps: {
   router.get(
     '/workspaces/:workspaceId',
     resolveWorkspaceScope,
+    requireSettingsModule,
     requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       const profile = await deps.workspacesService.getWorkspaceProfile({
@@ -214,6 +221,7 @@ export const buildWorkspacesRoutes = (deps: {
   router.patch(
     '/workspaces/:workspaceId',
     resolveWorkspaceScope,
+    requireSettingsModule,
     requireWorkspacePermission(deps.authorizationService, 'workspace.write'),
     requireWorkspaceRole(MembershipRole.ADMIN),
     asyncHandler(async (req, res) => {
@@ -230,6 +238,7 @@ export const buildWorkspacesRoutes = (deps: {
   router.post(
     '/workspaces/:workspaceId/templates',
     resolveWorkspaceScope,
+    requireSettingsModule,
     requireWorkspacePermission(deps.authorizationService, 'workspace.write'),
     requireWorkspaceRole(MembershipRole.ADMIN),
     asyncHandler(async (req, res) => {

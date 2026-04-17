@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
+  requireWorkspaceModule,
   requireWorkspacePermission,
   workspaceScopeMiddleware
 } from '@/core/http/workspace-scope-middleware';
@@ -30,8 +31,9 @@ export const buildAiRoutes = (deps: {
   const router = Router();
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
   const requireAiUse = requireWorkspacePermission(deps.authorizationService, 'ai.use');
+  const requireAiModule = requireWorkspaceModule('ai');
 
-  router.use('/ai/workspaces/:workspaceId', resolveWorkspaceScope, requireAiUse);
+  router.use('/ai/workspaces/:workspaceId', resolveWorkspaceScope, requireAiUse, requireAiModule);
 
   router.post(
     '/items/:itemId/ai/improve-description',

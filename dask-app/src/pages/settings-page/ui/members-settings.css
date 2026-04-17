@@ -82,6 +82,14 @@
   gap: 8px;
 }
 
+.members-settings__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+  color: #35597d;
+}
+
 .members-settings__member-card {
   border: 1px solid rgba(187, 209, 230, 0.64);
   border-radius: 16px;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isPermission } from '@/modules/identity/domain/permissions';
+import { workspaceModuleCatalog } from '@/modules/identity/domain/access-policy';
 
 const customFieldTypeEnum = z.enum([
   'text',
@@ -260,19 +261,58 @@ const permissionStringDto = z
   .min(1)
   .refine((value) => isPermission(value), { message: 'Invalid permission key' });
 
+const moduleKeyDto = z
+  .string()
+  .min(1)
+  .refine((value) => workspaceModuleCatalog.includes(value as (typeof workspaceModuleCatalog)[number]), {
+    message: 'Invalid module key'
+  });
+
 export const patchWorkspaceMemberAccessDto = z
   .object({
     role: z.enum(['OWNER', 'ADMIN', 'MEMBER', 'VIEWER']).optional(),
     permissions: z
       .object({
         allow: z.array(permissionStringDto).optional(),
-        deny: z.array(permissionStringDto).optional()
+        deny: z.array(permissionStringDto).optional(),
+        groupIds: z.array(z.string().min(1)).optional(),
+        allowedModules: z.array(moduleKeyDto).optional(),
+        allowedBoardViewKeys: z.array(z.string().min(1)).optional(),
+        ownCardsOnly: z.boolean().optional()
       })
       .optional()
   })
   .refine((obj) => obj.role !== undefined || obj.permissions !== undefined, {
     message: 'At least one field is required'
   });
+
+export const patchWorkspaceModuleEntitlementsDto = z
+  .object({
+    moduleEntitlements: z.record(moduleKeyDto, z.boolean())
+  })
+  .refine((obj) => Object.keys(obj.moduleEntitlements).length > 0, {
+    message: 'At least one module entitlement is required'
+  });
+
+const accessGroupBaseDto = z.object({
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(300).optional(),
+  allow: z.array(permissionStringDto).optional(),
+  deny: z.array(permissionStringDto).optional(),
+  allowedModules: z.array(moduleKeyDto).optional(),
+  allowedBoardViewKeys: z.array(z.string().trim().min(1)).optional(),
+  ownCardsOnly: z.boolean().optional()
+});
+
+export const createWorkspaceAccessGroupDto = accessGroupBaseDto;
+export const patchWorkspaceAccessGroupDto = accessGroupBaseDto.partial().refine((obj) => Object.keys(obj).length > 0, {
+  message: 'At least one field is required'
+});
+
+export const workspaceAccessGroupParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  groupId: z.string().min(1)
+});
 
 export const workspaceInviteParamsDto = z.object({
   workspaceId: z.string().uuid(),

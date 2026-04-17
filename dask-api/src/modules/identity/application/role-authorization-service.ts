@@ -4,7 +4,7 @@ import type {
   Permission,
   PermissionContext
 } from '@/modules/identity/domain/authorization';
-import { resolvePermissionsForMembership, type PermissionOverrides } from '@/modules/identity/domain/permissions';
+import { resolveWorkspaceAccessPolicy } from '@/modules/identity/domain/access-policy';
 
 export class RoleAuthorizationService implements AuthorizationService {
   public constructor(private readonly prisma: PrismaClient) {}
@@ -19,18 +19,33 @@ export class RoleAuthorizationService implements AuthorizationService {
         workspaceId: context.workspaceId,
         userId
       },
-      select: { role: true, permissions: true }
+      select: {
+        role: true,
+        permissions: true,
+        workspace: {
+          select: {
+            config: true
+          }
+        }
+      }
     });
 
     if (!membership) {
       return false;
     }
 
-    const overrides =
-      membership.permissions && typeof membership.permissions === 'object'
-        ? (membership.permissions as Partial<PermissionOverrides>)
-        : null;
-    const effectivePermissions = resolvePermissionsForMembership(membership.role, overrides);
-    return effectivePermissions.includes(permission);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionPlan: true }
+    });
+
+    const policy = resolveWorkspaceAccessPolicy({
+      role: membership.role,
+      membershipPermissions: membership.permissions,
+      workspaceConfig: membership.workspace.config,
+      subscriptionPlan: user?.subscriptionPlan ?? null
+    });
+
+    return policy.permissions.includes(permission);
   }
 }

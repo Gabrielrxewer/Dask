@@ -29,6 +29,7 @@ import type {
   WorkspaceProfile,
   WorkspaceInvite,
   PublicWorkspaceInvite,
+  WorkspaceModuleKey,
   WorkspacePermissionKey,
   WorkspaceAccessControlSnapshot,
   WorkspaceService,
@@ -906,11 +907,76 @@ export const workspaceService: WorkspaceService = {
     memberUserId: string,
     patch: {
       role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
-      permissions?: { allow?: WorkspacePermissionKey[]; deny?: WorkspacePermissionKey[] };
+      permissions?: {
+        allow?: WorkspacePermissionKey[];
+        deny?: WorkspacePermissionKey[];
+        groupIds?: string[];
+        allowedModules?: WorkspaceModuleKey[];
+        allowedBoardViewKeys?: string[];
+        ownCardsOnly?: boolean;
+      };
     }
   ): Promise<void> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.patch(`/workspaces/${workspaceId}/members/${memberUserId}/access-control`, patch, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateWorkspaceModuleEntitlements(
+    workspaceSlug: string,
+    moduleEntitlements: Partial<Record<WorkspaceModuleKey, boolean>>
+  ): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/module-entitlements`, { moduleEntitlements }, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createWorkspaceAccessGroup(
+    workspaceSlug: string,
+    input: {
+      name: string;
+      description?: string;
+      allow?: WorkspacePermissionKey[];
+      deny?: WorkspacePermissionKey[];
+      allowedModules?: WorkspaceModuleKey[];
+      allowedBoardViewKeys?: string[];
+      ownCardsOnly?: boolean;
+    }
+  ): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/access-groups`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateWorkspaceAccessGroup(
+    workspaceSlug: string,
+    groupId: string,
+    patch: {
+      name?: string;
+      description?: string;
+      allow?: WorkspacePermissionKey[];
+      deny?: WorkspacePermissionKey[];
+      allowedModules?: WorkspaceModuleKey[];
+      allowedBoardViewKeys?: string[];
+      ownCardsOnly?: boolean;
+    }
+  ): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/access-groups/${groupId}`, patch, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async deleteWorkspaceAccessGroup(workspaceSlug: string, groupId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/access-groups/${groupId}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });

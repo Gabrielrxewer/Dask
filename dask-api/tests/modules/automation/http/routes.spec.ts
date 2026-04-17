@@ -11,6 +11,22 @@ const UUIDS = {
 };
 
 function makeDeps() {
+  const prisma = {
+    workspaceMembership: {
+      findFirst: vi.fn().mockResolvedValue({
+        role: 'ADMIN',
+        permissions: {},
+        workspace: { config: {} }
+      })
+    },
+    user: {
+      findUnique: vi.fn().mockResolvedValue({ subscriptionPlan: 'BUSINESS' })
+    }
+  };
+  const authorizationService = {
+    can: vi.fn().mockResolvedValue(true)
+  };
+
   const automationService = {
     listRules: vi.fn().mockResolvedValue([{ id: 'rule-1' }]),
     createRule: vi.fn().mockResolvedValue({ id: 'rule-1' }),
@@ -32,12 +48,16 @@ function makeDeps() {
   };
 
   const router = buildAutomationRoutes({
+    prisma: prisma as any,
+    authorizationService: authorizationService as any,
     automationService: automationService as any,
     automationViewService: automationViewService as any
   });
 
   return {
     router,
+    prisma,
+    authorizationService,
     automationService,
     automationViewService
   };

@@ -1,6 +1,13 @@
 import { Router } from 'express';
+import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/core/http/async-handler';
+import {
+  requireWorkspaceModule,
+  requireWorkspacePermission,
+  workspaceScopeMiddleware
+} from '@/core/http/workspace-scope-middleware';
+import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { AutomationService } from '@/modules/automation/application/automation-service';
 import type { AutomationViewService } from '@/modules/automation/application/automation-view-service';
 import {
@@ -21,12 +28,20 @@ import {
   upsertItemPlacementDto,
   workspaceIdParamsDto
 } from '@/modules/automation/http/dto';
+import { resolveWorkspaceAccessPolicy } from '@/modules/identity/domain/access-policy';
 
 export const buildAutomationRoutes = (deps: {
+  prisma: PrismaClient;
+  authorizationService: AuthorizationService;
   automationService: AutomationService;
   automationViewService: AutomationViewService;
 }): Router => {
   const router = Router();
+  const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
+  const requireAutomationRead = requireWorkspacePermission(deps.authorizationService, 'automation.read');
+  const requireAutomationModule = requireWorkspaceModule('automation');
+
+  router.use('/automation/workspaces/:workspaceId', resolveWorkspaceScope, requireAutomationRead, requireAutomationModule);
 
   router.get(
     '/automation/workspaces/:workspaceId/rules',
@@ -48,6 +63,45 @@ export const buildAutomationRoutes = (deps: {
     '/automation/rules',
     asyncHandler(async (req, res) => {
       const input = createAutomationRuleDto.parse(req.body);
+      const [membership, user] = await Promise.all([
+        deps.prisma.workspaceMembership.findFirst({
+          where: {
+            workspaceId: input.workspaceId,
+            userId: req.auth!.userId
+          },
+          select: {
+            role: true,
+            permissions: true,
+            workspace: {
+              select: {
+                config: true
+              }
+            }
+          }
+        }),
+        deps.prisma.user.findUnique({
+          where: { id: req.auth!.userId },
+          select: { subscriptionPlan: true }
+        })
+      ]);
+
+      if (!membership) {
+        res.status(404).json({ message: 'Workspace not found.' });
+        return;
+      }
+
+      const policy = resolveWorkspaceAccessPolicy({
+        role: membership.role,
+        membershipPermissions: membership.permissions,
+        workspaceConfig: membership.workspace.config,
+        subscriptionPlan: user?.subscriptionPlan ?? null
+      });
+
+      if (!policy.allowedModules.includes('automation') || !policy.permissions.includes('automation.create')) {
+        res.status(403).json({ message: 'Forbidden' });
+        return;
+      }
+
       const rule = await deps.automationService.createRule({
         workspaceId: input.workspaceId,
         userId: req.auth!.userId,
@@ -96,6 +150,45 @@ export const buildAutomationRoutes = (deps: {
     asyncHandler(async (req, res) => {
       const { ruleId } = zRuleIdOnly.parse(req.params);
       const input = runAutomationRuleDto.parse(req.body);
+      const [membership, user] = await Promise.all([
+        deps.prisma.workspaceMembership.findFirst({
+          where: {
+            workspaceId: input.workspaceId,
+            userId: req.auth!.userId
+          },
+          select: {
+            role: true,
+            permissions: true,
+            workspace: {
+              select: {
+                config: true
+              }
+            }
+          }
+        }),
+        deps.prisma.user.findUnique({
+          where: { id: req.auth!.userId },
+          select: { subscriptionPlan: true }
+        })
+      ]);
+
+      if (!membership) {
+        res.status(404).json({ message: 'Workspace not found.' });
+        return;
+      }
+
+      const policy = resolveWorkspaceAccessPolicy({
+        role: membership.role,
+        membershipPermissions: membership.permissions,
+        workspaceConfig: membership.workspace.config,
+        subscriptionPlan: user?.subscriptionPlan ?? null
+      });
+
+      if (!policy.allowedModules.includes('automation') || !policy.permissions.includes('automation.run')) {
+        res.status(403).json({ message: 'Forbidden' });
+        return;
+      }
+
       await deps.automationService.runRule({
         workspaceId: input.workspaceId,
         ruleId,

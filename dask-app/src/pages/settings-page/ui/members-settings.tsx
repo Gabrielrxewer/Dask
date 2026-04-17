@@ -2,7 +2,12 @@
 import { useParams } from "react-router-dom";
 import { workspaceService } from "@/modules/workspace/api";
 import { useWorkspace } from "@/modules/workspace";
-import type { WorkspaceAccessControlSnapshot, WorkspaceInvite, WorkspacePermissionKey } from "@/modules/workspace/model";
+import type {
+  WorkspaceAccessControlSnapshot,
+  WorkspaceInvite,
+  WorkspaceModuleKey,
+  WorkspacePermissionKey
+} from "@/modules/workspace/model";
 import { Button, FormField, Section, Select, TextInput, Textarea } from "@/shared/ui";
 import "./members-settings.css";
 
@@ -15,6 +20,7 @@ const ASSIGNABLE_ROLE_OPTIONS: Array<{ value: WorkspaceRole; label: string }> = 
 ];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MODULE_KEYS: WorkspaceModuleKey[] = ["board", "automation", "documentation", "ai", "settings"];
 
 function parsePermissionList(input: string): WorkspacePermissionKey[] {
   const values = input
@@ -22,6 +28,23 @@ function parsePermissionList(input: string): WorkspacePermissionKey[] {
     .map(value => value.trim())
     .filter(Boolean);
   return Array.from(new Set(values)) as WorkspacePermissionKey[];
+}
+
+function parseStringList(input: string): string[] {
+  return Array.from(
+    new Set(
+      input
+        .split(",")
+        .map(value => value.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function parseModuleList(input: string): WorkspaceModuleKey[] {
+  return parseStringList(input).filter((value): value is WorkspaceModuleKey =>
+    MODULE_KEYS.includes(value as WorkspaceModuleKey)
+  );
 }
 
 export function MembersSettings() {
@@ -44,7 +67,21 @@ export function MembersSettings() {
   const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<string, WorkspaceRole>>({});
   const [allowDraftByUserId, setAllowDraftByUserId] = useState<Record<string, string>>({});
   const [denyDraftByUserId, setDenyDraftByUserId] = useState<Record<string, string>>({});
+  const [groupIdsDraftByUserId, setGroupIdsDraftByUserId] = useState<Record<string, string>>({});
+  const [moduleDraftByUserId, setModuleDraftByUserId] = useState<Record<string, string>>({});
+  const [boardViewDraftByUserId, setBoardViewDraftByUserId] = useState<Record<string, string>>({});
+  const [ownCardsOnlyByUserId, setOwnCardsOnlyByUserId] = useState<Record<string, boolean>>({});
   const [isSavingByUserId, setIsSavingByUserId] = useState<Record<string, boolean>>({});
+
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDescription, setNewGroupDescription] = useState("");
+  const [newGroupAllow, setNewGroupAllow] = useState("");
+  const [newGroupDeny, setNewGroupDeny] = useState("");
+  const [newGroupModules, setNewGroupModules] = useState("board");
+  const [newGroupBoardViews, setNewGroupBoardViews] = useState("");
+  const [newGroupOwnCardsOnly, setNewGroupOwnCardsOnly] = useState(false);
+  const [isSavingGroups, setIsSavingGroups] = useState(false);
+  const [isSavingModuleEntitlements, setIsSavingModuleEntitlements] = useState(false);
 
   const [feedback, setFeedback] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -150,22 +187,38 @@ export function MembersSettings() {
       setRoleDraftByUserId({});
       setAllowDraftByUserId({});
       setDenyDraftByUserId({});
+      setGroupIdsDraftByUserId({});
+      setModuleDraftByUserId({});
+      setBoardViewDraftByUserId({});
+      setOwnCardsOnlyByUserId({});
       return;
     }
 
     const nextRoleDraft: Record<string, WorkspaceRole> = {};
     const nextAllowDraft: Record<string, string> = {};
     const nextDenyDraft: Record<string, string> = {};
+    const nextGroupIdsDraft: Record<string, string> = {};
+    const nextModulesDraft: Record<string, string> = {};
+    const nextBoardViewDraft: Record<string, string> = {};
+    const nextOwnCardsOnly: Record<string, boolean> = {};
 
     accessControl.members.forEach(member => {
       nextRoleDraft[member.userId] = member.role;
       nextAllowDraft[member.userId] = member.overrides.allow.join(", ");
       nextDenyDraft[member.userId] = member.overrides.deny.join(", ");
+      nextGroupIdsDraft[member.userId] = (member.overrides.groupIds ?? []).join(", ");
+      nextModulesDraft[member.userId] = (member.overrides.allowedModules ?? []).join(", ");
+      nextBoardViewDraft[member.userId] = (member.overrides.allowedBoardViewKeys ?? []).join(", ");
+      nextOwnCardsOnly[member.userId] = member.overrides.ownCardsOnly === true;
     });
 
     setRoleDraftByUserId(nextRoleDraft);
     setAllowDraftByUserId(nextAllowDraft);
     setDenyDraftByUserId(nextDenyDraft);
+    setGroupIdsDraftByUserId(nextGroupIdsDraft);
+    setModuleDraftByUserId(nextModulesDraft);
+    setBoardViewDraftByUserId(nextBoardViewDraft);
+    setOwnCardsOnlyByUserId(nextOwnCardsOnly);
   }, [accessControl]);
 
   const membersFromSnapshot = useMemo(() => Object.values(snapshot?.membersById ?? {}), [snapshot?.membersById]);
@@ -175,9 +228,21 @@ export function MembersSettings() {
     name: member.name,
     email: "",
     role: member.role ?? "MEMBER",
-    overrides: { allow: [], deny: [] },
+    overrides: {
+      allow: [],
+      deny: [],
+      groupIds: [],
+      allowedModules: [],
+      allowedBoardViewKeys: [],
+      ownCardsOnly: false
+    },
     effectivePermissions: []
   }));
+
+  const refreshAccessControl = async () => {
+    const refreshed = await workspaceService.getAccessControl(workspaceSlug);
+    setAccessControl(refreshed);
+  };
 
   const refreshPendingInvites = async () => {
     const invites = await workspaceService.listWorkspaceInvites(workspaceSlug);
@@ -258,6 +323,10 @@ export function MembersSettings() {
     const role = roleDraftByUserId[memberUserId];
     const allow = parsePermissionList(allowDraftByUserId[memberUserId] ?? "");
     const deny = parsePermissionList(denyDraftByUserId[memberUserId] ?? "");
+    const groupIds = parseStringList(groupIdsDraftByUserId[memberUserId] ?? "");
+    const allowedModules = parseModuleList(moduleDraftByUserId[memberUserId] ?? "");
+    const allowedBoardViewKeys = parseStringList(boardViewDraftByUserId[memberUserId] ?? "");
+    const ownCardsOnly = ownCardsOnlyByUserId[memberUserId] === true;
 
     setIsSavingByUserId(current => ({ ...current, [memberUserId]: true }));
     setFeedback("");
@@ -268,12 +337,15 @@ export function MembersSettings() {
         role,
         permissions: {
           allow,
-          deny
+          deny,
+          groupIds,
+          allowedModules,
+          allowedBoardViewKeys,
+          ownCardsOnly
         }
       });
 
-      const refreshed = await workspaceService.getAccessControl(workspaceSlug);
-      setAccessControl(refreshed);
+      await refreshAccessControl();
       setFeedback("Role e permissoes atualizadas com sucesso.");
     } catch {
       setError("Nao foi possivel salvar o acesso deste membro.");
@@ -282,10 +354,83 @@ export function MembersSettings() {
     }
   };
 
+  const handleCreateAccessGroup = async () => {
+    if (!newGroupName.trim()) {
+      setError("Informe um nome para o grupo de acesso.");
+      setFeedback("");
+      return;
+    }
+
+    setIsSavingGroups(true);
+    setError("");
+    setFeedback("");
+
+    try {
+      await workspaceService.createWorkspaceAccessGroup(workspaceSlug, {
+        name: newGroupName.trim(),
+        description: newGroupDescription.trim() || undefined,
+        allow: parsePermissionList(newGroupAllow),
+        deny: parsePermissionList(newGroupDeny),
+        allowedModules: parseModuleList(newGroupModules),
+        allowedBoardViewKeys: parseStringList(newGroupBoardViews),
+        ownCardsOnly: newGroupOwnCardsOnly
+      });
+      await refreshAccessControl();
+      setNewGroupName("");
+      setNewGroupDescription("");
+      setNewGroupAllow("");
+      setNewGroupDeny("");
+      setNewGroupModules("board");
+      setNewGroupBoardViews("");
+      setNewGroupOwnCardsOnly(false);
+      setFeedback("Grupo de acesso criado com sucesso.");
+    } catch {
+      setError("Nao foi possivel criar o grupo de acesso.");
+    } finally {
+      setIsSavingGroups(false);
+    }
+  };
+
+  const handleDeleteAccessGroup = async (groupId: string) => {
+    setIsSavingGroups(true);
+    setError("");
+    setFeedback("");
+    try {
+      await workspaceService.deleteWorkspaceAccessGroup(workspaceSlug, groupId);
+      await refreshAccessControl();
+      setFeedback("Grupo removido com sucesso.");
+    } catch {
+      setError("Nao foi possivel remover o grupo.");
+    } finally {
+      setIsSavingGroups(false);
+    }
+  };
+
+  const handleToggleModuleEntitlement = async (moduleKey: WorkspaceModuleKey, enabled: boolean) => {
+    setIsSavingModuleEntitlements(true);
+    setError("");
+    setFeedback("");
+    try {
+      const current = accessControl?.moduleEntitlements ?? {};
+      await workspaceService.updateWorkspaceModuleEntitlements(workspaceSlug, {
+        ...current,
+        [moduleKey]: enabled
+      });
+      await refreshAccessControl();
+      setFeedback("Modulos atualizados com sucesso.");
+    } catch {
+      setError("Nao foi possivel atualizar os modulos do workspace.");
+    } finally {
+      setIsSavingModuleEntitlements(false);
+    }
+  };
+
   if (isLoadingWorkspaceInfo) {
     return (
       <div className="members-settings">
-        <Section title="Pessoas e acesso" subtitle="Carregando configuracoes do workspace..." />
+        <Section title="Pessoas e acesso" subtitle="Carregando configuracoes do workspace...">
+          <p className="members-settings__hint">Aguarde enquanto carregamos os dados.</p>
+        </Section>
       </div>
     );
   }
@@ -389,6 +534,98 @@ export function MembersSettings() {
       </Section>
 
       <Section
+        title="Entitlements de modulos"
+        subtitle="Controle quais modulos estao habilitados neste workspace para o plano atual."
+        className="members-settings__card"
+      >
+        <div className="members-settings__list">
+          {(accessControl?.moduleCatalog ?? MODULE_KEYS).map((moduleKey) => {
+            const checked = accessControl?.moduleEntitlements?.[moduleKey] !== false;
+            return (
+              <label key={moduleKey} className="members-settings__checkbox">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={isSavingModuleEntitlements}
+                  onChange={event => void handleToggleModuleEntitlement(moduleKey, event.target.checked)}
+                />
+                {moduleKey}
+              </label>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section
+        title="Grupos de acesso custom"
+        subtitle="Crie grupos reutilizaveis para restringir modulos, views e visao de cards."
+        className="members-settings__card"
+      >
+        <div className="members-settings__invite-grid">
+          <FormField label="Nome do grupo">
+            <TextInput value={newGroupName} onChange={event => setNewGroupName(event.target.value)} />
+          </FormField>
+          <FormField label="Descricao">
+            <TextInput value={newGroupDescription} onChange={event => setNewGroupDescription(event.target.value)} />
+          </FormField>
+        </div>
+
+        <FormField label="Allow permissions (separado por virgula)">
+          <Textarea value={newGroupAllow} onChange={event => setNewGroupAllow(event.target.value)} />
+        </FormField>
+        <FormField label="Deny permissions (separado por virgula)">
+          <Textarea value={newGroupDeny} onChange={event => setNewGroupDeny(event.target.value)} />
+        </FormField>
+        <FormField label="Modulos permitidos (board, automation, documentation, ai, settings)">
+          <Textarea value={newGroupModules} onChange={event => setNewGroupModules(event.target.value)} />
+        </FormField>
+        <FormField label="Views permitidas do board (keys separadas por virgula)">
+          <Textarea value={newGroupBoardViews} onChange={event => setNewGroupBoardViews(event.target.value)} />
+        </FormField>
+        <label className="members-settings__checkbox">
+          <input
+            type="checkbox"
+            checked={newGroupOwnCardsOnly}
+            onChange={event => setNewGroupOwnCardsOnly(event.target.checked)}
+          />
+          Mostrar somente cards proprios
+        </label>
+
+        <div className="members-settings__actions">
+          <Button type="button" onClick={() => void handleCreateAccessGroup()} disabled={isSavingGroups}>
+            {isSavingGroups ? "Salvando..." : "Criar grupo"}
+          </Button>
+        </div>
+
+        {accessControl?.groups?.length ? (
+          <div className="members-settings__list">
+            {accessControl.groups.map((group) => (
+              <div key={group.id} className="members-settings__row">
+                <div className="members-settings__row-content">
+                  <strong>{group.name}</strong>
+                  <span>ID: {group.id}</span>
+                  <span>{group.description ?? "Sem descricao"}</span>
+                </div>
+                <div className="members-settings__row-actions">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleDeleteAccessGroup(group.id)}
+                    disabled={isSavingGroups}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="members-settings__hint">Nenhum grupo custom criado ainda.</p>
+        )}
+      </Section>
+
+      <Section
         title="Membros atuais"
         subtitle="Role e overrides de permissao por pessoa."
         className="members-settings__card"
@@ -457,6 +694,60 @@ export function MembersSettings() {
                         disabled={isSaving}
                       />
                     </FormField>
+
+                    <FormField label="Grupos (ids separados por virgula)">
+                      <Textarea
+                        value={groupIdsDraftByUserId[member.userId] ?? ""}
+                        onChange={event =>
+                          setGroupIdsDraftByUserId(current => ({
+                            ...current,
+                            [member.userId]: event.target.value
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                    </FormField>
+
+                    <FormField label="Modulos permitidos (board, automation, documentation, ai, settings)">
+                      <Textarea
+                        value={moduleDraftByUserId[member.userId] ?? ""}
+                        onChange={event =>
+                          setModuleDraftByUserId(current => ({
+                            ...current,
+                            [member.userId]: event.target.value
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                    </FormField>
+
+                    <FormField label="Views permitidas do board (keys separadas por virgula)">
+                      <Textarea
+                        value={boardViewDraftByUserId[member.userId] ?? ""}
+                        onChange={event =>
+                          setBoardViewDraftByUserId(current => ({
+                            ...current,
+                            [member.userId]: event.target.value
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                    </FormField>
+
+                    <label className="members-settings__checkbox">
+                      <input
+                        type="checkbox"
+                        checked={ownCardsOnlyByUserId[member.userId] === true}
+                        onChange={event =>
+                          setOwnCardsOnlyByUserId(current => ({
+                            ...current,
+                            [member.userId]: event.target.checked
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                      Mostrar somente cards do proprio membro
+                    </label>
 
                     <Button
                       type="button"

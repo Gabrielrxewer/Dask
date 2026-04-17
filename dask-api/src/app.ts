@@ -277,7 +277,12 @@ export const createApp = (): Express => {
     env.API_PREFIX,
     authMiddleware,
     requireSubscription,
-    buildAutomationRoutes({ automationService, automationViewService })
+    buildAutomationRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      automationService,
+      automationViewService
+    })
   );
   app.use(env.API_PREFIX, buildIntegrationRoutes({ integrationService }));
   app.use(

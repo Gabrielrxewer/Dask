@@ -1,5 +1,6 @@
 import { MembershipRole, type CustomFieldType, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { resolveWorkspaceAccessPolicy, type WorkspaceModuleKey } from '@/modules/identity/domain/access-policy';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import {
   getWorkspaceTemplateByKey,
@@ -25,6 +26,10 @@ export type WorkspaceAccess = {
     updatedAt: Date;
   };
   role: MembershipRole;
+  ownCardsOnly: boolean;
+  allowedModules: WorkspaceModuleKey[];
+  moduleEntitlements: Partial<Record<WorkspaceModuleKey, boolean>>;
+  allowedBoardViewKeys: string[] | null;
 };
 
 export class WorkspaceConfigService {
@@ -689,33 +694,59 @@ export class WorkspaceConfigService {
   }
 
   public async ensureReadableWorkspace(workspaceId: string, userId: string): Promise<WorkspaceAccess> {
-    const membership = await this.prisma.workspaceMembership.findFirst({
-      where: {
-        workspaceId,
-        userId
-      },
-      select: {
-        role: true,
-        workspace: {
-          select: {
-            id: true,
-            name: true,
-            key: true,
-            organizationId: true,
-            createdAt: true,
-            updatedAt: true
+    const [membership, user] = await Promise.all([
+      this.prisma.workspaceMembership.findFirst({
+        where: {
+          workspaceId,
+          userId
+        },
+        select: {
+          role: true,
+          permissions: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              key: true,
+              organizationId: true,
+              createdAt: true,
+              updatedAt: true,
+              config: true
+            }
           }
         }
-      }
-    });
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionPlan: true }
+      })
+    ]);
 
     if (!membership) {
       throw new AppError('Workspace not found', 404);
     }
 
+    const policy = resolveWorkspaceAccessPolicy({
+      role: membership.role,
+      membershipPermissions: membership.permissions,
+      workspaceConfig: membership.workspace.config,
+      subscriptionPlan: user?.subscriptionPlan ?? null
+    });
+
     return {
       role: membership.role,
-      workspace: membership.workspace
+      workspace: {
+        id: membership.workspace.id,
+        name: membership.workspace.name,
+        key: membership.workspace.key,
+        organizationId: membership.workspace.organizationId,
+        createdAt: membership.workspace.createdAt,
+        updatedAt: membership.workspace.updatedAt
+      },
+      ownCardsOnly: policy.ownCardsOnly,
+      allowedModules: policy.allowedModules,
+      moduleEntitlements: policy.moduleEntitlements,
+      allowedBoardViewKeys: policy.allowedBoardViewKeys
     };
   }
 

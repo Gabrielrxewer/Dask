@@ -72,6 +72,11 @@ export class WorkspaceWorkItemsService {
 
   public async getWorkspaceSnapshot(input: { workspaceId: string; userId: string; limit?: number }) {
     const access = await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const ownCardsFilter = access.ownCardsOnly
+      ? {
+          OR: [{ assigneeId: input.userId }, { createdBy: input.userId }]
+        }
+      : {};
 
     await ensureWorkspaceDefaultConfiguration(this.prisma, {
       workspaceId: input.workspaceId,
@@ -98,7 +103,7 @@ export class WorkspaceWorkItemsService {
         orderBy: { updatedAt: 'desc' }
       }),
       this.prisma.item.findMany({
-        where: { workspaceId: input.workspaceId },
+        where: { workspaceId: input.workspaceId, ...ownCardsFilter },
         include: this.itemInclude(),
         orderBy: [{ position: 'asc' }, { updatedAt: 'desc' }],
         take: input.limit ?? 500
@@ -127,6 +132,11 @@ export class WorkspaceWorkItemsService {
         label: state.name,
         dot: state.color
       }));
+
+    const allPerspectives = this.resolveBoardPerspectivesFromSettings(config.preferences.settings, statuses);
+    const boardPerspectives = access.allowedBoardViewKeys
+      ? allPerspectives.filter((view) => access.allowedBoardViewKeys!.includes(toSlug(view.id)))
+      : allPerspectives;
 
     const boardConfig = {
       statuses,
@@ -160,7 +170,10 @@ export class WorkspaceWorkItemsService {
         visibleFieldIdsByType: config.preferences.visibleFieldsByType ?? {},
         detailVisibleFieldIdsByType: config.preferences.detailVisibleFieldsByType ?? {}
       },
-      perspectives: this.resolveBoardPerspectivesFromSettings(config.preferences.settings, statuses)
+      perspectives:
+        boardPerspectives.length > 0
+          ? boardPerspectives
+          : allPerspectives.slice(0, 1)
     };
 
     return {
@@ -177,6 +190,12 @@ export class WorkspaceWorkItemsService {
         color: getColorFromId(membership.user.id)
       })),
       membersById,
+      access: {
+        ownCardsOnly: access.ownCardsOnly,
+        allowedModules: access.allowedModules,
+        moduleEntitlements: access.moduleEntitlements,
+        allowedBoardViewKeys: access.allowedBoardViewKeys
+      },
       preferences: config.preferences,
       boardConfig,
       automations: automations.map((rule) => ({
@@ -204,10 +223,15 @@ export class WorkspaceWorkItemsService {
   }
 
   public async listWorkItems(input: { workspaceId: string; userId: string }) {
-    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const access = await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const ownCardsFilter = access.ownCardsOnly
+      ? {
+          OR: [{ assigneeId: input.userId }, { createdBy: input.userId }]
+        }
+      : {};
 
     const items = await this.prisma.item.findMany({
-      where: { workspaceId: input.workspaceId },
+      where: { workspaceId: input.workspaceId, ...ownCardsFilter },
       include: this.itemInclude(),
       orderBy: [{ position: 'asc' }, { updatedAt: 'desc' }]
     });

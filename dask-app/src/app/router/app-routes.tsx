@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { GlobalLayout } from "@/app/layout";
 import { ProtectedRoute, PublicRoute, SubscribedRoute } from "@/features/auth";
 import { BillingProvider } from "@/app/providers/billing-provider";
-import { WorkspaceProvider, workspaceService } from "@/modules/workspace";
+import { WorkspaceProvider, useWorkspace, workspaceService } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { LoadingState } from "@/shared/ui";
 import {
@@ -41,6 +41,17 @@ function WorkspaceBoundary() {
       <Outlet />
     </WorkspaceProvider>
   );
+}
+
+function ModuleRoute({ module, children }: { module: "board" | "automation" | "documentation" | "settings"; children: JSX.Element }) {
+  const { snapshot } = useWorkspace();
+  const allowedModules = new Set(snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings"]);
+
+  if (!allowedModules.has(module)) {
+    return <Navigate replace to={routePaths.board} />;
+  }
+
+  return children;
 }
 
 function WorkspaceEntryRedirect() {
@@ -145,11 +156,32 @@ export function AppRoutes() {
             <Route path={routePaths.list} element={<ListPage />} />
             <Route path={routePaths.timeline} element={<TimelinePage />} />
             <Route path={routePaths.agenda} element={<AgendaPage />} />
-            <Route path={routePaths.documentation} element={<DocumentationPage />} />
-            <Route path={routePaths.automations} element={<AutomationsPage />} />
+            <Route
+              path={routePaths.documentation}
+              element={
+                <ModuleRoute module="documentation">
+                  <DocumentationPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.automations}
+              element={
+                <ModuleRoute module="automation">
+                  <AutomationsPage />
+                </ModuleRoute>
+              }
+            />
 
             {/* Settings — nested routes com layout compartilhado */}
-            <Route path={routePaths.settings} element={<SettingsShellPage />}>
+            <Route
+              path={routePaths.settings}
+              element={
+                <ModuleRoute module="settings">
+                  <SettingsShellPage />
+                </ModuleRoute>
+              }
+            >
               <Route index element={<GeneralSettingsPage />} />
               <Route path="workflow-states" element={<WorkflowStatesSettingsPage />} />
               <Route path="columns" element={<ColumnsSettingsPage />} />

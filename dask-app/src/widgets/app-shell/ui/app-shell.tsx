@@ -10,6 +10,7 @@ import {
   buildWorkspaceTimelinePath
 } from "@/app/router/route-paths";
 import { useGlobalChrome } from "@/app/layout";
+import { useWorkspace } from "@/modules/workspace";
 import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
@@ -20,6 +21,7 @@ import "./app-shell.css";
 
 type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "automation" | "settings";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
+type AppModuleKey = "board" | "automation" | "documentation" | "settings";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -156,14 +158,40 @@ export function AppShell({
   children
 }: AppShellProps) {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  const { snapshot } = useWorkspace();
+  const allowedModules = new Set(snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings"]);
   const navGroups = [
     {
       title: "Planejamento",
       items: [
-        { to: buildWorkspaceBoardPath(workspaceSlug), label: "Board", icon: "board" as const, tone: "blue" as const },
-        { to: buildWorkspaceListPath(workspaceSlug), label: "List", icon: "list" as const, tone: "mint" as const },
-        { to: buildWorkspaceTimelinePath(workspaceSlug), label: "Timeline", icon: "timeline" as const, tone: "amber" as const },
-        { to: buildWorkspaceAgendaPath(workspaceSlug), label: "Agenda", icon: "agenda" as const, tone: "cyan" as const }
+        {
+          to: buildWorkspaceBoardPath(workspaceSlug),
+          label: "Board",
+          icon: "board" as const,
+          tone: "blue" as const,
+          module: "board" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceListPath(workspaceSlug),
+          label: "List",
+          icon: "list" as const,
+          tone: "mint" as const,
+          module: "board" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceTimelinePath(workspaceSlug),
+          label: "Timeline",
+          icon: "timeline" as const,
+          tone: "amber" as const,
+          module: "board" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceAgendaPath(workspaceSlug),
+          label: "Agenda",
+          icon: "agenda" as const,
+          tone: "cyan" as const,
+          module: "board" as AppModuleKey
+        }
       ]
     },
     {
@@ -173,23 +201,31 @@ export function AppShell({
           to: buildWorkspaceDocumentationPath(workspaceSlug),
           label: "Documentation",
           icon: "documentation" as const,
-          tone: "slate" as const
+          tone: "slate" as const,
+          module: "documentation" as AppModuleKey
         },
         {
           to: buildWorkspaceAutomationsPath(workspaceSlug),
           label: "Automations",
           icon: "automation" as const,
-          tone: "rose" as const
+          tone: "rose" as const,
+          module: "automation" as AppModuleKey
         },
         {
           to: buildWorkspaceSettingsPath(workspaceSlug),
           label: "Settings",
           icon: "settings" as const,
-          tone: "violet" as const
+          tone: "violet" as const,
+          module: "settings" as AppModuleKey
         }
       ]
     }
-  ];
+  ]
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => allowedModules.has(item.module))
+    }))
+    .filter((group) => group.items.length > 0);
   const { isSidebarOpen, closeNavigation } = useGlobalChrome();
   const filterProps =
     filter && onFilterQueryChange && onMineToggle

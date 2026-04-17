@@ -1,32 +1,93 @@
 .list-view {
+  --list-text: #071f35;
+  --list-text-soft: #1f405e;
+  --list-text-muted: #365b7a;
+  --list-line: #b8cada;
+  --list-line-strong: #83afd5;
+  --list-surface: #ffffff;
+  --list-surface-soft: #f8fafc;
+  --list-accent: #075f9d;
+  --list-accent-strong: #064f85;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 12px;
   min-height: 0;
   width: 100%;
+  color: var(--list-text);
+}
+
+.workspace:has(.list-view) {
+  background: var(--list-surface-soft);
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.05);
+  backdrop-filter: none;
+}
+
+.workspace:has(.list-view)::before {
+  content: none;
 }
 
 .list-view__metrics .shared-metric-card {
-  min-height: 62px;
-  padding: 8px 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--list-surface);
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  backdrop-filter: none;
+}
+
+.list-view__metrics .shared-metric-card p {
+  color: var(--list-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
 }
 
 .list-view__metrics .shared-metric-card h3 {
   margin-top: 4px;
-  font-size: 1rem;
+  font-size: 1.08rem;
+  color: var(--list-text);
+  letter-spacing: 0;
 }
 
 .list-view__section {
   min-height: 0;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--list-surface);
+  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.045);
+  backdrop-filter: none;
+}
+
+.list-view__section::before {
+  content: none;
 }
 
 .list-view__section .shared-section__header {
-  padding: var(--space-3) var(--space-4);
+  padding: 12px 14px;
+  border-bottom-color: var(--list-line);
+  background: var(--list-surface);
+}
+
+.list-view__section .shared-section__title {
+  color: var(--list-text);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-title-md);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.list-view__section .shared-section__subtitle {
+  color: var(--list-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
 }
 
 .list-view__section .shared-section__content {
-  padding: 0;
+  padding: 10px;
   min-height: 0;
+  background: var(--list-surface-soft);
 }
 
 .list-view__actions {
@@ -38,7 +99,36 @@
 }
 
 .list-view__create-task {
-  min-height: 34px;
+  min-height: 38px;
+  box-shadow:
+    0 10px 20px rgba(8, 31, 53, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+}
+
+.list-view__actions .dashboard-filter {
+  width: min(520px, 52vw);
+}
+
+.list-view__actions .dashboard-filter .shared-input,
+.list-view__actions .dashboard-filter .shared-button {
+  border-color: #9fc2e2;
+  background-color: var(--list-surface);
+  box-shadow: 0 8px 18px rgba(12, 42, 71, 0.06);
+}
+
+.list-view__actions .dashboard-filter .shared-input {
+  color: var(--list-text);
+  font-weight: 700;
+}
+
+.list-view__actions .dashboard-filter .shared-button {
+  color: #214d78;
+}
+
+.list-view__actions .shared-status-badge {
+  border-color: var(--list-line);
+  background: var(--list-surface-soft);
+  color: var(--list-text-muted);
 }
 
 @media (max-width: 760px) {
@@ -46,11 +136,19 @@
     width: 100%;
     justify-content: stretch;
   }
+
+  .list-view__actions .dashboard-filter {
+    width: 100%;
+  }
 }
 
 .list-view__table {
-  border: 0;
-  border-radius: 0;
+  border: 1px solid #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--list-surface);
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  overflow: hidden;
+  backdrop-filter: none;
 }
 
 .list-view__table .shared-data-table__cell {
@@ -60,10 +158,27 @@
 
 .list-view__table .shared-data-table__header {
   min-height: 40px;
+  border-bottom-color: #d8e4ee;
+  background: #eef4fb;
+  color: var(--list-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
 }
 
 .list-view__table .shared-data-table__row {
   min-height: 52px;
+  border-bottom-color: #d8e4ee;
+  color: var(--list-text);
+  background: var(--list-surface);
+}
+
+.list-view__table .shared-data-table__row:hover {
+  background: #eef7ff;
+}
+
+.list-view__table .shared-data-table__row:hover .shared-data-table__cell {
+  background: transparent;
 }
 
 .list-view__title {
@@ -79,19 +194,20 @@
 
 .list-view__title strong {
   display: block;
-  color: var(--text-strong);
+  color: var(--list-text);
   font-size: var(--font-size-sm);
+  font-weight: 900;
 }
 
 .list-view__title p {
   margin: 2px 0 0;
-  color: var(--text-soft);
+  color: var(--list-text-soft);
   font-size: var(--font-size-xs);
   line-height: 1.35;
 }
 
 .list-view__title:hover strong {
-  color: var(--accent-strong);
+  color: var(--list-accent-strong);
 }
 
 .list-view__title:hover {
@@ -104,7 +220,9 @@
 
 .list-view__type {
   border-radius: 999px;
-  border: 1px solid transparent;
+  border: 1px solid var(--list-type-border, transparent);
+  background: var(--list-type-background, #edf5ff);
+  color: var(--list-type-text, #1d4e85);
   font-size: var(--font-size-2xs);
   font-weight: 700;
   width: fit-content;
@@ -112,15 +230,112 @@
 }
 
 .list-view__status {
-  min-height: 34px;
+  min-height: 28px;
   font-size: var(--font-size-xs);
   width: 100%;
 }
 
+.list-view__status .shared-select__control {
+  min-height: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  padding: 0 9px;
+}
+
+.list-view__status .shared-select__value {
+  font-size: var(--font-size-xs);
+}
+
 .list-view__owner,
 .list-view__checklist {
-  color: #35597d;
+  color: var(--list-text-muted);
   font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.app-theme[data-theme="dark"] .list-view {
+  --list-text: var(--text-strong);
+  --list-text-soft: var(--text-soft);
+  --list-text-muted: var(--text-muted);
+  --list-line: var(--line);
+  --list-line-strong: var(--line-strong);
+  --list-surface: var(--panel);
+  --list-surface-soft: var(--bg-soft);
+  --list-accent: var(--accent);
+  --list-accent-strong: var(--accent-strong);
+}
+
+.app-theme[data-theme="dark"] .workspace:has(.list-view),
+.app-theme[data-theme="dark"] .list-view__section,
+.app-theme[data-theme="dark"] .list-view__metrics .shared-metric-card,
+.app-theme[data-theme="dark"] .list-view__table {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .list-view__section .shared-section__header {
+  border-bottom-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__section .shared-section__content {
+  background: color-mix(in oklab, var(--panel-soft) 90%, transparent) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__header {
+  border-bottom-color: var(--line) !important;
+  background: var(--surface-muted) !important;
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row {
+  border-bottom-color: var(--line) !important;
+  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
+  color: var(--text) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover {
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .shared-data-table__cell,
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__title,
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__owner,
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__checklist {
+  background: transparent !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__status .shared-select__control {
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__title,
+.app-theme[data-theme="dark"] .list-view__title:hover,
+.app-theme[data-theme="dark"] .list-view__title:focus {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__actions .dashboard-filter .shared-input,
+.app-theme[data-theme="dark"] .list-view__actions .dashboard-filter .shared-button,
+.app-theme[data-theme="dark"] .list-view__status .shared-select__control {
+  border-color: var(--line) !important;
+  background: var(--control-surface) !important;
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__actions .shared-status-badge {
+  border-color: var(--line) !important;
+  background: var(--surface-muted) !important;
+  color: var(--text-muted) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__type {
+  border-color: color-mix(in oklab, var(--list-type-text, var(--accent)) 42%, var(--line)) !important;
+  background: color-mix(in oklab, var(--list-type-text, var(--accent)) 20%, var(--panel)) !important;
+  color: color-mix(in oklab, var(--list-type-background, var(--accent-soft)) 30%, var(--text-strong)) !important;
 }
 
 @media (min-width: 1141px) {

@@ -324,22 +324,6 @@
   font-weight: 600;
 }
 
-.task-card--compact {
-  padding: 11px 10px 10px;
-}
-
-.task-card--compact .task-card__summary {
-  margin-top: 8px;
-}
-
-.task-card--compact .task-card__tags {
-  margin-top: 8px;
-}
-
-.task-card--compact .task-card__footer {
-  margin-top: 10px;
-}
-
 @media (max-width: 520px) {
   .task-card__summary {
     grid-template-columns: 1fr;

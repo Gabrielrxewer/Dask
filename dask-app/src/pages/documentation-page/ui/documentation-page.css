@@ -5,6 +5,33 @@
   --doc-surface: var(--surface-raised);
   --doc-surface-soft: var(--panel-soft);
   --doc-surface-muted: var(--panel-muted);
+  --doc-chat-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel) 94%, var(--accent-soft)) 0%,
+    color-mix(in oklab, var(--panel-soft) 90%, var(--bg)) 100%
+  );
+  --doc-chat-rail: color-mix(in oklab, var(--accent) 18%, transparent);
+  --doc-chat-thread: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel-soft) 86%, var(--bg)) 0%,
+    color-mix(in oklab, var(--panel) 92%, var(--accent-soft)) 100%
+  );
+  --doc-chat-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel) 96%, var(--accent-soft)) 0%,
+    color-mix(in oklab, var(--panel-soft) 88%, var(--panel)) 100%
+  );
+  --doc-chat-ai-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-soft) 54%, var(--panel)) 0%,
+    color-mix(in oklab, var(--panel) 88%, var(--accent-soft)) 100%
+  );
+  --doc-chat-user-bubble: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 14%, var(--panel)) 0%,
+    color-mix(in oklab, var(--accent-soft) 72%, var(--panel)) 100%
+  );
+  --doc-chat-shadow: 0 18px 42px color-mix(in oklab, var(--text-strong) 9%, transparent);
   display: grid;
   grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.5fr) minmax(320px, 1fr);
   gap: 12px;
@@ -173,8 +200,33 @@
 .documentation-page__assistant-pane {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 18% 4%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 34%),
+    radial-gradient(circle at 92% 18%, color-mix(in oklab, var(--success) 12%, transparent), transparent 30%),
+    var(--doc-chat-surface);
+  box-shadow:
+    var(--doc-chat-shadow),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 72%, transparent);
+  overflow: hidden;
+  position: relative;
+}
+
+.documentation-page__assistant-pane::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in oklab, var(--accent) 72%, transparent) 18%,
+    color-mix(in oklab, var(--success) 54%, transparent) 78%,
+    transparent 100%
+  );
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .documentation-page__assistant-header {
@@ -182,18 +234,25 @@
   justify-content: space-between;
   gap: 8px;
   align-items: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--doc-line) 78%, transparent);
+  margin: -2px -2px 0;
+  padding: 0 2px 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .documentation-page__assistant-header h2 {
   margin: 0;
   color: var(--doc-ink);
-  font-size: 1rem;
+  font-size: 1.04rem;
+  letter-spacing: 0;
 }
 
 .documentation-page__assistant-header p {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   color: var(--doc-muted);
   font-size: 0.73rem;
+  line-height: 1.35;
 }
 
 .documentation-page__assistant-tools {
@@ -203,16 +262,23 @@
 }
 
 .documentation-page__clear-chat-button {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  border: 1px solid var(--doc-line);
-  background: var(--doc-surface-soft);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 88%, transparent);
+  background: color-mix(in oklab, var(--panel) 82%, transparent);
   color: var(--doc-muted);
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--text-strong) 7%, transparent);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .documentation-page__clear-chat-button svg {
@@ -224,6 +290,8 @@
   color: var(--danger);
   border-color: color-mix(in oklab, var(--danger) 44%, var(--doc-line));
   background: color-mix(in oklab, var(--danger-soft) 72%, var(--doc-surface-soft));
+  box-shadow: 0 10px 22px color-mix(in oklab, var(--danger) 12%, transparent);
+  transform: translateY(-1px);
 }
 
 .documentation-page__clear-chat-button:disabled {
@@ -232,38 +300,138 @@
 }
 
 .documentation-page__modes {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 32px;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 74%, transparent);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--panel) 50%, transparent);
+  padding: 5px;
+  position: relative;
+  z-index: 1;
 }
 
 .documentation-page__mode-chip {
-  border: 1px solid var(--doc-line);
-  border-radius: 999px;
-  background: var(--doc-surface-soft);
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   color: var(--doc-muted);
   font-size: 0.72rem;
   font-weight: 760;
   cursor: pointer;
-  padding: 6px 11px;
+  padding: 7px 11px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.documentation-page__mode-chip:hover {
+  border-color: color-mix(in oklab, var(--accent) 20%, var(--doc-line));
+  background: color-mix(in oklab, var(--accent-soft) 36%, transparent);
+  color: color-mix(in oklab, var(--doc-ink) 84%, var(--accent-strong));
 }
 
 .documentation-page__mode-chip--active {
   color: color-mix(in oklab, var(--accent-strong) 72%, var(--text-strong));
-  border-color: color-mix(in oklab, var(--accent) 42%, var(--doc-line));
-  background: color-mix(in oklab, var(--accent-soft) 76%, var(--doc-surface-soft));
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--doc-line));
+  background: color-mix(in oklab, var(--accent-soft) 78%, var(--panel));
+  box-shadow:
+    0 8px 18px color-mix(in oklab, var(--accent) 10%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 70%, transparent);
+}
+
+.documentation-page__mode-info-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent) 32%, var(--doc-line));
+  background: color-mix(in oklab, var(--panel) 72%, transparent);
+  color: color-mix(in oklab, var(--accent-strong) 76%, var(--doc-ink));
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow:
+    0 8px 18px color-mix(in oklab, var(--text-strong) 7%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.documentation-page__mode-info-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.documentation-page__mode-info-button:hover,
+.documentation-page__mode-info-button[aria-expanded="true"] {
+  border-color: color-mix(in oklab, var(--accent) 54%, var(--doc-line));
+  background: color-mix(in oklab, var(--accent-soft) 74%, var(--panel));
+  color: color-mix(in oklab, var(--accent-strong) 86%, var(--doc-ink));
+  box-shadow:
+    0 12px 24px color-mix(in oklab, var(--accent) 14%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 68%, transparent);
+  transform: translateY(-1px);
+}
+
+.documentation-page__mode-info-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(320px, 100%);
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--doc-line));
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 38%),
+    var(--doc-chat-bubble);
+  color: var(--doc-ink);
+  box-shadow:
+    0 18px 36px color-mix(in oklab, var(--text-strong) 14%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 68%, transparent);
+  padding: 12px;
+  z-index: 5;
+}
+
+.documentation-page__mode-info-popover strong {
+  display: block;
+  color: var(--doc-ink);
+  font-size: 0.78rem;
+  margin-bottom: 5px;
+}
+
+.documentation-page__mode-info-popover p {
+  margin: 0;
+  color: color-mix(in oklab, var(--doc-ink) 66%, var(--doc-muted));
+  font-size: 0.73rem;
+  line-height: 1.48;
 }
 
 .documentation-page__messages {
-  border: 1px solid var(--doc-line);
-  background: var(--doc-surface-soft);
+  border: 1px solid color-mix(in oklab, var(--doc-line) 86%, transparent);
+  background:
+    linear-gradient(color-mix(in oklab, var(--doc-chat-rail) 36%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--doc-chat-rail) 30%, transparent) 1px, transparent 1px),
+    var(--doc-chat-thread);
+  background-size: 26px 26px, 26px 26px, auto;
   border-radius: 12px;
-  padding: 10px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   overflow: auto;
   min-height: 0;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 70%, transparent),
+    inset 0 -18px 32px color-mix(in oklab, var(--text-strong) 4%, transparent);
+  scrollbar-color: color-mix(in oklab, var(--accent) 36%, var(--line)) transparent;
 }
 
 .documentation-page__messages-empty {
@@ -281,10 +449,14 @@
   display: grid;
   gap: 6px;
   align-self: start;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
 }
 
 .documentation-page__panel-empty--compact {
-  margin: 2px 2px 0;
+  margin: 0;
+  align-self: stretch;
+  width: 100%;
 }
 
 .documentation-page__panel-empty h3 {
@@ -301,53 +473,60 @@
 }
 
 .documentation-page__messages-empty-state {
-  margin: auto 0;
-  border: 1px dashed color-mix(in oklab, var(--accent) 26%, var(--doc-line));
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--doc-line));
   border-radius: 12px;
-  background: var(--doc-surface-muted);
-  padding: 14px 12px;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 34%),
+    color-mix(in oklab, var(--panel) 84%, transparent);
+  padding: 16px 14px;
   display: grid;
   gap: 8px;
+  box-shadow: 0 14px 28px color-mix(in oklab, var(--text-strong) 7%, transparent);
 }
 
 .documentation-page__messages-empty-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
-  font-size: 0.63rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  color: color-mix(in oklab, var(--accent-strong) 72%, var(--text-strong));
-  background: color-mix(in oklab, var(--accent-soft) 80%, var(--doc-surface));
-  border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--doc-line));
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--doc-muted);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 74%, transparent);
 }
 
 .documentation-page__messages-empty-state h3 {
   margin: 0;
-  font-size: 0.84rem;
-  color: var(--doc-ink);
+  font-size: 0.72rem;
+  color: var(--doc-muted);
+  font-weight: 400;
+  letter-spacing: normal;
 }
 
 .documentation-page__messages-empty-state p {
   margin: 0;
   color: var(--doc-muted);
-  font-size: 0.75rem;
-  line-height: 1.5;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.45;
 }
 
 .documentation-page__message {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 9px;
   max-width: 100%;
 }
 
 .documentation-page__message-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   font-size: 0.63rem;
@@ -357,22 +536,27 @@
   background: var(--doc-surface-muted);
   border: 1px solid var(--doc-line);
   flex-shrink: 0;
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--text-strong) 7%, transparent);
 }
 
 .documentation-page__message-bubble {
-  border-radius: 12px;
-  border: 1px solid var(--doc-line);
-  padding: 9px 10px;
-  background: var(--doc-surface);
+  border-radius: 12px 12px 12px 4px;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 84%, transparent);
+  padding: 10px 11px;
+  background: var(--doc-chat-bubble);
   min-width: 0;
-  max-width: min(88%, 560px);
+  max-width: min(86%, 560px);
+  box-shadow:
+    0 10px 22px color-mix(in oklab, var(--text-strong) 7%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 68%, transparent);
 }
 
 .documentation-page__message-bubble header {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  align-items: baseline;
 }
 
 .documentation-page__message-bubble header strong {
@@ -383,19 +567,20 @@
 .documentation-page__message-bubble header span {
   color: var(--doc-muted);
   font-size: 0.67rem;
+  white-space: nowrap;
 }
 
 .documentation-page__message-bubble p {
   margin: 0;
   color: color-mix(in oklab, var(--doc-ink) 78%, var(--doc-muted));
-  font-size: 0.78rem;
-  line-height: 1.52;
+  font-size: 0.8rem;
+  line-height: 1.58;
   white-space: pre-wrap;
 }
 
 .documentation-page__message--assistant .documentation-page__message-bubble {
-  background: color-mix(in oklab, var(--accent-soft) 72%, var(--doc-surface));
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--doc-line));
+  background: var(--doc-chat-ai-bubble);
+  border-color: color-mix(in oklab, var(--accent) 26%, var(--doc-line));
 }
 
 .documentation-page__message--assistant .documentation-page__message-avatar,
@@ -411,8 +596,9 @@
 }
 
 .documentation-page__message--user .documentation-page__message-bubble {
-  background: color-mix(in oklab, var(--accent-soft) 82%, var(--doc-surface));
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--doc-line));
+  border-radius: 12px 12px 4px 12px;
+  background: var(--doc-chat-user-bubble);
+  border-color: color-mix(in oklab, var(--accent) 38%, var(--doc-line));
 }
 
 .documentation-page__message--user .documentation-page__message-avatar {
@@ -424,6 +610,7 @@
 .documentation-page__message--system .documentation-page__message-bubble {
   background: color-mix(in oklab, var(--warn-soft) 78%, var(--doc-surface));
   border-color: color-mix(in oklab, var(--warn) 32%, var(--doc-line));
+  border-radius: 12px;
 }
 
 .documentation-page__message--system .documentation-page__message-avatar {
@@ -477,58 +664,107 @@
 
 .documentation-page__composer {
   display: grid;
-  gap: 7px;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .documentation-page__composer-shell {
-  border: 1px solid var(--doc-line);
-  background: var(--doc-surface);
-  border-radius: 14px;
-  padding: 8px;
+  order: 2;
+  min-height: 42px;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 76%, transparent);
+  background: color-mix(in oklab, var(--panel-muted) 54%, var(--panel));
+  border-radius: 8px;
+  padding: 4px 40px 4px 12px;
   position: relative;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 54%, transparent);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
 }
 
-.documentation-page__composer-input {
-  border: 0;
-  border-radius: 10px;
-  min-height: 82px;
-  max-height: 170px;
+.documentation-page__composer-shell:focus-within {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--doc-line));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 10%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 58%, transparent);
+}
+
+.documentation-page__composer-input,
+.documentation-page__composer-input.shared-textarea {
+  display: block;
+  border: 0 !important;
+  border-radius: 0;
+  height: 32px;
+  min-height: 32px;
+  max-height: 88px;
   resize: none;
-  padding: 10px 48px 10px 10px;
-  line-height: 1.45;
+  padding: 6px 0;
+  line-height: 1.35;
+  background: transparent !important;
+  color: var(--doc-ink) !important;
+  box-shadow: none !important;
+  outline: none;
+  overflow-y: auto;
+  appearance: none;
 }
 
-.documentation-page__composer-input:focus {
-  box-shadow: none;
+.documentation-page__composer-input:hover,
+.documentation-page__composer-input:focus,
+.documentation-page__composer-input.shared-textarea:hover,
+.documentation-page__composer-input.shared-textarea:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.documentation-page__composer-input::placeholder {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  letter-spacing: normal;
 }
 
 .documentation-page__send-button {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--accent) 32%, var(--doc-line));
-  background: color-mix(in oklab, var(--accent-soft) 82%, var(--doc-surface));
-  color: color-mix(in oklab, var(--accent-strong) 78%, var(--text-strong));
+  right: 7px;
+  bottom: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent) 42%, var(--doc-line));
+  background: var(--button-gradient-main);
+  color: color-mix(in oklab, var(--panel) 96%, white);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(16, 59, 95, 0.14);
+  box-shadow:
+    0 4px 10px color-mix(in oklab, var(--accent) 16%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 28%, transparent);
   padding: 0;
   appearance: none;
+  transform: translateY(50%);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    opacity 160ms ease;
 }
 
 .documentation-page__send-button svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .documentation-page__send-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent) 44%, var(--doc-line));
-  background: color-mix(in oklab, var(--accent-soft) 70%, var(--doc-surface));
+  transform: translateY(calc(50% - 1px));
+  border-color: color-mix(in oklab, var(--accent-strong) 58%, var(--doc-line));
+  background: var(--button-gradient-main-hover);
+  box-shadow:
+    0 6px 12px color-mix(in oklab, var(--accent) 22%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 30%, transparent);
 }
 
 .documentation-page__send-button:disabled {
@@ -538,6 +774,8 @@
 }
 
 .documentation-page__composer-hint {
+  order: 3;
+  display: none;
   margin: 0;
   color: var(--doc-muted);
   font-size: 0.68rem;
@@ -545,6 +783,7 @@
 }
 
 .documentation-page__composer-latency {
+  order: 4;
   margin: 0;
   color: var(--doc-muted);
   font-size: 0.68rem;
@@ -552,6 +791,7 @@
 }
 
 .documentation-page__composer-checkbox {
+  order: 1;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -560,10 +800,11 @@
 }
 
 .documentation-page__composer-checkbox input {
-  accent-color: #0b86e8;
+  accent-color: var(--accent);
 }
 
 .documentation-page__error {
+  order: 5;
   margin: 0;
   color: var(--danger);
   font-size: 0.73rem;
@@ -588,6 +829,33 @@
   --doc-surface: linear-gradient(180deg, rgba(16, 35, 52, 0.96) 0%, rgba(11, 27, 42, 0.9) 100%);
   --doc-surface-soft: linear-gradient(180deg, rgba(20, 43, 61, 0.94) 0%, rgba(15, 35, 51, 0.9) 100%);
   --doc-surface-muted: linear-gradient(180deg, rgba(24, 52, 74, 0.92) 0%, rgba(17, 39, 58, 0.88) 100%);
+  --doc-chat-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel) 92%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--bg-deep) 72%, var(--panel)) 100%
+  );
+  --doc-chat-rail: color-mix(in oklab, var(--accent) 14%, transparent);
+  --doc-chat-thread: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--bg-deep) 84%, var(--panel)) 0%,
+    color-mix(in oklab, var(--panel) 76%, var(--bg-deep)) 100%
+  );
+  --doc-chat-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel-soft) 72%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--panel) 78%, var(--bg-deep)) 100%
+  );
+  --doc-chat-ai-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-soft) 42%, var(--panel)) 0%,
+    color-mix(in oklab, var(--panel) 82%, var(--bg-deep)) 100%
+  );
+  --doc-chat-user-bubble: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 38%, var(--panel)) 0%,
+    color-mix(in oklab, var(--accent-soft) 58%, var(--panel)) 100%
+  );
+  --doc-chat-shadow: 0 24px 44px color-mix(in oklab, black 34%, transparent);
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -683,57 +951,97 @@
 }
 
 .app-theme[data-theme="dark"] .documentation-page__mode-chip {
-  border-color: rgba(72, 111, 141, 0.76);
-  background: linear-gradient(180deg, rgba(16, 38, 56, 0.96) 0%, rgba(11, 28, 43, 0.98) 100%);
+  border-color: transparent;
+  background: transparent;
   color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__mode-chip:hover {
-  border-color: rgba(96, 149, 189, 0.88);
-  background: linear-gradient(180deg, rgba(18, 43, 63, 0.98) 0%, rgba(12, 31, 47, 1) 100%);
+  border-color: color-mix(in oklab, var(--accent) 26%, var(--line));
+  background: color-mix(in oklab, var(--accent-soft) 40%, transparent);
   color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__mode-chip--active {
-  color: #f2f8ff;
-  border-color: rgba(90, 183, 255, 0.92);
-  background: linear-gradient(135deg, rgba(10, 111, 193, 0.92) 0%, rgba(18, 184, 189, 0.82) 100%);
+  color: var(--text-strong);
+  border-color: color-mix(in oklab, var(--accent-strong) 72%, var(--line));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--accent) 24%, var(--panel-soft)) 0%,
+      color-mix(in oklab, var(--accent-soft) 84%, var(--panel)) 100%
+    );
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.24),
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    inset 0 0 0 1px color-mix(in oklab, var(--accent-strong) 22%, transparent),
+    inset 0 -2px 0 color-mix(in oklab, var(--accent-strong) 58%, transparent);
+  text-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .documentation-page__mode-info-button {
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+  background: color-mix(in oklab, var(--panel) 74%, transparent);
+  color: var(--accent-strong);
+  box-shadow:
+    0 12px 24px color-mix(in oklab, black 24%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 7%, transparent);
+}
+
+.app-theme[data-theme="dark"] .documentation-page__mode-info-button:hover,
+.app-theme[data-theme="dark"] .documentation-page__mode-info-button[aria-expanded="true"] {
+  border-color: color-mix(in oklab, var(--accent-strong) 44%, var(--line));
+  background: color-mix(in oklab, var(--accent-soft) 62%, var(--panel));
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .documentation-page__mode-info-popover {
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 10%, transparent), transparent 34%),
+    var(--doc-chat-bubble);
+  box-shadow:
+    0 18px 36px color-mix(in oklab, black 36%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 7%, transparent);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__messages {
-  border-color: rgba(68, 104, 131, 0.78);
+  border-color: color-mix(in oklab, var(--line) 82%, transparent);
   background:
-    radial-gradient(circle at top left, rgba(90, 183, 255, 0.06) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(10, 26, 39, 0.98) 0%, rgba(7, 20, 31, 1) 100%);
+    linear-gradient(color-mix(in oklab, var(--doc-chat-rail) 34%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--doc-chat-rail) 28%, transparent) 1px, transparent 1px),
+    var(--doc-chat-thread);
+  background-size: 26px 26px, 26px 26px, auto;
 }
 
 .app-theme[data-theme="dark"] .documentation-page__messages-empty-state {
-  border-color: rgba(90, 137, 170, 0.56);
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
   background:
-    radial-gradient(circle at top left, rgba(90, 183, 255, 0.09) 0%, transparent 26%),
-    linear-gradient(180deg, rgba(16, 36, 54, 0.96) 0%, rgba(11, 27, 41, 0.98) 100%);
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 10%, transparent), transparent 30%),
+    color-mix(in oklab, var(--panel) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__messages-empty-avatar,
 .app-theme[data-theme="dark"] .documentation-page__message--assistant .documentation-page__message-avatar,
 .app-theme[data-theme="dark"] .documentation-page__message--thinking .documentation-page__message-avatar {
-  background: linear-gradient(135deg, rgba(14, 69, 112, 0.98) 0%, rgba(15, 134, 232, 0.88) 100%);
-  border-color: rgba(128, 189, 230, 0.64);
-  color: #f6fbff;
+  background: var(--button-gradient-main);
+  border-color: color-mix(in oklab, var(--accent-strong) 38%, var(--line));
+  color: color-mix(in oklab, var(--text-strong) 94%, white);
+}
+
+.app-theme[data-theme="dark"] .documentation-page__messages-empty-avatar {
+  background: transparent;
+  border-color: color-mix(in oklab, var(--line) 74%, transparent);
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message-avatar {
-  background: rgba(24, 47, 66, 0.96);
-  border-color: rgba(67, 102, 129, 0.78);
+  background: color-mix(in oklab, var(--panel-muted) 84%, transparent);
+  border-color: color-mix(in oklab, var(--line) 84%, transparent);
   color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message-bubble {
-  background: linear-gradient(180deg, rgba(17, 38, 56, 0.96) 0%, rgba(11, 29, 44, 0.98) 100%);
-  border-color: rgba(67, 102, 129, 0.72);
+  background: var(--doc-chat-bubble);
+  border-color: color-mix(in oklab, var(--line) 78%, transparent);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message-bubble p {
@@ -742,34 +1050,30 @@
 
 .app-theme[data-theme="dark"] .documentation-page__message--assistant .documentation-page__message-bubble,
 .app-theme[data-theme="dark"] .documentation-page__message--thinking .documentation-page__message-bubble {
-  background:
-    radial-gradient(circle at top left, rgba(90, 183, 255, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(16, 39, 58, 0.96) 0%, rgba(11, 29, 44, 0.98) 100%);
-  border-color: rgba(90, 151, 192, 0.54);
+  background: var(--doc-chat-ai-bubble);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message--user .documentation-page__message-bubble {
-  background:
-    radial-gradient(circle at top right, rgba(24, 184, 189, 0.12) 0%, transparent 28%),
-    linear-gradient(180deg, rgba(12, 72, 115, 0.96) 0%, rgba(10, 55, 89, 0.98) 100%);
-  border-color: rgba(101, 186, 223, 0.52);
+  background: var(--doc-chat-user-bubble);
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message--user .documentation-page__message-avatar {
-  background: linear-gradient(135deg, rgba(10, 99, 162, 0.98) 0%, rgba(24, 184, 189, 0.84) 100%);
-  border-color: rgba(119, 204, 221, 0.56);
-  color: #f6fbff;
+  background: var(--button-gradient-main);
+  border-color: color-mix(in oklab, var(--accent-strong) 38%, var(--line));
+  color: color-mix(in oklab, var(--text-strong) 94%, white);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message--system .documentation-page__message-bubble {
-  background: linear-gradient(180deg, rgba(58, 42, 20, 0.94) 0%, rgba(44, 31, 15, 0.98) 100%);
-  border-color: rgba(173, 134, 71, 0.44);
+  background: color-mix(in oklab, var(--warn-soft) 82%, var(--panel));
+  border-color: color-mix(in oklab, var(--warn) 30%, var(--line));
 }
 
 .app-theme[data-theme="dark"] .documentation-page__message--system .documentation-page__message-avatar {
-  background: linear-gradient(135deg, rgba(116, 78, 32, 0.98) 0%, rgba(168, 123, 56, 0.88) 100%);
-  border-color: rgba(214, 173, 110, 0.44);
-  color: #fff8ea;
+  background: color-mix(in oklab, var(--warn-soft) 78%, var(--panel));
+  border-color: color-mix(in oklab, var(--warn) 34%, var(--line));
+  color: color-mix(in oklab, var(--warn) 82%, var(--text-strong));
 }
 
 .app-theme[data-theme="dark"] .documentation-page__thinking-dots span {
@@ -777,30 +1081,44 @@
 }
 
 .app-theme[data-theme="dark"] .documentation-page__composer-shell {
-  border-color: rgba(75, 114, 143, 0.8);
-  background: linear-gradient(180deg, rgba(15, 35, 51, 0.98) 0%, rgba(10, 27, 41, 1) 100%);
+  border-color: color-mix(in oklab, var(--line) 66%, transparent);
+  background: color-mix(in oklab, var(--panel-muted) 48%, var(--bg-deep));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
+}
+
+.app-theme[data-theme="dark"] .documentation-page__composer-shell:focus-within {
+  border-color: color-mix(in oklab, var(--accent-strong) 36%, var(--line));
   box-shadow:
-    0 16px 30px rgba(0, 0, 0, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 0 0 2px color-mix(in oklab, var(--accent) 12%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__composer-input {
-  background: transparent;
-  color: var(--text);
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.app-theme[data-theme="dark"] .documentation-page__composer-input:hover,
+.app-theme[data-theme="dark"] .documentation-page__composer-input:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .app-theme[data-theme="dark"] .documentation-page__send-button {
-  border-color: rgba(92, 171, 229, 0.38);
-  background: linear-gradient(135deg, #0a6fc1 0%, #1293d8 46%, #18b8bd 100%);
-  color: #f6fbff;
+  border-color: color-mix(in oklab, var(--accent-strong) 34%, var(--line));
+  background: var(--button-gradient-main);
+  color: color-mix(in oklab, var(--text-strong) 94%, white);
   box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.28),
-    0 8px 18px rgba(24, 184, 189, 0.18);
+    0 16px 28px color-mix(in oklab, black 32%, transparent),
+    0 8px 18px color-mix(in oklab, var(--accent) 22%, transparent);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__send-button:hover:not(:disabled) {
-  border-color: rgba(116, 199, 244, 0.52);
-  background: linear-gradient(135deg, #0b7bd4 0%, #17a1e2 46%, #1ac8c0 100%);
+  border-color: color-mix(in oklab, var(--accent-strong) 48%, var(--line));
+  background: var(--button-gradient-main-hover);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__send-button:disabled {

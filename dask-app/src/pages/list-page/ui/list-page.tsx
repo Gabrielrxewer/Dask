@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
@@ -49,7 +49,55 @@ export function ListPage() {
     clearSelectedTask
   } = useWorkspaceTaskPage();
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
+  const [taskOrder, setTaskOrder] = useState<string[]>([]);
+  const [pendingStatuses, setPendingStatuses] = useState<Record<string, TaskStatusId>>({});
   const taskTypeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
+
+  useEffect(() => {
+    setTaskOrder((currentOrder) => {
+      const nextIds = filteredTasks.map(task => task.id);
+      const nextIdSet = new Set(nextIds);
+      const preservedIds = currentOrder.filter(taskId => nextIdSet.has(taskId));
+      const newIds = nextIds.filter(taskId => !currentOrder.includes(taskId));
+      const nextOrder = [...preservedIds, ...newIds];
+
+      if (nextOrder.length === currentOrder.length && nextOrder.every((taskId, index) => taskId === currentOrder[index])) {
+        return currentOrder;
+      }
+
+      return nextOrder;
+    });
+  }, [filteredTasks]);
+
+  const orderedTasks = useMemo(() => {
+    if (taskOrder.length === 0) {
+      return filteredTasks;
+    }
+
+    const orderIndex = new Map(taskOrder.map((taskId, index) => [taskId, index]));
+    return [...filteredTasks].sort((leftTask, rightTask) => {
+      const leftIndex = orderIndex.get(leftTask.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightIndex = orderIndex.get(rightTask.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftIndex - rightIndex;
+    });
+  }, [filteredTasks, taskOrder]);
+
+  useEffect(() => {
+    setPendingStatuses((currentStatuses) => {
+      const nextStatuses = { ...currentStatuses };
+      let changed = false;
+
+      Object.entries(currentStatuses).forEach(([taskId, pendingStatus]) => {
+        const task = filteredTasks.find(item => item.id === taskId);
+        if (!task || task.status === pendingStatus) {
+          delete nextStatuses[taskId];
+          changed = true;
+        }
+      });
+
+      return changed ? nextStatuses : currentStatuses;
+    });
+  }, [filteredTasks]);
 
   useEffect(() => {
     let mounted = true;
@@ -64,7 +112,18 @@ export function ListPage() {
   }, [listAiAgents]);
 
   const handleStatusChange = (taskId: string, statusId: TaskStatusId) => {
-    void moveTask(taskId, statusId);
+    setPendingStatuses((currentStatuses) => ({
+      ...currentStatuses,
+      [taskId]: statusId
+    }));
+
+    void moveTask(taskId, statusId).catch(() => {
+      setPendingStatuses((currentStatuses) => {
+        const nextStatuses = { ...currentStatuses };
+        delete nextStatuses[taskId];
+        return nextStatuses;
+      });
+    });
   };
 
   return (
@@ -121,7 +180,7 @@ export function ListPage() {
               ) : filteredTasks.length === 0 ? (
                 <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>
               ) : (
-                filteredTasks.map(task => {
+                orderedTasks.map(task => {
                   const done = task.checklist.items.filter(item => item.done).length;
                   const total = task.checklist.items.length;
                   const type = getTaskTypeDisplayMeta(taskTypeMap, task.type);
@@ -138,10 +197,10 @@ export function ListPage() {
                         <span
                           className="list-view__type"
                           style={{
-                            backgroundColor: type?.background ?? "#edf5ff",
-                            borderColor: type?.border ?? "#cfe2ff",
-                            color: type?.text ?? "#1d4e85"
-                          }}
+                            "--list-type-background": type?.background ?? "#edf5ff",
+                            "--list-type-border": type?.border ?? "#cfe2ff",
+                            "--list-type-text": type?.text ?? "#1d4e85"
+                          } as CSSProperties}
                         >
                           {type?.label ?? task.type}
                         </span>
@@ -149,7 +208,7 @@ export function ListPage() {
                       <DataTableCell>
                         <Select
                           className="list-view__status"
-                          value={task.status}
+                          value={pendingStatuses[task.id] ?? task.status}
                           onChange={event => handleStatusChange(task.id, event.target.value)}
                         >
                           {boardConfig.statuses.map(status => (

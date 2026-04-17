@@ -77,6 +77,7 @@ export function DocumentationPage() {
   } = useWorkspace();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const dirtyDocIdsRef = useRef<Set<string>>(new Set());
   const saveSeqByDocRef = useRef<Record<string, number>>({});
 
@@ -86,6 +87,7 @@ export function DocumentationPage() {
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
   const [activeMode, setActiveMode] = useState<DocumentationAssistantMode>("chat");
+  const [isModeInfoOpen, setIsModeInfoOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [includeSemanticContext, setIncludeSemanticContext] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
@@ -207,6 +209,20 @@ export function DocumentationPage() {
     }
     messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
   }, [activeMessages.length, isRunning, activeDoc?.id]);
+
+  useEffect(() => {
+    const textarea = promptInputRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const minHeight = 32;
+    const maxHeight = 112;
+    textarea.style.height = "auto";
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [prompt]);
 
   const persistDocDraft = useCallback(
     async (document: WorkspaceDocument, sequence: number) => {
@@ -558,6 +574,42 @@ export function DocumentationPage() {
                 {MODE_LABELS[mode]}
               </button>
             ))}
+            <button
+              type="button"
+              className="documentation-page__mode-info-button"
+              aria-label="Mais informacoes sobre os modos do chat"
+              aria-expanded={isModeInfoOpen}
+              onClick={() => setIsModeInfoOpen((previous) => !previous)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 17v-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M12 8h.01"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+              </svg>
+            </button>
+            {isModeInfoOpen ? (
+              <div className="documentation-page__mode-info-popover" role="status">
+                <strong>Modos do Chat IA</strong>
+                <p>
+                  Chat responde duvidas sobre a doc. Escrita cria novos trechos em markdown. Manutencao revisa,
+                  corrige ou atualiza o conteudo existente.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div ref={messagesRef} className="documentation-page__messages">
@@ -615,6 +667,7 @@ export function DocumentationPage() {
           <div className="documentation-page__composer">
             <div className="documentation-page__composer-shell">
               <Textarea
+                ref={promptInputRef}
                 rows={3}
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}

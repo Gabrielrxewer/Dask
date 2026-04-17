@@ -209,6 +209,7 @@ export function BoardColumns({
         {statuses.map(status => {
           const statusTasks = columns[status.id] ?? [];
           const isTarget = dropTarget?.statusId === status.id;
+          const isFirstColumn = statuses[0]?.id === status.id;
 
           return (
             <section
@@ -240,7 +241,7 @@ export function BoardColumns({
                 }}
                 onDrop={event => void handleDrop(event, status.id)}
               >
-                {onCreateTask ? (
+                {onCreateTask && isFirstColumn ? (
                   <CreateTaskButton
                     className="board-column__create-task"
                     onCreate={input => onCreateTask(status.id, input)}

@@ -326,11 +326,11 @@ export function BoardPage() {
     ];
   }, [activePerspective, activeStatuses, activePerspectiveTasks, devMetrics]);
 
-  const handleMoveTask = (taskId: string, statusId: TaskStatusId) => {
+  const handleMoveTask = (taskId: string, statusId: TaskStatusId, position?: number) => {
     if (useBoardColumnsProjection && apiBoardCols.length > 0) {
       const col = apiBoardCols.find(c => c.id === statusId);
       if (col) {
-        return moveTaskToColumn(taskId, col.id, col.stateIds[0]);
+        return moveTaskToColumn(taskId, col.id, col.stateIds[0], position);
       }
     }
 
@@ -339,6 +339,26 @@ export function BoardPage() {
     }
 
     return updateTaskCustomField(taskId, activePerspective.statusSource.fieldId, statusId);
+  };
+
+  const handleCreateTask = (statusId: TaskStatusId, input: Parameters<NonNullable<typeof createTask>>[0]) => {
+    if (useBoardColumnsProjection && apiBoardCols.length > 0) {
+      const col = apiBoardCols.find(column => column.id === statusId);
+      if (col) {
+        return createTask({
+          ...input,
+          columnId: col.id,
+          stateId: col.stateIds[0],
+          position: 0
+        });
+      }
+    }
+
+    return createTask({
+      ...input,
+      statusId,
+      position: 0
+    });
   };
 
   const handleUpdatePriority = (taskId: string, priority: TaskPriority) => {
@@ -416,7 +436,7 @@ export function BoardPage() {
               tasks={activeBoardTasks}
               membersById={activeMembers}
               compactCards={Boolean(activePerspective?.compactCards)}
-              onCreateTask={input => void createTask(input)}
+              onCreateTask={(statusId, input) => void handleCreateTask(statusId, input)}
               createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
               onMoveTask={handleMoveTask}
               onUpdatePriority={handleUpdatePriority}

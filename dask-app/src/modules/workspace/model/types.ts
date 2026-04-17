@@ -28,6 +28,10 @@ export interface CreateTaskInput {
   title: string;
   description: string;
   priority: TaskPriority;
+  statusId?: TaskStatusId;
+  columnId?: string;
+  stateId?: string;
+  position?: number;
 }
 
 export interface TaskScheduleInput {
@@ -360,7 +364,8 @@ export interface WorkspaceService {
     workspaceSlug: string,
     taskId: string,
     columnId: string,
-    stateId?: string
+    stateId?: string,
+    position?: number
   ) => Promise<WorkspaceSnapshot>;
   updateTaskPriority: (
     workspaceSlug: string,

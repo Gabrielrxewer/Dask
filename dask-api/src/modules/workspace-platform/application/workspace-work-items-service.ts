@@ -250,9 +250,15 @@ export class WorkspaceWorkItemsService {
       await this.ensureWorkItemBelongsToWorkspace(input.workspaceId, input.payload.parentId);
     }
 
-    const defaultPosition = await this.getNextItemPosition(input.workspaceId, context.column.id);
-
     const createdItem = await this.prisma.$transaction(async (tx) => {
+      const targetPosition = await this.resolveInsertPosition(
+        tx,
+        input.workspaceId,
+        context.column.id,
+        input.payload.position
+      );
+      await this.shiftColumnItemsForInsert(tx, input.workspaceId, context.column.id, targetPosition);
+
       const item = await tx.item.create({
         data: {
           boardId: context.boardId,
@@ -271,7 +277,7 @@ export class WorkspaceWorkItemsService {
           assigneeId: input.payload.assigneeId ?? null,
           parentId: input.payload.parentId ?? null,
           dueDate: input.payload.dueDate ?? null,
-          position: input.payload.position ?? defaultPosition,
+          position: targetPosition,
           createdBy: input.userId,
           updatedBy: input.userId
         }
@@ -363,6 +369,23 @@ export class WorkspaceWorkItemsService {
       : await this.resolveColumnForState(input.workspaceId, state.id, current.boardColumnId ?? current.columnId);
 
     const updatedItem = await this.prisma.$transaction(async (tx) => {
+      const currentColumnId = current.boardColumnId ?? current.columnId;
+      if (!currentColumnId) {
+        throw new AppError('Current board column not found for work item', 409);
+      }
+
+      const nextPosition =
+        input.payload.position !== undefined || currentColumnId !== column.id
+          ? await this.resolveInsertPosition(tx, input.workspaceId, column.id, input.payload.position, current.id)
+          : current.position;
+
+      if (currentColumnId === column.id && nextPosition !== current.position) {
+        await this.reorderWithinColumn(tx, input.workspaceId, column.id, current.id, current.position, nextPosition);
+      } else if (currentColumnId !== column.id) {
+        await this.closeColumnGap(tx, input.workspaceId, currentColumnId, current.position, current.id);
+        await this.shiftColumnItemsForInsert(tx, input.workspaceId, column.id, nextPosition, current.id);
+      }
+
       await tx.item.update({
         where: { id: current.id },
         data: {
@@ -377,7 +400,7 @@ export class WorkspaceWorkItemsService {
           assigneeId: input.payload.assigneeId,
           parentId: input.payload.parentId,
           dueDate: input.payload.dueDate,
-          position: input.payload.position,
+          position: nextPosition,
           checklist:
             input.payload.checklist !== undefined
               ? toJsonValue(parseChecklist(input.payload.checklist))
@@ -460,6 +483,7 @@ export class WorkspaceWorkItemsService {
       select: {
         id: true,
         boardColumnId: true,
+        position: true,
         stateId: true
       }
     });
@@ -474,6 +498,23 @@ export class WorkspaceWorkItemsService {
       : await this.resolveDefaultStateForColumn(input.workspaceId, column.id, current.stateId);
 
     const movedItem = await this.prisma.$transaction(async (tx) => {
+      const targetPosition = await this.resolveInsertPosition(
+        tx,
+        input.workspaceId,
+        column.id,
+        input.payload.position,
+        current.id
+      );
+
+      if (current.boardColumnId === column.id) {
+        await this.reorderWithinColumn(tx, input.workspaceId, column.id, current.id, current.position, targetPosition);
+      } else {
+        if (current.boardColumnId) {
+          await this.closeColumnGap(tx, input.workspaceId, current.boardColumnId, current.position, current.id);
+        }
+        await this.shiftColumnItemsForInsert(tx, input.workspaceId, column.id, targetPosition, current.id);
+      }
+
       await tx.item.update({
         where: { id: current.id },
         data: {
@@ -481,7 +522,7 @@ export class WorkspaceWorkItemsService {
           columnId: column.id,
           stateId: state.id,
           status: state.slug,
-          position: input.payload.position ?? (await this.getNextItemPosition(input.workspaceId, column.id)),
+          position: targetPosition,
           updatedBy: input.userId
         }
       });
@@ -1018,6 +1059,122 @@ export class WorkspaceWorkItemsService {
     return (aggregate._max.position ?? -1) + 1;
   }
 
+  private async countColumnItems(
+    prisma: PrismaClient | Prisma.TransactionClient,
+    workspaceId: string,
+    columnId: string,
+    excludeItemId?: string
+  ) {
+    return prisma.item.count({
+      where: {
+        workspaceId,
+        boardColumnId: columnId,
+        ...(excludeItemId ? { id: { not: excludeItemId } } : {})
+      }
+    });
+  }
+
+  private async resolveInsertPosition(
+    prisma: PrismaClient | Prisma.TransactionClient,
+    workspaceId: string,
+    columnId: string,
+    desiredPosition?: number,
+    excludeItemId?: string
+  ) {
+    const itemCount = await this.countColumnItems(prisma, workspaceId, columnId, excludeItemId);
+    if (desiredPosition === undefined) {
+      return itemCount;
+    }
+
+    return Math.max(0, Math.min(desiredPosition, itemCount));
+  }
+
+  private async shiftColumnItemsForInsert(
+    prisma: PrismaClient | Prisma.TransactionClient,
+    workspaceId: string,
+    columnId: string,
+    position: number,
+    excludeItemId?: string
+  ) {
+    await prisma.item.updateMany({
+      where: {
+        workspaceId,
+        boardColumnId: columnId,
+        position: { gte: position },
+        ...(excludeItemId ? { id: { not: excludeItemId } } : {})
+      },
+      data: {
+        position: { increment: 1 }
+      }
+    });
+  }
+
+  private async closeColumnGap(
+    prisma: PrismaClient | Prisma.TransactionClient,
+    workspaceId: string,
+    columnId: string,
+    position: number,
+    excludeItemId?: string
+  ) {
+    await prisma.item.updateMany({
+      where: {
+        workspaceId,
+        boardColumnId: columnId,
+        position: { gt: position },
+        ...(excludeItemId ? { id: { not: excludeItemId } } : {})
+      },
+      data: {
+        position: { decrement: 1 }
+      }
+    });
+  }
+
+  private async reorderWithinColumn(
+    prisma: PrismaClient | Prisma.TransactionClient,
+    workspaceId: string,
+    columnId: string,
+    itemId: string,
+    fromPosition: number,
+    toPosition: number
+  ) {
+    if (fromPosition === toPosition) {
+      return;
+    }
+
+    if (toPosition > fromPosition) {
+      await prisma.item.updateMany({
+        where: {
+          workspaceId,
+          boardColumnId: columnId,
+          id: { not: itemId },
+          position: {
+            gt: fromPosition,
+            lte: toPosition
+          }
+        },
+        data: {
+          position: { decrement: 1 }
+        }
+      });
+      return;
+    }
+
+    await prisma.item.updateMany({
+      where: {
+        workspaceId,
+        boardColumnId: columnId,
+        id: { not: itemId },
+        position: {
+          gte: toPosition,
+          lt: fromPosition
+        }
+      },
+      data: {
+        position: { increment: 1 }
+      }
+    });
+  }
+
   private serializeWorkItem(item: SerializedWorkItemSource) {
     const customFieldValuesById = item.customFieldValues.reduce((acc: Record<string, unknown>, entry) => {
       acc[entry.fieldId] = entry.value;
@@ -1120,6 +1277,7 @@ export class WorkspaceWorkItemsService {
       text: workItem.description ?? '',
       type: workItem.type.slug,
       status: workItem.state.slug,
+      position: workItem.position,
       priority: parsePriority(metadata.priority),
       tags: workItem.tags.map((tag: { name: string }) => tag.name),
       assignee: workItem.assigneeId ?? workItem.createdBy,

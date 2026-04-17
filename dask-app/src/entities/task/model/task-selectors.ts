@@ -20,6 +20,10 @@ export function groupTasksByStatus(
     grouped[task.status].push(task);
   });
 
+  Object.values(grouped).forEach(statusTasks => {
+    statusTasks.sort((left, right) => left.position - right.position);
+  });
+
   return grouped;
 }
 

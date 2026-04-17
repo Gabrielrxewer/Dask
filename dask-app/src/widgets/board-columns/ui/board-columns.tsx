@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DragEvent } from "react";
 import type { MembersById } from "@/entities/member";
 import { MemberAvatar } from "@/entities/member";
@@ -24,7 +24,7 @@ interface BoardColumnsProps {
   boardConfig: BoardConfig;
   membersById: MembersById;
   compactCards?: boolean;
-  onMoveTask: (taskId: string, statusId: TaskStatusId) => Promise<void> | void;
+  onMoveTask: (taskId: string, statusId: TaskStatusId, position?: number) => Promise<void> | void;
   onUpdatePriority: (taskId: string, priority: TaskPriority) => Promise<void> | void;
   onUpdateTaskTitle: (taskId: string, title: string) => Promise<void> | void;
   onUpdateTaskDescription: (taskId: string, description: string) => Promise<void> | void;
@@ -36,7 +36,7 @@ interface BoardColumnsProps {
   onUpdateTaskSchedule: (taskId: string, input: TaskScheduleInput) => Promise<void> | void;
   onSaveTask: (taskId: string, input: UpdateTaskInput) => Promise<void> | void;
   onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
-  onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
+  onCreateTask?: (statusId: TaskStatusId, input: CreateTaskInput) => void | Promise<void>;
   createTaskTypes?: Array<{ id: string; label: string }>;
   aiAgents: AiAgentSummary[];
   availableTags?: Array<{ id: string; name: string; color: string }>;
@@ -49,6 +49,69 @@ interface BoardColumnsProps {
     itemId: string,
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
+}
+
+type DropTarget = {
+  statusId: TaskStatusId;
+  index: number;
+};
+
+function normalizeTaskPositions(tasks: Task[]): Task[] {
+  const grouped = new Map<string, Task[]>();
+
+  tasks.forEach(task => {
+    const statusTasks = grouped.get(task.status) ?? [];
+    statusTasks.push(task);
+    grouped.set(task.status, statusTasks);
+  });
+
+  return Array.from(grouped.values()).flatMap(statusTasks =>
+    [...statusTasks]
+      .sort((left, right) => left.position - right.position)
+      .map((task, index) => ({ ...task, position: index }))
+  );
+}
+
+function moveTaskLocally(tasks: Task[], taskId: string, nextStatus: TaskStatusId, nextPosition: number): Task[] {
+  const currentTask = tasks.find(task => task.id === taskId);
+  if (!currentTask) {
+    return tasks;
+  }
+
+  const remainingTasks = tasks.filter(task => task.id !== taskId);
+  const nextTasks = remainingTasks.map(task => ({ ...task }));
+  const targetTasks = nextTasks
+    .filter(task => task.status === nextStatus)
+    .sort((left, right) => left.position - right.position);
+  const insertAt = Math.max(0, Math.min(nextPosition, targetTasks.length));
+
+  targetTasks.splice(insertAt, 0, {
+    ...currentTask,
+    status: nextStatus,
+    position: insertAt
+  });
+
+  const targetIds = new Set(targetTasks.map(task => task.id));
+  const untouchedTasks = nextTasks.filter(task => !targetIds.has(task.id));
+
+  return normalizeTaskPositions([...untouchedTasks, ...targetTasks]);
+}
+
+function resolveDropIndex(event: DragEvent<HTMLElement>, draggingTaskId: string): number {
+  const cardElements = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>("[data-board-card='true']")
+  ).filter(card => card.dataset.taskId !== draggingTaskId);
+
+  for (let index = 0; index < cardElements.length; index += 1) {
+    const card = cardElements[index];
+    const rect = card.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    if (event.clientY < midpoint) {
+      return index;
+    }
+  }
+
+  return cardElements.length;
 }
 
 export function BoardColumns({
@@ -73,18 +136,24 @@ export function BoardColumns({
   onRunAiRiskAnalysis
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
-  const [dropTargetStatus, setDropTargetStatus] = useState<TaskStatusId | "">("");
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
 
-  const columns = useMemo(() => groupTasksByStatus(tasks, statuses), [tasks, statuses]);
+  useEffect(() => {
+    setOptimisticTasks(tasks);
+  }, [tasks]);
+
+  const columns = useMemo(() => groupTasksByStatus(optimisticTasks, statuses), [optimisticTasks, statuses]);
   const selectedTask = useMemo(
-    () => tasks.find(task => task.id === selectedTaskId) ?? null,
-    [tasks, selectedTaskId]
+    () => optimisticTasks.find(task => task.id === selectedTaskId) ?? null,
+    [optimisticTasks, selectedTaskId]
   );
   const selectedStatus = useMemo(
     () => (selectedTask ? statuses.find(status => status.id === selectedTask.status) ?? null : null),
     [selectedTask, statuses]
   );
+
   const resolveCreatorName = (task: Task): string => {
     const createdBy = task.customFields["createdBy"];
     if (typeof createdBy === "string" && createdBy.trim()) {
@@ -97,6 +166,7 @@ export function BoardColumns({
 
     return membersById[task.assignee]?.name ?? "Usuario";
   };
+
   const selectedCreatorName = selectedTask ? resolveCreatorName(selectedTask) : "Usuario";
 
   const handleDragStart = (event: DragEvent<HTMLElement>, taskId: string) => {
@@ -107,17 +177,30 @@ export function BoardColumns({
 
   const handleDragEnd = () => {
     setDraggingTaskId("");
-    setDropTargetStatus("");
+    setDropTarget(null);
     document.body.classList.remove("board-is-dragging");
   };
 
-  const handleDrop = (event: DragEvent<HTMLElement>, statusId: TaskStatusId) => {
+  const handleDrop = async (event: DragEvent<HTMLElement>, statusId: TaskStatusId) => {
     event.preventDefault();
     const taskId = getTaskDragPayload(event) || draggingTaskId;
-    if (taskId) {
-      onMoveTask(taskId, statusId);
+    if (!taskId) {
+      return;
     }
-    setDropTargetStatus("");
+
+    const dropIndex =
+      dropTarget?.statusId === statusId ? dropTarget.index : resolveDropIndex(event, taskId);
+    const previousTasks = optimisticTasks;
+    const nextTasks = moveTaskLocally(previousTasks, taskId, statusId, dropIndex);
+
+    setOptimisticTasks(nextTasks);
+    setDropTarget(null);
+
+    try {
+      await onMoveTask(taskId, statusId, dropIndex);
+    } catch {
+      setOptimisticTasks(previousTasks);
+    }
   };
 
   return (
@@ -125,24 +208,12 @@ export function BoardColumns({
       <section className="board-columns">
         {statuses.map(status => {
           const statusTasks = columns[status.id] ?? [];
-          const isTarget = dropTargetStatus === status.id;
-          const isBacklogColumn =
-            status.id.trim().toLowerCase() === "backlog" ||
-            status.label.trim().toLowerCase() === "backlog";
+          const isTarget = dropTarget?.statusId === status.id;
 
           return (
             <section
               className={`board-column ${isTarget ? "board-column--drop-target" : ""}`}
               key={status.id}
-              onDragOver={event => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                setDropTargetStatus(status.id);
-              }}
-              onDragLeave={() => {
-                setDropTargetStatus(current => (current === status.id ? "" : current));
-              }}
-              onDrop={event => handleDrop(event, status.id)}
             >
               <header className="board-column__head">
                 <div className="board-column__title">
@@ -152,21 +223,39 @@ export function BoardColumns({
                 <span className="board-column__counter">{statusTasks.length}</span>
               </header>
 
-              <div className="board-column__list">
-                {isBacklogColumn && onCreateTask ? (
+              <div
+                className="board-column__list"
+                onDragOver={event => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDropTarget({
+                    statusId: status.id,
+                    index: resolveDropIndex(event, draggingTaskId)
+                  });
+                }}
+                onDragLeave={event => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setDropTarget(current => (current?.statusId === status.id ? null : current));
+                  }
+                }}
+                onDrop={event => void handleDrop(event, status.id)}
+              >
+                {onCreateTask ? (
                   <CreateTaskButton
                     className="board-column__create-task"
-                    onCreate={onCreateTask}
+                    onCreate={input => onCreateTask(status.id, input)}
                     typeOptions={createTaskTypes}
                   />
                 ) : null}
 
-                {statusTasks.length === 0 ? (
+                {statusTasks.length === 0 && !isTarget ? (
                   <p className="board-column__empty">Sem itens nesta etapa.</p>
-                ) : (
-                  statusTasks.map(task => (
+                ) : null}
+
+                {statusTasks.map((task, index) => (
+                  <div className="board-column__item" key={task.id}>
+                    {isTarget && dropTarget?.index === index ? <div className="board-column__drop-indicator" /> : null}
                     <TaskCard
-                      key={task.id}
                       task={task}
                       boardConfig={boardConfig}
                       compact={compactCards}
@@ -180,8 +269,12 @@ export function BoardColumns({
                       onOpen={setSelectedTaskId}
                       onUpdatePriority={onUpdatePriority}
                     />
-                  ))
-                )}
+                  </div>
+                ))}
+
+                {isTarget && dropTarget?.index === statusTasks.length ? (
+                  <div className="board-column__drop-indicator" />
+                ) : null}
               </div>
             </section>
           );
@@ -204,7 +297,7 @@ export function BoardColumns({
           onUpdateCustomField={onUpdateTaskCustomField}
           onUpdateSchedule={onUpdateTaskSchedule}
           onSaveTask={onSaveTask}
-          onUpdateStatus={onMoveTask}
+          onUpdateStatus={statusId => onMoveTask(selectedTask.id, statusId)}
           onToggleChecklistItem={onToggleChecklistItem}
           aiAgents={aiAgents}
           onRunAiAgentOnItem={onRunAiAgentOnItem}

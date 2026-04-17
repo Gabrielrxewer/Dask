@@ -43,6 +43,7 @@ export interface Task {
   text: string;
   type: TaskType;
   status: TaskStatusId;
+  position: number;
   priority: TaskPriority;
   tags: string[];
   assignee: MemberId;

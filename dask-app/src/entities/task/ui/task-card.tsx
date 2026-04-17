@@ -263,6 +263,8 @@ export function TaskCard({
         compact && "task-card--compact",
         isDragging && "task-card--dragging"
       )}
+      data-board-card="true"
+      data-task-id={task.id}
       draggable
       onDragStart={event => onDragStart(event, task.id)}
       onDragEnd={onDragEnd}

@@ -246,6 +246,10 @@ export const workspaceService: WorkspaceService = {
       title: input.title,
       description: input.description,
       typeSlug: input.type,
+      ...(input.columnId ? { columnId: input.columnId } : {}),
+      ...(input.stateId ? { stateId: input.stateId } : {}),
+      ...(input.statusId && !input.stateId ? { stateSlug: input.statusId } : {}),
+      ...(typeof input.position === "number" ? { position: input.position } : {}),
       metadata: { priority: input.priority }
     }, {
       authMode: "required",
@@ -267,11 +271,12 @@ export const workspaceService: WorkspaceService = {
     return fetchSnapshot(workspaceSlug);
   },
 
-  async moveTaskToColumn(workspaceSlug, taskId, columnId, stateId) {
+  async moveTaskToColumn(workspaceSlug, taskId, columnId, stateId, position) {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.post(`/workspaces/${workspaceId}/work-items/${taskId}/move`, {
       columnId,
-      ...(stateId ? { stateId } : {})
+      ...(stateId ? { stateId } : {}),
+      ...(typeof position === "number" ? { position } : {})
     }, {
       authMode: "required",
       retryOnUnauthorized: true

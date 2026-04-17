@@ -38,7 +38,7 @@ interface WorkspaceContextValue {
   isLoading: boolean;
   createTask: (input: CreateTaskInput) => Promise<void>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<void>;
-  moveTaskToColumn: (taskId: string, columnId: string, stateId?: string) => Promise<void>;
+  moveTaskToColumn: (taskId: string, columnId: string, stateId?: string, position?: number) => Promise<void>;
   updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<void>;
   updateTaskTitle: (taskId: string, title: string) => Promise<void>;
   updateTaskDescription: (taskId: string, description: string) => Promise<void>;
@@ -166,12 +166,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
-  const moveTaskToColumn = useCallback(async (taskId: string, columnId: string, stateId?: string) => {
+  const moveTaskToColumn = useCallback(async (taskId: string, columnId: string, stateId?: string, position?: number) => {
     if (!workspaceSlug) {
       return;
     }
 
-    const nextSnapshot = await workspaceService.moveTaskToColumn(workspaceSlug, taskId, columnId, stateId);
+    const nextSnapshot = await workspaceService.moveTaskToColumn(workspaceSlug, taskId, columnId, stateId, position);
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 

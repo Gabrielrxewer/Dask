@@ -8,8 +8,7 @@ import {
   type CalendarFeedSnapshot
 } from "@/modules/workspace";
 import { DashboardFilter } from "@/features/dashboard-filter";
-import { CreateTaskButton } from "@/features/create-task";
-import { EmptyState, LoadingState, Section, StatusBadge } from "@/shared/ui";
+import { EmptyState, LoadingState, Section } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
@@ -128,7 +127,6 @@ export function AgendaPage() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const {
     isLoading,
-    createTask,
     moveTask,
     updateTaskPriority,
     updateTaskTitle,
@@ -390,12 +388,6 @@ export function AgendaPage() {
                 mineOnly={filter.mineOnly}
                 onQueryChange={setFilterQuery}
                 onMineToggle={toggleMineFilter}
-              />
-              <StatusBadge>{`${plannedTasks.length} atividades planejadas`}</StatusBadge>
-              <CreateTaskButton
-                className="agenda-view__create-task"
-                onCreate={input => void createTask(input)}
-                typeOptions={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
               />
             </div>
           }

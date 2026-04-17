@@ -245,7 +245,11 @@ export function BoardColumns({
                   <CreateTaskButton
                     className="board-column__create-task"
                     onCreate={input => onCreateTask(status.id, input)}
-                    typeOptions={createTaskTypes}
+                    initialStatusId={status.id}
+                    statuses={statuses}
+                    boardConfig={boardConfig}
+                    membersById={membersById}
+                    availableTags={availableTags}
                   />
                 ) : null}
 
@@ -284,6 +288,7 @@ export function BoardColumns({
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal
+          mode="edit"
           task={selectedTask}
           status={selectedStatus}
           statuses={statuses}

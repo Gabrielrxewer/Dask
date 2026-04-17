@@ -577,10 +577,12 @@ export function AgendaPage() {
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal
+          mode="edit"
           task={selectedTask}
           status={selectedStatus}
           statuses={boardConfig.statuses}
           assignee={activeMembers[selectedTask.assignee]}
+          membersById={activeMembers}
           boardConfig={boardConfig}
           onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
           onUpdateStatus={(taskId, statusId) => void moveTask(taskId, statusId)}

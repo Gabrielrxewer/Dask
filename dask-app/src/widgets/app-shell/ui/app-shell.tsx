@@ -13,8 +13,6 @@ import { useGlobalChrome } from "@/app/layout";
 import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
-import { CreateTaskButton } from "@/features/create-task";
-import type { CreateTaskInput } from "@/modules/workspace";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
@@ -31,8 +29,6 @@ interface AppShellProps {
   filter?: DashboardFilterState;
   onFilterQueryChange?: (query: string) => void;
   onMineToggle?: () => void;
-  onCreateTask?: (input: CreateTaskInput) => void | Promise<void>;
-  createTaskTypes?: Array<{ id: string; label: string }>;
   noPageScroll?: boolean;
   hidePageHeader?: boolean;
   hideSidebarBrandMark?: boolean;
@@ -154,8 +150,6 @@ export function AppShell({
   filter,
   onFilterQueryChange,
   onMineToggle,
-  onCreateTask,
-  createTaskTypes,
   noPageScroll = false,
   hidePageHeader = false,
   hideSidebarBrandMark = false,
@@ -224,8 +218,6 @@ export function AppShell({
             <p className="sidebar__brand-subtitle">Universal Workflow</p>
           </div>
         </div>
-
-        {onCreateTask ? <CreateTaskButton onCreate={onCreateTask} typeOptions={createTaskTypes} /> : null}
 
         <nav className="sidebar__menu">
           {navGroups.map((group) => (

@@ -92,7 +92,10 @@ export function ListPage() {
               <CreateTaskButton
                 className="list-view__create-task"
                 onCreate={input => void createTask(input)}
-                typeOptions={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
+                initialStatusId={boardConfig.statuses[0]?.id ?? "backlog"}
+                statuses={boardConfig.statuses}
+                boardConfig={boardConfig}
+                membersById={activeMembers}
               />
             </div>
           }
@@ -173,10 +176,12 @@ export function ListPage() {
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal
+          mode="edit"
           task={selectedTask}
           status={selectedStatus}
           statuses={boardConfig.statuses}
           assignee={activeMembers[selectedTask.assignee]}
+          membersById={activeMembers}
           boardConfig={boardConfig}
           onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
           onUpdateStatus={(taskId, statusId) => void moveTask(taskId, statusId)}

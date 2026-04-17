@@ -633,6 +633,10 @@ export interface RunDocumentationAssistantInput {
   documentPath?: string;
   documentContent: string;
   selection?: string;
+  conversationHistory?: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }>;
   includeSemanticContext?: boolean;
   topKContextDocs?: number;
 }

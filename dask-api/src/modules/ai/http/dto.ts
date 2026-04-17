@@ -67,6 +67,15 @@ export const runDocumentationAssistantDto = z.object({
   documentPath: z.string().trim().min(1).max(240).optional(),
   documentContent: z.string().max(120_000).default(''),
   selection: z.string().max(20_000).optional(),
+  conversationHistory: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().min(1).max(4000)
+      })
+    )
+    .max(14)
+    .optional(),
   includeSemanticContext: z.boolean().default(true),
   topKContextDocs: z.number().int().min(1).max(10).default(5)
 });

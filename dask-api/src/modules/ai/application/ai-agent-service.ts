@@ -38,6 +38,10 @@ type RunDocumentationAssistantInput = {
   documentPath?: string;
   documentContent: string;
   selection?: string;
+  conversationHistory?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
   includeSemanticContext: boolean;
   topKContextDocs: number;
 };
@@ -123,6 +127,37 @@ function buildDocumentationModeGuidance(mode: RunDocumentationAssistantInput['mo
     '- Reference the current document content when possible.',
     '- If information is missing, state assumptions explicitly.'
   ].join('\n');
+}
+
+function shouldAttachConversationContext(input: {
+  mode: RunDocumentationAssistantInput['mode'];
+  instruction: string;
+  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+}): boolean {
+  if (input.conversationHistory.length === 0) {
+    return false;
+  }
+
+  if (input.mode === 'chat') {
+    return true;
+  }
+
+  const normalized = input.instruction.toLowerCase();
+  return /(continue|continua|como falamos|como voce disse|mesmo estilo|anterior|acima|contexto da conversa|retomar)/.test(
+    normalized
+  );
+}
+
+function shouldAttachSemanticContext(input: {
+  mode: RunDocumentationAssistantInput['mode'];
+  instruction: string;
+}): boolean {
+  if (input.mode === 'chat') {
+    return true;
+  }
+
+  const normalized = input.instruction.toLowerCase();
+  return /(workspace|time|equipe|backlog|sprint|ticket|task|tarefa|roadmap|produto|contexto)/.test(normalized);
 }
 
 export class AIAgentService {
@@ -585,9 +620,32 @@ export class AIAgentService {
     const selection = input.selection ? redact(input.selection) : '';
     const documentContent = redact(input.documentContent);
     const modeGuidance = buildDocumentationModeGuidance(input.mode);
+    const sanitizedConversationHistory = (input.conversationHistory ?? [])
+      .slice(-10)
+      .map((entry) => ({
+        role: entry.role,
+        content: redact(entry.content).slice(0, 1800)
+      }));
+    const includeConversationContext = shouldAttachConversationContext({
+      mode: input.mode,
+      instruction,
+      conversationHistory: sanitizedConversationHistory
+    });
+    const conversationContext = includeConversationContext
+      ? sanitizedConversationHistory
+          .map((entry, index) => `${index + 1}. ${entry.role.toUpperCase()}: ${entry.content}`)
+          .join('\n')
+      : '';
+    const includeSemanticContext =
+      input.includeSemanticContext &&
+      documentContent.trim().length > 0 &&
+      shouldAttachSemanticContext({
+        mode: input.mode,
+        instruction
+      });
 
     let semanticContext = '';
-    if (input.includeSemanticContext && documentContent.trim().length > 0) {
+    if (includeSemanticContext) {
       const query = [documentTitle, instruction, documentContent.slice(0, 3000)]
         .filter(Boolean)
         .join('\n');
@@ -615,6 +673,7 @@ export class AIAgentService {
       `Instruction:\n${instruction}`,
       selection ? `Current selection:\n${selection}` : '',
       `Current document:\n${documentContent || '(empty document)'}`,
+      conversationContext ? `Recent conversation context:\n${conversationContext}` : '',
       semanticContext ? `Related workspace context:\n${semanticContext}` : ''
     ]
       .filter(Boolean)
@@ -641,7 +700,8 @@ export class AIAgentService {
           documentTitle,
           documentPath,
           selection,
-          includeSemanticContext: input.includeSemanticContext,
+          conversationHistory: includeConversationContext ? sanitizedConversationHistory : [],
+          includeSemanticContext,
           topKContextDocs: input.topKContextDocs
         },
         startedAt: new Date()

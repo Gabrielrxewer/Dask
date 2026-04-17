@@ -817,6 +817,7 @@ export const workspaceService: WorkspaceService = {
         documentPath: input.documentPath,
         documentContent: input.documentContent,
         selection: input.selection,
+        conversationHistory: input.conversationHistory,
         includeSemanticContext: input.includeSemanticContext ?? true,
         topKContextDocs: input.topKContextDocs ?? 5
       },

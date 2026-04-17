@@ -90,6 +90,7 @@ export function DocumentationPage() {
   const [includeSemanticContext, setIncludeSemanticContext] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSavingDocId, setIsSavingDocId] = useState<string | null>(null);
+  const [lastRunLatencyMs, setLastRunLatencyMs] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
@@ -338,10 +339,18 @@ export function DocumentationPage() {
     const docContent = activeDoc.content;
     const instruction = (prompt.trim() || DEFAULT_INSTRUCTIONS[activeMode]).slice(0, 6000);
     const inferredMode = inferIntentMode(instruction, activeMode);
+    const conversationHistory = [...activeMessages, createMessage("user", inferredMode, instruction)]
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .slice(-8)
+      .map((message) => ({
+        role: message.role as "user" | "assistant",
+        content: message.content.slice(0, 1800)
+      }));
 
     pushMessage(docId, createMessage("user", inferredMode, instruction));
     setRunError(null);
     setIsRunning(true);
+    const runStartedAt = Date.now();
 
     try {
       const result = await runDocumentationAssistant({
@@ -350,9 +359,11 @@ export function DocumentationPage() {
         documentTitle: docTitle,
         documentContent: docContent,
         selection: selectedSnippet || undefined,
+        conversationHistory,
         includeSemanticContext,
         topKContextDocs: 5
       });
+      setLastRunLatencyMs(Date.now() - runStartedAt);
 
       pushMessage(docId, createMessage("assistant", inferredMode, result.content));
 
@@ -373,6 +384,18 @@ export function DocumentationPage() {
     } finally {
       setIsRunning(false);
     }
+  }
+
+  function clearActiveChat() {
+    if (!activeDoc) {
+      return;
+    }
+
+    setChatsByDoc((previous) => ({
+      ...previous,
+      [activeDoc.id]: []
+    }));
+    setRunError(null);
   }
 
   const canDeleteDoc = docs.length > 0;
@@ -447,7 +470,10 @@ export function DocumentationPage() {
               </button>
             ))}
             {!isDocsLoading && docs.length === 0 ? (
-              <p className="documentation-page__messages-empty">Nenhuma doc criada ainda.</p>
+              <div className="documentation-page__panel-empty documentation-page__panel-empty--compact">
+                <h3>Nenhuma doc criada</h3>
+                <p>Clique em "Nova doc" para começar.</p>
+              </div>
             ) : null}
           </nav>
         </aside>
@@ -488,7 +514,10 @@ export function DocumentationPage() {
               </footer>
             </>
           ) : (
-            <p className="documentation-page__messages-empty">Crie ou selecione uma doc para editar.</p>
+            <div className="documentation-page__panel-empty">
+              <h3>Selecione uma doc</h3>
+              <p>Crie uma nova doc ou selecione uma existente para começar a editar.</p>
+            </div>
           )}
         </section>
 
@@ -498,7 +527,24 @@ export function DocumentationPage() {
               <h2>Chat IA</h2>
               <p>{activeDoc ? `ON: ${activeDoc.title}` : "Selecione uma doc"}</p>
             </div>
-            <StatusBadge tone={assistantTone}>{assistantStatus}</StatusBadge>
+            <div className="documentation-page__assistant-tools">
+              <button
+                type="button"
+                className="documentation-page__clear-chat-button"
+                aria-label="Limpar chat"
+                title="Limpar chat desta doc"
+                disabled={activeMessages.length === 0 || isRunning}
+                onClick={clearActiveChat}
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M9 3h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M4 6h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M7 6v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+              <StatusBadge tone={assistantTone}>{assistantStatus}</StatusBadge>
+            </div>
           </header>
 
           <div className="documentation-page__modes">
@@ -590,6 +636,9 @@ export function DocumentationPage() {
               </button>
             </div>
             <p className="documentation-page__composer-hint">Enter envia - Shift + Enter quebra linha</p>
+            {lastRunLatencyMs !== null ? (
+              <p className="documentation-page__composer-latency">{`Ultima resposta: ${(lastRunLatencyMs / 1000).toFixed(1)}s`}</p>
+            ) : null}
             <label className="documentation-page__composer-checkbox">
               <input
                 type="checkbox"

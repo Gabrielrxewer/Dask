@@ -169,6 +169,7 @@ export const buildAiRoutes = (deps: {
         documentPath: payload.documentPath,
         documentContent: payload.documentContent,
         selection: payload.selection,
+        conversationHistory: payload.conversationHistory,
         includeSemanticContext: payload.includeSemanticContext,
         topKContextDocs: payload.topKContextDocs
       });

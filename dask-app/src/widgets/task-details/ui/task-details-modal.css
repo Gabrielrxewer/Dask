@@ -476,6 +476,183 @@
   min-height: 34px;
 }
 
+.app-theme[data-theme="dark"] .task-details {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(90, 183, 255, 0.13), transparent 34%),
+    radial-gradient(circle at 100% 100%, rgba(48, 213, 205, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(11, 27, 41, 0.98) 0%, rgba(7, 19, 30, 1) 100%);
+  border-color: rgba(83, 126, 158, 0.58);
+  box-shadow:
+    0 34px 72px rgba(0, 0, 0, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.app-theme[data-theme="dark"] .task-details__topbar {
+  border-bottom-color: rgba(70, 108, 136, 0.66);
+  background: linear-gradient(180deg, rgba(16, 36, 53, 0.98) 0%, rgba(10, 27, 41, 1) 100%);
+}
+
+.app-theme[data-theme="dark"] .task-details__breadcrumbs {
+  color: rgba(155, 191, 220, 0.82);
+}
+
+.app-theme[data-theme="dark"] .task-details__header-copy h2 {
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .task-details__close {
+  border-color: rgba(92, 136, 168, 0.68);
+  background: linear-gradient(180deg, rgba(18, 42, 61, 0.98) 0%, rgba(13, 31, 46, 1) 100%);
+  color: var(--text-strong);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.app-theme[data-theme="dark"] .task-details__close:hover {
+  border-color: rgba(116, 172, 210, 0.88);
+  background: linear-gradient(180deg, rgba(21, 49, 72, 1) 0%, rgba(14, 37, 55, 1) 100%);
+}
+
+.app-theme[data-theme="dark"] .task-details__main {
+  background: transparent;
+}
+
+.app-theme[data-theme="dark"] .task-details__chip {
+  border-color: rgba(83, 126, 158, 0.68);
+  background: linear-gradient(180deg, rgba(17, 39, 57, 0.96) 0%, rgba(12, 31, 46, 0.98) 100%);
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .task-details__chip--status {
+  border-color: rgba(90, 183, 255, 0.64);
+  background:
+    radial-gradient(circle at top left, rgba(90, 183, 255, 0.12) 0%, transparent 28%),
+    linear-gradient(180deg, rgba(15, 45, 70, 0.98) 0%, rgba(11, 34, 52, 1) 100%);
+}
+
+.app-theme[data-theme="dark"] .task-details__section {
+  background:
+    radial-gradient(circle at top left, rgba(90, 183, 255, 0.07) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(15, 35, 51, 0.96) 0%, rgba(10, 27, 41, 0.99) 100%);
+  border-color: rgba(74, 112, 140, 0.72);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.app-theme[data-theme="dark"] .task-details__section h3,
+.app-theme[data-theme="dark"] .task-details__panel h4 {
+  color: rgba(183, 213, 239, 0.9);
+}
+
+.app-theme[data-theme="dark"] .task-details__section p,
+.app-theme[data-theme="dark"] .task-details__summary-list span,
+.app-theme[data-theme="dark"] .task-details__actionbar-copy p,
+.app-theme[data-theme="dark"] .task-details__owner span,
+.app-theme[data-theme="dark"] .task-details__activity span,
+.app-theme[data-theme="dark"] .task-details__chat-item p,
+.app-theme[data-theme="dark"] .task-details__field-hint,
+.app-theme[data-theme="dark"] .task-details__checkbox-row {
+  color: var(--text-muted);
+}
+
+.app-theme[data-theme="dark"] .task-details__section--hero {
+  border-color: rgba(90, 151, 192, 0.62);
+  background:
+    radial-gradient(circle at top left, rgba(90, 183, 255, 0.1) 0%, transparent 26%),
+    linear-gradient(180deg, rgba(18, 42, 61, 0.98) 0%, rgba(12, 31, 46, 1) 100%);
+}
+
+.app-theme[data-theme="dark"] .task-details__progress-head {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .task-details__progress-head strong,
+.app-theme[data-theme="dark"] .task-details__summary-list strong,
+.app-theme[data-theme="dark"] .task-details__owner p,
+.app-theme[data-theme="dark"] .task-details__activity strong,
+.app-theme[data-theme="dark"] .task-details__chat-item strong {
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .task-details__progress-track {
+  background: rgba(47, 77, 101, 0.9);
+}
+
+.app-theme[data-theme="dark"] .task-details__checklist li,
+.app-theme[data-theme="dark"] .task-details__multi-option,
+.app-theme[data-theme="dark"] .task-details__ai-suggestion,
+.app-theme[data-theme="dark"] .task-details__chat-item {
+  border-color: rgba(75, 114, 143, 0.72);
+  background:
+    radial-gradient(circle at top left, rgba(90, 183, 255, 0.05) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(17, 38, 56, 0.96) 0%, rgba(12, 30, 45, 0.99) 100%);
+  color: var(--text);
+}
+
+.app-theme[data-theme="dark"] .task-details__check-toggle {
+  background: rgba(42, 74, 101, 0.98);
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .task-details__checklist li.is-done {
+  background:
+    radial-gradient(circle at top left, rgba(79, 211, 138, 0.1) 0%, transparent 22%),
+    linear-gradient(180deg, rgba(16, 55, 38, 0.98) 0%, rgba(11, 39, 27, 1) 100%);
+  border-color: rgba(79, 211, 138, 0.32);
+}
+
+.app-theme[data-theme="dark"] .task-details__checklist li.is-done .task-details__check-toggle {
+  background: #21b35e;
+  color: #f7fffb;
+}
+
+.app-theme[data-theme="dark"] .task-details__multi-option {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .task-details__multi-option span {
+  color: var(--text);
+}
+
+.app-theme[data-theme="dark"] .task-details__side {
+  border-left-color: rgba(70, 108, 136, 0.66);
+  background:
+    radial-gradient(circle at top left, rgba(90, 183, 255, 0.08) 0%, transparent 26%),
+    linear-gradient(180deg, rgba(10, 25, 38, 1) 0%, rgba(7, 18, 28, 1) 100%);
+}
+
+.app-theme[data-theme="dark"] .task-details__panel {
+  background:
+    radial-gradient(circle at top left, rgba(90, 183, 255, 0.07) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(15, 35, 51, 0.96) 0%, rgba(10, 27, 41, 0.99) 100%);
+  border-color: rgba(74, 112, 140, 0.72);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.app-theme[data-theme="dark"] .task-details__divider {
+  background: linear-gradient(90deg, rgba(71, 110, 138, 0.72), rgba(71, 110, 138, 0.08));
+}
+
+.app-theme[data-theme="dark"] .task-details__actionbar {
+  border-top-color: rgba(70, 108, 136, 0.66);
+  background: linear-gradient(180deg, rgba(16, 36, 53, 0.98) 0%, rgba(10, 27, 41, 1) 100%);
+}
+
+.app-theme[data-theme="dark"] .task-details__error {
+  color: var(--danger);
+}
+
+.app-theme[data-theme="dark"] .task-details__chat-item.is-user {
+  background:
+    radial-gradient(circle at top right, rgba(24, 184, 189, 0.12) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(11, 55, 89, 0.98) 0%, rgba(9, 41, 67, 1) 100%);
+  border-color: rgba(101, 186, 223, 0.44);
+}
+
 @media (max-width: 900px) {
   .task-details {
     width: min(100%, calc(100vw - 24px));

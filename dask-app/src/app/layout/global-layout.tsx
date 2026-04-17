@@ -268,6 +268,31 @@ export function GlobalLayout() {
   }, [user?.id]);
 
   useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const { body } = document;
+
+    if (isAuthenticatedArea) {
+      body.classList.add("app-theme");
+      body.dataset.theme = resolvedProfileTheme;
+      body.dataset.themePreference = normalizedProfileTheme;
+      return () => {
+        body.classList.remove("app-theme");
+        delete body.dataset.theme;
+        delete body.dataset.themePreference;
+      };
+    }
+
+    body.classList.remove("app-theme");
+    delete body.dataset.theme;
+    delete body.dataset.themePreference;
+
+    return undefined;
+  }, [isAuthenticatedArea, normalizedProfileTheme, resolvedProfileTheme]);
+
+  useEffect(() => {
     if (!isHomeRoute) {
       setActiveHomeSection("top");
       return;

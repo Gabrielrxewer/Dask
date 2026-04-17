@@ -96,7 +96,11 @@ export function BoardPage() {
     fetchWorkflowStates,
     listAiAgents,
     runAiAgentOnItem,
-    runAiRiskAnalysis
+    runAiRiskAnalysis,
+    listWorkspaceDocuments,
+    listWorkItemLinkedDocuments,
+    linkDocumentToWorkItem,
+    unlinkDocumentFromWorkItem
   } = useWorkspace();
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
@@ -450,6 +454,10 @@ export function BoardPage() {
               availableTags={availableTags}
               onRunAiAgentOnItem={runAiAgentOnItem}
               onRunAiRiskAnalysis={runAiRiskAnalysis}
+              listWorkspaceDocuments={listWorkspaceDocuments}
+              listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
+              linkDocumentToWorkItem={linkDocumentToWorkItem}
+              unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
             />
           )}
         </Section>

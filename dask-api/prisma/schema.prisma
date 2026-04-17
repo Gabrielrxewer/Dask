@@ -255,6 +255,7 @@ model Workspace {
   aiAgentRuns            AIAgentRun[]
   invites                WorkspaceInvite[]
   documents              WorkspaceDocument[]
+  workItemDocumentLinks  WorkItemDocumentLink[]
 
   @@unique([organizationId, key])
 }
@@ -270,9 +271,26 @@ model WorkspaceDocument {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  itemLinks   WorkItemDocumentLink[]
 
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])
+}
+
+model WorkItemDocumentLink {
+  id          String            @id @default(uuid())
+  workspaceId String
+  itemId      String
+  documentId  String
+  linkedBy    String
+  createdAt   DateTime          @default(now())
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  item        Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  document    WorkspaceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, documentId])
+  @@index([workspaceId, itemId, createdAt])
+  @@index([workspaceId, documentId, createdAt])
 }
 
 model WorkspaceInvite {
@@ -547,6 +565,7 @@ model Item {
   attachments       ItemAttachment[]
   history           ItemHistory[]
   searchDocuments   SearchDocument[]
+  documentLinks     WorkItemDocumentLink[]
   customFieldValues CustomFieldValue[]
   tags              WorkItemTag[]
   viewPlacements    WorkItemViewPlacement[]

@@ -115,6 +115,13 @@ export interface WorkspaceDocument {
   updatedAt: string;
 }
 
+export interface WorkItemLinkedDocument {
+  id: string;
+  title: string;
+  updatedAt: string;
+  linkedAt?: string;
+}
+
 export interface WorkspaceSummary {
   id: string;
   organizationId: string | null;
@@ -504,6 +511,13 @@ export interface WorkspaceService {
     input: { title?: string; content?: string; position?: number }
   ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (workspaceSlug: string, documentId: string) => Promise<void>;
+  listWorkItemLinkedDocuments: (workspaceSlug: string, itemId: string) => Promise<WorkItemLinkedDocument[]>;
+  linkDocumentToWorkItem: (
+    workspaceSlug: string,
+    itemId: string,
+    documentId: string
+  ) => Promise<WorkItemLinkedDocument[]>;
+  unlinkDocumentFromWorkItem: (workspaceSlug: string, itemId: string, documentId: string) => Promise<void>;
 
   listAiAgents: (workspaceSlug: string) => Promise<AiAgentSummary[]>;
   listAiRuns: (

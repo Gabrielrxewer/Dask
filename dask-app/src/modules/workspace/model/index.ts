@@ -41,6 +41,7 @@ export type {
   WorkspaceAutomation,
   WorkspaceBoardMode,
   WorkspaceDocument,
+  WorkItemLinkedDocument,
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceProfile,

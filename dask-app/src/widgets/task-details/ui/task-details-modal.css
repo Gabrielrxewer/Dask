@@ -433,6 +433,114 @@
   grid-template-columns: 1fr;
 }
 
+.task-details__doc-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.task-details__linked-docs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.task-details__linked-docs li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  border: 1px solid #d8e6f6;
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.task-details__linked-docs strong {
+  display: block;
+  color: #214c75;
+  font-size: 0.78rem;
+}
+
+.task-details__linked-docs span {
+  color: #6888a9;
+  font-size: 0.72rem;
+}
+
+.task-details__linked-docs button {
+  border: 1px solid #cfe0f3;
+  background: #ffffff;
+  border-radius: 10px;
+  color: #31577f;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.task-details__ai-textarea {
+  min-height: 84px;
+}
+
+.task-details__ai-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.task-details__ai-messages {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.task-details__ai-message {
+  border: 1px solid #d8e6f6;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.task-details__ai-message header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-details__ai-message strong {
+  font-size: 0.74rem;
+  color: #214c75;
+}
+
+.task-details__ai-message span {
+  font-size: 0.7rem;
+  color: #6988a9;
+}
+
+.task-details__ai-message p {
+  margin: 0;
+  color: #31577f;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+}
+
+.task-details__ai-message--assistant {
+  border-color: #bcd8f7;
+  background: #eef6ff;
+}
+
+.task-details__ai-message--system {
+  border-color: #f8d5c2;
+  background: #fff7f2;
+}
+
 .task-details__progress-track {
   margin-top: 4px;
   height: 7px;
@@ -623,11 +731,29 @@
 .app-theme[data-theme="dark"] .task-details__priority-option,
 .app-theme[data-theme="dark"] .task-details__checklist li,
 .app-theme[data-theme="dark"] .task-details__multi-option,
+.app-theme[data-theme="dark"] .task-details__linked-docs li,
+.app-theme[data-theme="dark"] .task-details__ai-message,
 .app-theme[data-theme="dark"] .task-details__chip,
 .app-theme[data-theme="dark"] .task-details__tag-pill {
   background: linear-gradient(180deg, rgba(18, 42, 61, 0.98) 0%, rgba(13, 31, 46, 1) 100%);
   border-color: rgba(82, 124, 155, 0.7);
   color: var(--text);
+}
+
+.app-theme[data-theme="dark"] .task-details__linked-docs button {
+  background: rgba(15, 35, 51, 0.98);
+  border-color: rgba(82, 124, 155, 0.7);
+  color: var(--text);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--assistant {
+  background: linear-gradient(180deg, rgba(25, 54, 77, 0.98) 0%, rgba(15, 35, 51, 0.98) 100%);
+  border-color: rgba(109, 165, 219, 0.65);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--system {
+  background: linear-gradient(180deg, rgba(57, 40, 30, 0.98) 0%, rgba(45, 30, 22, 0.98) 100%);
+  border-color: rgba(190, 130, 96, 0.65);
 }
 
 .app-theme[data-theme="dark"] .task-details__type-card {
@@ -710,6 +836,10 @@
   }
 
   .task-details__type-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-details__doc-link-row {
     grid-template-columns: 1fr;
   }
 }

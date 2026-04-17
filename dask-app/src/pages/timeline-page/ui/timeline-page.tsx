@@ -87,6 +87,10 @@ export function TimelinePage() {
     listAiAgents,
     runAiAgentOnItem,
     runAiRiskAnalysis,
+    listWorkspaceDocuments,
+    listWorkItemLinkedDocuments,
+    linkDocumentToWorkItem,
+    unlinkDocumentFromWorkItem,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -311,6 +315,10 @@ export function TimelinePage() {
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}
           onRunAiRiskAnalysis={runAiRiskAnalysis}
+          listWorkspaceDocuments={listWorkspaceDocuments}
+          listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
+          linkDocumentToWorkItem={linkDocumentToWorkItem}
+          unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
           onClose={clearSelectedTask}
         />
       ) : null}

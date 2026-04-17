@@ -288,6 +288,20 @@ export class AIAgentService {
         history: {
           orderBy: { createdAt: 'desc' },
           take: 12
+        },
+        documentLinks: {
+          orderBy: { createdAt: 'desc' },
+          take: 8,
+          include: {
+            document: {
+              select: {
+                id: true,
+                title: true,
+                content: true,
+                updatedAt: true
+              }
+            }
+          }
         }
       }
     });
@@ -297,6 +311,17 @@ export class AIAgentService {
     }
 
     const redact = (value: string): string => (input.redactSensitive ? redactSensitiveText(value) : value);
+
+    const linkedDocumentsContext = item.documentLinks
+      .map((entry, index) => {
+        const snippet = entry.document.content.slice(0, 900);
+        return [
+          `${index + 1}. ${entry.document.title} (${entry.document.id})`,
+          `Updated At: ${entry.document.updatedAt.toISOString()}`,
+          snippet.length > 0 ? `Content Snippet:\n${snippet}` : 'Content Snippet: (empty)'
+        ].join('\n');
+      })
+      .join('\n\n');
 
     const itemContext = redact(
       [
@@ -308,6 +333,8 @@ export class AIAgentService {
         `Fields: ${JSON.stringify(asRecord(item.fields))}`,
         `Metadata: ${JSON.stringify(asRecord(item.metadata))}`,
         `Checklist: ${JSON.stringify(asRecord(item.checklist))}`,
+        `Linked Documents: ${item.documentLinks.length}`,
+        linkedDocumentsContext.length > 0 ? `Linked Document Context:\n${linkedDocumentsContext}` : '',
         `Updated At: ${item.updatedAt.toISOString()}`,
         'Recent History:',
         ...item.history.map((entry) => `- ${entry.createdAt.toISOString()} | ${entry.eventName}`)
@@ -319,7 +346,15 @@ export class AIAgentService {
     }
 
     const relatedDocs = await this.hybridSearchService.search({
-      query: `${item.title}\n${item.description ?? ''}`.trim(),
+      query: [
+        item.title,
+        item.description ?? '',
+        ...item.documentLinks.map((entry) => entry.document.title),
+        ...item.documentLinks.map((entry) => entry.document.content.slice(0, 900))
+      ]
+        .filter((value) => value.trim().length > 0)
+        .join('\n')
+        .trim(),
       filters: {
         workspaceId: input.workspaceId,
         boardId: item.boardId

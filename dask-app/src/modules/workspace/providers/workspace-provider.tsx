@@ -28,6 +28,7 @@ import type {
   UpdateItemTypeInput,
   WorkspaceAutomation,
   WorkspaceDocument,
+  WorkItemLinkedDocument,
   WorkspacePreferences,
   WorkspaceSnapshot,
   WorkspaceTemplateKey
@@ -106,6 +107,9 @@ interface WorkspaceContextValue {
     input: { title?: string; content?: string; position?: number }
   ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (documentId: string) => Promise<void>;
+  listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
+  linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
+  unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -558,6 +562,36 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [workspaceSlug]
   );
 
+  const listWorkItemLinkedDocuments = useCallback(
+    async (itemId: string): Promise<WorkItemLinkedDocument[]> => {
+      if (!workspaceSlug) {
+        return [];
+      }
+      return workspaceService.listWorkItemLinkedDocuments(workspaceSlug, itemId);
+    },
+    [workspaceSlug]
+  );
+
+  const linkDocumentToWorkItem = useCallback(
+    async (itemId: string, documentId: string): Promise<WorkItemLinkedDocument[]> => {
+      if (!workspaceSlug) {
+        return [];
+      }
+      return workspaceService.linkDocumentToWorkItem(workspaceSlug, itemId, documentId);
+    },
+    [workspaceSlug]
+  );
+
+  const unlinkDocumentFromWorkItem = useCallback(
+    async (itemId: string, documentId: string): Promise<void> => {
+      if (!workspaceSlug) {
+        return;
+      }
+      await workspaceService.unlinkDocumentFromWorkItem(workspaceSlug, itemId, documentId);
+    },
+    [workspaceSlug]
+  );
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       snapshot,
@@ -609,7 +643,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       listWorkspaceDocuments,
       createWorkspaceDocument,
       updateWorkspaceDocument,
-      deleteWorkspaceDocument
+      deleteWorkspaceDocument,
+      listWorkItemLinkedDocuments,
+      linkDocumentToWorkItem,
+      unlinkDocumentFromWorkItem
     }),
     [
       snapshot,
@@ -661,7 +698,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       listWorkspaceDocuments,
       createWorkspaceDocument,
       updateWorkspaceDocument,
-      deleteWorkspaceDocument
+      deleteWorkspaceDocument,
+      listWorkItemLinkedDocuments,
+      linkDocumentToWorkItem,
+      unlinkDocumentFromWorkItem
     ]
   );
 

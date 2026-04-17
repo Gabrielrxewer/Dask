@@ -11,7 +11,7 @@ import type {
   TaskStatus,
   TaskStatusId
 } from "@/entities/task";
-import type { AiAgentSummary } from "@/modules/workspace/model";
+import type { AiAgentSummary, WorkItemLinkedDocument, WorkspaceDocument } from "@/modules/workspace/model";
 import type { CreateTaskInput, TaskScheduleInput, UpdateTaskInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { CreateTaskButton } from "@/features/create-task";
@@ -49,6 +49,10 @@ interface BoardColumnsProps {
     itemId: string,
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
+  listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+  listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
+  linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
+  unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
 }
 
 type DropTarget = {
@@ -133,7 +137,11 @@ export function BoardColumns({
   aiAgents,
   availableTags = [],
   onRunAiAgentOnItem,
-  onRunAiRiskAnalysis
+  onRunAiRiskAnalysis,
+  listWorkspaceDocuments,
+  listWorkItemLinkedDocuments,
+  linkDocumentToWorkItem,
+  unlinkDocumentFromWorkItem
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
@@ -308,6 +316,10 @@ export function BoardColumns({
           aiAgents={aiAgents}
           onRunAiAgentOnItem={onRunAiAgentOnItem}
           onRunAiRiskAnalysis={onRunAiRiskAnalysis}
+          listWorkspaceDocuments={listWorkspaceDocuments}
+          listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
+          linkDocumentToWorkItem={linkDocumentToWorkItem}
+          unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
           onClose={() => setSelectedTaskId("")}
         />
       ) : null}

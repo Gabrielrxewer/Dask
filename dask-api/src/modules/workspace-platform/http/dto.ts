@@ -182,6 +182,12 @@ export const workItemParamsDto = z.object({
   itemId: z.string().uuid()
 });
 
+export const workItemDocumentParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  documentId: z.string().uuid()
+});
+
 export const createWorkItemDto = z.object({
   boardId: z.string().uuid().optional(),
   title: z.string().min(2),

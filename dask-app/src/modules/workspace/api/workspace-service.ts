@@ -25,6 +25,7 @@ import type {
   TaskScheduleInput,
   UpdateTaskInput,
   WorkspaceDocument,
+  WorkItemLinkedDocument,
   WorkspacePreferences,
   WorkspaceProfile,
   WorkspaceInvite,
@@ -701,6 +702,38 @@ export const workspaceService: WorkspaceService = {
   async deleteWorkspaceDocument(workspaceSlug: string, documentId: string): Promise<void> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.delete(`/workspaces/${workspaceId}/documents/${documentId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listWorkItemLinkedDocuments(workspaceSlug: string, itemId: string): Promise<WorkItemLinkedDocument[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkItemLinkedDocument[]>(`/workspaces/${workspaceId}/work-items/${itemId}/documents`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async linkDocumentToWorkItem(
+    workspaceSlug: string,
+    itemId: string,
+    documentId: string
+  ): Promise<WorkItemLinkedDocument[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkItemLinkedDocument[]>(
+      `/workspaces/${workspaceId}/work-items/${itemId}/documents/${documentId}`,
+      undefined,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async unlinkDocumentFromWorkItem(workspaceSlug: string, itemId: string, documentId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/work-items/${itemId}/documents/${documentId}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });

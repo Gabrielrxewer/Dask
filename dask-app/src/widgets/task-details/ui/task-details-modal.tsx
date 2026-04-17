@@ -19,8 +19,14 @@ import type {
   TaskStatusId
 } from "@/entities/task";
 import type { Member, MembersById } from "@/entities/member";
-import type { CreateTaskInput, TaskScheduleInput, UpdateTaskInput } from "@/modules/workspace/model";
-import type { AiAgentSummary } from "@/modules/workspace/model";
+import type {
+  AiAgentSummary,
+  CreateTaskInput,
+  TaskScheduleInput,
+  UpdateTaskInput,
+  WorkItemLinkedDocument,
+  WorkspaceDocument
+} from "@/modules/workspace/model";
 import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
 import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
 import "./task-details-modal.css";
@@ -64,12 +70,29 @@ type TaskDetailsModalProps =
         itemId: string,
         input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
       ) => Promise<{ runId: string; content: string }>;
+      listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+      listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
+      linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
+      unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
       onClose: () => void;
     };
 
 interface ScheduleDraft {
   plannedStartAt: string;
   plannedEndAt: string;
+}
+
+type CardAiMessageRole = "user" | "assistant" | "system";
+
+interface CardAiMessage {
+  id: string;
+  role: CardAiMessageRole;
+  content: string;
+  createdAt: string;
+}
+
+function createMessageId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function normalizeDateTimeInput(value: string | null | undefined): string {
@@ -170,6 +193,18 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [availableDocuments, setAvailableDocuments] = useState<WorkspaceDocument[]>([]);
+  const [linkedDocuments, setLinkedDocuments] = useState<WorkItemLinkedDocument[]>([]);
+  const [documentToLinkId, setDocumentToLinkId] = useState("");
+  const [isDocsLoading, setIsDocsLoading] = useState(false);
+  const [isLinkingDocument, setIsLinkingDocument] = useState(false);
+  const [unlinkingDocumentId, setUnlinkingDocumentId] = useState<string | null>(null);
+  const [docsError, setDocsError] = useState("");
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiMessages, setAiMessages] = useState<CardAiMessage[]>([]);
+  const [isAiRunning, setIsAiRunning] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   const memberOptions = useMemo(
     () => Object.values(props.membersById).sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
@@ -179,6 +214,20 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const selectedAssignee =
     props.membersById[assigneeDraft] ??
     (props.mode === "edit" ? props.assignee : memberOptions[0]);
+  const listWorkspaceDocuments =
+    props.mode === "edit" ? props.listWorkspaceDocuments : null;
+  const listWorkItemLinkedDocuments =
+    props.mode === "edit" ? props.listWorkItemLinkedDocuments : null;
+  const editModeAiAgents = props.mode === "edit" ? props.aiAgents : [];
+
+  const linkableDocuments = useMemo(() => {
+    if (isCreateMode) {
+      return [];
+    }
+
+    const linkedIds = new Set(linkedDocuments.map((document) => document.id));
+    return availableDocuments.filter((document) => !linkedIds.has(document.id));
+  }, [availableDocuments, isCreateMode, linkedDocuments]);
 
   const visibleCardFieldIds = useMemo(
     () =>
@@ -293,6 +342,65 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     });
   }, [task, visibleCustomFields]);
 
+  useEffect(() => {
+    if (props.mode !== "edit" || !task) {
+      setAvailableDocuments([]);
+      setLinkedDocuments([]);
+      setDocumentToLinkId("");
+      setDocsError("");
+      return;
+    }
+
+    let mounted = true;
+    setIsDocsLoading(true);
+    setDocsError("");
+    setLinkedDocuments(task.linkedDocuments ?? []);
+
+    if (!listWorkspaceDocuments || !listWorkItemLinkedDocuments) {
+      setIsDocsLoading(false);
+      return;
+    }
+
+    Promise.all([listWorkspaceDocuments(), listWorkItemLinkedDocuments(task.id)])
+      .then(([workspaceDocuments, linked]) => {
+        if (!mounted) {
+          return;
+        }
+        setAvailableDocuments(workspaceDocuments);
+        setLinkedDocuments(linked);
+      })
+      .catch((loadError) => {
+        if (!mounted) {
+          return;
+        }
+        setDocsError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar docs vinculadas.");
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsDocsLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [
+    props.mode,
+    listWorkspaceDocuments,
+    listWorkItemLinkedDocuments,
+    task?.id
+  ]);
+
+  useEffect(() => {
+    if (props.mode !== "edit") {
+      return;
+    }
+    setSelectedAgentId(editModeAiAgents[0]?.id ?? "");
+    setAiPrompt("");
+    setAiMessages([]);
+    setAiError("");
+  }, [props.mode, editModeAiAgents, task?.id]);
+
   const checklist = task ? buildTaskChecklistSummary(task) : { done: 0, total: 0, percent: 0 };
   const activeTypeMeta = getTaskTypeDisplayMeta(typeMap, typeDraft);
   const activeStatusLabel = statuses.find(option => option.id === statusDraft)?.label ?? statusDraft;
@@ -328,6 +436,115 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         const draft = normalizeFieldValue(field, customFieldDrafts[field.id] ?? null);
         return JSON.stringify(current) !== JSON.stringify(draft);
       }));
+
+  const handleLinkDocument = async () => {
+    if (props.mode !== "edit" || !task || !documentToLinkId) {
+      return;
+    }
+
+    setIsLinkingDocument(true);
+    setDocsError("");
+
+    try {
+      const nextLinkedDocuments = await props.linkDocumentToWorkItem(task.id, documentToLinkId);
+      setLinkedDocuments(nextLinkedDocuments);
+      setDocumentToLinkId("");
+    } catch (linkError) {
+      setDocsError(linkError instanceof Error ? linkError.message : "Nao foi possivel vincular a doc.");
+    } finally {
+      setIsLinkingDocument(false);
+    }
+  };
+
+  const handleUnlinkDocument = async (documentId: string) => {
+    if (props.mode !== "edit" || !task) {
+      return;
+    }
+
+    setUnlinkingDocumentId(documentId);
+    setDocsError("");
+    try {
+      await props.unlinkDocumentFromWorkItem(task.id, documentId);
+      setLinkedDocuments((current) => current.filter((document) => document.id !== documentId));
+    } catch (unlinkError) {
+      setDocsError(unlinkError instanceof Error ? unlinkError.message : "Nao foi possivel remover a doc vinculada.");
+    } finally {
+      setUnlinkingDocumentId((current) => (current === documentId ? null : current));
+    }
+  };
+
+  const handleRunAiOnCard = async () => {
+    if (props.mode !== "edit" || !task) {
+      return;
+    }
+
+    const prompt = aiPrompt.trim();
+    if (prompt.length < 2) {
+      setAiError("Digite uma instrucao para a IA.");
+      return;
+    }
+
+    const targetAgentId = selectedAgentId || editModeAiAgents[0]?.id;
+    if (!targetAgentId) {
+      setAiError("Nenhum agente de IA ativo para este workspace.");
+      return;
+    }
+
+    const linkedDocsContext =
+      linkedDocuments.length > 0
+        ? linkedDocuments.map((document) => `- ${document.title} (${document.id})`).join("\n")
+        : "- Sem docs vinculadas.";
+
+    const enrichedInstruction = [
+      prompt,
+      "",
+      "Considere o contexto completo deste card e das docs vinculadas abaixo na resposta:",
+      linkedDocsContext
+    ].join("\n");
+
+    const userMessage: CardAiMessage = {
+      id: createMessageId(),
+      role: "user",
+      content: prompt,
+      createdAt: new Date().toISOString()
+    };
+
+    setAiMessages((current) => [...current, userMessage]);
+    setAiError("");
+    setIsAiRunning(true);
+
+    try {
+      const result = await props.onRunAiAgentOnItem(task.id, targetAgentId, {
+        instruction: enrichedInstruction,
+        includeSemanticContext: true,
+        topKContextDocs: 5
+      });
+
+      setAiMessages((current) => [
+        ...current,
+        {
+          id: result.runId || createMessageId(),
+          role: "assistant",
+          content: result.content,
+          createdAt: new Date().toISOString()
+        }
+      ]);
+      setAiPrompt("");
+    } catch (runError) {
+      setAiError(runError instanceof Error ? runError.message : "Nao foi possivel consultar a IA agora.");
+      setAiMessages((current) => [
+        ...current,
+        {
+          id: createMessageId(),
+          role: "system",
+          content: "Falha ao executar a IA para este card.",
+          createdAt: new Date().toISOString()
+        }
+      ]);
+    } finally {
+      setIsAiRunning(false);
+    }
+  };
 
   const handleSubmit = async () => {
     const trimmedTitle = titleDraft.trim();
@@ -743,6 +960,130 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
               ))}
             </div>
           </section>
+
+          {!isCreateMode && task ? (
+            <section className="task-details__panel task-details__panel--docs">
+              <div className="task-details__section-head">
+                <h3 className="task-details__summary-style-title">Docs vinculadas</h3>
+                <span className="task-details__section-caption">{`${linkedDocuments.length} vinculada(s)`}</span>
+              </div>
+
+              {isDocsLoading ? (
+                <p className="task-details__muted">Carregando docs...</p>
+              ) : (
+                <>
+                  <div className="task-details__doc-link-row">
+                    <Select
+                      value={documentToLinkId}
+                      onChange={(event) => setDocumentToLinkId(event.target.value)}
+                      disabled={isLinkingDocument || linkableDocuments.length === 0}
+                    >
+                      <option value="">Selecione uma doc...</option>
+                      {linkableDocuments.map((document) => (
+                        <option key={document.id} value={document.id}>
+                          {document.title}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleLinkDocument()}
+                      disabled={!documentToLinkId || isLinkingDocument}
+                    >
+                      {isLinkingDocument ? "Vinculando..." : "Vincular"}
+                    </Button>
+                  </div>
+
+                  {linkedDocuments.length === 0 ? (
+                    <p className="task-details__muted">Nenhuma doc vinculada a este card.</p>
+                  ) : (
+                    <ul className="task-details__linked-docs">
+                      {linkedDocuments.map((document) => (
+                        <li key={document.id}>
+                          <div>
+                            <strong>{document.title}</strong>
+                            <span>{`Atualizada em ${new Date(document.updatedAt).toLocaleString("pt-BR")}`}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleUnlinkDocument(document.id)}
+                            disabled={unlinkingDocumentId === document.id}
+                          >
+                            {unlinkingDocumentId === document.id ? "Removendo..." : "Remover"}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+
+              {docsError ? <p className="task-details__error">{docsError}</p> : null}
+            </section>
+          ) : null}
+
+          {!isCreateMode && task ? (
+            <section className="task-details__panel task-details__panel--ai">
+              <div className="task-details__section-head">
+                <h3 className="task-details__summary-style-title">IA do card</h3>
+                <span className="task-details__section-caption">
+                  {linkedDocuments.length > 0 ? "Usa card + docs vinculadas" : "Usa contexto do card"}
+                </span>
+              </div>
+
+              <FormField label="Agente">
+                <Select value={selectedAgentId} onChange={(event) => setSelectedAgentId(event.target.value)}>
+                  {editModeAiAgents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <Textarea
+                className="task-details__ai-textarea"
+                value={aiPrompt}
+                onChange={(event) => setAiPrompt(event.target.value)}
+                placeholder="Pergunte algo sobre este card e as docs vinculadas..."
+              />
+
+              <div className="task-details__ai-actions">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void handleRunAiOnCard()}
+                  disabled={isAiRunning || editModeAiAgents.length === 0}
+                >
+                  {isAiRunning ? "Consultando..." : "Perguntar IA"}
+                </Button>
+              </div>
+
+              <div className="task-details__ai-messages">
+                {aiMessages.length === 0 ? (
+                  <p className="task-details__muted">
+                    A IA vai responder com base no card aberto e nas docs vinculadas.
+                  </p>
+                ) : (
+                  aiMessages.map((message) => (
+                    <article key={message.id} className={`task-details__ai-message task-details__ai-message--${message.role}`}>
+                      <header>
+                        <strong>
+                          {message.role === "assistant" ? "IA" : message.role === "user" ? "Voce" : "Sistema"}
+                        </strong>
+                        <span>{new Date(message.createdAt).toLocaleTimeString("pt-BR")}</span>
+                      </header>
+                      <p>{message.content}</p>
+                    </article>
+                  ))
+                )}
+              </div>
+
+              {aiError ? <p className="task-details__error">{aiError}</p> : null}
+            </section>
+          ) : null}
         </aside>
       </div>
 

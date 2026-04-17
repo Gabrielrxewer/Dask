@@ -37,6 +37,13 @@ export interface TaskChecklist {
   items: ChecklistItem[];
 }
 
+export interface LinkedTaskDocument {
+  id: string;
+  title: string;
+  updatedAt: string;
+  linkedAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -51,6 +58,7 @@ export interface Task {
   due: string;
   plannedStartAt?: string | null;
   plannedEndAt?: string | null;
+  linkedDocuments?: LinkedTaskDocument[];
   customFields: TaskCustomFields;
 }
 

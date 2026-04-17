@@ -48,6 +48,14 @@ type SerializedWorkItemSource = {
       color: string;
     };
   }>;
+  documentLinks: Array<{
+    createdAt: Date;
+    document: {
+      id: string;
+      title: string;
+      updatedAt: Date;
+    };
+  }>;
   customFieldValues: Array<{
     fieldId: string;
     value: unknown;
@@ -736,11 +744,96 @@ export class WorkspaceWorkItemsService {
     });
   }
 
+  public async listLinkedDocuments(input: { workspaceId: string; itemId: string; userId: string }) {
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    await this.ensureWorkItemBelongsToWorkspace(input.workspaceId, input.itemId);
+
+    const links = await this.prisma.workItemDocumentLink.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        itemId: input.itemId
+      },
+      include: {
+        document: {
+          select: {
+            id: true,
+            title: true,
+            updatedAt: true
+          }
+        }
+      },
+      orderBy: [{ createdAt: 'desc' }]
+    });
+
+    return this.serializeLinkedDocuments(links);
+  }
+
+  public async linkDocumentToWorkItem(input: {
+    workspaceId: string;
+    itemId: string;
+    documentId: string;
+    userId: string;
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.ensureWorkItemBelongsToWorkspace(input.workspaceId, input.itemId);
+    await this.ensureDocumentBelongsToWorkspace(input.workspaceId, input.documentId);
+
+    await this.prisma.workItemDocumentLink.upsert({
+      where: {
+        itemId_documentId: {
+          itemId: input.itemId,
+          documentId: input.documentId
+        }
+      },
+      create: {
+        workspaceId: input.workspaceId,
+        itemId: input.itemId,
+        documentId: input.documentId,
+        linkedBy: input.userId
+      },
+      update: {
+        linkedBy: input.userId
+      }
+    });
+
+    return this.listLinkedDocuments(input);
+  }
+
+  public async unlinkDocumentFromWorkItem(input: {
+    workspaceId: string;
+    itemId: string;
+    documentId: string;
+    userId: string;
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.ensureWorkItemBelongsToWorkspace(input.workspaceId, input.itemId);
+
+    await this.prisma.workItemDocumentLink.deleteMany({
+      where: {
+        workspaceId: input.workspaceId,
+        itemId: input.itemId,
+        documentId: input.documentId
+      }
+    });
+  }
+
   private itemInclude() {
     return {
       typeDefinition: true,
       workflowState: true,
       boardColumn: true,
+      documentLinks: {
+        include: {
+          document: {
+            select: {
+              id: true,
+              title: true,
+              updatedAt: true
+            }
+          }
+        },
+        orderBy: [{ createdAt: 'desc' as const }]
+      },
       tags: {
         include: {
           tag: true
@@ -945,6 +1038,17 @@ export class WorkspaceWorkItemsService {
 
     if (!tag) {
       throw new AppError('Tag not found', 404);
+    }
+  }
+
+  private async ensureDocumentBelongsToWorkspace(workspaceId: string, documentId: string) {
+    const document = await this.prisma.workspaceDocument.findFirst({
+      where: { id: documentId, workspaceId },
+      select: { id: true }
+    });
+
+    if (!document) {
+      throw new AppError('Workspace document not found', 404);
     }
   }
 
@@ -1199,6 +1303,24 @@ export class WorkspaceWorkItemsService {
     });
   }
 
+  private serializeLinkedDocuments(
+    links: Array<{
+      document: {
+        id: string;
+        title: string;
+        updatedAt: Date;
+      };
+      createdAt: Date;
+    }>
+  ) {
+    return links.map((entry) => ({
+      id: entry.document.id,
+      title: entry.document.title,
+      updatedAt: entry.document.updatedAt,
+      linkedAt: entry.createdAt
+    }));
+  }
+
   private serializeWorkItem(item: SerializedWorkItemSource) {
     const customFieldValuesById = item.customFieldValues.reduce((acc: Record<string, unknown>, entry) => {
       acc[entry.fieldId] = entry.value;
@@ -1273,6 +1395,7 @@ export class WorkspaceWorkItemsService {
         slug: entry.tag.slug,
         color: entry.tag.color
       })),
+      linkedDocuments: this.serializeLinkedDocuments(item.documentLinks),
       customFieldValuesById,
       customFieldValuesBySlug,
       customFields: {
@@ -1309,6 +1432,7 @@ export class WorkspaceWorkItemsService {
       due: workItem.dueDate ? workItem.dueDate.toISOString().slice(0, 10) : '',
       plannedStartAt,
       plannedEndAt,
+      linkedDocuments: workItem.linkedDocuments,
       customFields: workItem.customFields
     };
   }

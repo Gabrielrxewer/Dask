@@ -28,5 +28,6 @@ export type {
   TaskStatusId,
   TaskType,
   TaskTypeMetaItem,
-  TaskCustomFieldValue
+  TaskCustomFieldValue,
+  LinkedTaskDocument
 } from "@/entities/task/model/types";

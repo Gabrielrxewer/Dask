@@ -47,6 +47,7 @@ import {
   workspaceInviteParamsDto,
   workspaceDocumentParamsDto,
   workItemParamsDto,
+  workItemDocumentParamsDto,
   workItemTagParamsDto,
   workspaceIdParamsDto,
   workspaceSnapshotQueryDto,
@@ -815,6 +816,56 @@ export const buildWorkspacePlatformRoutes = (deps: {
         userId: req.auth!.userId
       });
       res.status(200).json(items);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/work-items/:itemId/documents',
+    requireWorkspaceModule('board'),
+    requireWorkspaceModule('documentation'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const documents = await deps.workspaceWorkItemsService.listLinkedDocuments({
+        workspaceId,
+        itemId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(documents);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/work-items/:itemId/documents/:documentId',
+    requireWorkspaceModule('board'),
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, itemId, documentId } = workItemDocumentParamsDto.parse(req.params);
+      const documents = await deps.workspaceWorkItemsService.linkDocumentToWorkItem({
+        workspaceId,
+        itemId,
+        documentId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(documents);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/work-items/:itemId/documents/:documentId',
+    requireWorkspaceModule('board'),
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, itemId, documentId } = workItemDocumentParamsDto.parse(req.params);
+      await deps.workspaceWorkItemsService.unlinkDocumentFromWorkItem({
+        workspaceId,
+        itemId,
+        documentId,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
     })
   );
 

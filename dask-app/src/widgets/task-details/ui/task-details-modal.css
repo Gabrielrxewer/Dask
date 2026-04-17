@@ -559,6 +559,18 @@
   min-height: calc(100% + 7px);
 }
 
+.task-details__body--edit .task-details__side {
+  align-content: stretch;
+  grid-template-rows: auto minmax(max-content, 1fr);
+}
+
+.task-details__body--edit .task-details__panel--metadata {
+  align-self: stretch;
+  box-sizing: border-box;
+  min-height: 0;
+  padding-bottom: 36px;
+}
+
 .task-details__body--compact .task-details__priority-section {
   padding-top: 4px;
   padding-bottom: 8px;

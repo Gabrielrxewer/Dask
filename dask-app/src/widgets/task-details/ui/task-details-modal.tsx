@@ -431,7 +431,11 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         </button>
       </header>
 
-      <div className="task-details__body task-details__body--compact">
+      <div
+        className={`task-details__body task-details__body--compact ${
+          isCreateMode ? "task-details__body--create" : "task-details__body--edit"
+        }`}
+      >
         <section className="task-details__main">
           <section className="task-details__panel task-details__panel--owner">
             <span className="task-details__eyebrow">Responsavel atual</span>
@@ -557,7 +561,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           {!isCreateMode && visibleFieldIdSet.has("sys:checklist") && task ? (
             <section className="task-details__section">
               <div className="task-details__section-head">
-                <h3>Checklist</h3>
+                <h3 className="task-details__summary-style-title">Checklist</h3>
                 <span className="task-details__section-caption">{`${checklist.done}/${checklist.total} concluidos`}</span>
               </div>
               <div className="task-details__progress-track">

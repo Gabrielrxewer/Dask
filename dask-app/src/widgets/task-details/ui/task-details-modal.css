@@ -67,7 +67,6 @@
   gap: 10px;
 }
 
-.task-details__toolbar-toggle,
 .task-details__collapse-toggle {
   min-height: 32px;
   border: 1px solid rgba(203, 221, 243, 0.92);
@@ -78,11 +77,6 @@
   font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
-}
-
-.task-details__toolbar-toggle.is-active {
-  border-color: #a9cef8;
-  background: #eaf4ff;
 }
 
 .task-details__close {
@@ -205,8 +199,17 @@
 }
 
 .task-details__title-input::placeholder {
-  color: color-mix(in srgb, var(--task-accent-background, #edf5ff) 26%, rgba(168, 190, 214, 0.82));
-  font-weight: 700;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.task-details__tags-input::placeholder {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  letter-spacing: normal;
 }
 
 .task-details__title-input:hover {
@@ -293,12 +296,21 @@
 }
 
 .task-details__section h3,
-.task-details__panel h3 {
+.task-details__panel h3,
+.task-details__title-label {
   margin: 0;
   color: #214c75;
   font-size: 0.82rem;
+  font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.task-details__section h3.task-details__summary-style-title {
+  color: #6b89ab;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
 }
 
 .task-details__section-caption {
@@ -538,6 +550,28 @@
   padding: 12px;
 }
 
+.task-details__body--compact .task-details__side {
+  align-content: stretch;
+  grid-template-rows: auto 1fr;
+}
+
+.task-details__body--compact .task-details__panel--metadata {
+  min-height: calc(100% + 7px);
+}
+
+.task-details__body--compact .task-details__priority-section {
+  padding-top: 4px;
+  padding-bottom: 8px;
+}
+
+.task-details__body--compact .task-details__priority-section .task-details__section-head {
+  margin-bottom: 4px;
+}
+
+.task-details__body--compact .task-details__priority-section .task-details__priority-option {
+  min-height: 40px;
+}
+
 .app-theme[data-theme="dark"] .task-details {
   background:
     radial-gradient(circle at top left, rgba(90, 183, 255, 0.12), transparent 32%),
@@ -564,6 +598,8 @@
 
 .app-theme[data-theme="dark"] .task-details__breadcrumbs,
 .app-theme[data-theme="dark"] .task-details__eyebrow,
+.app-theme[data-theme="dark"] .task-details__section h3.task-details__summary-style-title,
+.app-theme[data-theme="dark"] .task-details__panel h3.task-details__summary-style-title,
 .app-theme[data-theme="dark"] .task-details__section-caption,
 .app-theme[data-theme="dark"] .task-details__owner span,
 .app-theme[data-theme="dark"] .task-details__muted,

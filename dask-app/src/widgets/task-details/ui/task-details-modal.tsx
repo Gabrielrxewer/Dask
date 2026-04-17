@@ -168,7 +168,6 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     plannedEndAt: isCreateMode ? "" : normalizeDateTimeInput(props.task.plannedEndAt)
   });
   const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
-  const [isCompactMode, setIsCompactMode] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -427,21 +426,12 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           <p className="task-details__breadcrumbs">{isCreateMode ? "Novo item" : "Work item"}</p>
           <h2 id="task-details-title">{isCreateMode ? "Criar tarefa" : "Editar tarefa"}</h2>
         </div>
-        <div className="task-details__topbar-actions">
-          <button
-            className={`task-details__toolbar-toggle ${isCompactMode ? "is-active" : ""}`}
-            type="button"
-            onClick={() => setIsCompactMode(current => !current)}
-          >
-            {isCompactMode ? "Modo compacto" : "Modo detalhado"}
-          </button>
-        </div>
         <button className="task-details__close" type="button" onClick={props.onClose} aria-label="Fechar editor">
           x
         </button>
       </header>
 
-      <div className={`task-details__body ${isCompactMode ? "task-details__body--compact" : ""}`}>
+      <div className="task-details__body task-details__body--compact">
         <section className="task-details__main">
           <section className="task-details__panel task-details__panel--owner">
             <span className="task-details__eyebrow">Responsavel atual</span>
@@ -470,7 +460,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           <section className="task-details__hero" style={accentVars}>
             <div className="task-details__hero-accent" />
             <div className="task-details__hero-copy">
-              <span className="task-details__eyebrow">Titulo</span>
+              <span className="task-details__eyebrow task-details__title-label">Titulo</span>
               <TextInput
                 id="task-details-title-input"
                 className="task-details__title-input"
@@ -484,10 +474,10 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
           <section className="task-details__section">
             <div className="task-details__section-head">
-              <h3>Tags</h3>
-              <span className="task-details__section-caption">Use termos curtos para facilitar filtro e leitura</span>
+              <h3 className="task-details__summary-style-title">Tags</h3>
             </div>
             <TextInput
+              className="task-details__tags-input"
               value={tagsDraft.join(", ")}
               onChange={event =>
                 setTagsDraft(
@@ -503,8 +493,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
           <section className="task-details__section">
             <div className="task-details__section-head">
-              <h3>Descricao</h3>
-              <span className="task-details__section-caption">Contexto + objetivo + resultado esperado</span>
+              <h3 className="task-details__summary-style-title">Descricao</h3>
             </div>
             <Textarea
               className="task-details__textarea"
@@ -516,8 +505,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
           <section className="task-details__section">
             <div className="task-details__section-head">
-              <h3>Tipo do item</h3>
-              <span className="task-details__section-caption">Selecione rapidamente o formato do trabalho</span>
+              <h3 className="task-details__summary-style-title">Tipo do item</h3>
             </div>
             <div className="task-details__type-grid">
               {boardConfig.taskTypes.map(taskType => {
@@ -548,10 +536,9 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
             </div>
           </section>
 
-          <section className="task-details__section">
+          <section className="task-details__section task-details__priority-section">
             <div className="task-details__section-head">
-              <h3>Prioridade</h3>
-              <span className="task-details__section-caption">Defina o peso da entrega com feedback imediato</span>
+              <h3 className="task-details__summary-style-title">Prioridade</h3>
             </div>
             <div className="task-details__priority-grid">
               {taskPriorityOptions.map(option => (
@@ -606,11 +593,10 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
             </div>
           </section>
 
-          <section className="task-details__panel">
+          <section className="task-details__panel task-details__panel--metadata">
             <div className="task-details__section-head">
-              <h3>Metadados</h3>
+              <h3 className="task-details__summary-style-title">Metadados</h3>
               <div className="task-details__section-head-actions">
-                <span className="task-details__section-caption">Preparado para crescer sem poluir a tela</span>
                 <button
                   type="button"
                   className="task-details__collapse-toggle"

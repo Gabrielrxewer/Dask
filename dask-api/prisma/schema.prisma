@@ -58,6 +58,34 @@ enum SubscriptionStatus {
   PAUSED
 }
 
+enum ConnectPaymentOrderStatus {
+  DRAFT
+  CHECKOUT_OPEN
+  CHECKOUT_COMPLETED
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+enum ConnectCatalogItemKind {
+  PRODUCT
+  SERVICE
+}
+
+enum ConnectCatalogBillingType {
+  ONE_TIME
+  SUBSCRIPTION
+}
+
+enum ConnectCatalogRecurringInterval {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
 model User {
   id                       String                    @id @default(uuid())
   email                    String                    @unique
@@ -256,6 +284,8 @@ model Workspace {
   invites                WorkspaceInvite[]
   documents              WorkspaceDocument[]
   workItemDocumentLinks  WorkItemDocumentLink[]
+  connectPaymentOrders   ConnectPaymentOrder[]
+  connectCatalogItems    ConnectCatalogItem[]
 
   @@unique([organizationId, key])
 }
@@ -275,6 +305,61 @@ model WorkspaceDocument {
 
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])
+}
+
+model ConnectPaymentOrder {
+  id                    String                    @id @default(uuid())
+  workspaceId           String
+  createdByUserId       String
+  stripeConnectAccountId String
+  stripeCheckoutSessionId String?                 @unique
+  stripePaymentIntentId String?                   @unique
+  amount                Int
+  currency              String                    @default("brl")
+  description           String
+  customerEmail         String?
+  applicationFeeAmount  Int
+  status                ConnectPaymentOrderStatus @default(DRAFT)
+  statusReason          String?
+  metadata              Json?
+  checkoutUrl           String?
+  lastWebhookEvent      String?
+  paidAt                DateTime?
+  failedAt              DateTime?
+  canceledAt            DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  workspace             Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([status, createdAt])
+  @@index([stripeConnectAccountId, createdAt])
+}
+
+model ConnectCatalogItem {
+  id          String                 @id @default(uuid())
+  workspaceId String
+  createdByUserId String
+  kind        ConnectCatalogItemKind @default(SERVICE)
+  billingType ConnectCatalogBillingType @default(ONE_TIME)
+  recurringInterval ConnectCatalogRecurringInterval?
+  recurringIntervalCount Int?
+  name        String
+  description String?
+  amount      Int
+  currency    String                 @default("brl")
+  stripeConnectAccountId String?
+  stripeProductId String?            @unique
+  stripePriceId String?              @unique
+  isActive    Boolean                @default(true)
+  metadata    Json?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, isActive, createdAt])
+  @@index([workspaceId, stripeConnectAccountId, createdAt])
 }
 
 model WorkItemDocumentLink {

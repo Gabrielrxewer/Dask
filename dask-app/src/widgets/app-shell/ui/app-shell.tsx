@@ -4,6 +4,7 @@ import {
   buildWorkspaceAgendaPath,
   buildWorkspaceAiAgentsPath,
   buildWorkspaceAutomationsPath,
+  buildWorkspaceBillingPath,
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,
   buildWorkspaceListPath,
@@ -20,7 +21,7 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings";
+type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
 type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings";
 
@@ -149,6 +150,17 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     );
   }
 
+  if (name === "billing") {
+    return (
+      <svg {...commonProps}>
+        <rect x="3.5" y="5" width="17" height="13.5" rx="2.8" />
+        <path d="M3.5 10h17" />
+        <path d="M7 14h4" />
+        <path d="M14 14h3.5" />
+      </svg>
+    );
+  }
+
   return (
     <svg {...commonProps}>
       <rect x="4" y="7" width="16" height="13" rx="3" />
@@ -238,6 +250,18 @@ export function AppShell({
           label: "Settings",
           icon: "settings" as const,
           tone: "violet" as const,
+          module: "settings" as AppModuleKey
+        }
+      ]
+    },
+    {
+      title: "Financeiro",
+      items: [
+        {
+          to: buildWorkspaceBillingPath(workspaceSlug),
+          label: "Cobranca",
+          icon: "billing" as const,
+          tone: "amber" as const,
           module: "settings" as AppModuleKey
         }
       ]

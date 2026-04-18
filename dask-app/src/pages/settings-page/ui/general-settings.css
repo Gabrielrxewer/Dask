@@ -286,6 +286,7 @@
 .general-settings__preference-card,
 .general-settings__summary-card,
 .general-settings__workspace-profile,
+.general-settings__billing-connect,
 .general-settings__templates {
   border: 1px solid var(--builder-line);
   border-radius: var(--radius-xs);
@@ -312,6 +313,7 @@
 .general-settings__preference-card h2,
 .general-settings__summary-card h2,
 .general-settings__workspace-profile h2,
+.general-settings__billing-connect h2,
 .general-settings__templates h2 {
   margin: 0;
   color: var(--builder-text);
@@ -407,6 +409,7 @@
 .general-settings__preference-card,
 .general-settings__summary-card,
 .general-settings__workspace-profile,
+.general-settings__billing-connect,
 .general-settings__templates {
   padding: 18px;
 }
@@ -475,6 +478,147 @@
 .general-settings__workspace-profile {
   display: grid;
   gap: 14px;
+}
+
+.general-settings__billing-connect {
+  display: grid;
+  gap: 14px;
+}
+
+.general-settings__billing-connect header {
+  display: grid;
+  gap: 4px;
+}
+
+.general-settings__billing-connect header p {
+  margin: 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.general-settings__billing-status {
+  display: grid;
+  gap: 10px;
+}
+
+.general-settings__billing-status p {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--builder-line);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.general-settings__billing-warning {
+  border-color: #f1d29f !important;
+  background: #fff7e8 !important;
+  color: #7d4d05 !important;
+}
+
+.general-settings__billing-success {
+  border-color: #b8dfc7 !important;
+  background: #effaf3 !important;
+  color: #0f6b3d !important;
+}
+
+.general-settings__billing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.general-settings__billing-grid span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px;
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.general-settings__billing-grid strong {
+  color: var(--builder-text);
+  font-size: var(--font-size-lg);
+  font-weight: 900;
+}
+
+.general-settings__billing-requirements {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.general-settings__billing-requirements li + li {
+  margin-top: 4px;
+}
+
+.general-settings__billing-next-step {
+  margin: 2px 0 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.general-settings__billing-next-step strong {
+  color: var(--builder-text);
+}
+
+.general-settings__billing-checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.general-settings__billing-checklist li {
+  border: 1px solid var(--builder-line);
+  border-radius: var(--radius-xs);
+  background: var(--builder-surface-soft);
+  padding: 10px 12px;
+}
+
+.general-settings__billing-checklist li.is-done {
+  border-color: #b8dfc7;
+  background: #f2fbf5;
+}
+
+.general-settings__billing-checklist li strong {
+  color: var(--builder-text);
+  font-size: var(--font-size-sm);
+  font-weight: 900;
+}
+
+.general-settings__billing-checklist li p {
+  margin: 4px 0 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.general-settings__billing-checklist li small {
+  display: block;
+  margin-top: 6px;
+  color: #7d4d05;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.general-settings__billing-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .general-settings__workspace-profile header {
@@ -766,6 +910,7 @@
   .general-settings__preference-card,
   .general-settings__summary-card,
   .general-settings__workspace-profile,
+  .general-settings__billing-connect,
   .general-settings__templates {
     padding: 14px;
   }
@@ -773,6 +918,7 @@
   .general-settings__live-preview,
   .general-settings__form-grid,
   .general-settings__summary-grid,
+  .general-settings__billing-grid,
   .general-settings__workspace-profile-grid,
   .general-settings__template-grid {
     grid-template-columns: 1fr;

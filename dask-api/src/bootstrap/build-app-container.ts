@@ -110,7 +110,8 @@ export function buildAppContainer(): AppContainer {
         priceIds: {
           PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
           BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
-        }
+        },
+        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
       })
     : null;
 

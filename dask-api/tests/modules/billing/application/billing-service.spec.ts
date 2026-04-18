@@ -25,6 +25,8 @@ type MockStripeInstance = {
   checkout: { sessions: { create: ReturnType<typeof vi.fn> } };
   subscriptions: { retrieve: ReturnType<typeof vi.fn> };
   webhooks: { constructEvent: ReturnType<typeof vi.fn> };
+  accounts: { create: ReturnType<typeof vi.fn>; retrieve: ReturnType<typeof vi.fn> };
+  accountLinks: { create: ReturnType<typeof vi.fn> };
 };
 
 // ---------------------------------------------------------------------------
@@ -71,6 +73,15 @@ function makeSub(overrides: Record<string, unknown> = {}): Subscription {
   };
 }
 
+function makeWorkspace(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'workspace-1',
+    name: 'Workspace Test',
+    connectAccountId: null as string | null,
+    ...overrides
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Mock setup
 // ---------------------------------------------------------------------------
@@ -82,7 +93,19 @@ function makeRepo(): Mocked<BillingRepository> {
     findSubscriptionByStripeId: vi.fn(),
     findActiveSubscriptionByUserId: vi.fn(),
     findLatestSubscriptionByUserId: vi.fn(),
+    findWorkspaceMembership: vi.fn(),
+    findWorkspaceBillingConnectInfo: vi.fn(),
+    findConnectCatalogItemById: vi.fn(),
+    listConnectCatalogItemsByWorkspace: vi.fn(),
+    findConnectPaymentOrderById: vi.fn(),
+    findConnectPaymentOrderByCheckoutSessionId: vi.fn(),
+    findConnectPaymentOrderByPaymentIntentId: vi.fn(),
+    listConnectPaymentOrdersByWorkspace: vi.fn(),
     upsertStripeCustomerId: vi.fn().mockResolvedValue(undefined),
+    upsertWorkspaceConnectAccountId: vi.fn().mockResolvedValue(undefined),
+    createConnectCatalogItem: vi.fn(),
+    createConnectPaymentOrder: vi.fn(),
+    updateConnectPaymentOrder: vi.fn(),
     createSubscription: vi.fn(),
     updateSubscription: vi.fn(),
     syncUserBillingFields: vi.fn().mockResolvedValue(undefined),
@@ -95,7 +118,9 @@ function makeStripe(): MockStripeInstance {
     customers: { create: vi.fn() },
     checkout: { sessions: { create: vi.fn() } },
     subscriptions: { retrieve: vi.fn() },
-    webhooks: { constructEvent: vi.fn() }
+    webhooks: { constructEvent: vi.fn() },
+    accounts: { create: vi.fn(), retrieve: vi.fn() },
+    accountLinks: { create: vi.fn() }
   };
 }
 
@@ -224,6 +249,168 @@ describe('BillingService', () => {
   });
 
   // ── Webhook ────────────────────────────────────────────────────────────────
+
+  describe('Stripe Connect', () => {
+    it('creates connect account and onboarding link for workspace owner', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(makeWorkspace());
+      (stripe.accounts.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'acct_123' });
+      (stripe.accountLinks.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        url: 'https://connect.stripe.com/setup/acct_123'
+      });
+
+      const result = await service.createConnectOnboardingLink('workspace-1', 'user-1');
+
+      expect(stripe.accounts.create).toHaveBeenCalled();
+      expect(repo.upsertWorkspaceConnectAccountId).toHaveBeenCalledWith('workspace-1', 'acct_123');
+      expect(result).toEqual({
+        url: 'https://connect.stripe.com/setup/acct_123',
+        accountId: 'acct_123'
+      });
+    });
+
+    it('uses existing account for onboarding link when workspace already connected', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'ADMIN'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      (stripe.accountLinks.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        url: 'https://connect.stripe.com/setup/acct_existing'
+      });
+
+      const result = await service.createConnectOnboardingLink('workspace-1', 'user-1');
+
+      expect(stripe.accounts.create).not.toHaveBeenCalled();
+      expect(result.accountId).toBe('acct_existing');
+    });
+
+    it('blocks connect setup for non-admin workspace member', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'MEMBER'
+      });
+
+      await expect(service.createConnectOnboardingLink('workspace-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 403
+      });
+    });
+
+    it('creates connected checkout session with platform fee', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      repo.createConnectPaymentOrder.mockResolvedValue({
+        id: 'order-connect-1',
+        workspaceId: 'workspace-1',
+        createdByUserId: 'user-1',
+        stripeConnectAccountId: 'acct_existing',
+        stripeCheckoutSessionId: null,
+        stripePaymentIntentId: null,
+        amount: 10000,
+        currency: 'brl',
+        description: 'Servico mensal',
+        customerEmail: null,
+        applicationFeeAmount: 500,
+        status: 'DRAFT',
+        statusReason: null,
+        metadata: { orderId: 'order-1' },
+        checkoutUrl: null,
+        paidAt: null,
+        failedAt: null,
+        canceledAt: null,
+        refundedAt: null,
+        lastWebhookEvent: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      repo.updateConnectPaymentOrder.mockResolvedValue({
+        id: 'order-connect-1',
+        workspaceId: 'workspace-1',
+        createdByUserId: 'user-1',
+        stripeConnectAccountId: 'acct_existing',
+        stripeCheckoutSessionId: 'cs_connect_1',
+        stripePaymentIntentId: null,
+        amount: 10000,
+        currency: 'brl',
+        description: 'Servico mensal',
+        customerEmail: null,
+        applicationFeeAmount: 500,
+        status: 'CHECKOUT_OPEN',
+        statusReason: null,
+        metadata: { orderId: 'order-1' },
+        checkoutUrl: 'https://checkout.stripe.com/connect/cs_connect_1',
+        paidAt: null,
+        failedAt: null,
+        canceledAt: null,
+        refundedAt: null,
+        lastWebhookEvent: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      (stripe.checkout.sessions.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'cs_connect_1',
+        url: 'https://checkout.stripe.com/connect/cs_connect_1'
+      });
+
+      const response = await service.createConnectCheckoutSession('workspace-1', 'user-1', {
+        amount: 10000,
+        currency: 'brl',
+        description: 'Servico mensal',
+        metadata: { orderId: 'order-1' }
+      });
+
+      expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'payment',
+          payment_intent_data: expect.objectContaining({
+            application_fee_amount: 500
+          })
+        }),
+        expect.objectContaining({
+          stripeAccount: 'acct_existing'
+        })
+      );
+      expect(response.sessionId).toBe('cs_connect_1');
+      expect(response.orderId).toBe('order-connect-1');
+    });
+
+    it('returns connect account status', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'acct_existing',
+        details_submitted: true,
+        charges_enabled: true,
+        payouts_enabled: true,
+        requirements: { currently_due: [] }
+      });
+
+      const status = await service.getConnectAccountStatus('workspace-1', 'user-1');
+
+      expect(status.onboardingComplete).toBe(true);
+      expect(status.stripeAccountId).toBe('acct_existing');
+    });
+  });
 
   describe('handleWebhook', () => {
     it('rejects invalid webhook signature', async () => {

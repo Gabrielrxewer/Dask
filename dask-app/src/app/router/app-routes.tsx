@@ -10,6 +10,7 @@ import {
   AiAgentsPage,
   AutomationsPage,
   AgendaPage,
+  BillingPage,
   BillingCancelPage,
   BillingSuccessPage,
   BoardPage,
@@ -185,6 +186,14 @@ export function AppRoutes() {
                 </ModuleRoute>
               }
             />
+            <Route
+              path={routePaths.billing}
+              element={
+                <ModuleRoute module="settings">
+                  <BillingPage />
+                </ModuleRoute>
+              }
+            />
 
             {/* Settings — nested routes com layout compartilhado */}
             <Route
@@ -213,3 +222,6 @@ export function AppRoutes() {
     </Routes>
   );
 }
+
+
+

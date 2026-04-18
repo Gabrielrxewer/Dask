@@ -2,6 +2,14 @@ import type Stripe from 'stripe';
 import { logger } from '@/core/logging/logger';
 import { AppError } from '@/core/errors/app-error';
 import type { BillingRepository } from '../repositories/billing-repository';
+import type {
+  ConnectCatalogBillingType,
+  ConnectCatalogItem,
+  ConnectCatalogItemKind,
+  ConnectCatalogRecurringInterval,
+  ConnectPaymentOrder,
+  ConnectPaymentOrderStatus
+} from '../repositories/billing-repository';
 import {
   PLAN_AMOUNTS_BRL,
   PLAN_PRICE_IDS,
@@ -19,6 +27,8 @@ interface StripeCheckoutSession {
   id: string;
   mode: string | null;
   subscription: string | { id: string } | null;
+  payment_intent?: string | { id: string } | null;
+  payment_status?: string | null;
   metadata: Record<string, string> | null;
 }
 
@@ -58,7 +68,20 @@ interface StripeInvoiceObject {
 interface StripeWebhookEvent {
   type: string;
   id: string;
+  account?: string;
   data: { object: unknown };
+}
+
+interface StripePaymentIntentObject {
+  id: string;
+  status: string;
+  metadata?: Record<string, string>;
+}
+
+interface StripeChargeObject {
+  id: string;
+  payment_intent?: string | { id: string } | null;
+  metadata?: Record<string, string>;
 }
 
 interface BillingServiceDeps {
@@ -67,6 +90,78 @@ interface BillingServiceDeps {
   appPublicUrl: string;
   webhookSecret: string;
   priceIds?: Partial<Record<SubscriptionPlan, string>>;
+  connectApplicationFeeBps?: number;
+}
+
+export interface ConnectAccountStatus {
+  workspaceId: string;
+  stripeAccountId: string;
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  onboardingComplete: boolean;
+  requirementsDue: string[];
+}
+
+export interface CreateConnectCheckoutSessionInput {
+  amount?: number;
+  currency?: string;
+  description?: string;
+  catalogItemId?: string;
+  customerEmail?: string;
+  customerName?: string;
+  applicationFeeAmount?: number;
+  successUrl?: string;
+  cancelUrl?: string;
+  metadata?: Record<string, string>;
+}
+
+export interface CreateConnectCatalogItemInput {
+  kind: ConnectCatalogItemKind;
+  billingType: ConnectCatalogBillingType;
+  recurringInterval?: ConnectCatalogRecurringInterval;
+  recurringIntervalCount?: number;
+  name: string;
+  description?: string;
+  amount: number;
+  currency?: string;
+  metadata?: Record<string, string>;
+}
+
+export interface ConnectCatalogItemListItem {
+  id: string;
+  kind: ConnectCatalogItemKind;
+  billingType: ConnectCatalogBillingType;
+  recurringInterval: ConnectCatalogRecurringInterval | null;
+  recurringIntervalCount: number | null;
+  name: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  stripeConnectAccountId: string | null;
+  stripeProductId: string | null;
+  stripePriceId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ConnectPaymentOrderListItem {
+  id: string;
+  status: ConnectPaymentOrderStatus;
+  amount: number;
+  currency: string;
+  description: string;
+  customerEmail: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  checkoutUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  paidAt: Date | null;
+  failedAt: Date | null;
+  canceledAt: Date | null;
+  refundedAt: Date | null;
 }
 
 /** Maps Stripe subscription status strings to our enum */
@@ -90,6 +185,7 @@ export class BillingService {
   private readonly appPublicUrl: string;
   private readonly webhookSecret: string;
   private readonly priceIds: Partial<Record<SubscriptionPlan, string>>;
+  private readonly connectApplicationFeeBps: number;
 
   constructor(deps: BillingServiceDeps) {
     this.repo = deps.repo;
@@ -97,6 +193,7 @@ export class BillingService {
     this.appPublicUrl = deps.appPublicUrl;
     this.webhookSecret = deps.webhookSecret;
     this.priceIds = deps.priceIds ?? PLAN_PRICE_IDS;
+    this.connectApplicationFeeBps = deps.connectApplicationFeeBps ?? 500;
   }
 
   // ---------------------------------------------------------------------------
@@ -220,6 +317,314 @@ export class BillingService {
     return { url: session.url };
   }
 
+  // ---------------------------------------------------------------------------
+  // Stripe Connect (our clients charging their own customers)
+  // ---------------------------------------------------------------------------
+
+  async createConnectOnboardingLink(
+    workspaceId: string,
+    userId: string,
+    input: { refreshUrl?: string; returnUrl?: string } = {}
+  ): Promise<{ url: string; accountId: string }> {
+    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+    let accountId = workspace.connectAccountId;
+
+    if (!accountId) {
+      const account = await this.stripe.accounts.create({
+        type: 'express',
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true }
+        },
+        metadata: {
+          workspaceId,
+          createdByUserId: userId
+        },
+        business_profile: {
+          name: workspace.name,
+          product_description: `Pagamentos recebidos por ${workspace.name} via Dask`
+        }
+      });
+      accountId = account.id;
+      await this.repo.upsertWorkspaceConnectAccountId(workspaceId, accountId);
+    }
+
+    const accountLink = await this.stripe.accountLinks.create({
+      account: accountId,
+      type: 'account_onboarding',
+      refresh_url: input.refreshUrl ?? `${this.appPublicUrl}/settings?billing=connect-refresh`,
+      return_url: input.returnUrl ?? `${this.appPublicUrl}/settings?billing=connect-return`
+    });
+
+    logger.info({ event: 'billing.connect.onboarding_link.created', workspaceId, userId, accountId });
+    return {
+      url: accountLink.url,
+      accountId
+    };
+  }
+
+  async getConnectAccountStatus(workspaceId: string, userId: string): Promise<ConnectAccountStatus> {
+    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+    if (!workspace.connectAccountId) {
+      throw new AppError('Workspace has no Stripe Connect account yet', 404);
+    }
+
+    const account = await this.stripe.accounts.retrieve(workspace.connectAccountId);
+    const requirementsDue = account.requirements?.currently_due ?? [];
+    return {
+      workspaceId,
+      stripeAccountId: account.id,
+      detailsSubmitted: Boolean(account.details_submitted),
+      chargesEnabled: Boolean(account.charges_enabled),
+      payoutsEnabled: Boolean(account.payouts_enabled),
+      onboardingComplete:
+        Boolean(account.details_submitted) &&
+        Boolean(account.charges_enabled) &&
+        requirementsDue.length === 0,
+      requirementsDue
+    };
+  }
+
+  async createConnectCheckoutSession(
+    workspaceId: string,
+    userId: string,
+    input: CreateConnectCheckoutSessionInput
+  ): Promise<{ url: string; sessionId: string; orderId: string }> {
+    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const accountId = workspace.connectAccountId;
+    if (!accountId) {
+      throw new AppError('Workspace has no Stripe Connect account configured', 409);
+    }
+
+    const catalogItem = input.catalogItemId
+      ? await this.repo.findConnectCatalogItemById(input.catalogItemId)
+      : null;
+    if (input.catalogItemId && (!catalogItem || catalogItem.workspaceId !== workspaceId || !catalogItem.isActive)) {
+      throw new AppError('Catalog item not found for this workspace', 404);
+    }
+    if (catalogItem?.stripeConnectAccountId && catalogItem.stripeConnectAccountId !== accountId) {
+      throw new AppError('Catalog item belongs to a different connected account', 409);
+    }
+    if (catalogItem && !catalogItem.stripePriceId) {
+      throw new AppError('Catalog item has no Stripe price mapping', 409);
+    }
+
+    const amount = catalogItem?.amount ?? input.amount;
+    const description = catalogItem?.name ?? input.description;
+    const currency = (catalogItem?.currency ?? input.currency ?? 'brl').toLowerCase();
+    if (!amount || amount <= 0) {
+      throw new AppError('amount must be a positive integer', 422);
+    }
+    if (!description || description.trim().length < 3) {
+      throw new AppError('description is required for this charge', 422);
+    }
+
+    const applicationFeeAmount = this.resolveApplicationFeeAmount(amount, input.applicationFeeAmount);
+    const checkoutMode = catalogItem?.billingType === 'SUBSCRIPTION' ? 'subscription' : 'payment';
+    const order = await this.repo.createConnectPaymentOrder({
+      workspaceId,
+      createdByUserId: userId,
+      stripeConnectAccountId: accountId,
+      amount,
+      currency,
+      description,
+      customerEmail: input.customerEmail,
+      applicationFeeAmount,
+      metadata: {
+        ...(input.metadata ?? {}),
+        ...(catalogItem
+          ? {
+              catalogItemId: catalogItem.id,
+              catalogBillingType: catalogItem.billingType
+            }
+          : {})
+      }
+    });
+
+    const sessionPayload: Record<string, unknown> = {
+      mode: checkoutMode,
+      client_reference_id: order.id,
+      line_items: [
+        catalogItem?.stripePriceId
+          ? {
+              quantity: 1,
+              price: catalogItem.stripePriceId
+            }
+          : {
+              quantity: 1,
+              price_data: {
+                currency,
+                unit_amount: amount,
+                product_data: {
+                  name: description
+                }
+              }
+            }
+      ],
+      customer_email: input.customerEmail,
+      success_url: input.successUrl ?? `${this.appPublicUrl}/billing/success`,
+      cancel_url: input.cancelUrl ?? `${this.appPublicUrl}/billing/cancel`,
+      metadata: {
+        connectOrderId: order.id,
+        workspaceId,
+        platformUserId: userId,
+        ...(catalogItem ? { catalogItemId: catalogItem.id } : {}),
+        ...input.metadata
+      }
+    };
+    if (checkoutMode === 'payment') {
+      sessionPayload.payment_intent_data = {
+        application_fee_amount: applicationFeeAmount,
+        metadata: {
+          connectOrderId: order.id,
+          workspaceId,
+          platformUserId: userId,
+          ...(catalogItem ? { catalogItemId: catalogItem.id } : {}),
+          ...input.metadata
+        }
+      };
+    } else {
+      sessionPayload.subscription_data = {
+        application_fee_percent: this.resolveApplicationFeePercent(input.applicationFeeAmount, amount),
+        metadata: {
+          connectOrderId: order.id,
+          workspaceId,
+          platformUserId: userId,
+          ...(catalogItem ? { catalogItemId: catalogItem.id } : {}),
+          ...input.metadata
+        }
+      };
+    }
+
+    const session = await this.stripe.checkout.sessions.create(
+      sessionPayload,
+      {
+        stripeAccount: accountId
+      }
+    );
+
+    if (!session.url) {
+      throw new AppError('Failed to create connected checkout session', 500);
+    }
+
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id,
+      checkoutUrl: session.url,
+      status: 'CHECKOUT_OPEN'
+    });
+
+    logger.info({
+      event: 'billing.connect.checkout.created',
+      workspaceId,
+      userId,
+      accountId,
+      sessionId: session.id,
+      amount,
+      currency,
+      checkoutMode,
+      applicationFeeAmount
+    });
+
+    return {
+      url: session.url,
+      sessionId: session.id,
+      orderId: order.id
+    };
+  }
+
+  async listConnectPaymentOrders(
+    workspaceId: string,
+    userId: string,
+    limit = 50
+  ): Promise<ConnectPaymentOrderListItem[]> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const safeLimit = Math.max(1, Math.min(limit, 200));
+    const orders = await this.repo.listConnectPaymentOrdersByWorkspace(workspaceId, safeLimit);
+    return orders.map((order) => this.mapConnectPaymentOrder(order));
+  }
+
+  async listConnectCatalogItems(
+    workspaceId: string,
+    userId: string,
+    includeInactive = true
+  ): Promise<ConnectCatalogItemListItem[]> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const items = await this.repo.listConnectCatalogItemsByWorkspace(workspaceId, includeInactive);
+    return items.map((item) => this.mapConnectCatalogItem(item));
+  }
+
+  async createConnectCatalogItem(
+    workspaceId: string,
+    userId: string,
+    input: CreateConnectCatalogItemInput
+  ): Promise<ConnectCatalogItemListItem> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
+    const accountId = workspace?.connectAccountId;
+    if (!accountId) {
+      throw new AppError('Workspace has no Stripe Connect account configured', 409);
+    }
+    const currency = (input.currency ?? 'brl').toLowerCase();
+    const name = input.name.trim();
+    if (name.length < 2) {
+      throw new AppError('name must have at least 2 characters', 422);
+    }
+    if (input.billingType === 'SUBSCRIPTION' && !input.recurringInterval) {
+      throw new AppError('recurringInterval is required for subscription items', 422);
+    }
+
+    const product = await this.stripe.products.create(
+      {
+        name,
+        description: input.description?.trim() || undefined,
+        metadata: {
+          workspaceId,
+          createdByUserId: userId,
+          billingType: input.billingType
+        }
+      },
+      { stripeAccount: accountId }
+    );
+    const recurring = input.billingType === 'SUBSCRIPTION'
+      ? {
+          interval: this.mapRecurringInterval(input.recurringInterval ?? 'MONTH'),
+          interval_count: input.recurringIntervalCount ?? 1
+        }
+      : undefined;
+    const price = await this.stripe.prices.create(
+      {
+        product: product.id,
+        currency,
+        unit_amount: input.amount,
+        recurring
+      },
+      { stripeAccount: accountId }
+    );
+
+    const item = await this.repo.createConnectCatalogItem({
+      workspaceId,
+      createdByUserId: userId,
+      kind: input.kind,
+      billingType: input.billingType,
+      recurringInterval: input.recurringInterval,
+      recurringIntervalCount: input.recurringIntervalCount,
+      name,
+      description: input.description?.trim() || undefined,
+      amount: input.amount,
+      currency,
+      stripeConnectAccountId: accountId,
+      stripeProductId: product.id,
+      stripePriceId: price.id,
+      metadata: input.metadata
+    });
+
+    return this.mapConnectCatalogItem(item);
+  }
+
   private buildBlockedMessage(status: SubscriptionStatus | null): string {
     if (!status) return 'Escolha um plano para acessar a plataforma.';
     if (status === 'PAST_DUE') return 'Pagamento pendente. Regularize para continuar.';
@@ -251,6 +656,24 @@ export class BillingService {
         case 'checkout.session.completed':
           await this.handleCheckoutCompleted(event.data.object as StripeCheckoutSession);
           break;
+        case 'checkout.session.async_payment_succeeded':
+          await this.handleConnectCheckoutAsyncPaymentSucceeded(event.data.object as StripeCheckoutSession);
+          break;
+        case 'checkout.session.async_payment_failed':
+          await this.handleConnectCheckoutAsyncPaymentFailed(event.data.object as StripeCheckoutSession);
+          break;
+        case 'checkout.session.expired':
+          await this.handleConnectCheckoutExpired(event.data.object as StripeCheckoutSession);
+          break;
+        case 'payment_intent.succeeded':
+          await this.handleConnectPaymentIntentSucceeded(event.data.object as StripePaymentIntentObject);
+          break;
+        case 'payment_intent.payment_failed':
+          await this.handleConnectPaymentIntentFailed(event.data.object as StripePaymentIntentObject);
+          break;
+        case 'charge.refunded':
+          await this.handleConnectChargeRefunded(event.data.object as StripeChargeObject);
+          break;
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
           await this.handleSubscriptionUpsert(event.data.object as StripeSubscriptionObject, event.type);
@@ -279,6 +702,11 @@ export class BillingService {
   // ---------------------------------------------------------------------------
 
   private async handleCheckoutCompleted(session: StripeCheckoutSession): Promise<void> {
+    if (session.metadata?.connectOrderId) {
+      await this.handleConnectCheckoutCompleted(session);
+      return;
+    }
+
     const userId = session.metadata?.userId;
     const planCode = session.metadata?.planCode as SubscriptionPlan | undefined;
 
@@ -344,6 +772,138 @@ export class BillingService {
     }
 
     logger.info({ event: 'billing.checkout.activated', userId, planCode, stripeSubId });
+  }
+
+  private async handleConnectCheckoutCompleted(session: StripeCheckoutSession): Promise<void> {
+    const orderId = session.metadata?.connectOrderId;
+    if (!orderId) {
+      return;
+    }
+
+    const nextStatus: ConnectPaymentOrderStatus =
+      session.payment_status === 'paid'
+        ? 'PAID'
+        : session.payment_status === 'unpaid'
+          ? 'PENDING'
+          : 'CHECKOUT_COMPLETED';
+    const paidAt = nextStatus === 'PAID' ? new Date() : null;
+
+    await this.repo.updateConnectPaymentOrder(orderId, {
+      status: nextStatus,
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id,
+      lastWebhookEvent: 'checkout.session.completed',
+      paidAt
+    });
+  }
+
+  private async handleConnectCheckoutAsyncPaymentSucceeded(session: StripeCheckoutSession): Promise<void> {
+    const orderId = session.metadata?.connectOrderId;
+    if (!orderId) {
+      return;
+    }
+
+    await this.repo.updateConnectPaymentOrder(orderId, {
+      status: 'PAID',
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id,
+      lastWebhookEvent: 'checkout.session.async_payment_succeeded',
+      paidAt: new Date()
+    });
+  }
+
+  private async handleConnectCheckoutAsyncPaymentFailed(session: StripeCheckoutSession): Promise<void> {
+    const orderId = session.metadata?.connectOrderId;
+    if (!orderId) {
+      return;
+    }
+
+    await this.repo.updateConnectPaymentOrder(orderId, {
+      status: 'FAILED',
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id,
+      lastWebhookEvent: 'checkout.session.async_payment_failed',
+      failedAt: new Date(),
+      statusReason: 'Async payment failed'
+    });
+  }
+
+  private async handleConnectCheckoutExpired(session: StripeCheckoutSession): Promise<void> {
+    const orderId = session.metadata?.connectOrderId;
+    if (!orderId) {
+      return;
+    }
+
+    await this.repo.updateConnectPaymentOrder(orderId, {
+      status: 'CANCELED',
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id,
+      lastWebhookEvent: 'checkout.session.expired',
+      canceledAt: new Date(),
+      statusReason: 'Checkout session expired'
+    });
+  }
+
+  private async handleConnectPaymentIntentSucceeded(intent: StripePaymentIntentObject): Promise<void> {
+    const order = await this.repo.findConnectPaymentOrderByPaymentIntentId(intent.id);
+    if (!order) {
+      return;
+    }
+
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      status: 'PAID',
+      stripePaymentIntentId: intent.id,
+      lastWebhookEvent: 'payment_intent.succeeded',
+      paidAt: new Date()
+    });
+  }
+
+  private async handleConnectPaymentIntentFailed(intent: StripePaymentIntentObject): Promise<void> {
+    const order = await this.repo.findConnectPaymentOrderByPaymentIntentId(intent.id);
+    if (!order) {
+      return;
+    }
+
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      status: 'FAILED',
+      stripePaymentIntentId: intent.id,
+      lastWebhookEvent: 'payment_intent.payment_failed',
+      failedAt: new Date(),
+      statusReason: `Payment intent failed with status ${intent.status}`
+    });
+  }
+
+  private async handleConnectChargeRefunded(charge: StripeChargeObject): Promise<void> {
+    const paymentIntentId =
+      typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge.payment_intent?.id;
+    if (!paymentIntentId) {
+      return;
+    }
+
+    const order = await this.repo.findConnectPaymentOrderByPaymentIntentId(paymentIntentId);
+    if (!order) {
+      return;
+    }
+
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      status: 'REFUNDED',
+      lastWebhookEvent: 'charge.refunded',
+      refundedAt: new Date()
+    });
   }
 
   private async handleSubscriptionUpsert(sub: StripeSubscriptionObject, eventType: string): Promise<void> {
@@ -436,5 +996,96 @@ export class BillingService {
     await this.repo.revokeUserAccess(existing.userId);
 
     logger.warn({ event: 'billing.invoice.payment_failed', userId: existing.userId, subscriptionId });
+  }
+
+  private async assertWorkspaceBillingManager(workspaceId: string, userId: string) {
+    const membership = await this.repo.findWorkspaceMembership(workspaceId, userId);
+    if (!membership) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    if (!['OWNER', 'ADMIN'].includes(membership.role)) {
+      throw new AppError('Only workspace OWNER or ADMIN can manage billing connect settings', 403);
+    }
+
+    const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
+    if (!workspace) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    return workspace;
+  }
+
+  private resolveApplicationFeeAmount(amount: number, explicitFee?: number): number {
+    if (typeof explicitFee === 'number') {
+      if (explicitFee < 0) {
+        throw new AppError('applicationFeeAmount cannot be negative', 422);
+      }
+      if (explicitFee > amount) {
+        throw new AppError('applicationFeeAmount cannot be greater than amount', 422);
+      }
+      return explicitFee;
+    }
+
+    return Math.max(0, Math.floor((amount * this.connectApplicationFeeBps) / 10000));
+  }
+
+  private resolveApplicationFeePercent(explicitFeeAmount: number | undefined, amount: number): number {
+    if (typeof explicitFeeAmount === 'number') {
+      if (explicitFeeAmount < 0 || explicitFeeAmount > amount) {
+        throw new AppError('applicationFeeAmount is invalid for subscription pricing', 422);
+      }
+      return Number(((explicitFeeAmount / amount) * 100).toFixed(4));
+    }
+    return Number((this.connectApplicationFeeBps / 100).toFixed(4));
+  }
+
+  private mapRecurringInterval(
+    interval: ConnectCatalogRecurringInterval
+  ): 'day' | 'week' | 'month' | 'year' {
+    if (interval === 'DAY') return 'day';
+    if (interval === 'WEEK') return 'week';
+    if (interval === 'YEAR') return 'year';
+    return 'month';
+  }
+
+  private mapConnectPaymentOrder(order: ConnectPaymentOrder): ConnectPaymentOrderListItem {
+    return {
+      id: order.id,
+      status: order.status,
+      amount: order.amount,
+      currency: order.currency,
+      description: order.description,
+      customerEmail: order.customerEmail,
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId,
+      stripePaymentIntentId: order.stripePaymentIntentId,
+      checkoutUrl: order.checkoutUrl,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      paidAt: order.paidAt,
+      failedAt: order.failedAt,
+      canceledAt: order.canceledAt,
+      refundedAt: order.refundedAt
+    };
+  }
+
+  private mapConnectCatalogItem(item: ConnectCatalogItem): ConnectCatalogItemListItem {
+    return {
+      id: item.id,
+      kind: item.kind,
+      billingType: item.billingType,
+      recurringInterval: item.recurringInterval,
+      recurringIntervalCount: item.recurringIntervalCount,
+      name: item.name,
+      description: item.description,
+      amount: item.amount,
+      currency: item.currency,
+      stripeConnectAccountId: item.stripeConnectAccountId,
+      stripeProductId: item.stripeProductId,
+      stripePriceId: item.stripePriceId,
+      isActive: item.isActive,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    };
   }
 }

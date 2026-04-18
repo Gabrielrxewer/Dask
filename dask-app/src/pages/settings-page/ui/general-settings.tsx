@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link, useParams } from "react-router-dom";
 import { factoryBoardConfig, mergeCardFieldDefinitions } from "@/entities/task";
+import { billingService, buildOnboardingChecklist, getNextOnboardingAction } from "@/modules/billing";
+import type { ConnectAccountStatus } from "@/modules/billing";
 import { workspaceService } from "@/modules/workspace/api";
 import { useWorkspace } from "@/modules/workspace";
 import type { WorkspaceProfile, WorkspaceTemplateOption } from "@/modules/workspace/model";
 import { buildWorkspaceSettingsMembersPath, buildWorkspaceSelectorPath } from "@/app/router";
+import { isApiError } from "@/shared/api/http-client";
 import { Button, FormField, Select, Textarea, TextInput } from "@/shared/ui";
 import "./general-settings.css";
 
@@ -95,6 +98,9 @@ export function GeneralSettings() {
   const [workspaceCompanyDraft, setWorkspaceCompanyDraft] = useState("");
   const [workspaceWebsiteDraft, setWorkspaceWebsiteDraft] = useState("");
   const [isSavingWorkspaceProfile, setIsSavingWorkspaceProfile] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<ConnectAccountStatus | null>(null);
+  const [connectLoadState, setConnectLoadState] = useState<"idle" | "loading" | "missing" | "ready" | "error">("idle");
+  const [isOpeningOnboarding, setIsOpeningOnboarding] = useState(false);
 
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const perspectives = useMemo(() => resolvePerspectives(rawBoardConfig), [rawBoardConfig]);
@@ -164,6 +170,43 @@ export function GeneralSettings() {
       mounted = false;
     };
   }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (!workspaceProfile?.id) {
+      setConnectLoadState("idle");
+      setConnectStatus(null);
+      return;
+    }
+
+    let mounted = true;
+    setConnectLoadState("loading");
+
+    billingService
+      .getConnectAccountStatus(workspaceProfile.id)
+      .then((status) => {
+        if (!mounted) {
+          return;
+        }
+        setConnectStatus(status);
+        setConnectLoadState("ready");
+      })
+      .catch((error: unknown) => {
+        if (!mounted) {
+          return;
+        }
+        if (isApiError(error) && error.status === 404) {
+          setConnectStatus(null);
+          setConnectLoadState("missing");
+          return;
+        }
+        setConnectStatus(null);
+        setConnectLoadState("error");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceProfile?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -257,6 +300,37 @@ export function GeneralSettings() {
       setError("Nao foi possivel salvar os dados do workspace agora.");
     } finally {
       setIsSavingWorkspaceProfile(false);
+    }
+  };
+
+  const hasConnectRequirements = Boolean(connectStatus && connectStatus.requirementsDue.length > 0);
+  const connectNeedsAttention = Boolean(
+    connectStatus && (!connectStatus.onboardingComplete || !connectStatus.chargesEnabled || hasConnectRequirements)
+  );
+  const onboardingChecklist = useMemo(
+    () => buildOnboardingChecklist(connectStatus),
+    [connectStatus]
+  );
+  const nextOnboardingAction = useMemo(
+    () => getNextOnboardingAction(connectStatus, onboardingChecklist),
+    [connectStatus, onboardingChecklist]
+  );
+
+  const handleOpenConnectOnboarding = async () => {
+    if (!workspaceProfile?.id || isOpeningOnboarding) {
+      return;
+    }
+
+    setIsOpeningOnboarding(true);
+    setFeedback("");
+    setError("");
+
+    try {
+      const response = await billingService.createConnectOnboardingLink(workspaceProfile.id);
+      window.location.href = response.url;
+    } catch {
+      setError("Nao foi possivel abrir o cadastro da cobranca Connect.");
+      setIsOpeningOnboarding(false);
     }
   };
 
@@ -404,6 +478,80 @@ export function GeneralSettings() {
             {isSavingWorkspaceProfile ? "Salvando..." : "Salvar dados do workspace"}
           </Button>
           {workspaceProfile?.kind ? <small>Tipo atual: {workspaceProfile.kind}</small> : null}
+        </div>
+      </section>
+
+      <section className="general-settings__billing-connect">
+        <header>
+          <span>Cobranca Connect</span>
+          <h2>Completar cadastro da cobranca</h2>
+          <p>
+            Seus clientes so conseguem cobrar clientes deles quando a conta Connect do workspace estiver completa.
+          </p>
+        </header>
+
+        <div className="general-settings__billing-status">
+          {connectLoadState === "loading" ? (
+            <p>Carregando status da conta Connect...</p>
+          ) : null}
+          {connectLoadState === "missing" ? (
+            <p className="general-settings__billing-warning">
+              Conta Connect ainda nao iniciada. Complete o cadastro para liberar cobrancas.
+            </p>
+          ) : null}
+          {connectLoadState === "error" ? (
+            <p className="general-settings__billing-warning">
+              Nao foi possivel verificar o status da cobranca agora.
+            </p>
+          ) : null}
+          {connectLoadState === "ready" && connectStatus ? (
+            <>
+              {connectNeedsAttention ? (
+                <p className="general-settings__billing-warning">
+                  Existem pendencias cadastrais no Stripe Connect. Complete os dados para habilitar cobrancas.
+                </p>
+              ) : (
+                <p className="general-settings__billing-success">
+                  Conta Connect pronta. Cobrancas e repasses habilitados.
+                </p>
+              )}
+              <div className="general-settings__billing-grid">
+                <span>
+                  <strong>{connectStatus.chargesEnabled ? "Sim" : "Nao"}</strong>
+                  Cobrancas habilitadas
+                </span>
+                <span>
+                  <strong>{connectStatus.payoutsEnabled ? "Sim" : "Nao"}</strong>
+                  Repasses habilitados
+                </span>
+                <span>
+                  <strong>{connectStatus.requirementsDue.length}</strong>
+                  Pendencias cadastrais
+                </span>
+              </div>
+              <p className="general-settings__billing-next-step">
+                <strong>Proximo passo:</strong> {nextOnboardingAction}
+              </p>
+            </>
+          ) : null}
+        </div>
+
+        <ul className="general-settings__billing-checklist">
+          {onboardingChecklist.map((item) => (
+            <li key={item.key} className={item.done ? "is-done" : "is-pending"}>
+              <strong>{item.title}</strong>
+              <p>{item.description}</p>
+              {!item.done && item.pendingReasons.length > 0 ? (
+                <small>{item.pendingReasons.join(" | ")}</small>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+
+        <div className="general-settings__billing-actions">
+          <Button type="button" onClick={() => void handleOpenConnectOnboarding()} disabled={isOpeningOnboarding}>
+            {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
+          </Button>
         </div>
       </section>
 

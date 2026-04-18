@@ -1,5 +1,15 @@
 import { apiClient } from "@/shared/api/http-client";
-import type { BillingStatus, SubscriptionPlan } from "../model/types";
+import type {
+  BillingStatus,
+  ConnectAccountStatus,
+  ConnectCatalogBillingType,
+  ConnectCatalogItem,
+  ConnectCatalogItemKind,
+  ConnectCatalogRecurringInterval,
+  ConnectPaymentOrder,
+  CreateConnectCheckoutSessionInput,
+  SubscriptionPlan
+} from "../model/types";
 
 export const billingService = {
   getStatus(): Promise<BillingStatus> {
@@ -21,6 +31,70 @@ export const billingService = {
     return apiClient.post<{ url: string }>(
       "/billing/portal-session",
       {},
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  createConnectOnboardingLink(
+    workspaceId: string,
+    input: { refreshUrl?: string; returnUrl?: string } = {}
+  ): Promise<{ url: string; accountId: string }> {
+    return apiClient.post<{ url: string; accountId: string }>(
+      `/billing/connect/workspaces/${workspaceId}/onboarding-link`,
+      input,
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  getConnectAccountStatus(workspaceId: string): Promise<ConnectAccountStatus> {
+    return apiClient.get<ConnectAccountStatus>(
+      `/billing/connect/workspaces/${workspaceId}/account`,
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  listConnectCatalogItems(workspaceId: string, includeInactive = true): Promise<{ items: ConnectCatalogItem[] }> {
+    return apiClient.get<{ items: ConnectCatalogItem[] }>(
+      `/billing/connect/workspaces/${workspaceId}/catalog-items?includeInactive=${String(includeInactive)}`,
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  createConnectCatalogItem(
+    workspaceId: string,
+    input: {
+      kind: ConnectCatalogItemKind;
+      billingType?: ConnectCatalogBillingType;
+      recurringInterval?: ConnectCatalogRecurringInterval;
+      recurringIntervalCount?: number;
+      name: string;
+      description?: string;
+      amount: number;
+      currency?: string;
+      metadata?: Record<string, string>;
+    }
+  ): Promise<ConnectCatalogItem> {
+    return apiClient.post<ConnectCatalogItem>(
+      `/billing/connect/workspaces/${workspaceId}/catalog-items`,
+      input,
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  createConnectCheckoutSession(
+    workspaceId: string,
+    input: CreateConnectCheckoutSessionInput
+  ): Promise<{ url: string; sessionId: string; orderId: string }> {
+    return apiClient.post<{ url: string; sessionId: string; orderId: string }>(
+      `/billing/connect/workspaces/${workspaceId}/checkout-session`,
+      input,
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  listConnectPaymentOrders(workspaceId: string, limit = 50): Promise<{ items: ConnectPaymentOrder[] }> {
+    return apiClient.get<{ items: ConnectPaymentOrder[] }>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders?limit=${limit}`,
       { authMode: "required", retryOnUnauthorized: true }
     );
   }

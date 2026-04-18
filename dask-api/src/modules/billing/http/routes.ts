@@ -3,7 +3,15 @@ import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
 import { AppError } from '@/core/errors/app-error';
 import type { BillingService } from '../application/billing-service';
-import { createCheckoutSessionDto } from './dto';
+import {
+  connectWorkspaceParamsDto,
+  createConnectCatalogItemDto,
+  createCheckoutSessionDto,
+  createConnectCheckoutSessionDto,
+  createConnectOnboardingLinkDto,
+  listConnectCatalogItemsQueryDto,
+  listConnectPaymentOrdersQueryDto
+} from './dto';
 
 interface BillingRouteDeps {
   billingService: BillingService;
@@ -51,6 +59,115 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
     asyncHandler(async (req: Request, res: Response) => {
       const { url } = await billingService.createBillingPortalSession(req.auth!.userId);
       res.status(200).json({ url });
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/onboarding-link',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const body = createConnectOnboardingLinkDto.safeParse(req.body ?? {});
+      if (!params.success || !body.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const response = await billingService.createConnectOnboardingLink(
+        params.data.workspaceId,
+        req.auth!.userId,
+        body.data
+      );
+      res.status(200).json(response);
+    })
+  );
+
+  router.get(
+    '/billing/connect/workspaces/:workspaceId/account',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      if (!params.success) {
+        throw new AppError('Invalid workspaceId', 400);
+      }
+
+      const status = await billingService.getConnectAccountStatus(params.data.workspaceId, req.auth!.userId);
+      res.status(200).json(status);
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/catalog-items',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const body = createConnectCatalogItemDto.safeParse(req.body ?? {});
+      if (!params.success || !body.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const item = await billingService.createConnectCatalogItem(
+        params.data.workspaceId,
+        req.auth!.userId,
+        body.data
+      );
+      res.status(201).json(item);
+    })
+  );
+
+  router.get(
+    '/billing/connect/workspaces/:workspaceId/catalog-items',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const query = listConnectCatalogItemsQueryDto.safeParse(req.query ?? {});
+      if (!params.success || !query.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const items = await billingService.listConnectCatalogItems(
+        params.data.workspaceId,
+        req.auth!.userId,
+        query.data.includeInactive
+      );
+      res.status(200).json({ items });
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/checkout-session',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const body = createConnectCheckoutSessionDto.safeParse(req.body ?? {});
+      if (!params.success || !body.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const response = await billingService.createConnectCheckoutSession(
+        params.data.workspaceId,
+        req.auth!.userId,
+        body.data
+      );
+      res.status(200).json(response);
+    })
+  );
+
+  router.get(
+    '/billing/connect/workspaces/:workspaceId/payment-orders',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const query = listConnectPaymentOrdersQueryDto.safeParse(req.query);
+      if (!params.success || !query.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const orders = await billingService.listConnectPaymentOrders(
+        params.data.workspaceId,
+        req.auth!.userId,
+        query.data.limit
+      );
+      res.status(200).json({ items: orders });
     })
   );
 

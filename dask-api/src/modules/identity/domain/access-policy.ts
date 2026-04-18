@@ -6,7 +6,7 @@ import {
   type PermissionOverrides
 } from '@/modules/identity/domain/permissions';
 
-export const workspaceModuleCatalog = ['board', 'automation', 'documentation', 'ai', 'settings'] as const;
+export const workspaceModuleCatalog = ['board', 'automation', 'documentation', 'ai', 'settings', 'fiscal'] as const;
 
 export type WorkspaceModuleKey = (typeof workspaceModuleCatalog)[number];
 
@@ -162,7 +162,8 @@ function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS'
       automation: true,
       documentation: true,
       ai: true,
-      settings: true
+      settings: true,
+      fiscal: true
     } as Record<WorkspaceModuleKey, boolean>;
   }
   return {
@@ -170,7 +171,8 @@ function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS'
     automation: false,
     documentation: true,
     ai: false,
-    settings: true
+    settings: true,
+    fiscal: false
   } as Record<WorkspaceModuleKey, boolean>;
 }
 

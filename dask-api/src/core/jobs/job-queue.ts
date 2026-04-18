@@ -3,7 +3,9 @@ export type JobName =
   | 'ai.generate-embedding'
   | 'search.index-item'
   | 'automation.run-rule'
-  | 'automation.process-event';
+  | 'automation.process-event'
+  | 'fiscal.reconcile-pending'
+  | 'fiscal.sync-received';
 
 export type JobEnqueueOptions = {
   jobId?: string;

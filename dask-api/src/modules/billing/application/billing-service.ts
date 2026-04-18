@@ -440,6 +440,12 @@ export class BillingService {
           : {})
       }
     });
+    const fiscalMetadata = this.buildFiscalCheckoutMetadata({
+      workspaceId,
+      orderId: order.id,
+      catalogItem,
+      metadata: input.metadata
+    });
 
     const sessionPayload: Record<string, unknown> = {
       mode: checkoutMode,
@@ -469,7 +475,7 @@ export class BillingService {
         workspaceId,
         platformUserId: userId,
         ...(catalogItem ? { catalogItemId: catalogItem.id } : {}),
-        ...input.metadata
+        ...fiscalMetadata
       }
     };
     if (checkoutMode === 'payment') {
@@ -480,7 +486,7 @@ export class BillingService {
           workspaceId,
           platformUserId: userId,
           ...(catalogItem ? { catalogItemId: catalogItem.id } : {}),
-          ...input.metadata
+          ...fiscalMetadata
         }
       };
     } else {
@@ -491,7 +497,7 @@ export class BillingService {
           workspaceId,
           platformUserId: userId,
           ...(catalogItem ? { catalogItemId: catalogItem.id } : {}),
-          ...input.metadata
+          ...fiscalMetadata
         }
       };
     }
@@ -623,6 +629,39 @@ export class BillingService {
     });
 
     return this.mapConnectCatalogItem(item);
+  }
+
+  private buildFiscalCheckoutMetadata(input: {
+    workspaceId: string;
+    orderId: string;
+    catalogItem: ConnectCatalogItem | null;
+    metadata?: Record<string, string>;
+  }): Record<string, string> {
+    const source = input.metadata ?? {};
+    const catalogTypeHint = input.catalogItem?.kind === 'SERVICE' ? 'nfse' : 'nfe';
+    const saleOriginHint =
+      input.catalogItem?.billingType === 'SUBSCRIPTION' ? 'stripe_subscription' : 'stripe_payment';
+
+    const merged: Record<string, string> = {
+      ...source,
+      workspace_id: source.workspace_id ?? input.workspaceId,
+      workspace_business_id: source.workspace_business_id ?? '',
+      internal_sale_id: source.internal_sale_id ?? input.orderId,
+      customer_id: source.customer_id ?? '',
+      catalog_item_ids: source.catalog_item_ids ?? (input.catalogItem?.id ?? ''),
+      order_id: source.order_id ?? input.orderId,
+      document_hint: source.document_hint ?? catalogTypeHint,
+      sale_origin: source.sale_origin ?? saleOriginHint,
+      emit_after_payment: source.emit_after_payment ?? 'false'
+    };
+
+    return Object.entries(merged).reduce<Record<string, string>>((acc, [key, value]) => {
+      const normalized = typeof value === 'string' ? value.trim() : '';
+      if (normalized.length > 0) {
+        acc[key] = normalized.slice(0, 500);
+      }
+      return acc;
+    }, {});
   }
 
   private buildBlockedMessage(status: SubscriptionStatus | null): string {

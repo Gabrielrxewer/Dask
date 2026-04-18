@@ -29,6 +29,9 @@ import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/applicat
 import { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import { BillingService } from '@/modules/billing/application/billing-service';
 import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
+import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
+import { FocusFiscalProvider } from '@/modules/fiscal/providers/focus/focus-fiscal-provider';
+import { PrismaFiscalRepository } from '@/modules/fiscal/repositories/prisma-fiscal-repository';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 
 export type AppContainer = {
@@ -50,6 +53,7 @@ export type AppContainer = {
   workspaceWorkItemsService: WorkspaceWorkItemsService;
   workspaceInvitesService: WorkspaceInvitesService;
   billingService: BillingService | null;
+  fiscalService: FiscalService;
 };
 
 export function buildAppContainer(): AppContainer {
@@ -115,6 +119,17 @@ export function buildAppContainer(): AppContainer {
       })
     : null;
 
+  const fiscalRepo = new PrismaFiscalRepository(prisma);
+  const focusProvider = new FocusFiscalProvider();
+  const fiscalService = new FiscalService({
+    repo: fiscalRepo,
+    provider: focusProvider,
+    jobQueue,
+    stripe: stripeClient,
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL ?? env.STRIPE_WEBHOOK_SECRET,
+    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+  });
+
   return {
     roleAuthorizationService,
     authService,
@@ -133,6 +148,7 @@ export function buildAppContainer(): AppContainer {
     workspaceDocumentsService,
     workspaceWorkItemsService,
     workspaceInvitesService,
-    billingService
+    billingService,
+    fiscalService
   };
 }

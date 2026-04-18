@@ -5,6 +5,7 @@ export {
   buildWorkspaceBillingPath,
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,
+  buildWorkspaceFiscalPath,
   buildWorkspaceSelectorPath,
   buildWorkspaceListPath,
   buildWorkspacePath,

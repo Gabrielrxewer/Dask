@@ -28,6 +28,8 @@ import { buildAuditRoutes } from '@/modules/audit/http/routes';
 import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
 import { buildBillingRoutes } from '@/modules/billing/http/routes';
 import { buildAdminRoutes } from '@/modules/admin/http/routes';
+import { buildFiscalRoutes } from '@/modules/fiscal/http/routes';
+import { buildFiscalIntegrationRoutes } from '@/modules/fiscal/http/integration-routes';
 
 function parseAllowedOrigins(raw: string): string[] {
   const values = raw
@@ -148,6 +150,7 @@ export const createApp = (): Express => {
 
   // Raw body for Stripe webhook validation — must be registered before express.json()
   app.use(`${env.API_PREFIX}/billing/webhook`, express.raw({ type: 'application/json' }));
+  app.use(`${env.API_PREFIX}/integrations/stripe/webhook/fiscal`, express.raw({ type: 'application/json' }));
 
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
@@ -170,7 +173,8 @@ export const createApp = (): Express => {
     workspaceDocumentsService,
     workspaceWorkItemsService,
     workspaceInvitesService,
-    billingService
+    billingService,
+    fiscalService
   } = buildAppContainer();
   const requireSubscription = createSubscriptionMiddleware(prisma);
   const outboxRepository = new PrismaOutboxRepository(prisma);
@@ -230,6 +234,8 @@ export const createApp = (): Express => {
     // Otherwise checkout/status requests are blocked with 402 before reaching billing handlers.
     app.use(env.API_PREFIX, buildBillingRoutes({ billingService }));
   }
+
+  app.use(env.API_PREFIX, buildFiscalIntegrationRoutes({ fiscalService }));
 
   app.use(
     env.API_PREFIX,
@@ -306,6 +312,17 @@ export const createApp = (): Express => {
       workspaceDocumentsService,
       workspaceWorkItemsService,
       workspaceInvitesService
+    })
+  );
+
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
+    buildFiscalRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      fiscalService
     })
   );
 

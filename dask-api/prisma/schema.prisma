@@ -86,6 +86,139 @@ enum ConnectCatalogRecurringInterval {
   YEAR
 }
 
+enum FiscalProvider {
+  FOCUS
+}
+
+enum FiscalDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum FiscalDocumentType {
+  NFE
+  NFSE
+}
+
+enum FiscalDocumentOrigin {
+  MANUAL_PRODUCT
+  MANUAL_SERVICE
+  CATALOG_PRODUCT
+  CATALOG_SERVICE
+  STRIPE_PAYMENT
+  STRIPE_SUBSCRIPTION
+  EXTERNAL_RECEIVED_NFE
+  EXTERNAL_RECEIVED_NFSE
+}
+
+enum FiscalSourceSystem {
+  INTERNAL
+  STRIPE
+  FOCUS
+  MDE
+  NFSER
+}
+
+enum FiscalDocumentStatus {
+  DRAFT
+  READY_TO_ISSUE
+  ISSUING
+  AUTHORIZED
+  PROCESSING
+  PENDING_REVIEW
+  REJECTED
+  CANCELLED
+  FAILED
+  RECEIVED
+  MANIFEST_PENDING
+  MANIFESTED
+  SYNCED
+}
+
+enum FiscalIssueStatus {
+  NOT_STARTED
+  PROCESSING
+  AUTHORIZED
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+enum FiscalPartyRole {
+  EMITTER
+  RECIPIENT
+  TAKER
+  SUPPLIER
+}
+
+enum FiscalReceivedType {
+  NFE_MDE
+  NFSE_NFSER
+}
+
+enum FiscalReceivedStatus {
+  RECEIVED
+  MANIFEST_PENDING
+  MANIFESTED
+  SYNCED
+  FAILED
+}
+
+enum FiscalSyncType {
+  RECEIVED_NFE
+  RECEIVED_NFSE
+  PENDING_RECONCILIATION
+  OUTBOUND_STATUS
+}
+
+enum FiscalSyncTrigger {
+  MANUAL
+  SCHEDULED
+  WEBHOOK
+  RETRY
+}
+
+enum FiscalSyncStatus {
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum FiscalWebhookSource {
+  FOCUS
+  STRIPE
+}
+
+enum FiscalWebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  DUPLICATE
+}
+
+enum FiscalCatalogItemType {
+  PRODUCT
+  SERVICE
+}
+
+enum FiscalDraftStatus {
+  DRAFT
+  READY
+  ISSUED
+  CANCELLED
+}
+
+enum FiscalIntegrationDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum FiscalIntegrationStatus {
+  SUCCESS
+  ERROR
+}
+
 model User {
   id                       String                    @id @default(uuid())
   email                    String                    @unique
@@ -286,6 +419,15 @@ model Workspace {
   workItemDocumentLinks  WorkItemDocumentLink[]
   connectPaymentOrders   ConnectPaymentOrder[]
   connectCatalogItems    ConnectCatalogItem[]
+  fiscalCompanyConfigs   FiscalCompanyConfig[]
+  fiscalDocuments        FiscalDocument[]
+  fiscalEmissionDrafts   FiscalEmissionDraft[]
+  fiscalReceivedDocuments FiscalReceivedDocument[]
+  fiscalSyncRuns         FiscalSyncRun[]
+  fiscalWebhookEvents    FiscalWebhookEvent[]
+  fiscalIntegrationLogs  FiscalIntegrationLog[]
+  fiscalCatalogProfiles  FiscalCatalogProfile[]
+  fiscalOperationTemplates FiscalOperationTemplate[]
 
   @@unique([organizationId, key])
 }
@@ -360,6 +502,333 @@ model ConnectCatalogItem {
 
   @@index([workspaceId, isActive, createdAt])
   @@index([workspaceId, stripeConnectAccountId, createdAt])
+}
+
+model FiscalCompanyConfig {
+  id                      String         @id @default(uuid())
+  workspaceId             String
+  workspaceBusinessId     String?
+  provider                FiscalProvider @default(FOCUS)
+  displayName             String
+  legalName               String
+  cnpj                    String
+  stateRegistration       String?
+  municipalRegistration   String?
+  taxRegime               String?
+  focusToken              String
+  focusEnvironment        String         @default("homologacao")
+  focusCompanyReference   String?
+  focusWebhookSecret      String?
+  emitAutomatically       Boolean        @default(false)
+  stripePolicy            String         @default("assisted_one_click")
+  defaultSerie            String?
+  defaultNatureOperation  String?
+  fallbackRules           Json?
+  syncConfig              Json?
+  metadata                Json?
+  createdByUserId         String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  workspace               Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents               FiscalDocument[]
+  drafts                  FiscalEmissionDraft[]
+  receivedDocuments       FiscalReceivedDocument[]
+  syncRuns                FiscalSyncRun[]
+  integrationLogs         FiscalIntegrationLog[]
+
+  @@unique([workspaceId, cnpj])
+  @@index([workspaceId, workspaceBusinessId, createdAt])
+}
+
+model FiscalDocument {
+  id                      String                @id @default(uuid())
+  workspaceId             String
+  workspaceBusinessId     String?
+  companyConfigId         String?
+  internalReference       String
+  provider                FiscalProvider        @default(FOCUS)
+  direction               FiscalDirection
+  documentType            FiscalDocumentType
+  origin                  FiscalDocumentOrigin
+  sourceSystem            FiscalSourceSystem    @default(INTERNAL)
+  status                  FiscalDocumentStatus  @default(DRAFT)
+  issueStatus             FiscalIssueStatus     @default(NOT_STARTED)
+  focusStatus             String?
+  operationStatus         String?
+  customerId              String?
+  supplierId              String?
+  saleId                  String?
+  stripeSessionId         String?
+  stripePaymentIntentId   String?
+  stripeChargeId          String?
+  stripeAccountId         String?
+  focusReference          String?
+  focusDocumentId         String?
+  number                  String?
+  series                  String?
+  amountSubtotal          Decimal?              @db.Decimal(18, 4)
+  amountDiscount          Decimal?              @db.Decimal(18, 4)
+  amountTotal             Decimal?              @db.Decimal(18, 4)
+  currency                String                @default("BRL")
+  issuedAt                DateTime?
+  authorizedAt            DateTime?
+  cancelledAt             DateTime?
+  xmlUrl                  String?
+  pdfUrl                  String?
+  xmlStorageRef           String?
+  pdfStorageRef           String?
+  requestPayloadSnapshot  Json?
+  responsePayloadSnapshot Json?
+  providerPayloadRaw      Json?
+  metadata                Json?
+  lastSyncAt              DateTime?
+  lastError               String?
+  createdByUserId         String?
+  updatedByUserId         String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  workspace               Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig           FiscalCompanyConfig?  @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+  items                   FiscalDocumentItem[]
+  parties                 FiscalParty[]
+  integrationLogs         FiscalIntegrationLog[]
+
+  @@unique([workspaceId, internalReference])
+  @@index([workspaceId, workspaceBusinessId, direction, documentType, createdAt])
+  @@index([workspaceId, status, issueStatus, createdAt])
+  @@index([workspaceId, saleId, stripeSessionId])
+  @@index([focusReference, focusDocumentId])
+}
+
+model FiscalDocumentItem {
+  id                    String         @id @default(uuid())
+  documentId            String
+  itemType              FiscalCatalogItemType
+  sourceType            String?
+  catalogProfileId      String?
+  sku                   String?
+  name                  String
+  descriptionCommercial String?
+  descriptionFiscal     String?
+  quantity              Decimal        @db.Decimal(18, 4)
+  unit                  String?
+  unitPrice             Decimal        @db.Decimal(18, 4)
+  discountAmount        Decimal?       @db.Decimal(18, 4)
+  totalAmount           Decimal        @db.Decimal(18, 4)
+  taxConfigSnapshot     Json?
+  metadata              Json?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  document              FiscalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+}
+
+model FiscalParty {
+  id             String         @id @default(uuid())
+  documentId     String
+  role           FiscalPartyRole
+  name           String
+  legalName      String?
+  cnpjCpf        String
+  stateRegistration String?
+  municipalRegistration String?
+  email          String?
+  phone          String?
+  address        Json?
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  document       FiscalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, role])
+  @@index([cnpjCpf])
+}
+
+model FiscalEmissionDraft {
+  id                  String                @id @default(uuid())
+  workspaceId         String
+  workspaceBusinessId String?
+  companyConfigId     String?
+  status              FiscalDraftStatus     @default(DRAFT)
+  documentType        FiscalDocumentType
+  origin              FiscalDocumentOrigin
+  saleId              String?
+  stripeSessionId     String?
+  stripePaymentIntentId String?
+  emitAfterPayment    Boolean               @default(false)
+  autoIssueEligible   Boolean               @default(false)
+  payload             Json
+  suggestion          Json?
+  createdByUserId     String?
+  issuedDocumentId    String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig       FiscalCompanyConfig?  @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, workspaceBusinessId, status, createdAt])
+  @@index([workspaceId, saleId, stripeSessionId])
+}
+
+model FiscalReceivedDocument {
+  id                  String               @id @default(uuid())
+  workspaceId         String
+  workspaceBusinessId String?
+  companyConfigId     String?
+  type                FiscalReceivedType
+  status              FiscalReceivedStatus @default(RECEIVED)
+  manifestationStatus String?
+  externalKey         String
+  providerReference   String?
+  focusReference      String?
+  issuerName          String?
+  issuerDocument      String?
+  recipientDocument   String?
+  amountTotal         Decimal?             @db.Decimal(18, 4)
+  issuedAt            DateTime?
+  receivedAt          DateTime?
+  xmlUrl              String?
+  pdfUrl              String?
+  payload             Json?
+  supplierId          String?
+  costCenterId        String?
+  categoryId          String?
+  financialEntryId    String?
+  purchaseId          String?
+  mappedDocumentId    String?
+  lastSyncAt          DateTime?
+  lastError           String?
+  metadata            Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig       FiscalCompanyConfig? @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, type, externalKey])
+  @@index([workspaceId, workspaceBusinessId, type, status, createdAt])
+  @@index([workspaceId, manifestationStatus])
+}
+
+model FiscalSyncRun {
+  id                String            @id @default(uuid())
+  workspaceId       String
+  workspaceBusinessId String?
+  companyConfigId   String?
+  syncType          FiscalSyncType
+  trigger           FiscalSyncTrigger
+  status            FiscalSyncStatus  @default(RUNNING)
+  startedAt         DateTime          @default(now())
+  finishedAt        DateTime?
+  processedCount    Int               @default(0)
+  createdCount      Int               @default(0)
+  updatedCount      Int               @default(0)
+  failedCount       Int               @default(0)
+  requestSnapshot   Json?
+  responseSnapshot  Json?
+  lastError         String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig     FiscalCompanyConfig? @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, workspaceBusinessId, syncType, status, startedAt])
+}
+
+model FiscalWebhookEvent {
+  id                String              @id @default(uuid())
+  workspaceId       String?
+  source            FiscalWebhookSource
+  providerEventId   String?
+  eventType         String
+  idempotencyKey    String              @unique
+  status            FiscalWebhookStatus @default(RECEIVED)
+  headers           Json?
+  payload           Json
+  signature         String?
+  attempts          Int                 @default(0)
+  processedAt       DateTime?
+  lastError         String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  workspace         Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([source, eventType, createdAt])
+  @@index([workspaceId, status, createdAt])
+}
+
+model FiscalIntegrationLog {
+  id                String                    @id @default(uuid())
+  workspaceId       String
+  companyConfigId   String?
+  documentId        String?
+  system            FiscalWebhookSource
+  direction         FiscalIntegrationDirection
+  operation         String
+  status            FiscalIntegrationStatus
+  correlationId     String?
+  httpStatus        Int?
+  requestPayload    Json?
+  responsePayload   Json?
+  errorMessage      String?
+  createdAt         DateTime                  @default(now())
+  workspace         Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig     FiscalCompanyConfig?      @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+  document          FiscalDocument?           @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, system, status, createdAt])
+  @@index([documentId, createdAt])
+}
+
+model FiscalCatalogProfile {
+  id                    String                @id @default(uuid())
+  workspaceId           String
+  workspaceBusinessId   String?
+  itemType              FiscalCatalogItemType
+  name                  String
+  descriptionCommercial String?
+  descriptionFiscal     String?
+  sku                   String?
+  unit                  String?
+  defaultValue          Decimal?              @db.Decimal(18, 4)
+  ncm                   String?
+  serviceCode           String?
+  cnae                  String?
+  lcItem                String?
+  cfopDefault           String?
+  operationNature       String?
+  taxConfig             Json?
+  isActive              Boolean               @default(true)
+  metadata              Json?
+  createdByUserId       String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  workspace             Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, workspaceBusinessId, itemType, isActive, createdAt])
+  @@index([workspaceId, sku])
+}
+
+model FiscalOperationTemplate {
+  id                  String             @id @default(uuid())
+  workspaceId         String
+  workspaceBusinessId String?
+  name                String
+  documentType        FiscalDocumentType
+  itemType            FiscalCatalogItemType?
+  serie               String?
+  natureOperation     String?
+  cfop                String?
+  taxDefaults         Json?
+  notes               String?
+  isDefault           Boolean            @default(false)
+  isActive            Boolean            @default(true)
+  createdByUserId     String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, workspaceBusinessId, documentType, isActive, createdAt])
 }
 
 model WorkItemDocumentLink {

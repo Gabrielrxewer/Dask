@@ -37,6 +37,9 @@ export const permissionCatalog = [
   'integration.manage',
   'billing.read',
   'billing.manage',
+  'fiscal.read',
+  'fiscal.issue',
+  'fiscal.config',
   'audit.read',
   'ai.use',
   'ai.configure',
@@ -88,6 +91,8 @@ export const rolePermissionPresets: Record<RoleTemplate, Permission[]> = {
     'automation.delete',
     'automation.run',
     'integration.read',
+    'fiscal.read',
+    'fiscal.issue',
     'audit.read',
     'ai.use',
     'ai.configure',
@@ -110,6 +115,7 @@ export const rolePermissionPresets: Record<RoleTemplate, Permission[]> = {
     'file.upload',
     'automation.read',
     'automation.run',
+    'fiscal.read',
     'audit.read',
     'ai.use',
     'item.write'
@@ -123,6 +129,7 @@ export const rolePermissionPresets: Record<RoleTemplate, Permission[]> = {
     'comment.read',
     'file.read',
     'automation.read',
+    'fiscal.read',
     'audit.read'
   ],
   GUEST: [

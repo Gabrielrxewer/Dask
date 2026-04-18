@@ -19,6 +19,7 @@ export { AgendaPage } from "@/pages/agenda-page";
 export { DocumentationPage } from "@/pages/documentation-page";
 export { AiAgentsPage } from "@/pages/ai-agents-page";
 export { BillingPage } from "@/pages/billing-page";
+export { FiscalPage } from "@/pages/fiscal-page";
 
 // Settings — shell + seções individuais
 export {

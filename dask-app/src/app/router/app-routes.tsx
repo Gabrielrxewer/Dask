@@ -23,6 +23,7 @@ import {
   ItemTypesSettingsPage,
   ListPage,
   LoginPage,
+  FiscalPage,
   MembersSettingsPage,
   NoWorkspacePage,
   PlatformAdminPage,
@@ -47,9 +48,17 @@ function WorkspaceBoundary() {
   );
 }
 
-function ModuleRoute({ module, children }: { module: "board" | "automation" | "documentation" | "ai" | "settings"; children: JSX.Element }) {
+function ModuleRoute({
+  module,
+  children
+}: {
+  module: "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal";
+  children: JSX.Element;
+}) {
   const { snapshot } = useWorkspace();
-  const allowedModules = new Set(snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings"]);
+  const allowedModules = new Set(
+    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal"]
+  );
 
   if (!allowedModules.has(module)) {
     return <Navigate replace to={routePaths.board} />;
@@ -191,6 +200,14 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="settings">
                   <BillingPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.fiscal}
+              element={
+                <ModuleRoute module="fiscal">
+                  <FiscalPage />
                 </ModuleRoute>
               }
             />

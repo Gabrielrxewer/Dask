@@ -7,6 +7,7 @@ import {
   buildWorkspaceBillingPath,
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,
+  buildWorkspaceFiscalPath,
   buildWorkspaceListPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceTimelinePath
@@ -21,9 +22,9 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing";
+type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
-type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings";
+type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -161,6 +162,18 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     );
   }
 
+  if (name === "fiscal") {
+    return (
+      <svg {...commonProps}>
+        <path d="M8 4.8h7.1L19 8.7V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.8a2 2 0 0 1 2-2Z" />
+        <path d="M15.1 4.8V9H19" />
+        <path d="M9.2 12.2h5.6" />
+        <path d="M9.2 15.4h5.6" />
+        <path d="M9.2 18.6h3.2" />
+      </svg>
+    );
+  }
+
   return (
     <svg {...commonProps}>
       <rect x="4" y="7" width="16" height="13" rx="3" />
@@ -186,7 +199,9 @@ export function AppShell({
 }: AppShellProps) {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot } = useWorkspace();
-  const allowedModules = new Set(snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings"]);
+  const allowedModules = new Set(
+    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal"]
+  );
   const navGroups = [
     {
       title: "Planejamento",
@@ -257,6 +272,13 @@ export function AppShell({
     {
       title: "Financeiro",
       items: [
+        {
+          to: buildWorkspaceFiscalPath(workspaceSlug),
+          label: "Fiscal",
+          icon: "fiscal" as const,
+          tone: "slate" as const,
+          module: "fiscal" as AppModuleKey
+        },
         {
           to: buildWorkspaceBillingPath(workspaceSlug),
           label: "Cobranca",

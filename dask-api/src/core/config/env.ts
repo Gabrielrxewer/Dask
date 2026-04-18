@@ -90,9 +90,12 @@ const envSchema = z.object({
   // Stripe Billing
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET_FISCAL: z.string().optional(),
   STRIPE_PRICE_ID_PERSONAL_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ID_BUSINESS_MONTHLY: z.string().optional(),
   STRIPE_CONNECT_APPLICATION_FEE_BPS: z.coerce.number().int().min(0).max(10_000).default(500),
+  FOCUS_API_BASE_URL: z.string().default('https://api.focusnfe.com.br/v2'),
+  FOCUS_WEBHOOK_SECRET: z.string().optional(),
   APP_PUBLIC_URL: z.string().default('http://localhost:5173'),
   API_PUBLIC_URL: z.string().default('http://localhost:3333'),
   OPENAI_API_KEY: z.string().optional(),

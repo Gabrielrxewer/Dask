@@ -8,7 +8,11 @@ import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-sta
 import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orchestration-service';
 import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
 import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
+import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
+import { FocusFiscalProvider } from '@/modules/fiscal/providers/focus/focus-fiscal-provider';
+import { PrismaFiscalRepository } from '@/modules/fiscal/repositories/prisma-fiscal-repository';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
 
 type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
 const workerLogger = getLogger('worker');
@@ -47,6 +51,17 @@ export const startWorkers = (): WorkerHandle[] => {
     prisma,
     async (workspaceId: string) => automationViewService.ensureDefaultViews(workspaceId)
   );
+  const fiscalRepository = new PrismaFiscalRepository(prisma);
+  const fiscalProvider = new FocusFiscalProvider();
+  const fiscalJobQueue = new BullMqJobQueue();
+  const fiscalService = new FiscalService({
+    repo: fiscalRepository,
+    provider: fiscalProvider,
+    jobQueue: fiscalJobQueue,
+    stripe: null,
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+  });
 
   const worker = new Worker(
     'dask-jobs',
@@ -177,6 +192,23 @@ export const startWorkers = (): WorkerHandle[] => {
           ruleId: job.data.ruleId as string,
           context: (job.data.context as Record<string, unknown>) ?? {},
           requestedBy: job.data.requestedBy as string | undefined
+        });
+      }
+
+      if (job.name === 'fiscal.reconcile-pending') {
+        await fiscalService.processPendingDocumentStatus({
+          workspaceId: job.data.workspaceId as string,
+          documentId: job.data.documentId as string
+        });
+      }
+
+      if (job.name === 'fiscal.sync-received') {
+        await fiscalService.syncReceived({
+          workspaceId: job.data.workspaceId as string,
+          companyConfigId: job.data.companyConfigId as string,
+          type: job.data.type as 'NFE_MDE' | 'NFSE_NFSER',
+          trigger: (job.data.trigger as 'MANUAL' | 'SCHEDULED' | 'WEBHOOK' | 'RETRY') ?? 'SCHEDULED',
+          requestedByUserId: (job.data.requestedByUserId as string) ?? 'system:worker'
         });
       }
     },

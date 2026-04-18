@@ -1,32 +1,44 @@
 import { env } from '@/core/config/env';
 import { AppError } from '@/core/errors/app-error';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
-import type { AIProvider } from '@/modules/ai/domain/providers';
+import type { AIProvider, AINativeTool } from '@/modules/ai/domain/providers';
 
-type ChatCompletionResponse = {
-  model?: string;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-  choices?: Array<{
-    message?: {
-      content?: string;
-      tool_calls?: Array<{
-        function?: {
-          name?: string;
-          arguments?: string;
-        };
-      }>;
+type ResponsesApiTool =
+  | {
+      type: 'function';
+      name: string;
+      description: string;
+      parameters: Record<string, unknown>;
+      strict?: boolean;
+    }
+  | {
+      type: 'web_search';
     };
+
+type ResponsesApiOutput = {
+  type?: string;
+  name?: string;
+  arguments?: string;
+  content?: Array<{
+    type?: string;
+    text?: string;
   }>;
 };
 
+type ResponsesApiResponse = {
+  model?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
+  output?: ResponsesApiOutput[];
+};
+
 export class OpenAIAIProvider implements AIProvider {
-  private readonly endpoint = `${env.OPENAI_BASE_URL}/chat/completions`;
-  private readonly aiLogger = getLogger('ai.openai.chat');
-  private readonly aiDebug = createDebugLogger('ai.openai.chat');
+  private readonly endpoint = `${env.OPENAI_BASE_URL}/responses`;
+  private readonly aiLogger = getLogger('ai.openai.responses');
+  private readonly aiDebug = createDebugLogger('ai.openai.responses');
 
   public async generateText(input: {
     systemPrompt: string;
@@ -34,6 +46,7 @@ export class OpenAIAIProvider implements AIProvider {
     temperature?: number;
     model?: string;
     tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>;
+    nativeTools?: AINativeTool[];
     requireJsonOutput?: boolean;
   }): Promise<{
     content: string;
@@ -45,13 +58,36 @@ export class OpenAIAIProvider implements AIProvider {
   }> {
     const start = Date.now();
     const selectedModel = input.model ?? env.AI_CHAT_MODEL;
+    const nativeTools = Array.from(new Set(input.nativeTools ?? []));
+    const webSearchEnabled = nativeTools.includes('web_search');
+
+    const tools: ResponsesApiTool[] = [];
+
+    if (Array.isArray(input.tools)) {
+      for (const tool of input.tools) {
+        tools.push({
+          type: 'function',
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema,
+          strict: true
+        });
+      }
+    }
+
+    if (webSearchEnabled) {
+      tools.push({ type: 'web_search' });
+    }
+
     this.aiDebug.log(
       {
         model: selectedModel,
-        hasTools: Boolean(input.tools?.length),
+        hasFunctionTools: Boolean(input.tools?.length),
+        nativeTools,
+        webSearchEnabled,
         requireJsonOutput: Boolean(input.requireJsonOutput)
       },
-      'Dispatching OpenAI chat completion'
+      'Dispatching OpenAI responses request'
     );
 
     const response = await fetch(this.endpoint, {
@@ -63,16 +99,9 @@ export class OpenAIAIProvider implements AIProvider {
       body: JSON.stringify({
         model: selectedModel,
         temperature: input.temperature ?? 0.2,
-        response_format: input.requireJsonOutput ? { type: 'json_object' } : undefined,
-        tools: input.tools?.map((tool) => ({
-          type: 'function',
-          function: {
-            name: tool.name,
-            description: tool.description,
-            parameters: tool.inputSchema
-          }
-        })),
-        messages: [
+        text: input.requireJsonOutput ? { format: { type: 'json_object' } } : undefined,
+        tools: tools.length > 0 ? tools : undefined,
+        input: [
           { role: 'system', content: input.systemPrompt },
           { role: 'user', content: input.userPrompt }
         ]
@@ -86,21 +115,29 @@ export class OpenAIAIProvider implements AIProvider {
           model: selectedModel,
           status: response.status
         },
-        'OpenAI chat completion request failed'
+        'OpenAI responses request failed'
       );
-      throw new AppError(`OpenAI chat failed: ${errorText.slice(0, 400)}`, 502);
+      throw new AppError(`OpenAI responses failed: ${errorText.slice(0, 400)}`, 502);
     }
 
-    const payload = (await response.json()) as ChatCompletionResponse;
-    const content = payload.choices?.[0]?.message?.content?.trim();
-    if (!content) {
-      throw new AppError('OpenAI returned an empty completion', 502);
-    }
+    const payload = (await response.json()) as ResponsesApiResponse;
+    const outputItems = Array.isArray(payload.output) ? payload.output : [];
 
-    const toolCalls = (payload.choices?.[0]?.message?.tool_calls ?? [])
-      .map((toolCall) => {
-        const name = toolCall.function?.name?.trim();
-        const rawArgs = toolCall.function?.arguments;
+    const content = outputItems
+      .filter((item) => item.type === 'message')
+      .flatMap((item) => (Array.isArray(item.content) ? item.content : []))
+      .filter((entry) => entry.type === 'output_text' && typeof entry.text === 'string')
+      .map((entry) => entry.text!.trim())
+      .filter((entry) => entry.length > 0)
+      .join('\n')
+      .trim();
+
+    const toolCalls = outputItems
+      .filter((item) => item.type === 'function_call')
+      .map((item) => {
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        const rawArgs = typeof item.arguments === 'string' ? item.arguments : '';
+
         if (!name || !rawArgs) {
           return null;
         }
@@ -114,8 +151,12 @@ export class OpenAIAIProvider implements AIProvider {
       })
       .filter((entry): entry is { name: string; arguments: Record<string, unknown> } => Boolean(entry));
 
-    const inputTokens = payload.usage?.prompt_tokens ?? 0;
-    const outputTokens = payload.usage?.completion_tokens ?? 0;
+    if (!content && toolCalls.length === 0) {
+      throw new AppError('OpenAI returned an empty response', 502);
+    }
+
+    const inputTokens = payload.usage?.input_tokens ?? 0;
+    const outputTokens = payload.usage?.output_tokens ?? 0;
     const totalTokens = payload.usage?.total_tokens ?? inputTokens + outputTokens;
     const latencyMs = Date.now() - start;
 
@@ -126,9 +167,10 @@ export class OpenAIAIProvider implements AIProvider {
         inputTokens,
         outputTokens,
         totalTokens,
+        webSearchUsed: webSearchEnabled,
         toolCalls: toolCalls.length
       },
-      'OpenAI chat completion finished'
+      'OpenAI responses request finished'
     );
 
     return {

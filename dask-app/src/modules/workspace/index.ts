@@ -7,6 +7,9 @@ export {
 } from "@/modules/workspace/model";
 export type {
   AiAgentSummary,
+  AiAgentConfig,
+  AiAgentRagConfig,
+  AiAgentRagSource,
   DocumentationAssistantMode,
   DocumentationAssistantAction,
   RunDocumentationAssistantInput,

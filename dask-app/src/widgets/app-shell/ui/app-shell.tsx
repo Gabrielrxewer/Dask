@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import {
   buildWorkspaceAgendaPath,
+  buildWorkspaceAiAgentsPath,
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,
@@ -19,9 +20,9 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "automation" | "settings";
+type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
-type AppModuleKey = "board" | "automation" | "documentation" | "settings";
+type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -110,6 +111,20 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
         <path d="M16 16.8A6.4 6.4 0 0 1 5.8 14" />
         <path d="M7.4 14H4.5v2.9" />
         <path d="m11 8 3 4h-3l2 4" />
+      </svg>
+    );
+  }
+
+  if (name === "ai") {
+    return (
+      <svg {...commonProps}>
+        <rect x="4" y="4" width="16" height="16" rx="4" />
+        <path d="M12 8v8" />
+        <path d="M8 12h8" />
+        <circle cx="8" cy="8" r="1.4" />
+        <circle cx="16" cy="8" r="1.4" />
+        <circle cx="8" cy="16" r="1.4" />
+        <circle cx="16" cy="16" r="1.4" />
       </svg>
     );
   }
@@ -203,6 +218,13 @@ export function AppShell({
           icon: "documentation" as const,
           tone: "slate" as const,
           module: "documentation" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceAiAgentsPath(workspaceSlug),
+          label: "AI Agents",
+          icon: "ai" as const,
+          tone: "violet" as const,
+          module: "ai" as AppModuleKey
         },
         {
           to: buildWorkspaceAutomationsPath(workspaceSlug),

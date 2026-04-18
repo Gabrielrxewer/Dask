@@ -480,65 +480,336 @@
   cursor: pointer;
 }
 
-.task-details__ai-textarea {
-  min-height: 84px;
-}
-
-.task-details__ai-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
+.task-details__panel--ai {
+  --card-chat-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel) 90%, transparent) 0%,
+    color-mix(in oklab, var(--panel-soft) 82%, transparent) 100%
+  );
+  --card-chat-line: color-mix(in oklab, var(--line) 84%, transparent);
+  --card-chat-muted: color-mix(in oklab, var(--text-muted) 90%, var(--text-soft));
+  --card-chat-ink: color-mix(in oklab, var(--text-strong) 88%, var(--text));
+  --card-chat-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel) 88%, transparent) 0%,
+    color-mix(in oklab, var(--panel-muted) 76%, transparent) 100%
+  );
+  --card-chat-ai-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-soft) 52%, var(--panel)) 0%,
+    color-mix(in oklab, var(--accent-soft) 34%, var(--panel-muted)) 100%
+  );
+  --card-chat-user-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-soft) 62%, var(--panel)) 0%,
+    color-mix(in oklab, var(--accent-soft) 44%, var(--panel-muted)) 100%
+  );
+  display: grid;
+  gap: 10px;
 }
 
 .task-details__ai-messages {
-  margin-top: 10px;
+  border: 1px solid color-mix(in oklab, var(--card-chat-line) 84%, transparent);
+  background: var(--card-chat-surface);
+  border-radius: 12px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 250px;
+  overflow: auto;
+  min-height: 0;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 66%, transparent),
+    inset 0 -16px 32px color-mix(in oklab, var(--text-strong) 4%, transparent);
+}
+
+.task-details__ai-empty-state {
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--card-chat-line));
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 34%),
+    color-mix(in oklab, var(--panel) 84%, transparent);
+  padding: 14px 12px;
   display: grid;
   gap: 8px;
-  max-height: 220px;
-  overflow: auto;
-  padding-right: 4px;
+}
+
+.task-details__ai-empty-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--card-chat-muted);
+  border: 1px solid color-mix(in oklab, var(--card-chat-line) 74%, transparent);
+  background: color-mix(in oklab, var(--panel-muted) 88%, transparent);
+}
+
+.task-details__ai-empty-state h4 {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--card-chat-ink);
+}
+
+.task-details__ai-empty-state p {
+  margin: 0;
+  color: var(--card-chat-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 
 .task-details__ai-message {
-  border: 1px solid #d8e6f6;
-  border-radius: 12px;
-  background: #f8fbff;
-  padding: 8px 10px;
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 100%;
 }
 
-.task-details__ai-message header {
+.task-details__ai-message-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.63rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--card-chat-muted);
+  background: color-mix(in oklab, var(--panel-muted) 88%, transparent);
+  border: 1px solid var(--card-chat-line);
+  flex-shrink: 0;
+}
+
+.task-details__ai-message-bubble {
+  border-radius: 12px 12px 12px 4px;
+  border: 1px solid color-mix(in oklab, var(--card-chat-line) 86%, transparent);
+  padding: 10px 11px;
+  background: var(--card-chat-bubble);
+  min-width: 0;
+  max-width: min(88%, 560px);
+  box-shadow:
+    0 10px 22px color-mix(in oklab, var(--text-strong) 7%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent);
+}
+
+.task-details__ai-message-bubble header {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 6px;
+  align-items: baseline;
 }
 
-.task-details__ai-message strong {
+.task-details__ai-message-bubble strong {
+  color: var(--card-chat-ink);
   font-size: 0.74rem;
-  color: #214c75;
 }
 
-.task-details__ai-message span {
-  font-size: 0.7rem;
-  color: #6988a9;
+.task-details__ai-message-bubble span {
+  font-size: 0.67rem;
+  color: var(--card-chat-muted);
+  white-space: nowrap;
 }
 
-.task-details__ai-message p {
+.task-details__ai-message-bubble p {
   margin: 0;
-  color: #31577f;
-  font-size: 0.78rem;
+  color: color-mix(in oklab, var(--card-chat-ink) 78%, var(--card-chat-muted));
+  font-size: 0.8rem;
+  line-height: 1.58;
   white-space: pre-wrap;
 }
 
-.task-details__ai-message--assistant {
-  border-color: #bcd8f7;
-  background: #eef6ff;
+.task-details__ai-message--assistant .task-details__ai-message-bubble,
+.task-details__ai-message--thinking .task-details__ai-message-bubble {
+  background: var(--card-chat-ai-bubble);
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--card-chat-line));
 }
 
-.task-details__ai-message--system {
-  border-color: #f8d5c2;
-  background: #fff7f2;
+.task-details__ai-message--assistant .task-details__ai-message-avatar,
+.task-details__ai-message--thinking .task-details__ai-message-avatar {
+  background: color-mix(in oklab, var(--accent-soft) 80%, var(--panel));
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--card-chat-line));
+  color: color-mix(in oklab, var(--accent-strong) 72%, var(--text-strong));
+}
+
+.task-details__ai-message--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.task-details__ai-message--user .task-details__ai-message-bubble {
+  border-radius: 12px 12px 4px 12px;
+  background: var(--card-chat-user-bubble);
+  border-color: color-mix(in oklab, var(--accent) 38%, var(--card-chat-line));
+}
+
+.task-details__ai-message--user .task-details__ai-message-avatar {
+  background: color-mix(in oklab, var(--accent-soft) 88%, var(--panel));
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--card-chat-line));
+  color: color-mix(in oklab, var(--accent-strong) 78%, var(--text-strong));
+}
+
+.task-details__ai-message--system .task-details__ai-message-bubble {
+  background: color-mix(in oklab, var(--warn-soft) 78%, var(--panel));
+  border-color: color-mix(in oklab, var(--warn) 32%, var(--card-chat-line));
+  border-radius: 12px;
+}
+
+.task-details__ai-message--system .task-details__ai-message-avatar {
+  background: color-mix(in oklab, var(--warn-soft) 86%, var(--panel));
+  border-color: color-mix(in oklab, var(--warn) 34%, var(--card-chat-line));
+  color: color-mix(in oklab, var(--warn) 82%, var(--text-strong));
+}
+
+.task-details__ai-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 16px;
+}
+
+.task-details__ai-thinking-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--card-chat-muted);
+  opacity: 0.25;
+  animation: task-ai-thinking-bounce 1.1s infinite ease-in-out;
+}
+
+.task-details__ai-thinking-dots span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.task-details__ai-thinking-dots span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes task-ai-thinking-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+
+  40% {
+    transform: translateY(-3px);
+    opacity: 0.85;
+  }
+}
+
+.task-details__ai-composer {
+  display: grid;
+  gap: 8px;
+}
+
+.task-details__ai-composer-shell {
+  min-height: 42px;
+  border: 1px solid color-mix(in oklab, var(--card-chat-line) 76%, transparent);
+  background: color-mix(in oklab, var(--panel-muted) 54%, var(--panel));
+  border-radius: 10px;
+  padding: 4px 40px 4px 12px;
+  position: relative;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 54%, transparent);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.task-details__ai-composer-shell:focus-within {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--card-chat-line));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 10%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 58%, transparent);
+}
+
+.task-details__ai-composer-input,
+.task-details__ai-composer-input.shared-textarea {
+  display: block;
+  border: 0 !important;
+  border-radius: 0;
+  min-height: 32px;
+  max-height: 88px;
+  resize: none;
+  padding: 6px 0;
+  line-height: 1.35;
+  background: transparent !important;
+  color: var(--card-chat-ink) !important;
+  box-shadow: none !important;
+  outline: none;
+  overflow-y: auto;
+}
+
+.task-details__ai-composer-input:hover,
+.task-details__ai-composer-input:focus,
+.task-details__ai-composer-input.shared-textarea:hover,
+.task-details__ai-composer-input.shared-textarea:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.task-details__ai-composer-input::placeholder {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+}
+
+.task-details__ai-send-button {
+  position: absolute;
+  right: 7px;
+  bottom: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent) 42%, var(--card-chat-line));
+  background: var(--button-gradient-main);
+  color: color-mix(in oklab, var(--panel) 96%, white);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow:
+    0 4px 10px color-mix(in oklab, var(--accent) 16%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 28%, transparent);
+  padding: 0;
+  transform: translateY(50%);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    opacity 160ms ease;
+}
+
+.task-details__ai-send-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.task-details__ai-send-button:hover:not(:disabled) {
+  transform: translateY(calc(50% - 1px));
+  border-color: color-mix(in oklab, var(--accent-strong) 58%, var(--card-chat-line));
+  background: var(--button-gradient-main-hover);
+}
+
+.task-details__ai-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.task-details__ai-composer-hint {
+  margin: 0;
+  color: var(--card-chat-muted);
+  font-size: 0.68rem;
+  padding-left: 2px;
 }
 
 .task-details__progress-track {
@@ -732,7 +1003,6 @@
 .app-theme[data-theme="dark"] .task-details__checklist li,
 .app-theme[data-theme="dark"] .task-details__multi-option,
 .app-theme[data-theme="dark"] .task-details__linked-docs li,
-.app-theme[data-theme="dark"] .task-details__ai-message,
 .app-theme[data-theme="dark"] .task-details__chip,
 .app-theme[data-theme="dark"] .task-details__tag-pill {
   background: linear-gradient(180deg, rgba(18, 42, 61, 0.98) 0%, rgba(13, 31, 46, 1) 100%);
@@ -746,14 +1016,138 @@
   color: var(--text);
 }
 
-.app-theme[data-theme="dark"] .task-details__ai-message--assistant {
-  background: linear-gradient(180deg, rgba(25, 54, 77, 0.98) 0%, rgba(15, 35, 51, 0.98) 100%);
-  border-color: rgba(109, 165, 219, 0.65);
+.app-theme[data-theme="dark"] .task-details__panel--ai {
+  --card-chat-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel) 92%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--bg-deep) 72%, var(--panel)) 100%
+  );
+  --card-chat-line: color-mix(in oklab, var(--line) 82%, transparent);
+  --card-chat-muted: var(--text-muted);
+  --card-chat-ink: var(--text-strong);
+  --card-chat-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--panel-soft) 72%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--panel) 78%, var(--bg-deep)) 100%
+  );
+  --card-chat-ai-bubble: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-soft) 42%, var(--panel)) 0%,
+    color-mix(in oklab, var(--panel) 82%, var(--bg-deep)) 100%
+  );
+  --card-chat-user-bubble: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 38%, var(--panel)) 0%,
+    color-mix(in oklab, var(--accent-soft) 58%, var(--panel)) 100%
+  );
 }
 
-.app-theme[data-theme="dark"] .task-details__ai-message--system {
-  background: linear-gradient(180deg, rgba(57, 40, 30, 0.98) 0%, rgba(45, 30, 22, 0.98) 100%);
-  border-color: rgba(190, 130, 96, 0.65);
+.app-theme[data-theme="dark"] .task-details__ai-messages {
+  border-color: color-mix(in oklab, var(--line) 82%, transparent);
+  background:
+    linear-gradient(color-mix(in oklab, var(--accent) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--accent) 8%, transparent) 1px, transparent 1px),
+    var(--card-chat-surface);
+  background-size: 24px 24px, 24px 24px, auto;
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-empty-state {
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 10%, transparent), transparent 30%),
+    color-mix(in oklab, var(--panel) 82%, transparent);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-empty-avatar,
+.app-theme[data-theme="dark"] .task-details__ai-message--assistant .task-details__ai-message-avatar,
+.app-theme[data-theme="dark"] .task-details__ai-message--thinking .task-details__ai-message-avatar {
+  background: var(--button-gradient-main);
+  border-color: color-mix(in oklab, var(--accent-strong) 38%, var(--line));
+  color: color-mix(in oklab, var(--text-strong) 94%, white);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-empty-avatar {
+  background: transparent;
+  border-color: color-mix(in oklab, var(--line) 74%, transparent);
+  color: var(--text-muted);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message-avatar {
+  background: color-mix(in oklab, var(--panel-muted) 84%, transparent);
+  border-color: color-mix(in oklab, var(--line) 84%, transparent);
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message-bubble {
+  background: var(--card-chat-bubble);
+  border-color: color-mix(in oklab, var(--line) 78%, transparent);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message-bubble p {
+  color: var(--text);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--assistant .task-details__ai-message-bubble,
+.app-theme[data-theme="dark"] .task-details__ai-message--thinking .task-details__ai-message-bubble {
+  background: var(--card-chat-ai-bubble);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--user .task-details__ai-message-bubble {
+  background: var(--card-chat-user-bubble);
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--user .task-details__ai-message-avatar {
+  background: var(--button-gradient-main);
+  border-color: color-mix(in oklab, var(--accent-strong) 38%, var(--line));
+  color: color-mix(in oklab, var(--text-strong) 94%, white);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--system .task-details__ai-message-bubble {
+  background: color-mix(in oklab, var(--warn-soft) 82%, var(--panel));
+  border-color: color-mix(in oklab, var(--warn) 30%, var(--line));
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-message--system .task-details__ai-message-avatar {
+  background: color-mix(in oklab, var(--warn-soft) 78%, var(--panel));
+  border-color: color-mix(in oklab, var(--warn) 34%, var(--line));
+  color: color-mix(in oklab, var(--warn) 82%, var(--text-strong));
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-thinking-dots span {
+  background: var(--accent-strong);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-composer-shell {
+  border-color: color-mix(in oklab, var(--line) 66%, transparent);
+  background: color-mix(in oklab, var(--panel-muted) 48%, var(--bg-deep));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-composer-shell:focus-within {
+  border-color: color-mix(in oklab, var(--accent-strong) 36%, var(--line));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 12%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-composer-input {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-composer-input:hover,
+.app-theme[data-theme="dark"] .task-details__ai-composer-input:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-theme[data-theme="dark"] .task-details__ai-composer-input::placeholder {
+  color: rgba(150, 176, 201, 0.7);
 }
 
 .app-theme[data-theme="dark"] .task-details__type-card {

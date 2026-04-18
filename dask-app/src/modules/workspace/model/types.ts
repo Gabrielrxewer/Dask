@@ -698,9 +698,42 @@ export interface AiAgentSummary {
   description: string | null;
   model: string;
   temperature: number;
+  systemPrompt?: string;
+  config?: AiAgentConfig | null;
   isActive: boolean;
   isDefault: boolean;
   updatedAt: string;
+}
+
+export type AiAgentRagSource = "none" | "documentation" | "card" | "card_and_documentation";
+
+export interface AiAgentRagConfig {
+  enabled?: boolean;
+  source?: AiAgentRagSource;
+  contextInstruction?: string;
+  includeSemanticContext?: boolean;
+  includeLinkedDocuments?: boolean;
+  topKContextDocs?: number;
+}
+
+export interface AiAgentConfig extends Record<string, unknown> {
+  limits?: {
+    maxRequestsPerMinute?: number;
+    maxTokensPerDay?: number;
+  };
+  tools?: {
+    enabled?: boolean;
+    allowed?: string[];
+    nativeEnabled?: boolean;
+    nativeAllowed?: string[];
+    gptEnabled?: boolean;
+    gptAllowed?: string[];
+  };
+  guardrails?: {
+    redactSensitive?: boolean;
+    requireJsonOutput?: boolean;
+  };
+  rag?: AiAgentRagConfig;
 }
 
 export type DocumentationAssistantMode = "chat" | "write" | "maintain";
@@ -735,7 +768,7 @@ export interface CreateAiAgentInput {
   model?: string;
   temperature?: number;
   systemPrompt: string;
-  config?: Record<string, unknown>;
+  config?: AiAgentConfig;
   isActive?: boolean;
 }
 

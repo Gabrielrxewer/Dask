@@ -4,6 +4,8 @@ export type AIToolDefinition = {
   inputSchema: Record<string, unknown>;
 };
 
+export type AINativeTool = 'web_search';
+
 export type AIToolCall = {
   name: string;
   arguments: Record<string, unknown>;
@@ -31,6 +33,7 @@ export interface AIProvider {
     temperature?: number;
     model?: string;
     tools?: AIToolDefinition[];
+    nativeTools?: AINativeTool[];
     requireJsonOutput?: boolean;
   }): Promise<AIGenerateTextResult>;
   improveDescription(input: { title: string; description: string }): Promise<string>;

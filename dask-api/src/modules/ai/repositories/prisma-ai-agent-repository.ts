@@ -41,6 +41,8 @@ export class PrismaAIAgentRepository implements AIAgentRepository {
         description: true,
         model: true,
         temperature: true,
+        systemPrompt: true,
+        config: true,
         isActive: true,
         isDefault: true,
         updatedAt: true

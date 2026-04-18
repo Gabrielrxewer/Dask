@@ -7,6 +7,7 @@ export class MockAIProvider implements AIProvider {
     temperature?: number;
     model?: string;
     tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>;
+    nativeTools?: Array<'web_search'>;
     requireJsonOutput?: boolean;
   }): Promise<{
     content: string;

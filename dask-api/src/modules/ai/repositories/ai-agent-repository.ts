@@ -17,7 +17,17 @@ export type AIAgentData = {
 
 export type AIAgentListItem = Pick<
   AIAgentData,
-  'id' | 'key' | 'name' | 'description' | 'model' | 'temperature' | 'isActive' | 'isDefault' | 'updatedAt'
+  | 'id'
+  | 'key'
+  | 'name'
+  | 'description'
+  | 'model'
+  | 'temperature'
+  | 'systemPrompt'
+  | 'config'
+  | 'isActive'
+  | 'isDefault'
+  | 'updatedAt'
 >;
 
 export type CreateAgentData = {

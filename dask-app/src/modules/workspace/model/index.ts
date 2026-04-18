@@ -6,6 +6,9 @@ export {
 export { useWorkspaceTaskPage } from "@/modules/workspace/model/use-workspace-task-page";
 export type {
   AiAgentSummary,
+  AiAgentConfig,
+  AiAgentRagConfig,
+  AiAgentRagSource,
   AiObservability,
   AiRunSummary,
   DocumentationAssistantMode,

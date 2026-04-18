@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace, type DocumentationAssistantMode, type WorkspaceDocument } from "@/modules/workspace";
 import { Button, StatusBadge, TextInput, Textarea } from "@/shared/ui";
@@ -15,6 +17,8 @@ interface AssistantMessage {
   createdAt: string;
 }
 
+type EditorViewMode = "write" | "split" | "preview";
+
 const DEFAULT_INSTRUCTIONS: Record<DocumentationAssistantMode, string> = {
   chat: "Converse comigo sobre esta doc e responda objetivamente.",
   write: "Escreva documentacao em markdown pronta para uso.",
@@ -25,6 +29,12 @@ const MODE_LABELS: Record<DocumentationAssistantMode, string> = {
   chat: "Chat",
   write: "Escrita",
   maintain: "Manutencao"
+};
+
+const EDITOR_VIEW_LABELS: Record<EditorViewMode, string> = {
+  write: "Editar",
+  split: "Dividido",
+  preview: "Preview"
 };
 
 function createId(): string {
@@ -78,6 +88,7 @@ export function DocumentationPage() {
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const dirtyDocIdsRef = useRef<Set<string>>(new Set());
   const saveSeqByDocRef = useRef<Record<string, number>>({});
 
@@ -86,6 +97,7 @@ export function DocumentationPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
+  const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("split");
   const [activeMode, setActiveMode] = useState<DocumentationAssistantMode>("chat");
   const [isModeInfoOpen, setIsModeInfoOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -345,6 +357,152 @@ export function DocumentationPage() {
     setSelectedSnippet(nextSelection.slice(0, 6000));
   }
 
+  function focusEditorAtSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      const textarea = editorTextareaRef.current;
+      if (!textarea) {
+        return;
+      }
+      textarea.focus();
+      textarea.setSelectionRange(start, end);
+      handleEditorSelection(textarea);
+    });
+  }
+
+  function updateEditorFromToolbar(
+    nextContent: string,
+    selectionStart: number,
+    selectionEnd: number
+  ) {
+    if (!activeDoc) {
+      return;
+    }
+    updateDocDraft(activeDoc.id, { content: nextContent });
+    focusEditorAtSelection(selectionStart, selectionEnd);
+  }
+
+  function insertInlineSyntax(prefix: string, suffix = prefix, placeholder = "texto") {
+    if (!activeDoc) {
+      return;
+    }
+    const textarea = editorTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const { selectionStart, selectionEnd, value } = textarea;
+    const selected = value.slice(selectionStart, selectionEnd);
+    const insertionTarget = selected || placeholder;
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+    const insertion = `${prefix}${insertionTarget}${suffix}`;
+    const nextContent = `${before}${insertion}${after}`;
+    const cursorStart = selectionStart + prefix.length;
+    const cursorEnd = cursorStart + insertionTarget.length;
+
+    updateEditorFromToolbar(nextContent, cursorStart, cursorEnd);
+  }
+
+  function insertLinePrefix(prefix: string, placeholder = "Novo item") {
+    if (!activeDoc) {
+      return;
+    }
+    const textarea = editorTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const { selectionStart, selectionEnd, value } = textarea;
+    const selected = value.slice(selectionStart, selectionEnd);
+    const insertionTarget = selected || placeholder;
+    const transformed = insertionTarget
+      .split("\n")
+      .map((line) => `${prefix}${line}`)
+      .join("\n");
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+    const nextContent = `${before}${transformed}${after}`;
+    const cursorStart = selectionStart + prefix.length;
+    const cursorEnd = selectionStart + transformed.length;
+
+    updateEditorFromToolbar(nextContent, cursorStart, cursorEnd);
+  }
+
+  function insertBlockTemplate(template: string, selectionOffset = 0) {
+    if (!activeDoc) {
+      return;
+    }
+    const textarea = editorTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const { selectionStart, selectionEnd, value } = textarea;
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+    const needsLineBreakBefore = before.length > 0 && !before.endsWith("\n");
+    const needsLineBreakAfter = after.length > 0 && !after.startsWith("\n");
+    const prefix = needsLineBreakBefore ? "\n" : "";
+    const suffix = needsLineBreakAfter ? "\n" : "";
+    const insertion = `${prefix}${template}${suffix}`;
+    const nextContent = `${before}${insertion}${after}`;
+    const cursor = selectionStart + prefix.length + selectionOffset;
+
+    updateEditorFromToolbar(nextContent, cursor, cursor);
+  }
+
+  function handleMarkdownToolbarAction(action: string) {
+    switch (action) {
+      case "bold":
+        insertInlineSyntax("**");
+        return;
+      case "italic":
+        insertInlineSyntax("*");
+        return;
+      case "underline":
+        insertInlineSyntax("<u>", "</u>");
+        return;
+      case "strike":
+        insertInlineSyntax("~~");
+        return;
+      case "h1":
+        insertLinePrefix("# ", "Titulo principal");
+        return;
+      case "h2":
+        insertLinePrefix("## ", "Subtitulo");
+        return;
+      case "quote":
+        insertLinePrefix("> ", "Citacao");
+        return;
+      case "ul":
+        insertLinePrefix("- ", "Novo item");
+        return;
+      case "ol":
+        insertLinePrefix("1. ", "Novo item");
+        return;
+      case "check":
+        insertLinePrefix("- [ ] ", "Tarefa");
+        return;
+      case "code-inline":
+        insertInlineSyntax("`", "`", "codigo");
+        return;
+      case "code-block":
+        insertBlockTemplate("```ts\n// codigo\n```", 6);
+        return;
+      case "link":
+        insertInlineSyntax("[", "](https://)", "texto do link");
+        return;
+      case "table":
+        insertBlockTemplate("| Coluna A | Coluna B |\n| --- | --- |\n| Valor 1 | Valor 2 |", 2);
+        return;
+      case "divider":
+        insertBlockTemplate("---");
+        return;
+      default:
+        return;
+    }
+  }
+
   async function handleRunAssistant() {
     if (!activeDoc) {
       return;
@@ -512,14 +670,93 @@ export function DocumentationPage() {
                 </div>
               </header>
 
-              <Textarea
-                value={activeDoc.content}
-                onChange={(event) => updateDocDraft(activeDoc.id, { content: event.target.value })}
-                onMouseUp={(event) => handleEditorSelection(event.currentTarget)}
-                onKeyUp={(event) => handleEditorSelection(event.currentTarget)}
-                placeholder="Escreva livremente. O chat conversa somente sobre a doc selecionada."
-                className="documentation-page__editor-textarea"
-              />
+              <div className="documentation-page__editor-toolbar">
+                <div className="documentation-page__editor-toolbar-group">
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("h1")} title="Titulo 1">
+                    H1
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("h2")} title="Titulo 2">
+                    H2
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("bold")} title="Negrito">
+                    B
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("italic")} title="Italico">
+                    I
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("underline")} title="Sublinhado">
+                    U
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("strike")} title="Riscado">
+                    S
+                  </button>
+                </div>
+
+                <div className="documentation-page__editor-toolbar-group">
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("ul")} title="Lista">
+                    Lista
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("ol")} title="Lista numerada">
+                    1.
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("check")} title="Checklist">
+                    Check
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("quote")} title="Citacao">
+                    Aspas
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("code-inline")} title="Codigo inline">
+                    {"</>"}
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("code-block")} title="Bloco de codigo">
+                    Bloco
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("link")} title="Link">
+                    Link
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("table")} title="Tabela">
+                    Tabela
+                  </button>
+                  <button type="button" onClick={() => handleMarkdownToolbarAction("divider")} title="Divisor">
+                    ---
+                  </button>
+                </div>
+
+                <div className="documentation-page__editor-view-switch">
+                  {(Object.keys(EDITOR_VIEW_LABELS) as EditorViewMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={editorViewMode === mode ? "is-active" : ""}
+                      onClick={() => setEditorViewMode(mode)}
+                    >
+                      {EDITOR_VIEW_LABELS[mode]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`documentation-page__editor-body documentation-page__editor-body--${editorViewMode}`}>
+                {editorViewMode !== "preview" ? (
+                  <Textarea
+                    ref={editorTextareaRef}
+                    value={activeDoc.content}
+                    onChange={(event) => updateDocDraft(activeDoc.id, { content: event.target.value })}
+                    onMouseUp={(event) => handleEditorSelection(event.currentTarget)}
+                    onKeyUp={(event) => handleEditorSelection(event.currentTarget)}
+                    placeholder="Escreva em Markdown. A visualizacao aparece ao lado."
+                    className="documentation-page__editor-textarea"
+                  />
+                ) : null}
+
+                {editorViewMode !== "write" ? (
+                  <article className="documentation-page__editor-preview markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {activeDoc.content.trim().length > 0 ? activeDoc.content : "_Sem conteudo ainda._"}
+                    </ReactMarkdown>
+                  </article>
+                ) : null}
+              </div>
 
               <footer className="documentation-page__editor-footer">
                 <p>

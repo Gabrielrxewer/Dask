@@ -15,6 +15,7 @@ export { WorkspaceSelectorPage } from "@/pages/workspace-selector-page";
 export { TimelinePage } from "@/pages/timeline-page";
 export { AgendaPage } from "@/pages/agenda-page";
 export { DocumentationPage } from "@/pages/documentation-page";
+export { AiAgentsPage } from "@/pages/ai-agents-page";
 
 // Settings — shell + seções individuais
 export {

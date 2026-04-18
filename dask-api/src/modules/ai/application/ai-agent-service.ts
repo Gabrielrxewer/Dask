@@ -64,7 +64,11 @@ const agentConfigSchema = z
     tools: z
       .object({
         enabled: z.boolean().optional(),
-        allowed: z.array(z.string()).optional()
+        allowed: z.array(z.string()).optional(),
+        nativeEnabled: z.boolean().optional(),
+        nativeAllowed: z.array(z.string()).optional(),
+        gptEnabled: z.boolean().optional(),
+        gptAllowed: z.array(z.string()).optional()
       })
       .optional(),
     guardrails: z
@@ -72,11 +76,41 @@ const agentConfigSchema = z
         redactSensitive: z.boolean().optional(),
         requireJsonOutput: z.boolean().optional()
       })
+      .optional(),
+    rag: z
+      .object({
+        enabled: z.boolean().optional(),
+        source: z.enum(['none', 'documentation', 'card', 'card_and_documentation']).optional(),
+        contextInstruction: z.string().max(2000).optional(),
+        includeSemanticContext: z.boolean().optional(),
+        includeLinkedDocuments: z.boolean().optional(),
+        topKContextDocs: z.number().int().min(1).max(10).optional()
+      })
       .optional()
   })
   .passthrough();
 
 type AgentConfig = z.infer<typeof agentConfigSchema>;
+type AgentRagSource = 'none' | 'documentation' | 'card' | 'card_and_documentation';
+type AgentNativeTool = 'update_item_description' | 'set_item_status' | 'set_item_priority';
+type AgentGPTTool = 'web_search';
+type AgentRagResolved = {
+  source: AgentRagSource;
+  useCardContext: boolean;
+  useDocumentationContext: boolean;
+  includeSemanticContext: boolean;
+  includeLinkedDocuments: boolean;
+  topKContextDocs: number;
+  contextInstruction: string;
+};
+
+const agentNativeTools = new Set<AgentNativeTool>([
+  'update_item_description',
+  'set_item_status',
+  'set_item_priority'
+]);
+
+const agentGPTTools = new Set<AgentGPTTool>(['web_search']);
 
 function parseAgentConfig(value: Prisma.JsonValue | null): AgentConfig {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -103,6 +137,121 @@ function estimateTokensFromText(value: string): number {
 
 function floorToUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+}
+
+function normalizeToken(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function buildSearchTokens(value: string): string[] {
+  const tokens = value
+    .split(/\s+/)
+    .map((entry) => normalizeToken(entry))
+    .filter((entry) => entry.length >= 3);
+
+  return Array.from(new Set(tokens)).slice(0, 12);
+}
+
+function clampTopK(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 5;
+  }
+  return Math.min(Math.max(Math.round(value), 1), 10);
+}
+
+function resolveRagSource(rawSource: unknown): AgentRagSource {
+  return rawSource === 'none' ||
+    rawSource === 'documentation' ||
+    rawSource === 'card' ||
+    rawSource === 'card_and_documentation'
+    ? rawSource
+    : 'card_and_documentation';
+}
+
+function resolveAgentRagConfig(input: {
+  config: AgentConfig;
+  includeSemanticContext: boolean;
+  topKContextDocs: number;
+}): AgentRagResolved {
+  const rag = input.config.rag;
+  const source =
+    rag?.enabled === false
+      ? 'none'
+      : resolveRagSource(rag?.source);
+
+  const useCardContext = source === 'card' || source === 'card_and_documentation';
+  const useDocumentationContext = source === 'documentation' || source === 'card_and_documentation';
+  const includeSemanticContext = useCardContext && rag?.includeSemanticContext !== false && input.includeSemanticContext;
+
+  return {
+    source,
+    useCardContext,
+    useDocumentationContext,
+    includeSemanticContext,
+    includeLinkedDocuments: rag?.includeLinkedDocuments !== false,
+    topKContextDocs: clampTopK(rag?.topKContextDocs ?? input.topKContextDocs),
+    contextInstruction: (rag?.contextInstruction ?? '').trim().slice(0, 1800)
+  };
+}
+
+function normalizeNativeToolList(value: unknown): AgentNativeTool[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const unique = new Set<AgentNativeTool>();
+  for (const entry of value) {
+    if (typeof entry !== 'string') {
+      continue;
+    }
+    if (agentNativeTools.has(entry as AgentNativeTool)) {
+      unique.add(entry as AgentNativeTool);
+    }
+  }
+
+  return Array.from(unique);
+}
+
+function normalizeGptToolList(value: unknown): AgentGPTTool[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const unique = new Set<AgentGPTTool>();
+  for (const entry of value) {
+    if (typeof entry !== 'string') {
+      continue;
+    }
+    if (agentGPTTools.has(entry as AgentGPTTool)) {
+      unique.add(entry as AgentGPTTool);
+    }
+  }
+
+  return Array.from(unique);
+}
+
+function resolveAgentTools(config: AgentConfig): {
+  nativeEnabled: boolean;
+  nativeAllowed: AgentNativeTool[];
+  gptEnabled: boolean;
+  gptAllowed: AgentGPTTool[];
+} {
+  const tools = config.tools;
+  const nativeAllowed = normalizeNativeToolList(tools?.nativeAllowed ?? tools?.allowed);
+  const nativeEnabled = (tools?.nativeEnabled ?? tools?.enabled ?? false) === true && nativeAllowed.length > 0;
+  const gptAllowed = normalizeGptToolList(tools?.gptAllowed);
+  const gptEnabled = tools?.gptEnabled === true && gptAllowed.length > 0;
+
+  return {
+    nativeEnabled,
+    nativeAllowed,
+    gptEnabled,
+    gptAllowed
+  };
 }
 
 function buildDocumentationModeGuidance(mode: RunDocumentationAssistantInput['mode']): string {
@@ -195,7 +344,14 @@ export class AIAgentService {
       isActive: true,
       isDefault: true,
       config: {
-        tools: { enabled: false, allowed: [] },
+        tools: {
+          enabled: false,
+          allowed: [],
+          nativeEnabled: false,
+          nativeAllowed: [],
+          gptEnabled: false,
+          gptAllowed: []
+        },
         guardrails: { redactSensitive: true, requireJsonOutput: false }
       }
     });
@@ -209,6 +365,8 @@ export class AIAgentService {
       description: string | null;
       model: string;
       temperature: number;
+      systemPrompt: string;
+      config: Prisma.JsonValue;
       isActive: boolean;
       isDefault: boolean;
       updatedAt: Date;
@@ -278,6 +436,7 @@ export class AIAgentService {
     includeSemanticContext: boolean;
     topKContextDocs: number;
     redactSensitive: boolean;
+    includeLinkedDocuments: boolean;
   }): Promise<{ itemContext: string; semanticContext: string; boardId: string }> {
     const item = await this.prisma.item.findFirst({
       where: {
@@ -312,16 +471,18 @@ export class AIAgentService {
 
     const redact = (value: string): string => (input.redactSensitive ? redactSensitiveText(value) : value);
 
-    const linkedDocumentsContext = item.documentLinks
-      .map((entry, index) => {
-        const snippet = entry.document.content.slice(0, 900);
-        return [
-          `${index + 1}. ${entry.document.title} (${entry.document.id})`,
-          `Updated At: ${entry.document.updatedAt.toISOString()}`,
-          snippet.length > 0 ? `Content Snippet:\n${snippet}` : 'Content Snippet: (empty)'
-        ].join('\n');
-      })
-      .join('\n\n');
+    const linkedDocumentsContext = input.includeLinkedDocuments
+      ? item.documentLinks
+          .map((entry, index) => {
+            const snippet = entry.document.content.slice(0, 900);
+            return [
+              `${index + 1}. ${entry.document.title} (${entry.document.id})`,
+              `Updated At: ${entry.document.updatedAt.toISOString()}`,
+              snippet.length > 0 ? `Content Snippet:\n${snippet}` : 'Content Snippet: (empty)'
+            ].join('\n');
+          })
+          .join('\n\n')
+      : '';
 
     const itemContext = redact(
       [
@@ -333,8 +494,10 @@ export class AIAgentService {
         `Fields: ${JSON.stringify(asRecord(item.fields))}`,
         `Metadata: ${JSON.stringify(asRecord(item.metadata))}`,
         `Checklist: ${JSON.stringify(asRecord(item.checklist))}`,
-        `Linked Documents: ${item.documentLinks.length}`,
-        linkedDocumentsContext.length > 0 ? `Linked Document Context:\n${linkedDocumentsContext}` : '',
+        `Linked Documents: ${input.includeLinkedDocuments ? item.documentLinks.length : 0}`,
+        input.includeLinkedDocuments && linkedDocumentsContext.length > 0
+          ? `Linked Document Context:\n${linkedDocumentsContext}`
+          : '',
         `Updated At: ${item.updatedAt.toISOString()}`,
         'Recent History:',
         ...item.history.map((entry) => `- ${entry.createdAt.toISOString()} | ${entry.eventName}`)
@@ -349,8 +512,8 @@ export class AIAgentService {
       query: [
         item.title,
         item.description ?? '',
-        ...item.documentLinks.map((entry) => entry.document.title),
-        ...item.documentLinks.map((entry) => entry.document.content.slice(0, 900))
+        ...(input.includeLinkedDocuments ? item.documentLinks.map((entry) => entry.document.title) : []),
+        ...(input.includeLinkedDocuments ? item.documentLinks.map((entry) => entry.document.content.slice(0, 900)) : [])
       ]
         .filter((value) => value.trim().length > 0)
         .join('\n')
@@ -373,6 +536,79 @@ export class AIAgentService {
     );
 
     return { itemContext, semanticContext, boardId: item.boardId };
+  }
+
+  private async buildDocumentationContext(input: {
+    workspaceId: string;
+    query: string;
+    topKContextDocs: number;
+    redactSensitive: boolean;
+  }): Promise<string> {
+    const docs = await this.prisma.workspaceDocument.findMany({
+      where: { workspaceId: input.workspaceId },
+      orderBy: { updatedAt: 'desc' },
+      take: 40,
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        updatedAt: true
+      }
+    });
+
+    if (docs.length === 0) {
+      return '';
+    }
+
+    const tokens = buildSearchTokens(input.query);
+    const rankedDocs = docs
+      .map((doc) => {
+        if (tokens.length === 0) {
+          return { doc, score: 1 };
+        }
+
+        const title = normalizeToken(doc.title);
+        const content = normalizeToken(doc.content.slice(0, 6000));
+        let score = 0;
+
+        for (const token of tokens) {
+          if (title.includes(token)) {
+            score += 3;
+          }
+          if (content.includes(token)) {
+            score += 1;
+          }
+        }
+
+        return { doc, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+        return right.doc.updatedAt.getTime() - left.doc.updatedAt.getTime();
+      })
+      .slice(0, input.topKContextDocs);
+
+    if (rankedDocs.length === 0) {
+      return '';
+    }
+
+    const redact = (value: string): string => (input.redactSensitive ? redactSensitiveText(value) : value);
+
+    return rankedDocs
+      .map((entry, index) => {
+        const snippet = entry.doc.content.slice(0, 900);
+        return redact(
+          [
+            `${index + 1}. ${entry.doc.title} (${entry.doc.id})`,
+            `Updated At: ${entry.doc.updatedAt.toISOString()}`,
+            snippet.length > 0 ? `Content Snippet:\n${snippet}` : 'Content Snippet: (empty)'
+          ].join('\n')
+        );
+      })
+      .join('\n\n');
   }
 
   private async enforceRunLimits(input: {
@@ -440,7 +676,7 @@ export class AIAgentService {
     }
   }
 
-  private buildToolDefinitions(allowedTools: string[]): AIToolDefinition[] {
+  private buildToolDefinitions(allowedTools: AgentNativeTool[]): AIToolDefinition[] {
     const tools: AIToolDefinition[] = [];
     if (allowedTools.includes('update_item_description')) {
       tools.push({
@@ -489,10 +725,15 @@ export class AIAgentService {
     }
 
     const config = parseAgentConfig(agent.config);
-    const toolsEnabled = config.tools?.enabled === true && (config.tools.allowed?.length ?? 0) > 0;
+    const ragConfig = resolveAgentRagConfig({
+      config,
+      includeSemanticContext: input.includeSemanticContext,
+      topKContextDocs: input.topKContextDocs
+    });
+    const resolvedTools = resolveAgentTools(config);
 
     // ── Fix: authorize write access before any I/O when tools may mutate the item ──
-    if (toolsEnabled) {
+    if (resolvedTools.nativeEnabled) {
       const canWrite = await this.authorizationService.can(input.requestedBy, 'item.write', {
         workspaceId: input.workspaceId,
         itemId: input.itemId
@@ -507,18 +748,36 @@ export class AIAgentService {
     const context = await this.buildItemContext({
       workspaceId: input.workspaceId,
       itemId: input.itemId,
-      includeSemanticContext: input.includeSemanticContext,
-      topKContextDocs: input.topKContextDocs,
-      redactSensitive
+      includeSemanticContext: ragConfig.useCardContext && ragConfig.includeSemanticContext,
+      topKContextDocs: ragConfig.topKContextDocs,
+      redactSensitive,
+      includeLinkedDocuments: ragConfig.includeLinkedDocuments
     });
 
     const instruction = redactSensitive ? redactSensitiveText(input.instruction) : input.instruction;
+    let documentationContext = '';
+    if (ragConfig.useDocumentationContext) {
+      documentationContext = await this.buildDocumentationContext({
+        workspaceId: input.workspaceId,
+        query: [instruction, context.itemContext].join('\n').slice(0, 8000),
+        topKContextDocs: ragConfig.topKContextDocs,
+        redactSensitive
+      });
+    }
+
     const promptBody = [
       `Instruction:\n${instruction}`,
-      '',
-      `Card Context:\n${context.itemContext}`,
-      '',
-      context.semanticContext.length > 0 ? `Semantic Context:\n${context.semanticContext}` : ''
+      ragConfig.contextInstruction.length > 0 ? `Context Guidance:\n${ragConfig.contextInstruction}` : '',
+      ragConfig.useCardContext ? `Card Context:\n${context.itemContext}` : '',
+      ragConfig.useCardContext && context.semanticContext.length > 0
+        ? `Card Semantic Context:\n${context.semanticContext}`
+        : '',
+      ragConfig.useDocumentationContext && documentationContext.length > 0
+        ? `Documentation Context:\n${documentationContext}`
+        : '',
+      !ragConfig.useCardContext && !ragConfig.useDocumentationContext
+        ? 'RAG Context: disabled for this agent configuration.'
+        : ''
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -539,18 +798,20 @@ export class AIAgentService {
         status: 'running',
         input: {
           instruction,
-          includeSemanticContext: input.includeSemanticContext,
-          topKContextDocs: input.topKContextDocs
+          includeSemanticContext: ragConfig.includeSemanticContext,
+          topKContextDocs: ragConfig.topKContextDocs,
+          ragSource: ragConfig.source,
+          nativeTools: resolvedTools.nativeEnabled ? resolvedTools.nativeAllowed : [],
+          gptTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : []
         },
         startedAt: new Date()
       }
     });
 
     try {
-      const allowedTools =
-        config.tools?.enabled === true && Array.isArray(config.tools.allowed) ? config.tools.allowed : [];
+      const allowedNativeTools = resolvedTools.nativeEnabled ? resolvedTools.nativeAllowed : [];
 
-      const toolDefinitions = this.buildToolDefinitions(allowedTools);
+      const toolDefinitions = this.buildToolDefinitions(allowedNativeTools);
       const generation = await this.aiProvider.generateText({
         model: agent.model,
         temperature: agent.temperature,
@@ -561,6 +822,7 @@ export class AIAgentService {
         ].join('\n'),
         userPrompt: promptBody,
         tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
+        nativeTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : undefined,
         requireJsonOutput: Boolean(config.guardrails?.requireJsonOutput)
       });
 
@@ -570,7 +832,7 @@ export class AIAgentService {
         boardId: context.boardId,
         requestedBy: input.requestedBy,
         toolCalls: generation.toolCalls,
-        allowedTools
+        allowedTools: allowedNativeTools
       });
 
       let finalContent = generation.content;
@@ -646,6 +908,12 @@ export class AIAgentService {
     }
 
     const config = parseAgentConfig(agent.config);
+    const ragConfig = resolveAgentRagConfig({
+      config,
+      includeSemanticContext: input.includeSemanticContext,
+      topKContextDocs: input.topKContextDocs
+    });
+    const resolvedTools = resolveAgentTools(config);
     const redactSensitive = config.guardrails?.redactSensitive !== false;
     const redact = (value: string): string => (redactSensitive ? redactSensitiveText(value) : value);
 
@@ -654,6 +922,9 @@ export class AIAgentService {
     const instruction = redact(input.instruction);
     const selection = input.selection ? redact(input.selection) : '';
     const documentContent = redact(input.documentContent);
+    const currentDocumentForPrompt = ragConfig.useDocumentationContext
+      ? documentContent || '(empty document)'
+      : '(documentation source disabled by this agent configuration)';
     const modeGuidance = buildDocumentationModeGuidance(input.mode);
     const sanitizedConversationHistory = (input.conversationHistory ?? [])
       .slice(-10)
@@ -672,7 +943,8 @@ export class AIAgentService {
           .join('\n')
       : '';
     const includeSemanticContext =
-      input.includeSemanticContext &&
+      ragConfig.useCardContext &&
+      ragConfig.includeSemanticContext &&
       documentContent.trim().length > 0 &&
       shouldAttachSemanticContext({
         mode: input.mode,
@@ -688,7 +960,7 @@ export class AIAgentService {
       const relatedDocs = await this.hybridSearchService.search({
         query,
         filters: { workspaceId: input.workspaceId },
-        limit: input.topKContextDocs
+        limit: ragConfig.topKContextDocs
       });
 
       semanticContext = redact(
@@ -701,13 +973,27 @@ export class AIAgentService {
       );
     }
 
+    let relatedDocumentationContext = '';
+    if (ragConfig.useDocumentationContext) {
+      relatedDocumentationContext = await this.buildDocumentationContext({
+        workspaceId: input.workspaceId,
+        query: [documentTitle, documentPath, instruction, documentContent.slice(0, 3000)]
+          .filter(Boolean)
+          .join('\n'),
+        topKContextDocs: ragConfig.topKContextDocs,
+        redactSensitive
+      });
+    }
+
     const promptBody = [
       `Mode: ${input.mode}`,
       documentTitle ? `Document title: ${documentTitle}` : '',
       documentPath ? `Document path: ${documentPath}` : '',
       `Instruction:\n${instruction}`,
-      selection ? `Current selection:\n${selection}` : '',
-      `Current document:\n${documentContent || '(empty document)'}`,
+      ragConfig.contextInstruction.length > 0 ? `Context Guidance:\n${ragConfig.contextInstruction}` : '',
+      selection && ragConfig.useDocumentationContext ? `Current selection:\n${selection}` : '',
+      `Current document:\n${currentDocumentForPrompt}`,
+      relatedDocumentationContext ? `Related documentation context:\n${relatedDocumentationContext}` : '',
       conversationContext ? `Recent conversation context:\n${conversationContext}` : '',
       semanticContext ? `Related workspace context:\n${semanticContext}` : ''
     ]
@@ -737,7 +1023,9 @@ export class AIAgentService {
           selection,
           conversationHistory: includeConversationContext ? sanitizedConversationHistory : [],
           includeSemanticContext,
-          topKContextDocs: input.topKContextDocs
+          topKContextDocs: ragConfig.topKContextDocs,
+          ragSource: ragConfig.source,
+          gptTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : []
         },
         startedAt: new Date()
       }
@@ -762,6 +1050,7 @@ export class AIAgentService {
           `Mode guidance:\n${modeGuidance}`
         ].join('\n'),
         userPrompt: promptBody,
+        nativeTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : undefined,
         requireJsonOutput: true
       });
 
@@ -864,7 +1153,8 @@ export class AIAgentService {
   }): Promise<{ itemContext: string; semanticContext: string }> {
     const context = await this.buildItemContext({
       ...input,
-      redactSensitive: true
+      redactSensitive: true,
+      includeLinkedDocuments: true
     });
     return { itemContext: context.itemContext, semanticContext: context.semanticContext };
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { MemberAvatar } from "@/entities/member";
 import {
   buildTaskChecklistSummary,
@@ -205,6 +205,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const [aiMessages, setAiMessages] = useState<CardAiMessage[]>([]);
   const [isAiRunning, setIsAiRunning] = useState(false);
   const [aiError, setAiError] = useState("");
+  const aiMessagesRef = useRef<HTMLDivElement | null>(null);
 
   const memberOptions = useMemo(
     () => Object.values(props.membersById).sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
@@ -401,6 +402,13 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     setAiError("");
   }, [props.mode, editModeAiAgents, task?.id]);
 
+  useEffect(() => {
+    if (!aiMessagesRef.current) {
+      return;
+    }
+    aiMessagesRef.current.scrollTop = aiMessagesRef.current.scrollHeight;
+  }, [aiMessages.length, isAiRunning]);
+
   const checklist = task ? buildTaskChecklistSummary(task) : { done: 0, total: 0, percent: 0 };
   const activeTypeMeta = getTaskTypeDisplayMeta(typeMap, typeDraft);
   const activeStatusLabel = statuses.find(option => option.id === statusDraft)?.label ?? statusDraft;
@@ -436,6 +444,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         const draft = normalizeFieldValue(field, customFieldDrafts[field.id] ?? null);
         return JSON.stringify(current) !== JSON.stringify(draft);
       }));
+  const canSendAiPrompt = aiPrompt.trim().length >= 2 && !isAiRunning && editModeAiAgents.length > 0;
 
   const handleLinkDocument = async () => {
     if (props.mode !== "edit" || !task || !documentToLinkId) {
@@ -543,6 +552,15 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       ]);
     } finally {
       setIsAiRunning(false);
+    }
+  };
+
+  const handleAiPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (canSendAiPrompt) {
+        void handleRunAiOnCard();
+      }
     }
   };
 
@@ -1043,42 +1061,78 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                 </Select>
               </FormField>
 
-              <Textarea
-                className="task-details__ai-textarea"
-                value={aiPrompt}
-                onChange={(event) => setAiPrompt(event.target.value)}
-                placeholder="Pergunte algo sobre este card e as docs vinculadas..."
-              />
-
-              <div className="task-details__ai-actions">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void handleRunAiOnCard()}
-                  disabled={isAiRunning || editModeAiAgents.length === 0}
-                >
-                  {isAiRunning ? "Consultando..." : "Perguntar IA"}
-                </Button>
-              </div>
-
-              <div className="task-details__ai-messages">
+              <div ref={aiMessagesRef} className="task-details__ai-messages">
                 {aiMessages.length === 0 ? (
-                  <p className="task-details__muted">
-                    A IA vai responder com base no card aberto e nas docs vinculadas.
-                  </p>
+                  <div className="task-details__ai-empty-state">
+                    <div className="task-details__ai-empty-avatar" aria-hidden="true">
+                      IA
+                    </div>
+                    <h4>Converse com a IA deste card</h4>
+                    <p>A resposta usa o contexto do card aberto e das docs vinculadas.</p>
+                  </div>
                 ) : (
                   aiMessages.map((message) => (
                     <article key={message.id} className={`task-details__ai-message task-details__ai-message--${message.role}`}>
-                      <header>
-                        <strong>
-                          {message.role === "assistant" ? "IA" : message.role === "user" ? "Voce" : "Sistema"}
-                        </strong>
-                        <span>{new Date(message.createdAt).toLocaleTimeString("pt-BR")}</span>
-                      </header>
-                      <p>{message.content}</p>
+                      <div className="task-details__ai-message-avatar" aria-hidden="true">
+                        {message.role === "assistant" ? "IA" : message.role === "user" ? "VO" : "SI"}
+                      </div>
+                      <div className="task-details__ai-message-bubble">
+                        <header>
+                          <strong>
+                            {message.role === "assistant" ? "Dask IA" : message.role === "user" ? "Voce" : "Sistema"}
+                          </strong>
+                          <span>{new Date(message.createdAt).toLocaleTimeString("pt-BR")}</span>
+                        </header>
+                        <p>{message.content}</p>
+                      </div>
                     </article>
                   ))
                 )}
+
+                {isAiRunning ? (
+                  <article className="task-details__ai-message task-details__ai-message--thinking">
+                    <div className="task-details__ai-message-avatar" aria-hidden="true">
+                      IA
+                    </div>
+                    <div className="task-details__ai-message-bubble">
+                      <header>
+                        <strong>Dask IA</strong>
+                        <span>Pensando...</span>
+                      </header>
+                      <div className="task-details__ai-thinking-dots" aria-label="IA pensando">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  </article>
+                ) : null}
+              </div>
+
+              <div className="task-details__ai-composer">
+                <div className="task-details__ai-composer-shell">
+                  <Textarea
+                    rows={3}
+                    className="task-details__ai-composer-input"
+                    value={aiPrompt}
+                    onChange={(event) => setAiPrompt(event.target.value)}
+                    onKeyDown={handleAiPromptKeyDown}
+                    placeholder="Pergunte algo sobre este card e as docs vinculadas..."
+                  />
+                  <button
+                    type="button"
+                    className="task-details__ai-send-button"
+                    aria-label="Enviar mensagem"
+                    onClick={() => void handleRunAiOnCard()}
+                    disabled={!canSendAiPrompt}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M5 19 19 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M9 5h10v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="task-details__ai-composer-hint">Enter envia - Shift + Enter quebra linha</p>
               </div>
 
               {aiError ? <p className="task-details__error">{aiError}</p> : null}

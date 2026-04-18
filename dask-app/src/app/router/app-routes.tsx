@@ -7,6 +7,7 @@ import { WorkspaceProvider, useWorkspace, workspaceService } from "@/modules/wor
 import { isApiError } from "@/shared/api/http-client";
 import { LoadingState } from "@/shared/ui";
 import {
+  AiAgentsPage,
   AutomationsPage,
   AgendaPage,
   BillingCancelPage,
@@ -43,7 +44,7 @@ function WorkspaceBoundary() {
   );
 }
 
-function ModuleRoute({ module, children }: { module: "board" | "automation" | "documentation" | "settings"; children: JSX.Element }) {
+function ModuleRoute({ module, children }: { module: "board" | "automation" | "documentation" | "ai" | "settings"; children: JSX.Element }) {
   const { snapshot } = useWorkspace();
   const allowedModules = new Set(snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings"]);
 
@@ -161,6 +162,14 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="documentation">
                   <DocumentationPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.aiAgents}
+              element={
+                <ModuleRoute module="ai">
+                  <AiAgentsPage />
                 </ModuleRoute>
               }
             />

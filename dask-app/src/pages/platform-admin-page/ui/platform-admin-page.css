@@ -534,3 +534,161 @@
     grid-template-columns: 1fr;
   }
 }
+
+.app-theme[data-theme="dark"] .platform-admin-page {
+  background:
+    radial-gradient(circle at 14% 8%, rgba(33, 117, 219, 0.24), transparent 38%),
+    radial-gradient(circle at 86% 0%, rgba(13, 148, 136, 0.2), transparent 42%),
+    radial-gradient(circle at 84% 76%, rgba(2, 132, 199, 0.18), transparent 44%),
+    linear-gradient(145deg, #091a2a 0%, #0d2033 46%, #0a1828 100%);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page.platform-admin-page--blocked {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(245, 158, 11, 0.22), transparent 38%),
+    radial-gradient(circle at 88% 0%, rgba(239, 68, 68, 0.24), transparent 40%),
+    linear-gradient(145deg, #231912 0%, #28160f 46%, #1f140f 100%);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__card {
+  border-color: rgba(96, 137, 176, 0.36);
+  background: rgba(12, 33, 52, 0.84);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__badge {
+  color: #8cc4ff;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__card h1,
+.app-theme[data-theme="dark"] .platform-admin-page__hero h1,
+.app-theme[data-theme="dark"] .platform-admin-page__panel header h2,
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card strong,
+.app-theme[data-theme="dark"] .platform-admin-page__bar-row strong,
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill strong,
+.app-theme[data-theme="dark"] .platform-admin-page__reason-list strong {
+  color: #e9f3ff;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__card p,
+.app-theme[data-theme="dark"] .platform-admin-page__hero p,
+.app-theme[data-theme="dark"] .platform-admin-page__panel header p,
+.app-theme[data-theme="dark"] .platform-admin-page__bar-row span,
+.app-theme[data-theme="dark"] .platform-admin-page__mini-metrics p,
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card small,
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card span,
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill span,
+.app-theme[data-theme="dark"] .platform-admin-page__reason-list span {
+  color: #a9bfd7;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__hero {
+  border-color: rgba(92, 138, 183, 0.38);
+  background:
+    linear-gradient(130deg, rgba(14, 37, 58, 0.9), rgba(12, 34, 54, 0.88)),
+    radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.22), transparent 45%);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.3);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__refresh {
+  box-shadow: 0 10px 30px rgba(8, 30, 57, 0.42);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__status-chip--ok {
+  color: #86efac;
+  background: rgba(20, 83, 45, 0.45);
+  border-color: rgba(74, 222, 128, 0.34);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__status-chip--warn {
+  color: #fcd34d;
+  background: rgba(120, 53, 15, 0.46);
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__status-chip--alert {
+  color: #fda4af;
+  background: rgba(127, 29, 29, 0.48);
+  border-color: rgba(251, 113, 133, 0.4);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card {
+  border-color: rgba(85, 132, 177, 0.32);
+  background:
+    linear-gradient(180deg, rgba(17, 41, 63, 0.9) 0%, rgba(15, 36, 55, 0.86) 100%),
+    radial-gradient(circle at 100% 0%, rgba(56, 133, 221, 0.2), transparent 48%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__panel {
+  border-color: rgba(80, 128, 173, 0.32);
+  background: linear-gradient(180deg, rgba(15, 36, 56, 0.9) 0%, rgba(13, 33, 52, 0.86) 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__bar-track {
+  background: rgba(90, 123, 160, 0.4);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__panel--backend .platform-admin-page__bar-track {
+  background: linear-gradient(90deg, rgba(72, 105, 141, 0.54), rgba(75, 106, 141, 0.38));
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill {
+  border-color: rgba(82, 126, 170, 0.34);
+  background:
+    linear-gradient(160deg, rgba(17, 42, 64, 0.9), rgba(14, 35, 54, 0.9)),
+    radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.2), transparent 44%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card--latency-good strong,
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill--latency-good strong {
+  color: #4ade80;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card--latency-fair strong,
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill--latency-fair strong {
+  color: #facc15;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card--latency-poor strong,
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill--latency-poor strong {
+  color: #fb923c;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__kpi-card--latency-bad strong,
+.app-theme[data-theme="dark"] .platform-admin-page__metric-pill--latency-bad strong {
+  color: #f87171;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__reason-list li {
+  background: rgba(21, 49, 75, 0.74);
+  border-color: rgba(101, 142, 184, 0.26);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__empty {
+  background: rgba(20, 47, 72, 0.74);
+  color: #a8bed7;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__error {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(90, 24, 24, 0.72);
+  color: #fecaca;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__actions a {
+  background: #1e5de0;
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__info-button {
+  border-color: rgba(93, 134, 175, 0.46);
+  background: linear-gradient(180deg, rgba(20, 47, 73, 0.95), rgba(17, 40, 61, 0.92));
+  color: #b8ddff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.34);
+}
+
+.app-theme[data-theme="dark"] .platform-admin-page__info-button:focus-visible {
+  outline-color: rgba(96, 165, 250, 0.5);
+}

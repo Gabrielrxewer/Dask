@@ -1,5 +1,6 @@
 export { AppRoutes } from "@/app/router/app-routes";
 export {
+  buildWorkspaceAiAgentsPath,
   buildWorkspaceAutomationsPath,
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,

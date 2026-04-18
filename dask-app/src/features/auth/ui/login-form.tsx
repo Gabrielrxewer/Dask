@@ -39,6 +39,7 @@ const socialProviders: SocialProvider[] = [
 const EMAIL_NOT_VERIFIED_CODE = "EMAIL_NOT_VERIFIED";
 const TERMS_VERSION = "2026-04-18";
 const PRIVACY_VERSION = "2026-04-18";
+const NON_ESSENTIAL_COOKIE_CONSENT_KEY = "dask:non-essential-cookie-consent";
 
 type OAuthErrorCode =
   | "cancelled"
@@ -103,6 +104,30 @@ function mapOAuthErrorMessage(provider: string | null, errorCode: string | null)
   }
 }
 
+function getStoredNonEssentialCookieConsent(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(NON_ESSENTIAL_COOKIE_CONSENT_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function storeNonEssentialCookieConsent(isAccepted: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(NON_ESSENTIAL_COOKIE_CONSENT_KEY, isAccepted ? "true" : "false");
+  } catch {
+    // A preferencia local nao deve bloquear a criacao da conta.
+  }
+}
+
 export function LoginForm() {
   const auth = useAuth();
   const location = useLocation();
@@ -115,7 +140,9 @@ export function LoginForm() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [acceptedMarketing, setAcceptedMarketing] = useState(false);
-  const [acceptedNonEssentialCookies, setAcceptedNonEssentialCookies] = useState(false);
+  const [acceptedNonEssentialCookies, setAcceptedNonEssentialCookies] = useState(
+    getStoredNonEssentialCookieConsent
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [authStep, setAuthStep] = useState<AuthStep>(() =>
     new URLSearchParams(location.search).get("step") === "register" ? "register" : "login"
@@ -123,6 +150,7 @@ export function LoginForm() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [forgotStatus, setForgotStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const [isAuthMessageOpen, setIsAuthMessageOpen] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<PublicWorkspaceInvite | null>(null);
   const [inviteInfoError, setInviteInfoError] = useState<string | null>(null);
 
@@ -228,6 +256,10 @@ export function LoginForm() {
     inviteInfo
   ]);
 
+  useEffect(() => {
+    setIsAuthMessageOpen(false);
+  }, [hintMessage]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setRegisterError(null);
@@ -293,6 +325,11 @@ export function LoginForm() {
     const redirectOrigin = encodeURIComponent(window.location.origin);
     const inviteQuery = inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : "";
     window.location.assign(buildApiUrl(`/auth/${providerId}?redirect_origin=${redirectOrigin}${inviteQuery}`));
+  };
+
+  const handleNonEssentialCookieConsentChange = (isAccepted: boolean) => {
+    setAcceptedNonEssentialCookies(isAccepted);
+    storeNonEssentialCookieConsent(isAccepted);
   };
 
   const handleStepChange = (step: AuthStep) => {
@@ -404,11 +441,37 @@ export function LoginForm() {
     <section
       className={cn(
         "auth-login-panel",
+        isRegisterStep && "auth-login-panel--register",
         isRegisterStep && hintMessage && "auth-login-panel--register-message"
       )}
       aria-label="Acesso ao Dask"
     >
       <div className="auth-login">
+        {hintMessage ? (
+          <div className="auth-login__message-popover">
+            <button
+              type="button"
+              className="auth-login__message-trigger"
+              aria-label="Ver detalhe do erro"
+              aria-expanded={isAuthMessageOpen}
+              aria-controls="auth-login-error-message"
+              onClick={() => setIsAuthMessageOpen(value => !value)}
+            >
+              i
+            </button>
+            {isAuthMessageOpen ? (
+              <p
+                id="auth-login-error-message"
+                className="auth-login__message auth-login__message--floating"
+                role="alert"
+                aria-live="polite"
+              >
+                {hintMessage}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="auth-login__header">
           <h1 className="auth-login__title">{isRegisterStep ? "Crie sua conta" : "Entrar na plataforma"}</h1>
           <p className="auth-login__subtitle">
@@ -503,21 +566,15 @@ export function LoginForm() {
               <label className="auth-login__consent-item">
                 <input
                   type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={event => setAcceptedTerms(event.target.checked)}
+                  checked={acceptedTerms && acceptedPrivacy}
+                  onChange={event => {
+                    setAcceptedTerms(event.target.checked);
+                    setAcceptedPrivacy(event.target.checked);
+                  }}
                 />
                 <span>
-                  Li e aceito os <Link to={routePaths.termsOfUse}>Termos de Uso</Link>.
-                </span>
-              </label>
-              <label className="auth-login__consent-item">
-                <input
-                  type="checkbox"
-                  checked={acceptedPrivacy}
-                  onChange={event => setAcceptedPrivacy(event.target.checked)}
-                />
-                <span>
-                  Li e estou ciente da <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>.
+                  Aceito os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
+                  <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>.
                 </span>
               </label>
               <label className="auth-login__consent-item auth-login__consent-item--optional">
@@ -528,21 +585,7 @@ export function LoginForm() {
                 />
                 <span>Quero receber comunicacoes de marketing por e-mail (opcional).</span>
               </label>
-              <label className="auth-login__consent-item auth-login__consent-item--optional">
-                <input
-                  type="checkbox"
-                  checked={acceptedNonEssentialCookies}
-                  onChange={event => setAcceptedNonEssentialCookies(event.target.checked)}
-                />
-                <span>Aceito cookies nao essenciais para melhoria de experiencia (opcional).</span>
-              </label>
             </div>
-          ) : null}
-
-          {hintMessage ? (
-            <p className="auth-login__message" role="alert" aria-live="polite">
-              {hintMessage}
-            </p>
           ) : null}
 
           <Button className="auth-login__submit" type="submit" variant="primary" disabled={isSubmitting}>
@@ -604,12 +647,30 @@ export function LoginForm() {
             </button>
           </p>
 
-          <p className="auth-login__legal">
-            Ao continuar, voce concorda com os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e com a{" "}
-            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>.
-          </p>
+          {!isRegisterStep ? (
+            <p className="auth-login__legal">
+              Ao continuar, voce concorda com os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e com a{" "}
+              <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>.
+            </p>
+          ) : null}
         </form>
       </div>
+
+      {isRegisterStep && !acceptedNonEssentialCookies ? (
+        <div className="auth-login__external-consent" aria-label="Preferencias opcionais">
+          <label className="auth-login__consent-item auth-login__consent-item--external auth-login__consent-item--optional">
+            <input
+              type="checkbox"
+              checked={acceptedNonEssentialCookies}
+              onChange={event => handleNonEssentialCookieConsentChange(event.target.checked)}
+            />
+            <span className="auth-login__external-consent-copy">
+              <span>Permitir o uso de cookies nao essenciais para analise e melhoria da experiencia.</span>
+              <small>Voce pode alterar essa escolha a qualquer momento.</small>
+            </span>
+          </label>
+        </div>
+      ) : null}
     </section>
   );
 }

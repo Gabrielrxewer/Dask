@@ -14,6 +14,14 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '@/modules/identity/dom
 export const registerDto = z.object({
   email: z.string().email(),
   name: z.string().min(2).max(100).trim(),
+  legalAcceptance: z.object({
+    termsVersion: z.string().min(1).max(40),
+    privacyVersion: z.string().min(1).max(40),
+    acceptedTerms: z.literal(true),
+    acceptedPrivacy: z.literal(true),
+    acceptedMarketing: z.boolean().optional().default(false),
+    acceptedNonEssentialCookies: z.boolean().optional().default(false)
+  }),
   inviteToken: z.string().min(1).optional(),
   password: z
     .string()

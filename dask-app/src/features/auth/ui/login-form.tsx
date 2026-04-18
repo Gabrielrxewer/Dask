@@ -37,6 +37,8 @@ const socialProviders: SocialProvider[] = [
 ];
 
 const EMAIL_NOT_VERIFIED_CODE = "EMAIL_NOT_VERIFIED";
+const TERMS_VERSION = "2026-04-18";
+const PRIVACY_VERSION = "2026-04-18";
 
 type OAuthErrorCode =
   | "cancelled"
@@ -110,6 +112,10 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+  const [acceptedNonEssentialCookies, setAcceptedNonEssentialCookies] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authStep, setAuthStep] = useState<AuthStep>(() =>
     new URLSearchParams(location.search).get("step") === "register" ? "register" : "login"
@@ -238,11 +244,24 @@ export function LoginForm() {
         return;
       }
 
+      if (!acceptedTerms || !acceptedPrivacy) {
+        setRegisterError("Voce precisa aceitar os Termos de Uso e a Politica de Privacidade.");
+        return;
+      }
+
       try {
         await auth.register({
           email: email.trim(),
           name: trimmedName,
           password,
+          legalAcceptance: {
+            termsVersion: TERMS_VERSION,
+            privacyVersion: PRIVACY_VERSION,
+            acceptedTerms: true,
+            acceptedPrivacy: true,
+            acceptedMarketing,
+            acceptedNonEssentialCookies
+          },
           inviteToken
         });
         navigate(`${routePaths.verifyEmail}?email=${encodeURIComponent(email.trim())}`);
@@ -478,6 +497,47 @@ export function LoginForm() {
               </p>
             ) : null}
           </div>
+
+          {isRegisterStep ? (
+            <div className="auth-login__consent-list" aria-label="Consentimentos obrigatorios">
+              <label className="auth-login__consent-item">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={event => setAcceptedTerms(event.target.checked)}
+                />
+                <span>
+                  Li e aceito os <Link to={routePaths.termsOfUse}>Termos de Uso</Link>.
+                </span>
+              </label>
+              <label className="auth-login__consent-item">
+                <input
+                  type="checkbox"
+                  checked={acceptedPrivacy}
+                  onChange={event => setAcceptedPrivacy(event.target.checked)}
+                />
+                <span>
+                  Li e estou ciente da <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>.
+                </span>
+              </label>
+              <label className="auth-login__consent-item auth-login__consent-item--optional">
+                <input
+                  type="checkbox"
+                  checked={acceptedMarketing}
+                  onChange={event => setAcceptedMarketing(event.target.checked)}
+                />
+                <span>Quero receber comunicacoes de marketing por e-mail (opcional).</span>
+              </label>
+              <label className="auth-login__consent-item auth-login__consent-item--optional">
+                <input
+                  type="checkbox"
+                  checked={acceptedNonEssentialCookies}
+                  onChange={event => setAcceptedNonEssentialCookies(event.target.checked)}
+                />
+                <span>Aceito cookies nao essenciais para melhoria de experiencia (opcional).</span>
+              </label>
+            </div>
+          ) : null}
 
           {hintMessage ? (
             <p className="auth-login__message" role="alert" aria-live="polite">

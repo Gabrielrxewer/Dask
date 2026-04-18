@@ -109,6 +109,11 @@ export function ChoosePlanPage() {
           Acesso completo a plataforma apos a confirmacao do pagamento. Cobranca mensal recorrente, cancele quando
           quiser.
         </p>
+        <p className="choose-plan__description">
+          Antes de pagar, revise os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
+          <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. Ao clicar em "Assinar", voce concorda
+          com ambos.
+        </p>
       </header>
 
       {status ? (

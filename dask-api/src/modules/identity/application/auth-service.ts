@@ -333,7 +333,20 @@ export class AuthService {
   // ── Register ──────────────────────────────────────────────────────────────
 
   public async register(
-    input: { email: string; name: string; password: string; inviteToken?: string },
+    input: {
+      email: string;
+      name: string;
+      password: string;
+      legalAcceptance: {
+        termsVersion: string;
+        privacyVersion: string;
+        acceptedTerms: true;
+        acceptedPrivacy: true;
+        acceptedMarketing?: boolean;
+        acceptedNonEssentialCookies?: boolean;
+      };
+      inviteToken?: string;
+    },
     context?: RequestContext
   ): Promise<RegisterResult> {
     // 1. Policy validation (length + blocklist) — NIST §5.1.1.2
@@ -360,7 +373,21 @@ export class AuthService {
       email,
       name: input.name,
       passwordHash: hash,
-      passwordHashVersion: version
+      passwordHashVersion: version,
+      preferences: {
+        legalAcceptance: {
+          acceptedAt: new Date().toISOString(),
+          source: 'register',
+          termsVersion: input.legalAcceptance.termsVersion,
+          privacyVersion: input.legalAcceptance.privacyVersion,
+          acceptedTerms: input.legalAcceptance.acceptedTerms,
+          acceptedPrivacy: input.legalAcceptance.acceptedPrivacy,
+          acceptedMarketing: input.legalAcceptance.acceptedMarketing ?? false,
+          acceptedNonEssentialCookies: input.legalAcceptance.acceptedNonEssentialCookies ?? false,
+          ip: context?.ip ?? null,
+          userAgent: context?.userAgent ?? null
+        }
+      }
     });
 
     await this.tryAcceptWorkspaceInvite({

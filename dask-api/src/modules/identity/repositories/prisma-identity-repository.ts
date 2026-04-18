@@ -42,8 +42,14 @@ export class PrismaIdentityRepository implements IdentityRepository {
     name: string;
     passwordHash: string | null;
     passwordHashVersion: number;
+    preferences?: unknown;
   }): Promise<User> {
-    return this.prisma.user.create({ data: input });
+    return this.prisma.user.create({
+      data: {
+        ...input,
+        preferences: input.preferences as Prisma.InputJsonValue | undefined
+      }
+    });
   }
 
   public findUserByEmail(email: string): Promise<User | null> {

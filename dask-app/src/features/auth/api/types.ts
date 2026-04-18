@@ -10,6 +10,14 @@ export interface RegisterInput {
   email: string;
   name: string;
   password: string;
+  legalAcceptance: {
+    termsVersion: string;
+    privacyVersion: string;
+    acceptedTerms: true;
+    acceptedPrivacy: true;
+    acceptedMarketing?: boolean;
+    acceptedNonEssentialCookies?: boolean;
+  };
   inviteToken?: string;
 }
 

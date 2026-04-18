@@ -85,6 +85,23 @@ function makeRepo(): Mocked<IdentityRepository> {
   } as unknown as Mocked<IdentityRepository>;
 }
 
+function makeRegisterInput(overrides: Partial<{ email: string; name: string; password: string }> = {}) {
+  return {
+    email: 'alice@example.com',
+    name: 'Alice',
+    password: 'Tr0ub4dor&3 is a great passphrase!',
+    legalAcceptance: {
+      termsVersion: '2026-04-18',
+      privacyVersion: '2026-04-18',
+      acceptedTerms: true as const,
+      acceptedPrivacy: true as const,
+      acceptedMarketing: false,
+      acceptedNonEssentialCookies: false
+    },
+    ...overrides
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Password policy
 // ---------------------------------------------------------------------------
@@ -101,7 +118,7 @@ describe('validatePassword (policy, blocklist, patterns)', () => {
   it('rejects passwords shorter than 15 characters', async () => {
     (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: 'Short1A' })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: 'Short1A' }))
     ).rejects.toThrow(/at least 15/i);
   });
 
@@ -109,7 +126,7 @@ describe('validatePassword (policy, blocklist, patterns)', () => {
     const tooLong = 'a'.repeat(129);
     (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: tooLong })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: tooLong }))
     ).rejects.toThrow(/not exceed 128/i);
   });
 
@@ -121,28 +138,28 @@ describe('validatePassword (policy, blocklist, patterns)', () => {
     );
     (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: pwWithSpace })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: pwWithSpace }))
     ).resolves.toBeDefined();
   });
 
   it('rejects passwords in the blocklist (common pattern)', async () => {
     (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: 'password1234567' })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: 'password1234567' }))
     ).rejects.toThrow(/too common/i);
   });
 
   it('rejects all-same-character patterns', async () => {
     (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: 'aaaaaaaaaaaaaaa' })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: 'aaaaaaaaaaaaaaa' }))
     ).rejects.toThrow(/too common/i);
   });
 
   it('rejects pure numeric passwords', async () => {
     (repo.findUserByEmail as MockedFunction<typeof repo.findUserByEmail>).mockResolvedValue(null);
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: '123456789012345' })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: '123456789012345' }))
     ).rejects.toThrow(/too common/i);
   });
 
@@ -155,7 +172,7 @@ describe('validatePassword (policy, blocklist, patterns)', () => {
     );
     (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
     await expect(
-      service.register({ email: 'a@b.com', name: 'Test', password: passphrase })
+      service.register(makeRegisterInput({ email: 'a@b.com', name: 'Test', password: passphrase }))
     ).resolves.toBeDefined();
   });
 });
@@ -181,11 +198,7 @@ describe('register', () => {
     );
     (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
 
-    const result = await service.register({
-      email: 'alice@example.com',
-      name: 'Alice',
-      password: validPassword
-    });
+    const result = await service.register(makeRegisterInput({ password: validPassword }));
 
     expect(result.accessToken).toBeTruthy();
     expect(result.refreshToken).toBeTruthy();
@@ -199,11 +212,7 @@ describe('register', () => {
       makeUser({ emailVerified: false })
     );
 
-    const result = await service.register({
-      email: 'alice@example.com',
-      name: 'Alice',
-      password: validPassword
-    });
+    const result = await service.register(makeRegisterInput({ password: validPassword }));
 
     expect(result.accessToken).toBeNull();
     expect(result.refreshToken).toBeNull();
@@ -217,7 +226,7 @@ describe('register', () => {
     );
     (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
 
-    await service.register({ email: 'Alice@Example.COM', name: 'Alice', password: validPassword });
+    await service.register(makeRegisterInput({ email: 'Alice@Example.COM', password: validPassword }));
 
     const createUserCall = (repo.createUser as MockedFunction<typeof repo.createUser>).mock.calls[0][0];
     expect(createUserCall.email).toBe('alice@example.com');
@@ -229,7 +238,7 @@ describe('register', () => {
     );
 
     await expect(
-      service.register({ email: 'alice@example.com', name: 'Alice', password: validPassword })
+      service.register(makeRegisterInput({ password: validPassword }))
     ).rejects.toThrow(/registration unsuccessful/i);
   });
 
@@ -238,7 +247,7 @@ describe('register', () => {
     (repo.createUser as MockedFunction<typeof repo.createUser>).mockResolvedValue(makeUser());
     (repo.createRefreshToken as MockedFunction<typeof repo.createRefreshToken>).mockResolvedValue();
 
-    await service.register({ email: 'alice@example.com', name: 'Alice', password: validPassword });
+    await service.register(makeRegisterInput({ password: validPassword }));
 
     const call = (repo.createUser as MockedFunction<typeof repo.createUser>).mock.calls[0][0];
     expect(call.passwordHashVersion).toBe(1);

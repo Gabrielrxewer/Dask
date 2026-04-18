@@ -54,6 +54,7 @@ export interface IdentityRepository {
     name: string;
     passwordHash: string | null;
     passwordHashVersion: number;
+    preferences?: unknown;
   }): Promise<User>;
 
   findUserByEmail(email: string): Promise<User | null>;

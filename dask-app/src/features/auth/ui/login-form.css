@@ -438,6 +438,57 @@
   text-decoration: underline;
 }
 
+.auth-login__consent-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-login__consent-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #4f6882;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.auth-login__consent-item input[type="checkbox"] {
+  margin-top: 1px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  accent-color: #0f5da2;
+}
+
+.auth-login__consent-item a {
+  color: #0f5da2;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.auth-login__consent-item--optional {
+  color: #5f7690;
+}
+
+.app-theme[data-theme="dark"] .auth-login__consent-item {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .auth-login__consent-item--optional {
+  color: var(--text-muted);
+}
+
+.app-theme[data-theme="dark"] .auth-login__consent-item a,
+.app-theme[data-theme="dark"] .auth-login__legal a {
+  color: var(--accent-strong);
+}
+
+.app-theme[data-theme="dark"] .auth-login__consent-item input[type="checkbox"] {
+  background: var(--control-surface);
+  border-color: var(--line);
+}
+
 .auth-login-panel[aria-label="Recuperar senha"] .auth-login {
   align-content: start;
   gap: 24px;

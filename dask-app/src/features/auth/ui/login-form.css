@@ -424,6 +424,20 @@
   outline-offset: 2px;
 }
 
+.auth-login__legal {
+  margin: 0;
+  text-align: center;
+  color: #5f7690;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.auth-login__legal a {
+  color: #0f5da2;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .auth-login-panel[aria-label="Recuperar senha"] .auth-login {
   align-content: start;
   gap: 24px;

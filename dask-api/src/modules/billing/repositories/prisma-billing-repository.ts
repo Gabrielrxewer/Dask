@@ -39,6 +39,13 @@ export class PrismaBillingRepository implements BillingRepository {
     });
   }
 
+  findLatestSubscriptionByUserId(userId: string): Promise<Subscription | null> {
+    return (this.prisma as any).subscription.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
   async upsertStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void> {
     await (this.prisma.user as any).update({
       where: { id: userId },

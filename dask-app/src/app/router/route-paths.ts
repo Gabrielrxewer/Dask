@@ -3,6 +3,8 @@ export const routePaths = {
   login: "/login",
   resetPassword: "/reset-password",
   verifyEmail: "/verify-email",
+  termsOfUse: "/termos-de-uso",
+  privacyPolicy: "/politica-de-privacidade",
   choosePlan: "/choose-plan",
   billingSuccess: "/billing/success",
   billingCancel: "/billing/cancel",

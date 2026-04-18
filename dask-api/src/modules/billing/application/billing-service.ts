@@ -167,6 +167,7 @@ export class BillingService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
+    const latestSubscription = await this.repo.findLatestSubscriptionByUserId(userId);
 
     if (process.env.NODE_ENV !== 'production') {
       const developmentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -175,6 +176,7 @@ export class BillingService {
         plan: (user.subscriptionPlan as SubscriptionPlan | null) ?? 'BUSINESS',
         status: (user.subscriptionStatus as SubscriptionStatus | null) ?? 'ACTIVE',
         currentPeriodEnd: user.currentPeriodEnd ?? developmentPeriodEnd,
+        cancelAtPeriodEnd: latestSubscription?.cancelAtPeriodEnd ?? false,
         canAccessPlatform: true,
         canCreateWorkspace: true,
         message: null
@@ -188,10 +190,34 @@ export class BillingService {
       plan: (user.subscriptionPlan as SubscriptionPlan | null) ?? null,
       status: (user.subscriptionStatus as SubscriptionStatus | null) ?? null,
       currentPeriodEnd: user.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: latestSubscription?.cancelAtPeriodEnd ?? false,
       canAccessPlatform: active,
       canCreateWorkspace: active,
       message: active ? null : this.buildBlockedMessage(user.subscriptionStatus as SubscriptionStatus | null)
     };
+  }
+
+  async createBillingPortalSession(userId: string): Promise<{ url: string }> {
+    const user = await this.repo.findUserById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (!user.stripeCustomerId) {
+      throw new AppError('No billing customer found for this account', 409);
+    }
+
+    const session = await this.stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${this.appPublicUrl}/choose-plan`
+    });
+
+    if (!session.url) {
+      throw new AppError('Failed to create Stripe billing portal session', 500);
+    }
+
+    logger.info({ event: 'billing.portal.created', userId, customerId: user.stripeCustomerId });
+    return { url: session.url };
   }
 
   private buildBlockedMessage(status: SubscriptionStatus | null): string {

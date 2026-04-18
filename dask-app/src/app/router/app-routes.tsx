@@ -29,9 +29,11 @@ import {
   ResetPasswordPage,
   SettingsShellPage,
   SubscriptionBlockedPage,
+  TermsOfUsePage,
   TimelinePage,
   WorkspaceSelectorPage,
   VerifyEmailPage,
+  PrivacyPolicyPage,
   WorkflowStatesSettingsPage
 } from "@/pages";
 import { buildWorkspaceBoardPath, routePaths } from "@/app/router";
@@ -135,6 +137,8 @@ export function AppRoutes() {
         */}
         <Route path={routePaths.resetPassword} element={<ResetPasswordPage />} />
         <Route path={routePaths.verifyEmail} element={<VerifyEmailPage />} />
+        <Route path={routePaths.termsOfUse} element={<TermsOfUsePage />} />
+        <Route path={routePaths.privacyPolicy} element={<PrivacyPolicyPage />} />
 
         {/* Billing routes — authenticated but subscription not required */}
         <Route element={<ProtectedRoute />}>

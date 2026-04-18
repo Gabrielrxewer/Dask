@@ -45,5 +45,14 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
     })
   );
 
+  router.post(
+    '/billing/portal-session',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const { url } = await billingService.createBillingPortalSession(req.auth!.userId);
+      res.status(200).json({ url });
+    })
+  );
+
   return router;
 }

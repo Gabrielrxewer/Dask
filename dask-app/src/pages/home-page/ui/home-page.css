@@ -1571,6 +1571,21 @@
   border: none;
 }
 
+.home-page__pricing-legal {
+  margin: 8px auto 0;
+  max-width: 720px;
+  text-align: center;
+  color: #5f7892;
+  font-size: 0.84rem;
+  line-height: 1.56;
+}
+
+.home-page__pricing-legal a {
+  color: #0f5da2;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .home-page__value-section,
 .home-page__workflow-section,
 .home-page__adaptability-section,

@@ -152,7 +152,11 @@ function parseAccessGroup(input: unknown): WorkspaceAccessGroup | null {
 }
 
 function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS' | null | undefined) {
-  if (subscriptionPlan === 'BUSINESS') {
+  if (
+    subscriptionPlan === 'BUSINESS' ||
+    subscriptionPlan === 'PERSONAL' ||
+    subscriptionPlan == null
+  ) {
     return {
       board: true,
       automation: true,
@@ -161,7 +165,6 @@ function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS'
       settings: true
     } as Record<WorkspaceModuleKey, boolean>;
   }
-
   return {
     board: true,
     automation: false,
@@ -253,9 +256,14 @@ export function resolveWorkspaceAccessPolicy(input: {
   }
 
   const planEntitlements = defaultPlanModuleEntitlements(input.subscriptionPlan);
+  const hasFullModuleAccessByPlan =
+    input.subscriptionPlan === 'BUSINESS' ||
+    input.subscriptionPlan === 'PERSONAL' ||
+    input.subscriptionPlan == null;
   const moduleEntitlements = workspaceModuleCatalog.reduce<Record<WorkspaceModuleKey, boolean>>((acc, moduleKey) => {
     const workspaceEnabled = workspaceEntitlements[moduleKey];
-    acc[moduleKey] = planEntitlements[moduleKey] && workspaceEnabled !== false;
+    acc[moduleKey] =
+      planEntitlements[moduleKey] && (hasFullModuleAccessByPlan ? true : workspaceEnabled !== false);
     return acc;
   }, {} as Record<WorkspaceModuleKey, boolean>);
 

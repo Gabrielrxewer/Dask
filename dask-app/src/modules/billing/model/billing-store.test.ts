@@ -23,6 +23,7 @@ function makeStatus(overrides: Partial<BillingStatus> = {}): BillingStatus {
     plan: "PERSONAL",
     status: "ACTIVE",
     currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
     canAccessPlatform: true,
     canCreateWorkspace: true,
     message: null,

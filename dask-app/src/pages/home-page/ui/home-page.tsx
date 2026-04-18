@@ -149,6 +149,12 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
           </button>
         </article>
       </div>
+
+      <p className="home-page__pricing-legal">
+        Ao assinar, voce concorda com os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e com a{" "}
+        <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. O cancelamento pode ser solicitado a
+        qualquer momento na area de gestao da assinatura.
+      </p>
     </section>
   );
 }

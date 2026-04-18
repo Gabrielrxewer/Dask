@@ -39,6 +39,7 @@ export interface BillingStatus {
   plan: SubscriptionPlan | null;
   status: SubscriptionStatus | null;
   currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
   canAccessPlatform: boolean;
   canCreateWorkspace: boolean;
   message: string | null;

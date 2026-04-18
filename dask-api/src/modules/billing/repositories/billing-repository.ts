@@ -61,6 +61,7 @@ export interface BillingRepository {
   findUserByStripeCustomerId(customerId: string): Promise<BillingUser | null>;
   findSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | null>;
   findActiveSubscriptionByUserId(userId: string): Promise<Subscription | null>;
+  findLatestSubscriptionByUserId(userId: string): Promise<Subscription | null>;
 
   upsertStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void>;
 

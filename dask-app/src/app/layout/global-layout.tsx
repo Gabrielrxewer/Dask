@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { buildWorkspaceSelectorPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { billingService, PLAN_DISPLAY, type BillingStatus } from "@/modules/billing";
@@ -192,12 +192,16 @@ export function GlobalLayout() {
   const isLoginRoute = location.pathname === routePaths.login;
   const isResetPasswordRoute = location.pathname === routePaths.resetPassword;
   const isVerifyEmailRoute = location.pathname === routePaths.verifyEmail;
-  const isPublicRoute = isHomeRoute || isLoginRoute || isResetPasswordRoute || isVerifyEmailRoute;
+  const isTermsRoute = location.pathname === routePaths.termsOfUse;
+  const isPrivacyRoute = location.pathname === routePaths.privacyPolicy;
+  const isPublicRoute =
+    isHomeRoute || isLoginRoute || isResetPasswordRoute || isVerifyEmailRoute || isTermsRoute || isPrivacyRoute;
   const isAppRoute = !isPublicRoute;
   const isAdminRoute = location.pathname === routePaths.admin;
   const shouldDisableMainScroll = isAppRoute && !isAdminRoute;
   const isAuthenticated = status === "authenticated";
-  const isAuthenticatedArea = isAuthenticated && !isPublicRoute;
+  const isLegalRoute = isTermsRoute || isPrivacyRoute;
+  const isAuthenticatedArea = isAuthenticated && (!isPublicRoute || isLegalRoute);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -756,9 +760,15 @@ export function GlobalLayout() {
           </main>
 
           <footer className="global-footer">
-            <span className="global-footer__wordmark" aria-label="Dask">
-              Dask
-            </span>
+            <div className="global-footer__inner">
+              <span className="global-footer__wordmark" aria-label="Dask">
+                Dask
+              </span>
+              <nav className="global-footer__links" aria-label="Links legais">
+                <Link to={routePaths.termsOfUse}>Termos de uso</Link>
+                <Link to={routePaths.privacyPolicy}>Privacidade</Link>
+              </nav>
+            </div>
           </footer>
 
           {isUserProfileOpen ? (

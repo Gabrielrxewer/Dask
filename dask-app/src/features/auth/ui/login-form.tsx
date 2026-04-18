@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
 import { useAuth, useLogin } from "@/features/auth";
 import { authService } from "@/features/auth/api/auth-service";
@@ -542,6 +542,11 @@ export function LoginForm() {
             >
               {isRegisterStep ? "Entrar" : "Registre-se"}
             </button>
+          </p>
+
+          <p className="auth-login__legal">
+            Ao continuar, voce concorda com os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e com a{" "}
+            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>.
           </p>
         </form>
       </div>

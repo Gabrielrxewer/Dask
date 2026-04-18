@@ -15,5 +15,13 @@ export const billingService = {
       { planCode },
       { authMode: "required", retryOnUnauthorized: true }
     );
+  },
+
+  createPortalSession(): Promise<{ url: string }> {
+    return apiClient.post<{ url: string }>(
+      "/billing/portal-session",
+      {},
+      { authMode: "required", retryOnUnauthorized: true }
+    );
   }
 };

@@ -159,7 +159,15 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
   );
 }
 
-function HomeHeroView({ onExploreClick }: { onExploreClick: () => void }) {
+function HomeHeroView({
+  isAuthenticated,
+  onExploreClick
+}: {
+  isAuthenticated: boolean;
+  onExploreClick: () => void;
+}) {
+  const privateEntryPath = isAuthenticated ? routePaths.workspaceEntry : routePaths.login;
+
   return (
     <section className="home-page__hero" id="top" aria-label="Tela inicial da plataforma">
       <div className="home-page__hero-copy">
@@ -172,8 +180,8 @@ function HomeHeroView({ onExploreClick }: { onExploreClick: () => void }) {
         </p>
 
         <div className="home-page__actions">
-          <Link className="home-page__action home-page__action--primary" to={routePaths.login}>
-            Entrar na plataforma
+          <Link className="home-page__action home-page__action--primary" to={privateEntryPath}>
+            {isAuthenticated ? "Acessar Dask" : "Entrar na plataforma"}
           </Link>
           <button
             className="home-page__action home-page__action--secondary"
@@ -309,7 +317,7 @@ export function HomePage() {
     <main className="home-page">
       <div className="home-page__container">
         <div className="home-page__view">
-          <HomeHeroView onExploreClick={() => selectSection("inteligencia")} />
+          <HomeHeroView isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("inteligencia")} />
         </div>
         <div className="home-page__view">
           <IntelligenceView />

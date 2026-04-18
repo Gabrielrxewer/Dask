@@ -610,6 +610,16 @@ export function GlobalLayout() {
 
             {isAuthenticated ? (
               <div className="global-header__user-wrap" ref={userMenuRef}>
+                {isPublicRoute && !isHomeRoute ? (
+                  <button
+                    type="button"
+                    className="global-header__user global-header__home-return"
+                    onClick={() => navigate(routePaths.workspaceEntry)}
+                  >
+                    Voltar ao Dask
+                  </button>
+                ) : null}
+
                 <button
                   type="button"
                   className="global-header__user"

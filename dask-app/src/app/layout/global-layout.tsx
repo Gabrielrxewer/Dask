@@ -717,6 +717,15 @@ export function GlobalLayout() {
                         type="button"
                         onClick={() => {
                           setIsUserMenuOpen(false);
+                          navigate(isHomeRoute ? routePaths.workspaceEntry : routePaths.home);
+                        }}
+                      >
+                        {isHomeRoute ? "Voltar ao Dask" : "Voltar para Home"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
                           void logout();
                         }}
                         disabled={isAuthBusy}

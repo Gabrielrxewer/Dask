@@ -330,6 +330,7 @@
   --sidebar-item: var(--text-soft);
   --sidebar-item-soft: color-mix(in oklab, var(--accent) 10%, transparent);
   --sidebar-item-line: color-mix(in oklab, var(--accent) 20%, var(--line));
+  --sidebar-foot-bg: var(--panel);
   background: var(--panel) !important;
   color: var(--text);
   border-right-color: var(--line);

@@ -185,7 +185,7 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
 }
 
 export function AppShell({
-  metrics,
+  metrics: _metrics,
   pageLabel = "Workspace",
   pageTitle = "Dask Platform",
   topNavigation,
@@ -259,13 +259,6 @@ export function AppShell({
           icon: "automation" as const,
           tone: "rose" as const,
           module: "automation" as AppModuleKey
-        },
-        {
-          to: buildWorkspaceSettingsPath(workspaceSlug),
-          label: "Settings",
-          icon: "settings" as const,
-          tone: "violet" as const,
-          module: "settings" as AppModuleKey
         }
       ]
     },
@@ -359,16 +352,24 @@ export function AppShell({
           ))}
         </nav>
 
-        <div className="sidebar__foot">
-          <p className="sidebar__menu-title">Ciclo atual</p>
-          <div className="sidebar__sprint-card">
-            <p className="sidebar__sprint-name">Entrega principal</p>
-            <p className="sidebar__sprint-meta">{`${metrics.active} itens ativos`}</p>
-            <div className="sidebar__track">
-              <div className="sidebar__fill" style={{ width: `${metrics.donePercent}%` }} />
-            </div>
+        {allowedModules.has("settings") ? (
+          <div className="sidebar__foot">
+            <NavLink
+              to={buildWorkspaceSettingsPath(workspaceSlug)}
+              onClick={closeNavigation}
+              className={({ isActive }) =>
+                cn("sidebar__menu-link", "sidebar__menu-link--tone-violet", isActive && "sidebar__menu-link--active")
+              }
+            >
+              <span className="sidebar__menu-icon sidebar__menu-icon--settings sidebar__menu-icon--tone-violet" aria-hidden="true">
+                <SidebarIcon name="settings" />
+              </span>
+              <span className="sidebar__menu-link-copy">
+                <span className="sidebar__menu-link-label">Settings</span>
+              </span>
+            </NavLink>
           </div>
-        </div>
+        ) : null}
       </aside>
 
       <div className="workspace">

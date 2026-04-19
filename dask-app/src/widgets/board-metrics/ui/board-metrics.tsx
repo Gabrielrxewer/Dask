@@ -6,6 +6,7 @@ import "./board-metrics.css";
 interface MetricCardItem {
   label: string;
   value: string | number;
+  description?: string;
 }
 
 interface BoardMetricsProps {
@@ -27,7 +28,7 @@ export function BoardMetrics({ metrics, cards, className = "" }: BoardMetricsPro
   return (
     <section className={cn("board-metrics", className)}>
       {metricCards.map(card => (
-        <MetricCard label={card.label} value={card.value} key={card.label} />
+        <MetricCard label={card.label} value={card.value} description={card.description} key={card.label} />
       ))}
     </section>
   );

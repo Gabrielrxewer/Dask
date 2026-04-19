@@ -21,6 +21,8 @@ import {
   GeneralSettingsPage,
   HomePage,
   ItemTypesSettingsPage,
+  LeadsPage,
+  MarketingPage,
   ListPage,
   LoginPage,
   FiscalPage,
@@ -52,12 +54,12 @@ function ModuleRoute({
   module,
   children
 }: {
-  module: "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal";
+  module: "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
   children: JSX.Element;
 }) {
   const { snapshot } = useWorkspace();
   const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal"]
+    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"]
   );
 
   if (!allowedModules.has(module)) {
@@ -208,6 +210,22 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="fiscal">
                   <FiscalPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.leads}
+              element={
+                <ModuleRoute module="leads">
+                  <LeadsPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.marketing}
+              element={
+                <ModuleRoute module="marketing">
+                  <MarketingPage />
                 </ModuleRoute>
               }
             />

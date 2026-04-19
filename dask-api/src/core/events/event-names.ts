@@ -8,5 +8,16 @@ export const DomainEventNames = {
   ItemDescriptionImprovementRequested: 'item.description.improvement.requested',
   ItemEmbeddingRequested: 'item.embedding.requested',
   AutomationRuleCreated: 'automation.rule.created',
-  AutomationRuleUpdated: 'automation.rule.updated'
+  AutomationRuleUpdated: 'automation.rule.updated',
+  LeadCaptured: 'lead.captured',
+  LeadQualified: 'lead.qualified',
+  LeadDistributed: 'lead.distributed',
+  LeadFollowUpRegistered: 'lead.followup.registered',
+  LeadNurtureScheduled: 'lead.nurture.scheduled',
+  LeadConverted: 'lead.converted',
+  MarketingCampaignCreated: 'marketing.campaign.created',
+  MarketingCampaignApproved: 'marketing.campaign.approved',
+  MarketingCampaignLaunched: 'marketing.campaign.launched',
+  MarketingEmailSent: 'marketing.email.sent',
+  MarketingLeadScoreChanged: 'marketing.lead.score.changed'
 } as const;

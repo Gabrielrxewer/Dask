@@ -214,6 +214,27 @@ export type WorkspacePermissionKey =
   | "integration.manage"
   | "billing.read"
   | "billing.manage"
+  | "fiscal.read"
+  | "fiscal.issue"
+  | "fiscal.config"
+  | "lead.read"
+  | "lead.capture"
+  | "lead.qualify"
+  | "lead.distribute"
+  | "lead.nurture"
+  | "lead.convert"
+  | "lead.integration"
+  | "marketing.view"
+  | "marketing.campaign.create"
+  | "marketing.campaign.approve"
+  | "marketing.campaign.send"
+  | "marketing.template.manage"
+  | "marketing.segment.manage"
+  | "marketing.analytics.view"
+  | "marketing.sender.manage"
+  | "marketing.automation.manage"
+  | "marketing.ai.use"
+  | "marketing.integration"
   | "audit.read"
   | "ai.use"
   | "ai.configure"
@@ -221,7 +242,7 @@ export type WorkspacePermissionKey =
   | "board.write"
   | "item.write";
 
-export type WorkspaceModuleKey = "board" | "automation" | "documentation" | "ai" | "settings";
+export type WorkspaceModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
 export interface WorkspaceAccessGroup {
   id: string;

@@ -32,6 +32,12 @@ import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-b
 import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
 import { FocusFiscalProvider } from '@/modules/fiscal/providers/focus/focus-fiscal-provider';
 import { PrismaFiscalRepository } from '@/modules/fiscal/repositories/prisma-fiscal-repository';
+import { LeadsService } from '@/modules/leads/application/leads-service';
+import { PrismaLeadsRepository } from '@/modules/leads/repositories/prisma-leads-repository';
+import { MarketingService } from '@/modules/marketing/application/marketing-service';
+import { MockMarketingEmailProvider } from '@/modules/marketing/providers/mock-marketing-email-provider';
+import { ResendMarketingEmailProvider } from '@/modules/marketing/providers/resend-marketing-email-provider';
+import { PrismaMarketingRepository } from '@/modules/marketing/repositories/prisma-marketing-repository';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 
 export type AppContainer = {
@@ -54,6 +60,8 @@ export type AppContainer = {
   workspaceInvitesService: WorkspaceInvitesService;
   billingService: BillingService | null;
   fiscalService: FiscalService;
+  leadsService: LeadsService;
+  marketingService: MarketingService;
 };
 
 export function buildAppContainer(): AppContainer {
@@ -129,6 +137,23 @@ export function buildAppContainer(): AppContainer {
     stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL ?? env.STRIPE_WEBHOOK_SECRET,
     focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
   });
+  const leadsRepo = new PrismaLeadsRepository(prisma);
+  const leadsService = new LeadsService({
+    repo: leadsRepo,
+    eventPublisher,
+    webhookSecret: env.LEADS_WEBHOOK_SECRET
+  });
+  const marketingRepo = new PrismaMarketingRepository(prisma);
+  const marketingEmailProvider = env.RESEND_API_KEY
+    ? new ResendMarketingEmailProvider()
+    : new MockMarketingEmailProvider();
+  const marketingService = new MarketingService({
+    repo: marketingRepo,
+    eventPublisher,
+    jobQueue,
+    aiProvider,
+    emailProvider: marketingEmailProvider
+  });
 
   return {
     roleAuthorizationService,
@@ -149,6 +174,8 @@ export function buildAppContainer(): AppContainer {
     workspaceWorkItemsService,
     workspaceInvitesService,
     billingService,
-    fiscalService
+    fiscalService,
+    leadsService,
+    marketingService
   };
 }

@@ -8,6 +8,8 @@ import {
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,
   buildWorkspaceFiscalPath,
+  buildWorkspaceLeadsPath,
+  buildWorkspaceMarketingPath,
   buildWorkspaceListPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceTimelinePath
@@ -22,9 +24,9 @@ import { cn } from "@/shared/lib/cn";
 import { PageHeader } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal";
+type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
-type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal";
+type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -174,6 +176,28 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     );
   }
 
+  if (name === "leads") {
+    return (
+      <svg {...commonProps}>
+        <circle cx="8" cy="8" r="2.5" />
+        <circle cx="16" cy="8" r="2.5" />
+        <path d="M5.5 17.5a2.5 2.5 0 0 1 5 0" />
+        <path d="M13.5 17.5a2.5 2.5 0 0 1 5 0" />
+        <path d="M8 12.5h8" />
+      </svg>
+    );
+  }
+
+  if (name === "marketing") {
+    return (
+      <svg {...commonProps}>
+        <path d="M4.2 18.3 12 14l7.8 4.3V5.7L12 10 4.2 5.7Z" />
+        <path d="M4.2 5.7 12 10l7.8-4.3" />
+        <path d="m12 14 0 7" />
+      </svg>
+    );
+  }
+
   return (
     <svg {...commonProps}>
       <rect x="4" y="7" width="16" height="13" rx="3" />
@@ -200,7 +224,7 @@ export function AppShell({
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot } = useWorkspace();
   const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal"]
+    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"]
   );
   const navGroups = [
     {
@@ -259,6 +283,20 @@ export function AppShell({
           icon: "automation" as const,
           tone: "rose" as const,
           module: "automation" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceLeadsPath(workspaceSlug),
+          label: "Leads",
+          icon: "leads" as const,
+          tone: "mint" as const,
+          module: "leads" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceMarketingPath(workspaceSlug),
+          label: "Marketing",
+          icon: "marketing" as const,
+          tone: "rose" as const,
+          module: "marketing" as AppModuleKey
         }
       ]
     },

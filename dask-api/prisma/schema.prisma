@@ -219,6 +219,210 @@ enum FiscalIntegrationStatus {
   ERROR
 }
 
+enum LeadStatus {
+  CAPTURED
+  QUALIFIED
+  DISTRIBUTED
+  FOLLOW_UP
+  NURTURING
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  MANUAL
+  API
+  WEBHOOK
+  IMPORT
+  INTEGRATION
+}
+
+enum LeadQualificationStatus {
+  UNQUALIFIED
+  MQL
+  SQL
+  DISQUALIFIED
+}
+
+enum LeadDistributionStatus {
+  UNASSIGNED
+  ASSIGNED
+  ACCEPTED
+  REASSIGNED
+}
+
+enum LeadDistributionStrategy {
+  MANUAL
+  ROUND_ROBIN
+  RULE_BASED
+  TERRITORY
+}
+
+enum LeadActivityType {
+  CAPTURED
+  QUALIFIED
+  DISTRIBUTED
+  FOLLOW_UP
+  NURTURE_TOUCH
+  CONVERTED
+  STATUS_CHANGED
+  NOTE
+}
+
+enum LeadNurtureStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  RESPONDED
+  SKIPPED
+  FAILED
+}
+
+enum LeadConversionType {
+  CUSTOMER
+  OPPORTUNITY
+  DEAL
+  SUBSCRIPTION
+}
+
+enum LeadIntegrationSource {
+  GENERIC_WEBHOOK
+  ZAPIER
+  MAKE
+  N8N
+  HUBSPOT
+  RD_STATION
+}
+
+enum LeadIntegrationEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  DUPLICATE
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum MarketingCampaignChannel {
+  EMAIL
+  NEWSLETTER
+}
+
+enum MarketingCampaignObjective {
+  LEAD_NURTURE
+  ONBOARDING
+  REACTIVATION
+  BILLING_REMINDER
+  RENEWAL
+  EXPANSION
+  PRODUCT_UPDATE
+  NEWSLETTER
+  CUSTOM
+}
+
+enum MarketingAudienceType {
+  STATIC
+  DYNAMIC
+}
+
+enum MarketingEventType {
+  CAMPAIGN_CREATED
+  CAMPAIGN_UPDATED
+  CAMPAIGN_REVIEW_REQUESTED
+  CAMPAIGN_APPROVED
+  CAMPAIGN_SCHEDULED
+  CAMPAIGN_LAUNCHED
+  SEND_QUEUED
+  EMAIL_SENT
+  EMAIL_DELIVERED
+  EMAIL_OPENED
+  EMAIL_CLICKED
+  EMAIL_BOUNCED
+  EMAIL_COMPLAINT
+  EMAIL_UNSUBSCRIBED
+  LEAD_SCORE_CHANGED
+  AUTOMATION_ENROLLED
+  AUTOMATION_EXITED
+  OPPORTUNITY_INFLUENCED
+  CUSTOMER_CONVERTED
+  BILLING_SIGNAL_TRIGGERED
+  AI_GENERATED
+  AI_IMPROVED
+  TASK_CREATED
+  DOCUMENT_LINKED
+}
+
+enum MarketingConsentStatus {
+  OPT_IN
+  OPT_OUT
+  UNSUBSCRIBED
+  UNKNOWN
+}
+
+enum MarketingMessageKind {
+  MARKETING
+  TRANSACTIONAL
+}
+
+enum MarketingSendStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  COMPLAINED
+  UNSUBSCRIBED
+  FAILED
+  SKIPPED
+}
+
+enum MarketingAutomationStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum MarketingAutomationStepKind {
+  TRIGGER
+  CONDITION
+  DELAY
+  ACTION
+  BRANCH
+  EXIT
+}
+
+enum MarketingAutomationEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  EXITED
+  FAILED
+}
+
+enum MarketingAttributionType {
+  FIRST_TOUCH
+  LAST_TOUCH
+  MULTI_TOUCH
+}
+
+enum MarketingAttributionEntityType {
+  LEAD
+  OPPORTUNITY
+  CUSTOMER
+  SUBSCRIPTION
+  INVOICE
+}
+
 model User {
   id                       String                    @id @default(uuid())
   email                    String                    @unique
@@ -256,6 +460,11 @@ model User {
   subscriptions            Subscription[]
   sentWorkspaceInvites     WorkspaceInvite[]        @relation("WorkspaceInviteSentBy")
   acceptedWorkspaceInvites WorkspaceInvite[]        @relation("WorkspaceInviteAcceptedBy")
+  ownedLeads               Lead[]                  @relation("LeadOwner")
+  leadActivities           LeadActivity[]          @relation("LeadActivityActor")
+  leadAssignments          LeadAssignment[]        @relation("LeadAssignmentActor")
+  leadConversions          LeadConversion[]        @relation("LeadConversionActor")
+  leadNurtureTouches       LeadNurtureTouch[]      @relation("LeadNurtureActor")
 }
 
 model Subscription {
@@ -428,8 +637,606 @@ model Workspace {
   fiscalIntegrationLogs  FiscalIntegrationLog[]
   fiscalCatalogProfiles  FiscalCatalogProfile[]
   fiscalOperationTemplates FiscalOperationTemplate[]
+  leads                  Lead[]
+  leadActivities         LeadActivity[]
+  leadAssignments        LeadAssignment[]
+  leadNurtureTouches     LeadNurtureTouch[]
+  leadConversions        LeadConversion[]
+  leadIntegrationEvents  LeadIntegrationEvent[]
+  marketingCampaigns     MarketingCampaign[]
+  marketingCampaignVariants MarketingCampaignVariant[]
+  marketingAudienceSegments MarketingAudienceSegment[]
+  marketingContactPreferences MarketingContactPreference[]
+  marketingEmailTemplates MarketingEmailTemplate[]
+  marketingAutomationFlows MarketingAutomationFlow[]
+  marketingAutomationSteps MarketingAutomationStep[]
+  marketingAutomationEnrollments MarketingAutomationEnrollment[]
+  marketingEvents        MarketingEvent[]
+  marketingAttributions  MarketingAttribution[]
+  marketingSenderProfiles MarketingSenderProfile[]
+  marketingConsentRecords MarketingConsentRecord[]
+  marketingLeadScoreEvents MarketingLeadScoreEvent[]
+  marketingContentAssets MarketingContentAsset[]
+  marketingCampaignSends MarketingCampaignSend[]
 
   @@unique([organizationId, key])
+}
+
+model Lead {
+  id                   String                    @id @default(uuid())
+  workspaceId          String
+  externalSource       LeadIntegrationSource?
+  externalId           String?
+  captureSource        LeadSource                @default(MANUAL)
+  status               LeadStatus                @default(CAPTURED)
+  qualificationStatus  LeadQualificationStatus   @default(UNQUALIFIED)
+  distributionStatus   LeadDistributionStatus    @default(UNASSIGNED)
+  score                Int                       @default(0)
+  temperature          String?
+  firstName            String?
+  lastName             String?
+  fullName             String?
+  email                String?
+  phone                String?
+  companyName          String?
+  jobTitle             String?
+  website              String?
+  city                 String?
+  state                String?
+  country              String?
+  interest             String?
+  notes                String?
+  tags                 Json?
+  ownerUserId          String?
+  estimatedValue       Decimal?                  @db.Decimal(18, 2)
+  currency             String                    @default("BRL")
+  qualifiedAt          DateTime?
+  distributedAt        DateTime?
+  lastContactAt        DateTime?
+  nextFollowUpAt       DateTime?
+  nurturingStartedAt   DateTime?
+  convertedAt          DateTime?
+  lostAt               DateTime?
+  metadata             Json?
+  createdByUserId      String?
+  updatedByUserId      String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  workspace            Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner                User?                     @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  activities           LeadActivity[]
+  assignments          LeadAssignment[]
+  nurtureTouches       LeadNurtureTouch[]
+  conversion           LeadConversion?
+  integrationEvents    LeadIntegrationEvent[]
+  marketingPreferences MarketingContactPreference[]
+  marketingEvents      MarketingEvent[]
+  marketingAttributions MarketingAttribution[]
+  marketingLeadScoreEvents MarketingLeadScoreEvent[]
+  marketingCampaignSends MarketingCampaignSend[]
+  marketingAutomationEnrollments MarketingAutomationEnrollment[]
+  marketingConsentRecords MarketingConsentRecord[]
+
+  @@unique([workspaceId, externalSource, externalId])
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, qualificationStatus, distributionStatus, createdAt])
+  @@index([workspaceId, ownerUserId, nextFollowUpAt])
+  @@index([workspaceId, email, phone])
+}
+
+model LeadActivity {
+  id            String            @id @default(uuid())
+  workspaceId   String
+  leadId        String
+  type          LeadActivityType
+  title         String
+  description   String?
+  payload       Json?
+  actorUserId   String?
+  occurredAt    DateTime          @default(now())
+  createdAt     DateTime          @default(now())
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead          Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor         User?             @relation("LeadActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, leadId, occurredAt])
+  @@index([workspaceId, type, occurredAt])
+}
+
+model LeadAssignment {
+  id                  String                    @id @default(uuid())
+  workspaceId         String
+  leadId              String
+  fromUserId          String?
+  toUserId            String?
+  strategy            LeadDistributionStrategy  @default(MANUAL)
+  reason              String?
+  assignedByUserId    String?
+  createdAt           DateTime                  @default(now())
+  workspace           Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead                Lead                      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor               User?                     @relation("LeadAssignmentActor", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, leadId, createdAt])
+  @@index([workspaceId, toUserId, createdAt])
+}
+
+model LeadNurtureTouch {
+  id                 String             @id @default(uuid())
+  workspaceId        String
+  leadId             String
+  status             LeadNurtureStatus  @default(DRAFT)
+  channel            String
+  templateKey        String?
+  subject            String?
+  message            String?
+  scheduledAt        DateTime?
+  sentAt             DateTime?
+  respondedAt        DateTime?
+  providerMessageId  String?
+  errorMessage       String?
+  metadata           Json?
+  createdByUserId    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead               Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor              User?              @relation("LeadNurtureActor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, leadId, status, createdAt])
+  @@index([workspaceId, scheduledAt])
+}
+
+model LeadConversion {
+  id                 String              @id @default(uuid())
+  workspaceId        String
+  leadId             String              @unique
+  conversionType     LeadConversionType  @default(CUSTOMER)
+  conversionRef      String
+  amount             Decimal?            @db.Decimal(18, 2)
+  currency           String              @default("BRL")
+  notes              String?
+  convertedByUserId  String?
+  convertedAt        DateTime            @default(now())
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead               Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor              User?               @relation("LeadConversionActor", fields: [convertedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, conversionType, convertedAt])
+}
+
+model LeadIntegrationEvent {
+  id               String                      @id @default(uuid())
+  workspaceId      String?
+  leadId           String?
+  source           LeadIntegrationSource       @default(GENERIC_WEBHOOK)
+  eventType        String
+  providerEventId  String?
+  idempotencyKey   String                      @unique
+  status           LeadIntegrationEventStatus  @default(RECEIVED)
+  headers          Json?
+  payload          Json
+  attempts         Int                         @default(0)
+  receivedAt       DateTime                    @default(now())
+  processedAt      DateTime?
+  lastError        String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  workspace        Workspace?                  @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  lead             Lead?                       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, createdAt])
+  @@index([source, eventType, createdAt])
+}
+
+model MarketingAudienceSegment {
+  id                String               @id @default(uuid())
+  workspaceId       String
+  name              String
+  description       String?
+  kind              MarketingAudienceType @default(DYNAMIC)
+  filters           Json
+  isActive          Boolean              @default(true)
+  isSystem          Boolean              @default(false)
+  lastEvaluatedAt   DateTime?
+  estimatedContacts Int?
+  createdByUserId   String?
+  updatedByUserId   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns         MarketingCampaign[]
+  events            MarketingEvent[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, isActive, updatedAt])
+}
+
+model MarketingEmailTemplate {
+  id                   String                    @id @default(uuid())
+  workspaceId          String
+  name                 String
+  slug                 String
+  category             String?
+  objective            MarketingCampaignObjective?
+  funnelStage          String?
+  subject              String
+  bodyMarkdown         String
+  bodyHtml             String?
+  blocks               Json?
+  performanceSnapshot  Json?
+  isSystem             Boolean                   @default(false)
+  isArchived           Boolean                   @default(false)
+  createdByUserId      String?
+  updatedByUserId      String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  workspace            Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns            MarketingCampaign[]
+  variants             MarketingCampaignVariant[]
+  assets               MarketingContentAsset[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, isArchived, updatedAt])
+}
+
+model MarketingSenderProfile {
+  id             String                   @id @default(uuid())
+  workspaceId    String
+  name           String
+  fromName       String
+  fromEmail      String
+  replyToEmail   String?
+  providerKey    String                   @default("default")
+  domainStatus   String?
+  isDefault      Boolean                  @default(false)
+  isVerified     Boolean                  @default(false)
+  config         Json?
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  workspace      Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns      MarketingCampaign[]
+  sends          MarketingCampaignSend[]
+
+  @@unique([workspaceId, fromEmail])
+  @@index([workspaceId, isDefault])
+}
+
+model MarketingCampaign {
+  id                 String                    @id @default(uuid())
+  workspaceId        String
+  name               String
+  description        String?
+  objective          MarketingCampaignObjective
+  channel            MarketingCampaignChannel  @default(EMAIL)
+  status             MarketingCampaignStatus   @default(DRAFT)
+  hypothesis         String?
+  persona            String?
+  icp                String?
+  offer              String?
+  productRef         String?
+  billingContext     String?
+  segmentId          String?
+  templateId         String?
+  senderProfileId    String?
+  abTestEnabled      Boolean                   @default(false)
+  abTestConfig       Json?
+  scheduledAt        DateTime?
+  launchedAt         DateTime?
+  completedAt        DateTime?
+  archivedAt         DateTime?
+  approvalRequestedAt DateTime?
+  approvedAt         DateTime?
+  approvedByUserId   String?
+  aiGenerated        Boolean                   @default(false)
+  aiContext          Json?
+  createdByUserId    String?
+  updatedByUserId    String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  workspace          Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  segment            MarketingAudienceSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  template           MarketingEmailTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  senderProfile      MarketingSenderProfile?   @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
+  variants           MarketingCampaignVariant[]
+  events             MarketingEvent[]
+  attributions       MarketingAttribution[]
+  sends              MarketingCampaignSend[]
+  contentAssets      MarketingContentAsset[]
+  automationEnrollments MarketingAutomationEnrollment[]
+  leadScoreEvents    MarketingLeadScoreEvent[]
+
+  @@index([workspaceId, status, scheduledAt])
+  @@index([workspaceId, objective, createdAt])
+  @@index([workspaceId, segmentId, updatedAt])
+}
+
+model MarketingCampaignVariant {
+  id              String              @id @default(uuid())
+  workspaceId     String
+  campaignId      String
+  templateId      String?
+  name            String
+  isControl       Boolean             @default(false)
+  weight          Int                 @default(100)
+  subject         String
+  preheader       String?
+  bodyMarkdown    String
+  bodyHtml        String?
+  variables       Json?
+  aiGenerated     Boolean             @default(false)
+  aiMetadata      Json?
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign        MarketingCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template        MarketingEmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sends           MarketingCampaignSend[]
+  events          MarketingEvent[]
+
+  @@index([campaignId, weight])
+  @@index([workspaceId, campaignId, createdAt])
+}
+
+model MarketingContactPreference {
+  id               String                 @id @default(uuid())
+  workspaceId      String
+  leadId           String?
+  email            String
+  messageKind      MarketingMessageKind   @default(MARKETING)
+  consentStatus    MarketingConsentStatus @default(UNKNOWN)
+  consentSource    String?
+  legalBasis       String?
+  allowEmail       Boolean                @default(true)
+  allowNewsletter  Boolean                @default(true)
+  allowBilling     Boolean                @default(true)
+  unsubscribeAt    DateTime?
+  preferences      Json?
+  lastEngagementAt DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  workspace        Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead             Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, email, messageKind])
+  @@unique([workspaceId, leadId, messageKind])
+  @@index([workspaceId, consentStatus, updatedAt])
+  @@index([workspaceId, leadId])
+}
+
+model MarketingConsentRecord {
+  id            String                 @id @default(uuid())
+  workspaceId   String
+  leadId        String?
+  email         String
+  messageKind   MarketingMessageKind   @default(MARKETING)
+  status        MarketingConsentStatus
+  source        String
+  reason        String?
+  legalBasis    String?
+  evidence      Json?
+  recordedAt    DateTime               @default(now())
+  actorUserId   String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime               @default(now())
+  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead          Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, email, recordedAt])
+  @@index([workspaceId, leadId, recordedAt])
+}
+
+model MarketingCampaignSend {
+  id              String               @id @default(uuid())
+  workspaceId     String
+  campaignId      String
+  variantId       String
+  leadId          String?
+  senderProfileId String?
+  contactEmail    String
+  status          MarketingSendStatus  @default(QUEUED)
+  idempotencyKey  String               @unique
+  providerKey     String?
+  providerMessageId String?
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  bouncedAt       DateTime?
+  complainedAt    DateTime?
+  unsubscribedAt  DateTime?
+  failedAt        DateTime?
+  errorMessage    String?
+  metadata        Json?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign        MarketingCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variant         MarketingCampaignVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  lead            Lead?                @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  senderProfile   MarketingSenderProfile? @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
+  events          MarketingEvent[]
+
+  @@index([workspaceId, campaignId, status, createdAt])
+  @@index([workspaceId, leadId, createdAt])
+  @@index([workspaceId, providerMessageId])
+}
+
+model MarketingAutomationFlow {
+  id               String                    @id @default(uuid())
+  workspaceId      String
+  name             String
+  description      String?
+  status           MarketingAutomationStatus @default(DRAFT)
+  triggerDefinition Json
+  entryCriteria    Json?
+  exitCriteria     Json?
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  steps            MarketingAutomationStep[]
+  enrollments      MarketingAutomationEnrollment[]
+  events           MarketingEvent[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, status, updatedAt])
+}
+
+model MarketingAutomationStep {
+  id          String                    @id @default(uuid())
+  workspaceId String
+  flowId      String
+  key         String
+  name        String
+  kind        MarketingAutomationStepKind
+  position    Int                       @default(0)
+  config      Json?
+  nextStepId  String?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  workspace   Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  flow        MarketingAutomationFlow   @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@unique([flowId, key])
+  @@index([workspaceId, flowId, position])
+}
+
+model MarketingAutomationEnrollment {
+  id           String                              @id @default(uuid())
+  workspaceId  String
+  flowId       String
+  leadId       String?
+  campaignId   String?
+  status       MarketingAutomationEnrollmentStatus @default(ACTIVE)
+  entryEventId String?
+  exitReason   String?
+  context      Json?
+  startedAt    DateTime                            @default(now())
+  nextRunAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime                            @default(now())
+  updatedAt    DateTime                            @updatedAt
+  workspace    Workspace                           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  flow         MarketingAutomationFlow             @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  lead         Lead?                               @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  campaign     MarketingCampaign?                  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, flowId, status, startedAt])
+  @@index([workspaceId, leadId, startedAt])
+}
+
+model MarketingEvent {
+  id               String              @id @default(uuid())
+  workspaceId      String
+  type             MarketingEventType
+  campaignId       String?
+  variantId        String?
+  segmentId        String?
+  leadId           String?
+  sendId           String?
+  automationFlowId String?
+  documentId       String?
+  itemId           String?
+  billingRef       String?
+  externalEventId  String?
+  headline         String?
+  description      String?
+  payload          Json?
+  occurredAt       DateTime            @default(now())
+  createdAt        DateTime            @default(now())
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign         MarketingCampaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  variant          MarketingCampaignVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  segment          MarketingAudienceSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  lead             Lead?               @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  send             MarketingCampaignSend? @relation(fields: [sendId], references: [id], onDelete: SetNull)
+  automationFlow   MarketingAutomationFlow? @relation(fields: [automationFlowId], references: [id], onDelete: SetNull)
+  leadScoreEvents  MarketingLeadScoreEvent[]
+
+  @@unique([workspaceId, externalEventId])
+  @@index([workspaceId, occurredAt])
+  @@index([workspaceId, leadId, occurredAt])
+  @@index([workspaceId, campaignId, occurredAt])
+  @@index([workspaceId, type, occurredAt])
+}
+
+model MarketingLeadScoreEvent {
+  id             String             @id @default(uuid())
+  workspaceId    String
+  leadId         String
+  campaignId     String?
+  eventId        String?
+  delta          Int
+  previousScore  Int?
+  nextScore      Int?
+  reason         String
+  isAutomated    Boolean            @default(true)
+  explanation    Json?
+  createdByUserId String?
+  createdAt      DateTime           @default(now())
+  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead           Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  campaign       MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  event          MarketingEvent?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, leadId, createdAt])
+  @@index([workspaceId, campaignId, createdAt])
+}
+
+model MarketingAttribution {
+  id               String                         @id @default(uuid())
+  workspaceId      String
+  campaignId       String
+  leadId           String?
+  attributionType  MarketingAttributionType
+  entityType       MarketingAttributionEntityType
+  entityRef        String
+  influenceScore   Decimal?                       @db.Decimal(6, 4)
+  revenueInfluenced Decimal?                      @db.Decimal(18, 2)
+  currency         String                         @default("BRL")
+  happenedAt       DateTime                       @default(now())
+  metadata         Json?
+  createdAt        DateTime                       @default(now())
+  workspace        Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign         MarketingCampaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead             Lead?                          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, entityType, entityRef])
+  @@index([workspaceId, campaignId, happenedAt])
+  @@index([workspaceId, leadId, happenedAt])
+}
+
+model MarketingContentAsset {
+  id             String                 @id @default(uuid())
+  workspaceId    String
+  campaignId     String?
+  templateId     String?
+  documentId     String?
+  title          String
+  assetType      String
+  content        String
+  metadata       Json?
+  createdByUserId String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign       MarketingCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  template       MarketingEmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  document       WorkspaceDocument?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, campaignId, createdAt])
+  @@index([workspaceId, templateId, createdAt])
+  @@index([workspaceId, documentId, createdAt])
 }
 
 model WorkspaceDocument {
@@ -444,6 +1251,7 @@ model WorkspaceDocument {
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   itemLinks   WorkItemDocumentLink[]
+  marketingAssets MarketingContentAsset[]
 
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])

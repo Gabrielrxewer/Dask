@@ -20,7 +20,7 @@ const ASSIGNABLE_ROLE_OPTIONS: Array<{ value: WorkspaceRole; label: string }> = 
 ];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MODULE_KEYS: WorkspaceModuleKey[] = ["board", "automation", "documentation", "ai", "settings"];
+const MODULE_KEYS: WorkspaceModuleKey[] = ["board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"];
 
 function parsePermissionList(input: string): WorkspacePermissionKey[] {
   const values = input
@@ -576,7 +576,7 @@ export function MembersSettings() {
         <FormField label="Deny permissions (separado por virgula)">
           <Textarea value={newGroupDeny} onChange={event => setNewGroupDeny(event.target.value)} />
         </FormField>
-        <FormField label="Modulos permitidos (board, automation, documentation, ai, settings)">
+        <FormField label="Modulos permitidos (board, automation, documentation, ai, settings, fiscal, leads, marketing)">
           <Textarea value={newGroupModules} onChange={event => setNewGroupModules(event.target.value)} />
         </FormField>
         <FormField label="Views permitidas do board (keys separadas por virgula)">
@@ -708,7 +708,7 @@ export function MembersSettings() {
                       />
                     </FormField>
 
-                    <FormField label="Modulos permitidos (board, automation, documentation, ai, settings)">
+                    <FormField label="Modulos permitidos (board, automation, documentation, ai, settings, fiscal, leads, marketing)">
                       <Textarea
                         value={moduleDraftByUserId[member.userId] ?? ""}
                         onChange={event =>

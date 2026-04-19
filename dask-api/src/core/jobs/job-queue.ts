@@ -5,7 +5,8 @@ export type JobName =
   | 'automation.run-rule'
   | 'automation.process-event'
   | 'fiscal.reconcile-pending'
-  | 'fiscal.sync-received';
+  | 'fiscal.sync-received'
+  | 'marketing.send-email';
 
 export type JobEnqueueOptions = {
   jobId?: string;

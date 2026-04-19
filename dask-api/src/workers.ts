@@ -1,7 +1,9 @@
 import { type Job, Worker } from 'bullmq';
 import { startOutboxRelayWorker, type RelayWorkerHandle } from '@/bootstrap/outbox-relay-worker';
 import { env } from '@/core/config/env';
+import { EventPublisher } from '@/core/events/event-publisher';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
+import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { prisma } from '@/infra/db/prisma';
 import { queueConnection } from '@/infra/queue/bullmq-job-queue';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
@@ -11,6 +13,10 @@ import { AutomationViewService } from '@/modules/automation/application/automati
 import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
 import { FocusFiscalProvider } from '@/modules/fiscal/providers/focus/focus-fiscal-provider';
 import { PrismaFiscalRepository } from '@/modules/fiscal/repositories/prisma-fiscal-repository';
+import { MarketingService } from '@/modules/marketing/application/marketing-service';
+import { MockMarketingEmailProvider } from '@/modules/marketing/providers/mock-marketing-email-provider';
+import { ResendMarketingEmailProvider } from '@/modules/marketing/providers/resend-marketing-email-provider';
+import { PrismaMarketingRepository } from '@/modules/marketing/repositories/prisma-marketing-repository';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
 
@@ -53,14 +59,27 @@ export const startWorkers = (): WorkerHandle[] => {
   );
   const fiscalRepository = new PrismaFiscalRepository(prisma);
   const fiscalProvider = new FocusFiscalProvider();
-  const fiscalJobQueue = new BullMqJobQueue();
+  const sharedJobQueue = new BullMqJobQueue();
   const fiscalService = new FiscalService({
     repo: fiscalRepository,
     provider: fiscalProvider,
-    jobQueue: fiscalJobQueue,
+    jobQueue: sharedJobQueue,
     stripe: null,
     stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
     focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+  });
+  const outboxRepository = new PrismaOutboxRepository(prisma);
+  const workerEventPublisher = new EventPublisher(outboxRepository, prisma);
+  const marketingRepository = new PrismaMarketingRepository(prisma);
+  const marketingEmailProvider = env.RESEND_API_KEY
+    ? new ResendMarketingEmailProvider()
+    : new MockMarketingEmailProvider();
+  const marketingService = new MarketingService({
+    repo: marketingRepository,
+    eventPublisher: workerEventPublisher,
+    jobQueue: sharedJobQueue,
+    aiProvider,
+    emailProvider: marketingEmailProvider
   });
 
   const worker = new Worker(
@@ -210,6 +229,10 @@ export const startWorkers = (): WorkerHandle[] => {
           trigger: (job.data.trigger as 'MANUAL' | 'SCHEDULED' | 'WEBHOOK' | 'RETRY') ?? 'SCHEDULED',
           requestedByUserId: (job.data.requestedByUserId as string) ?? 'system:worker'
         });
+      }
+
+      if (job.name === 'marketing.send-email') {
+        await marketingService.processQueuedSend(job.data.sendId as string);
       }
     },
     {

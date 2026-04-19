@@ -1,76 +1,160 @@
 .timeline-view {
+  --timeline-text: #071f35;
+  --timeline-text-soft: #1f405e;
+  --timeline-text-muted: #365b7a;
+  --timeline-line: #b8cada;
+  --timeline-line-strong: #83afd5;
+  --timeline-surface: #ffffff;
+  --timeline-surface-soft: #f8fafc;
+  --timeline-accent: #075f9d;
+  --timeline-accent-strong: #064f85;
+  --doc-line: var(--timeline-line);
+  --doc-ink: var(--timeline-text);
+  --doc-muted: var(--timeline-text-muted);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 12px;
   min-height: 0;
   width: 100%;
+  color: var(--timeline-text);
+}
+
+.workspace:has(.timeline-view) {
+  background: var(--timeline-surface-soft);
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.05);
+  backdrop-filter: none;
+}
+
+.workspace:has(.timeline-view)::before {
+  content: none;
 }
 
 .timeline-view__metrics .shared-metric-card {
-  min-height: 62px;
-  padding: 8px 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--timeline-surface);
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  backdrop-filter: none;
+}
+
+.timeline-view__metrics .shared-metric-card p {
+  color: var(--timeline-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
 }
 
 .timeline-view__metrics .shared-metric-card h3 {
   margin-top: 4px;
-  font-size: 1rem;
+  font-size: 1.08rem;
+  color: var(--timeline-text);
+  letter-spacing: 0;
 }
 
 .timeline-view__section {
   min-height: 0;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--timeline-surface);
+  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.045);
+  backdrop-filter: none;
+}
+
+.timeline-view__section::before {
+  content: none;
 }
 
 .timeline-view__section .shared-section__header {
-  padding: var(--space-3) var(--space-4);
+  padding: 12px 14px;
+  border-bottom-color: var(--timeline-line);
+  background: var(--timeline-surface);
+}
+
+.timeline-view__section .shared-section__title {
+  color: var(--timeline-text);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-title-md);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.timeline-view__section .shared-section__subtitle {
+  color: var(--timeline-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
 }
 
 .timeline-view__section .shared-section__content {
-  padding: 0;
+  padding: 10px;
   min-height: 0;
+  background: var(--timeline-surface-soft);
 }
 
 .timeline-view__actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.timeline-view__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 999px;
-  border: 1px solid var(--border-soft);
-  background: color-mix(in oklab, var(--surface-soft) 55%, white);
+.timeline-view__actions .shared-status-badge {
+  border-color: var(--timeline-line);
+  background: var(--timeline-surface-soft);
+  color: var(--timeline-text-muted);
 }
 
-.timeline-view__toggle-btn {
-  border-radius: 999px;
-}
-
-.timeline-view__toggle-btn.is-active {
-  box-shadow: 0 5px 14px rgba(20, 62, 99, 0.17);
+.timeline-view__toggle.documentation-page__modes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: fit-content;
 }
 
 .timeline-view__table {
-  border: 0;
-  border-radius: 0;
+  border: 1px solid #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--timeline-surface);
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  overflow: hidden;
+  backdrop-filter: none;
 }
 
 .timeline-view__stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   min-height: 0;
 }
 
+.timeline-view__table .shared-data-table__cell {
+  display: flex;
+  align-items: center;
+}
+
 .timeline-view__table .shared-data-table__header {
-  min-height: 42px;
+  min-height: 40px;
+  border-bottom-color: #d8e4ee;
+  background: #eef4fb;
+  color: var(--timeline-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
 }
 
 .timeline-view__table .shared-data-table__row {
-  min-height: 70px;
+  min-height: 62px;
+  border-bottom-color: #d8e4ee;
+  color: var(--timeline-text);
+  background: var(--timeline-surface);
+}
+
+.timeline-view__table .shared-data-table__row:hover {
+  background: #eef7ff;
+}
+
+.timeline-view__table .shared-data-table__row:hover .shared-data-table__cell {
+  background: transparent;
 }
 
 .timeline-view__meta {
@@ -85,14 +169,21 @@
 }
 
 .timeline-view__meta strong {
-  color: var(--text-strong);
+  display: block;
+  color: var(--timeline-text);
   font-size: var(--font-size-sm);
+  font-weight: 900;
 }
 
 .timeline-view__meta p {
-  margin: 4px 0 0;
-  color: var(--text-soft);
+  margin: 2px 0 0;
+  color: var(--timeline-text-soft);
   font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.timeline-view__meta:hover strong {
+  color: var(--timeline-accent-strong);
 }
 
 .timeline-view__meta:hover {
@@ -119,6 +210,7 @@
   border-radius: 999px;
   background:
     linear-gradient(90deg, #d9e8f8 0%, #eaf1f9 50%, #dce9f9 100%);
+  box-shadow: inset 0 0 0 1px rgba(131, 175, 213, 0.4);
 }
 
 .timeline-view__bar {
@@ -137,6 +229,7 @@
   font-size: var(--font-size-2xs);
   font-weight: 700;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
+  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.08);
 }
 
 .timeline-view__bar:hover {
@@ -164,7 +257,7 @@
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-xs);
-  color: var(--text-soft);
+  color: var(--timeline-text-soft);
 }
 
 .timeline-view__column-flow {
@@ -174,9 +267,9 @@
 }
 
 .timeline-view__column-chip {
-  border: 1px solid var(--border-soft);
-  background: color-mix(in oklab, var(--surface-soft) 68%, white);
-  color: var(--text-soft);
+  border: 1px solid var(--timeline-line);
+  background: var(--timeline-surface-soft);
+  color: var(--timeline-text-muted);
   border-radius: 999px;
   font-size: var(--font-size-2xs);
   font-weight: 700;
@@ -185,10 +278,10 @@
 }
 
 .timeline-view__column-chip.is-current {
-  border-color: color-mix(in oklab, var(--accent) 34%, transparent);
-  color: var(--accent);
-  background: color-mix(in oklab, var(--accent) 11%, white);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 16%, transparent);
+  border-color: #9fc2e2;
+  color: var(--timeline-accent-strong);
+  background: #eef7ff;
+  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.12);
 }
 
 .timeline-view__planner {
@@ -211,7 +304,7 @@
 
 .timeline-view__planner-grid span {
   font-size: var(--font-size-2xs);
-  color: var(--text-soft);
+  color: var(--timeline-text-soft);
 }
 
 .timeline-view__planner-grid .shared-input {
@@ -233,6 +326,91 @@
   font-weight: 600;
 }
 
+.app-theme[data-theme="dark"] .timeline-view {
+  --timeline-text: var(--text-strong);
+  --timeline-text-soft: var(--text-soft);
+  --timeline-text-muted: var(--text-muted);
+  --timeline-line: var(--line);
+  --timeline-line-strong: var(--line-strong);
+  --timeline-surface: var(--panel);
+  --timeline-surface-soft: var(--bg-soft);
+  --timeline-accent: var(--accent);
+  --timeline-accent-strong: var(--accent-strong);
+  --doc-line: var(--line);
+  --doc-ink: var(--text-strong);
+  --doc-muted: var(--text-muted);
+}
+
+.app-theme[data-theme="dark"] .workspace:has(.timeline-view),
+.app-theme[data-theme="dark"] .timeline-view__section,
+.app-theme[data-theme="dark"] .timeline-view__metrics .shared-metric-card,
+.app-theme[data-theme="dark"] .timeline-view__table {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .timeline-view__section .shared-section__header {
+  border-bottom-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__section .shared-section__content {
+  background: color-mix(in oklab, var(--panel-soft) 90%, transparent) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__header {
+  border-bottom-color: var(--line) !important;
+  background: var(--surface-muted) !important;
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row {
+  border-bottom-color: var(--line) !important;
+  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
+  color: var(--text) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row:hover {
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row:hover .shared-data-table__cell,
+.app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row:hover .timeline-view__meta {
+  background: transparent !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__meta,
+.app-theme[data-theme="dark"] .timeline-view__meta:hover,
+.app-theme[data-theme="dark"] .timeline-view__meta:focus {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__column-chip {
+  border-color: var(--line) !important;
+  background: var(--control-surface) !important;
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__actions .shared-status-badge {
+  border-color: var(--line) !important;
+  background: var(--surface-muted) !important;
+  color: var(--text-muted) !important;
+}
+
+.app-theme[data-theme="dark"] .timeline-view__track {
+  background: color-mix(in oklab, var(--line) 72%, transparent) !important;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.app-theme[data-theme="dark"] .timeline-view__column-chip.is-current {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  color: var(--accent-strong) !important;
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+}
+
 @media (min-width: 1141px) {
   .app-shell--no-scroll .timeline-view {
     height: 100%;
@@ -250,7 +428,14 @@
 
   .app-shell--no-scroll .timeline-view__section .shared-section__content {
     flex: 1 1 auto;
-    overflow: auto;
+    overflow: hidden;
+  }
+
+  .app-shell--no-scroll .timeline-view__stack,
+  .app-shell--no-scroll .timeline-view__table,
+  .app-shell--no-scroll .timeline-view__table .shared-data-table,
+  .app-shell--no-scroll .timeline-view__table .shared-data-table__scroll {
+    height: 100%;
   }
 }
 

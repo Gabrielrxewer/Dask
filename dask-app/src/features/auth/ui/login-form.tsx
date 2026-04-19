@@ -255,6 +255,7 @@ export function LoginForm() {
     inviteInfoError,
     inviteInfo
   ]);
+  const isAuthErrorMessage = Boolean(registerError || inviteInfoError || oauthError || auth.errorMessage);
 
   useEffect(() => {
     setIsAuthMessageOpen(false);
@@ -448,11 +449,11 @@ export function LoginForm() {
     >
       <div className="auth-login">
         {hintMessage ? (
-          <div className="auth-login__message-popover">
+          <div className={cn("auth-login__message-popover", isAuthErrorMessage && "auth-login__message-popover--error")}>
             <button
               type="button"
-              className="auth-login__message-trigger"
-              aria-label="Ver detalhe do erro"
+              className={cn("auth-login__message-trigger", isAuthErrorMessage && "auth-login__message-trigger--error")}
+              aria-label={isAuthErrorMessage ? "Ver detalhe do erro" : "Ver detalhe do aviso"}
               aria-expanded={isAuthMessageOpen}
               aria-controls="auth-login-error-message"
               onClick={() => setIsAuthMessageOpen(value => !value)}

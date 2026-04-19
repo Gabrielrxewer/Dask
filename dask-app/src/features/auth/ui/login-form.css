@@ -288,11 +288,13 @@
   top: 22px;
   right: 22px;
   z-index: 3;
+  isolation: isolate;
 }
 
 .auth-login__message-trigger {
-  width: 30px;
-  height: 30px;
+  position: relative;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(220, 157, 145, 0.78);
@@ -301,18 +303,62 @@
   color: #963629;
   cursor: pointer;
   font-family: var(--font-family-heading);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 800;
   line-height: 1;
   box-shadow:
     0 10px 20px rgba(118, 46, 34, 0.12),
     0 1px 0 rgba(255, 255, 255, 0.86) inset;
-  animation: auth-login-message-pulse 1.25s ease-in-out infinite;
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
     box-shadow 0.18s ease,
     transform 0.18s ease;
+}
+
+.auth-login__message-trigger::before,
+.auth-login__message-trigger::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.auth-login__message-trigger::before {
+  inset: -5px;
+  z-index: -1;
+  border: 1px solid rgba(237, 139, 121, 0.34);
+  opacity: 0;
+  transform: scale(0.82);
+}
+
+.auth-login__message-trigger::after {
+  inset: 4px 4px auto auto;
+  width: 7px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.72);
+  opacity: 0.64;
+}
+
+.auth-login__message-trigger--error {
+  border-color: rgba(210, 96, 78, 0.95);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 248, 0.98) 0%, rgba(255, 226, 219, 0.97) 100%);
+  color: #8f2d22;
+  box-shadow:
+    0 18px 34px rgba(118, 46, 34, 0.22),
+    0 0 0 4px rgba(237, 139, 121, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  animation: auth-login-error-attention 2.05s ease-in-out infinite;
+}
+
+.auth-login__message-trigger--error::before {
+  animation: auth-login-error-ring 2.05s ease-out infinite;
+}
+
+.auth-login__message-trigger--error::after {
+  animation: auth-login-error-glint 2.05s ease-in-out infinite;
 }
 
 .auth-login__message-trigger:hover,
@@ -342,16 +388,86 @@
     0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
-@keyframes auth-login-message-pulse {
+.auth-login__message-popover--error .auth-login__message--floating {
+  border-color: rgba(220, 157, 145, 0.98);
+  box-shadow:
+    0 22px 42px rgba(118, 46, 34, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset;
+  animation: auth-login-message-enter 0.22s ease-out both;
+}
+
+@keyframes auth-login-error-attention {
   0%,
   100% {
-    opacity: 0.74;
-    transform: scale(1);
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  12% {
+    transform: translateY(-1px) rotate(-5deg) scale(1.08);
+  }
+
+  22% {
+    transform: translateY(0) rotate(4deg) scale(1.02);
+  }
+
+  32% {
+    transform: translateY(-1px) rotate(0deg) scale(1.06);
+  }
+
+  48% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes auth-login-error-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.78);
+  }
+
+  58%,
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes auth-login-error-glint {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(0, 0) scale(1);
+  }
+
+  28% {
+    opacity: 1;
+    transform: translate(-3px, 3px) scale(1.2);
   }
 
   50% {
+    opacity: 0.58;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes auth-login-message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
     opacity: 1;
-    transform: scale(1.08);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-login__message-trigger--error,
+  .auth-login__message-trigger--error::before,
+  .auth-login__message-trigger--error::after,
+  .auth-login__message-popover--error .auth-login__message--floating {
+    animation: none;
   }
 }
 

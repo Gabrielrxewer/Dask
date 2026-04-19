@@ -12,6 +12,7 @@ import { EmptyState, LoadingState, Section } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
+import "@/pages/timeline-page/ui/timeline-page.css";
 import "./agenda-page.css";
 
 type AgendaSegment = {
@@ -375,8 +376,8 @@ export function AgendaPage() {
       hideSidebarBrandMark
       pageTitle="Agenda"
     >
-      <div className="agenda-view">
-        <BoardMetrics metrics={metrics} className="agenda-view__metrics" />
+      <div className="agenda-view timeline-view">
+        <BoardMetrics metrics={metrics} className="agenda-view__metrics timeline-view__metrics" />
 
         <Section
           title={selectedPersonId ? `Agenda semanal de ${selectedPerson?.name ?? "Pessoa"}` : "Disponibilidade da agenda"}
@@ -386,7 +387,7 @@ export function AgendaPage() {
               : "Sem selecao de pessoa: Pessoas/Recursos nas linhas e horarios nas colunas."
           }
           actions={
-            <div className="agenda-view__actions">
+            <div className="agenda-view__actions timeline-view__actions">
               <DashboardFilter
                 query={filter.query}
                 mineOnly={filter.mineOnly}
@@ -395,7 +396,7 @@ export function AgendaPage() {
               />
             </div>
           }
-          className="agenda-view__section"
+          className="agenda-view__section timeline-view__section"
         >
           {isLoading || isCalendarFeedLoading ? (
             <LoadingState text="Carregando agenda..." />
@@ -484,17 +485,25 @@ export function AgendaPage() {
               ) : (
                 <div className="agenda-view__availability">
                   <div className="agenda-view__availability-toolbar">
-                    <div className="agenda-view__switch">
+                    <div className="agenda-view__switch timeline-view__toggle documentation-page__modes">
                       <button
                         type="button"
-                        className={availabilityMode === "people" ? "is-active" : ""}
+                        className={
+                          availabilityMode === "people"
+                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
+                            : "timeline-view__toggle-btn documentation-page__mode-chip"
+                        }
                         onClick={() => setAvailabilityMode("people")}
                       >
                         Pessoas
                       </button>
                       <button
                         type="button"
-                        className={availabilityMode === "resources" ? "is-active" : ""}
+                        className={
+                          availabilityMode === "resources"
+                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
+                            : "timeline-view__toggle-btn documentation-page__mode-chip"
+                        }
                         onClick={() => setAvailabilityMode("resources")}
                       >
                         Recursos
@@ -506,7 +515,11 @@ export function AgendaPage() {
                         <button
                           key={`tab-${day}`}
                           type="button"
-                          className={selectedDayStart === day ? "is-active" : ""}
+                          className={
+                            selectedDayStart === day
+                              ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
+                              : "timeline-view__toggle-btn documentation-page__mode-chip"
+                          }
                           onClick={() => setSelectedDayStart(day)}
                         >
                           {toAgendaDayLabel(day)}

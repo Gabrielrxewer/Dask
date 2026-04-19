@@ -3,7 +3,6 @@ import { buildTaskChecklistSummary, buildTaskTypeMetaMap, getTaskTypeDisplayMeta
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import type { AiAgentSummary } from "@/modules/workspace/model";
 import {
-  Button,
   DataTable,
   DataTableBody,
   DataTableCell,
@@ -177,25 +176,27 @@ export function TimelinePage() {
           subtitle="Alterne entre coluna e agenda e acompanhe somente suas atividades."
           actions={
             <div className="timeline-view__actions">
-              <div className="timeline-view__toggle" role="tablist" aria-label="Modo da timeline">
-                <Button
+              <div className="timeline-view__toggle documentation-page__modes" role="tablist" aria-label="Modo da timeline">
+                <button
                   type="button"
-                  size="sm"
-                  variant={mode === "coluna" ? "default" : "outline"}
-                  className={cn("timeline-view__toggle-btn", mode === "coluna" && "is-active")}
+                  className={cn(
+                    "timeline-view__toggle-btn documentation-page__mode-chip",
+                    mode === "coluna" && "is-active documentation-page__mode-chip--active"
+                  )}
                   onClick={() => setMode("coluna")}
                 >
                   Coluna
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
-                  size="sm"
-                  variant={mode === "agenda" ? "default" : "outline"}
-                  className={cn("timeline-view__toggle-btn", mode === "agenda" && "is-active")}
+                  className={cn(
+                    "timeline-view__toggle-btn documentation-page__mode-chip",
+                    mode === "agenda" && "is-active documentation-page__mode-chip--active"
+                  )}
                   onClick={() => setMode("agenda")}
                 >
                   Agenda
-                </Button>
+                </button>
               </div>
               <StatusBadge>{rangeLabel}</StatusBadge>
             </div>
@@ -268,19 +269,13 @@ export function TimelinePage() {
                             </div>
                           ) : (
                             <div className="timeline-view__column-flow">
-                              {boardConfig.statuses.map(status => (
-                                <button
-                                  type="button"
-                                  key={`${task.id}-${status.id}`}
-                                  className={cn(
-                                    "timeline-view__column-chip",
-                                    status.id === task.status && "is-current"
-                                  )}
-                                  onClick={() => selectTask(task.id)}
-                                >
-                                  {status.label}
-                                </button>
-                              ))}
+                              <button
+                                type="button"
+                                className="timeline-view__column-chip is-current"
+                                onClick={() => selectTask(task.id)}
+                              >
+                                {statusLabel}
+                              </button>
                             </div>
                           )}
                         </DataTableCell>

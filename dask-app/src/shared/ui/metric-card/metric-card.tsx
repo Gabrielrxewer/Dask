@@ -1,4 +1,6 @@
 import { cn } from "@/shared/lib/cn";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface MetricCardProps {
   label: string;
@@ -8,16 +10,72 @@ interface MetricCardProps {
 }
 
 export function MetricCard({ label, value, description, className = "" }: MetricCardProps) {
+  const [isMounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const popoverRef = useRef<HTMLSpanElement | null>(null);
+  const tooltipId = useId();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !buttonRef.current || !popoverRef.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!buttonRef.current || !popoverRef.current) {
+        return;
+      }
+
+      const gap = 10;
+      const viewportPadding = 12;
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const popoverRect = popoverRef.current.getBoundingClientRect();
+
+      let left = buttonRect.right - popoverRect.width;
+      left = Math.max(viewportPadding, Math.min(left, window.innerWidth - popoverRect.width - viewportPadding));
+
+      let top = buttonRect.bottom + gap;
+      if (top + popoverRect.height > window.innerHeight - viewportPadding) {
+        top = buttonRect.top - popoverRect.height - gap;
+      }
+      top = Math.max(viewportPadding, top);
+
+      setPopoverStyle({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen]);
+
   return (
     <article className={cn("shared-metric-card", className)}>
       <div className="shared-metric-card__head">
         <p>{label}</p>
         {description ? (
-          <span className="shared-metric-card__info">
+          <span
+            className="shared-metric-card__info"
+            onMouseEnter={() => setIsOpen(true)}
+            onMouseLeave={() => setIsOpen(false)}
+          >
             <button
+              ref={buttonRef}
               type="button"
               className="shared-metric-card__info-button"
               aria-label={`Mais informacoes sobre ${label}`}
+              aria-describedby={isOpen ? tooltipId : undefined}
+              onFocus={() => setIsOpen(true)}
+              onBlur={() => setIsOpen(false)}
             >
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -39,10 +97,21 @@ export function MetricCard({ label, value, description, className = "" }: Metric
                 />
               </svg>
             </button>
-            <span className="shared-metric-card__info-popover" role="tooltip">
-              <strong>{label}</strong>
-              <p>{description}</p>
-            </span>
+            {isMounted && isOpen
+              ? createPortal(
+                  <span
+                    ref={popoverRef}
+                    id={tooltipId}
+                    className="shared-metric-card__info-popover shared-metric-card__info-popover--portal"
+                    role="tooltip"
+                    style={{ top: `${popoverStyle.top}px`, left: `${popoverStyle.left}px` }}
+                  >
+                    <strong>{label}</strong>
+                    <p>{description}</p>
+                  </span>,
+                  document.body
+                )
+              : null}
           </span>
         ) : null}
       </div>

@@ -128,6 +128,28 @@ function getHomeScrollTarget(sectionId: string): HTMLElement | null {
   return target.closest(".home-page__view") ?? target;
 }
 
+function getHomeSectionScrollTop(scrollContainer: HTMLElement, target: HTMLElement, targetId: string): number {
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const defaultTopSpacing = targetId === "top" ? 0 : 14;
+  const alignedTop = targetId === "top"
+    ? 0
+    : targetRect.top - containerRect.top + scrollContainer.scrollTop - defaultTopSpacing;
+
+  if (targetId !== "precos") {
+    return Math.max(0, alignedTop);
+  }
+
+  const centeredTop =
+    targetRect.top -
+    containerRect.top +
+    scrollContainer.scrollTop -
+    Math.max(0, (containerRect.height - targetRect.height) / 2);
+
+  const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+  return Math.min(maxScrollTop, Math.max(0, centeredTop));
+}
+
 function isCompactViewport(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
@@ -343,16 +365,11 @@ export function GlobalLayout() {
     if (!(scrollContainer instanceof HTMLElement) || !target) {
       return;
     }
-
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const sectionTopSpacing = targetId === "top" ? 0 : 14;
-    const nextTop =
-      targetId === "top" ? 0 : targetRect.top - containerRect.top + scrollContainer.scrollTop - sectionTopSpacing;
+    const nextTop = getHomeSectionScrollTop(scrollContainer, target, targetId);
 
     window.requestAnimationFrame(() => {
       scrollContainer.scrollTo({
-        top: Math.max(0, nextTop),
+        top: nextTop,
         behavior: prefersReducedMotion() ? "auto" : "smooth"
       });
     });
@@ -461,14 +478,8 @@ export function GlobalLayout() {
       const container = document.querySelector(".global-layout__main");
       const target = getHomeScrollTarget(targetId);
       if (container instanceof HTMLElement && target) {
-        const containerRect = container.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        const sectionTopSpacing = targetId === "top" ? 0 : 14;
-        const nextTop =
-          targetId === "top" ? 0 : targetRect.top - containerRect.top + container.scrollTop - sectionTopSpacing;
-
         container.scrollTo({
-          top: Math.max(0, nextTop),
+          top: getHomeSectionScrollTop(container, target, targetId),
           behavior: prefersReducedMotion() ? "auto" : "smooth"
         });
       }

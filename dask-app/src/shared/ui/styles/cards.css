@@ -22,6 +22,7 @@
 }
 
 .shared-metric-card {
+  position: relative;
   border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
   border-radius: 24px;
   background:
@@ -33,13 +34,21 @@
   min-height: 78px;
   padding: 16px 18px;
   backdrop-filter: blur(12px) saturate(118%);
+  overflow: visible;
+  isolation: isolate;
+  z-index: 0;
+}
+
+.shared-metric-card:hover,
+.shared-metric-card:focus-within {
+  z-index: 120;
 }
 
 .shared-metric-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 
 .shared-metric-card__info {
@@ -47,39 +56,51 @@
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
+  z-index: 2;
 }
 
 .shared-metric-card__info-button {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--text-muted) 22%, transparent);
-  background: transparent;
-  color: color-mix(in oklab, var(--text-muted) 82%, var(--text-strong));
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 92%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 34%, var(--panel)) 100%);
+  color: color-mix(in oklab, var(--accent-strong) 74%, var(--text-strong));
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
+  box-shadow:
+    0 6px 14px color-mix(in oklab, var(--text-strong) 8%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 72%, transparent);
   transition:
     background 160ms ease,
     border-color 160ms ease,
     color 160ms ease,
-    opacity 160ms ease,
+    box-shadow 160ms ease,
     transform 160ms ease;
-  opacity: 0.82;
 }
 
 .shared-metric-card__info-button svg {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
+}
+
+.shared-metric-card__info-button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 32%, transparent);
+  outline-offset: 2px;
 }
 
 .shared-metric-card__info-button:hover,
 .shared-metric-card__info-button[aria-expanded="true"] {
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
-  background: transparent;
-  color: color-mix(in oklab, var(--accent-strong) 72%, var(--text-strong));
-  opacity: 1;
+  border-color: color-mix(in oklab, var(--accent) 48%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 88%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 58%, var(--panel)) 100%);
+  color: color-mix(in oklab, var(--accent-strong) 86%, var(--text-strong));
+  box-shadow:
+    0 10px 20px color-mix(in oklab, var(--accent) 14%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 76%, transparent);
   transform: translateY(-1px);
 }
 
@@ -98,11 +119,8 @@
     0 18px 36px color-mix(in oklab, var(--text-strong) 14%, transparent),
     inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 68%, transparent);
   padding: 12px;
-  z-index: 8;
-  opacity: 0;
   pointer-events: none;
-  transform: translateY(-3px);
-  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 400;
 }
 
 .shared-metric-card__info-popover strong {
@@ -119,11 +137,10 @@
   line-height: 1.48;
 }
 
-.shared-metric-card__info:hover .shared-metric-card__info-popover,
-.shared-metric-card__info:focus-within .shared-metric-card__info-popover {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
+.shared-metric-card__info-popover--portal {
+  position: fixed;
+  width: min(320px, calc(100vw - 24px));
+  z-index: 11000;
 }
 
 .shared-metric-card p {
@@ -143,15 +160,24 @@
 }
 
 .app-theme[data-theme="dark"] .shared-metric-card__info-button {
-  border-color: color-mix(in oklab, var(--text-muted) 28%, transparent);
-  background: transparent;
-  color: color-mix(in oklab, var(--text-soft) 82%, var(--accent-strong));
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--panel) 96%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 44%, var(--panel)) 100%);
+  color: color-mix(in oklab, var(--accent-strong) 84%, var(--text-strong));
+  box-shadow:
+    0 10px 20px color-mix(in oklab, black 22%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 7%, transparent);
+}
+
+.app-theme[data-theme="dark"] .shared-metric-card__info-button:focus-visible {
+  outline-color: color-mix(in oklab, var(--accent-strong) 42%, transparent);
 }
 
 .app-theme[data-theme="dark"] .shared-metric-card__info-button:hover,
 .app-theme[data-theme="dark"] .shared-metric-card__info-button[aria-expanded="true"] {
-  border-color: color-mix(in oklab, var(--accent-strong) 34%, var(--line));
-  background: transparent;
+  border-color: color-mix(in oklab, var(--accent-strong) 44%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--panel) 94%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 62%, var(--panel)) 100%);
   color: var(--text-strong);
 }
 

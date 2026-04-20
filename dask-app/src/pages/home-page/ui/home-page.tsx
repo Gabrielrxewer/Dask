@@ -139,7 +139,7 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
         </article>
 
         <article className="home-page__pricing-card home-page__pricing-card--featured">
-          <span className="home-page__pricing-badge">Mais escolhido</span>
+          <span className="home-page__pricing-badge">Popular</span>
           <p className="home-page__pricing-plan-name">Business</p>
           <div className="home-page__pricing-price">
             <strong>R$ 99,00</strong>
@@ -357,22 +357,24 @@ export function HomePage() {
   return (
     <main className="home-page">
       <div className="home-page__container">
-        <div className="home-page__view">
-          <HomeHeroView isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("valor")} />
-        </div>
-        <div className="home-page__view">
+        <div className="home-page__view home-page__view--stacked">
+          <HomeHeroView isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("inteligencia")} />
           <ValueSection />
         </div>
+
         <div className="home-page__view">
           <IntelligenceView />
         </div>
+
         <div className="home-page__view">
           <AdaptabilityView />
         </div>
+
         <div className="home-page__view">
           <StructureView />
         </div>
-        <div className="home-page__view">
+
+        <div className="home-page__view home-page__view--pricing">
           <PricingSection onSubscribeClick={handleSubscribeClick} />
         </div>
       </div>

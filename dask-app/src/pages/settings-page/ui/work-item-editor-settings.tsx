@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DragEvent } from "react";
-import { TaskCard } from "@/entities/task";
+import type { DragEvent, ReactNode } from "react";
+import { MemberAvatar } from "@/entities/member";
 import {
   applyFieldCapabilityOverrides,
   CARD_FIELDS_SCHEMA_VERSION,
@@ -8,13 +8,13 @@ import {
   getTaskFieldTypeLabel,
   isSystemCardFieldId,
   mergeCardFieldDefinitions,
-  resolveFieldIdsForTaskType
+  resolveFieldIdsForTaskType,
+  TaskCard
 } from "@/entities/task";
-import type { BoardConfig, Task, TaskFieldDefinition } from "@/entities/task";
+import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition } from "@/entities/task";
 import type { ApiCustomField, ApiItemType, CustomFieldType } from "@/modules/workspace/model";
 import { useWorkspace } from "@/modules/workspace";
 import { Button, FormField, TextInput } from "@/shared/ui";
-import "@/widgets/task-details/ui/task-details-modal.css";
 import "./work-item-editor-settings.css";
 
 const DEFAULT_TYPE_COLOR = "#0a86e8";
@@ -34,8 +34,19 @@ const FIELD_TYPE_OPTIONS: Array<{
   { value: "multi_select", label: "Selecao multipla", caption: "Etiquetas e combinacoes." }
 ];
 
+const PREVIEW_CARD_TITLE = "Refinar experiencia do checkout";
+const PREVIEW_CARD_DESCRIPTION = "Ajustar fluxo, copy e validacoes para reduzir friccao no funil.";
+const PREVIEW_CARD_TAGS = ["ux", "receita", "q2"];
+const PREVIEW_CREATED_BY = "Marina Costa";
+const PREVIEW_ASSIGNEE = {
+  id: "preview-member",
+  name: "Squad Produto",
+  initials: "SP",
+  color: "#b8dafd"
+};
+const PREVIEW_DUE_DATE = "2026-04-26";
+
 type LayoutScope = "card" | "detail";
-type LibraryFilter = "all" | "system" | "custom" | "text" | "selectable";
 
 interface FieldOptionDraft {
   id: string;
@@ -54,7 +65,7 @@ interface TypeDraft {
 }
 
 interface FieldDraft {
-  id: string | null;
+  id: string;
   name: string;
   type: CustomFieldType;
   required: boolean;
@@ -62,25 +73,35 @@ interface FieldDraft {
   options: FieldOptionDraft[];
 }
 
-interface DragPayload {
-  fieldId: string;
-  origin: "library" | LayoutScope;
+interface PendingFieldSetup {
+  type: CustomFieldType;
+  targetScope: LayoutScope;
+  targetIndex: number;
+  name: string;
+  required: boolean;
+  allowAiGeneration: boolean;
+  options: FieldOptionDraft[];
 }
 
+type DragPayload =
+  | { kind: "field"; fieldId: string; origin: "library" | "card" | "detail" }
+  | { kind: "type"; type: CustomFieldType };
+
 interface FieldLibraryItem extends TaskFieldDefinition {
-  sourceLabel: string;
   optionsCount: number;
   required: boolean;
   allowAiGeneration: boolean;
 }
 
+// ── Utilities ──────────────────────────────────────────────────────────────
+
 function sanitizeFieldIds(values: string[], allowedFieldIds?: Set<string>): string[] {
   return Array.from(
     new Set(
       values
-        .filter((value): value is string => typeof value === "string")
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0 && (!allowedFieldIds || allowedFieldIds.has(value)))
+        .filter((v): v is string => typeof v === "string")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0 && (!allowedFieldIds || allowedFieldIds.has(v)))
     )
   );
 }
@@ -89,23 +110,16 @@ function sanitizeFieldMapByType(
   input: Record<string, string[]>,
   allowedFieldIds?: Set<string>
 ): Record<string, string[]> {
-  return Object.entries(input).reduce<Record<string, string[]>>((acc, [typeSlug, fieldIds]) => {
-    const normalizedSlug = typeSlug.trim();
-    if (!normalizedSlug) {
-      return acc;
-    }
-
-    acc[normalizedSlug] = sanitizeFieldIds(Array.isArray(fieldIds) ? fieldIds : [], allowedFieldIds);
+  return Object.entries(input).reduce<Record<string, string[]>>((acc, [slug, ids]) => {
+    const s = slug.trim();
+    if (!s) return acc;
+    acc[s] = sanitizeFieldIds(Array.isArray(ids) ? ids : [], allowedFieldIds);
     return acc;
   }, {});
 }
 
-function areSameOrderedIds(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  return left.every((value, index) => value === right[index]);
+function areSameOrderedIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 function supportsAiGeneration(type: CustomFieldType): boolean {
@@ -117,37 +131,27 @@ function supportsSelectableOptions(type: CustomFieldType): boolean {
 }
 
 function readAllowAiGeneration(settings: ApiCustomField["settings"]): boolean {
-  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
-    return false;
-  }
-
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return false;
   return settings.allowAiGeneration === true;
 }
 
 function readFieldCapabilitiesById(settings?: Record<string, unknown>): Record<string, { aiEnhance?: boolean }> {
   const source = settings?.fieldCapabilitiesById;
-  if (!source || typeof source !== "object" || Array.isArray(source)) {
-    return {};
-  }
-
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
   return Object.entries(source as Record<string, unknown>).reduce<Record<string, { aiEnhance?: boolean }>>(
-    (acc, [fieldId, value]) => {
-      if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return acc;
+    (acc, [id, val]) => {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const ai = (val as { aiEnhance?: unknown }).aiEnhance;
+        if (typeof ai === "boolean") acc[id] = { aiEnhance: ai };
       }
-
-      if (typeof (value as { aiEnhance?: unknown }).aiEnhance === "boolean") {
-        acc[fieldId] = { aiEnhance: (value as { aiEnhance: boolean }).aiEnhance };
-      }
-
       return acc;
     },
     {}
   );
 }
 
-function sanitizeOptionValue(value: string): string {
-  return value
+function sanitizeOptionValue(v: string): string {
+  return v
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
@@ -158,159 +162,97 @@ function sanitizeOptionValue(value: string): string {
 
 function normalizeOptionInputs(options: FieldOptionDraft[]): Array<{ label: string; value: string }> {
   const seen = new Set<string>();
-  const normalized: Array<{ label: string; value: string }> = [];
-
-  options.forEach((option, index) => {
-    const label = option.label.trim();
-    if (!label) {
-      return;
-    }
-
-    const baseValue = sanitizeOptionValue(option.value) || sanitizeOptionValue(label) || `opcao_${index + 1}`;
-    let nextValue = baseValue;
-    let suffix = 2;
-
-    while (seen.has(nextValue)) {
-      nextValue = `${baseValue}_${suffix}`;
-      suffix += 1;
-    }
-
-    seen.add(nextValue);
-    normalized.push({ label, value: nextValue });
+  const out: Array<{ label: string; value: string }> = [];
+  options.forEach((o, i) => {
+    const label = o.label.trim();
+    if (!label) return;
+    const base = sanitizeOptionValue(o.value) || sanitizeOptionValue(label) || `opcao_${i + 1}`;
+    let val = base;
+    let s = 2;
+    while (seen.has(val)) { val = `${base}_${s}`; s += 1; }
+    seen.add(val);
+    out.push({ label, value: val });
   });
-
-  return normalized;
+  return out;
 }
 
 function mapApiOptionsToDraft(options: ApiCustomField["options"]): FieldOptionDraft[] {
-  return (options ?? []).map((option, index) => ({
-    id: option.id || `option-${index}`,
-    label: option.label,
-    value: option.value
-  }));
+  return (options ?? []).map((o, i) => ({ id: o.id || `opt-${i}`, label: o.label, value: o.value }));
 }
 
 function createEmptyOptionDraft(index: number): FieldOptionDraft {
-  return {
-    id: `new-option-${Date.now()}-${index}`,
-    label: "",
-    value: ""
-  };
-}
-
-function createFieldDraft(field?: ApiCustomField): FieldDraft {
-  if (!field) {
-    return {
-      id: null,
-      name: "",
-      type: "text",
-      required: false,
-      allowAiGeneration: false,
-      options: []
-    };
-  }
-
-  return {
-    id: field.id,
-    name: field.name,
-    type: field.type as CustomFieldType,
-    required: field.required,
-    allowAiGeneration: readAllowAiGeneration(field.settings),
-    options: mapApiOptionsToDraft(field.options)
-  };
+  return { id: `new-opt-${Date.now()}-${index}`, label: "", value: "" };
 }
 
 function getPreviewValue(field: TaskFieldDefinition): string {
-  const previewValues: Record<string, string> = {
-    "sys:type": "Growth bug",
+  const sys: Record<string, string> = {
+    "sys:type": "Growth",
     "sys:priority": "Alta",
     "sys:status": "Em validacao",
     "sys:title": "Refinar experiencia do checkout",
-    "sys:description": "Ajustar fluxo, copy e validacoes para reduzir friccao no funil.",
+    "sys:description": "Ajustar fluxo, copy e validacoes...",
     "sys:created-by": "Marina Costa",
     "sys:assignee": "Squad Produto",
     "sys:tags": "ux, receita, q2",
-    "sys:checklist": "3 de 5 itens concluidos",
-    "sys:schedule": "24/04 09:30 -> 24/04 17:00",
+    "sys:checklist": "3 / 5 concluidos",
+    "sys:schedule": "24/04 - 26/04",
     "sys:due-date": "26/04/2026"
   };
-
-  if (previewValues[field.id]) {
-    return previewValues[field.id];
-  }
-
-  if (field.type === "boolean") {
-    return "Ativado";
-  }
-
-  if (field.type === "number") {
-    return "42";
-  }
-
-  if (field.type === "date") {
-    return "28/04/2026";
-  }
-
-  if (field.type === "datetime") {
-    return "28/04/2026 14:20";
-  }
-
+  if (sys[field.id]) return sys[field.id];
+  if (field.type === "boolean") return "Ativado";
+  if (field.type === "number") return "42";
+  if (field.type === "date") return "28/04/2026";
+  if (field.type === "datetime") return "28/04 14:20";
   if (field.type === "select" || field.type === "multi_select" || field.type === "multi-select") {
     return field.options?.slice(0, 2).join(", ") || "Opcao A";
   }
-
   return "Valor de exemplo";
 }
 
-function formatFieldValuePreview(field: TaskFieldDefinition): string {
-  const value = getPreviewValue(field);
-  return field.type === "text_ai" ? `${value} - IA pronta para sugerir.` : value;
+function getPreviewCustomFieldValue(field: TaskFieldDefinition): TaskCustomFieldValue {
+  if (field.type === "boolean") return true;
+  if (field.type === "number") return 42;
+  if (field.type === "date") return "2026-04-28";
+  if (field.type === "datetime") return "2026-04-28 14:20";
+  if (field.type === "select") return field.options?.[0] ?? "Opcao A";
+  if (field.type === "multi_select" || field.type === "multi-select") {
+    const options = field.options?.slice(0, 2).filter(Boolean) ?? [];
+    return options.length > 0 ? options : ["Opcao A", "Opcao B"];
+  }
+  return "Valor de exemplo";
 }
 
 function removeFieldFromScope(draft: LayoutDraft, scope: LayoutScope, fieldId: string): LayoutDraft {
-  if (scope === "card") {
-    return { ...draft, card: draft.card.filter((id) => id !== fieldId) };
-  }
-
-  return { ...draft, detail: draft.detail.filter((id) => id !== fieldId) };
+  return scope === "card"
+    ? { ...draft, card: draft.card.filter((id) => id !== fieldId) }
+    : { ...draft, detail: draft.detail.filter((id) => id !== fieldId) };
 }
 
-function moveField(
+function moveFieldInLayout(
   draft: LayoutDraft,
-  payload: DragPayload,
+  payload: { fieldId: string; origin: "library" | "card" | "detail" },
   targetScope: LayoutScope,
   targetIndex: number,
   allowedFieldIds: Set<string>
 ): LayoutDraft {
+  if (!allowedFieldIds.has(payload.fieldId)) return draft;
+
   const nextCard = [...draft.card];
   const nextDetail = [...draft.detail];
 
-  if (!allowedFieldIds.has(payload.fieldId)) {
-    return draft;
-  }
-
   if (payload.origin === "card") {
-    const index = nextCard.indexOf(payload.fieldId);
-    if (index >= 0) {
-      nextCard.splice(index, 1);
-    }
+    const i = nextCard.indexOf(payload.fieldId);
+    if (i >= 0) nextCard.splice(i, 1);
   }
-
   if (payload.origin === "detail") {
-    const index = nextDetail.indexOf(payload.fieldId);
-    if (index >= 0) {
-      nextDetail.splice(index, 1);
-    }
+    const i = nextDetail.indexOf(payload.fieldId);
+    if (i >= 0) nextDetail.splice(i, 1);
   }
 
-  const targetList = targetScope === "card" ? nextCard : nextDetail;
-  const currentIndex = targetList.indexOf(payload.fieldId);
-  if (currentIndex >= 0) {
-    targetList.splice(currentIndex, 1);
-  }
-
-  const insertAt = Math.max(0, Math.min(targetIndex, targetList.length));
-  targetList.splice(insertAt, 0, payload.fieldId);
+  const list = targetScope === "card" ? nextCard : nextDetail;
+  const cur = list.indexOf(payload.fieldId);
+  if (cur >= 0) list.splice(cur, 1);
+  list.splice(Math.max(0, Math.min(targetIndex, list.length)), 0, payload.fieldId);
 
   return {
     card: sanitizeFieldIds(nextCard, allowedFieldIds),
@@ -320,119 +262,27 @@ function moveField(
 
 function computeDropIndex(
   event: DragEvent<HTMLElement>,
-  draggingFieldId: string,
+  draggingFieldId: string | null,
   scope: LayoutScope
 ): number {
   const items = Array.from(
-    event.currentTarget.querySelectorAll<HTMLElement>(`[data-workitem-slot='${scope}']`)
-  ).filter((element) => element.dataset.fieldId !== draggingFieldId);
+    event.currentTarget.querySelectorAll<HTMLElement>(`[data-workitem-slot="${scope}"]`)
+  ).filter((el) => !draggingFieldId || el.dataset.fieldId !== draggingFieldId);
 
-  for (let index = 0; index < items.length; index += 1) {
-    const rect = items[index].getBoundingClientRect();
-    if (event.clientY < rect.top + rect.height / 2) {
-      return index;
-    }
+  for (let i = 0; i < items.length; i++) {
+    const rect = items[i].getBoundingClientRect();
+    if (event.clientY < rect.top + rect.height / 2) return i;
   }
-
   return items.length;
 }
 
-function resolveLibraryFilter(field: FieldLibraryItem, filter: LibraryFilter): boolean {
-  switch (filter) {
-    case "system":
-      return field.source === "system";
-    case "custom":
-      return field.source === "custom";
-    case "text":
-      return field.type === "text" || field.type === "text_ai";
-    case "selectable":
-      return Boolean(field.capabilities?.selectable || field.capabilities?.multiSelectable);
-    default:
-      return true;
-  }
+function addFieldIdToList(ids: string[], fieldId: string, index: number): string[] {
+  const filtered = ids.filter((id) => id !== fieldId);
+  filtered.splice(Math.max(0, Math.min(index, filtered.length)), 0, fieldId);
+  return Array.from(new Set(filtered));
 }
 
-function createMockTask(
-  activeType: ApiItemType | null,
-  layout: LayoutDraft,
-  fieldsById: Record<string, FieldLibraryItem>,
-  statusId: string
-): Task {
-  const customFields = layout.detail.reduce<Record<string, string | number | boolean | string[] | null>>((acc, fieldId) => {
-    const field = fieldsById[fieldId];
-    if (!field || isSystemCardFieldId(fieldId)) {
-      return acc;
-    }
-
-    if (field.type === "boolean") {
-      acc[fieldId] = true;
-      return acc;
-    }
-
-    if (field.type === "number") {
-      acc[fieldId] = 42;
-      return acc;
-    }
-
-    if (field.type === "multi_select" || field.type === "multi-select") {
-      acc[fieldId] = field.options?.slice(0, 2) ?? ["Opcao A", "Opcao B"];
-      return acc;
-    }
-
-    acc[fieldId] = getPreviewValue(field);
-    return acc;
-  }, {});
-
-  customFields["createdBy"] = "Marina Costa";
-
-  return {
-    id: "workitem-editor-preview",
-    title: "Refinar experiencia do checkout",
-    text: "Ajustar fluxo, copy e validacoes para reduzir friccao no funil.",
-    type: activeType?.slug ?? "task",
-    status: statusId,
-    position: 0,
-    priority: 1,
-    tags: ["ux", "receita", "q2"],
-    assignee: "preview-member",
-    checklist: {
-      items: [
-        { id: "1", label: "Mapear gargalos do fluxo atual", done: true },
-        { id: "2", label: "Atualizar copy do CTA principal", done: true },
-        { id: "3", label: "Revisar mensagens de erro", done: false },
-        { id: "4", label: "Validar com time comercial", done: false }
-      ]
-    },
-    due: "2026-04-26",
-    plannedStartAt: "2026-04-24T09:30:00.000Z",
-    plannedEndAt: "2026-04-24T17:00:00.000Z",
-    customFields
-  };
-}
-
-function buildPreviewBoardConfig(
-  boardConfig: BoardConfig,
-  activeType: ApiItemType | null,
-  layout: LayoutDraft
-): BoardConfig {
-  const typeSlug = activeType?.slug ?? boardConfig.taskTypes[0]?.id ?? "task";
-
-  return {
-    ...boardConfig,
-    cardLayout: {
-      ...boardConfig.cardLayout,
-      visibleFieldIds: layout.card,
-      visibleFieldIdsByType: {
-        ...(boardConfig.cardLayout.visibleFieldIdsByType ?? {}),
-        [typeSlug]: layout.card
-      },
-      detailVisibleFieldIdsByType: {
-        ...(boardConfig.cardLayout.detailVisibleFieldIdsByType ?? {}),
-        [typeSlug]: layout.detail
-      }
-    }
-  };
-}
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkItemEditorSettings() {
   const {
@@ -450,6 +300,7 @@ export function WorkItemEditorSettings() {
 
   const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const settings = (snapshot?.preferences.settings as Record<string, unknown> | undefined) ?? {};
+
   const allFields = useMemo(
     () =>
       applyFieldCapabilityOverrides(
@@ -459,7 +310,8 @@ export function WorkItemEditorSettings() {
     [boardConfig.fieldDefinitions, settings]
   );
   const fieldCapabilitiesById = useMemo(() => readFieldCapabilitiesById(settings), [settings]);
-  const allowedFieldIds = useMemo(() => new Set(allFields.map((field) => field.id)), [allFields]);
+  const allowedFieldIds = useMemo(() => new Set(allFields.map((f) => f.id)), [allFields]);
+
   const persistedVisibleFieldsByType = useMemo(
     () => sanitizeFieldMapByType(snapshot?.preferences.visibleFieldsByType ?? {}, allowedFieldIds),
     [allowedFieldIds, snapshot?.preferences.visibleFieldsByType]
@@ -473,7 +325,6 @@ export function WorkItemEditorSettings() {
   const [customFields, setCustomFields] = useState<ApiCustomField[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTypeSlug, setActiveTypeSlug] = useState("");
-  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const [layoutDraftsByTypeSlug, setLayoutDraftsByTypeSlug] = useState<Record<string, LayoutDraft>>({});
   const [savingLayout, setSavingLayout] = useState(false);
   const [layoutMessage, setLayoutMessage] = useState("");
@@ -482,6 +333,7 @@ export function WorkItemEditorSettings() {
   const [typeSaving, setTypeSaving] = useState(false);
   const [typeDeletingId, setTypeDeletingId] = useState<string | null>(null);
   const [fieldDraft, setFieldDraft] = useState<FieldDraft | null>(null);
+  const [pendingFieldSetup, setPendingFieldSetup] = useState<PendingFieldSetup | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
   const [fieldDeletingId, setFieldDeletingId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState("");
@@ -499,73 +351,52 @@ export function WorkItemEditorSettings() {
     }
   }, [fetchCustomFields, fetchItemTypes]);
 
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
-  const activeItemTypes = useMemo(() => itemTypes.filter((type) => type.isActive !== false), [itemTypes]);
+  const activeItemTypes = useMemo(() => itemTypes.filter((t) => t.isActive !== false), [itemTypes]);
 
   useEffect(() => {
-    if (!activeItemTypes.length) {
-      setActiveTypeSlug("");
-      return;
-    }
-
-    if (!activeItemTypes.some((type) => type.slug === activeTypeSlug)) {
+    if (!activeItemTypes.length) { setActiveTypeSlug(""); return; }
+    if (!activeItemTypes.some((t) => t.slug === activeTypeSlug)) {
       setActiveTypeSlug(activeItemTypes[0].slug);
     }
   }, [activeItemTypes, activeTypeSlug]);
 
   const activeType = useMemo(
-    () => activeItemTypes.find((type) => type.slug === activeTypeSlug) ?? activeItemTypes[0] ?? null,
+    () => activeItemTypes.find((t) => t.slug === activeTypeSlug) ?? activeItemTypes[0] ?? null,
     [activeItemTypes, activeTypeSlug]
   );
 
   const customFieldById = useMemo(
-    () =>
-      customFields.reduce<Record<string, ApiCustomField>>((acc, field) => {
-        acc[field.id] = field;
-        return acc;
-      }, {}),
+    () => customFields.reduce<Record<string, ApiCustomField>>((acc, f) => { acc[f.id] = f; return acc; }, {}),
     [customFields]
   );
 
   const libraryFields = useMemo<FieldLibraryItem[]>(
     () =>
       allFields.map((field) => {
-        const customField = customFieldById[field.id];
-        const explicitCapability = fieldCapabilitiesById[field.id]?.aiEnhance;
+        const cf = customFieldById[field.id];
+        const explicit = fieldCapabilitiesById[field.id]?.aiEnhance;
         const allowAiGeneration =
-          typeof explicitCapability === "boolean"
-            ? explicitCapability
-            : field.capabilities?.aiEnhance === true ||
-              field.type === "text_ai" ||
-              readAllowAiGeneration(customField?.settings);
-
+          typeof explicit === "boolean"
+            ? explicit
+            : field.capabilities?.aiEnhance === true || field.type === "text_ai" || readAllowAiGeneration(cf?.settings);
         return {
           ...field,
-          optionsCount: customField?.options.length ?? field.options?.length ?? 0,
-          required: customField?.required ?? false,
-          allowAiGeneration,
-          sourceLabel: isSystemCardFieldId(field.id) ? "Sistema" : "Customizado"
+          optionsCount: cf?.options.length ?? field.options?.length ?? 0,
+          required: cf?.required ?? false,
+          allowAiGeneration
         };
       }),
     [allFields, customFieldById, fieldCapabilitiesById]
   );
 
   const fieldsById = useMemo(
-    () =>
-      libraryFields.reduce<Record<string, FieldLibraryItem>>((acc, field) => {
-        acc[field.id] = field;
-        return acc;
-      }, {}),
+    () => libraryFields.reduce<Record<string, FieldLibraryItem>>((acc, f) => { acc[f.id] = f; return acc; }, {}),
     [libraryFields]
   );
 
-  const filteredLibraryFields = useMemo(
-    () => libraryFields.filter((field) => resolveLibraryFilter(field, libraryFilter)),
-    [libraryFields, libraryFilter]
-  );
+  const systemLibraryFields = useMemo(() => libraryFields.filter((f) => isSystemCardFieldId(f.id)), [libraryFields]);
 
   const getEffectiveLayout = useCallback(
     (typeSlug: string): LayoutDraft => ({
@@ -583,14 +414,8 @@ export function WorkItemEditorSettings() {
     ? layoutDraftsByTypeSlug[activeType.slug] ?? getEffectiveLayout(activeType.slug)
     : { card: [], detail: [] };
 
-  const activeCardFields = activeLayout.card.map((fieldId) => fieldsById[fieldId]).filter(Boolean);
-  const activeDetailFields = activeLayout.detail.map((fieldId) => fieldsById[fieldId]).filter(Boolean);
-  const filteredCardFields = activeCardFields.filter(
-    (field): field is FieldLibraryItem => Boolean(field)
-  );
-  const filteredDetailFields = activeDetailFields.filter(
-    (field): field is FieldLibraryItem => Boolean(field)
-  );
+  const cardFields = activeLayout.card.map((id) => fieldsById[id]).filter((f): f is FieldLibraryItem => Boolean(f));
+  const detailFields = activeLayout.detail.map((id) => fieldsById[id]).filter((f): f is FieldLibraryItem => Boolean(f));
 
   const hasUnsavedLayout = Boolean(
     activeType &&
@@ -600,23 +425,29 @@ export function WorkItemEditorSettings() {
   );
 
   const handleUpdateLayout = useCallback(
-    (typeSlug: string, nextLayout: LayoutDraft) => {
+    (typeSlug: string, next: LayoutDraft) => {
       setLayoutMessage("");
-      setLayoutDraftsByTypeSlug((current) => ({
-        ...current,
+      setLayoutDraftsByTypeSlug((cur) => ({
+        ...cur,
         [typeSlug]: {
-          card: sanitizeFieldIds(nextLayout.card, allowedFieldIds),
-          detail: sanitizeFieldIds(nextLayout.detail, allowedFieldIds)
+          card: sanitizeFieldIds(next.card, allowedFieldIds),
+          detail: sanitizeFieldIds(next.detail, allowedFieldIds)
         }
       }));
     },
     [allowedFieldIds]
   );
 
-  const handleDragStart = (event: DragEvent<HTMLElement>, payload: DragPayload) => {
-    setDragPayload(payload);
+  const handleDragStartField = (event: DragEvent<HTMLElement>, fieldId: string, origin: "library" | "card" | "detail") => {
+    setDragPayload({ kind: "field", fieldId, origin });
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", payload.fieldId);
+    event.dataTransfer.setData("text/plain", fieldId);
+  };
+
+  const handleDragStartType = (event: DragEvent<HTMLElement>, type: CustomFieldType) => {
+    setDragPayload({ kind: "type", type });
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/plain", `type:${type}`);
   };
 
   const handleDragEnd = () => {
@@ -624,88 +455,82 @@ export function WorkItemEditorSettings() {
     setDropTarget(null);
   };
 
+  const applyDropAtIndex = useCallback(
+    (scope: LayoutScope, index: number) => {
+      if (!activeType || !dragPayload) return;
+
+      if (dragPayload.kind === "type") {
+        setFieldError("");
+        setFieldDraft(null);
+        setPendingFieldSetup({
+          type: dragPayload.type,
+          targetScope: scope,
+          targetIndex: index,
+          name: "",
+          required: false,
+          allowAiGeneration: false,
+          options: []
+        });
+        setDropTarget(null);
+        return;
+      }
+
+      handleUpdateLayout(activeType.slug, moveFieldInLayout(activeLayout, dragPayload, scope, index, allowedFieldIds));
+      setDropTarget(null);
+    },
+    [activeLayout, activeType, allowedFieldIds, dragPayload, handleUpdateLayout]
+  );
+
   const handleDropIntoScope = (event: DragEvent<HTMLElement>, scope: LayoutScope) => {
     event.preventDefault();
-    if (!activeType || !dragPayload) {
-      return;
-    }
+    if (!dragPayload) return;
 
-    const index = dropTarget?.scope === scope ? dropTarget.index : computeDropIndex(event, dragPayload.fieldId, scope);
-    handleUpdateLayout(activeType.slug, moveField(activeLayout, dragPayload, scope, index, allowedFieldIds));
-    setDropTarget(null);
+    const index =
+      dropTarget?.scope === scope
+        ? dropTarget.index
+        : computeDropIndex(event, dragPayload.kind === "field" ? dragPayload.fieldId : null, scope);
+
+    applyDropAtIndex(scope, index);
   };
 
   const handleSaveLayout = async () => {
-    if (!activeType || !snapshot) {
-      return;
-    }
-
+    if (!activeType || !snapshot) return;
     setSavingLayout(true);
     setLayoutMessage("");
-
     try {
-      const nextVisibleByType = sanitizeFieldMapByType(
-        { ...(snapshot.preferences.visibleFieldsByType ?? {}), [activeType.slug]: activeLayout.card },
-        allowedFieldIds
-      );
-      const nextDetailByType = sanitizeFieldMapByType(
-        { ...(snapshot.preferences.detailVisibleFieldsByType ?? {}), [activeType.slug]: activeLayout.detail },
-        allowedFieldIds
-      );
-
       await updatePreferences({
-        visibleFieldsByType: nextVisibleByType,
-        detailVisibleFieldsByType: nextDetailByType,
-        settings: {
-          ...settings,
-          cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION
-        }
+        visibleFieldsByType: sanitizeFieldMapByType(
+          { ...(snapshot.preferences.visibleFieldsByType ?? {}), [activeType.slug]: activeLayout.card },
+          allowedFieldIds
+        ),
+        detailVisibleFieldsByType: sanitizeFieldMapByType(
+          { ...(snapshot.preferences.detailVisibleFieldsByType ?? {}), [activeType.slug]: activeLayout.detail },
+          allowedFieldIds
+        ),
+        settings: { ...settings, cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION }
       });
-
-      setLayoutDraftsByTypeSlug((current) => {
-        const next = { ...current };
-        delete next[activeType.slug];
-        return next;
-      });
-      setLayoutMessage("Layout salvo. O editor agora espelha o que vai para o board.");
+      setLayoutDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
+      setLayoutMessage("Layout salvo com sucesso.");
     } catch {
-      setLayoutMessage("Nao foi possivel salvar o layout agora.");
+      setLayoutMessage("Nao foi possivel salvar agora.");
     } finally {
       setSavingLayout(false);
     }
   };
 
   const handleDiscardLayout = () => {
-    if (!activeType) {
-      return;
-    }
-
+    if (!activeType) return;
     setLayoutMessage("");
-    setLayoutDraftsByTypeSlug((current) => {
-      const next = { ...current };
-      delete next[activeType.slug];
-      return next;
-    });
+    setLayoutDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
   };
 
   const persistFieldCapabilities = useCallback(
     async (fieldId: string, aiEnhance: boolean) => {
-      if (!snapshot) {
-        return;
-      }
-
-      const nextCapabilitiesById = {
-        ...fieldCapabilitiesById,
-        [fieldId]: {
-          ...(fieldCapabilitiesById[fieldId] ?? {}),
-          aiEnhance
-        }
-      };
-
+      if (!snapshot) return;
       await updatePreferences({
         settings: {
           ...settings,
-          fieldCapabilitiesById: nextCapabilitiesById
+          fieldCapabilitiesById: { ...fieldCapabilitiesById, [fieldId]: { ...(fieldCapabilitiesById[fieldId] ?? {}), aiEnhance } }
         }
       });
     },
@@ -713,24 +538,14 @@ export function WorkItemEditorSettings() {
   );
 
   const handleSaveType = async () => {
-    if (!typeComposer?.name.trim()) {
-      return;
-    }
-
+    if (!typeComposer?.name.trim()) return;
     setTypeSaving(true);
     try {
       if (editingTypeId) {
-        await updateItemType(editingTypeId, {
-          name: typeComposer.name.trim(),
-          color: typeComposer.color
-        });
+        await updateItemType(editingTypeId, { name: typeComposer.name.trim(), color: typeComposer.color });
       } else {
-        await createItemType({
-          name: typeComposer.name.trim(),
-          color: typeComposer.color
-        });
+        await createItemType({ name: typeComposer.name.trim(), color: typeComposer.color });
       }
-
       setTypeComposer(null);
       setEditingTypeId(null);
       await loadData();
@@ -741,52 +556,72 @@ export function WorkItemEditorSettings() {
 
   const handleDeleteType = async (typeId: string) => {
     setTypeDeletingId(typeId);
-    try {
-      await deleteItemType(typeId);
-      await loadData();
-    } finally {
-      setTypeDeletingId(null);
-    }
+    try { await deleteItemType(typeId); await loadData(); }
+    finally { setTypeDeletingId(null); }
   };
 
-  const handleSaveField = async () => {
-    if (!fieldDraft?.name.trim()) {
-      return;
-    }
+  const handleConfirmFieldSetup = async () => {
+    if (!pendingFieldSetup?.name.trim() || !activeType) return;
 
-    const normalizedOptions = normalizeOptionInputs(fieldDraft.options);
-    if (supportsSelectableOptions(fieldDraft.type) && normalizedOptions.length === 0) {
+    const normalizedOptions = normalizeOptionInputs(pendingFieldSetup.options);
+    if (supportsSelectableOptions(pendingFieldSetup.type) && normalizedOptions.length === 0) {
       setFieldError("Campos de selecao precisam de pelo menos uma opcao.");
       return;
     }
 
     setFieldSaving(true);
     setFieldError("");
-
     try {
-      if (fieldDraft.id) {
-        await updateCustomField(fieldDraft.id, {
-          name: fieldDraft.name.trim(),
-          type: fieldDraft.type,
-          required: fieldDraft.required,
-          settings: {
-            allowAiGeneration: supportsAiGeneration(fieldDraft.type) ? fieldDraft.allowAiGeneration : false
-          },
-          options: supportsSelectableOptions(fieldDraft.type) ? normalizedOptions : []
-        });
-        await persistFieldCapabilities(fieldDraft.id, supportsAiGeneration(fieldDraft.type) && fieldDraft.allowAiGeneration);
-      } else {
-        await createCustomField({
-          name: fieldDraft.name.trim(),
-          type: fieldDraft.type,
-          required: fieldDraft.required,
-          settings: {
-            allowAiGeneration: supportsAiGeneration(fieldDraft.type) ? fieldDraft.allowAiGeneration : false
-          },
-          options: supportsSelectableOptions(fieldDraft.type) ? normalizedOptions : []
-        });
-      }
+      await createCustomField({
+        name: pendingFieldSetup.name.trim(),
+        type: pendingFieldSetup.type,
+        required: pendingFieldSetup.required,
+        settings: { allowAiGeneration: supportsAiGeneration(pendingFieldSetup.type) ? pendingFieldSetup.allowAiGeneration : false },
+        options: supportsSelectableOptions(pendingFieldSetup.type) ? normalizedOptions : []
+      });
 
+      const [nextTypes, nextFields] = await Promise.all([fetchItemTypes(), fetchCustomFields()]);
+      setItemTypes(nextTypes);
+      setCustomFields(nextFields);
+
+      const newField = [...nextFields]
+        .filter((f) => f.type === pendingFieldSetup.type && f.name.trim().toLowerCase() === pendingFieldSetup.name.trim().toLowerCase())
+        .sort((a, b) => (b.id > a.id ? 1 : -1))[0];
+
+      if (newField) {
+        const { targetScope: sc, targetIndex: idx } = pendingFieldSetup;
+        setLayoutDraftsByTypeSlug((cur) => ({
+          ...cur,
+          [activeType.slug]: {
+            card: sc === "card" ? addFieldIdToList(activeLayout.card, newField.id, idx) : [...activeLayout.card],
+            detail: sc === "detail" ? addFieldIdToList(activeLayout.detail, newField.id, idx) : [...activeLayout.detail]
+          }
+        }));
+      }
+      setPendingFieldSetup(null);
+    } finally {
+      setFieldSaving(false);
+    }
+  };
+
+  const handleSaveField = async () => {
+    if (!fieldDraft?.name.trim()) return;
+    const normalizedOptions = normalizeOptionInputs(fieldDraft.options);
+    if (supportsSelectableOptions(fieldDraft.type) && normalizedOptions.length === 0) {
+      setFieldError("Campos de selecao precisam de pelo menos uma opcao.");
+      return;
+    }
+    setFieldSaving(true);
+    setFieldError("");
+    try {
+      await updateCustomField(fieldDraft.id, {
+        name: fieldDraft.name.trim(),
+        type: fieldDraft.type,
+        required: fieldDraft.required,
+        settings: { allowAiGeneration: supportsAiGeneration(fieldDraft.type) ? fieldDraft.allowAiGeneration : false },
+        options: supportsSelectableOptions(fieldDraft.type) ? normalizedOptions : []
+      });
+      await persistFieldCapabilities(fieldDraft.id, supportsAiGeneration(fieldDraft.type) && fieldDraft.allowAiGeneration);
       setFieldDraft(null);
       await loadData();
     } finally {
@@ -798,54 +633,224 @@ export function WorkItemEditorSettings() {
     setFieldDeletingId(fieldId);
     try {
       await deleteCustomField(fieldId);
-      if (fieldDraft?.id === fieldId) {
-        setFieldDraft(null);
-      }
+      if (fieldDraft?.id === fieldId) setFieldDraft(null);
       await loadData();
     } finally {
       setFieldDeletingId(null);
     }
   };
 
-  const previewBoardConfig = useMemo(
-    () => buildPreviewBoardConfig(boardConfig, activeType, activeLayout),
-    [activeLayout, activeType, boardConfig]
-  );
-  const previewTask = useMemo(
-    () => createMockTask(activeType, activeLayout, fieldsById, boardConfig.statuses[1]?.id ?? boardConfig.statuses[0]?.id ?? "doing"),
-    [activeLayout, activeType, boardConfig.statuses, fieldsById]
+  const isDraggingType = dragPayload?.kind === "type";
+  const isDragging = dragPayload !== null;
+  const activePendingTypeLabel = pendingFieldSetup
+    ? (FIELD_TYPE_OPTIONS.find((o) => o.value === pendingFieldSetup.type)?.label ?? pendingFieldSetup.type)
+    : null;
+  const typeColor = activeType?.color || DEFAULT_TYPE_COLOR;
+  const previewTypeId = activeType?.slug ?? boardConfig.taskTypes[0]?.id ?? "preview-type";
+  const previewTypeLabel = activeType?.name ?? boardConfig.taskTypes.find((type) => type.id === previewTypeId)?.label ?? "Tipo";
+  const previewTypeColor =
+    activeType?.color ?? boardConfig.taskTypes.find((type) => type.id === previewTypeId)?.text ?? DEFAULT_TYPE_COLOR;
+  const previewStatus = boardConfig.statuses[0] ?? { id: "preview-status", label: "Em validacao", dot: DEFAULT_TYPE_COLOR };
+
+  const previewTaskTypes = useMemo(() => {
+    const previewTypeMeta = {
+      id: previewTypeId,
+      label: previewTypeLabel,
+      background: `${previewTypeColor}1a`,
+      border: `${previewTypeColor}66`,
+      text: previewTypeColor
+    };
+
+    if (boardConfig.taskTypes.some((type) => type.id === previewTypeId)) {
+      return boardConfig.taskTypes.map((type) => (type.id === previewTypeId ? { ...type, ...previewTypeMeta } : type));
+    }
+
+    return [...boardConfig.taskTypes, previewTypeMeta];
+  }, [boardConfig.taskTypes, previewTypeColor, previewTypeId, previewTypeLabel]);
+
+  const previewBoardConfig = useMemo<BoardConfig>(
+    () => ({
+      ...boardConfig,
+      taskTypes: previewTaskTypes,
+      fieldDefinitions: allFields.map(({ id, label, type, options, source, capabilities }) => ({
+        id,
+        label,
+        type,
+        options,
+        source,
+        capabilities
+      })),
+      cardLayout: {
+        ...boardConfig.cardLayout,
+        visibleFieldIds: activeLayout.card,
+        visibleFieldIdsByType: {
+          ...(boardConfig.cardLayout.visibleFieldIdsByType ?? {}),
+          ...(activeType ? { [activeType.slug]: activeLayout.card } : {})
+        }
+      }
+    }),
+    [activeLayout.card, activeType, allFields, boardConfig, previewTaskTypes]
   );
 
-  const summary = {
-    activeTypes: activeItemTypes.length,
-    customFields: customFields.filter((field) => field.isActive !== false).length,
-    cardFields: filteredCardFields.length,
-    detailFields: filteredDetailFields.length
+  const previewTask = useMemo<Task>(
+    () => ({
+      id: "preview-work-item",
+      title: PREVIEW_CARD_TITLE,
+      text: PREVIEW_CARD_DESCRIPTION,
+      type: previewTypeId,
+      status: previewStatus.id,
+      position: 0,
+      priority: 2,
+      tags: PREVIEW_CARD_TAGS,
+      assignee: PREVIEW_ASSIGNEE.id,
+      checklist: {
+        items: [
+          { id: "check-1", label: "Mapear friccoes do fluxo", done: true },
+          { id: "check-2", label: "Revisar copy dos CTAs", done: true },
+          { id: "check-3", label: "Ajustar validacoes do formulario", done: true },
+          { id: "check-4", label: "Validar eventos de conversao", done: false },
+          { id: "check-5", label: "Publicar experimento", done: false }
+        ]
+      },
+      due: PREVIEW_DUE_DATE,
+      plannedStartAt: null,
+      plannedEndAt: null,
+      linkedDocuments: [],
+      customFields: libraryFields.reduce<Record<string, TaskCustomFieldValue>>((acc, field) => {
+        if (!isSystemCardFieldId(field.id)) {
+          acc[field.id] = getPreviewCustomFieldValue(field);
+        }
+        return acc;
+      }, {})
+    }),
+    [libraryFields, previewStatus.id, previewTypeId]
+  );
+
+  const cardPreviewFieldIds = useMemo(() => {
+    const visibleSystemFieldIds = new Set(activeLayout.card.filter((fieldId) => isSystemCardFieldId(fieldId)));
+
+    return [
+      ...(visibleSystemFieldIds.has("sys:type") ? ["sys:type"] : []),
+      ...(visibleSystemFieldIds.has("sys:status") ? ["sys:status"] : []),
+      ...(visibleSystemFieldIds.has("sys:title") ? ["sys:title"] : []),
+      ...(visibleSystemFieldIds.has("sys:description") ? ["sys:description"] : []),
+      ...(visibleSystemFieldIds.has("sys:created-by") ? ["sys:created-by"] : []),
+      ...(visibleSystemFieldIds.has("sys:assignee") ? ["sys:assignee"] : []),
+      ...(visibleSystemFieldIds.has("sys:tags") ? ["sys:tags"] : []),
+      ...activeLayout.card.filter((fieldId) => !isSystemCardFieldId(fieldId)),
+      ...(visibleSystemFieldIds.has("sys:checklist") ? ["sys:checklist"] : []),
+      ...(visibleSystemFieldIds.has("sys:due-date") ? ["sys:due-date"] : [])
+    ];
+  }, [activeLayout.card]);
+
+  const handleDropIntoCardPreview = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    applyDropAtIndex("card", activeLayout.card.length);
+  };
+
+  const handlePreviewCardDragStart = (event: DragEvent<HTMLElement>, _taskId: string) => {
+    event.preventDefault();
+  };
+
+  const makeDragOverHandler = (scope: LayoutScope) => (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    if (!dragPayload) return;
+    setDropTarget({
+      scope,
+      index: computeDropIndex(event, dragPayload.kind === "field" ? dragPayload.fieldId : null, scope)
+    });
+  };
+
+  const makeDragLeaveHandler = (scope: LayoutScope) => (event: DragEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setDropTarget((cur) => (cur?.scope === scope ? null : cur));
+    }
+  };
+
+  const openFieldEdit = (fieldId: string) => {
+    const raw = customFieldById[fieldId];
+    if (!raw) return;
+    setFieldError("");
+    setPendingFieldSetup(null);
+    setFieldDraft({
+      id: raw.id,
+      name: raw.name,
+      type: raw.type as CustomFieldType,
+      required: raw.required,
+      allowAiGeneration: readAllowAiGeneration(raw.settings),
+      options: mapApiOptionsToDraft(raw.options)
+    });
+  };
+
+  const renderCardPreviewSlot = ({
+    fieldId,
+    area,
+    content
+  }: {
+    fieldId: string;
+    area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
+    content: ReactNode;
+  }) => {
+    const slotIndex = cardPreviewFieldIds.indexOf(fieldId);
+    const isDropTarget = dropTarget?.scope === "card" && dropTarget?.index === slotIndex;
+
+    return (
+      <div
+        key={`${fieldId}-${area}`}
+        className={`workitem-editor-v2__card-preview-slot workitem-editor-v2__card-preview-slot--${area}${isDropTarget ? " is-drop-target" : ""}`}
+        data-workitem-slot="card"
+        data-field-id={fieldId}
+        draggable
+        onDragStart={(e) => handleDragStartField(e, fieldId, "card")}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="workitem-editor-v2__card-preview-slot-content">{content}</div>
+        <div className="workitem-editor-v2__card-preview-slot-actions" draggable={false}>
+          {!isSystemCardFieldId(fieldId) ? (
+            <button
+              type="button"
+              className="workitem-editor-v2__field-action-edit"
+              draggable={false}
+              onClick={(e) => { e.stopPropagation(); openFieldEdit(fieldId); }}
+              title="Editar campo"
+            >
+              E
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="workitem-editor-v2__field-action-remove"
+            draggable={false}
+            onClick={(e) => {
+              e.stopPropagation();
+              activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", fieldId));
+            }}
+            title="Remover do card"
+          >
+            x
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="workitem-editor-v2">
+      {/* ── Topbar ─────────────────────────────────────────────────────── */}
       <div className="workitem-editor-v2__topbar">
         <div className="workitem-editor-v2__tabs">
           {activeItemTypes.map((type) => (
-            <div
-              key={type.id}
-              className={`workitem-editor-v2__tab${activeType?.slug === type.slug ? " is-active" : ""}`}
-            >
+            <div key={type.id} className={`workitem-editor-v2__tab${activeType?.slug === type.slug ? " is-active" : ""}`}>
               <button type="button" onClick={() => setActiveTypeSlug(type.slug)}>
                 <i style={{ background: type.color || DEFAULT_TYPE_COLOR }} />
                 {type.name}
               </button>
             </div>
           ))}
-
           <button
             type="button"
             className="workitem-editor-v2__add-tab"
-            onClick={() => {
-              setEditingTypeId(null);
-              setTypeComposer({ name: "", color: DEFAULT_TYPE_COLOR });
-            }}
+            onClick={() => { setEditingTypeId(null); setTypeComposer({ name: "", color: DEFAULT_TYPE_COLOR }); }}
           >
             Novo tipo
           </button>
@@ -853,10 +858,10 @@ export function WorkItemEditorSettings() {
 
         <div className="workitem-editor-v2__save-area">
           <div className="workitem-editor-v2__summary">
-            <span><strong>{summary.activeTypes}</strong> tipos</span>
-            <span><strong>{summary.customFields}</strong> campos</span>
-            <span><strong>{summary.cardFields}</strong> no card</span>
-            <span><strong>{summary.detailFields}</strong> no expandido</span>
+            <span><strong>{activeItemTypes.length}</strong> tipos</span>
+            <span><strong>{customFields.filter((f) => f.isActive !== false).length}</strong> campos</span>
+            <span><strong>{cardFields.length}</strong> no card</span>
+            <span><strong>{detailFields.length}</strong> no expandido</span>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={handleDiscardLayout} disabled={!hasUnsavedLayout || savingLayout}>
             Descartar
@@ -867,328 +872,349 @@ export function WorkItemEditorSettings() {
         </div>
       </div>
 
-      <div className="workitem-editor-v2__canvas-wrap">
+      {/* ── Main area ──────────────────────────────────────────────────── */}
+      <div className="workitem-editor-v2__body">
         {loading ? (
           <div className="workitem-editor-v2__loading">
-            <div className="workitem-editor-v2__skeleton" />
-            <div className="workitem-editor-v2__skeleton" />
-            <div className="workitem-editor-v2__skeleton" />
+            <div className="workitem-editor-v2__skeleton" style={{ flex: "0 0 280px" }} />
+            <div className="workitem-editor-v2__skeleton" style={{ flex: 1 }} />
           </div>
         ) : (
-          <div className="workitem-editor-v2__canvas">
-            <section className="workitem-editor-v2__column workitem-editor-v2__column--library">
-              <header className="workitem-editor-v2__column-head">
-                <div>
-                  <span>Biblioteca visual</span>
-                  <h2>Campos</h2>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setFieldError("");
-                    setFieldDraft(createFieldDraft());
-                  }}
-                >
-                  Novo campo
-                </Button>
-              </header>
-
-              <div className="workitem-editor-v2__filters">
-                {[
-                  { id: "all", label: "Todos" },
-                  { id: "system", label: "Sistema" },
-                  { id: "custom", label: "Customizados" },
-                  { id: "text", label: "Texto" },
-                  { id: "selectable", label: "Selecao" }
-                ].map((filter) => (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    className={`workitem-editor-v2__filter${libraryFilter === filter.id ? " is-active" : ""}`}
-                    onClick={() => setLibraryFilter(filter.id as LibraryFilter)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
+          <>
+            {/* ── Library ─────────────────────────────────────────────── */}
+            <aside className="workitem-editor-v2__library">
+              <div className="workitem-editor-v2__library-head">
+                <span>Biblioteca</span>
+                <h2>Campos disponíveis</h2>
               </div>
 
-              <div className="workitem-editor-v2__field-list">
-                {filteredLibraryFields.map((field) => (
-                  <article
-                    key={field.id}
-                    className="workitem-editor-v2__field-card"
-                    draggable
-                    onDragStart={(event) => handleDragStart(event, { fieldId: field.id, origin: "library" })}
-                    onDragEnd={handleDragEnd}
+              <div className="workitem-editor-v2__lib-scroll">
+                <div className="workitem-editor-v2__lib-section">
+                  <p className="workitem-editor-v2__lib-section-title">Sistema</p>
+                  <div className="workitem-editor-v2__sys-fields">
+                    {systemLibraryFields.map((field) => (
+                      <div
+                        key={field.id}
+                        className="workitem-editor-v2__sys-chip"
+                        draggable
+                        onDragStart={(e) => handleDragStartField(e, field.id, "library")}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <span>{field.label}</span>
+                        <small>{getTaskFieldTypeLabel(field)}</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="workitem-editor-v2__lib-section">
+                  <p className="workitem-editor-v2__lib-section-title">Tipos personalizados</p>
+                  <p className="workitem-editor-v2__lib-hint">
+                    Arraste para o card ou formulário para criar e configurar.
+                  </p>
+                  <div className="workitem-editor-v2__type-tiles">
+                    {FIELD_TYPE_OPTIONS.map((opt) => (
+                      <div
+                        key={opt.value}
+                        className="workitem-editor-v2__type-tile"
+                        draggable
+                        onDragStart={(e) => handleDragStartType(e, opt.value)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <strong>{opt.label}</strong>
+                        <span>{opt.caption}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* ── Previews (stacked) ──────────────────────────────────── */}
+            <div className="workitem-editor-v2__previews">
+
+              {/* Card editor */}
+              <section className="workitem-editor-v2__panel">
+                <div className="workitem-editor-v2__panel-head">
+                  <div>
+                    <span>Card do board</span>
+                    <h2>Como aparece no kanban</h2>
+                  </div>
+                  <small>{cardFields.length} campo{cardFields.length !== 1 ? "s" : ""}</small>
+                </div>
+
+                <div className="workitem-editor-v2__card-stage">
+                  <div
+                    className={`workitem-editor-v2__card-preview-drop${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                    onDragOver={makeDragOverHandler("card")}
+                    onDragLeave={makeDragLeaveHandler("card")}
+                    onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "card"); }}
                   >
-                    <div className="workitem-editor-v2__field-card-head">
-                      <div>
-                        <strong>{field.label}</strong>
-                        <span>{getTaskFieldTypeLabel(field)}</span>
-                      </div>
-                      <small>{field.sourceLabel}</small>
-                    </div>
-
-                    <p>{formatFieldValuePreview(field)}</p>
-
-                    <div className="workitem-editor-v2__field-meta">
-                      {field.required ? <span>Obrigatorio</span> : null}
-                      {field.allowAiGeneration ? <span>IA</span> : null}
-                      {field.optionsCount > 0 ? <span>{field.optionsCount} opcoes</span> : null}
-                    </div>
-
-                    {!isSystemCardFieldId(field.id) ? (
-                      <div className="workitem-editor-v2__mini-actions">
-                        <button type="button" onClick={() => { setFieldError(""); setFieldDraft(createFieldDraft(customFieldById[field.id])); }}>
-                          Editar
-                        </button>
-                        <button type="button" onClick={() => void handleDeleteField(field.id)} disabled={fieldDeletingId === field.id}>
-                          {fieldDeletingId === field.id ? "Removendo..." : "Remover"}
-                        </button>
-                      </div>
+                    <TaskCard
+                      task={previewTask}
+                      boardConfig={previewBoardConfig}
+                      creatorName={PREVIEW_CREATED_BY}
+                      assigneeName={PREVIEW_ASSIGNEE.name}
+                      statusLabel={previewStatus.label}
+                      assigneeSlot={<MemberAvatar member={PREVIEW_ASSIGNEE} />}
+                      draggable={false}
+                      fieldSlotRenderer={renderCardPreviewSlot}
+                      onDragStart={handlePreviewCardDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
+                    {dropTarget?.scope === "card" && dropTarget?.index === cardPreviewFieldIds.length ? (
+                      <div className="workitem-editor-v2__card-preview-drop-line" />
                     ) : null}
-                  </article>
-                ))}
-              </div>
-            </section>
+                    <div className={`workitem-editor-v2__card-preview-hint${isDragging ? " is-visible" : ""}`}>
+                      {isDraggingType
+                        ? "Solte sobre o preview para criar o campo no card."
+                        : "Arraste da biblioteca e edite os campos direto no proprio preview."}
+                    </div>
+                  </div>
 
-            <section className="workitem-editor-v2__column workitem-editor-v2__column--preview">
-              <header className="workitem-editor-v2__column-head">
-                <div>
-                  <span>Preview real</span>
-                  <h2>Card do board</h2>
+                  {false ? <div className="workitem-editor-v2__card-tools">
+                    <div className="workitem-editor-v2__card-tools-head">
+                      <strong>Campos ativos no card</strong>
+                      <p>Reordene por aqui sem distorcer a aparencia real do card no board.</p>
+                    </div>
+
+                    <div
+                      className={`workitem-editor-v2__card-fields${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                      onDragOver={makeDragOverHandler("card")}
+                      onDragLeave={makeDragLeaveHandler("card")}
+                      onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "card"); }}
+                    >
+                      {cardFields.length === 0 ? (
+                        <p className="workitem-editor-v2__zone-empty">
+                          Arraste campos da biblioteca ou solte direto no preview do card.
+                        </p>
+                      ) : (
+                        cardFields.map((field, index) => (
+                          <div key={`card-f-${field.id}`} className="workitem-editor-v2__card-slot-wrap">
+                            {dropTarget?.scope === "card" && dropTarget?.index === index ? (
+                              <div className="workitem-editor-v2__drop-line" />
+                            ) : null}
+                            <div
+                              className="workitem-editor-v2__card-field"
+                              data-workitem-slot="card"
+                              data-field-id={field.id}
+                              draggable
+                              onDragStart={(e) => handleDragStartField(e, field.id, "card")}
+                              onDragEnd={handleDragEnd}
+                            >
+                              <div className="workitem-editor-v2__card-field-info">
+                                <span className="workitem-editor-v2__card-field-label">{field.label}</span>
+                                <span className="workitem-editor-v2__card-field-value">{getPreviewValue(field)}</span>
+                              </div>
+                              <div className="workitem-editor-v2__card-field-actions" draggable={false}>
+                                {!isSystemCardFieldId(field.id) ? (
+                                  <button
+                                    type="button"
+                                    className="workitem-editor-v2__field-action-edit"
+                                    draggable={false}
+                                    onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
+                                    title="Editar campo"
+                                  >
+                                    âœŽ
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="workitem-editor-v2__field-action-remove"
+                                  draggable={false}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", field.id));
+                                  }}
+                                  title="Remover do card"
+                                >
+                                  Ã—
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {dropTarget?.scope === "card" && dropTarget?.index === cardFields.length ? (
+                        <div className="workitem-editor-v2__drop-line" />
+                      ) : null}
+                    </div>
+                  </div> : null}
                 </div>
-                <small>O preview abaixo usa o `TaskCard` real.</small>
-              </header>
 
-              <div className="workitem-editor-v2__preview-panel">
-                <div className="workitem-editor-v2__preview-stage">
-                  <TaskCard
-                    task={previewTask}
-                    boardConfig={previewBoardConfig}
-                    creatorName="Marina Costa"
-                    assigneeName="Squad Produto"
-                    statusLabel="Em validacao"
-                    onDragStart={() => {}}
-                    onDragEnd={() => {}}
-                    onOpen={() => {}}
-                  />
+                {false ? <div className="workitem-editor-v2__card-mock">
+                  <div className="workitem-editor-v2__card-mock-accent" style={{ background: typeColor }} />
+                  <div className="workitem-editor-v2__card-mock-body">
+                    <div className="workitem-editor-v2__card-mock-meta">
+                      <span className="workitem-editor-v2__card-mock-type" style={{ background: `${typeColor}22`, color: typeColor }}>
+                        {activeType?.name ?? "Tipo"}
+                      </span>
+                      <span className="workitem-editor-v2__card-mock-status">Em validacao</span>
+                    </div>
+                    <p className="workitem-editor-v2__card-mock-title">Refinar experiencia do checkout</p>
+
+                    {/* Drop zone — field chips directly in card */}
+                    <div
+                      className={`workitem-editor-v2__card-fields${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                      onDragOver={makeDragOverHandler("card")}
+                      onDragLeave={makeDragLeaveHandler("card")}
+                      onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "card"); }}
+                    >
+                      {cardFields.length === 0 ? (
+                        <p className="workitem-editor-v2__zone-empty">
+                          Arraste campos da biblioteca aqui
+                        </p>
+                      ) : (
+                        cardFields.map((field, index) => (
+                          <div key={`card-f-${field.id}`} className="workitem-editor-v2__card-slot-wrap">
+                            {dropTarget?.scope === "card" && dropTarget?.index === index ? (
+                              <div className="workitem-editor-v2__drop-line" />
+                            ) : null}
+                            <div
+                              className="workitem-editor-v2__card-field"
+                              data-workitem-slot="card"
+                              data-field-id={field.id}
+                              draggable
+                              onDragStart={(e) => handleDragStartField(e, field.id, "card")}
+                              onDragEnd={handleDragEnd}
+                            >
+                              <div className="workitem-editor-v2__card-field-info">
+                                <span className="workitem-editor-v2__card-field-label">{field.label}</span>
+                                <span className="workitem-editor-v2__card-field-value">{getPreviewValue(field)}</span>
+                              </div>
+                              <div className="workitem-editor-v2__card-field-actions" draggable={false}>
+                                {!isSystemCardFieldId(field.id) ? (
+                                  <button
+                                    type="button"
+                                    className="workitem-editor-v2__field-action-edit"
+                                    draggable={false}
+                                    onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
+                                    title="Editar campo"
+                                  >
+                                    ✎
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="workitem-editor-v2__field-action-remove"
+                                  draggable={false}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", field.id));
+                                  }}
+                                  title="Remover do card"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {dropTarget?.scope === "card" && dropTarget?.index === cardFields.length ? (
+                        <div className="workitem-editor-v2__drop-line" />
+                      ) : null}
+                    </div>
+                  </div>
+                </div> : null}
+              </section>
+
+              {/* Detail editor */}
+              <section className="workitem-editor-v2__panel">
+                <div className="workitem-editor-v2__panel-head">
+                  <div>
+                    <span>Work item aberto</span>
+                    <h2>Formulário expandido</h2>
+                  </div>
+                  <small>{detailFields.length} campo{detailFields.length !== 1 ? "s" : ""}</small>
                 </div>
 
-                <div
-                  className="workitem-editor-v2__slot-board"
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    if (!dragPayload) {
-                      return;
-                    }
-                    setDropTarget({
-                      scope: "card",
-                      index: computeDropIndex(event, dragPayload.fieldId, "card")
-                    });
-                  }}
-                  onDragLeave={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                      setDropTarget((current) => (current?.scope === "card" ? null : current));
-                    }
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (!activeType || !dragPayload) {
-                      return;
-                    }
-                    const index =
-                      dropTarget?.scope === "card"
-                        ? dropTarget.index
-                        : computeDropIndex(event, dragPayload.fieldId, "card");
-                    handleUpdateLayout(activeType.slug, moveField(activeLayout, dragPayload, "card", index, allowedFieldIds));
-                    setDropTarget(null);
-                  }}
-                >
-                  {filteredCardFields.length === 0 ? (
-                    <p className="workitem-editor-v2__empty">Solte campos aqui para montar o card.</p>
-                  ) : (
-                    filteredCardFields.map((field, index) => (
-                      <div className="workitem-editor-v2__slot-wrap" key={`card-slot-${field.id}`}>
-                        {dropTarget?.scope === "card" && dropTarget.index === index ? (
-                          <div className="workitem-editor-v2__drop-indicator" />
+                <div className="workitem-editor-v2__detail-mock">
+                  <div className="workitem-editor-v2__detail-mock-hero">
+                    <div className="workitem-editor-v2__detail-mock-accent" style={{ background: typeColor }} />
+                    <div className="workitem-editor-v2__detail-mock-copy">
+                      <span>{activeType?.name ?? "Tipo"}</span>
+                      <div className="workitem-editor-v2__detail-mock-title">Refinar experiencia do checkout</div>
+                      <div className="workitem-editor-v2__detail-mock-desc">Ajustar fluxo, copy e validacoes para reduzir friccao no funil.</div>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`workitem-editor-v2__detail-fields${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                    onDragOver={makeDragOverHandler("detail")}
+                    onDragLeave={makeDragLeaveHandler("detail")}
+                    onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "detail"); }}
+                  >
+                    {detailFields.map((field, index) => (
+                      <div key={`detail-f-${field.id}`} className="workitem-editor-v2__detail-slot-wrap">
+                        {dropTarget?.scope === "detail" && dropTarget?.index === index ? (
+                          <div className="workitem-editor-v2__drop-line" />
                         ) : null}
                         <div
-                          className="workitem-editor-v2__slot-chip"
-                          data-workitem-slot="card"
+                          className="workitem-editor-v2__detail-row"
+                          data-workitem-slot="detail"
                           data-field-id={field.id}
                           draggable
-                          onDragStart={(event) => handleDragStart(event, { fieldId: field.id, origin: "card" })}
+                          onDragStart={(e) => handleDragStartField(e, field.id, "detail")}
                           onDragEnd={handleDragEnd}
                         >
-                          <div>
+                          <div className="workitem-editor-v2__detail-handle" draggable={false}>⠿</div>
+                          <div className="workitem-editor-v2__detail-row-label">
                             <strong>{field.label}</strong>
                             <span>{getTaskFieldTypeLabel(field)}</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", field.id))}
-                          >
-                            Remover
-                          </button>
+                          <div className="workitem-editor-v2__detail-row-value">{getPreviewValue(field)}</div>
+                          <div className="workitem-editor-v2__card-field-actions" draggable={false}>
+                            {!isSystemCardFieldId(field.id) ? (
+                              <button
+                                type="button"
+                                className="workitem-editor-v2__field-action-edit"
+                                draggable={false}
+                                onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
+                                title="Editar campo"
+                              >
+                                ✎
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="workitem-editor-v2__field-action-remove"
+                              draggable={false}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "detail", field.id));
+                              }}
+                              title="Remover do formulário"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ))}
+                    {dropTarget?.scope === "detail" && dropTarget?.index === detailFields.length ? (
+                      <div className="workitem-editor-v2__drop-line" />
+                    ) : null}
 
-                  {dropTarget?.scope === "card" && dropTarget.index === filteredCardFields.length ? (
-                    <div className="workitem-editor-v2__drop-indicator" />
-                  ) : null}
-                </div>
-              </div>
-            </section>
-
-            <section className="workitem-editor-v2__column workitem-editor-v2__column--preview">
-              <header className="workitem-editor-v2__column-head">
-                <div>
-                  <span>Preview expandido</span>
-                  <h2>Work item aberto</h2>
-                </div>
-                <small>Mesma linguagem visual do modal real.</small>
-              </header>
-
-              <div className="workitem-editor-v2__preview-panel workitem-editor-v2__preview-panel--detail">
-                <div className="task-details workitem-editor-v2__detail-shell">
-                  <div className="task-details__topbar">
-                    <div className="task-details__header-copy">
-                      <p className="task-details__breadcrumbs">Work item</p>
-                      <h2>{previewTask.title}</h2>
-                    </div>
-                    <div className="task-details__topbar-actions">
-                      <button type="button" className="task-details__close" aria-label="Fechar preview">
-                        ×
-                      </button>
+                    <div className={`workitem-editor-v2__detail-drop-hint${isDragging ? " is-visible" : ""}`}>
+                      {isDraggingType ? "Solte para configurar e adicionar ao formulário" : "Solte aqui para mover para esta posição"}
                     </div>
                   </div>
-
-                  <div className="task-details__body task-details__body--edit">
-                    <section className="task-details__main">
-                      <section className="task-details__hero">
-                        <div className="task-details__hero-accent" />
-                        <div className="task-details__hero-copy">
-                          <p className="task-details__eyebrow">{activeType?.name ?? "Tipo"}</p>
-                          <div className="workitem-editor-v2__hero-mock-input">{previewTask.title}</div>
-                          <div className="workitem-editor-v2__hero-mock-textarea">{previewTask.text}</div>
-                        </div>
-                      </section>
-
-                      <section className="task-details__section">
-                        <div className="task-details__section-head">
-                          <h3 className="task-details__summary-style-title">Campos na ordem do formulario</h3>
-                          <span className="task-details__section-caption">{filteredDetailFields.length} visiveis</span>
-                        </div>
-
-                        <div
-                          className="workitem-editor-v2__detail-dropzone"
-                          onDragOver={(event) => {
-                            event.preventDefault();
-                            if (!dragPayload) {
-                              return;
-                            }
-                            setDropTarget({
-                              scope: "detail",
-                              index: computeDropIndex(event, dragPayload.fieldId, "detail")
-                            });
-                          }}
-                          onDragLeave={(event) => {
-                            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                              setDropTarget((current) => (current?.scope === "detail" ? null : current));
-                            }
-                          }}
-                          onDrop={(event) => {
-                            event.preventDefault();
-                            if (!activeType || !dragPayload) {
-                              return;
-                            }
-                            const index =
-                              dropTarget?.scope === "detail"
-                                ? dropTarget.index
-                                : computeDropIndex(event, dragPayload.fieldId, "detail");
-                            handleUpdateLayout(activeType.slug, moveField(activeLayout, dragPayload, "detail", index, allowedFieldIds));
-                            setDropTarget(null);
-                          }}
-                        >
-                          {filteredDetailFields.length === 0 ? (
-                            <p className="workitem-editor-v2__empty">Solte campos aqui para montar o expandido.</p>
-                          ) : (
-                            filteredDetailFields.map((field, index) => (
-                              <div className="workitem-editor-v2__slot-wrap" key={`detail-slot-${field.id}`}>
-                                {dropTarget?.scope === "detail" && dropTarget.index === index ? (
-                                  <div className="workitem-editor-v2__drop-indicator" />
-                                ) : null}
-                                <div
-                                  className="workitem-editor-v2__detail-row"
-                                  data-workitem-slot="detail"
-                                  data-field-id={field.id}
-                                  draggable
-                                  onDragStart={(event) => handleDragStart(event, { fieldId: field.id, origin: "detail" })}
-                                  onDragEnd={handleDragEnd}
-                                >
-                                  <div className="workitem-editor-v2__detail-label">
-                                    <strong>{field.label}</strong>
-                                    <span>{getTaskFieldTypeLabel(field)}</span>
-                                  </div>
-                                  <div className="workitem-editor-v2__detail-value">{getPreviewValue(field)}</div>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "detail", field.id))
-                                    }
-                                  >
-                                    Remover
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-
-                          {dropTarget?.scope === "detail" && dropTarget.index === filteredDetailFields.length ? (
-                            <div className="workitem-editor-v2__drop-indicator" />
-                          ) : null}
-                        </div>
-                      </section>
-                    </section>
-
-                    <aside className="task-details__side">
-                      <section className="task-details__panel task-details__panel--summary">
-                        <span className="task-details__eyebrow">Resumo</span>
-                        <div className="task-details__chips">
-                          <span className="task-details__chip task-details__chip--status">Em validacao</span>
-                          <span className="task-details__chip">Alta</span>
-                          <span className="task-details__chip task-details__chip--type">{activeType?.name ?? "Tipo"}</span>
-                        </div>
-                      </section>
-
-                      <section className="task-details__panel task-details__panel--metadata">
-                        <div className="task-details__section-head">
-                          <h3 className="task-details__summary-style-title">Leitura lateral</h3>
-                        </div>
-                        <div className="workitem-editor-v2__metadata-copy">
-                          <span>O objetivo aqui e te deixar editar vendo a cara real do card expandido.</span>
-                          <small>Se a ordem mudar, essa preview responde na hora.</small>
-                        </div>
-                      </section>
-                    </aside>
-                  </div>
                 </div>
-              </div>
-            </section>
-          </div>
+              </section>
+
+            </div>
+          </>
         )}
       </div>
 
+      {/* ── Bottom row ─────────────────────────────────────────────────── */}
       <div className="workitem-editor-v2__composer-row">
+        {/* Type composer */}
         <section className="workitem-editor-v2__composer">
           <header>
             <span>Tipo ativo</span>
-            <h3>{editingTypeId ? "Editar tipo" : typeComposer ? "Novo tipo" : activeType?.name ?? "Sem tipo"}</h3>
+            <h3>{editingTypeId ? "Editar tipo" : typeComposer ? "Novo tipo" : (activeType?.name ?? "Sem tipo")}</h3>
           </header>
 
           {typeComposer ? (
@@ -1197,20 +1223,13 @@ export function WorkItemEditorSettings() {
                 <TextInput
                   value={typeComposer.name}
                   placeholder="Ex: Growth, Operacao, Bugs..."
-                  onChange={(event) => setTypeComposer({ ...typeComposer, name: event.target.value })}
+                  onChange={(e) => setTypeComposer({ ...typeComposer, name: e.target.value })}
                 />
               </FormField>
               <FormField label="Cor">
                 <div className="workitem-editor-v2__color-row">
-                  <input
-                    type="color"
-                    value={typeComposer.color}
-                    onChange={(event) => setTypeComposer({ ...typeComposer, color: event.target.value })}
-                  />
-                  <TextInput
-                    value={typeComposer.color}
-                    onChange={(event) => setTypeComposer({ ...typeComposer, color: event.target.value })}
-                  />
+                  <input type="color" value={typeComposer.color} onChange={(e) => setTypeComposer({ ...typeComposer, color: e.target.value })} />
+                  <TextInput value={typeComposer.color} onChange={(e) => setTypeComposer({ ...typeComposer, color: e.target.value })} />
                 </div>
               </FormField>
               <div className="workitem-editor-v2__composer-actions">
@@ -1226,24 +1245,15 @@ export function WorkItemEditorSettings() {
             <div className="workitem-editor-v2__type-card-inline">
               <div>
                 <strong>{activeType.name}</strong>
-                <small>{filteredCardFields.length} campos no card • {filteredDetailFields.length} no expandido</small>
+                <small>{cardFields.length} no card &bull; {detailFields.length} no expandido</small>
               </div>
               <div className="workitem-editor-v2__composer-actions">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditingTypeId(activeType.id);
-                    setTypeComposer({ name: activeType.name, color: activeType.color || DEFAULT_TYPE_COLOR });
-                  }}
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => { setEditingTypeId(activeType.id); setTypeComposer({ name: activeType.name, color: activeType.color || DEFAULT_TYPE_COLOR }); }}
                 >
                   Editar
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
+                <Button type="button" size="sm" variant="outline"
                   onClick={() => void handleDeleteType(activeType.id)}
                   disabled={typeDeletingId === activeType.id}
                 >
@@ -1252,66 +1262,113 @@ export function WorkItemEditorSettings() {
               </div>
             </div>
           ) : (
-            <p className="workitem-editor-v2__empty">Crie o primeiro tipo para começar.</p>
+            <p className="workitem-editor-v2__empty">Crie o primeiro tipo para comecar.</p>
           )}
         </section>
 
+        {/* Field config panel */}
         <section className="workitem-editor-v2__composer">
-          <header>
-            <span>Campo</span>
-            <h3>{fieldDraft?.id ? "Editar campo" : fieldDraft ? "Novo campo" : "Selecione ou crie um campo"}</h3>
-          </header>
-
-          {fieldDraft ? (
+          {pendingFieldSetup ? (
             <>
-              <FormField label="Nome do campo">
+              <header>
+                <span>Novo campo — {activePendingTypeLabel}</span>
+                <h3>Configurar campo</h3>
+              </header>
+
+              <FormField label="Label do campo">
                 <TextInput
-                  value={fieldDraft.name}
-                  placeholder="Ex: Impacto esperado"
-                  onChange={(event) => setFieldDraft({ ...fieldDraft, name: event.target.value })}
+                  value={pendingFieldSetup.name}
+                  placeholder="Ex: Titulo, Impacto esperado, Prazo..."
+                  autoFocus
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, name: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !supportsSelectableOptions(pendingFieldSetup.type)) void handleConfirmFieldSetup();
+                    if (e.key === "Escape") setPendingFieldSetup(null);
+                  }}
                 />
               </FormField>
 
+              <div className="workitem-editor-v2__toggles">
+                <label>
+                  <input type="checkbox" checked={pendingFieldSetup.required}
+                    onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, required: e.target.checked })} />
+                  Obrigatório
+                </label>
+                <label>
+                  <input type="checkbox" checked={pendingFieldSetup.allowAiGeneration}
+                    disabled={!supportsAiGeneration(pendingFieldSetup.type)}
+                    onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, allowAiGeneration: e.target.checked })} />
+                  IA no campo
+                </label>
+              </div>
+
+              {supportsSelectableOptions(pendingFieldSetup.type) ? (
+                <div className="workitem-editor-v2__options">
+                  <div className="workitem-editor-v2__options-head">
+                    <strong>Opções</strong>
+                    <button type="button"
+                      onClick={() => setPendingFieldSetup({
+                        ...pendingFieldSetup,
+                        options: [...pendingFieldSetup.options, createEmptyOptionDraft(pendingFieldSetup.options.length + 1)]
+                      })}>
+                      Adicionar
+                    </button>
+                  </div>
+                  {pendingFieldSetup.options.map((opt) => (
+                    <div key={opt.id} className="workitem-editor-v2__option-row">
+                      <TextInput value={opt.label} placeholder="Label"
+                        onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
+                      <TextInput value={opt.value} placeholder="valor_interno"
+                        onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.map((o) => o.id === opt.id ? { ...o, value: e.target.value } : o) })} />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {fieldError ? <p className="workitem-editor-v2__error">{fieldError}</p> : null}
+
+              <div className="workitem-editor-v2__composer-actions">
+                <Button type="button" size="sm" onClick={() => void handleConfirmFieldSetup()} disabled={fieldSaving || !pendingFieldSetup.name.trim()}>
+                  {fieldSaving ? "Criando..." : "Adicionar ao layout"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => { setPendingFieldSetup(null); setFieldError(""); }}>
+                  Cancelar
+                </Button>
+              </div>
+            </>
+          ) : fieldDraft ? (
+            <>
+              <header>
+                <span>Campo customizado</span>
+                <h3>Editar campo</h3>
+              </header>
+
+              <FormField label="Label do campo">
+                <TextInput value={fieldDraft.name} placeholder="Ex: Impacto esperado"
+                  onChange={(e) => setFieldDraft({ ...fieldDraft, name: e.target.value })} />
+              </FormField>
+
               <div className="workitem-editor-v2__field-types">
-                {FIELD_TYPE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`workitem-editor-v2__field-type${fieldDraft.type === option.value ? " is-active" : ""}`}
-                    onClick={() =>
-                      setFieldDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              type: option.value,
-                              allowAiGeneration: supportsAiGeneration(option.value) ? current.allowAiGeneration : false
-                            }
-                          : current
-                      )
-                    }
-                  >
-                    <strong>{option.label}</strong>
-                    <span>{option.caption}</span>
+                {FIELD_TYPE_OPTIONS.map((opt) => (
+                  <button key={opt.value} type="button"
+                    className={`workitem-editor-v2__field-type${fieldDraft.type === opt.value ? " is-active" : ""}`}
+                    onClick={() => setFieldDraft({ ...fieldDraft, type: opt.value, allowAiGeneration: supportsAiGeneration(opt.value) ? fieldDraft.allowAiGeneration : false })}>
+                    <strong>{opt.label}</strong>
+                    <span>{opt.caption}</span>
                   </button>
                 ))}
               </div>
 
               <div className="workitem-editor-v2__toggles">
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={fieldDraft.required}
-                    onChange={(event) => setFieldDraft({ ...fieldDraft, required: event.target.checked })}
-                  />
-                  Obrigatorio
+                  <input type="checkbox" checked={fieldDraft.required}
+                    onChange={(e) => setFieldDraft({ ...fieldDraft, required: e.target.checked })} />
+                  Obrigatório
                 </label>
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={fieldDraft.allowAiGeneration}
+                  <input type="checkbox" checked={fieldDraft.allowAiGeneration}
                     disabled={!supportsAiGeneration(fieldDraft.type)}
-                    onChange={(event) => setFieldDraft({ ...fieldDraft, allowAiGeneration: event.target.checked })}
-                  />
+                    onChange={(e) => setFieldDraft({ ...fieldDraft, allowAiGeneration: e.target.checked })} />
                   IA no campo
                 </label>
               </div>
@@ -1319,46 +1376,18 @@ export function WorkItemEditorSettings() {
               {supportsSelectableOptions(fieldDraft.type) ? (
                 <div className="workitem-editor-v2__options">
                   <div className="workitem-editor-v2__options-head">
-                    <strong>Opcoes</strong>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFieldDraft({
-                          ...fieldDraft,
-                          options: [...fieldDraft.options, createEmptyOptionDraft(fieldDraft.options.length + 1)]
-                        })
-                      }
-                    >
+                    <strong>Opções</strong>
+                    <button type="button"
+                      onClick={() => setFieldDraft({ ...fieldDraft, options: [...fieldDraft.options, createEmptyOptionDraft(fieldDraft.options.length + 1)] })}>
                       Adicionar
                     </button>
                   </div>
-
-                  {fieldDraft.options.map((option) => (
-                    <div key={option.id} className="workitem-editor-v2__option-row">
-                      <TextInput
-                        value={option.label}
-                        placeholder="Label"
-                        onChange={(event) =>
-                          setFieldDraft({
-                            ...fieldDraft,
-                            options: fieldDraft.options.map((entry) =>
-                              entry.id === option.id ? { ...entry, label: event.target.value } : entry
-                            )
-                          })
-                        }
-                      />
-                      <TextInput
-                        value={option.value}
-                        placeholder="valor_interno"
-                        onChange={(event) =>
-                          setFieldDraft({
-                            ...fieldDraft,
-                            options: fieldDraft.options.map((entry) =>
-                              entry.id === option.id ? { ...entry, value: event.target.value } : entry
-                            )
-                          })
-                        }
-                      />
+                  {fieldDraft.options.map((opt) => (
+                    <div key={opt.id} className="workitem-editor-v2__option-row">
+                      <TextInput value={opt.label} placeholder="Label"
+                        onChange={(e) => setFieldDraft({ ...fieldDraft, options: fieldDraft.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
+                      <TextInput value={opt.value} placeholder="valor_interno"
+                        onChange={(e) => setFieldDraft({ ...fieldDraft, options: fieldDraft.options.map((o) => o.id === opt.id ? { ...o, value: e.target.value } : o) })} />
                     </div>
                   ))}
                 </div>
@@ -1370,15 +1399,27 @@ export function WorkItemEditorSettings() {
                 <Button type="button" size="sm" onClick={() => void handleSaveField()} disabled={fieldSaving || !fieldDraft.name.trim()}>
                   {fieldSaving ? "Salvando..." : "Salvar campo"}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setFieldDraft(null)}>
+                <Button type="button" size="sm" variant="outline" onClick={() => { setFieldDraft(null); setFieldError(""); }}>
                   Cancelar
+                </Button>
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => void handleDeleteField(fieldDraft.id)}
+                  disabled={fieldDeletingId === fieldDraft.id}>
+                  {fieldDeletingId === fieldDraft.id ? "Removendo..." : "Remover campo"}
                 </Button>
               </div>
             </>
           ) : (
-            <p className="workitem-editor-v2__empty">
-              Arraste os campos da biblioteca e use "Novo campo" quando precisar criar uma informacao nova.
-            </p>
+            <div className="workitem-editor-v2__field-idle">
+              <header>
+                <span>Campo</span>
+                <h3>Nenhum campo selecionado</h3>
+              </header>
+              <p className="workitem-editor-v2__empty">
+                Arraste um tipo da biblioteca para o card ou formulário para criar um novo campo.
+                Clique em ✎ em qualquer campo customizado para editar suas propriedades.
+              </p>
+            </div>
           )}
         </section>
       </div>

@@ -111,14 +111,43 @@
   text-align: left;
   cursor: pointer;
   display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.documentation-page__file-item:hover:not(.documentation-page__file-item--active) {
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--doc-line));
+  background: color-mix(in oklab, var(--accent-soft) 40%, var(--doc-surface-soft));
+}
+
+.documentation-page__file-item-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--doc-muted);
+  margin-top: 2px;
+}
+
+.documentation-page__file-item-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .documentation-page__file-item strong {
   font-size: 0.8rem;
   color: var(--doc-ink);
   font-weight: 780;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .documentation-page__file-item span {
@@ -131,6 +160,10 @@
   border-color: color-mix(in oklab, var(--accent) 42%, var(--doc-line));
   background: color-mix(in oklab, var(--accent-soft) 76%, var(--doc-surface-soft));
   box-shadow: 0 10px 24px rgba(10, 72, 121, 0.08);
+}
+
+.documentation-page__file-item--active .documentation-page__file-item-icon {
+  color: color-mix(in oklab, var(--accent-strong) 68%, var(--doc-muted));
 }
 
 .documentation-page__editor-pane {
@@ -172,29 +205,49 @@
 
 .documentation-page__editor-toolbar {
   border-bottom: 1px solid var(--doc-line);
-  padding: 10px 14px;
-  display: grid;
-  gap: 8px;
+  padding: 7px 14px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
   background: color-mix(in oklab, var(--doc-surface-soft) 80%, white);
+}
+
+.documentation-page__editor-toolbar::-webkit-scrollbar {
+  display: none;
 }
 
 .documentation-page__editor-toolbar-group {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.documentation-page__editor-toolbar-group button,
-.documentation-page__editor-view-switch button {
+.documentation-page__editor-toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--doc-line);
+  flex-shrink: 0;
+  margin: 0 6px;
+  opacity: 0.9;
+}
+
+.documentation-page__toolbar-btn {
   border: 1px solid color-mix(in oklab, var(--doc-line) 82%, transparent);
   background: var(--doc-surface);
   color: var(--doc-ink);
   border-radius: 8px;
-  min-height: 30px;
-  padding: 0 9px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   font-size: 0.72rem;
   font-weight: 760;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
   transition:
     border-color 160ms ease,
     background 160ms ease,
@@ -202,29 +255,97 @@
     box-shadow 160ms ease;
 }
 
-.documentation-page__editor-toolbar-group button:hover,
-.documentation-page__editor-view-switch button:hover {
+.documentation-page__toolbar-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.documentation-page__toolbar-btn--bold {
+  font-weight: 900;
+  font-size: 0.84rem;
+  letter-spacing: -0.01em;
+}
+
+.documentation-page__toolbar-btn--italic {
+  font-style: italic;
+  font-size: 0.84rem;
+}
+
+.documentation-page__toolbar-btn--underline {
+  text-decoration: underline;
+  font-size: 0.84rem;
+}
+
+.documentation-page__toolbar-btn--strike {
+  text-decoration: line-through;
+  font-size: 0.84rem;
+}
+
+.documentation-page__toolbar-btn--heading {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  width: 34px;
+}
+
+.documentation-page__toolbar-btn--heading::before {
+  content: attr(data-label);
+}
+
+.documentation-page__toolbar-btn:hover {
   border-color: color-mix(in oklab, var(--accent) 36%, var(--doc-line));
   background: color-mix(in oklab, var(--accent-soft) 72%, var(--doc-surface));
   transform: translateY(-1px);
   box-shadow: 0 8px 18px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
-.documentation-page__editor-view-switch {
-  display: inline-flex;
-  gap: 6px;
-  width: fit-content;
-  border: 1px solid color-mix(in oklab, var(--doc-line) 76%, transparent);
-  border-radius: 10px;
-  padding: 4px;
-  background: color-mix(in oklab, var(--panel) 84%, transparent);
+.documentation-page__editor-view-switch button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--doc-muted);
+  border-radius: 7px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.documentation-page__editor-view-switch button:hover {
+  color: var(--doc-ink);
+  background: color-mix(in oklab, var(--accent-soft) 44%, transparent);
 }
 
 .documentation-page__editor-view-switch button.is-active {
   border-color: color-mix(in oklab, var(--accent) 42%, var(--doc-line));
   background: color-mix(in oklab, var(--accent-soft) 78%, var(--doc-surface));
-  box-shadow: 0 10px 20px color-mix(in oklab, var(--accent) 16%, transparent);
+  color: color-mix(in oklab, var(--accent-strong) 80%, var(--doc-ink));
+  box-shadow:
+    0 10px 20px color-mix(in oklab, var(--accent) 16%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 60%, transparent);
 }
+
+.documentation-page__editor-view-switch {
+  display: inline-flex;
+  gap: 2px;
+  width: fit-content;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 76%, transparent);
+  border-radius: 9px;
+  padding: 3px;
+  background: color-mix(in oklab, var(--panel-muted) 72%, transparent);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 
 .documentation-page__editor-body {
   flex: 1 1 auto;
@@ -482,12 +603,22 @@
   font-size: 0.72rem;
   font-weight: 760;
   cursor: pointer;
-  padding: 7px 11px;
+  padding: 7px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   transition:
     background 160ms ease,
     border-color 160ms ease,
     color 160ms ease,
     box-shadow 160ms ease;
+}
+
+.documentation-page__mode-chip-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .documentation-page__mode-chip:hover {
@@ -1098,7 +1229,7 @@
   background: linear-gradient(180deg, rgba(14, 32, 47, 0.96) 0%, rgba(11, 28, 41, 0.98) 100%);
 }
 
-.app-theme[data-theme="dark"] .documentation-page__editor-toolbar-group button,
+.app-theme[data-theme="dark"] .documentation-page__toolbar-btn,
 .app-theme[data-theme="dark"] .documentation-page__editor-view-switch button {
   border-color: rgba(79, 117, 147, 0.72);
   background: linear-gradient(180deg, rgba(17, 40, 58, 0.96) 0%, rgba(12, 30, 44, 0.98) 100%);

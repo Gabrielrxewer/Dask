@@ -120,6 +120,12 @@ export function DocumentationPage() {
     return chatsByDoc[activeDoc.id] ?? [];
   }, [chatsByDoc, activeDoc]);
 
+  const wordCount = useMemo(() => {
+    if (!activeDoc) return 0;
+    const trimmed = activeDoc.content.trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }, [activeDoc?.content]);
+
   const pushMessage = useCallback((docId: string, message: AssistantMessage) => {
     setChatsByDoc((previous) => ({
       ...previous,
@@ -639,8 +645,16 @@ export function DocumentationPage() {
                 className={`documentation-page__file-item${activeDoc?.id === doc.id ? " documentation-page__file-item--active" : ""}`}
                 onClick={() => setActiveDocId(doc.id)}
               >
-                <strong>{doc.title}</strong>
-                <span>{`Atualizado em ${formatRelativeDate(doc.updatedAt)}`}</span>
+                <svg className="documentation-page__file-item-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                  <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.55" />
+                  <line x1="8" y1="17" x2="12" y2="17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.55" />
+                </svg>
+                <div className="documentation-page__file-item-content">
+                  <strong>{doc.title}</strong>
+                  <span>{`Atualizado em ${formatRelativeDate(doc.updatedAt)}`}</span>
+                </div>
               </button>
             ))}
             {!isDocsLoading && docs.length === 0 ? (
@@ -665,60 +679,170 @@ export function DocumentationPage() {
                   <p>{`Ultima edicao: ${formatRelativeDate(activeDoc.updatedAt)}`}</p>
                 </div>
                 <div className="documentation-page__editor-badges">
-                  <StatusBadge>{`${activeDoc.content.length} chars`}</StatusBadge>
+                  <StatusBadge>{`${wordCount} palavras`}</StatusBadge>
                   {selectedSnippet ? <StatusBadge tone="warning">Trecho selecionado</StatusBadge> : null}
                 </div>
               </header>
 
               <div className="documentation-page__editor-toolbar">
                 <div className="documentation-page__editor-toolbar-group">
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("h1")} title="Titulo 1">
-                    H1
-                  </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("h2")} title="Titulo 2">
-                    H2
-                  </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("bold")} title="Negrito">
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn documentation-page__toolbar-btn--heading"
+                    onClick={() => handleMarkdownToolbarAction("h1")}
+                    title="Titulo 1"
+                    data-label="H1"
+                  />
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn documentation-page__toolbar-btn--heading"
+                    onClick={() => handleMarkdownToolbarAction("h2")}
+                    title="Titulo 2"
+                    data-label="H2"
+                  />
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn documentation-page__toolbar-btn--text documentation-page__toolbar-btn--bold"
+                    onClick={() => handleMarkdownToolbarAction("bold")}
+                    title="Negrito"
+                  >
                     B
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("italic")} title="Italico">
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn documentation-page__toolbar-btn--text documentation-page__toolbar-btn--italic"
+                    onClick={() => handleMarkdownToolbarAction("italic")}
+                    title="Italico"
+                  >
                     I
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("underline")} title="Sublinhado">
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn documentation-page__toolbar-btn--text documentation-page__toolbar-btn--underline"
+                    onClick={() => handleMarkdownToolbarAction("underline")}
+                    title="Sublinhado"
+                  >
                     U
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("strike")} title="Riscado">
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn documentation-page__toolbar-btn--text documentation-page__toolbar-btn--strike"
+                    onClick={() => handleMarkdownToolbarAction("strike")}
+                    title="Riscado"
+                  >
                     S
                   </button>
                 </div>
 
+                <div className="documentation-page__editor-toolbar-separator" aria-hidden="true" />
+
                 <div className="documentation-page__editor-toolbar-group">
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("ul")} title="Lista">
-                    Lista
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("ul")}
+                    title="Lista com marcadores"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle cx="4" cy="7" r="1.5" fill="currentColor" />
+                      <circle cx="4" cy="12" r="1.5" fill="currentColor" />
+                      <circle cx="4" cy="17" r="1.5" fill="currentColor" />
+                      <path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("ol")} title="Lista numerada">
-                    1.
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("ol")}
+                    title="Lista numerada"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M10 6h11M10 12h11M10 18h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      <path d="M3.5 5.5h.8v5M3.5 10.5h1.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3.2 14.5h1.8l-2 3.5h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("check")} title="Checklist">
-                    Check
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("check")}
+                    title="Checklist"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect x="3" y="5" width="5.5" height="5.5" rx="1.2" stroke="currentColor" strokeWidth="1.7" />
+                      <path d="M4.5 7.8L5.8 9.2L8 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M11 7.8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      <rect x="3" y="13" width="5.5" height="5.5" rx="1.2" stroke="currentColor" strokeWidth="1.7" />
+                      <path d="M11 15.8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("quote")} title="Citacao">
-                    Aspas
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("quote")}
+                    title="Citacao"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect x="3" y="4" width="2.5" height="16" rx="1.25" fill="currentColor" opacity="0.6" />
+                      <path d="M8 8h10M8 12h8M8 16h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("code-inline")} title="Codigo inline">
-                    {"</>"}
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("code-inline")}
+                    title="Codigo inline"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M8 9L4 12l4 3M16 9l4 3-4 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="14" y1="7" x2="10" y2="17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("code-block")} title="Bloco de codigo">
-                    Bloco
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("code-block")}
+                    title="Bloco de codigo"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect x="2" y="4" width="20" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+                      <path d="M8 9L5 12l3 3M16 9l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="13.5" y1="9" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("link")} title="Link">
-                    Link
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("link")}
+                    title="Link"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("table")} title="Tabela">
-                    Tabela
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("table")}
+                    title="Tabela"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
+                      <path d="M3 9h18M3 15h18M9 9v12M15 9v12" stroke="currentColor" strokeWidth="1.4" />
+                    </svg>
                   </button>
-                  <button type="button" onClick={() => handleMarkdownToolbarAction("divider")} title="Divisor">
-                    ---
+                  <button
+                    type="button"
+                    className="documentation-page__toolbar-btn"
+                    onClick={() => handleMarkdownToolbarAction("divider")}
+                    title="Divisor horizontal"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <line x1="4" y1="8" x2="20" y2="8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.35" />
+                      <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <line x1="4" y1="16" x2="20" y2="16" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.35" />
+                    </svg>
                   </button>
                 </div>
 
@@ -801,16 +925,37 @@ export function DocumentationPage() {
           </header>
 
           <div className="documentation-page__modes">
-            {(Object.keys(MODE_LABELS) as DocumentationAssistantMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                className={`documentation-page__mode-chip${activeMode === mode ? " documentation-page__mode-chip--active" : ""}`}
-                onClick={() => setActiveMode(mode)}
-              >
-                {MODE_LABELS[mode]}
-              </button>
-            ))}
+            <button
+              type="button"
+              className={`documentation-page__mode-chip${activeMode === "chat" ? " documentation-page__mode-chip--active" : ""}`}
+              onClick={() => setActiveMode("chat")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="documentation-page__mode-chip-icon">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              </svg>
+              {MODE_LABELS.chat}
+            </button>
+            <button
+              type="button"
+              className={`documentation-page__mode-chip${activeMode === "write" ? " documentation-page__mode-chip--active" : ""}`}
+              onClick={() => setActiveMode("write")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="documentation-page__mode-chip-icon">
+                <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {MODE_LABELS.write}
+            </button>
+            <button
+              type="button"
+              className={`documentation-page__mode-chip${activeMode === "maintain" ? " documentation-page__mode-chip--active" : ""}`}
+              onClick={() => setActiveMode("maintain")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="documentation-page__mode-chip-icon">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {MODE_LABELS.maintain}
+            </button>
             <button
               type="button"
               className="documentation-page__mode-info-button"

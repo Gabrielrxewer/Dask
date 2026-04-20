@@ -16,6 +16,8 @@ interface TaskCardProps {
   task: Task;
   boardConfig: BoardConfig;
   compact?: boolean;
+  draggable?: boolean;
+  fieldSlotRenderer?: (slot: { fieldId: string; area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta"; content: ReactNode }) => ReactNode;
   creatorName?: string;
   assigneeName?: string;
   statusLabel?: string;
@@ -47,6 +49,8 @@ export function TaskCard({
   task,
   boardConfig,
   compact = false,
+  draggable = true,
+  fieldSlotRenderer,
   creatorName,
   assigneeName,
   statusLabel,
@@ -101,6 +105,11 @@ export function TaskCard({
   const hiddenTagsCount = Math.max(task.tags.length - displayTags.length, 0);
   const typeLabel = type.label?.trim() || task.type;
   const typeIconName = resolveTaskTypeIconName(type.id);
+  const renderFieldSlot = (
+    fieldId: string,
+    area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta",
+    content: ReactNode
+  ) => (fieldSlotRenderer ? fieldSlotRenderer({ fieldId, area, content }) : content);
 
   return (
     <article
@@ -112,7 +121,7 @@ export function TaskCard({
       )}
       data-board-card="true"
       data-task-id={task.id}
-      draggable
+      draggable={draggable}
       onDragStart={event => onDragStart(event, task.id)}
       onDragEnd={onDragEnd}
       onClick={() => onOpen?.(task.id)}
@@ -132,20 +141,24 @@ export function TaskCard({
       <header className="task-card__head">
         <div className="task-card__badges">
           {showType ? (
-            <span
-              className="task-card__type-icon"
-              role="img"
-              aria-label={typeLabel}
-              title={typeLabel}
-              style={{
-                color: type.text
-              }}
-            >
-              <TaskTypeIcon name={typeIconName} />
-            </span>
+            renderFieldSlot(
+              "sys:type",
+              "badge",
+              <span
+                className="task-card__type-icon"
+                role="img"
+                aria-label={typeLabel}
+                title={typeLabel}
+                style={{
+                  color: type.text
+                }}
+              >
+                <TaskTypeIcon name={typeIconName} />
+              </span>
+            )
           ) : null}
 
-          {showStatus ? <span className="task-card__tag">{statusLabel ?? task.status}</span> : null}
+          {showStatus ? renderFieldSlot("sys:status", "badge", <span className="task-card__tag">{statusLabel ?? task.status}</span>) : null}
         </div>
         <button
           className="task-card__ghost"
@@ -157,44 +170,62 @@ export function TaskCard({
         </button>
       </header>
 
-      {showTitle ? <h4 className="task-card__title">{task.title}</h4> : null}
-      {showDescription && task.text ? <p className="task-card__text">{task.text}</p> : null}
+      {showTitle ? renderFieldSlot("sys:title", "title", <h4 className="task-card__title">{task.title}</h4>) : null}
+      {showDescription && task.text
+        ? renderFieldSlot("sys:description", "description", <p className="task-card__text">{task.text}</p>)
+        : null}
 
       {showCreatedBy || showAssignee ? (
         <div className="task-card__summary">
           {showCreatedBy ? (
-            <span className="task-card__summary-item">
-              <strong>Criado por</strong>
-              <span>{authorLabel}</span>
-            </span>
+            renderFieldSlot(
+              "sys:created-by",
+              "summary",
+              <span className="task-card__summary-item">
+                <strong>Criado por</strong>
+                <span>{authorLabel}</span>
+              </span>
+            )
           ) : null}
           {showAssignee ? (
-            <span className="task-card__summary-item">
-              <strong>Responsavel</strong>
-              <span>{ownerLabel}</span>
-            </span>
+            renderFieldSlot(
+              "sys:assignee",
+              "summary",
+              <span className="task-card__summary-item">
+                <strong>Responsavel</strong>
+                <span>{ownerLabel}</span>
+              </span>
+            )
           ) : null}
         </div>
       ) : null}
 
       {showTags ? (
-        <div className="task-card__tags">
-          {displayTags.map(tag => (
-            <span className="task-card__tag" key={tag}>
-              {tag}
-            </span>
-          ))}
-          {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
-        </div>
+        renderFieldSlot(
+          "sys:tags",
+          "tags",
+          <div className="task-card__tags">
+            {displayTags.map(tag => (
+              <span className="task-card__tag" key={tag}>
+                {tag}
+              </span>
+            ))}
+            {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
+          </div>
+        )
       ) : null}
 
       {visibleFields.length > 0 ? (
         <div className="task-card__fields">
           {visibleFields.map(({ definition, value }) => (
-            <span className="task-card__field" key={definition.id}>
-              <strong>{definition.label}</strong>
-              <span className="task-card__field-value">{formatCustomFieldValue(value, definition)}</span>
-            </span>
+            renderFieldSlot(
+              definition.id,
+              "custom-field",
+              <span className="task-card__field" key={definition.id}>
+                <strong>{definition.label}</strong>
+                <span className="task-card__field-value">{formatCustomFieldValue(value, definition)}</span>
+              </span>
+            )
           ))}
         </div>
       ) : null}
@@ -212,8 +243,8 @@ export function TaskCard({
           ) : null}
           {hasMetaFooter ? (
             <div className="task-card__meta">
-              {showChecklist ? <span>{`Checklist ${checklist.done}/${checklist.total}`}</span> : null}
-              {showDueDate ? <span>{`Prazo ${formatShortDate(task.due)}`}</span> : null}
+              {showChecklist ? renderFieldSlot("sys:checklist", "meta", <span>{`Checklist ${checklist.done}/${checklist.total}`}</span>) : null}
+              {showDueDate ? renderFieldSlot("sys:due-date", "meta", <span>{`Prazo ${formatShortDate(task.due)}`}</span>) : null}
             </div>
           ) : null}
         </footer>

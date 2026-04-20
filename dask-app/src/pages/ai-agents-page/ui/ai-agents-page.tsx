@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import type { AiAgentConfig, AiAgentRagSource, AiAgentSummary, CreateAiAgentInput } from "@/modules/workspace/model";
-import { Button, FormField, LoadingState, Section, StatusBadge, TextInput, Textarea } from "@/shared/ui";
+import { Button, FormField, LoadingState, Section, Select, StatusBadge, TextInput, Textarea } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
+import "@/features/create-task/ui/create-task-button.css";
 import "./ai-agents-page.css";
 
 interface AgentFormState {
@@ -77,6 +78,16 @@ const GPT_TOOL_OPTIONS: Array<{ value: string; label: string; description: strin
   }
 ];
 
+const MODEL_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "Padrao do backend (gpt-4.1-mini)" },
+  { value: "gpt-4.1-mini", label: "gpt-4.1-mini" },
+  { value: "gpt-4.1", label: "gpt-4.1" },
+  { value: "gpt-4o-mini", label: "gpt-4o-mini" },
+  { value: "gpt-4o", label: "gpt-4o" }
+];
+
+const TOP_K_OPTIONS = ["3", "5", "7", "10"];
+
 const DEFAULT_PROMPT = [
   "You are a senior workspace assistant.",
   "Give objective and practical answers.",
@@ -143,6 +154,10 @@ function normalizeGptTools(value: unknown): string[] {
     .filter((entry) => allowed.has(entry));
 }
 
+function isPresetModel(value: string): boolean {
+  return MODEL_OPTIONS.some((option) => option.value === value);
+}
+
 function createDefaultForm(): AgentFormState {
   return {
     id: null,
@@ -206,6 +221,7 @@ export function AiAgentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [form, setForm] = useState<AgentFormState>(() => createDefaultForm());
+  const [useCustomModelInput, setUseCustomModelInput] = useState(false);
 
   const activeAgentsCount = agents.filter((agent) => agent.isActive).length;
   const ragEnabledCount = agents.filter((agent) => {
@@ -239,12 +255,14 @@ export function AiAgentsPage() {
         if (result.length === 0) {
           setSelectedAgentId(null);
           setForm(createDefaultForm());
+          setUseCustomModelInput(false);
           return;
         }
 
         const selected = result[0];
         setSelectedAgentId(selected.id);
         setForm(formFromAgent(selected));
+        setUseCustomModelInput(selected.model.trim().length > 0 && !isPresetModel(selected.model.trim()));
       })
       .catch((err) => {
         if (!mounted) {
@@ -274,16 +292,19 @@ export function AiAgentsPage() {
   const activeNativeToolsCount = form.nativeToolsEnabled ? form.allowedNativeTools.length : 0;
   const activeGptToolsCount = form.gptToolsEnabled ? form.allowedGptTools.length : 0;
   const activeToolsCount = activeNativeToolsCount + activeGptToolsCount;
+  const selectedModelValue = useCustomModelInput ? "__custom__" : form.model.trim();
 
   function handleSelectAgent(agent: AiAgentSummary) {
     setSelectedAgentId(agent.id);
     setForm(formFromAgent(agent));
+    setUseCustomModelInput(agent.model.trim().length > 0 && !isPresetModel(agent.model.trim()));
     setError(null);
   }
 
   function handleCreateNew() {
     setSelectedAgentId(null);
     setForm(createDefaultForm());
+    setUseCustomModelInput(false);
     setError(null);
   }
 
@@ -442,7 +463,14 @@ export function AiAgentsPage() {
             subtitle="Selecione um agente para editar prompt e politica de RAG."
             className="ai-agents-page__catalog"
             actions={
-              <Button type="button" size="sm" onClick={handleCreateNew} disabled={isSaving}>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                className="create-task-button ai-agents-page__primary-action"
+                onClick={handleCreateNew}
+                disabled={isSaving}
+              >
                 Novo agente
               </Button>
             }
@@ -494,7 +522,14 @@ export function AiAgentsPage() {
             subtitle="Defina prompt, modelo e como a IA consulta documentacao e cards."
             className="ai-agents-page__editor"
             actions={
-              <Button type="button" size="sm" onClick={() => void handleSubmit()} disabled={!canSave}>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                className="create-task-button ai-agents-page__primary-action"
+                onClick={() => void handleSubmit()}
+                disabled={!canSave}
+              >
                 {isSaving ? "Salvando..." : "Salvar agente"}
               </Button>
             }
@@ -529,11 +564,40 @@ export function AiAgentsPage() {
 
               <div className="ai-agents-page__grid">
                 <FormField label="Modelo (opcional)">
-                  <TextInput
-                    value={form.model}
-                    onChange={(event) => updateForm("model", event.target.value)}
-                    placeholder="Deixe vazio para usar o padrao do backend"
-                  />
+                  <div className="ai-agents-page__field-stack">
+                    <Select
+                      className="ai-agents-page__select"
+                      value={selectedModelValue}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        if (nextValue === "__custom__") {
+                          setUseCustomModelInput(true);
+                          if (isPresetModel(form.model.trim())) {
+                            updateForm("model", "");
+                          }
+                          return;
+                        }
+
+                        setUseCustomModelInput(false);
+                        updateForm("model", nextValue);
+                      }}
+                    >
+                      {MODEL_OPTIONS.map((option) => (
+                        <option key={option.value || "default"} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                      <option value="__custom__">Outro modelo</option>
+                    </Select>
+
+                    {useCustomModelInput ? (
+                      <TextInput
+                        value={form.model}
+                        onChange={(event) => updateForm("model", event.target.value)}
+                        placeholder="Ex.: gpt-4.1-nano"
+                      />
+                    ) : null}
+                  </div>
                 </FormField>
 
                 <FormField label="Temperatura (0 a 2)">
@@ -623,14 +687,18 @@ export function AiAgentsPage() {
 
                 <div className="ai-agents-page__grid">
                   <FormField label="Top K documentos">
-                    <TextInput
-                      type="number"
-                      min={1}
-                      max={10}
+                    <Select
+                      className="ai-agents-page__select"
                       value={form.topKContextDocs}
                       onChange={(event) => updateForm("topKContextDocs", event.target.value)}
                       disabled={derivedRagSource === "none"}
-                    />
+                    >
+                      {TOP_K_OPTIONS.map((value) => (
+                        <option key={value} value={value}>
+                          {value} documentos
+                        </option>
+                      ))}
+                    </Select>
                   </FormField>
                 </div>
 
@@ -699,10 +767,23 @@ export function AiAgentsPage() {
               {error ? <p className="ai-agents-page__error">{error}</p> : null}
 
               <footer className="ai-agents-page__actions">
-                <Button type="button" variant="outline" onClick={handleCreateNew} disabled={isSaving}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="ai-agents-page__primary-action"
+                  onClick={handleCreateNew}
+                  disabled={isSaving}
+                >
                   Limpar
                 </Button>
-                <Button type="submit" disabled={!canSave}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="create-task-button ai-agents-page__primary-action"
+                  disabled={!canSave}
+                >
                   {isSaving ? "Salvando..." : isCreateMode ? "Criar agente" : "Salvar alteracoes"}
                 </Button>
               </footer>

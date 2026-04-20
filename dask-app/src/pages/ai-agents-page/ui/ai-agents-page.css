@@ -115,17 +115,16 @@
 }
 
 .ai-agents-page__catalog .shared-section__actions .shared-button,
-.ai-agents-page__editor .shared-section__actions .shared-button,
-.ai-agents-page__actions .shared-button {
+.ai-agents-page__editor .shared-section__actions .shared-button {
   border-radius: 999px;
 }
 
-.ai-agents-page__catalog .shared-section__actions .shared-button--primary,
-.ai-agents-page__editor .shared-section__actions .shared-button--primary,
-.ai-agents-page__actions .shared-button--primary {
-  background: linear-gradient(135deg, var(--agents-accent) 0%, var(--agents-accent-strong) 100%);
-  border-color: transparent;
-  box-shadow: 0 10px 18px rgba(7, 95, 157, 0.18);
+.ai-agents-page__primary-action {
+  border-radius: 12px;
+  min-height: 38px;
+  box-shadow:
+    0 10px 20px rgba(8, 31, 53, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 .ai-agents-page__catalog .shared-section__actions .shared-button--outline,
@@ -233,10 +232,42 @@
   gap: 6px;
 }
 
+.ai-agents-page__field-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-agents-page__select {
+  min-height: 28px;
+  font-size: var(--font-size-xs);
+  width: 100%;
+}
+
 .ai-agents-page__form .shared-form-field__label {
   color: var(--agents-text-soft);
   font-size: var(--font-size-xs);
   font-weight: 800;
+}
+
+.ai-agents-page__select .shared-select__control {
+  min-height: 28px;
+  height: 28px;
+  border-color: #d8e4ee;
+  border-radius: var(--radius-xs);
+  background: var(--agents-surface);
+  color: var(--agents-text);
+  padding: 0 9px;
+}
+
+.ai-agents-page__select .shared-select__value {
+  font-size: var(--font-size-xs);
+}
+
+.ai-agents-page__select .shared-select__menu {
+  border-color: #d8e4ee;
+  border-radius: 18px;
+  background: var(--agents-surface);
+  color: var(--agents-text);
 }
 
 .ai-agents-page__form .shared-input,
@@ -250,6 +281,12 @@
 
 .ai-agents-page__form .shared-input:focus,
 .ai-agents-page__form .shared-textarea:focus {
+  border-color: #83afd5;
+  box-shadow: 0 0 0 3px rgba(7, 95, 157, 0.1);
+}
+
+.ai-agents-page__select .shared-select__control:focus,
+.ai-agents-page__select .shared-select__control:focus-within {
   border-color: #83afd5;
   box-shadow: 0 0 0 3px rgba(7, 95, 157, 0.1);
 }
@@ -513,6 +550,19 @@
   background: var(--control-surface) !important;
   color: var(--text-strong) !important;
   box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__control {
+  border-color: var(--line) !important;
+  background: var(--control-surface) !important;
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__menu,
+.app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__option {
+  border-color: var(--line) !important;
+  background: var(--control-surface) !important;
+  color: var(--text-strong) !important;
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__catalog .shared-section__actions .shared-button--outline,

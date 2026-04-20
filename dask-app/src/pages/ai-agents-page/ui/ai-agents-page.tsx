@@ -427,6 +427,7 @@ export function AiAgentsPage() {
       <div className="ai-agents-page">
         <BoardMetrics
           metrics={metrics}
+          className="ai-agents-page__metrics"
           cards={[
             { label: "Agentes cadastrados", value: agents.length },
             { label: "Agentes ativos", value: activeAgentsCount },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams } from "react-router-dom";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type Task } from "@/entities/task";
 import {
@@ -1061,21 +1061,32 @@ export function AgendaPage() {
             </div>
 
             <div className="agenda-slot-modal__list">
-              {selectedSlotInspection.tasks.map(({ task, window }) => (
-                <button
-                  key={`${task.id}-${window.start}`}
-                  type="button"
-                  className="agenda-slot-modal__item"
-                  onClick={() => {
-                    setSelectedSlotInspection(null);
-                    selectTask(task.id);
-                  }}
-                >
-                  <strong>{task.title}</strong>
-                  <span>{`${toHourLabel(window.start)} - ${toHourLabel(window.end)}`}</span>
-                  <small>{activeMembers[task.assignee]?.name ?? "Sem responsavel"}</small>
-                </button>
-              ))}
+              {selectedSlotInspection.tasks.map(({ task, window }) => {
+                const typeMeta = getTaskTypeDisplayMeta(typeMap, task.type);
+
+                return (
+                  <button
+                    key={`${task.id}-${window.start}`}
+                    type="button"
+                    className="agenda-slot-modal__item"
+                    style={
+                      {
+                        "--agenda-slot-item-accent": typeMeta.text,
+                        "--agenda-slot-item-accent-soft": typeMeta.background,
+                        "--agenda-slot-item-border": typeMeta.border
+                      } as CSSProperties
+                    }
+                    onClick={() => {
+                      setSelectedSlotInspection(null);
+                      selectTask(task.id);
+                    }}
+                  >
+                    <strong>{task.title}</strong>
+                    <span>{`${toHourLabel(window.start)} - ${toHourLabel(window.end)}`}</span>
+                    <small>{activeMembers[task.assignee]?.name ?? "Sem responsavel"}</small>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </ModalShell>
@@ -1099,21 +1110,32 @@ export function AgendaPage() {
             </div>
 
             <div className="agenda-slot-modal__list">
-              {selectedUnscheduledGroup.tasks.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  className="agenda-slot-modal__item"
-                  onClick={() => {
-                    setSelectedUnscheduledGroup(null);
-                    selectTask(task.id);
-                  }}
-                >
-                  <strong>{task.title}</strong>
-                  <span>{activeMembers[task.assignee]?.name ?? "Sem responsavel"}</span>
-                  <small>{getTaskTypeDisplayMeta(typeMap, task.type).label}</small>
-                </button>
-              ))}
+              {selectedUnscheduledGroup.tasks.map((task) => {
+                const typeMeta = getTaskTypeDisplayMeta(typeMap, task.type);
+
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className="agenda-slot-modal__item"
+                    style={
+                      {
+                        "--agenda-slot-item-accent": typeMeta.text,
+                        "--agenda-slot-item-accent-soft": typeMeta.background,
+                        "--agenda-slot-item-border": typeMeta.border
+                      } as CSSProperties
+                    }
+                    onClick={() => {
+                      setSelectedUnscheduledGroup(null);
+                      selectTask(task.id);
+                    }}
+                  >
+                    <strong>{task.title}</strong>
+                    <span>{activeMembers[task.assignee]?.name ?? "Sem responsavel"}</span>
+                    <small>{typeMeta.label}</small>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </ModalShell>

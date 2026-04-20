@@ -41,11 +41,12 @@ function buildBoardColumnsView(
 ): { statuses: TaskStatus[]; tasks: Task[] } | null {
   if (boardCols.length === 0) return null;
 
-  const visibleSet =
+  const scopedColumns =
     Array.isArray(visibleBoardColumnIds) && visibleBoardColumnIds.length > 0
-      ? new Set(visibleBoardColumnIds)
-      : null;
-  const scopedColumns = visibleSet ? boardCols.filter(column => visibleSet.has(column.id)) : boardCols;
+      ? visibleBoardColumnIds
+          .map(columnId => boardCols.find(column => column.id === columnId))
+          .filter((column): column is ApiBoardColumn => Boolean(column))
+      : boardCols;
 
   if (scopedColumns.length === 0) return null;
 

@@ -7,13 +7,15 @@
 }
 
 .board-columns {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 10px;
   align-items: start;
+  min-width: max-content;
 }
 
 .board-column {
+  flex: 0 0 280px;
   background: #ffffff;
   border: 1px solid #d8e4ee;
   border-radius: var(--radius-xs);
@@ -118,15 +120,8 @@
 }
 
 @media (max-width: 1140px) {
-  .board-columns {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-  }
-
   .board-column {
-    min-width: min(82vw, 320px);
+    flex: 0 0 min(82vw, 300px);
     min-height: 58vh;
     max-height: 58vh;
   }

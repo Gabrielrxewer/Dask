@@ -5,7 +5,6 @@ import { useWorkspace } from "@/modules/workspace";
 import { workspaceService } from "@/modules/workspace/api";
 import { AppShell } from "@/widgets/app-shell";
 import {
-  buildWorkspaceSettingsColumnsPath,
   buildWorkspaceSettingsCustomFieldsPath,
   buildWorkspaceSettingsItemTypesPath,
   buildWorkspaceSettingsMembersPath,
@@ -22,19 +21,14 @@ const NAV_ITEMS = [
     buildPath: buildWorkspaceSettingsPath
   },
   {
-    label: "Perspectivas",
-    description: "Visoes para cada equipe ou rotina",
+    label: "Editor de board",
+    description: "Perspectivas, colunas e visibilidade",
     buildPath: buildWorkspaceSettingsPerspectivesPath
   },
   {
     label: "Estados",
     description: "Etapas reais do fluxo de trabalho",
     buildPath: buildWorkspaceSettingsWorkflowStatesPath
-  },
-  {
-    label: "Colunas",
-    description: "Como os estados aparecem no board",
-    buildPath: buildWorkspaceSettingsColumnsPath
   },
   {
     label: "Work items",

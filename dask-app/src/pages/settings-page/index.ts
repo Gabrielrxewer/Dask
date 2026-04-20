@@ -6,6 +6,7 @@ export { ItemTypesSettings as ItemTypesSettingsPage } from "@/pages/settings-pag
 export { CustomFieldsSettings as CustomFieldsSettingsPage } from "@/pages/settings-page/ui/custom-fields-settings";
 export { PerspectivesSettings as PerspectivesSettingsPage } from "@/pages/settings-page/ui/perspectives-settings";
 export { MembersSettings as MembersSettingsPage } from "@/pages/settings-page/ui/members-settings";
+export { BoardEditorSettings as BoardEditorSettingsPage } from "@/pages/settings-page/ui/board-editor-settings";
 
 // Manter compatibilidade com imports existentes
 export { SettingsShell as SettingsPage } from "@/pages/settings-page/ui/settings-shell";

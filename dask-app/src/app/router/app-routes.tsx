@@ -14,8 +14,8 @@ import {
   BillingCancelPage,
   BillingSuccessPage,
   BoardPage,
+  BoardEditorSettingsPage,
   ChoosePlanPage,
-  ColumnsSettingsPage,
   CustomFieldsSettingsPage,
   DocumentationPage,
   GeneralSettingsPage,
@@ -29,7 +29,6 @@ import {
   MembersSettingsPage,
   NoWorkspacePage,
   PlatformAdminPage,
-  PerspectivesSettingsPage,
   ResetPasswordPage,
   SettingsShellPage,
   SubscriptionBlockedPage,
@@ -241,10 +240,11 @@ export function AppRoutes() {
             >
               <Route index element={<GeneralSettingsPage />} />
               <Route path="workflow-states" element={<WorkflowStatesSettingsPage />} />
-              <Route path="columns" element={<ColumnsSettingsPage />} />
               <Route path="item-types" element={<ItemTypesSettingsPage />} />
               <Route path="custom-fields" element={<CustomFieldsSettingsPage />} />
-              <Route path="perspectives" element={<PerspectivesSettingsPage />} />
+              {/* Editor de board: substitui Perspectivas + Colunas */}
+              <Route path="perspectives" element={<BoardEditorSettingsPage />} />
+              <Route path="columns" element={<Navigate replace to="perspectives" />} />
               {/* Aliases de rotas pre-existentes */}
               <Route path="members" element={<MembersSettingsPage />} />
               <Route path="workflow" element={<WorkflowStatesSettingsPage />} />

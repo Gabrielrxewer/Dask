@@ -27,6 +27,7 @@ export { MarketingPage } from "@/pages/marketing-page";
 export {
   SettingsShellPage,
   GeneralSettingsPage,
+  BoardEditorSettingsPage,
   ColumnsSettingsPage,
   WorkflowStatesSettingsPage,
   ItemTypesSettingsPage,

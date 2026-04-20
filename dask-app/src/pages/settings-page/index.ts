@@ -7,6 +7,7 @@ export { CustomFieldsSettings as CustomFieldsSettingsPage } from "@/pages/settin
 export { PerspectivesSettings as PerspectivesSettingsPage } from "@/pages/settings-page/ui/perspectives-settings";
 export { MembersSettings as MembersSettingsPage } from "@/pages/settings-page/ui/members-settings";
 export { BoardEditorSettings as BoardEditorSettingsPage } from "@/pages/settings-page/ui/board-editor-settings";
+export { WorkItemEditorSettings as WorkItemEditorSettingsPage } from "@/pages/settings-page/ui/work-item-editor-settings";
 
 // Manter compatibilidade com imports existentes
 export { SettingsShell as SettingsPage } from "@/pages/settings-page/ui/settings-shell";

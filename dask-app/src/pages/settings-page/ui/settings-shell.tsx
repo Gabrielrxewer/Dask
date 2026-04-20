@@ -5,7 +5,6 @@ import { useWorkspace } from "@/modules/workspace";
 import { workspaceService } from "@/modules/workspace/api";
 import { AppShell } from "@/widgets/app-shell";
 import {
-  buildWorkspaceSettingsCustomFieldsPath,
   buildWorkspaceSettingsItemTypesPath,
   buildWorkspaceSettingsMembersPath,
   buildWorkspaceSettingsPerspectivesPath,
@@ -31,14 +30,9 @@ const NAV_ITEMS = [
     buildPath: buildWorkspaceSettingsWorkflowStatesPath
   },
   {
-    label: "Work items",
-    description: "Tipos, campos e preview do card",
+    label: "Editor de work items",
+    description: "Formulario, card e campos no mesmo fluxo",
     buildPath: buildWorkspaceSettingsItemTypesPath
-  },
-  {
-    label: "Campos",
-    description: "Informacoes extras dos work items",
-    buildPath: buildWorkspaceSettingsCustomFieldsPath
   }
 ];
 

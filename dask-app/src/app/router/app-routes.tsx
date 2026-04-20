@@ -16,11 +16,9 @@ import {
   BoardPage,
   BoardEditorSettingsPage,
   ChoosePlanPage,
-  CustomFieldsSettingsPage,
   DocumentationPage,
   GeneralSettingsPage,
   HomePage,
-  ItemTypesSettingsPage,
   LeadsPage,
   MarketingPage,
   ListPage,
@@ -31,6 +29,7 @@ import {
   PlatformAdminPage,
   ResetPasswordPage,
   SettingsShellPage,
+  WorkItemEditorSettingsPage,
   SubscriptionBlockedPage,
   TermsOfUsePage,
   TimelinePage,
@@ -240,8 +239,8 @@ export function AppRoutes() {
             >
               <Route index element={<GeneralSettingsPage />} />
               <Route path="workflow-states" element={<WorkflowStatesSettingsPage />} />
-              <Route path="item-types" element={<ItemTypesSettingsPage />} />
-              <Route path="custom-fields" element={<CustomFieldsSettingsPage />} />
+              <Route path="item-types" element={<WorkItemEditorSettingsPage />} />
+              <Route path="custom-fields" element={<Navigate replace to="../item-types" />} />
               {/* Editor de board: substitui Perspectivas + Colunas */}
               <Route path="perspectives" element={<BoardEditorSettingsPage />} />
               <Route path="columns" element={<Navigate replace to="perspectives" />} />

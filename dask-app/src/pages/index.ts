@@ -28,6 +28,7 @@ export {
   SettingsShellPage,
   GeneralSettingsPage,
   BoardEditorSettingsPage,
+  WorkItemEditorSettingsPage,
   ColumnsSettingsPage,
   WorkflowStatesSettingsPage,
   ItemTypesSettingsPage,

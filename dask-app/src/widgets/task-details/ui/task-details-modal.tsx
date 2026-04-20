@@ -191,6 +191,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     plannedEndAt: isCreateMode ? "" : normalizeDateTimeInput(props.task.plannedEndAt)
   });
   const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
+  const [tagInputDraft, setTagInputDraft] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [availableDocuments, setAvailableDocuments] = useState<WorkspaceDocument[]>([]);
@@ -288,6 +289,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     setPriorityDraft(2);
     setScheduleDraft({ plannedStartAt: "", plannedEndAt: "" });
     setIsMetadataCollapsed(false);
+    setTagInputDraft("");
     setCustomFieldDrafts({});
     setError("");
   }, [createStatusId, isCreateMode, initialAssigneeId, initialType]);
@@ -315,6 +317,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       plannedEndAt: normalizeDateTimeInput(props.task.plannedEndAt)
     });
     setIsMetadataCollapsed(false);
+    setTagInputDraft("");
     setError("");
     setCustomFieldDrafts(
       Object.keys(props.task.customFields).reduce<Record<string, TaskCustomFieldValue>>((acc, fieldId) => {
@@ -662,7 +665,9 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           <h2 id="task-details-title">{isCreateMode ? "Criar tarefa" : "Editar tarefa"}</h2>
         </div>
         <button className="task-details__close" type="button" onClick={props.onClose} aria-label="Fechar editor">
-          x
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" width="16" height="16">
+            <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
         </button>
       </header>
 
@@ -715,19 +720,75 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
             <div className="task-details__section-head">
               <h3 className="task-details__summary-style-title">Tags</h3>
             </div>
-            <TextInput
-              className="task-details__tags-input"
-              value={tagsDraft.join(", ")}
-              onChange={event =>
-                setTagsDraft(
-                  event.target.value
-                    .split(",")
-                    .map(entry => entry.trim())
-                    .filter(Boolean)
-                )
-              }
-              placeholder="cliente, urgente, integracao"
-            />
+            <div
+              className="task-details__tag-field"
+              onClick={event => {
+                const input = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>(".task-details__tag-text-input");
+                input?.focus();
+              }}
+            >
+              <div className="task-details__tag-chips-row">
+                {tagsDraft.map(tag => (
+                  <span key={tag} className="task-details__editable-tag">
+                    <span className="task-details__editable-tag-text">{tag}</span>
+                    <button
+                      type="button"
+                      className="task-details__tag-remove"
+                      onClick={event => {
+                        event.stopPropagation();
+                        setTagsDraft(current => current.filter(t => t !== tag));
+                      }}
+                      aria-label={`Remover tag ${tag}`}
+                    >
+                      <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="8" height="8">
+                        <path d="M8 2L2 8M2 2l6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+                <input
+                  className="task-details__tag-text-input"
+                  value={tagInputDraft}
+                  onChange={event => setTagInputDraft(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === "Enter" || event.key === ",") {
+                      event.preventDefault();
+                      const trimmed = tagInputDraft.trim().replace(/,$/g, "");
+                      if (trimmed && !tagsDraft.includes(trimmed)) {
+                        setTagsDraft(current => [...current, trimmed]);
+                      }
+                      setTagInputDraft("");
+                    } else if (event.key === "Backspace" && !tagInputDraft && tagsDraft.length > 0) {
+                      setTagsDraft(current => current.slice(0, -1));
+                    }
+                  }}
+                  placeholder={tagsDraft.length === 0 ? "Digite e pressione Enter para adicionar..." : ""}
+                  size={1}
+                />
+              </div>
+              {availableTags.filter(tag => !tagsDraft.includes(tag.name)).length > 0 ? (
+                <div className="task-details__tag-suggestions">
+                  <span className="task-details__tag-suggestions-label">Sugeridas:</span>
+                  {availableTags
+                    .filter(tag => !tagsDraft.includes(tag.name))
+                    .slice(0, 6)
+                    .map(tag => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        className="task-details__tag-suggestion"
+                        onClick={() => {
+                          if (!tagsDraft.includes(tag.name)) {
+                            setTagsDraft(current => [...current, tag.name]);
+                          }
+                        }}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                </div>
+              ) : null}
+            </div>
           </section>
 
           <section className="task-details__section">
@@ -785,8 +846,10 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                   key={option}
                   type="button"
                   className={`task-details__priority-option ${priorityDraft === option ? "is-active" : ""}`}
+                  data-priority={option}
                   onClick={() => setPriorityDraft(option)}
                 >
+                  <span className="task-details__priority-dot" aria-hidden="true" />
                   <strong>{priorityMeta[option].label}</strong>
                 </button>
               ))}
@@ -811,7 +874,11 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                       aria-pressed={item.done}
                       onClick={() => void props.onToggleChecklistItem(task.id, item.id)}
                     >
-                      {item.done ? "x" : "o"}
+                      {item.done ? (
+                        <svg viewBox="0 0 14 14" fill="none" aria-hidden="true" width="10" height="10">
+                          <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : null}
                     </button>
                     <p>{item.label}</p>
                   </li>
@@ -923,23 +990,32 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                         : [];
 
                       return (
-                        <div className="task-details__multi-options">
+                        <div className="task-details__multi-pills">
                           {options.map(option => {
-                            const checked = currentValues.includes(option);
+                            const isChecked = currentValues.includes(option);
                             return (
-                              <label key={`${field.id}-${option}`} className="task-details__multi-option">
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={event => {
-                                    const next = event.target.checked
-                                      ? Array.from(new Set([...currentValues, option]))
-                                      : currentValues.filter(entry => entry !== option);
-                                    setCustomFieldDrafts(current => ({ ...current, [field.id]: next }));
-                                  }}
-                                />
-                                <span>{option}</span>
-                              </label>
+                              <button
+                                key={`${field.id}-${option}`}
+                                type="button"
+                                className={`task-details__multi-pill ${isChecked ? "is-active" : ""}`}
+                                onClick={() => {
+                                  const next = isChecked
+                                    ? currentValues.filter(entry => entry !== option)
+                                    : Array.from(new Set([...currentValues, option]));
+                                  setCustomFieldDrafts(current => ({ ...current, [field.id]: next }));
+                                }}
+                              >
+                                {isChecked ? (
+                                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
+                                    <path d="M1.5 5l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                ) : (
+                                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
+                                    <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                  </svg>
+                                )}
+                                {option}
+                              </button>
                             );
                           })}
                         </div>
@@ -947,17 +1023,21 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                     }
 
                     if (field.type === "boolean") {
+                      const isOn = customFieldDrafts[field.id] === true;
                       return (
-                        <label className="task-details__checkbox-row">
-                          <input
-                            type="checkbox"
-                            checked={customFieldDrafts[field.id] === true}
-                            onChange={event =>
-                              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.checked }))
-                            }
-                          />
-                          <span>Ativado</span>
-                        </label>
+                        <button
+                          type="button"
+                          className={`task-details__toggle-switch ${isOn ? "is-on" : ""}`}
+                          onClick={() =>
+                            setCustomFieldDrafts(current => ({ ...current, [field.id]: !isOn }))
+                          }
+                          aria-pressed={isOn}
+                        >
+                          <span className="task-details__toggle-track">
+                            <span className="task-details__toggle-thumb" />
+                          </span>
+                          <span className="task-details__toggle-label">{isOn ? "Ativado" : "Desativado"}</span>
+                        </button>
                       );
                     }
 

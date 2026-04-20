@@ -8,121 +8,121 @@ import type {
 } from "./home-page.types";
 
 export const heroBadges: HomeBadge[] = [
-  { label: "IA continua" },
-  { label: "Busca semantica", tone: "success" },
+  { label: "Do lead ao faturamento" },
+  { label: "IA contextual", tone: "success" },
   { label: "Estrutura configuravel", tone: "warning" }
 ];
 
 export const heroSignals: HomeSignal[] = [
   {
-    label: "IA distribuida",
-    value: "apoia da entrada a execucao",
-    description: "Descricao, padrao, proxima acao e contexto deixam de depender de consultas soltas."
+    label: "Continuidade operacional",
+    value: "o mesmo contexto atravessa toda a jornada",
+    description: "Lead, escopo, documentacao, execucao, agenda e cobranca deixam de viver em ferramentas separadas."
   },
   {
-    label: "Busca com contexto",
-    value: "encontra significado entre areas",
-    description: "Recupere itens, templates, historico e referencias sem depender do nome exato."
+    label: "Menos retrabalho",
+    value: "pare de reescrever o mesmo trabalho",
+    description: "O que foi vendido alimenta o escopo. O que foi documentado orienta a execucao. O que foi executado sustenta o faturamento."
   },
   {
-    label: "Operacao flexivel",
-    value: "boards, campos e templates adaptaveis",
-    description: "A mesma base atende software, suporte, escola, administrativo, qualidade e mais."
+    label: "IA ao longo do fluxo",
+    value: "inteligencia aplicada no contexto certo",
+    description: "A IA apoia transicao, analise e decisao dentro da operacao, em vez de virar um assistente solto fora do processo."
   }
 ];
 
 export const valuePillars: HomeValuePillar[] = [
   {
-    eyebrow: "IA continua",
-    title: "Inteligencia no ponto em que o trabalho acontece.",
-    description: "Apoio para descrever, priorizar, contextualizar e sugerir proximos passos dentro do fluxo."
+    eyebrow: "Fluxo continuo",
+    title: "Do comercial a entrega no mesmo dado.",
+    description: "O que entra como oportunidade evolui para escopo, documentacao, execucao e acompanhamento sem perder rastreabilidade."
   },
   {
-    eyebrow: "Busca semantica",
-    title: "Contexto recuperavel por significado.",
-    description: "Itens, historicos, templates e referencias aparecem pela intencao da busca, nao apenas pelo nome exato."
+    eyebrow: "Contexto preservado",
+    title: "Da user story a cobranca, sem quebra de contexto.",
+    description: "Cada etapa herda historico, decisao e referencia da etapa anterior, reduzindo ruido, retrabalho e desalinhamento."
   },
   {
-    eyebrow: "Estrutura configuravel",
-    title: "Estrutura flexivel sem perder clareza.",
-    description: "Workspaces, boards, campos, views, regras e templates se ajustam ao processo de cada operacao."
+    eyebrow: "IA aplicada",
+    title: "Inteligencia dentro da operacao, nao ao lado dela.",
+    description: "A IA ajuda a interpretar contexto, sugerir proximos passos e acelerar execucao ao longo da jornada inteira."
   }
 ];
 
 export const processStages: HomeProcessStage[] = [
   {
     step: "01",
-    title: "Entrada estruturada",
-    description: "Templates e campos essenciais padronizam o que entra no fluxo."
+    title: "Lead e oportunidade",
+    description: "Centralize origem, necessidade, escopo inicial e sinais comerciais em vez de espalhar informacao em CRM, chat e anotacoes."
   },
   {
     step: "02",
-    title: "Enriquecimento com IA",
-    description: "Descricoes, prioridades e sinais recebem contexto antes da execucao."
+    title: "Escopo e documentacao",
+    description: "Transforme contexto comercial em proposta, user stories, requisitos e referencias sem reiniciar o trabalho."
   },
   {
     step: "03",
-    title: "Busca contextual",
-    description: "Historico, itens relacionados e referencias ficam recuperaveis por significado."
+    title: "Execucao conectada",
+    description: "Boards, listas, timeline e agenda operam sobre o mesmo contexto que veio das etapas anteriores."
   },
   {
     step: "04",
-    title: "Execucao com contexto",
-    description: "O time decide com mais clareza, menos retrabalho e melhor rastreabilidade."
+    title: "Acompanhamento e previsibilidade",
+    description: "Status, datas, dependencias e historico ficam visiveis para acompanhar entrega sem reconstruir a narrativa em cada reuniao."
   },
   {
     step: "05",
-    title: "Evolucao continua",
-    description: "Regras, views e templates amadurecem junto com a operacao."
+    title: "Cobranca e faturamento",
+    description: "A operacao realizada alimenta cobranca, fiscal e faturamento com mais clareza, rastreabilidade e menos retrabalho."
   }
 ];
 
 export const useCases: HomeUseCase[] = [
   {
-    title: "Software",
-    focus: "Discovery, backlog, entrega, QA e suporte conectados."
+    title: "Software houses",
+    focus: "Lead, proposta, backlog, entrega e faturamento no mesmo fluxo."
   },
   {
-    title: "Administrativo",
-    focus: "Solicitacoes, aprovacoes, SLAs e execucao interna."
+    title: "Fabricas de software",
+    focus: "Padronize projetos, operacao por cliente e continuidade entre times."
   },
   {
-    title: "Qualidade",
-    focus: "Ocorrencias, nao conformidades e planos de acao."
+    title: "Startups de desenvolvimento",
+    focus: "Conecte discovery, documentacao, execucao e acompanhamento do produto."
   },
   {
-    title: "Suporte",
-    focus: "Atendimentos, historico, prioridade e melhoria continua."
+    title: "Consultorias por projeto",
+    focus: "Venda, escopo, entrega e cobranca com menos troca de ferramenta."
   },
   {
-    title: "Escola",
-    focus: "Secretaria, acompanhamento academico e comunicacao interna."
+    title: "Outras operacoes",
+    focus: "A mesma base pode expandir para suporte, administrativo e fluxos especificos depois."
   }
 ];
 
 export const architectureItems: HomeArchitectureItem[] = [
   {
     label: "Workspaces",
-    detail: "Separacao clara por area, cliente, unidade ou frente operacional."
+    detail: "Separe operacoes por cliente, unidade, squad ou frente sem perder o padrao do processo."
   },
   {
     label: "Boards",
-    detail: "Modelos de fluxo para organizar demanda, execucao e acompanhamento."
+    detail: "Organize execucao e acompanhamento sem desconectar o board do escopo, da documentacao e da cobranca."
   },
   {
     label: "Campos",
-    detail: "Informacoes essenciais adaptadas a cada tipo de operacao."
+    detail: "Carregue dados comerciais, operacionais e financeiros que precisam atravessar a jornada."
   },
   {
     label: "Views",
-    detail: "Leitura por kanban, lista, timeline e perspectivas de gestao."
+    detail: "Leia o mesmo processo por kanban, lista, timeline e agenda conforme a necessidade da operacao."
   },
   {
     label: "Regras",
-    detail: "Automacoes e criterios que reduzem trabalho repetitivo."
+    detail: "Automacoes e criterios reduzem repeticao e ajudam a manter continuidade entre etapas."
   },
   {
     label: "Templates",
-    detail: "Padroes replicaveis para escalar boas praticas com consistencia."
+    detail: "Repita boas praticas de proposta, escopo, execucao e faturamento com consistencia."
   }
 ];

@@ -7,18 +7,20 @@ import {
   heroBadges,
   heroSignals,
   processStages,
-  useCases
+  useCases,
+  valuePillars
 } from "./home-page.data";
 import type {
   HomeArchitectureItem,
   HomeBadge,
   HomeProcessStage,
   HomeSignal,
-  HomeUseCase
+  HomeUseCase,
+  HomeValuePillar
 } from "./home-page.types";
 import "./home-page.css";
 
-type HomeSectionId = "top" | "inteligencia" | "contextos" | "estruturas" | "precos";
+type HomeSectionId = "top" | "valor" | "inteligencia" | "contextos" | "estruturas" | "precos";
 
 function SectionIntro({
   id,
@@ -50,6 +52,17 @@ function SignalCard({ signal }: { signal: HomeSignal }) {
       <p className="home-page__signal-label">{signal.label}</p>
       <strong className="home-page__signal-value">{signal.value}</strong>
       <p className="home-page__signal-description">{signal.description}</p>
+    </article>
+  );
+}
+
+function ValuePillarCard({ pillar, index }: { pillar: HomeValuePillar; index: number }) {
+  return (
+    <article className="home-page__pillar">
+      <span className="home-page__pillar-number">{String(index + 1).padStart(2, "0")}</span>
+      <p className="home-page__pillar-eyebrow">{pillar.eyebrow}</p>
+      <h3>{pillar.title}</h3>
+      <p>{pillar.description}</p>
     </article>
   );
 }
@@ -93,8 +106,8 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
     >
       <SectionIntro
         eyebrow="Planos"
-        title="Simples, direto e sem surpresas."
-        description="Escolha o plano que melhor se encaixa na sua operacao. Cobranca mensal recorrente, cancele quando quiser."
+        title="Comece simples. Estruture a operacao inteira."
+        description="Escolha o plano ideal para sair da fragmentacao e operar no mesmo sistema. Cobranca mensal recorrente, sem surpresa e com cancelamento quando quiser."
       />
 
       <div className="home-page__pricing-cards">
@@ -104,9 +117,15 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
             <strong>R$ 19,90</strong>
             <span>/mes</span>
           </div>
-          <p className="home-page__pricing-description">Para uso individual com boards, IA e automacoes basicas.</p>
+          <p className="home-page__pricing-description">Para profissionais que querem centralizar contexto, tarefas e acompanhamento em um fluxo individual.</p>
           <ul className="home-page__pricing-features">
-            {["1 workspace pessoal", "Boards, listas e timeline", "IA para melhorias", "Automacoes basicas", "Busca semantica"].map((feature) => (
+            {[
+              "1 workspace pessoal",
+              "Boards, listas e timeline",
+              "Contexto continuo para demandas e entregas",
+              "IA aplicada ao fluxo",
+              "Automacoes basicas e busca contextual"
+            ].map((feature) => (
               <li key={feature}>{feature}</li>
             ))}
           </ul>
@@ -115,26 +134,26 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
             onClick={() => onSubscribeClick("PERSONAL")}
             type="button"
           >
-            Assinar Pessoal
+            Comecar no Pessoal
           </button>
         </article>
 
         <article className="home-page__pricing-card home-page__pricing-card--featured">
-          <span className="home-page__pricing-badge">Popular</span>
+          <span className="home-page__pricing-badge">Mais escolhido</span>
           <p className="home-page__pricing-plan-name">Business</p>
           <div className="home-page__pricing-price">
             <strong>R$ 99,00</strong>
             <span>/mes</span>
           </div>
-          <p className="home-page__pricing-description">Para equipes e operacoes corporativas com recursos avancados.</p>
+          <p className="home-page__pricing-description">Para software houses e equipes que precisam conectar comercial, entrega, acompanhamento e cobranca na mesma operacao.</p>
           <ul className="home-page__pricing-features">
             {[
               "Multiplos workspaces",
-              "Suporte a equipes",
-              "Boards, listas e timeline",
-              "IA avancada e automacoes",
+              "Fluxo compartilhado entre comercial, operacao e faturamento",
+              "Boards, listas, timeline e agenda",
+              "IA contextual e automacoes",
               "Campos personalizados",
-              "Auditoria e integracoes",
+              "Rastreabilidade, auditoria e integracoes",
               "Suporte prioritario"
             ].map((feature) => (
               <li key={feature}>{feature}</li>
@@ -145,7 +164,7 @@ function PricingSection({ onSubscribeClick }: { onSubscribeClick: (plan: "PERSON
             onClick={() => onSubscribeClick("BUSINESS")}
             type="button"
           >
-            Assinar Business
+            Estruturar com Business
           </button>
         </article>
       </div>
@@ -172,23 +191,23 @@ function HomeHeroView({
     <section className="home-page__hero" id="top" aria-label="Tela inicial da plataforma">
       <div className="home-page__hero-copy">
         <img className="home-page__logo" src={daskLogoFull} alt="Logo Dask" />
-        <p className="home-page__eyebrow">Plataforma operacional inteligente</p>
-        <h1 className="home-page__title">Operacao inteligente com IA continua.</h1>
+        <p className="home-page__eyebrow">Plataforma operacional para software houses e startups</p>
+        <h1 className="home-page__title">Seu processo inteiro, no mesmo sistema.</h1>
         <p className="home-page__description">
-          O Dask organiza processos, conecta contexto e distribui inteligencia ao longo da operacao com uma estrutura
-          flexivel e clara.
+          Do lead ao faturamento, o Dask conecta comercial, escopo, documentacao, execucao, agenda e cobranca no
+          mesmo contexto. A IA acompanha essa jornada inteira, sem transformar sua operacao em ilhas de ferramenta.
         </p>
 
         <div className="home-page__actions">
           <Link className="home-page__action home-page__action--primary" to={privateEntryPath}>
-            {isAuthenticated ? "Acessar Dask" : "Entrar na plataforma"}
+            {isAuthenticated ? "Abrir operacao" : "Entrar no Dask"}
           </Link>
           <button
             className="home-page__action home-page__action--secondary"
             type="button"
             onClick={onExploreClick}
           >
-            Explorar a plataforma
+            Ver o fluxo completo
           </button>
         </div>
       </div>
@@ -201,8 +220,8 @@ function HomeHeroView({
             ))}
           </div>
           <p className="home-page__hero-side-summary">
-            Uma plataforma configuravel para software, operacoes administrativas, escola, suporte, projetos e outros
-            fluxos que exigem clareza e inteligencia no processo.
+            Nao e so mais um board com IA. O Dask foi pensado para operacoes de software que precisam vender,
+            documentar, executar, acompanhar e faturar sem reescrever o mesmo trabalho em varias ferramentas.
           </p>
         </div>
 
@@ -212,6 +231,28 @@ function HomeHeroView({
           ))}
         </div>
       </aside>
+    </section>
+  );
+}
+
+function ValueSection() {
+  return (
+    <section
+      id="valor"
+      className="home-page__section home-page__tab-section home-page__value-section"
+      aria-label="Proposta de valor"
+    >
+      <SectionIntro
+        eyebrow="Por que Dask"
+        title="Continuidade operacional, nao fragmentacao."
+        description="O mesmo dado evolui do comercial a entrega e ao faturamento. Isso reduz retrabalho, preserva contexto e acelera a operacao real de software houses, fabricas de software e times de produto."
+      />
+
+      <div className="home-page__pillar-grid" aria-label="Beneficios centrais do Dask">
+        {valuePillars.map((pillar, index) => (
+          <ValuePillarCard key={pillar.title} pillar={pillar} index={index} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -226,8 +267,8 @@ function IntelligenceView() {
       <div className="home-page__workflow-copy">
         <SectionIntro
           eyebrow="Como funciona"
-          title="Do registro inicial a evolucao do processo."
-          description="A plataforma acompanha o fluxo real: organiza a entrada, adiciona contexto, recupera conhecimento e melhora a execucao com continuidade."
+          title="Do lead a cobranca, sem perder contexto."
+          description="No Dask, a operacao nao reinicia a cada etapa. O que nasce no comercial continua no escopo, vira documentacao, alimenta a execucao, organiza acompanhamento e sustenta cobranca e faturamento."
         />
       </div>
 
@@ -248,9 +289,9 @@ function AdaptabilityView() {
       aria-label="Adaptabilidade"
     >
       <SectionIntro
-        eyebrow="Adaptabilidade"
-        title="A mesma base para contextos diferentes."
-        description="Software, administrativo, qualidade, suporte e escola podem operar com a mesma logica de clareza, busca e inteligencia aplicada."
+        eyebrow="Aplicacao"
+        title="Feito para operacoes de software. Expansivel quando precisar."
+        description="A mensagem principal do Dask e software house, fabrica de software, startup de desenvolvimento e operacoes por projeto. Outros contextos podem usar a mesma base depois, sem roubar o foco da proposta central."
       />
 
       <div className="home-page__context-map" aria-label="Contextos de aplicacao">
@@ -260,8 +301,8 @@ function AdaptabilityView() {
       </div>
 
       <aside className="home-page__adaptability-note" aria-label="Resumo de adaptabilidade">
-        <p>Escala sem fragmentar a experiencia.</p>
-        <strong>Um produto consistente para operacoes com linguagens diferentes.</strong>
+        <p>Expansao controlada</p>
+        <strong>Comece pela operacao de software e leve o mesmo sistema para outras frentes.</strong>
       </aside>
     </section>
   );
@@ -276,8 +317,8 @@ function StructureView() {
     >
       <SectionIntro
         eyebrow="Arquitetura configuravel"
-        title="Flexibilidade estrutural com leitura simples."
-        description="A configuracao aparece como uma base estrategica: suficiente para adaptar processos, sem transformar a experiencia em uma tela tecnica demais."
+        title="Configuravel para o processo. Objetivo na narrativa."
+        description="A configuracao existe para sustentar o fluxo comercial, operacional e financeiro do seu time. Ela e importante, mas nao substitui a promessa principal: manter tudo no mesmo sistema, no mesmo contexto."
       />
 
       <div className="home-page__architecture-grid">
@@ -288,9 +329,9 @@ function StructureView() {
         </div>
 
         <aside className="home-page__architecture-preview" aria-label="Resumo da configuracao">
-          <p className="home-page__architecture-preview-eyebrow">Modelo operacional</p>
-          <h3>Configurar, operar, aprender e replicar.</h3>
-          <p>Workspaces e templates mantem o padrao. Campos, views e regras absorvem a particularidade de cada fluxo.</p>
+          <p className="home-page__architecture-preview-eyebrow">Base configuravel</p>
+          <h3>Padrao onde precisa, flexibilidade onde importa.</h3>
+          <p>Templates, campos, views e regras adaptam o processo sem quebrar a continuidade entre venda, documentacao, execucao e faturamento.</p>
         </aside>
       </div>
     </section>
@@ -317,7 +358,10 @@ export function HomePage() {
     <main className="home-page">
       <div className="home-page__container">
         <div className="home-page__view">
-          <HomeHeroView isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("inteligencia")} />
+          <HomeHeroView isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("valor")} />
+        </div>
+        <div className="home-page__view">
+          <ValueSection />
         </div>
         <div className="home-page__view">
           <IntelligenceView />

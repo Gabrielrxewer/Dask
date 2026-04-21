@@ -8,6 +8,7 @@ import { env } from '@/core/config/env';
 import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
 import { errorMiddleware } from '@/core/http/error-middleware';
+import { infraAvailabilityMiddleware } from '@/core/http/infra-availability-middleware';
 import { notFoundMiddleware } from '@/core/http/not-found-middleware';
 import { requirePlatformAdminMiddleware } from '@/core/http/require-platform-admin-middleware';
 import { telemetryHttpMiddleware } from '@/core/http/telemetry-http-middleware';
@@ -15,6 +16,7 @@ import { createDebugLogger, createRequestId, getLogger, logger } from '@/core/lo
 import { setTelemetryRecorder } from '@/core/telemetry/telemetry-recorder';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { prisma } from '@/infra/db/prisma';
+import { getInfraStates, hasCriticalInfraFailure } from '@/infra/runtime/infra-health';
 import { createPrismaTelemetryRecorder } from '@/modules/telemetry/infra/prisma-telemetry-recorder';
 import { createSubscriptionMiddleware } from '@/modules/billing/http/subscription-middleware';
 import { buildIdentityRoutes } from '@/modules/identity/http/routes';
@@ -205,9 +207,14 @@ export const createApp = (): Express => {
         metrics.pendingCount > 0 ? Number((metrics.retryPendingCount / metrics.pendingCount).toFixed(4)) : 0;
 
       res.status(200).json({
-        status: 'ok',
+        status: hasCriticalInfraFailure() ? 'degraded' : 'ok',
         service: 'dask-backend',
         env: env.NODE_ENV,
+        infrastructure: {
+          healthy: !hasCriticalInfraFailure(),
+          retryInSeconds: 10,
+          dependencies: getInfraStates()
+        },
         outbox: {
           pending: metrics.pendingCount,
           retryPending: metrics.retryPendingCount,
@@ -222,6 +229,8 @@ export const createApp = (): Express => {
   // Stripe webhook — must be registered directly on `app` BEFORE any router that applies
   // router.use(authMiddleware) globally, otherwise those routers intercept the request
   // and return 401 before it reaches the billing router.
+  app.use(infraAvailabilityMiddleware);
+
   if (billingService) {
     app.post(
       `${env.API_PREFIX}/billing/webhook`,

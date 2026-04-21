@@ -214,6 +214,15 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
         );
         lastMetricsLogAt = now;
       }
+    } catch (error) {
+      relayLogger.error(
+        {
+          event: 'outbox.relay.tick_failed',
+          retryInSeconds: Math.floor(env.OUTBOX_RELAY_INTERVAL_MS / 1000),
+          err: error
+        },
+        'Outbox relay tick failed'
+      );
     } finally {
       running = false;
     }

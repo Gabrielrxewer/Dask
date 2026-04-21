@@ -6,6 +6,7 @@ import {
   CARD_FIELDS_SCHEMA_VERSION,
   factoryBoardConfig,
   getTaskFieldTypeLabel,
+  inferCapabilitiesByType,
   isSystemCardFieldId,
   mergeCardFieldDefinitions,
   resolveFieldIdsForTaskType,
@@ -93,6 +94,26 @@ interface FieldLibraryItem extends TaskFieldDefinition {
   optionsCount: number;
   required: boolean;
   allowAiGeneration: boolean;
+}
+
+function mapCustomFieldTypeToTaskFieldType(type: CustomFieldType): TaskFieldDefinition["type"] {
+  return type;
+}
+
+function toTaskFieldDefinition(field: ApiCustomField): TaskFieldDefinition {
+  const type = mapCustomFieldTypeToTaskFieldType(field.type as CustomFieldType);
+
+  return {
+    id: field.id,
+    label: field.name,
+    type,
+    source: "custom",
+    options: field.options.map((option) => option.label),
+    capabilities: {
+      ...inferCapabilitiesByType(type),
+      ...(readAllowAiGeneration(field.settings) ? { aiEnhance: true } : {})
+    }
+  };
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -225,6 +246,7 @@ function getPreviewValue(field: TaskFieldDefinition): string {
   if (field.type === "number") return "42";
   if (field.type === "date") return "28/04/2026";
   if (field.type === "datetime") return "28/04 14:20";
+  if (field.type === "schedule") return "24/04 09:00 -> 26/04 18:00";
   if (field.type === "select" || field.type === "multi_select" || field.type === "multi-select") {
     return field.options?.slice(0, 2).join(", ") || "Opcao A";
   }
@@ -236,12 +258,55 @@ function getPreviewCustomFieldValue(field: TaskFieldDefinition): TaskCustomField
   if (field.type === "number") return 42;
   if (field.type === "date") return "2026-04-28";
   if (field.type === "datetime") return "2026-04-28 14:20";
+  if (field.type === "schedule") return "2026-04-24 09:00 -> 2026-04-26 18:00";
   if (field.type === "select") return field.options?.[0] ?? "Opcao A";
   if (field.type === "multi_select" || field.type === "multi-select") {
     const options = field.options?.slice(0, 2).filter(Boolean) ?? [];
     return options.length > 0 ? options : ["Opcao A", "Opcao B"];
   }
   return "Valor de exemplo";
+}
+
+function renderPreviewFieldValueByType(field: TaskFieldDefinition): ReactNode {
+  const normalizedType = field.type === "multi-select" ? "multi_select" : field.type;
+
+  if (normalizedType === "text_ai" || normalizedType === "long_text") {
+    return <p className="workitem-editor-v2__detail-preview-copy">{getPreviewValue(field)}</p>;
+  }
+
+  if (normalizedType === "multi_select") {
+    const values = String(getPreviewValue(field))
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return (
+      <div className="workitem-editor-v2__detail-preview-pills">
+        {values.map((value) => (
+          <span key={value} className="workitem-editor-v2__detail-preview-pill">{value}</span>
+        ))}
+      </div>
+    );
+  }
+
+  if (normalizedType === "checklist") {
+    return (
+      <div className="workitem-editor-v2__detail-preview-checklist">
+        <span className="workitem-editor-v2__detail-preview-progress">3 de 5 concluidos</span>
+        <div className="workitem-editor-v2__detail-preview-progressbar"><i /></div>
+      </div>
+    );
+  }
+
+  if (normalizedType === "boolean") {
+    return <div className="workitem-editor-v2__detail-preview-input">Ativado</div>;
+  }
+
+  if (normalizedType === "schedule") {
+    return <div className="workitem-editor-v2__detail-preview-input">{"24/04 09:00 -> 26/04 18:00"}</div>;
+  }
+
+  return <div className="workitem-editor-v2__detail-preview-input">{getPreviewValue(field)}</div>;
 }
 
 function removeFieldFromScope(draft: LayoutDraft, scope: LayoutScope, fieldId: string): LayoutDraft {
@@ -426,6 +491,7 @@ export function WorkItemEditorSettings() {
   const [fieldError, setFieldError] = useState("");
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
   const [dropTarget, setDropTarget] = useState<{ scope: LayoutScope; index: number } | null>(null);
+  const [activePreviewTab, setActivePreviewTab] = useState<"card" | "detail">("card");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -1050,34 +1116,7 @@ export function WorkItemEditorSettings() {
               </button>
             </div>
           </div>
-          <div className="workitem-editor-v2__detail-preview-card-body">
-            {field.id === "sys:description" ? (
-              <p className="workitem-editor-v2__detail-preview-copy">{PREVIEW_CARD_DESCRIPTION}</p>
-            ) : field.id === "sys:tags" ? (
-              <div className="workitem-editor-v2__detail-preview-pills">
-                {PREVIEW_CARD_TAGS.map((tag) => (
-                  <span key={tag} className="workitem-editor-v2__detail-preview-pill">{tag}</span>
-                ))}
-              </div>
-            ) : field.id === "sys:priority" ? (
-              <div className="workitem-editor-v2__detail-preview-priorities">
-                {["Urgente", "Alta", "Media", "Baixa"].map((label) => (
-                  <button key={label} type="button" className={`workitem-editor-v2__detail-priority-pill${label === "Media" ? " is-active" : ""}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            ) : field.id === "sys:checklist" ? (
-              <div className="workitem-editor-v2__detail-preview-checklist">
-                <span className="workitem-editor-v2__detail-preview-progress">3 de 5 concluidos</span>
-                <div className="workitem-editor-v2__detail-preview-progressbar"><i /></div>
-              </div>
-            ) : (
-              <div className="workitem-editor-v2__detail-preview-input">
-                {getPreviewValue(field)}
-              </div>
-            )}
-          </div>
+          <div className="workitem-editor-v2__detail-preview-card-body">{renderPreviewFieldValueByType(field)}</div>
         </div>
       </div>
     );
@@ -1184,9 +1223,29 @@ export function WorkItemEditorSettings() {
 
             {/* ── Previews (stacked) ──────────────────────────────────── */}
             <div className="workitem-editor-v2__previews">
+              <div className="workitem-editor-v2__preview-switcher" role="tablist" aria-label="Alternar preview do work item">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePreviewTab === "card"}
+                  className={`workitem-editor-v2__preview-tab${activePreviewTab === "card" ? " is-active" : ""}`}
+                  onClick={() => setActivePreviewTab("card")}
+                >
+                  Preview do card
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePreviewTab === "detail"}
+                  className={`workitem-editor-v2__preview-tab${activePreviewTab === "detail" ? " is-active" : ""}`}
+                  onClick={() => setActivePreviewTab("detail")}
+                >
+                  Preview do formulario
+                </button>
+              </div>
 
               {/* Card editor */}
-              <section className="workitem-editor-v2__panel">
+              <section className={`workitem-editor-v2__panel${activePreviewTab === "card" ? "" : " is-hidden"}`}>
                 <div className="workitem-editor-v2__panel-head">
                   <div>
                     <span>Card do board</span>
@@ -1372,7 +1431,7 @@ export function WorkItemEditorSettings() {
               </section>
 
               {/* Detail editor */}
-              <section className="workitem-editor-v2__panel">
+              <section className={`workitem-editor-v2__panel${activePreviewTab === "detail" ? "" : " is-hidden"}`}>
                 <div className="workitem-editor-v2__panel-head">
                   <div>
                     <span>Work item aberto</span>
@@ -1491,7 +1550,7 @@ export function WorkItemEditorSettings() {
       </div>
 
       {/* ── Bottom row ─────────────────────────────────────────────────── */}
-      <div className="workitem-editor-v2__composer-row">
+      {false ? <div className="workitem-editor-v2__composer-row">
         {/* Type composer */}
         <section className="workitem-editor-v2__composer">
           <header>
@@ -1704,7 +1763,7 @@ export function WorkItemEditorSettings() {
             </div>
           )}
         </section>
-      </div>
+      </div> : null}
 
       {layoutMessage ? <p className="workitem-editor-v2__footer-message">{layoutMessage}</p> : null}
     </div>

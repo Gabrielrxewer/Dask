@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '@/core/errors/app-error';
+import { toInfraUnavailableError } from '@/core/errors/infra-error';
 import { logger } from '@/core/logging/logger';
 import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 
@@ -10,6 +11,11 @@ export const errorMiddleware = (
   res: Response,
   _next: NextFunction
 ): void => {
+  const infraError = toInfraUnavailableError(err);
+  if (infraError) {
+    err = infraError;
+  }
+
   if (err instanceof ZodError) {
     void recordTelemetryEvent({
       category: 'error',

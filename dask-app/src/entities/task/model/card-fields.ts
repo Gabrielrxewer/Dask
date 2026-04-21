@@ -12,7 +12,7 @@ export const systemCardFieldDefinitions: TaskFieldDefinition[] = [
   { id: "sys:assignee", label: "Responsavel", type: "user", source: "system", capabilities: { selectable: true } },
   { id: "sys:tags", label: "Tags", type: "multi_select", source: "system", capabilities: { multiSelectable: true } },
   { id: "sys:checklist", label: "Checklist", type: "checklist", source: "system" },
-  { id: "sys:schedule", label: "Planejamento", type: "datetime", source: "system" },
+  { id: "sys:schedule", label: "Planejamento", type: "schedule", source: "system" },
   { id: "sys:due-date", label: "Prazo", type: "date", source: "system" }
 ];
 
@@ -161,6 +161,7 @@ export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "typ
     number: "Number",
     date: "Date",
     datetime: "DateTime",
+    schedule: "Schedule",
     boolean: "Boolean",
     select: "Select",
     multi_select: "Multi Select",

@@ -14,6 +14,7 @@ export type TaskFieldType =
   | "number"
   | "date"
   | "datetime"
+  | "schedule"
   | "select"
   | "multi-select"
   | "multi_select"

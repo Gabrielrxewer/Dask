@@ -122,6 +122,10 @@ function getFieldOptions(definition: TaskFieldDefinition): string[] {
   return definition.options.map(option => String(option).trim()).filter(Boolean);
 }
 
+function normalizeFieldType(type: TaskFieldDefinition["type"]): string {
+  return type === "multi-select" ? "multi_select" : type;
+}
+
 function normalizeFieldValue(definition: TaskFieldDefinition, value: TaskCustomFieldValue): TaskCustomFieldValue {
   if (definition.type === "number") {
     const asString = String(value ?? "").trim();
@@ -690,79 +694,59 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   };
 
   const renderFieldBody = (field: TaskFieldDefinition) => {
-    if (field.id === "sys:title") {
+    const normalizedType = normalizeFieldType(field.type);
+    const options =
+      field.id === "sys:type"
+        ? boardConfig.taskTypes.map(taskType => taskType.label)
+        : field.id === "sys:status"
+          ? statuses.map(option => option.label)
+          : field.id === "sys:priority"
+            ? taskPriorityOptions.map(option => priorityMeta[option].label)
+            : getFieldOptions(field);
+
+    if (field.id === "sys:title" || normalizedType === "text") {
       return (
         <TextInput
           id="task-details-title-input"
           className="task-details__title-input"
-          value={titleDraft}
-          onChange={event => setTitleDraft(event.target.value)}
-          placeholder="Ex: Ajustar fluxo de aprovacao com cliente"
-          autoFocus
+          value={field.id === "sys:title" ? titleDraft : String(customFieldDrafts[field.id] ?? "")}
+          onChange={event => {
+            if (field.id === "sys:title") {
+              setTitleDraft(event.target.value);
+              return;
+            }
+
+            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }));
+          }}
+          placeholder={field.id === "sys:title" ? "Ex: Ajustar fluxo de aprovacao com cliente" : `Ex: ${field.label}`}
+          autoFocus={field.id === "sys:title"}
         />
       );
     }
 
-    if (field.id === "sys:description") {
+    if (normalizedType === "text_ai" || normalizedType === "long_text") {
       return (
         <Textarea
           className="task-details__textarea"
-          value={descriptionDraft}
-          onChange={event => setDescriptionDraft(event.target.value)}
-          placeholder="Descreva o contexto, o objetivo da entrega e o que precisa estar pronto ao final."
+          value={field.id === "sys:description" ? descriptionDraft : String(customFieldDrafts[field.id] ?? "")}
+          onChange={event => {
+            if (field.id === "sys:description") {
+              setDescriptionDraft(event.target.value);
+              return;
+            }
+
+            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }));
+          }}
+          placeholder={
+            field.id === "sys:description"
+              ? "Descreva o contexto, o objetivo da entrega e o que precisa estar pronto ao final."
+              : `Descreva ${field.label.toLowerCase()}.`
+          }
         />
       );
     }
 
-    if (field.id === "sys:type") {
-      return (
-        <div className="task-details__type-grid">
-          {boardConfig.taskTypes.map(taskType => {
-            const meta = getTaskTypeDisplayMeta(typeMap, taskType.id);
-            const isActive = typeDraft === taskType.id;
-
-            return (
-              <button
-                key={taskType.id}
-                type="button"
-                className={`task-details__type-card ${isActive ? "is-active" : ""}`}
-                style={
-                  {
-                    "--task-type-background": meta.background,
-                    "--task-type-border": meta.border,
-                    "--task-type-text": meta.text
-                  } as CSSProperties
-                }
-                onClick={() => setTypeDraft(taskType.id)}
-              >
-                <span className="task-details__type-label">{meta.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      );
-    }
-
-    if (field.id === "sys:priority") {
-      return (
-        <div className="task-details__priority-grid">
-          {taskPriorityOptions.map(option => (
-            <button
-              key={option}
-              type="button"
-              className={`task-details__priority-option ${priorityDraft === option ? "is-active" : ""}`}
-              data-priority={option}
-              onClick={() => setPriorityDraft(option)}
-            >
-              <span className="task-details__priority-dot" aria-hidden="true" />
-              <strong>{priorityMeta[option].label}</strong>
-            </button>
-          ))}
-        </div>
-      );
-    }
-
-    if (field.id === "sys:tags") {
+    if (normalizedType === "multi_select") {
       return (
         <div
           className="task-details__tag-field"
@@ -772,7 +756,12 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           }}
         >
           <div className="task-details__tag-chips-row">
-            {tagsDraft.map(tag => (
+            {(field.id === "sys:tags"
+              ? tagsDraft
+              : Array.isArray(customFieldDrafts[field.id])
+                ? (customFieldDrafts[field.id] as string[])
+                : []
+            ).map(tag => (
               <span key={tag} className="task-details__editable-tag">
                 <span className="task-details__editable-tag-text">{tag}</span>
                 <button
@@ -780,7 +769,18 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                   className="task-details__tag-remove"
                   onClick={event => {
                     event.stopPropagation();
-                    setTagsDraft(current => current.filter(t => t !== tag));
+                    if (field.id === "sys:tags") {
+                      setTagsDraft(current => current.filter(t => t !== tag));
+                      return;
+                    }
+
+                    const currentValues = Array.isArray(customFieldDrafts[field.id])
+                      ? (customFieldDrafts[field.id] as string[])
+                      : [];
+                    setCustomFieldDrafts(current => ({
+                      ...current,
+                      [field.id]: currentValues.filter(entry => entry !== tag)
+                    }));
                   }}
                   aria-label={`Remover tag ${tag}`}
                 >
@@ -795,22 +795,47 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
               value={tagInputDraft}
               onChange={event => setTagInputDraft(event.target.value)}
               onKeyDown={event => {
+                const currentValues =
+                  field.id === "sys:tags"
+                    ? tagsDraft
+                    : Array.isArray(customFieldDrafts[field.id])
+                      ? (customFieldDrafts[field.id] as string[])
+                      : [];
+
                 if (event.key === "Enter" || event.key === ",") {
                   event.preventDefault();
                   const trimmed = tagInputDraft.trim().replace(/,$/g, "");
-                  if (trimmed && !tagsDraft.includes(trimmed)) {
-                    setTagsDraft(current => [...current, trimmed]);
+                  if (trimmed && !currentValues.includes(trimmed)) {
+                    if (field.id === "sys:tags") {
+                      setTagsDraft(current => [...current, trimmed]);
+                    } else {
+                      setCustomFieldDrafts(current => ({ ...current, [field.id]: [...currentValues, trimmed] }));
+                    }
                   }
                   setTagInputDraft("");
-                } else if (event.key === "Backspace" && !tagInputDraft && tagsDraft.length > 0) {
-                  setTagsDraft(current => current.slice(0, -1));
+                } else if (event.key === "Backspace" && !tagInputDraft && currentValues.length > 0) {
+                  if (field.id === "sys:tags") {
+                    setTagsDraft(current => current.slice(0, -1));
+                  } else {
+                    setCustomFieldDrafts(current => ({ ...current, [field.id]: currentValues.slice(0, -1) }));
+                  }
                 }
               }}
-              placeholder={tagsDraft.length === 0 ? "Digite e pressione Enter para adicionar..." : ""}
+              placeholder={
+                (
+                  field.id === "sys:tags"
+                    ? tagsDraft
+                    : Array.isArray(customFieldDrafts[field.id])
+                      ? (customFieldDrafts[field.id] as string[])
+                      : []
+                ).length === 0
+                  ? "Digite e pressione Enter para adicionar..."
+                  : ""
+              }
               size={1}
             />
           </div>
-          {availableTags.filter(tag => !tagsDraft.includes(tag.name)).length > 0 ? (
+          {field.id === "sys:tags" && availableTags.filter(tag => !tagsDraft.includes(tag.name)).length > 0 ? (
             <div className="task-details__tag-suggestions">
               <span className="task-details__tag-suggestions-label">Sugeridas:</span>
               {availableTags
@@ -836,24 +861,113 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       );
     }
 
-    if (field.id === "sys:status") {
+    if (normalizedType === "select") {
+      const selectValue =
+        field.id === "sys:type"
+          ? typeDraft
+          : field.id === "sys:status"
+            ? statusDraft
+            : field.id === "sys:priority"
+              ? String(priorityDraft)
+              : String(customFieldDrafts[field.id] ?? "");
+
       return (
-        <FormField label="Status">
-          <Select value={statusDraft} onChange={event => setStatusDraft(event.target.value)}>
-            {statuses.map(option => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
+        <FormField label={field.label}>
+          <Select
+            value={selectValue}
+            onChange={event => {
+              if (field.id === "sys:type") {
+                setTypeDraft(event.target.value);
+                return;
+              }
+
+              if (field.id === "sys:status") {
+                setStatusDraft(event.target.value);
+                return;
+              }
+
+              if (field.id === "sys:priority") {
+                setPriorityDraft(Number(event.target.value) as TaskPriority);
+                return;
+              }
+
+              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
+            }}
+          >
+            <option value="">Selecione...</option>
+            {field.id === "sys:type"
+              ? boardConfig.taskTypes.map(taskType => (
+                  <option key={taskType.id} value={taskType.id}>
+                    {taskType.label}
+                  </option>
+                ))
+              : field.id === "sys:status"
+                ? statuses.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))
+                : field.id === "sys:priority"
+                  ? taskPriorityOptions.map(option => (
+                      <option key={option} value={option}>
+                        {priorityMeta[option].label}
+                      </option>
+                    ))
+                  : options.map(option => (
+                      <option key={`${field.id}-${option}`} value={option}>
+                        {option}
+                      </option>
+                    ))}
           </Select>
         </FormField>
       );
     }
 
-    if (field.id === "sys:assignee") {
+    if (normalizedType === "user") {
+      const userValue =
+        field.id === "sys:assignee"
+          ? assigneeDraft
+          : field.id === "sys:created-by"
+            ? createdByDraft
+            : String(customFieldDrafts[field.id] ?? "");
+
+      if (field.capabilities?.selectable !== true) {
+        return (
+          <FormField label={field.label}>
+            <TextInput
+              value={userValue}
+              onChange={event => {
+                if (field.id === "sys:created-by") {
+                  setCreatedByDraft(event.target.value);
+                  return;
+                }
+
+                setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
+              }}
+            />
+          </FormField>
+        );
+      }
+
       return (
-        <FormField label="Responsavel">
-          <Select value={assigneeDraft} onChange={event => setAssigneeDraft(event.target.value)}>
+        <FormField label={field.label}>
+          <Select
+            value={userValue}
+            onChange={event => {
+              if (field.id === "sys:assignee") {
+                setAssigneeDraft(event.target.value);
+                return;
+              }
+
+              if (field.id === "sys:created-by") {
+                setCreatedByDraft(event.target.value);
+                return;
+              }
+
+              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
+            }}
+          >
+            <option value="">Selecione...</option>
             {memberOptions.map(member => (
               <option key={member.id} value={member.id}>
                 {member.name}
@@ -864,15 +978,26 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       );
     }
 
-    if (field.id === "sys:due-date") {
+    if (normalizedType === "date") {
       return (
-        <FormField label="Prazo">
-          <TextInput type="date" value={dueDateDraft} onChange={event => setDueDateDraft(event.target.value)} />
+        <FormField label={field.label}>
+          <TextInput
+            type="date"
+            value={field.id === "sys:due-date" ? dueDateDraft : String(customFieldDrafts[field.id] ?? "")}
+            onChange={event => {
+              if (field.id === "sys:due-date") {
+                setDueDateDraft(event.target.value);
+                return;
+              }
+
+              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
+            }}
+          />
         </FormField>
       );
     }
 
-    if (field.id === "sys:schedule") {
+    if (normalizedType === "schedule") {
       return (
         <div className="task-details__schedule-grid">
           <FormField label="Inicio">
@@ -893,15 +1018,19 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       );
     }
 
-    if (field.id === "sys:created-by") {
+    if (normalizedType === "datetime") {
       return (
-        <FormField label="Criado por">
-          <TextInput value={createdByDraft} onChange={event => setCreatedByDraft(event.target.value)} />
+        <FormField label={field.label}>
+          <TextInput
+            type="datetime-local"
+            value={String(customFieldDrafts[field.id] ?? "")}
+            onChange={event => setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }))}
+          />
         </FormField>
       );
     }
 
-    if (field.id === "sys:checklist") {
+    if (normalizedType === "checklist") {
       if (!task || isCreateMode) {
         return <p className="task-details__muted">O checklist aparece depois que o item for criado.</p>;
       }
@@ -937,99 +1066,51 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       );
     }
 
-    const options = getFieldOptions(field);
+    if (normalizedType === "boolean") {
+      const isOn = customFieldDrafts[field.id] === true;
+      return (
+        <button
+          type="button"
+          className={`task-details__toggle-switch ${isOn ? "is-on" : ""}`}
+          onClick={() =>
+            setCustomFieldDrafts(current => ({ ...current, [field.id]: !isOn }))
+          }
+          aria-pressed={isOn}
+        >
+          <span className="task-details__toggle-track">
+            <span className="task-details__toggle-thumb" />
+          </span>
+          <span className="task-details__toggle-label">{isOn ? "Ativado" : "Desativado"}</span>
+        </button>
+      );
+    }
+
+    if (normalizedType === "number") {
+      return (
+        <FormField label={field.label}>
+          <TextInput
+            type="number"
+            value={String(customFieldDrafts[field.id] ?? "")}
+            onChange={event =>
+              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
+            }
+          />
+        </FormField>
+      );
+    }
 
     return (
       <FormField label={field.label}>
-        {(() => {
-          if (field.type === "select" && options.length > 0) {
-            return (
-              <Select
-                value={String(customFieldDrafts[field.id] ?? "")}
-                onChange={event =>
-                  setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }))
-                }
-              >
-                <option value="">Selecione...</option>
-                {options.map(option => (
-                  <option key={`${field.id}-${option}`} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-            );
+        <TextInput
+          value={
+            Array.isArray(customFieldDrafts[field.id])
+              ? (customFieldDrafts[field.id] as string[]).join(", ")
+              : String(customFieldDrafts[field.id] ?? "")
           }
-
-          if ((field.type === "multi_select" || field.type === "multi-select") && options.length > 0) {
-            const currentValues = Array.isArray(customFieldDrafts[field.id])
-              ? (customFieldDrafts[field.id] as string[])
-              : [];
-
-            return (
-              <div className="task-details__multi-pills">
-                {options.map(option => {
-                  const isChecked = currentValues.includes(option);
-                  return (
-                    <button
-                      key={`${field.id}-${option}`}
-                      type="button"
-                      className={`task-details__multi-pill ${isChecked ? "is-active" : ""}`}
-                      onClick={() => {
-                        const next = isChecked
-                          ? currentValues.filter(entry => entry !== option)
-                          : Array.from(new Set([...currentValues, option]));
-                        setCustomFieldDrafts(current => ({ ...current, [field.id]: next }));
-                      }}
-                    >
-                      {isChecked ? (
-                        <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
-                          <path d="M1.5 5l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
-                          <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      )}
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-            );
+          onChange={event =>
+            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
           }
-
-          if (field.type === "boolean") {
-            const isOn = customFieldDrafts[field.id] === true;
-            return (
-              <button
-                type="button"
-                className={`task-details__toggle-switch ${isOn ? "is-on" : ""}`}
-                onClick={() =>
-                  setCustomFieldDrafts(current => ({ ...current, [field.id]: !isOn }))
-                }
-                aria-pressed={isOn}
-              >
-                <span className="task-details__toggle-track">
-                  <span className="task-details__toggle-thumb" />
-                </span>
-                <span className="task-details__toggle-label">{isOn ? "Ativado" : "Desativado"}</span>
-              </button>
-            );
-          }
-
-          return (
-            <TextInput
-              value={
-                Array.isArray(customFieldDrafts[field.id])
-                  ? (customFieldDrafts[field.id] as string[]).join(", ")
-                  : String(customFieldDrafts[field.id] ?? "")
-              }
-              onChange={event =>
-                setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
-              }
-            />
-          );
-        })()}
+        />
       </FormField>
     );
   };

@@ -963,6 +963,21 @@ export const buildWorkspacePlatformRoutes = (deps: {
     })
   );
 
+  router.delete(
+    '/workspaces/:workspaceId/work-items/:itemId',
+    requireWorkspaceModule('board'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { itemId } = workItemParamsDto.parse(req.params);
+      await deps.workspaceWorkItemsService.deleteWorkItem({
+        workspaceId: req.workspace!.id,
+        itemId,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
+    })
+  );
+
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/move',
     requireWorkspaceModule('board'),

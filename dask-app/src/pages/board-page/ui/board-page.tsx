@@ -84,6 +84,7 @@ export function BoardPage() {
     snapshot,
     isLoading,
     createTask,
+    deleteTask,
     moveTask,
     moveTaskToColumn,
     updateTaskPriority,
@@ -377,6 +378,10 @@ export function BoardPage() {
     return updateTaskPriority(taskId, priority);
   };
 
+  const handleDeleteTask = (taskId: string) => {
+    return deleteTask(taskId);
+  };
+
   const handleUpdateTaskTitle = (taskId: string, title: string) => {
     return updateTaskTitle(taskId, title);
   };
@@ -451,6 +456,7 @@ export function BoardPage() {
               onCreateTask={(statusId, input) => void handleCreateTask(statusId, input)}
               createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
               onMoveTask={handleMoveTask}
+              onDeleteTask={handleDeleteTask}
               onUpdatePriority={handleUpdatePriority}
               onUpdateTaskTitle={handleUpdateTaskTitle}
               onUpdateTaskDescription={handleUpdateTaskDescription}

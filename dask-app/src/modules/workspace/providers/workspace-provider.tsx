@@ -38,6 +38,7 @@ interface WorkspaceContextValue {
   snapshot: WorkspaceSnapshot | null;
   isLoading: boolean;
   createTask: (input: CreateTaskInput) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
   moveTask: (taskId: string, nextStatus: TaskStatusId) => Promise<void>;
   moveTaskToColumn: (taskId: string, columnId: string, stateId?: string, position?: number) => Promise<void>;
   updateTaskPriority: (taskId: string, priority: TaskPriority) => Promise<void>;
@@ -158,6 +159,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
 
     const nextSnapshot = await workspaceService.createTask(workspaceSlug, input);
+    setSnapshot(nextSnapshot);
+  }, [workspaceSlug]);
+
+  const deleteTask = useCallback(async (taskId: string) => {
+    if (!workspaceSlug) {
+      return;
+    }
+
+    const nextSnapshot = await workspaceService.deleteTask(workspaceSlug, taskId);
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
@@ -597,6 +607,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       snapshot,
       isLoading,
       createTask,
+      deleteTask,
       moveTask,
       moveTaskToColumn,
       updateTaskPriority,
@@ -652,6 +663,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       snapshot,
       isLoading,
       createTask,
+      deleteTask,
       moveTask,
       moveTaskToColumn,
       updateTaskPriority,

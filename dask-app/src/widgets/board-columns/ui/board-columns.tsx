@@ -15,6 +15,7 @@ import type { AiAgentSummary, WorkItemLinkedDocument, WorkspaceDocument } from "
 import type { CreateTaskInput, TaskScheduleInput, UpdateTaskInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { CreateTaskButton } from "@/features/create-task";
+import { Button, ModalShell } from "@/shared/ui";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
 
@@ -25,6 +26,7 @@ interface BoardColumnsProps {
   membersById: MembersById;
   compactCards?: boolean;
   onMoveTask: (taskId: string, statusId: TaskStatusId, position?: number) => Promise<void> | void;
+  onDeleteTask: (taskId: string) => Promise<void> | void;
   onUpdatePriority: (taskId: string, priority: TaskPriority) => Promise<void> | void;
   onUpdateTaskTitle: (taskId: string, title: string) => Promise<void> | void;
   onUpdateTaskDescription: (taskId: string, description: string) => Promise<void> | void;
@@ -59,6 +61,49 @@ type DropTarget = {
   statusId: TaskStatusId;
   index: number;
 };
+
+interface DeleteTaskDialogProps {
+  taskTitle: string;
+  isDeleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+function DeleteTaskDialog({ taskTitle, isDeleting, onCancel, onConfirm }: DeleteTaskDialogProps) {
+  return (
+    <ModalShell titleId="board-delete-task-title" onClose={isDeleting ? () => undefined : onCancel} className="board-delete-dialog">
+      <div className="board-delete-dialog__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+          <path d="M3 6h18" strokeLinecap="round" />
+          <path d="M8 6V4.8c0-.99.81-1.8 1.8-1.8h4.4c.99 0 1.8.81 1.8 1.8V6" />
+          <path d="M6.5 6.5l.9 11.1A2 2 0 0 0 9.39 19.5h5.22a2 2 0 0 0 1.99-1.9l.9-11.1" />
+          <path d="M10 10.2v5.6M14 10.2v5.6" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="board-delete-dialog__body">
+        <h2 id="board-delete-task-title" className="board-delete-dialog__title">Excluir este item?</h2>
+        <p className="board-delete-dialog__description">
+          Voce realmente deseja excluir <strong>{taskTitle}</strong>? Essa acao nao pode ser desfeita.
+        </p>
+      </div>
+
+      <div className="board-delete-dialog__actions">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isDeleting}>
+          Nao
+        </Button>
+        <button
+          type="button"
+          className="board-delete-dialog__confirm"
+          onClick={onConfirm}
+          disabled={isDeleting}
+        >
+          {isDeleting ? "Excluindo..." : "Sim, excluir"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
 
 function normalizeTaskPositions(tasks: Task[]): Task[] {
   const grouped = new Map<string, Task[]>();
@@ -125,6 +170,7 @@ export function BoardColumns({
   membersById,
   compactCards = false,
   onMoveTask,
+  onDeleteTask,
   onUpdatePriority,
   onUpdateTaskTitle,
   onUpdateTaskDescription,
@@ -147,6 +193,8 @@ export function BoardColumns({
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
+  const [taskPendingDeleteId, setTaskPendingDeleteId] = useState<string>("");
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   useEffect(() => {
     setOptimisticTasks(tasks);
@@ -160,6 +208,10 @@ export function BoardColumns({
   const selectedStatus = useMemo(
     () => (selectedTask ? statuses.find(status => status.id === selectedTask.status) ?? null : null),
     [selectedTask, statuses]
+  );
+  const taskPendingDelete = useMemo(
+    () => optimisticTasks.find(task => task.id === taskPendingDeleteId) ?? null,
+    [optimisticTasks, taskPendingDeleteId]
   );
 
   const resolveCreatorName = (task: Task): string => {
@@ -208,6 +260,38 @@ export function BoardColumns({
       await onMoveTask(taskId, statusId, dropIndex);
     } catch {
       setOptimisticTasks(previousTasks);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTaskId && !optimisticTasks.some(task => task.id === selectedTaskId)) {
+      setSelectedTaskId("");
+    }
+  }, [optimisticTasks, selectedTaskId]);
+
+  useEffect(() => {
+    if (taskPendingDeleteId && !optimisticTasks.some(task => task.id === taskPendingDeleteId)) {
+      setTaskPendingDeleteId("");
+      setIsDeletingTask(false);
+    }
+  }, [optimisticTasks, taskPendingDeleteId]);
+
+  const handleRequestDeleteTask = (taskId: string) => {
+    setTaskPendingDeleteId(taskId);
+  };
+
+  const handleConfirmDeleteTask = async () => {
+    if (!taskPendingDeleteId || isDeletingTask) {
+      return;
+    }
+
+    setIsDeletingTask(true);
+
+    try {
+      await onDeleteTask(taskPendingDeleteId);
+      setTaskPendingDeleteId("");
+    } finally {
+      setIsDeletingTask(false);
     }
   };
 
@@ -280,6 +364,7 @@ export function BoardColumns({
                       onDragEnd={handleDragEnd}
                       isDragging={draggingTaskId === task.id}
                       onOpen={setSelectedTaskId}
+                      onDelete={handleRequestDeleteTask}
                       onUpdatePriority={onUpdatePriority}
                     />
                   </div>
@@ -321,6 +406,19 @@ export function BoardColumns({
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
           onClose={() => setSelectedTaskId("")}
+        />
+      ) : null}
+
+      {taskPendingDelete ? (
+        <DeleteTaskDialog
+          taskTitle={taskPendingDelete.title}
+          isDeleting={isDeletingTask}
+          onCancel={() => {
+            if (!isDeletingTask) {
+              setTaskPendingDeleteId("");
+            }
+          }}
+          onConfirm={() => void handleConfirmDeleteTask()}
         />
       ) : null}
     </main>

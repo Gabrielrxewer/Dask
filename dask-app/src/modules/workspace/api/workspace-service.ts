@@ -261,6 +261,16 @@ export const workspaceService: WorkspaceService = {
     return fetchSnapshot(workspaceSlug);
   },
 
+  async deleteTask(workspaceSlug, taskId) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/work-items/${taskId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    return fetchSnapshot(workspaceSlug);
+  },
+
   async moveTask(workspaceSlug, taskId, nextStatus) {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}`, {

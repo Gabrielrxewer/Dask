@@ -1,9 +1,11 @@
-import type { DragEvent, ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   buildTaskChecklistSummary,
   buildTaskTypeMetaMap,
   getTaskTypeDisplayMeta,
   isSystemCardFieldId,
+  priorityMeta,
   resolveFieldIdsForTaskType
 } from "@/entities/task";
 import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
@@ -26,6 +28,7 @@ interface TaskCardProps {
   onDragEnd: () => void;
   isDragging?: boolean;
   onOpen?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
 }
 
@@ -70,9 +73,16 @@ export function TaskCard({
   onDragEnd,
   isDragging = false,
   onOpen,
+  onDelete,
   onUpdatePriority
 }: TaskCardProps) {
   const checklist = buildTaskChecklistSummary(task);
+  const [isMounted, setMounted] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuId = useId();
   const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
   const type = getTaskTypeDisplayMeta(typeMap, task.type);
   const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>((acc, field) => {
@@ -116,11 +126,85 @@ export function TaskCard({
   const hiddenTagsCount = Math.max(task.tags.length - displayTags.length, 0);
   const typeLabel = type.label?.trim() || task.type;
   const typeIconName = resolveTaskTypeIconName(type.id);
+  const priorityLabel = priorityMeta[task.priority]?.label ?? "Prioridade";
   const renderFieldSlot = (
     fieldId: string,
     area: TaskCardSlotArea,
     content: ReactNode
   ) => (fieldSlotRenderer ? fieldSlotRenderer({ fieldId, area, content }) : content);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target))
+      ) {
+        return;
+      }
+      setIsMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!isMenuOpen || !menuButtonRef.current || !menuRef.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!menuButtonRef.current || !menuRef.current) {
+        return;
+      }
+
+      const gap = 10;
+      const viewportPadding = 12;
+      const buttonRect = menuButtonRef.current.getBoundingClientRect();
+      const popoverRect = menuRef.current.getBoundingClientRect();
+
+      let left = buttonRect.right - popoverRect.width;
+      left = Math.max(viewportPadding, Math.min(left, window.innerWidth - popoverRect.width - viewportPadding));
+
+      let top = buttonRect.bottom + gap;
+      if (top + popoverRect.height > window.innerHeight - viewportPadding) {
+        top = buttonRect.top - popoverRect.height - gap;
+      }
+      top = Math.max(viewportPadding, top);
+
+      setMenuStyle({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isMenuOpen]);
 
   const orderedSummaryFieldIds = effectiveVisibleFieldIds.filter(
     fieldId =>
@@ -214,12 +298,19 @@ export function TaskCard({
           {showStatus ? renderFieldSlot("sys:status", "badge", <span className="task-card__tag">{statusLabel ?? task.status}</span>) : null}
         </div>
         <button
+          ref={menuButtonRef}
           className="task-card__ghost"
           type="button"
           aria-label="Mais acoes"
-          onClick={event => event.stopPropagation()}
+          aria-haspopup="menu"
+          aria-expanded={isMenuOpen}
+          aria-controls={isMenuOpen ? menuId : undefined}
+          onClick={event => {
+            event.stopPropagation();
+            setIsMenuOpen(current => !current);
+          }}
         >
-          ...
+          <span aria-hidden="true">•••</span>
         </button>
       </header>
 
@@ -282,6 +373,86 @@ export function TaskCard({
           ) : null}
         </footer>
       ) : null}
+
+      {isMounted && isMenuOpen
+        ? createPortal(
+            <div
+              ref={menuRef}
+              id={menuId}
+              className="task-card__menu"
+              role="menu"
+              aria-label={`Acoes da tarefa ${task.title}`}
+              style={{ top: `${menuStyle.top}px`, left: `${menuStyle.left}px` }}
+              onClick={event => event.stopPropagation()}
+            >
+              {canOpen ? (
+                <div className="task-card__menu-section" role="none">
+                  <button
+                    type="button"
+                    className="task-card__menu-action"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpen?.(task.id);
+                    }}
+                  >
+                    Abrir item
+                  </button>
+                </div>
+              ) : null}
+
+              {onUpdatePriority ? (
+                <div className="task-card__menu-section" role="none">
+                  <div className="task-card__menu-group" role="none">
+                    <span className="task-card__menu-label">Prioridade</span>
+                    <div className="task-card__menu-priority-row" role="none">
+                      {[0, 1, 2, 3, 4].map(option => {
+                        const optionPriority = option as TaskPriority;
+                        const isActive = task.priority === optionPriority;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={cn("task-card__menu-priority-pill", isActive && "task-card__menu-priority-pill--active")}
+                            role="menuitemradio"
+                            aria-checked={isActive}
+                            aria-label={`Definir prioridade ${priorityMeta[optionPriority].label}`}
+                            title={priorityMeta[optionPriority].label}
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              onUpdatePriority(task.id, optionPriority);
+                            }}
+                          >
+                            <span className={cn("task-card__menu-priority-dot", `task-card__menu-priority-dot--${option}`)} aria-hidden="true" />
+                            <span>{`P${option}`}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span className="task-card__menu-helper">{priorityLabel}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {onDelete ? (
+                <div className="task-card__menu-section" role="none">
+                  <button
+                    type="button"
+                    className="task-card__menu-action task-card__menu-action--danger"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onDelete(task.id);
+                    }}
+                  >
+                    Excluir item
+                  </button>
+                </div>
+              ) : null}
+            </div>,
+            document.body
+          )
+        : null}
     </article>
   );
 }

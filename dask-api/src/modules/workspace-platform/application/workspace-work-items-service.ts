@@ -495,6 +495,43 @@ export class WorkspaceWorkItemsService {
     return updatedItem;
   }
 
+  public async deleteWorkItem(input: {
+    workspaceId: string;
+    itemId: string;
+    userId: string;
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+
+    const current = await this.prisma.item.findFirst({
+      where: {
+        id: input.itemId,
+        workspaceId: input.workspaceId
+      },
+      select: {
+        id: true,
+        boardColumnId: true,
+        columnId: true,
+        position: true
+      }
+    });
+
+    if (!current) {
+      throw new AppError('Work item not found', 404);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const currentColumnId = current.boardColumnId ?? current.columnId;
+
+      await tx.item.delete({
+        where: { id: current.id }
+      });
+
+      if (currentColumnId) {
+        await this.closeColumnGap(tx, input.workspaceId, currentColumnId, current.position, current.id);
+      }
+    });
+  }
+
   public async moveWorkItem(input: {
     workspaceId: string;
     itemId: string;

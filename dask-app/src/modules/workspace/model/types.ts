@@ -417,6 +417,7 @@ export interface WorkspaceService {
   createPersonalWorkspace: (input?: { workspaceName?: string }) => Promise<WorkspaceSummary>;
   getSnapshot: (workspaceSlug: string) => Promise<WorkspaceSnapshot>;
   createTask: (workspaceSlug: string, input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
+  deleteTask: (workspaceSlug: string, taskId: string) => Promise<WorkspaceSnapshot>;
   moveTask: (workspaceSlug: string, taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
   moveTaskToColumn: (
     workspaceSlug: string,

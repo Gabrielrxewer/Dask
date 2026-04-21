@@ -19,6 +19,7 @@ const homeNavigationItems = [
 
 const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
 const userProfileStorageKey = "dask:user-profile-preferences";
+const globalThemeStorageKey = "dask:theme-preference";
 const maxProfileAvatarBytes = 2 * 1024 * 1024;
 const userProfileThemes = new Set(["light", "dark", "system"]);
 const defaultUserProfilePreferences: UserProfilePreferences = {
@@ -103,6 +104,18 @@ function storeUserProfilePreferences(userId: string | null | undefined, preferen
     );
   } catch {
     // Preferencias locais nao bloqueiam a UI quando o storage indisponivel.
+  }
+}
+
+function storeGlobalThemePreference(theme: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(globalThemeStorageKey, normalizeUserProfileTheme(theme));
+  } catch {
+    // Tema global e melhor-esforco; nao deve bloquear a interface.
   }
 }
 
@@ -291,6 +304,7 @@ export function GlobalLayout() {
     setProfileNotifications(storedPreferences.notifications);
     setProfileAutoSave(storedPreferences.autoSave);
     setProfilePreferencesOwnerId(user.id);
+    storeGlobalThemePreference(storedPreferences.theme);
   }, [user?.id]);
 
   useEffect(() => {
@@ -298,22 +312,38 @@ export function GlobalLayout() {
       return;
     }
 
+    const { documentElement } = document;
     const { body } = document;
 
     if (isAuthenticatedArea) {
+      documentElement.classList.add("app-theme");
+      documentElement.dataset.theme = resolvedProfileTheme;
+      documentElement.dataset.themePreference = normalizedProfileTheme;
+      documentElement.style.colorScheme = resolvedProfileTheme;
       body.classList.add("app-theme");
       body.dataset.theme = resolvedProfileTheme;
       body.dataset.themePreference = normalizedProfileTheme;
+      body.style.colorScheme = resolvedProfileTheme;
       return () => {
+        documentElement.classList.remove("app-theme");
+        delete documentElement.dataset.theme;
+        delete documentElement.dataset.themePreference;
+        documentElement.style.removeProperty("color-scheme");
         body.classList.remove("app-theme");
         delete body.dataset.theme;
         delete body.dataset.themePreference;
+        body.style.removeProperty("color-scheme");
       };
     }
 
+    documentElement.classList.remove("app-theme");
+    delete documentElement.dataset.theme;
+    delete documentElement.dataset.themePreference;
+    documentElement.style.removeProperty("color-scheme");
     body.classList.remove("app-theme");
     delete body.dataset.theme;
     delete body.dataset.themePreference;
+    body.style.removeProperty("color-scheme");
 
     return undefined;
   }, [isAuthenticatedArea, normalizedProfileTheme, resolvedProfileTheme]);
@@ -453,6 +483,7 @@ export function GlobalLayout() {
       notifications: profileNotifications,
       theme: profileTheme
     });
+    storeGlobalThemePreference(profileTheme);
   }, [profileAutoSave, profileDensity, profileLanguage, profileNotifications, profileTheme, profilePreferencesOwnerId, user?.id]);
 
   const toggleNavigation = () => {
@@ -532,6 +563,7 @@ export function GlobalLayout() {
       notifications: profileNotifications,
       theme: profileTheme
     });
+    storeGlobalThemePreference(profileTheme);
     setIsUserProfileOpen(false);
   };
 

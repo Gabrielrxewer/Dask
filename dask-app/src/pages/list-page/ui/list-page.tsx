@@ -179,7 +179,7 @@ export function ListPage() {
             </DataTableHeader>
 
             <DataTableBody>
-              {isLoading ? (
+              {isLoading && filteredTasks.length === 0 ? (
                 <LoadingState text="Carregando workspace..." />
               ) : filteredTasks.length === 0 ? (
                 <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>

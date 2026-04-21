@@ -292,7 +292,7 @@ export function LeadsPage() {
                     <DataTableCell>Acoes</DataTableCell>
                   </DataTableHeader>
                   <DataTableBody>
-                    {isLoading ? (
+                    {isLoading && leads.length === 0 ? (
                       <LoadingState text="Carregando leads..." />
                     ) : leads.length === 0 ? (
                       <EmptyState>Nenhum lead encontrado.</EmptyState>

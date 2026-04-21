@@ -6,6 +6,28 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260414-3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg?v=20260414-3" />
     <title>Dask</title>
+    <script>
+      (function () {
+        try {
+          var storedTheme = window.localStorage.getItem("dask:theme-preference") || "system";
+          var normalizedTheme = storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
+            ? storedTheme
+            : "system";
+          var systemTheme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          var resolvedTheme = normalizedTheme === "system" ? systemTheme : normalizedTheme;
+          var root = document.documentElement;
+          root.classList.add("app-theme");
+          root.dataset.theme = resolvedTheme;
+          root.dataset.themePreference = normalizedTheme;
+          root.style.colorScheme = resolvedTheme;
+          root.style.backgroundColor = resolvedTheme === "dark" ? "#08131f" : "#f2f6fb";
+        } catch (_) {
+          // Tema inicial e melhor-esforco.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

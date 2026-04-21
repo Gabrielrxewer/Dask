@@ -647,7 +647,7 @@ export function FiscalPage() {
               </>
             ) : null}
 
-            {!isLoading && tab !== "dashboard" && !workspaceId ? (
+            {tab !== "dashboard" && !workspaceId ? (
               <EmptyState>Selecione um workspace para acessar o modulo fiscal.</EmptyState>
             ) : null}
           </div>

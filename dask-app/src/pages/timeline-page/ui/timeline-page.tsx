@@ -216,7 +216,7 @@ export function TimelinePage() {
               </DataTableHeader>
 
               <DataTableBody>
-                {isLoading ? (
+                {isLoading && tasksWithWindow.length === 0 ? (
                   <LoadingState text="Carregando workspace..." />
                 ) : tasksWithWindow.length === 0 ? (
                   <EmptyState>Nenhum item encontrado com os filtros atuais.</EmptyState>

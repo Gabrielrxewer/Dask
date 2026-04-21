@@ -1,4 +1,5 @@
 import { appConfig, buildApiUrl } from "@/shared/config/env";
+import { beginGlobalLoading } from "@/shared/lib/loading/global-loading";
 
 const BASE_LATENCY_MS = 220;
 
@@ -80,6 +81,7 @@ interface InternalRequestConfig {
   authMode: AuthMode;
   retryOnUnauthorized: boolean;
   isRetryAttempt: boolean;
+  globalLoading: boolean;
 }
 
 export interface RequestConfig {
@@ -89,6 +91,7 @@ export interface RequestConfig {
   signal?: AbortSignal;
   authMode?: AuthMode;
   retryOnUnauthorized?: boolean;
+  globalLoading?: boolean;
 }
 
 function createApiError(status: number, payload: unknown): ApiError {
@@ -138,6 +141,12 @@ async function readResponsePayload(response: Response): Promise<unknown> {
 }
 
 async function runRequest<T>(config: InternalRequestConfig): Promise<T> {
+  const stopGlobalLoading = config.globalLoading
+    ? beginGlobalLoading({
+        source: "request",
+        label: config.method === "GET" ? "Sincronizando dados da tela" : "Processando sua solicitacao"
+      })
+    : () => undefined;
   const headers: Record<string, string> = {
     ...config.headers
   };
@@ -172,61 +181,68 @@ async function runRequest<T>(config: InternalRequestConfig): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(buildApiUrl(config.path), {
-      method: config.method,
-      headers,
-      body: config.body === undefined || config.body instanceof FormData ? (config.body as BodyInit | undefined) : JSON.stringify(config.body),
-      signal: config.signal,
-      credentials: resolveCredentialsMode()
-    });
-  } catch {
-    throw new ApiError({
-      status: 0,
-      message: "Network error. Please check your connection and try again.",
-      isNetworkError: true
-    });
-  }
-
-  const payload = await readResponsePayload(response);
-
-  if (response.ok) {
-    return payload as T;
-  }
-
-  const error = createApiError(response.status, payload);
-
-  if (
-    error.status === 401 &&
-    config.authMode !== "none" &&
-    config.retryOnUnauthorized &&
-    !config.isRetryAttempt &&
-    authBridge
-  ) {
-    const refreshedAccessToken = await authBridge.refreshAccessToken();
-
-    if (refreshedAccessToken || appConfig.authTransportMode === "cookie-session") {
-      return runRequest<T>({
-        ...config,
-        isRetryAttempt: true
+    try {
+      response = await fetch(buildApiUrl(config.path), {
+        method: config.method,
+        headers,
+        body: config.body === undefined || config.body instanceof FormData ? (config.body as BodyInit | undefined) : JSON.stringify(config.body),
+        signal: config.signal,
+        credentials: resolveCredentialsMode()
+      });
+    } catch {
+      throw new ApiError({
+        status: 0,
+        message: "Network error. Please check your connection and try again.",
+        isNetworkError: true
       });
     }
 
-    authBridge.handleUnauthorized();
-  }
+    const payload = await readResponsePayload(response);
 
-  throw error;
+    if (response.ok) {
+      return payload as T;
+    }
+
+    const error = createApiError(response.status, payload);
+
+    if (
+      error.status === 401 &&
+      config.authMode !== "none" &&
+      config.retryOnUnauthorized &&
+      !config.isRetryAttempt &&
+      authBridge
+    ) {
+      const refreshedAccessToken = await authBridge.refreshAccessToken();
+
+      if (refreshedAccessToken || appConfig.authTransportMode === "cookie-session") {
+        return runRequest<T>({
+          ...config,
+          isRetryAttempt: true
+        });
+      }
+
+      authBridge.handleUnauthorized();
+    }
+
+    throw error;
+  } finally {
+    stopGlobalLoading();
+  }
 }
 
 function toInternalConfig(path: string, config: RequestConfig): InternalRequestConfig {
+  const method = config.method ?? "GET";
+
   return {
-    method: config.method ?? "GET",
+    method,
     path,
     body: config.body,
     headers: config.headers,
     signal: config.signal,
     authMode: config.authMode ?? "optional",
     retryOnUnauthorized: config.retryOnUnauthorized ?? true,
-    isRetryAttempt: false
+    isRetryAttempt: false,
+    globalLoading: config.globalLoading ?? isMutatingMethod(method)
   };
 }
 

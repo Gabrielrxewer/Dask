@@ -444,7 +444,7 @@ export function BoardPage() {
           }
           className="board-view__canvas workspace-view__section"
         >
-          {isLoading ? (
+          {isLoading && !snapshot ? (
             <LoadingState text="Carregando workspace..." />
           ) : (
             <BoardColumns

@@ -9,6 +9,7 @@ import {
   type ReactNode
 } from "react";
 import { setHttpAuthBridge } from "@/shared/api/http-client";
+import { beginGlobalLoading, releaseInitialGlobalLoading } from "@/shared/lib/loading/global-loading";
 import { createAuthStore, type AuthStore } from "@/features/auth/model/auth-store";
 import { useAuthBootstrap } from "@/features/auth/model/use-auth-bootstrap";
 import type { LoginInput, RegisterInput } from "@/features/auth/api/types";
@@ -61,6 +62,32 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
       setHttpAuthBridge(null);
     };
   }, [store]);
+
+  useEffect(() => {
+    if (!["initializing", "refreshing", "logout_in_progress"].includes(snapshot.status)) {
+      return undefined;
+    }
+
+    const stopLoading = beginGlobalLoading({
+      source: "auth",
+      label:
+        snapshot.status === "logout_in_progress"
+          ? "Encerrando sessao com seguranca"
+          : "Validando sua sessao"
+    });
+
+    return () => {
+      stopLoading();
+    };
+  }, [snapshot.status]);
+
+  useEffect(() => {
+    if (!snapshot.initialized) {
+      return;
+    }
+
+    releaseInitialGlobalLoading();
+  }, [snapshot.initialized]);
 
   useAuthBootstrap(store);
 

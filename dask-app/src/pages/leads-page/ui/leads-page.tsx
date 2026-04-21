@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildBoardMetrics } from "@/entities/task";
 import { leadsService } from "@/modules/leads";
 import type { CaptureLeadInput, Lead, LeadDetails, LeadQualificationStatus } from "@/modules/leads";
@@ -10,9 +10,11 @@ import {
   DataTableCell,
   DataTableHeader,
   DataTableRow,
+  EmptyState,
   FormField,
-  MetricCard,
+  LoadingState,
   ModalShell,
+  Section,
   Select,
   StatusBadge,
   Tabs,
@@ -20,6 +22,7 @@ import {
   Textarea
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
 import "./leads-page.css";
 
 type LeadsTab = "dashboard" | "pipeline" | "capture" | "automations";
@@ -103,6 +106,20 @@ export function LeadsPage() {
     notes: "",
     score: 50
   });
+
+  const dashboardMetricCards = useMemo(
+    () => [
+      { label: "Capturados", value: dashboard?.captured ?? 0 },
+      { label: "Qualificados", value: dashboard?.qualified ?? 0 },
+      { label: "Distribuidos", value: dashboard?.distributed ?? 0 },
+      { label: "Acompanhamento", value: dashboard?.followUp ?? 0 },
+      { label: "Nutricao", value: dashboard?.nurturing ?? 0 },
+      { label: "Convertidos", value: dashboard?.converted ?? 0 },
+      { label: "Perdidos", value: dashboard?.lost ?? 0 },
+      { label: "Taxa de conversao", value: `${Math.round((dashboard?.conversionRate ?? 0) * 100)}%` }
+    ],
+    [dashboard]
+  );
 
   const loadLeadsData = useCallback(async () => {
     if (!workspaceId) {
@@ -204,189 +221,199 @@ export function LeadsPage() {
 
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Leads" pageTitle="Modulo de Leads">
-      <div className="leads-page">
-        <header className="leads-page__header">
-          <h1>Leads</h1>
-          <div className="leads-page__header-actions">
-            <Button variant="outline" onClick={() => void loadLeadsData()} disabled={isLoading || isSubmitting}>
-              Atualizar
-            </Button>
-            <Button onClick={() => setTab("capture")}>Novo lead</Button>
-          </div>
-        </header>
+      <div className="leads-page workspace-view">
+        <BoardMetrics metrics={metrics} cards={dashboardMetricCards} className="leads-page__metrics workspace-view__metrics" />
 
         {message ? <div className="leads-page__feedback leads-page__feedback--ok">{message}</div> : null}
         {error ? <div className="leads-page__feedback leads-page__feedback--error">{error}</div> : null}
 
-        <Tabs<LeadsTab> value={tab} items={TABS} onChange={setTab} />
-
-        {tab === "dashboard" ? (
-          <section className="leads-page__section">
-            <div className="leads-page__metrics">
-              <MetricCard label="Capturados" value={dashboard?.captured ?? 0} />
-              <MetricCard label="Qualificados" value={dashboard?.qualified ?? 0} />
-              <MetricCard label="Distribuidos" value={dashboard?.distributed ?? 0} />
-              <MetricCard label="Acompanhamento" value={dashboard?.followUp ?? 0} />
-              <MetricCard label="Nutricao" value={dashboard?.nurturing ?? 0} />
-              <MetricCard label="Convertidos" value={dashboard?.converted ?? 0} />
-              <MetricCard label="Perdidos" value={dashboard?.lost ?? 0} />
-              <MetricCard label="Taxa de conversao" value={`${Math.round((dashboard?.conversionRate ?? 0) * 100)}%`} />
+        <Section
+          title="Operacao de leads"
+          subtitle="Acompanhe captacao, qualificacao e proximos contatos com a mesma linguagem visual da timeline."
+          actions={
+            <div className="leads-page__section-actions workspace-view__actions">
+              <StatusBadge>{`${leads.length} lead${leads.length === 1 ? "" : "s"}`}</StatusBadge>
+              <Button variant="outline" onClick={() => void loadLeadsData()} disabled={isLoading || isSubmitting}>
+                Atualizar
+              </Button>
+              <Button onClick={() => setTab("capture")}>Novo lead</Button>
             </div>
-          </section>
-        ) : null}
+          }
+          className="leads-page__section workspace-view__section"
+        >
+          <div className="leads-page__stack">
+            <Tabs<LeadsTab> value={tab} items={TABS} onChange={setTab} className="leads-page__tabs" />
 
-        {tab === "pipeline" ? (
-          <section className="leads-page__section">
-            <div className="leads-page__filters">
-              <FormField label="Buscar">
-                <TextInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, email, empresa, interesse" />
-              </FormField>
-              <FormField label="Status">
-                <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
-                  <option value="ALL">Todos</option>
-                  <option value="CAPTURED">Capturado</option>
-                  <option value="QUALIFIED">Qualificado</option>
-                  <option value="DISTRIBUTED">Distribuido</option>
-                  <option value="FOLLOW_UP">Acompanhamento</option>
-                  <option value="NURTURING">Nutricao</option>
-                  <option value="CONVERTED">Convertido</option>
-                  <option value="LOST">Perdido</option>
-                </Select>
-              </FormField>
-            </div>
+            {tab === "dashboard" ? (
+              <div className="leads-page__dashboard">
+                <div className="leads-page__summary-card">
+                  <span className="leads-page__eyebrow">Funil ativo</span>
+                  <strong>{dashboard?.captured ?? 0} leads em acompanhamento</strong>
+                  <p>
+                    {dashboard?.qualified ?? 0} qualificados, {dashboard?.converted ?? 0} convertidos e taxa atual de{" "}
+                    {`${Math.round((dashboard?.conversionRate ?? 0) * 100)}%`}.
+                  </p>
+                </div>
+                <div className="leads-page__summary-card">
+                  <span className="leads-page__eyebrow">Automacao pronta</span>
+                  <strong>Webhook e eventos de dominio disponiveis</strong>
+                  <p>Centralize a entrada por integracoes e mantenha o historico do funil sincronizado no workspace.</p>
+                </div>
+              </div>
+            ) : null}
 
-            <DataTable columns="1.2fr 1fr 0.7fr 0.8fr 1fr 1.1fr" responsiveMinWidth="980px">
-              <DataTableHeader>
-                <DataTableCell>Lead</DataTableCell>
-                <DataTableCell>Empresa</DataTableCell>
-                <DataTableCell>Score</DataTableCell>
-                <DataTableCell>Status</DataTableCell>
-                <DataTableCell>Proximo contato</DataTableCell>
-                <DataTableCell>Acoes</DataTableCell>
-              </DataTableHeader>
-              <DataTableBody>
-                {leads.length === 0 ? (
-                  <DataTableRow>
-                    <DataTableCell>Nenhum lead encontrado.</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                  </DataTableRow>
-                ) : (
-                  leads.map((lead) => (
-                    <DataTableRow key={lead.id}>
-                      <DataTableCell>
-                        <div className="leads-page__lead-main">
-                          <strong>{lead.fullName ?? "Sem nome"}</strong>
-                          <span>{lead.email ?? lead.phone ?? "Sem contato"}</span>
-                        </div>
-                      </DataTableCell>
-                      <DataTableCell>{lead.companyName ?? "-"}</DataTableCell>
-                      <DataTableCell>{lead.score}</DataTableCell>
-                      <DataTableCell>
-                        <StatusBadge tone={statusTone(lead.status)}>{STATUS_LABELS[lead.status] ?? lead.status}</StatusBadge>
-                      </DataTableCell>
-                      <DataTableCell>{formatDate(lead.nextFollowUpAt)}</DataTableCell>
-                      <DataTableCell>
-                        <div className="leads-page__row-actions">
-                          <Button size="sm" variant="outline" onClick={() => void openLeadDetails(lead.id)}>
-                            Detalhe
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => void qualifyQuick(lead, "MQL")} disabled={isSubmitting}>
-                            MQL
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              void runAction(
-                                () => leadsService.registerFollowUp(workspaceId, lead.id, { note: "Follow-up manual registrado" }),
-                                "Follow-up registrado."
-                              )
-                            }
-                            disabled={isSubmitting}
-                          >
-                            Follow-up
-                          </Button>
-                        </div>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))
-                )}
-              </DataTableBody>
-            </DataTable>
-          </section>
-        ) : null}
+            {tab === "pipeline" ? (
+              <>
+                <div className="leads-page__filters">
+                  <FormField label="Buscar">
+                    <TextInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, email, empresa, interesse" />
+                  </FormField>
+                  <FormField label="Status">
+                    <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
+                      <option value="ALL">Todos</option>
+                      <option value="CAPTURED">Capturado</option>
+                      <option value="QUALIFIED">Qualificado</option>
+                      <option value="DISTRIBUTED">Distribuido</option>
+                      <option value="FOLLOW_UP">Acompanhamento</option>
+                      <option value="NURTURING">Nutricao</option>
+                      <option value="CONVERTED">Convertido</option>
+                      <option value="LOST">Perdido</option>
+                    </Select>
+                  </FormField>
+                </div>
 
-        {tab === "capture" ? (
-          <section className="leads-page__section">
-            <div className="leads-page__form-grid">
-              <FormField label="Nome">
-                <TextInput
-                  value={captureForm.fullName ?? ""}
-                  onChange={(event) => setCaptureForm((current) => ({ ...current, fullName: event.target.value }))}
-                />
-              </FormField>
-              <FormField label="Email">
-                <TextInput
-                  value={captureForm.email ?? ""}
-                  onChange={(event) => setCaptureForm((current) => ({ ...current, email: event.target.value }))}
-                />
-              </FormField>
-              <FormField label="Telefone">
-                <TextInput
-                  value={captureForm.phone ?? ""}
-                  onChange={(event) => setCaptureForm((current) => ({ ...current, phone: event.target.value }))}
-                />
-              </FormField>
-            </div>
-            <div className="leads-page__form-grid">
-              <FormField label="Empresa">
-                <TextInput
-                  value={captureForm.companyName ?? ""}
-                  onChange={(event) => setCaptureForm((current) => ({ ...current, companyName: event.target.value }))}
-                />
-              </FormField>
-              <FormField label="Interesse">
-                <TextInput
-                  value={captureForm.interest ?? ""}
-                  onChange={(event) => setCaptureForm((current) => ({ ...current, interest: event.target.value }))}
-                />
-              </FormField>
-              <FormField label="Score inicial">
-                <TextInput
-                  value={String(captureForm.score ?? 50)}
-                  onChange={(event) => setCaptureForm((current) => ({ ...current, score: Number(event.target.value) }))}
-                />
-              </FormField>
-            </div>
-            <FormField label="Notas">
-              <Textarea
-                rows={4}
-                value={captureForm.notes ?? ""}
-                onChange={(event) => setCaptureForm((current) => ({ ...current, notes: event.target.value }))}
-              />
-            </FormField>
-            <div className="leads-page__row-actions">
-              <Button onClick={() => void submitCapture()} disabled={isSubmitting}>Capturar lead</Button>
-            </div>
-          </section>
-        ) : null}
+                <DataTable columns="1.2fr 1fr 0.7fr 0.8fr 1fr 1.1fr" responsiveMinWidth="980px" className="leads-page__table">
+                  <DataTableHeader>
+                    <DataTableCell>Lead</DataTableCell>
+                    <DataTableCell>Empresa</DataTableCell>
+                    <DataTableCell>Score</DataTableCell>
+                    <DataTableCell>Status</DataTableCell>
+                    <DataTableCell>Proximo contato</DataTableCell>
+                    <DataTableCell>Acoes</DataTableCell>
+                  </DataTableHeader>
+                  <DataTableBody>
+                    {isLoading ? (
+                      <LoadingState text="Carregando leads..." />
+                    ) : leads.length === 0 ? (
+                      <EmptyState>Nenhum lead encontrado.</EmptyState>
+                    ) : (
+                      leads.map((lead) => (
+                        <DataTableRow key={lead.id}>
+                          <DataTableCell>
+                            <div className="leads-page__lead-main">
+                              <strong>{lead.fullName ?? "Sem nome"}</strong>
+                              <span>{lead.email ?? lead.phone ?? "Sem contato"}</span>
+                            </div>
+                          </DataTableCell>
+                          <DataTableCell>{lead.companyName ?? "-"}</DataTableCell>
+                          <DataTableCell>{lead.score}</DataTableCell>
+                          <DataTableCell>
+                            <StatusBadge tone={statusTone(lead.status)}>{STATUS_LABELS[lead.status] ?? lead.status}</StatusBadge>
+                          </DataTableCell>
+                          <DataTableCell>{formatDate(lead.nextFollowUpAt)}</DataTableCell>
+                          <DataTableCell>
+                            <div className="leads-page__row-actions">
+                              <Button size="sm" variant="outline" onClick={() => void openLeadDetails(lead.id)}>
+                                Detalhe
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => void qualifyQuick(lead, "MQL")} disabled={isSubmitting}>
+                                MQL
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  void runAction(
+                                    () => leadsService.registerFollowUp(workspaceId, lead.id, { note: "Follow-up manual registrado" }),
+                                    "Follow-up registrado."
+                                  )
+                                }
+                                disabled={isSubmitting}
+                              >
+                                Follow-up
+                              </Button>
+                            </div>
+                          </DataTableCell>
+                        </DataTableRow>
+                      ))
+                    )}
+                  </DataTableBody>
+                </DataTable>
+              </>
+            ) : null}
 
-        {tab === "automations" ? (
-          <section className="leads-page__section leads-page__automation">
-            <h2>Pronto para automacoes e integracoes</h2>
-            <p>
-              Use o endpoint <code>/integrations/leads/webhook/:source</code> para ingestao automatica de leads.
-              O modulo possui idempotencia por evento, historico de ingestao e rastreio de funil.
-            </p>
-            <p>
-              Fluxo suportado: captura, qualificacao, distribuicao, acompanhamento, nutricao e conversao,
-              com eventos de dominio publicados para o motor de automacoes.
-            </p>
-          </section>
-        ) : null}
+            {tab === "capture" ? (
+              <div className="leads-page__capture">
+                <div className="leads-page__form-grid">
+                  <FormField label="Nome">
+                    <TextInput
+                      value={captureForm.fullName ?? ""}
+                      onChange={(event) => setCaptureForm((current) => ({ ...current, fullName: event.target.value }))}
+                    />
+                  </FormField>
+                  <FormField label="Email">
+                    <TextInput
+                      value={captureForm.email ?? ""}
+                      onChange={(event) => setCaptureForm((current) => ({ ...current, email: event.target.value }))}
+                    />
+                  </FormField>
+                  <FormField label="Telefone">
+                    <TextInput
+                      value={captureForm.phone ?? ""}
+                      onChange={(event) => setCaptureForm((current) => ({ ...current, phone: event.target.value }))}
+                    />
+                  </FormField>
+                </div>
+                <div className="leads-page__form-grid">
+                  <FormField label="Empresa">
+                    <TextInput
+                      value={captureForm.companyName ?? ""}
+                      onChange={(event) => setCaptureForm((current) => ({ ...current, companyName: event.target.value }))}
+                    />
+                  </FormField>
+                  <FormField label="Interesse">
+                    <TextInput
+                      value={captureForm.interest ?? ""}
+                      onChange={(event) => setCaptureForm((current) => ({ ...current, interest: event.target.value }))}
+                    />
+                  </FormField>
+                  <FormField label="Score inicial">
+                    <TextInput
+                      value={String(captureForm.score ?? 50)}
+                      onChange={(event) => setCaptureForm((current) => ({ ...current, score: Number(event.target.value) }))}
+                    />
+                  </FormField>
+                </div>
+                <FormField label="Notas">
+                  <Textarea
+                    rows={4}
+                    value={captureForm.notes ?? ""}
+                    onChange={(event) => setCaptureForm((current) => ({ ...current, notes: event.target.value }))}
+                  />
+                </FormField>
+                <div className="leads-page__row-actions">
+                  <Button onClick={() => void submitCapture()} disabled={isSubmitting}>Capturar lead</Button>
+                </div>
+              </div>
+            ) : null}
+
+            {tab === "automations" ? (
+              <div className="leads-page__automation">
+                <div className="leads-page__summary-card">
+                  <span className="leads-page__eyebrow">Endpoint de entrada</span>
+                  <strong>
+                    <code>/integrations/leads/webhook/:source</code>
+                  </strong>
+                  <p>Use este endpoint para ingestao automatica com idempotencia por evento e rastreio completo do funil.</p>
+                </div>
+                <div className="leads-page__summary-card">
+                  <span className="leads-page__eyebrow">Fluxo suportado</span>
+                  <strong>Captura, qualificacao, distribuicao e conversao</strong>
+                  <p>Os eventos de dominio ficam prontos para alimentar o motor de automacoes e os modulos seguintes.</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Section>
       </div>
 
       {detailsId ? (

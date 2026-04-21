@@ -21,7 +21,7 @@ import {
   DataTableHeader,
   DataTableRow,
   FormField,
-  MetricCard,
+  Section,
   Select,
   StatusBadge,
   Tabs,
@@ -29,6 +29,7 @@ import {
   Textarea
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
 import "./marketing-page.css";
 
 type MarketingTab = "overview" | "campaign-builder" | "ai-studio" | "audience" | "automations" | "templates" | "calendar";
@@ -581,82 +582,93 @@ export function MarketingPage() {
     [campaigns]
   );
 
+  const dashboardMetricCards = useMemo(
+    () => [
+      { label: "Campanhas ativas", value: dashboard?.activeCampaigns ?? 0 },
+      { label: "Campanhas agendadas", value: dashboard?.scheduledCampaigns ?? 0 },
+      { label: "Open rate", value: toRate(dashboard?.openRate ?? 0) },
+      { label: "Click rate", value: toRate(dashboard?.clickRate ?? 0) },
+      { label: "Conversao influenciada", value: toRate(dashboard?.conversionRate ?? 0) },
+      { label: "Receita influenciada", value: `R$ ${(dashboard?.influencedRevenue ?? 0).toFixed(2)}` }
+    ],
+    [dashboard]
+  );
+
+  const activeTabLabel = useMemo(
+    () => MARKETING_TABS.find((item) => item.id === tab)?.label ?? "Overview",
+    [tab]
+  );
+
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Marketing" pageTitle="Marketing Operations">
-      <div className="marketing-page">
-        <header className="marketing-page__header">
-          <div>
-            <h1>Marketing</h1>
-            <p>Do lead ao faturamento no mesmo contexto operacional.</p>
-          </div>
+      <div className="marketing-page workspace-view">
+        <BoardMetrics metrics={metrics} cards={dashboardMetricCards} className="marketing-page__metrics workspace-view__metrics" />
 
-          <div className="marketing-page__header-actions">
-            <Button variant="outline" onClick={() => void loadData()} disabled={isLoading || isSubmitting}>
-              Atualizar
-            </Button>
-            <Button onClick={() => setTab("campaign-builder")}>Nova campanha</Button>
-          </div>
-        </header>
+        <Section
+          title="Marketing operations"
+          subtitle="Do lead ao faturamento no mesmo contexto operacional, no mesmo visual da timeline."
+          actions={
+            <div className="marketing-page__section-actions workspace-view__actions">
+              <Button variant="outline" onClick={() => void loadData()} disabled={isLoading || isSubmitting}>
+                Atualizar
+              </Button>
+              <Button onClick={() => setTab("campaign-builder")}>Nova campanha</Button>
+              <StatusBadge>{activeTabLabel}</StatusBadge>
+            </div>
+          }
+          className="marketing-page__section workspace-view__section"
+        >
+          <div className="marketing-page__stack">
+            {message ? <div className="marketing-page__feedback marketing-page__feedback--ok">{message}</div> : null}
+            {error ? <div className="marketing-page__feedback marketing-page__feedback--error">{error}</div> : null}
 
-        {message ? <div className="marketing-page__feedback marketing-page__feedback--ok">{message}</div> : null}
-        {error ? <div className="marketing-page__feedback marketing-page__feedback--error">{error}</div> : null}
-
-        <Tabs<MarketingTab> value={tab} items={MARKETING_TABS} onChange={setTab} />
-
-        {tab === "overview" ? (
-          <section className="marketing-page__section">
-            <div className="marketing-page__metrics">
-              <MetricCard label="Campanhas ativas" value={dashboard?.activeCampaigns ?? 0} />
-              <MetricCard label="Campanhas agendadas" value={dashboard?.scheduledCampaigns ?? 0} />
-              <MetricCard label="Open rate" value={toRate(dashboard?.openRate ?? 0)} />
-              <MetricCard label="Click rate" value={toRate(dashboard?.clickRate ?? 0)} />
-              <MetricCard label="Conversao influenciada" value={toRate(dashboard?.conversionRate ?? 0)} />
-              <MetricCard label="Leads influenciados" value={dashboard?.influencedLeads ?? 0} />
-              <MetricCard label="Clientes influenciados" value={dashboard?.influencedCustomers ?? 0} />
-              <MetricCard label="Receita influenciada" value={`R$ ${(dashboard?.influencedRevenue ?? 0).toFixed(2)}`} />
+            <div className="marketing-page__tabs-shell">
+              <Tabs<MarketingTab> value={tab} items={MARKETING_TABS} onChange={setTab} className="marketing-page__tabs" />
             </div>
 
-            <div className="marketing-page__overview-grid">
-              <article className="marketing-page__card">
-                <h2>Campanhas em destaque</h2>
-                <ul>
-                  {campaigns.slice(0, 6).map((campaign) => (
-                    <li key={campaign.id}>
-                      <button type="button" onClick={() => void loadCampaignDetails(campaign.id)}>
-                        <strong>{campaign.name}</strong>
-                        <span>{campaign.objective} - {campaign.status}</span>
-                      </button>
-                    </li>
-                  ))}
-                  {campaigns.length === 0 ? <li>Nenhuma campanha criada ainda.</li> : null}
-                </ul>
-              </article>
+            {tab === "overview" ? (
+              <div className="marketing-page__panel marketing-page__panel--overview">
+                <div className="marketing-page__overview-grid">
+                  <article className="marketing-page__card">
+                    <h2>Campanhas em destaque</h2>
+                    <ul>
+                      {campaigns.slice(0, 6).map((campaign) => (
+                        <li key={campaign.id}>
+                          <button type="button" onClick={() => void loadCampaignDetails(campaign.id)}>
+                            <strong>{campaign.name}</strong>
+                            <span>{campaign.objective} - {campaign.status}</span>
+                          </button>
+                        </li>
+                      ))}
+                      {campaigns.length === 0 ? <li>Nenhuma campanha criada ainda.</li> : null}
+                    </ul>
+                  </article>
 
-              <article className="marketing-page__card">
-                <h2>Insights de IA</h2>
-                <div className="marketing-page__insights">
-                  <p>
-                    {dashboard && dashboard.clickRate < 0.12
-                      ? "Click rate abaixo do alvo. Recomendado gerar versao B mais orientada a CTA."
-                      : "Click rate em faixa saudavel. Foque em converter cliques para oportunidades."}
-                  </p>
-                  <p>
-                    {dashboard && dashboard.openRate < 0.22
-                      ? "Open rate baixo. Sugestao: rodar IA para variar assunto por estagio e score."
-                      : "Assuntos performando bem. Ajuste segmentacao para elevar qualidade de resposta."}
-                  </p>
-                  <p>
-                    Automacoes em execucao: <strong>{dashboard?.automationsRunning ?? 0}</strong> - Envios em fila hoje:{" "}
-                    <strong>{dashboard?.sendsQueuedToday ?? 0}</strong>
-                  </p>
+                  <article className="marketing-page__card">
+                    <h2>Insights de IA</h2>
+                    <div className="marketing-page__insights">
+                      <p>
+                        {dashboard && dashboard.clickRate < 0.12
+                          ? "Click rate abaixo do alvo. Recomendado gerar versao B mais orientada a CTA."
+                          : "Click rate em faixa saudavel. Foque em converter cliques para oportunidades."}
+                      </p>
+                      <p>
+                        {dashboard && dashboard.openRate < 0.22
+                          ? "Open rate baixo. Sugestao: rodar IA para variar assunto por estagio e score."
+                          : "Assuntos performando bem. Ajuste segmentacao para elevar qualidade de resposta."}
+                      </p>
+                      <p>
+                        Automacoes em execucao: <strong>{dashboard?.automationsRunning ?? 0}</strong> - Envios em fila hoje:{" "}
+                        <strong>{dashboard?.sendsQueuedToday ?? 0}</strong>
+                      </p>
+                    </div>
+                  </article>
                 </div>
-              </article>
-            </div>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
 
-        {tab === "campaign-builder" ? (
-          <section className="marketing-page__section marketing-page__section-grid">
+            {tab === "campaign-builder" ? (
+              <div className="marketing-page__panel marketing-page__panel-grid">
             <article className="marketing-page__card">
               <h2>Campaign Builder</h2>
               <div className="marketing-page__grid">
@@ -911,11 +923,11 @@ export function MarketingPage() {
                 <p className="marketing-page__hint">Selecione uma campanha para acompanhar detalhes, timeline e envios.</p>
               )}
             </article>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
 
-        {tab === "ai-studio" ? (
-          <section className="marketing-page__section marketing-page__section-grid">
+            {tab === "ai-studio" ? (
+              <div className="marketing-page__panel marketing-page__panel-grid">
             <article className="marketing-page__card">
               <h2>AI Campaign Studio</h2>
               <p>
@@ -972,11 +984,11 @@ export function MarketingPage() {
                 <li>Adicionar CTA alinhado ao estagio (diagnostico, demo, onboarding ou renovacao).</li>
               </ul>
             </article>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
 
-        {tab === "audience" ? (
-          <section className="marketing-page__section marketing-page__section-grid">
+            {tab === "audience" ? (
+              <div className="marketing-page__panel marketing-page__panel-grid">
             <article className="marketing-page__card">
               <h2>Audience Explorer</h2>
               <div className="marketing-page__filters">
@@ -1094,11 +1106,11 @@ export function MarketingPage() {
                 </div>
               ) : null}
             </article>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
 
-        {tab === "automations" ? (
-          <section className="marketing-page__section marketing-page__section-grid">
+            {tab === "automations" ? (
+              <div className="marketing-page__panel marketing-page__panel-grid">
             <article className="marketing-page__card">
               <h2>Automation Builder</h2>
               <FormField label="Nome do fluxo">
@@ -1148,11 +1160,11 @@ export function MarketingPage() {
                 ))}
               </ul>
             </article>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
 
-        {tab === "templates" ? (
-          <section className="marketing-page__section marketing-page__section-grid">
+            {tab === "templates" ? (
+              <div className="marketing-page__panel marketing-page__panel-grid">
             <article className="marketing-page__card">
               <h2>Template Library</h2>
               <FormField label="Nome">
@@ -1218,11 +1230,11 @@ export function MarketingPage() {
                 ))}
               </ul>
             </article>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
 
-        {tab === "calendar" ? (
-          <section className="marketing-page__section marketing-page__section-grid">
+            {tab === "calendar" ? (
+              <div className="marketing-page__panel marketing-page__panel-grid">
             <article className="marketing-page__card">
               <h2>Calendario editorial</h2>
               <ul className="marketing-page__calendar-list">
@@ -1254,8 +1266,10 @@ export function MarketingPage() {
                 ))}
               </ul>
             </article>
-          </section>
-        ) : null}
+              </div>
+            ) : null}
+          </div>
+        </Section>
       </div>
     </AppShell>
   );

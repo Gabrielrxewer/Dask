@@ -24,8 +24,6 @@ export type TaskFieldType =
   | "schedule"
   | "work_item_type";
 
-export type TaskFieldSource = "system" | "template" | "custom";
-
 export interface TaskFieldCapabilities {
   aiEnhance?: boolean;
   selectable?: boolean;
@@ -135,9 +133,7 @@ export interface TaskFieldDefinition {
   description?: string | null;
   type: TaskFieldType;
   options?: TaskFieldOption[];
-  source?: TaskFieldSource;
   required?: boolean;
-  isSystem?: boolean;
   isEditable?: boolean;
   isRemovable?: boolean;
   isActive?: boolean;

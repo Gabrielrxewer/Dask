@@ -13,14 +13,9 @@ function uniqueNonEmptyIds(fieldIds: string[]): string[] {
   );
 }
 
-export function isSystemCardFieldId(fieldId: string): boolean {
-  return fieldId.startsWith("sys:");
-}
-
 export function mergeCardFieldDefinitions(fieldDefinitions: TaskFieldDefinition[]): TaskFieldDefinition[] {
   return fieldDefinitions.map(field => ({
     ...field,
-    source: field.source ?? (isSystemCardFieldId(field.id) ? "system" : "custom"),
     capabilities: field.capabilities ?? inferCapabilitiesByType(field.type, field.config)
   }));
 }

@@ -121,7 +121,7 @@ interface FieldDraft {
   id: string;
   runtimeFieldId: string;
   name: string;
-  type: CustomFieldType;
+  type: TaskFieldDefinition["type"];
   required: boolean;
   allowAiGeneration: boolean;
   options: FieldOptionDraft[];
@@ -133,6 +133,7 @@ interface PendingFieldSetup {
   targetIndex: number;
   targetDetailZone?: DetailZone;
   dropTarget?: EditorDropTarget | null;
+  addToLayout: boolean;
   name: string;
   required: boolean;
   allowAiGeneration: boolean;
@@ -147,6 +148,7 @@ interface FieldLibraryItem extends TaskFieldDefinition {
   optionsCount: number;
   required: boolean;
   allowAiGeneration: boolean;
+  hasApiDefinition: boolean;
 }
 
 
@@ -195,6 +197,47 @@ function readFieldCapabilitiesById(settings?: Record<string, unknown>): Record<s
   );
 }
 
+function readFieldDefinitionOverridesById(settings?: Record<string, unknown>): Record<string, Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean }> {
+  const source = settings?.fieldDefinitionsById;
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+
+  return Object.entries(source as Record<string, unknown>).reduce<Record<string, Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean }>>(
+    (acc, [id, value]) => {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        acc[id] = value as Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean };
+      }
+      return acc;
+    },
+    {}
+  );
+}
+
+function applyFieldDefinitionOverrides(
+  fieldDefinitions: TaskFieldDefinition[],
+  settings?: Record<string, unknown>
+): TaskFieldDefinition[] {
+  const overridesById = readFieldDefinitionOverridesById(settings);
+  if (Object.keys(overridesById).length === 0) return fieldDefinitions;
+
+  return fieldDefinitions.map((definition) => {
+    const override = overridesById[definition.id];
+    if (!override) return definition;
+
+    return {
+      ...definition,
+      label: typeof override.label === "string" ? override.label : definition.label,
+      name: typeof override.name === "string" ? override.name : definition.name,
+      type: typeof override.type === "string" ? (override.type as TaskFieldDefinition["type"]) : definition.type,
+      required: typeof override.required === "boolean" ? override.required : definition.required,
+      options: Array.isArray(override.options) ? (override.options as TaskFieldDefinition["options"]) : definition.options,
+      config: {
+        ...(definition.config ?? {}),
+        ...(typeof override.allowAiGeneration === "boolean" ? { allowAiGeneration: override.allowAiGeneration } : {})
+      }
+    };
+  });
+}
+
 function sanitizeOptionValue(v: string): string {
   return v
     .normalize("NFD")
@@ -227,6 +270,34 @@ function mapApiOptionsToDraft(options: ApiCustomField["options"]): FieldOptionDr
 
 function createEmptyOptionDraft(index: number): FieldOptionDraft {
   return { id: `new-opt-${Date.now()}-${index}`, label: "", value: "" };
+}
+
+function buildFieldDraftFromApiField(raw: ApiCustomField, runtimeFieldId: string): FieldDraft {
+  return {
+    id: raw.id,
+    runtimeFieldId,
+    name: raw.name,
+    type: raw.type as CustomFieldType,
+    required: raw.required,
+    allowAiGeneration: readAllowAiGeneration(raw.settings),
+    options: mapApiOptionsToDraft(raw.options)
+  };
+}
+
+function buildFieldDraftFromDefinition(field: TaskFieldDefinition): FieldDraft {
+  return {
+    id: field.definitionId ?? field.id,
+    runtimeFieldId: field.id,
+    name: field.label,
+    type: field.type,
+    required: field.required ?? false,
+    allowAiGeneration: field.capabilities?.aiEnhance === true,
+    options: (field.options ?? []).map((option, index) => ({
+      id: option.id || `field-opt-${index}`,
+      label: option.label,
+      value: option.value
+    }))
+  };
 }
 
 function getPreviewOptionLabels(field: TaskFieldDefinition): string[] {
@@ -449,7 +520,10 @@ export function WorkItemEditorSettings() {
   const allFields = useMemo(
     () =>
       applyFieldCapabilityOverrides(
-        mergeCardFieldDefinitions(Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : []),
+        applyFieldDefinitionOverrides(
+          mergeCardFieldDefinitions(Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : []),
+          settings
+        ),
         settings
       ),
     [boardConfig.fieldDefinitions, settings]
@@ -488,7 +562,7 @@ export function WorkItemEditorSettings() {
   const [fieldError, setFieldError] = useState("");
 
   // ── Canvas interaction ───────────────────────────────────────────────────
-  const [activeCanvasTab, setActiveCanvasTab] = useState<"card" | "detail">("card");
+  const [activeCanvasTab, setActiveCanvasTab] = useState<"card" | "detail" | "field">("card");
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
   const [dropTarget, setDropTarget] = useState<EditorDropTarget | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -556,7 +630,8 @@ export function WorkItemEditorSettings() {
           ...field,
           optionsCount: cf?.options.length ?? field.options?.length ?? 0,
           required: cf?.required ?? field.required ?? false,
-          allowAiGeneration
+          allowAiGeneration,
+          hasApiDefinition: Boolean(cf)
         };
       }),
     [allFields, customFieldByRuntimeId, fieldCapabilitiesById]
@@ -564,6 +639,10 @@ export function WorkItemEditorSettings() {
 
   const fieldsById = useMemo(
     () => libraryFields.reduce<Record<string, FieldLibraryItem>>((acc, f) => { acc[f.id] = f; return acc; }, {}),
+    [libraryFields]
+  );
+  const editableFields = useMemo(
+    () => libraryFields.filter((field) => field.isEditable !== false),
     [libraryFields]
   );
 
@@ -796,6 +875,7 @@ export function WorkItemEditorSettings() {
           targetIndex: target.surface === "card" ? activeLayout.card.length : activeLayout.detail.length,
           targetDetailZone: target.surface === "detail" ? target.zone : undefined,
           dropTarget: target,
+          addToLayout: true,
           name: "",
           required: false,
           allowAiGeneration: false,
@@ -939,6 +1019,38 @@ export function WorkItemEditorSettings() {
     [fieldCapabilitiesById, settings, snapshot, updatePreferences]
   );
 
+  const persistFieldDefinitionOverride = useCallback(
+    async (fieldId: string, draft: FieldDraft) => {
+      if (!snapshot) return;
+
+      const normalizedOptions = normalizeOptionInputs(draft.options).map((option, index) => ({
+        id: `override-${fieldId}-${index + 1}`,
+        label: option.label,
+        value: option.value
+      }));
+      const currentOverrides = readFieldDefinitionOverridesById(settings);
+
+      await updatePreferences({
+        settings: {
+          ...settings,
+          fieldDefinitionsById: {
+            ...currentOverrides,
+            [fieldId]: {
+              ...(currentOverrides[fieldId] ?? {}),
+              label: draft.name.trim(),
+              name: draft.name.trim(),
+              type: draft.type,
+              required: draft.required,
+              options: supportsSelectableOptions(draft.type as CustomFieldType) ? normalizedOptions : [],
+              allowAiGeneration: supportsAiGeneration(draft.type as CustomFieldType) ? draft.allowAiGeneration : false
+            }
+          }
+        }
+      });
+    },
+    [settings, snapshot, updatePreferences]
+  );
+
   const handleSaveType = async () => {
     if (!typeComposer?.name.trim()) return;
     setTypeSaving(true);
@@ -993,41 +1105,43 @@ export function WorkItemEditorSettings() {
 
       if (newField) {
         const newFieldRuntimeId = newField.slug;
-        const { targetScope: sc, targetIndex: idx, targetDetailZone, dropTarget } = pendingFieldSetup;
+        const { addToLayout, targetScope: sc, targetIndex: idx, targetDetailZone, dropTarget } = pendingFieldSetup;
 
-        if (dropTarget) {
-          const nextDrop = applyFieldDrop({
-            draft: activeLayout,
-            payload: { fieldId: newFieldRuntimeId, origin: "library" },
-            target: dropTarget,
-            allowedFieldIds: new Set([...allowedFieldIds, newFieldRuntimeId]),
-            cardAreasByFieldId: activeCardAreasByFieldId,
-            detailZonesByFieldId: activeDetailZones
-          });
+        if (addToLayout) {
+          if (dropTarget) {
+            const nextDrop = applyFieldDrop({
+              draft: activeLayout,
+              payload: { fieldId: newFieldRuntimeId, origin: "library" },
+              target: dropTarget,
+              allowedFieldIds: new Set([...allowedFieldIds, newFieldRuntimeId]),
+              cardAreasByFieldId: activeCardAreasByFieldId,
+              detailZonesByFieldId: activeDetailZones
+            });
 
-          handleUpdateLayout(activeType.slug, nextDrop.layout);
+            handleUpdateLayout(activeType.slug, nextDrop.layout);
 
-          if (dropTarget.surface === "detail") {
-            handleUpdateDetailZones(activeType.slug, nextDrop.detailZonesByFieldId);
-          }
-
-          if (dropTarget.surface === "card") {
-            handleSyncCardAreaDraft(activeType.slug, newFieldRuntimeId, nextDrop.cardAreasByFieldId[newFieldRuntimeId]);
-          }
-        } else {
-          setLayoutDraftsByTypeSlug((cur) => ({
-            ...cur,
-            [activeType.slug]: {
-              card: sc === "card" ? addFieldIdToList(activeLayout.card, newFieldRuntimeId, idx) : [...activeLayout.card],
-              detail: sc === "detail" ? addFieldIdToList(activeLayout.detail, newFieldRuntimeId, idx) : [...activeLayout.detail]
+            if (dropTarget.surface === "detail") {
+              handleUpdateDetailZones(activeType.slug, nextDrop.detailZonesByFieldId);
             }
-          }));
-          if (sc === "detail") {
-            handleUpdateDetailZones(activeType.slug, { ...activeDetailZones, [newFieldRuntimeId]: targetDetailZone ?? "side" });
+
+            if (dropTarget.surface === "card") {
+              handleSyncCardAreaDraft(activeType.slug, newFieldRuntimeId, nextDrop.cardAreasByFieldId[newFieldRuntimeId]);
+            }
+          } else {
+            setLayoutDraftsByTypeSlug((cur) => ({
+              ...cur,
+              [activeType.slug]: {
+                card: sc === "card" ? addFieldIdToList(activeLayout.card, newFieldRuntimeId, idx) : [...activeLayout.card],
+                detail: sc === "detail" ? addFieldIdToList(activeLayout.detail, newFieldRuntimeId, idx) : [...activeLayout.detail]
+              }
+            }));
+            if (sc === "detail") {
+              handleUpdateDetailZones(activeType.slug, { ...activeDetailZones, [newFieldRuntimeId]: targetDetailZone ?? "side" });
+            }
           }
         }
         setSelectedFieldId(newFieldRuntimeId);
-        setActiveCanvasTab(sc);
+        setActiveCanvasTab(addToLayout ? sc : "field");
       }
       setPendingFieldSetup(null);
     } finally {
@@ -1038,24 +1152,31 @@ export function WorkItemEditorSettings() {
   const handleSaveField = async () => {
     if (!fieldDraft?.name.trim()) return;
     const normalizedOptions = normalizeOptionInputs(fieldDraft.options);
-    if (supportsSelectableOptions(fieldDraft.type) && normalizedOptions.length === 0) {
+    if (supportsSelectableOptions(fieldDraft.type as CustomFieldType) && normalizedOptions.length === 0) {
       setFieldError("Campos de selecao precisam de pelo menos uma opcao.");
       return;
     }
     setFieldSaving(true);
     setFieldError("");
     try {
-      await updateCustomField(fieldDraft.id, {
-        name: fieldDraft.name.trim(),
-        type: fieldDraft.type,
-        required: fieldDraft.required,
-        settings: { allowAiGeneration: supportsAiGeneration(fieldDraft.type) ? fieldDraft.allowAiGeneration : false },
-        options: supportsSelectableOptions(fieldDraft.type) ? normalizedOptions : []
-      });
+      const selectedDefinition = fieldsById[fieldDraft.runtimeFieldId];
+      const isCustomField = selectedDefinition?.hasApiDefinition === true;
+
+      if (isCustomField) {
+        await updateCustomField(fieldDraft.id, {
+          name: fieldDraft.name.trim(),
+          type: fieldDraft.type as CustomFieldType,
+          required: fieldDraft.required,
+          settings: { allowAiGeneration: supportsAiGeneration(fieldDraft.type as CustomFieldType) ? fieldDraft.allowAiGeneration : false },
+          options: supportsSelectableOptions(fieldDraft.type as CustomFieldType) ? normalizedOptions : []
+        });
+      }
+
       await persistFieldCapabilities(
         fieldDraft.runtimeFieldId,
-        supportsAiGeneration(fieldDraft.type) && fieldDraft.allowAiGeneration
+        supportsAiGeneration(fieldDraft.type as CustomFieldType) && fieldDraft.allowAiGeneration
       );
+      await persistFieldDefinitionOverride(fieldDraft.runtimeFieldId, fieldDraft);
       const savedFieldId = fieldDraft.runtimeFieldId;
       setFieldDraft(null);
       setSelectedFieldId(savedFieldId);
@@ -1077,39 +1198,56 @@ export function WorkItemEditorSettings() {
     }
   };
 
-  const openFieldEdit = (fieldId: string) => {
-    const raw = customFieldByRuntimeId[fieldId];
-    if (!raw) return;
-    setFieldError("");
-    setPendingFieldSetup(null);
-    setTypeComposer(null);
-    setFieldDraft({
-      id: raw.id,
-      runtimeFieldId: fieldId,
-      name: raw.name,
-      type: raw.type as CustomFieldType,
-      required: raw.required,
-      allowAiGeneration: readAllowAiGeneration(raw.settings),
-      options: mapApiOptionsToDraft(raw.options)
-    });
-  };
-
   const openNewFieldPanel = (type: CustomFieldType) => {
     setFieldError("");
     setFieldDraft(null);
     setTypeComposer(null);
     setPendingFieldSetup({
       type,
-      targetScope: activeCanvasTab,
-      targetIndex: (activeCanvasTab === "card" ? activeLayout.card : activeLayout.detail).length,
-      targetDetailZone: activeCanvasTab === "detail" ? "side" : undefined,
+      targetScope: preferredFieldTargetScope,
+      targetIndex: (preferredFieldTargetScope === "card" ? activeLayout.card : activeLayout.detail).length,
+      targetDetailZone: preferredFieldTargetScope === "detail" ? "side" : undefined,
       dropTarget: null,
+      addToLayout: activeCanvasTab !== "field",
       name: "",
       required: false,
       allowAiGeneration: false,
       options: []
     });
   };
+
+  useEffect(() => {
+    if (pendingFieldSetup || typeComposer) return;
+
+    if (!selectedFieldId) {
+      if (fieldDraft) setFieldDraft(null);
+      return;
+    }
+
+    const selectedDefinition = fieldsById[selectedFieldId];
+    if (!selectedDefinition) {
+      if (fieldDraft?.runtimeFieldId === selectedFieldId) setFieldDraft(null);
+      return;
+    }
+
+    if (fieldDraft?.runtimeFieldId !== selectedFieldId) {
+      const raw = customFieldByRuntimeId[selectedFieldId];
+      setFieldError("");
+      setFieldDraft(raw ? buildFieldDraftFromApiField(raw, selectedFieldId) : buildFieldDraftFromDefinition(selectedDefinition));
+    }
+  }, [customFieldByRuntimeId, fieldDraft, fieldsById, pendingFieldSetup, selectedFieldId, typeComposer]);
+
+  useEffect(() => {
+    if (activeCanvasTab !== "field" || pendingFieldSetup || editableFields.length === 0) {
+      return;
+    }
+
+    if (!selectedFieldId || fieldsById[selectedFieldId]?.isEditable === false) {
+      setSelectedFieldId(editableFields[0].id);
+      setFieldDraft(null);
+    }
+  }, [activeCanvasTab, editableFields, fieldsById, pendingFieldSetup, selectedFieldId]);
+
 
   // ── Preview computation ──────────────────────────────────────────────────
   const typeColor = activeType?.color || DEFAULT_TYPE_COLOR;
@@ -1222,7 +1360,42 @@ export function WorkItemEditorSettings() {
   const selectedDetailZone = selectedFieldId
     ? (activeDetailZones[selectedFieldId] ?? getDefaultDetailZone(fieldsById[selectedFieldId]))
     : "side";
-  const selectedRawField = selectedFieldId ? customFieldByRuntimeId[selectedFieldId] : null;
+  const preferredFieldTargetScope: LayoutScope = activeCanvasTab === "detail" ? "detail" : "card";
+  const fieldEditorPreview = useMemo<TaskFieldDefinition | null>(() => {
+    if (!selectedField) return null;
+    if (!fieldDraft || fieldDraft.runtimeFieldId !== selectedField.id) return selectedField;
+
+    return {
+      ...selectedField,
+      label: fieldDraft.name.trim() || selectedField.label,
+      type: fieldDraft.type,
+      options: normalizeOptionInputs(fieldDraft.options).map((option, index) => ({
+        id: `preview-option-${index + 1}`,
+        label: option.label,
+        value: option.value
+      }))
+    };
+  }, [fieldDraft, selectedField]);
+  const pendingFieldPreview = useMemo<TaskFieldDefinition | null>(() => {
+    if (!pendingFieldSetup) return null;
+
+    return {
+      id: "pending-field-preview",
+      label: pendingFieldSetup.name.trim() || "Novo campo",
+      name: pendingFieldSetup.name.trim() || "Novo campo",
+      slug: "pending-field-preview",
+      type: pendingFieldSetup.type,
+      required: pendingFieldSetup.required,
+      isEditable: true,
+      isActive: true,
+      options: normalizeOptionInputs(pendingFieldSetup.options).map((option, index) => ({
+        id: `pending-preview-option-${index + 1}`,
+        label: option.label,
+        value: option.value
+      }))
+    };
+  }, [pendingFieldSetup]);
+  const activeFieldCanvasPreview = pendingFieldPreview ?? fieldEditorPreview;
 
   const activePendingTypeLabel = pendingFieldSetup
     ? (FIELD_TYPE_OPTIONS.find((o) => o.value === pendingFieldSetup.type)?.label ?? pendingFieldSetup.type)
@@ -1501,10 +1674,197 @@ export function WorkItemEditorSettings() {
 
   // ── Properties panel content ──────────────────────────────────────────────
 
+  const renderFieldDefinitionEditor = (draft: FieldDraft, options?: { showHeader?: boolean; showDelete?: boolean }) => {
+    const showHeader = options?.showHeader ?? false;
+    const showDelete = options?.showDelete ?? true;
+
+    return (
+      <>
+        {showHeader ? (
+          <div className="wie__props-head">
+            <div className="wie__props-head-main">
+              <span className="wie__props-eyebrow">Campo</span>
+              <h3 className="wie__props-title">Editar definicao</h3>
+            </div>
+            <div className="wie__props-head-actions">
+              <button
+                type="button"
+                className="wie__props-icon-btn"
+                title={fieldSaving ? "Salvando..." : "Salvar campo"}
+                aria-label={fieldSaving ? "Salvando campo" : "Salvar campo"}
+                onClick={() => void handleSaveField()}
+                disabled={fieldSaving || !draft.name.trim()}
+              >
+                {fieldSaving ? "..." : "✓"}
+              </button>
+              {showDelete ? (
+                <button
+                  type="button"
+                  className="wie__props-icon-btn is-danger"
+                  title={fieldDeletingId === draft.id ? "Removendo..." : "Excluir campo"}
+                  aria-label={fieldDeletingId === draft.id ? "Removendo campo" : "Excluir campo"}
+                  onClick={() => void handleDeleteField(draft.id)}
+                  disabled={fieldDeletingId === draft.id}
+                >
+                  {fieldDeletingId === draft.id ? "..." : "🗑"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        <div className={showHeader ? "wie__props-scroll" : "wie__props-definition-editor"}>
+          {!showHeader ? (
+            <>
+              <span className="wie__props-section-label">Definicao do campo</span>
+              <p className="wie__props-section-hint">
+                Alteracoes aqui afetam todos os tipos que utilizam este campo.
+              </p>
+            </>
+          ) : null}
+          <FormField label="Label do campo">
+            <TextInput value={draft.name} placeholder="Ex: Impacto esperado"
+              onChange={(e) => setFieldDraft({ ...draft, name: e.target.value })} />
+          </FormField>
+          <div className="wie__props-field-types">
+            {FIELD_TYPE_OPTIONS.map((opt) => (
+              <button key={opt.value} type="button"
+                className={`wie__props-type-btn${draft.type === opt.value ? " is-active" : ""}`}
+                onClick={() => setFieldDraft({ ...draft, type: opt.value, allowAiGeneration: supportsAiGeneration(opt.value) ? draft.allowAiGeneration : false })}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div className="wie__props-toggles">
+            <label>
+              <input type="checkbox" checked={draft.required}
+                onChange={(e) => setFieldDraft({ ...draft, required: e.target.checked })} />
+              Obrigatorio
+            </label>
+            <label>
+              <input type="checkbox" checked={draft.allowAiGeneration}
+                disabled={!supportsAiGeneration(draft.type)}
+                onChange={(e) => setFieldDraft({ ...draft, allowAiGeneration: e.target.checked })} />
+              IA no campo
+            </label>
+          </div>
+          {supportsSelectableOptions(draft.type) ? (
+            <div className="wie__props-options">
+              <div className="wie__props-options-head">
+                <strong>Opcoes</strong>
+                <button type="button" onClick={() =>
+                  setFieldDraft({ ...draft, options: [...draft.options, createEmptyOptionDraft(draft.options.length + 1)] })
+                }>+ Adicionar</button>
+              </div>
+              {draft.options.map((opt) => (
+                <div key={opt.id} className="wie__props-option-row">
+                  <TextInput value={opt.label} placeholder="Label"
+                    onChange={(e) => setFieldDraft({ ...draft, options: draft.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
+                  <button type="button" className="wie__props-option-remove"
+                    onClick={() => setFieldDraft({ ...draft, options: draft.options.filter((o) => o.id !== opt.id) })}>x</button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {fieldError ? <p className="wie__props-error">{fieldError}</p> : null}
+          {showHeader ? (
+            <div className="wie__props-actions">
+              <Button type="button" size="sm" variant="outline" onClick={() => { setFieldDraft(null); setFieldError(""); setSelectedFieldId(draft.runtimeFieldId); }}>
+                Cancelar
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </>
+    );
+  };
+
   const renderPropertiesPanel = () => {
     // 1. Creating new field
     if (pendingFieldSetup) {
       return (
+        <div className="wie__props-panel">
+          <div className="wie__props-head">
+            <span className="wie__props-eyebrow">Novo campo â€” {activePendingTypeLabel}</span>
+            <h3 className="wie__props-title">Configurar campo</h3>
+          </div>
+          <div className="wie__props-scroll">
+            <FormField label="Label do campo">
+              <TextInput
+                value={pendingFieldSetup.name}
+                placeholder="Ex: Titulo, Impacto, Prazo..."
+                autoFocus
+                onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, name: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !supportsSelectableOptions(pendingFieldSetup.type)) void handleConfirmFieldSetup();
+                  if (e.key === "Escape") setPendingFieldSetup(null);
+                }}
+              />
+            </FormField>
+            {pendingFieldSetup.addToLayout ? (
+              <div className="wie__props-target-info">
+                <span>Posicao:</span>
+                <strong>{pendingFieldTargetLabel}</strong>
+              </div>
+            ) : null}
+            <div className="wie__props-field-types">
+              {FIELD_TYPE_OPTIONS.map((opt) => (
+                <button key={opt.value} type="button"
+                  className={`wie__props-type-btn${pendingFieldSetup.type === opt.value ? " is-active" : ""}`}
+                  onClick={() => setPendingFieldSetup({
+                    ...pendingFieldSetup,
+                    type: opt.value,
+                    allowAiGeneration: supportsAiGeneration(opt.value) ? pendingFieldSetup.allowAiGeneration : false,
+                    options: supportsSelectableOptions(opt.value) ? pendingFieldSetup.options : []
+                  })}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="wie__props-toggles">
+              <label>
+                <input type="checkbox" checked={pendingFieldSetup.required}
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, required: e.target.checked })} />
+                Obrigatorio
+              </label>
+              <label>
+                <input type="checkbox" checked={pendingFieldSetup.allowAiGeneration}
+                  disabled={!supportsAiGeneration(pendingFieldSetup.type)}
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, allowAiGeneration: e.target.checked })} />
+                IA no campo
+              </label>
+            </div>
+            {supportsSelectableOptions(pendingFieldSetup.type) ? (
+              <div className="wie__props-options">
+                <div className="wie__props-options-head">
+                  <strong>Opcoes</strong>
+                  <button type="button" onClick={() =>
+                    setPendingFieldSetup({ ...pendingFieldSetup, options: [...pendingFieldSetup.options, createEmptyOptionDraft(pendingFieldSetup.options.length + 1)] })
+                  }>+ Adicionar</button>
+                </div>
+                {pendingFieldSetup.options.map((opt) => (
+                  <div key={opt.id} className="wie__props-option-row">
+                    <TextInput value={opt.label} placeholder="Label"
+                      onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
+                    <button type="button" className="wie__props-option-remove"
+                      onClick={() => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.filter((o) => o.id !== opt.id) })}>x</button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {fieldError ? <p className="wie__props-error">{fieldError}</p> : null}
+            <div className="wie__props-actions">
+              <Button type="button" size="sm" onClick={() => void handleConfirmFieldSetup()} disabled={fieldSaving || !pendingFieldSetup.name.trim()}>
+                {fieldSaving ? "Criando..." : pendingFieldSetup.addToLayout ? "Criar e adicionar" : "Criar campo"}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { setPendingFieldSetup(null); setFieldError(""); }}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+
+      /* return (
         <div className="wie__props-panel">
           <div className="wie__props-head">
             <span className="wie__props-eyebrow">Novo campo — {activePendingTypeLabel}</span>
@@ -1569,15 +1929,21 @@ export function WorkItemEditorSettings() {
             </div>
           </div>
         </div>
-      );
+      ); */
     }
 
     // 2. Editing existing field definition
-    if (fieldDraft) {
+    if (fieldDraft && (!selectedFieldId || fieldDraft.runtimeFieldId !== selectedFieldId)) {
       return (
         <div className="wie__props-panel">
+          {renderFieldDefinitionEditor(fieldDraft, { showHeader: true })}
+        </div>
+      );
+
+      /* return (
+        <div className="wie__props-panel">
           <div className="wie__props-head">
-            <span className="wie__props-eyebrow">Campo customizado</span>
+            <span className="wie__props-eyebrow">Campo</span>
             <h3 className="wie__props-title">Editar definicao</h3>
           </div>
           <div className="wie__props-scroll">
@@ -1643,7 +2009,7 @@ export function WorkItemEditorSettings() {
             </div>
           </div>
         </div>
-      );
+      ); */
     }
 
     // 3. Creating/editing item type
@@ -1696,151 +2062,156 @@ export function WorkItemEditorSettings() {
 
     // 4. Field selected — show binding properties
     if (selectedField) {
-      const isCustom = selectedField.source === "custom";
-      const isSystem = selectedField.source === "system";
+      const showFieldProps = activeCanvasTab === "field";
 
       return (
         <div className="wie__props-panel">
           <div className="wie__props-head">
-            <span className="wie__props-eyebrow">{isSystem ? "Campo de sistema" : "Campo customizado"}</span>
-            <h3 className="wie__props-title">{selectedField.label}</h3>
-            <span className="wie__props-type-badge">{getTaskFieldTypeLabel(selectedField)}</span>
+            <div className="wie__props-head-main">
+              <span className="wie__props-eyebrow">Campo</span>
+              <h3 className="wie__props-title">{selectedField.label}</h3>
+              <span className="wie__props-type-badge">{getTaskFieldTypeLabel(selectedField)}</span>
+            </div>
+            {showFieldProps && fieldDraft ? (
+              <div className="wie__props-head-actions">
+                <button
+                  type="button"
+                  className="wie__props-icon-btn"
+                  title={fieldSaving ? "Salvando..." : "Salvar campo"}
+                  aria-label={fieldSaving ? "Salvando campo" : "Salvar campo"}
+                  onClick={() => void handleSaveField()}
+                  disabled={fieldSaving || !fieldDraft.name.trim()}
+                >
+                  {fieldSaving ? "..." : "✓"}
+                </button>
+                {selectedField.hasApiDefinition ? (
+                  <button
+                    type="button"
+                    className="wie__props-icon-btn is-danger"
+                    title={fieldDeletingId === fieldDraft.id ? "Removendo..." : "Excluir campo"}
+                    aria-label={fieldDeletingId === fieldDraft.id ? "Removendo campo" : "Excluir campo"}
+                    onClick={() => void handleDeleteField(fieldDraft.id)}
+                    disabled={fieldDeletingId === fieldDraft.id}
+                  >
+                    {fieldDeletingId === fieldDraft.id ? "..." : "🗑"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <div className="wie__props-scroll">
-            {/* Usage in card */}
-            <div className="wie__props-usage-section">
-              <div className="wie__props-usage-label">
-                <span>Card do board</span>
-                {selectedInCard ? <span className="wie__props-badge is-active">incluido</span> : <span className="wie__props-badge">fora</span>}
-              </div>
-              {selectedInCard ? (
-                <div className="wie__props-usage-actions">
-                  <p className="wie__props-usage-hint">
-                    Posicao {activeLayout.card.indexOf(selectedFieldId!) + 1} de {activeLayout.card.length}.
-                    Arraste no canvas para reordenar.
-                  </p>
-                  <div className="wie__props-area-selector">
-                    <span className="wie__props-area-label">Slot no card:</span>
-                    <div className="wie__props-area-btns">
-                      {CARD_SLOT_AREA_META.map(({ area, label }) => {
-                        const currentArea =
-                          (activeCardAreaDrafts[selectedField.id] as TaskFieldCardArea | undefined) ??
-                          (previewCardDebug?.fields.find((f) => f.fieldId === selectedField.id)?.area as TaskFieldCardArea | undefined);
-                        const isActive = currentArea === area;
-                        const areaCount = (previewCardDebug?.zones[area] ?? []).filter(
-                          (id) => previewCardDebug?.fields.find((f) => f.fieldId === id)?.rendered
-                        ).length;
-                        const limit = CARD_SLOT_LIMITS[area];
-                        const wouldExceed = !isActive && areaCount >= limit;
-                        return (
-                          <button
-                            key={area}
-                            type="button"
-                            className={`wie__props-area-btn${isActive ? " is-active" : ""}${wouldExceed ? " is-full" : ""}`}
-                            title={wouldExceed ? `Slot lotado (${areaCount}/${limit})` : label}
-                            onClick={() => handleSetCardAreaForField(selectedField.id, area)}
-                          >
-                            {label}
-                            {wouldExceed ? <span className="wie__props-area-full-dot" /> : null}
+            {!showFieldProps ? (
+              <>
+                <div className="wie__props-usage-section">
+                  <div className="wie__props-usage-label">
+                    <span>Card do board</span>
+                    {selectedInCard ? <span className="wie__props-badge is-active">incluido</span> : <span className="wie__props-badge">fora</span>}
+                  </div>
+                  {selectedInCard ? (
+                    <div className="wie__props-usage-actions">
+                      <p className="wie__props-usage-hint">
+                        Posicao {activeLayout.card.indexOf(selectedFieldId!) + 1} de {activeLayout.card.length}.
+                        Arraste no canvas para reordenar.
+                      </p>
+                      <div className="wie__props-area-selector">
+                        <span className="wie__props-area-label">Slot no card:</span>
+                        <div className="wie__props-area-btns">
+                          {CARD_SLOT_AREA_META.map(({ area, label }) => {
+                            const currentArea =
+                              (activeCardAreaDrafts[selectedField.id] as TaskFieldCardArea | undefined) ??
+                              (previewCardDebug?.fields.find((f) => f.fieldId === selectedField.id)?.area as TaskFieldCardArea | undefined);
+                            const isActive = currentArea === area;
+                            const areaCount = (previewCardDebug?.zones[area] ?? []).filter(
+                              (id) => previewCardDebug?.fields.find((f) => f.fieldId === id)?.rendered
+                            ).length;
+                            const limit = CARD_SLOT_LIMITS[area];
+                            const wouldExceed = !isActive && areaCount >= limit;
+                            return (
+                              <button
+                                key={area}
+                                type="button"
+                                className={`wie__props-area-btn${isActive ? " is-active" : ""}${wouldExceed ? " is-full" : ""}`}
+                                title={wouldExceed ? `Slot lotado (${areaCount}/${limit})` : label}
+                                onClick={() => handleSetCardAreaForField(selectedField.id, area)}
+                              >
+                                {label}
+                                {wouldExceed ? <span className="wie__props-area-full-dot" /> : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <Button type="button" size="sm" variant="outline"
+                        onClick={() => handleRemoveFromLayout(selectedField.id, "card")}>
+                        Remover do card
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline"
+                      onClick={() => handleAddFieldToLayout(selectedField.id, "card")}>
+                      + Adicionar ao card
+                    </Button>
+                  )}
+                </div>
+
+                <div className="wie__props-divider" />
+
+                <div className="wie__props-usage-section">
+                  <div className="wie__props-usage-label">
+                    <span>Formulario expandido</span>
+                    {selectedInDetail ? <span className="wie__props-badge is-active">incluido</span> : <span className="wie__props-badge">fora</span>}
+                  </div>
+                  {selectedInDetail ? (
+                    <div className="wie__props-usage-actions">
+                      <div className="wie__props-zone-row">
+                        <span>Zona:</span>
+                        <div className="wie__props-zone-switcher">
+                          <button type="button"
+                            className={`wie__props-zone-btn${selectedDetailZone === "main" ? " is-active" : ""}`}
+                            onClick={() => handleSetDetailZoneForField(selectedField.id, "main")}>
+                            Principal
                           </button>
-                        );
-                      })}
+                          <button type="button"
+                            className={`wie__props-zone-btn${selectedDetailZone !== "main" ? " is-active" : ""}`}
+                            onClick={() => handleSetDetailZoneForField(selectedField.id, "side")}>
+                            Lateral
+                          </button>
+                        </div>
+                      </div>
+                      <p className="wie__props-usage-hint">
+                        Posicao {activeLayout.detail.indexOf(selectedFieldId!) + 1} de {activeLayout.detail.length} campos no formulario.
+                        Arraste no canvas para reordenar.
+                      </p>
+                      <Button type="button" size="sm" variant="outline"
+                        onClick={() => handleRemoveFromLayout(selectedField.id, "detail")}>
+                        Remover do formulario
+                      </Button>
                     </div>
-                  </div>
-                  <Button type="button" size="sm" variant="outline"
-                    onClick={() => handleRemoveFromLayout(selectedField.id, "card")}>
-                    Remover do card
-                  </Button>
-                </div>
-              ) : (
-                <Button type="button" size="sm" variant="outline"
-                  onClick={() => handleAddFieldToLayout(selectedField.id, "card")}>
-                  + Adicionar ao card
-                </Button>
-              )}
-            </div>
-
-            <div className="wie__props-divider" />
-
-            {/* Usage in form */}
-            <div className="wie__props-usage-section">
-              <div className="wie__props-usage-label">
-                <span>Formulario expandido</span>
-                {selectedInDetail ? <span className="wie__props-badge is-active">incluido</span> : <span className="wie__props-badge">fora</span>}
-              </div>
-              {selectedInDetail ? (
-                <div className="wie__props-usage-actions">
-                  <div className="wie__props-zone-row">
-                    <span>Zona:</span>
-                    <div className="wie__props-zone-switcher">
-                      <button type="button"
-                        className={`wie__props-zone-btn${selectedDetailZone === "main" ? " is-active" : ""}`}
-                        onClick={() => handleSetDetailZoneForField(selectedField.id, "main")}>
-                        Principal
-                      </button>
-                      <button type="button"
-                        className={`wie__props-zone-btn${selectedDetailZone !== "main" ? " is-active" : ""}`}
-                        onClick={() => handleSetDetailZoneForField(selectedField.id, "side")}>
-                        Lateral
-                      </button>
+                  ) : (
+                    <div className="wie__props-usage-actions">
+                      <p className="wie__props-usage-hint">Escolha a zona onde o campo deve aparecer:</p>
+                      <div className="wie__props-add-zone-btns">
+                        <Button type="button" size="sm" variant="outline"
+                          onClick={() => {
+                            handleAddFieldToLayout(selectedField.id, "detail");
+                            handleSetDetailZoneForField(selectedField.id, "main");
+                          }}>
+                          + Coluna principal
+                        </Button>
+                        <Button type="button" size="sm" variant="outline"
+                          onClick={() => handleAddFieldToLayout(selectedField.id, "detail")}>
+                          + Barra lateral
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <p className="wie__props-usage-hint">
-                    Posicao {activeLayout.detail.indexOf(selectedFieldId!) + 1} de {activeLayout.detail.length} campos no formulario.
-                    Arraste no canvas para reordenar.
-                  </p>
-                  <Button type="button" size="sm" variant="outline"
-                    onClick={() => handleRemoveFromLayout(selectedField.id, "detail")}>
-                    Remover do formulario
-                  </Button>
-                </div>
-              ) : (
-                <div className="wie__props-usage-actions">
-                  <p className="wie__props-usage-hint">Escolha a zona onde o campo deve aparecer:</p>
-                  <div className="wie__props-add-zone-btns">
-                    <Button type="button" size="sm" variant="outline"
-                      onClick={() => {
-                        handleAddFieldToLayout(selectedField.id, "detail");
-                        handleSetDetailZoneForField(selectedField.id, "main");
-                      }}>
-                      + Coluna principal
-                    </Button>
-                    <Button type="button" size="sm" variant="outline"
-                      onClick={() => handleAddFieldToLayout(selectedField.id, "detail")}>
-                      + Barra lateral
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Field definition actions (custom fields only) */}
-            {isCustom && selectedRawField ? (
-              <>
-                <div className="wie__props-divider" />
-                <div className="wie__props-definition-section">
-                  <span className="wie__props-section-label">Definicao do campo</span>
-                  <p className="wie__props-section-hint">
-                    Editar o campo afeta todos os tipos que o utilizam.
-                  </p>
-                  <div className="wie__props-actions">
-                    <Button type="button" size="sm" variant="outline"
-                      onClick={() => openFieldEdit(selectedField.id)}>
-                      Editar definicao
-                    </Button>
-                  </div>
+                  )}
                 </div>
               </>
-            ) : null}
-
-            {isSystem ? (
+            ) : (
               <>
-                <div className="wie__props-divider" />
-                <p className="wie__props-system-note">
-                  Campo de sistema. A definicao e gerenciada pela plataforma.
-                </p>
+                {fieldDraft ? renderFieldDefinitionEditor(fieldDraft, { showDelete: selectedField.hasApiDefinition }) : null}
               </>
-            ) : null}
+            )}
           </div>
         </div>
       );
@@ -1990,26 +2361,24 @@ export function WorkItemEditorSettings() {
                   )}
                 </div>
 
-                {/* New field types */}
-                <div className="wie__lib-group wie__lib-group--new">
-                  <p className="wie__lib-group-title">Novo campo</p>
-                  <p className="wie__lib-hint">Clique para criar. Arraste para posicionar no canvas.</p>
-                  <div className="wie__type-tiles">
-                    {FIELD_TYPE_OPTIONS.map((opt) => (
-                      <div
-                        key={opt.value}
-                        className="wie__type-tile"
-                        draggable
-                        onDragStart={(e) => handleDragStartType(e, opt.value)}
-                        onDragEnd={handleDragEnd}
-                        onClick={() => openNewFieldPanel(opt.value)}
-                      >
-                        <strong>{opt.label}</strong>
-                        <span>{opt.caption}</span>
-                      </div>
-                    ))}
+                {activeCanvasTab === "field" ? (
+                  <div className="wie__lib-group wie__lib-group--new">
+                    <p className="wie__lib-group-title">Novo campo</p>
+                    <p className="wie__lib-hint">Clique para criar um novo campo.</p>
+                    <div className="wie__type-tiles">
+                      {FIELD_TYPE_OPTIONS.map((opt) => (
+                        <div
+                          key={opt.value}
+                          className="wie__type-tile"
+                          onClick={() => openNewFieldPanel(opt.value)}
+                        >
+                          <strong>{opt.label}</strong>
+                          <span>{opt.caption}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             </aside>
 
@@ -2035,6 +2404,16 @@ export function WorkItemEditorSettings() {
                 >
                   Formulario expandido
                   {detailFields.length > 0 ? <span className="wie__canvas-tab-count">{detailFields.length}</span> : null}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCanvasTab === "field"}
+                  className={`wie__canvas-tab${activeCanvasTab === "field" ? " is-active" : ""}`}
+                  onClick={() => setActiveCanvasTab("field")}
+                >
+                  Campos
+                  {selectedFieldId ? <span className="wie__canvas-tab-count">1</span> : null}
                 </button>
               </div>
 
@@ -2151,6 +2530,42 @@ export function WorkItemEditorSettings() {
                   {isDraggingType
                     ? "Solte em uma vaga para criar ou em um campo para substituir."
                     : "Solte em uma vaga para inserir ou em um campo para substituir."}
+                </div>
+              </section>
+
+              <section className={`wie__canvas-panel wie__canvas-panel--field${activeCanvasTab === "field" ? "" : " is-hidden"}`}>
+                <div className="wie__field-editor-stage">
+                  {activeFieldCanvasPreview ? (
+                    <div className="wie__field-editor-preview-panel">
+                      <div className="wie__field-editor-preview-head">
+                        <span>Preview do campo</span>
+                        <strong>{activeFieldCanvasPreview.label}</strong>
+                      </div>
+                      <div className="wie__field-editor-preview-card">
+                        <div className="wie__field-editor-preview-meta">
+                          <span className="wie__field-editor-preview-type">
+                            {getTaskFieldTypeLabel(activeFieldCanvasPreview)}
+                          </span>
+                          <div className="wie__field-editor-preview-badges">
+                            {pendingFieldSetup ? <span>Novo campo</span> : null}
+                            {!pendingFieldSetup && selectedInCard ? <span>No card</span> : null}
+                            {!pendingFieldSetup && selectedInDetail ? <span>No formulario</span> : null}
+                            {!pendingFieldSetup && !selectedInCard && !selectedInDetail ? <span>Fora do layout</span> : null}
+                          </div>
+                        </div>
+                        <div className="wie__field-editor-preview-field">
+                          <label>{activeFieldCanvasPreview.label}</label>
+                          {renderPreviewFieldValue(activeFieldCanvasPreview)}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="wie__field-editor-empty">
+                      <span>Campos</span>
+                      <strong>Selecione um campo para editar visualmente</strong>
+                      <p>Clique em um campo na biblioteca, no card ou no formulario para abrir o preview e a edicao aqui.</p>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

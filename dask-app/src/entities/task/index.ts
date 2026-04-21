@@ -5,7 +5,6 @@ export {
   CARD_FIELDS_SCHEMA_VERSION,
   getTaskFieldTypeLabel,
   inferCapabilitiesByType,
-  isSystemCardFieldId,
   mergeCardFieldDefinitions,
   resolveFieldIdsForTaskType,
   resolveVisibleCardFieldIds

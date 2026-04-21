@@ -25,7 +25,7 @@ const NAV_ITEMS = [
     buildPath: buildWorkspaceSettingsPerspectivesPath
   },
   {
-    label: "Estados",
+    label: "Editor de estados",
     description: "Etapas reais do fluxo de trabalho",
     buildPath: buildWorkspaceSettingsWorkflowStatesPath
   },
@@ -78,12 +78,13 @@ export function SettingsShell() {
     }
 
     return [
+      NAV_ITEMS[0],
       {
         label: "Pessoas e acesso",
         description: "Convites, roles e permissoes",
         buildPath: buildWorkspaceSettingsMembersPath
       },
-      ...NAV_ITEMS
+      ...NAV_ITEMS.slice(1)
     ];
   }, [isCorporateWorkspace]);
 

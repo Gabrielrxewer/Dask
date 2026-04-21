@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   applyFieldCapabilityOverrides,
-  isSystemCardFieldId,
   mergeCardFieldDefinitions
 } from "@/entities/task";
 import type { ApiCustomField } from "@/modules/workspace/model";
@@ -66,7 +65,6 @@ interface SettingsFieldRow {
   id: string;
   label: string;
   type: string;
-  source: "template" | "custom";
   required: boolean;
   optionsCount: number;
   allowAiGeneration: boolean;
@@ -339,8 +337,7 @@ export function CustomFieldsSettings() {
   const settingsRows = useMemo<SettingsFieldRow[]>(
     () =>
       allFields.map(field => {
-        const isCustom = !isSystemCardFieldId(field.id);
-        const customDefinition = isCustom ? customFieldBySlug[field.id] : undefined;
+        const customDefinition = customFieldBySlug[field.id];
         const explicitSystemCapability = fieldCapabilitiesById[field.id]?.aiEnhance;
         const allowAiGeneration =
           typeof explicitSystemCapability === "boolean"
@@ -351,7 +348,6 @@ export function CustomFieldsSettings() {
           id: field.id,
           label: field.label,
           type: field.type,
-          source: isCustom ? (isTemplateField(customDefinition, field.id) ? "template" : "custom") : "template",
           required: customDefinition?.required ?? false,
           optionsCount: customDefinition?.options.length ?? field.options?.length ?? 0,
           allowAiGeneration
@@ -482,7 +478,7 @@ export function CustomFieldsSettings() {
               </span>
               <div className="general-settings__preview-card">
                 <strong>{getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}</strong>
-                <small>{row.source === "template" ? "Template" : "Customizado"}</small>
+                <small>Campo</small>
               </div>
             </div>
           ))}
@@ -650,9 +646,6 @@ export function CustomFieldsSettings() {
                       {getUnifiedFieldTypeLabel(row.type, row.allowAiGeneration)}
                     </span>
                     <span className="custom-fields-settings__row-name">{row.label}</span>
-                    <span className={`custom-fields-settings__source custom-fields-settings__source--${row.source}`}>
-                      {row.source === "template" ? "Template" : "Campo"}
-                    </span>
                     {row.required ? <span className="custom-fields-settings__required">obrigatorio</span> : null}
                     {row.optionsCount > 0 ? (
                       <span className="custom-fields-settings__options-hint">{row.optionsCount} opcoes</span>

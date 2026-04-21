@@ -375,7 +375,8 @@ export type CustomFieldType =
   | "datetime"
   | "boolean"
   | "select"
-  | "multi_select";
+  | "multi_select"
+  | "checklist";
 
 export interface CustomFieldOptionInput {
   label: string;

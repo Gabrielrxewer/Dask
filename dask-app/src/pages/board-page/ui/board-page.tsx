@@ -160,6 +160,13 @@ export function BoardPage() {
       ).reduce<Record<string, string[]>>((acc, [typeId, fieldIds]) => {
         acc[typeId] = fieldIds;
         return acc;
+      }, {}),
+      detailFieldZoneByType: Object.entries(
+        ((snapshot?.preferences.settings as { detailFieldZoneByType?: Record<string, Record<string, "main" | "side">> } | undefined)
+          ?.detailFieldZoneByType ?? {})
+      ).reduce<Record<string, Record<string, "main" | "side">>>((acc, [typeId, fieldZones]) => {
+        acc[typeId] = fieldZones;
+        return acc;
       }, {})
     },
     perspectives: rawPerspectives

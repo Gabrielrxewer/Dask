@@ -9,6 +9,7 @@ export type TaskCustomFields = Record<string, TaskCustomFieldValue>;
 
 export type TaskFieldType =
   | "text"
+  | "long_text"
   | "text_ai"
   | "number"
   | "date"
@@ -17,7 +18,8 @@ export type TaskFieldType =
   | "multi-select"
   | "multi_select"
   | "boolean"
-  | "user";
+  | "user"
+  | "checklist";
 
 export type TaskFieldSource = "system" | "custom";
 
@@ -98,6 +100,7 @@ export interface CardLayoutConfig {
   visibleFieldIdsByType?: Record<string, string[]>;
   /** Campos visiveis no detalhe expandido por tipo de work item. */
   detailVisibleFieldIdsByType?: Record<string, string[]>;
+  detailFieldZoneByType?: Record<string, Record<string, "main" | "side">>;
 }
 
 export type BoardViewStatusSource =

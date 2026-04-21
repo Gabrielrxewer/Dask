@@ -47,6 +47,7 @@ const PREVIEW_ASSIGNEE = {
 const PREVIEW_DUE_DATE = "2026-04-26";
 
 type LayoutScope = "card" | "detail";
+type DetailZone = "main" | "side";
 
 interface FieldOptionDraft {
   id: string;
@@ -77,6 +78,7 @@ interface PendingFieldSetup {
   type: CustomFieldType;
   targetScope: LayoutScope;
   targetIndex: number;
+  targetDetailZone?: DetailZone;
   name: string;
   required: boolean;
   allowAiGeneration: boolean;
@@ -114,6 +116,26 @@ function sanitizeFieldMapByType(
     const s = slug.trim();
     if (!s) return acc;
     acc[s] = sanitizeFieldIds(Array.isArray(ids) ? ids : [], allowedFieldIds);
+    return acc;
+  }, {});
+}
+
+function sanitizeDetailZoneMapByType(
+  input: Record<string, Record<string, DetailZone>>,
+  allowedFieldIds?: Set<string>
+): Record<string, Record<string, DetailZone>> {
+  return Object.entries(input).reduce<Record<string, Record<string, DetailZone>>>((acc, [slug, map]) => {
+    const s = slug.trim();
+    if (!s || !map || typeof map !== "object" || Array.isArray(map)) return acc;
+
+    const nextMap = Object.entries(map).reduce<Record<string, DetailZone>>((memo, [fieldId, zone]) => {
+      const normalizedFieldId = fieldId.trim();
+      if (!normalizedFieldId || (allowedFieldIds && !allowedFieldIds.has(normalizedFieldId))) return memo;
+      memo[normalizedFieldId] = zone === "main" ? "main" : "side";
+      return memo;
+    }, {});
+
+    acc[s] = nextMap;
     return acc;
   }, {});
 }
@@ -282,6 +304,62 @@ function addFieldIdToList(ids: string[], fieldId: string, index: number): string
   return Array.from(new Set(filtered));
 }
 
+function getDefaultDetailZone(fieldId: string): DetailZone {
+  if (
+    fieldId === "sys:title" ||
+    fieldId === "sys:description" ||
+    fieldId === "sys:priority" ||
+    fieldId === "sys:checklist"
+  ) {
+    return "main";
+  }
+
+  return "side";
+}
+
+function computeDropIndexForSelector(
+  event: DragEvent<HTMLElement>,
+  selector: string,
+  draggingFieldId: string | null
+): number {
+  const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(selector)).filter(
+    (el) => !draggingFieldId || el.dataset.fieldId !== draggingFieldId
+  );
+
+  for (let i = 0; i < items.length; i += 1) {
+    const rect = items[i].getBoundingClientRect();
+    if (event.clientY < rect.top + rect.height / 2) return i;
+  }
+
+  return items.length;
+}
+
+function resolveDetailInsertIndex(
+  orderedFieldIds: string[],
+  detailZones: Record<string, DetailZone>,
+  zone: DetailZone,
+  zoneIndex: number,
+  draggingFieldId?: string
+): number {
+  const filteredOrder = draggingFieldId ? orderedFieldIds.filter((fieldId) => fieldId !== draggingFieldId) : orderedFieldIds;
+  const zoneFieldIds = filteredOrder.filter((fieldId) => (detailZones[fieldId] ?? getDefaultDetailZone(fieldId)) === zone);
+
+  if (zoneFieldIds.length === 0) {
+    return zone === "main" ? 0 : filteredOrder.length;
+  }
+
+  if (zoneIndex <= 0) {
+    return filteredOrder.indexOf(zoneFieldIds[0]);
+  }
+
+  if (zoneIndex >= zoneFieldIds.length) {
+    const lastZoneFieldId = zoneFieldIds[zoneFieldIds.length - 1];
+    return filteredOrder.indexOf(lastZoneFieldId) + 1;
+  }
+
+  return filteredOrder.indexOf(zoneFieldIds[zoneIndex]);
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkItemEditorSettings() {
@@ -320,12 +398,21 @@ export function WorkItemEditorSettings() {
     () => sanitizeFieldMapByType(snapshot?.preferences.detailVisibleFieldsByType ?? {}, allowedFieldIds),
     [allowedFieldIds, snapshot?.preferences.detailVisibleFieldsByType]
   );
+  const persistedDetailZonesByType = useMemo(
+    () =>
+      sanitizeDetailZoneMapByType(
+        ((settings.detailFieldZoneByType as Record<string, Record<string, DetailZone>> | undefined) ?? {}),
+        allowedFieldIds
+      ),
+    [allowedFieldIds, settings.detailFieldZoneByType]
+  );
 
   const [itemTypes, setItemTypes] = useState<ApiItemType[]>([]);
   const [customFields, setCustomFields] = useState<ApiCustomField[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTypeSlug, setActiveTypeSlug] = useState("");
   const [layoutDraftsByTypeSlug, setLayoutDraftsByTypeSlug] = useState<Record<string, LayoutDraft>>({});
+  const [detailZoneDraftsByTypeSlug, setDetailZoneDraftsByTypeSlug] = useState<Record<string, Record<string, DetailZone>>>({});
   const [savingLayout, setSavingLayout] = useState(false);
   const [layoutMessage, setLayoutMessage] = useState("");
   const [typeComposer, setTypeComposer] = useState<TypeDraft | null>(null);
@@ -396,8 +483,6 @@ export function WorkItemEditorSettings() {
     [libraryFields]
   );
 
-  const systemLibraryFields = useMemo(() => libraryFields.filter((f) => isSystemCardFieldId(f.id)), [libraryFields]);
-
   const getEffectiveLayout = useCallback(
     (typeSlug: string): LayoutDraft => ({
       card: resolveFieldIdsForTaskType(typeSlug, persistedVisibleFieldsByType, boardConfig.cardLayout.visibleFieldIds),
@@ -413,15 +498,29 @@ export function WorkItemEditorSettings() {
   const activeLayout = activeType
     ? layoutDraftsByTypeSlug[activeType.slug] ?? getEffectiveLayout(activeType.slug)
     : { card: [], detail: [] };
+  const activeDetailZones = activeType
+    ? {
+        ...Object.fromEntries(activeLayout.detail.map((fieldId) => [fieldId, getDefaultDetailZone(fieldId)])),
+        ...(persistedDetailZonesByType[activeType.slug] ?? {}),
+        ...(detailZoneDraftsByTypeSlug[activeType.slug] ?? {})
+      }
+    : {};
 
   const cardFields = activeLayout.card.map((id) => fieldsById[id]).filter((f): f is FieldLibraryItem => Boolean(f));
   const detailFields = activeLayout.detail.map((id) => fieldsById[id]).filter((f): f is FieldLibraryItem => Boolean(f));
+  const detailMainFields = detailFields.filter((field) => activeDetailZones[field.id] === "main");
+  const detailSideFields = detailFields.filter((field) => activeDetailZones[field.id] !== "main");
 
   const hasUnsavedLayout = Boolean(
     activeType &&
-      layoutDraftsByTypeSlug[activeType.slug] &&
-      (!areSameOrderedIds(activeLayout.card, getEffectiveLayout(activeType.slug).card) ||
-        !areSameOrderedIds(activeLayout.detail, getEffectiveLayout(activeType.slug).detail))
+      (
+        (layoutDraftsByTypeSlug[activeType.slug] &&
+          (!areSameOrderedIds(activeLayout.card, getEffectiveLayout(activeType.slug).card) ||
+            !areSameOrderedIds(activeLayout.detail, getEffectiveLayout(activeType.slug).detail))) ||
+        (detailZoneDraftsByTypeSlug[activeType.slug] &&
+          JSON.stringify(detailZoneDraftsByTypeSlug[activeType.slug]) !==
+            JSON.stringify(persistedDetailZonesByType[activeType.slug] ?? {}))
+      )
   );
 
   const handleUpdateLayout = useCallback(
@@ -437,6 +536,11 @@ export function WorkItemEditorSettings() {
     },
     [allowedFieldIds]
   );
+
+  const handleUpdateDetailZones = useCallback((typeSlug: string, next: Record<string, DetailZone>) => {
+    setLayoutMessage("");
+    setDetailZoneDraftsByTypeSlug((cur) => ({ ...cur, [typeSlug]: next }));
+  }, []);
 
   const handleDragStartField = (event: DragEvent<HTMLElement>, fieldId: string, origin: "library" | "card" | "detail") => {
     setDragPayload({ kind: "field", fieldId, origin });
@@ -466,6 +570,7 @@ export function WorkItemEditorSettings() {
           type: dragPayload.type,
           targetScope: scope,
           targetIndex: index,
+          targetDetailZone: scope === "detail" ? "side" : undefined,
           name: "",
           required: false,
           allowAiGeneration: false,
@@ -481,6 +586,46 @@ export function WorkItemEditorSettings() {
     [activeLayout, activeType, allowedFieldIds, dragPayload, handleUpdateLayout]
   );
 
+  const applyDropAtDetailZoneIndex = useCallback(
+    (zone: DetailZone, index: number) => {
+      if (!activeType || !dragPayload) return;
+
+      const nextDetailIndex = resolveDetailInsertIndex(
+        activeLayout.detail,
+        activeDetailZones,
+        zone,
+        index,
+        dragPayload.kind === "field" ? dragPayload.fieldId : undefined
+      );
+
+      if (dragPayload.kind === "type") {
+        setFieldError("");
+        setFieldDraft(null);
+        setPendingFieldSetup({
+          type: dragPayload.type,
+          targetScope: "detail",
+          targetIndex: nextDetailIndex,
+          targetDetailZone: zone,
+          name: "",
+          required: false,
+          allowAiGeneration: false,
+          options: []
+        });
+        setDropTarget(null);
+        return;
+      }
+
+      const fieldId = dragPayload.fieldId;
+      handleUpdateLayout(activeType.slug, moveFieldInLayout(activeLayout, dragPayload, "detail", nextDetailIndex, allowedFieldIds));
+      handleUpdateDetailZones(activeType.slug, {
+        ...activeDetailZones,
+        [fieldId]: zone
+      });
+      setDropTarget(null);
+    },
+    [activeDetailZones, activeLayout, activeType, allowedFieldIds, dragPayload, handleUpdateDetailZones, handleUpdateLayout]
+  );
+
   const handleDropIntoScope = (event: DragEvent<HTMLElement>, scope: LayoutScope) => {
     event.preventDefault();
     if (!dragPayload) return;
@@ -493,11 +638,40 @@ export function WorkItemEditorSettings() {
     applyDropAtIndex(scope, index);
   };
 
+  const makeDetailZoneDragOverHandler = (zone: DetailZone) => (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    if (!dragPayload) return;
+    setDropTarget({
+      scope: "detail",
+      index: computeDropIndexForSelector(
+        event,
+        `[data-workitem-slot="detail"][data-detail-zone="${zone}"]`,
+        dragPayload.kind === "field" ? dragPayload.fieldId : null
+      )
+    });
+  };
+
+  const makeDetailZoneDragLeaveHandler = (event: DragEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setDropTarget((cur) => (cur?.scope === "detail" ? null : cur));
+    }
+  };
+
   const handleSaveLayout = async () => {
     if (!activeType || !snapshot) return;
     setSavingLayout(true);
     setLayoutMessage("");
     try {
+      const nextDetailZones = sanitizeDetailZoneMapByType(
+        {
+          ...(persistedDetailZonesByType ?? {}),
+          [activeType.slug]: Object.fromEntries(
+            activeLayout.detail.map((fieldId) => [fieldId, activeDetailZones[fieldId] ?? getDefaultDetailZone(fieldId)])
+          )
+        },
+        allowedFieldIds
+      );
+
       await updatePreferences({
         visibleFieldsByType: sanitizeFieldMapByType(
           { ...(snapshot.preferences.visibleFieldsByType ?? {}), [activeType.slug]: activeLayout.card },
@@ -507,9 +681,14 @@ export function WorkItemEditorSettings() {
           { ...(snapshot.preferences.detailVisibleFieldsByType ?? {}), [activeType.slug]: activeLayout.detail },
           allowedFieldIds
         ),
-        settings: { ...settings, cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION }
+        settings: {
+          ...settings,
+          cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION,
+          detailFieldZoneByType: nextDetailZones
+        }
       });
       setLayoutDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
+      setDetailZoneDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
       setLayoutMessage("Layout salvo com sucesso.");
     } catch {
       setLayoutMessage("Nao foi possivel salvar agora.");
@@ -522,6 +701,7 @@ export function WorkItemEditorSettings() {
     if (!activeType) return;
     setLayoutMessage("");
     setLayoutDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
+    setDetailZoneDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
   };
 
   const persistFieldCapabilities = useCallback(
@@ -589,7 +769,7 @@ export function WorkItemEditorSettings() {
         .sort((a, b) => (b.id > a.id ? 1 : -1))[0];
 
       if (newField) {
-        const { targetScope: sc, targetIndex: idx } = pendingFieldSetup;
+        const { targetScope: sc, targetIndex: idx, targetDetailZone } = pendingFieldSetup;
         setLayoutDraftsByTypeSlug((cur) => ({
           ...cur,
           [activeType.slug]: {
@@ -597,6 +777,12 @@ export function WorkItemEditorSettings() {
             detail: sc === "detail" ? addFieldIdToList(activeLayout.detail, newField.id, idx) : [...activeLayout.detail]
           }
         }));
+        if (sc === "detail") {
+          handleUpdateDetailZones(activeType.slug, {
+            ...activeDetailZones,
+            [newField.id]: targetDetailZone ?? "side"
+          });
+        }
       }
       setPendingFieldSetup(null);
     } finally {
@@ -726,22 +912,7 @@ export function WorkItemEditorSettings() {
     [libraryFields, previewStatus.id, previewTypeId]
   );
 
-  const cardPreviewFieldIds = useMemo(() => {
-    const visibleSystemFieldIds = new Set(activeLayout.card.filter((fieldId) => isSystemCardFieldId(fieldId)));
-
-    return [
-      ...(visibleSystemFieldIds.has("sys:type") ? ["sys:type"] : []),
-      ...(visibleSystemFieldIds.has("sys:status") ? ["sys:status"] : []),
-      ...(visibleSystemFieldIds.has("sys:title") ? ["sys:title"] : []),
-      ...(visibleSystemFieldIds.has("sys:description") ? ["sys:description"] : []),
-      ...(visibleSystemFieldIds.has("sys:created-by") ? ["sys:created-by"] : []),
-      ...(visibleSystemFieldIds.has("sys:assignee") ? ["sys:assignee"] : []),
-      ...(visibleSystemFieldIds.has("sys:tags") ? ["sys:tags"] : []),
-      ...activeLayout.card.filter((fieldId) => !isSystemCardFieldId(fieldId)),
-      ...(visibleSystemFieldIds.has("sys:checklist") ? ["sys:checklist"] : []),
-      ...(visibleSystemFieldIds.has("sys:due-date") ? ["sys:due-date"] : [])
-    ];
-  }, [activeLayout.card]);
+  const cardPreviewFieldIds = useMemo(() => activeLayout.card, [activeLayout.card]);
 
   const handleDropIntoCardPreview = (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
@@ -806,7 +977,7 @@ export function WorkItemEditorSettings() {
       >
         <div className="workitem-editor-v2__card-preview-slot-content">{content}</div>
         <div className="workitem-editor-v2__card-preview-slot-actions" draggable={false}>
-          {!isSystemCardFieldId(fieldId) ? (
+          {customFieldById[fieldId] ? (
             <button
               type="button"
               className="workitem-editor-v2__field-action-edit"
@@ -829,6 +1000,84 @@ export function WorkItemEditorSettings() {
           >
             x
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDetailFieldCard = (field: FieldLibraryItem, zone: DetailZone, index: number) => {
+    const isDropLineVisible = dropTarget?.scope === "detail" && dropTarget.index === index;
+    return (
+      <div key={`detail-${zone}-${field.id}`} className="workitem-editor-v2__detail-preview-slot-wrap">
+        {isDropLineVisible ? <div className="workitem-editor-v2__drop-line" /> : null}
+        <div
+          className={`workitem-editor-v2__detail-preview-card${zone === "side" ? " is-side" : ""}`}
+          data-workitem-slot="detail"
+          data-detail-zone={zone}
+          data-field-id={field.id}
+          draggable
+          onDragStart={(e) => handleDragStartField(e, field.id, "detail")}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="workitem-editor-v2__detail-preview-card-head">
+            <div>
+              <strong>{field.label}</strong>
+              <span>{getTaskFieldTypeLabel(field)}</span>
+            </div>
+            <div className="workitem-editor-v2__card-field-actions" draggable={false}>
+              {customFieldById[field.id] ? (
+                <button
+                  type="button"
+                  className="workitem-editor-v2__field-action-edit"
+                  draggable={false}
+                  onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
+                  title="Editar campo"
+                >
+                  E
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="workitem-editor-v2__field-action-remove"
+                draggable={false}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "detail", field.id));
+                }}
+                title="Remover do formulário"
+              >
+                x
+              </button>
+            </div>
+          </div>
+          <div className="workitem-editor-v2__detail-preview-card-body">
+            {field.id === "sys:description" ? (
+              <p className="workitem-editor-v2__detail-preview-copy">{PREVIEW_CARD_DESCRIPTION}</p>
+            ) : field.id === "sys:tags" ? (
+              <div className="workitem-editor-v2__detail-preview-pills">
+                {PREVIEW_CARD_TAGS.map((tag) => (
+                  <span key={tag} className="workitem-editor-v2__detail-preview-pill">{tag}</span>
+                ))}
+              </div>
+            ) : field.id === "sys:priority" ? (
+              <div className="workitem-editor-v2__detail-preview-priorities">
+                {["Urgente", "Alta", "Media", "Baixa"].map((label) => (
+                  <button key={label} type="button" className={`workitem-editor-v2__detail-priority-pill${label === "Media" ? " is-active" : ""}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : field.id === "sys:checklist" ? (
+              <div className="workitem-editor-v2__detail-preview-checklist">
+                <span className="workitem-editor-v2__detail-preview-progress">3 de 5 concluidos</span>
+                <div className="workitem-editor-v2__detail-preview-progressbar"><i /></div>
+              </div>
+            ) : (
+              <div className="workitem-editor-v2__detail-preview-input">
+                {getPreviewValue(field)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -890,9 +1139,12 @@ export function WorkItemEditorSettings() {
 
               <div className="workitem-editor-v2__lib-scroll">
                 <div className="workitem-editor-v2__lib-section">
-                  <p className="workitem-editor-v2__lib-section-title">Sistema</p>
+                  <p className="workitem-editor-v2__lib-section-title">Campos do item</p>
+                  <p className="workitem-editor-v2__lib-hint">
+                    Tudo aqui e tratado como campo do tipo. Se nao estiver no editor, nao entra no layout.
+                  </p>
                   <div className="workitem-editor-v2__sys-fields">
-                    {systemLibraryFields.map((field) => (
+                    {libraryFields.map((field) => (
                       <div
                         key={field.id}
                         className="workitem-editor-v2__sys-chip"
@@ -901,14 +1153,14 @@ export function WorkItemEditorSettings() {
                         onDragEnd={handleDragEnd}
                       >
                         <span>{field.label}</span>
-                        <small>{getTaskFieldTypeLabel(field)}</small>
+                        <small>{field.source === "system" ? getTaskFieldTypeLabel(field) : `${getTaskFieldTypeLabel(field)} · editavel`}</small>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div className="workitem-editor-v2__lib-section">
-                  <p className="workitem-editor-v2__lib-section-title">Tipos personalizados</p>
+                  <p className="workitem-editor-v2__lib-section-title">Novo campo</p>
                   <p className="workitem-editor-v2__lib-hint">
                     Arraste para o card ou formulário para criar e configurar.
                   </p>
@@ -1129,76 +1381,106 @@ export function WorkItemEditorSettings() {
                   <small>{detailFields.length} campo{detailFields.length !== 1 ? "s" : ""}</small>
                 </div>
 
-                <div className="workitem-editor-v2__detail-mock">
-                  <div className="workitem-editor-v2__detail-mock-hero">
-                    <div className="workitem-editor-v2__detail-mock-accent" style={{ background: typeColor }} />
-                    <div className="workitem-editor-v2__detail-mock-copy">
-                      <span>{activeType?.name ?? "Tipo"}</span>
-                      <div className="workitem-editor-v2__detail-mock-title">Refinar experiencia do checkout</div>
-                      <div className="workitem-editor-v2__detail-mock-desc">Ajustar fluxo, copy e validacoes para reduzir friccao no funil.</div>
+                <div className="workitem-editor-v2__detail-shell">
+                  <div className="workitem-editor-v2__detail-topbar">
+                    <div>
+                      <span className="workitem-editor-v2__detail-eyebrow">Mesmo visual do item aberto</span>
+                      <strong>{activeType?.name ?? "Tipo"}</strong>
+                    </div>
+                    <div className="workitem-editor-v2__detail-topbar-chips">
+                      <span>Resumo</span>
+                      <span>{previewStatus.label}</span>
                     </div>
                   </div>
 
-                  <div
-                    className={`workitem-editor-v2__detail-fields${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                    onDragOver={makeDragOverHandler("detail")}
-                    onDragLeave={makeDragLeaveHandler("detail")}
-                    onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "detail"); }}
-                  >
-                    {detailFields.map((field, index) => (
-                      <div key={`detail-f-${field.id}`} className="workitem-editor-v2__detail-slot-wrap">
-                        {dropTarget?.scope === "detail" && dropTarget?.index === index ? (
+                  <div className="workitem-editor-v2__detail-layout">
+                    <div className="workitem-editor-v2__detail-column">
+                      <section className="workitem-editor-v2__detail-hero-panel">
+                        <div className="workitem-editor-v2__detail-hero-accent" style={{ background: typeColor }} />
+                        <div className="workitem-editor-v2__detail-hero-copy">
+                          <span>{activeType?.name ?? "Tipo"}</span>
+                          <h3>{PREVIEW_CARD_TITLE}</h3>
+                          <p>{PREVIEW_CARD_DESCRIPTION}</p>
+                        </div>
+                      </section>
+
+                      <div
+                        className={`workitem-editor-v2__detail-zone${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                        onDragOver={makeDetailZoneDragOverHandler("main")}
+                        onDragLeave={makeDetailZoneDragLeaveHandler}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const index = computeDropIndexForSelector(
+                            e,
+                            '[data-workitem-slot="detail"][data-detail-zone="main"]',
+                            dragPayload?.kind === "field" ? dragPayload.fieldId : null
+                          );
+                          applyDropAtDetailZoneIndex("main", index);
+                        }}
+                      >
+                        <div className="workitem-editor-v2__detail-zone-head">
+                          <span>Conteudo principal</span>
+                          <strong>{detailMainFields.length} campo{detailMainFields.length !== 1 ? "s" : ""}</strong>
+                        </div>
+
+                        {detailMainFields.length === 0 ? (
+                          <p className="workitem-editor-v2__zone-empty">Arraste campos para a coluna principal do item aberto.</p>
+                        ) : (
+                          detailMainFields.map((field, index) => renderDetailFieldCard(field, "main", index))
+                        )}
+
+                        {dropTarget?.scope === "detail" && dropTarget?.index === detailMainFields.length ? (
                           <div className="workitem-editor-v2__drop-line" />
                         ) : null}
-                        <div
-                          className="workitem-editor-v2__detail-row"
-                          data-workitem-slot="detail"
-                          data-field-id={field.id}
-                          draggable
-                          onDragStart={(e) => handleDragStartField(e, field.id, "detail")}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <div className="workitem-editor-v2__detail-handle" draggable={false}>⠿</div>
-                          <div className="workitem-editor-v2__detail-row-label">
-                            <strong>{field.label}</strong>
-                            <span>{getTaskFieldTypeLabel(field)}</span>
-                          </div>
-                          <div className="workitem-editor-v2__detail-row-value">{getPreviewValue(field)}</div>
-                          <div className="workitem-editor-v2__card-field-actions" draggable={false}>
-                            {!isSystemCardFieldId(field.id) ? (
-                              <button
-                                type="button"
-                                className="workitem-editor-v2__field-action-edit"
-                                draggable={false}
-                                onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
-                                title="Editar campo"
-                              >
-                                ✎
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="workitem-editor-v2__field-action-remove"
-                              draggable={false}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "detail", field.id));
-                              }}
-                              title="Remover do formulário"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
                       </div>
-                    ))}
-                    {dropTarget?.scope === "detail" && dropTarget?.index === detailFields.length ? (
-                      <div className="workitem-editor-v2__drop-line" />
-                    ) : null}
-
-                    <div className={`workitem-editor-v2__detail-drop-hint${isDragging ? " is-visible" : ""}`}>
-                      {isDraggingType ? "Solte para configurar e adicionar ao formulário" : "Solte aqui para mover para esta posição"}
                     </div>
+
+                    <aside className="workitem-editor-v2__detail-sidebar">
+                      <section className="workitem-editor-v2__detail-summary-panel">
+                        <span className="workitem-editor-v2__detail-eyebrow">Resumo</span>
+                        <div className="workitem-editor-v2__detail-preview-pills">
+                          <span className="workitem-editor-v2__detail-preview-pill">Bug</span>
+                          <span className="workitem-editor-v2__detail-preview-pill">{previewStatus.label}</span>
+                          <span className="workitem-editor-v2__detail-preview-pill">13 campos</span>
+                        </div>
+                      </section>
+
+                      <div
+                        className={`workitem-editor-v2__detail-zone is-side${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                        onDragOver={makeDetailZoneDragOverHandler("side")}
+                        onDragLeave={makeDetailZoneDragLeaveHandler}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const index = computeDropIndexForSelector(
+                            e,
+                            '[data-workitem-slot="detail"][data-detail-zone="side"]',
+                            dragPayload?.kind === "field" ? dragPayload.fieldId : null
+                          );
+                          applyDropAtDetailZoneIndex("side", index);
+                        }}
+                      >
+                        <div className="workitem-editor-v2__detail-zone-head">
+                          <span>Barra lateral</span>
+                          <strong>{detailSideFields.length} campo{detailSideFields.length !== 1 ? "s" : ""}</strong>
+                        </div>
+
+                        {detailSideFields.length === 0 ? (
+                          <p className="workitem-editor-v2__zone-empty">Solte aqui os campos da lateral, como metadados e apoio.</p>
+                        ) : (
+                          detailSideFields.map((field, index) => renderDetailFieldCard(field, "side", index))
+                        )}
+
+                        {dropTarget?.scope === "detail" && dropTarget?.index === detailSideFields.length ? (
+                          <div className="workitem-editor-v2__drop-line" />
+                        ) : null}
+                      </div>
+                    </aside>
+                  </div>
+
+                  <div className={`workitem-editor-v2__detail-drop-hint${isDragging ? " is-visible" : ""}`}>
+                    {isDraggingType
+                      ? "Solte em qualquer lado do preview para criar e posicionar o campo."
+                      : "Arraste os campos entre conteudo principal e barra lateral, igual ao card aberto."}
                   </div>
                 </div>
               </section>

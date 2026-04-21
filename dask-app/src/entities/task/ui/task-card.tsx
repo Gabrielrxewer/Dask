@@ -29,6 +29,8 @@ interface TaskCardProps {
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
 }
 
+type TaskCardSlotArea = "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
+
 function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
   if (Array.isArray(value)) {
     return value.join(", ");
@@ -43,6 +45,15 @@ function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFie
   }
 
   return String(value);
+}
+
+function getSystemFieldArea(fieldId: string): TaskCardSlotArea {
+  if (fieldId === "sys:type" || fieldId === "sys:status") return "badge";
+  if (fieldId === "sys:title") return "title";
+  if (fieldId === "sys:description") return "description";
+  if (fieldId === "sys:tags") return "tags";
+  if (fieldId === "sys:checklist" || fieldId === "sys:due-date") return "meta";
+  return "summary";
 }
 
 export function TaskCard({
@@ -107,9 +118,51 @@ export function TaskCard({
   const typeIconName = resolveTaskTypeIconName(type.id);
   const renderFieldSlot = (
     fieldId: string,
-    area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta",
+    area: TaskCardSlotArea,
     content: ReactNode
   ) => (fieldSlotRenderer ? fieldSlotRenderer({ fieldId, area, content }) : content);
+
+  const orderedSummaryFieldIds = effectiveVisibleFieldIds.filter(
+    fieldId =>
+      visibleFieldIdSet.has(fieldId) &&
+      (fieldId === "sys:created-by" || fieldId === "sys:assignee")
+  );
+
+  const orderedMetaFieldIds = effectiveVisibleFieldIds.filter(
+    fieldId =>
+      visibleFieldIdSet.has(fieldId) &&
+      (fieldId === "sys:checklist" || fieldId === "sys:due-date")
+  );
+
+  const renderedSummaryFields = orderedSummaryFieldIds.map(fieldId => {
+    if (fieldId === "sys:created-by") {
+      return renderFieldSlot(
+        fieldId,
+        getSystemFieldArea(fieldId),
+        <span className="task-card__summary-item" key={fieldId}>
+          <strong>Criado por</strong>
+          <span>{authorLabel}</span>
+        </span>
+      );
+    }
+
+    return renderFieldSlot(
+      fieldId,
+      getSystemFieldArea(fieldId),
+      <span className="task-card__summary-item" key={fieldId}>
+        <strong>Responsavel</strong>
+        <span>{ownerLabel}</span>
+      </span>
+    );
+  });
+
+  const renderedMetaFields = orderedMetaFieldIds.map(fieldId => {
+    if (fieldId === "sys:checklist") {
+      return renderFieldSlot(fieldId, getSystemFieldArea(fieldId), <span key={fieldId}>{`Checklist ${checklist.done}/${checklist.total}`}</span>);
+    }
+
+    return renderFieldSlot(fieldId, getSystemFieldArea(fieldId), <span key={fieldId}>{`Prazo ${formatShortDate(task.due)}`}</span>);
+  });
 
   return (
     <article
@@ -177,26 +230,7 @@ export function TaskCard({
 
       {showCreatedBy || showAssignee ? (
         <div className="task-card__summary">
-          {showCreatedBy ? (
-            renderFieldSlot(
-              "sys:created-by",
-              "summary",
-              <span className="task-card__summary-item">
-                <strong>Criado por</strong>
-                <span>{authorLabel}</span>
-              </span>
-            )
-          ) : null}
-          {showAssignee ? (
-            renderFieldSlot(
-              "sys:assignee",
-              "summary",
-              <span className="task-card__summary-item">
-                <strong>Responsavel</strong>
-                <span>{ownerLabel}</span>
-              </span>
-            )
-          ) : null}
+          {renderedSummaryFields}
         </div>
       ) : null}
 
@@ -243,8 +277,7 @@ export function TaskCard({
           ) : null}
           {hasMetaFooter ? (
             <div className="task-card__meta">
-              {showChecklist ? renderFieldSlot("sys:checklist", "meta", <span>{`Checklist ${checklist.done}/${checklist.total}`}</span>) : null}
-              {showDueDate ? renderFieldSlot("sys:due-date", "meta", <span>{`Prazo ${formatShortDate(task.due)}`}</span>) : null}
+              {renderedMetaFields}
             </div>
           ) : null}
         </footer>

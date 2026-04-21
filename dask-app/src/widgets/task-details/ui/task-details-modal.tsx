@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { MemberAvatar } from "@/entities/member";
 import {
   buildTaskChecklistSummary,
   buildTaskTypeMetaMap,
@@ -28,8 +27,9 @@ import type {
   WorkspaceDocument
 } from "@/modules/workspace/model";
 import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
-import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
 import "./task-details-modal.css";
+
+type DetailZone = "main" | "side";
 
 type TaskDetailsModalProps =
   | {
@@ -146,6 +146,19 @@ function normalizeFieldValue(definition: TaskFieldDefinition, value: TaskCustomF
   }
 
   return value ?? "";
+}
+
+function getDefaultDetailZone(fieldId: string): DetailZone {
+  if (
+    fieldId === "sys:title" ||
+    fieldId === "sys:description" ||
+    fieldId === "sys:priority" ||
+    fieldId === "sys:checklist"
+  ) {
+    return "main";
+  }
+
+  return "side";
 }
 
 export function TaskDetailsModal(props: TaskDetailsModalProps) {
@@ -271,6 +284,25 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         .map(fieldId => fieldMap[fieldId])
         .filter((field): field is TaskFieldDefinition => Boolean(field)),
     [fieldMap, visibleDetailFieldIds]
+  );
+  const detailZonesByFieldId = useMemo(
+    () => boardConfig.cardLayout.detailFieldZoneByType?.[typeDraft] ?? {},
+    [boardConfig.cardLayout.detailFieldZoneByType, typeDraft]
+  );
+  const orderedVisibleFields = useMemo(
+    () =>
+      visibleDetailFieldIds
+        .map(fieldId => fieldMap[fieldId])
+        .filter((field): field is TaskFieldDefinition => Boolean(field)),
+    [fieldMap, visibleDetailFieldIds]
+  );
+  const mainColumnFields = useMemo(
+    () => orderedVisibleFields.filter(field => (detailZonesByFieldId[field.id] ?? getDefaultDetailZone(field.id)) === "main"),
+    [detailZonesByFieldId, orderedVisibleFields]
+  );
+  const sideColumnFields = useMemo(
+    () => orderedVisibleFields.filter(field => (detailZonesByFieldId[field.id] ?? getDefaultDetailZone(field.id)) === "side"),
+    [detailZonesByFieldId, orderedVisibleFields]
   );
 
   useEffect(() => {
@@ -657,6 +689,363 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     }
   };
 
+  const renderFieldBody = (field: TaskFieldDefinition) => {
+    if (field.id === "sys:title") {
+      return (
+        <TextInput
+          id="task-details-title-input"
+          className="task-details__title-input"
+          value={titleDraft}
+          onChange={event => setTitleDraft(event.target.value)}
+          placeholder="Ex: Ajustar fluxo de aprovacao com cliente"
+          autoFocus
+        />
+      );
+    }
+
+    if (field.id === "sys:description") {
+      return (
+        <Textarea
+          className="task-details__textarea"
+          value={descriptionDraft}
+          onChange={event => setDescriptionDraft(event.target.value)}
+          placeholder="Descreva o contexto, o objetivo da entrega e o que precisa estar pronto ao final."
+        />
+      );
+    }
+
+    if (field.id === "sys:type") {
+      return (
+        <div className="task-details__type-grid">
+          {boardConfig.taskTypes.map(taskType => {
+            const meta = getTaskTypeDisplayMeta(typeMap, taskType.id);
+            const isActive = typeDraft === taskType.id;
+
+            return (
+              <button
+                key={taskType.id}
+                type="button"
+                className={`task-details__type-card ${isActive ? "is-active" : ""}`}
+                style={
+                  {
+                    "--task-type-background": meta.background,
+                    "--task-type-border": meta.border,
+                    "--task-type-text": meta.text
+                  } as CSSProperties
+                }
+                onClick={() => setTypeDraft(taskType.id)}
+              >
+                <span className="task-details__type-label">{meta.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (field.id === "sys:priority") {
+      return (
+        <div className="task-details__priority-grid">
+          {taskPriorityOptions.map(option => (
+            <button
+              key={option}
+              type="button"
+              className={`task-details__priority-option ${priorityDraft === option ? "is-active" : ""}`}
+              data-priority={option}
+              onClick={() => setPriorityDraft(option)}
+            >
+              <span className="task-details__priority-dot" aria-hidden="true" />
+              <strong>{priorityMeta[option].label}</strong>
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    if (field.id === "sys:tags") {
+      return (
+        <div
+          className="task-details__tag-field"
+          onClick={event => {
+            const input = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>(".task-details__tag-text-input");
+            input?.focus();
+          }}
+        >
+          <div className="task-details__tag-chips-row">
+            {tagsDraft.map(tag => (
+              <span key={tag} className="task-details__editable-tag">
+                <span className="task-details__editable-tag-text">{tag}</span>
+                <button
+                  type="button"
+                  className="task-details__tag-remove"
+                  onClick={event => {
+                    event.stopPropagation();
+                    setTagsDraft(current => current.filter(t => t !== tag));
+                  }}
+                  aria-label={`Remover tag ${tag}`}
+                >
+                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="8" height="8">
+                    <path d="M8 2L2 8M2 2l6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+            <input
+              className="task-details__tag-text-input"
+              value={tagInputDraft}
+              onChange={event => setTagInputDraft(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === "Enter" || event.key === ",") {
+                  event.preventDefault();
+                  const trimmed = tagInputDraft.trim().replace(/,$/g, "");
+                  if (trimmed && !tagsDraft.includes(trimmed)) {
+                    setTagsDraft(current => [...current, trimmed]);
+                  }
+                  setTagInputDraft("");
+                } else if (event.key === "Backspace" && !tagInputDraft && tagsDraft.length > 0) {
+                  setTagsDraft(current => current.slice(0, -1));
+                }
+              }}
+              placeholder={tagsDraft.length === 0 ? "Digite e pressione Enter para adicionar..." : ""}
+              size={1}
+            />
+          </div>
+          {availableTags.filter(tag => !tagsDraft.includes(tag.name)).length > 0 ? (
+            <div className="task-details__tag-suggestions">
+              <span className="task-details__tag-suggestions-label">Sugeridas:</span>
+              {availableTags
+                .filter(tag => !tagsDraft.includes(tag.name))
+                .slice(0, 6)
+                .map(tag => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className="task-details__tag-suggestion"
+                    onClick={() => {
+                      if (!tagsDraft.includes(tag.name)) {
+                        setTagsDraft(current => [...current, tag.name]);
+                      }
+                    }}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (field.id === "sys:status") {
+      return (
+        <FormField label="Status">
+          <Select value={statusDraft} onChange={event => setStatusDraft(event.target.value)}>
+            {statuses.map(option => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      );
+    }
+
+    if (field.id === "sys:assignee") {
+      return (
+        <FormField label="Responsavel">
+          <Select value={assigneeDraft} onChange={event => setAssigneeDraft(event.target.value)}>
+            {memberOptions.map(member => (
+              <option key={member.id} value={member.id}>
+                {member.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      );
+    }
+
+    if (field.id === "sys:due-date") {
+      return (
+        <FormField label="Prazo">
+          <TextInput type="date" value={dueDateDraft} onChange={event => setDueDateDraft(event.target.value)} />
+        </FormField>
+      );
+    }
+
+    if (field.id === "sys:schedule") {
+      return (
+        <div className="task-details__schedule-grid">
+          <FormField label="Inicio">
+            <TextInput
+              type="datetime-local"
+              value={scheduleDraft.plannedStartAt}
+              onChange={event => setScheduleDraft(current => ({ ...current, plannedStartAt: event.target.value }))}
+            />
+          </FormField>
+          <FormField label="Fim">
+            <TextInput
+              type="datetime-local"
+              value={scheduleDraft.plannedEndAt}
+              onChange={event => setScheduleDraft(current => ({ ...current, plannedEndAt: event.target.value }))}
+            />
+          </FormField>
+        </div>
+      );
+    }
+
+    if (field.id === "sys:created-by") {
+      return (
+        <FormField label="Criado por">
+          <TextInput value={createdByDraft} onChange={event => setCreatedByDraft(event.target.value)} />
+        </FormField>
+      );
+    }
+
+    if (field.id === "sys:checklist") {
+      if (!task || isCreateMode) {
+        return <p className="task-details__muted">O checklist aparece depois que o item for criado.</p>;
+      }
+
+      return (
+        <>
+          <div className="task-details__section-head">
+            <span className="task-details__section-caption">{`${checklist.done}/${checklist.total} concluidos`}</span>
+          </div>
+          <div className="task-details__progress-track">
+            <div className="task-details__progress-fill" style={{ width: `${checklist.percent}%` }} />
+          </div>
+          <ul className="task-details__checklist">
+            {task.checklist.items.map(item => (
+              <li className={item.done ? "is-done" : ""} key={item.id}>
+                <button
+                  type="button"
+                  className="task-details__check-toggle"
+                  aria-pressed={item.done}
+                  onClick={() => void props.onToggleChecklistItem(task.id, item.id)}
+                >
+                  {item.done ? (
+                    <svg viewBox="0 0 14 14" fill="none" aria-hidden="true" width="10" height="10">
+                      <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : null}
+                </button>
+                <p>{item.label}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    }
+
+    const options = getFieldOptions(field);
+
+    return (
+      <FormField label={field.label}>
+        {(() => {
+          if (field.type === "select" && options.length > 0) {
+            return (
+              <Select
+                value={String(customFieldDrafts[field.id] ?? "")}
+                onChange={event =>
+                  setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }))
+                }
+              >
+                <option value="">Selecione...</option>
+                {options.map(option => (
+                  <option key={`${field.id}-${option}`} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
+            );
+          }
+
+          if ((field.type === "multi_select" || field.type === "multi-select") && options.length > 0) {
+            const currentValues = Array.isArray(customFieldDrafts[field.id])
+              ? (customFieldDrafts[field.id] as string[])
+              : [];
+
+            return (
+              <div className="task-details__multi-pills">
+                {options.map(option => {
+                  const isChecked = currentValues.includes(option);
+                  return (
+                    <button
+                      key={`${field.id}-${option}`}
+                      type="button"
+                      className={`task-details__multi-pill ${isChecked ? "is-active" : ""}`}
+                      onClick={() => {
+                        const next = isChecked
+                          ? currentValues.filter(entry => entry !== option)
+                          : Array.from(new Set([...currentValues, option]));
+                        setCustomFieldDrafts(current => ({ ...current, [field.id]: next }));
+                      }}
+                    >
+                      {isChecked ? (
+                        <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
+                          <path d="M1.5 5l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
+                          <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      )}
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          }
+
+          if (field.type === "boolean") {
+            const isOn = customFieldDrafts[field.id] === true;
+            return (
+              <button
+                type="button"
+                className={`task-details__toggle-switch ${isOn ? "is-on" : ""}`}
+                onClick={() =>
+                  setCustomFieldDrafts(current => ({ ...current, [field.id]: !isOn }))
+                }
+                aria-pressed={isOn}
+              >
+                <span className="task-details__toggle-track">
+                  <span className="task-details__toggle-thumb" />
+                </span>
+                <span className="task-details__toggle-label">{isOn ? "Ativado" : "Desativado"}</span>
+              </button>
+            );
+          }
+
+          return (
+            <TextInput
+              value={
+                Array.isArray(customFieldDrafts[field.id])
+                  ? (customFieldDrafts[field.id] as string[]).join(", ")
+                  : String(customFieldDrafts[field.id] ?? "")
+              }
+              onChange={event =>
+                setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
+              }
+            />
+          );
+        })()}
+      </FormField>
+    );
+  };
+
+  const renderFieldPanel = (field: TaskFieldDefinition, zone: DetailZone) => (
+    <section
+      key={field.id}
+      className={zone === "main" ? "task-details__section" : "task-details__panel"}
+    >
+      <div className="task-details__section-head">
+        <h3 className="task-details__summary-style-title">{field.label}</h3>
+      </div>
+      {renderFieldBody(field)}
+    </section>
+  );
+
   return (
     <ModalShell titleId="task-details-title" className="task-details" onClose={props.onClose}>
       <header className="task-details__topbar">
@@ -677,547 +1066,11 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         }`}
       >
         <section className="task-details__main">
-          <section className="task-details__panel task-details__panel--owner">
-            <span className="task-details__eyebrow">Responsavel atual</span>
-            {selectedAssignee ? (
-              <div className="task-details__owner">
-                <MemberAvatar member={selectedAssignee} />
-                <div>
-                  <p>{selectedAssignee.name}</p>
-                  <span>{`@${selectedAssignee.initials.toLowerCase()}`}</span>
-                </div>
-              </div>
-            ) : (
-              <p className="task-details__muted">Defina quem vai conduzir esta entrega.</p>
-            )}
-            {availableTags.length > 0 ? (
-              <div className="task-details__tag-cloud">
-                {availableTags.slice(0, 6).map(tag => (
-                  <span className="task-details__tag-pill" key={tag.id}>
-                    {tag.name}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="task-details__hero" style={accentVars}>
-            <div className="task-details__hero-accent" />
-            <div className="task-details__hero-copy">
-              <span className="task-details__eyebrow task-details__title-label">Titulo</span>
-              <TextInput
-                id="task-details-title-input"
-                className="task-details__title-input"
-                value={titleDraft}
-                onChange={event => setTitleDraft(event.target.value)}
-                placeholder="Ex: Ajustar fluxo de aprovacao com cliente"
-                autoFocus
-              />
-            </div>
-          </section>
-
-          <section className="task-details__section">
-            <div className="task-details__section-head">
-              <h3 className="task-details__summary-style-title">Tags</h3>
-            </div>
-            <div
-              className="task-details__tag-field"
-              onClick={event => {
-                const input = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>(".task-details__tag-text-input");
-                input?.focus();
-              }}
-            >
-              <div className="task-details__tag-chips-row">
-                {tagsDraft.map(tag => (
-                  <span key={tag} className="task-details__editable-tag">
-                    <span className="task-details__editable-tag-text">{tag}</span>
-                    <button
-                      type="button"
-                      className="task-details__tag-remove"
-                      onClick={event => {
-                        event.stopPropagation();
-                        setTagsDraft(current => current.filter(t => t !== tag));
-                      }}
-                      aria-label={`Remover tag ${tag}`}
-                    >
-                      <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="8" height="8">
-                        <path d="M8 2L2 8M2 2l6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-                <input
-                  className="task-details__tag-text-input"
-                  value={tagInputDraft}
-                  onChange={event => setTagInputDraft(event.target.value)}
-                  onKeyDown={event => {
-                    if (event.key === "Enter" || event.key === ",") {
-                      event.preventDefault();
-                      const trimmed = tagInputDraft.trim().replace(/,$/g, "");
-                      if (trimmed && !tagsDraft.includes(trimmed)) {
-                        setTagsDraft(current => [...current, trimmed]);
-                      }
-                      setTagInputDraft("");
-                    } else if (event.key === "Backspace" && !tagInputDraft && tagsDraft.length > 0) {
-                      setTagsDraft(current => current.slice(0, -1));
-                    }
-                  }}
-                  placeholder={tagsDraft.length === 0 ? "Digite e pressione Enter para adicionar..." : ""}
-                  size={1}
-                />
-              </div>
-              {availableTags.filter(tag => !tagsDraft.includes(tag.name)).length > 0 ? (
-                <div className="task-details__tag-suggestions">
-                  <span className="task-details__tag-suggestions-label">Sugeridas:</span>
-                  {availableTags
-                    .filter(tag => !tagsDraft.includes(tag.name))
-                    .slice(0, 6)
-                    .map(tag => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        className="task-details__tag-suggestion"
-                        onClick={() => {
-                          if (!tagsDraft.includes(tag.name)) {
-                            setTagsDraft(current => [...current, tag.name]);
-                          }
-                        }}
-                      >
-                        {tag.name}
-                      </button>
-                    ))}
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="task-details__section">
-            <div className="task-details__section-head">
-              <h3 className="task-details__summary-style-title">Descricao</h3>
-            </div>
-            <Textarea
-              className="task-details__textarea"
-              value={descriptionDraft}
-              onChange={event => setDescriptionDraft(event.target.value)}
-              placeholder="Descreva o contexto, o objetivo da entrega e o que precisa estar pronto ao final."
-            />
-          </section>
-
-          <section className="task-details__section">
-            <div className="task-details__section-head">
-              <h3 className="task-details__summary-style-title">Tipo do item</h3>
-            </div>
-            <div className="task-details__type-grid">
-              {boardConfig.taskTypes.map(taskType => {
-                const meta = getTaskTypeDisplayMeta(typeMap, taskType.id);
-                const isActive = typeDraft === taskType.id;
-
-                return (
-                  <button
-                    key={taskType.id}
-                    type="button"
-                    className={`task-details__type-card ${isActive ? "is-active" : ""}`}
-                    style={
-                      {
-                        "--task-type-background": meta.background,
-                        "--task-type-border": meta.border,
-                        "--task-type-text": meta.text
-                      } as CSSProperties
-                    }
-                    onClick={() => setTypeDraft(taskType.id)}
-                  >
-                    <span className="task-details__type-icon">
-                      <TaskTypeIcon name={resolveTaskTypeIconName(taskType.id)} />
-                    </span>
-                    <span className="task-details__type-label">{taskType.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="task-details__section task-details__priority-section">
-            <div className="task-details__section-head">
-              <h3 className="task-details__summary-style-title">Prioridade</h3>
-            </div>
-            <div className="task-details__priority-grid">
-              {taskPriorityOptions.map(option => (
-                <button
-                  key={option}
-                  type="button"
-                  className={`task-details__priority-option ${priorityDraft === option ? "is-active" : ""}`}
-                  data-priority={option}
-                  onClick={() => setPriorityDraft(option)}
-                >
-                  <span className="task-details__priority-dot" aria-hidden="true" />
-                  <strong>{priorityMeta[option].label}</strong>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {!isCreateMode && visibleFieldIdSet.has("sys:checklist") && task ? (
-            <section className="task-details__section">
-              <div className="task-details__section-head">
-                <h3 className="task-details__summary-style-title">Checklist</h3>
-                <span className="task-details__section-caption">{`${checklist.done}/${checklist.total} concluidos`}</span>
-              </div>
-              <div className="task-details__progress-track">
-                <div className="task-details__progress-fill" style={{ width: `${checklist.percent}%` }} />
-              </div>
-              <ul className="task-details__checklist">
-                {task.checklist.items.map(item => (
-                  <li className={item.done ? "is-done" : ""} key={item.id}>
-                    <button
-                      type="button"
-                      className="task-details__check-toggle"
-                      aria-pressed={item.done}
-                      onClick={() => void props.onToggleChecklistItem(task.id, item.id)}
-                    >
-                      {item.done ? (
-                        <svg viewBox="0 0 14 14" fill="none" aria-hidden="true" width="10" height="10">
-                          <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ) : null}
-                    </button>
-                    <p>{item.label}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+          {mainColumnFields.map(field => renderFieldPanel(field, "main"))}
         </section>
 
         <aside className="task-details__side">
-          <section className="task-details__panel task-details__panel--summary" style={accentVars}>
-            <span className="task-details__eyebrow">Resumo</span>
-            <div className="task-details__chips">
-              <span className="task-details__chip task-details__chip--status">{activeStatusLabel}</span>
-              <span className={`task-details__chip ${priority.className}`}>{priority.label}</span>
-              <span className="task-details__chip task-details__chip--type">{activeTypeMeta.label}</span>
-              {tagsDraft.length > 0 ? <span className="task-details__chip">{`${tagsDraft.length} tags`}</span> : null}
-            </div>
-          </section>
-
-          <section className="task-details__panel task-details__panel--metadata">
-            <div className="task-details__section-head">
-              <h3 className="task-details__summary-style-title">Metadados</h3>
-              <div className="task-details__section-head-actions">
-                <button
-                  type="button"
-                  className="task-details__collapse-toggle"
-                  onClick={() => setIsMetadataCollapsed(current => !current)}
-                >
-                  {isMetadataCollapsed ? "Expandir" : "Recolher"}
-                </button>
-              </div>
-            </div>
-
-            <div className={`task-details__meta-stack ${isMetadataCollapsed ? "is-collapsed" : ""}`}>
-              <FormField label="Status">
-                <Select value={statusDraft} onChange={event => setStatusDraft(event.target.value)}>
-                  {statuses.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-
-              <FormField label="Responsavel">
-                <Select value={assigneeDraft} onChange={event => setAssigneeDraft(event.target.value)}>
-                  {memberOptions.map(member => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-
-              <FormField label="Prazo">
-                <TextInput type="date" value={dueDateDraft} onChange={event => setDueDateDraft(event.target.value)} />
-              </FormField>
-
-              <div className="task-details__schedule-grid">
-                <FormField label="Inicio">
-                  <TextInput
-                    type="datetime-local"
-                    value={scheduleDraft.plannedStartAt}
-                    onChange={event => setScheduleDraft(current => ({ ...current, plannedStartAt: event.target.value }))}
-                  />
-                </FormField>
-                <FormField label="Fim">
-                  <TextInput
-                    type="datetime-local"
-                    value={scheduleDraft.plannedEndAt}
-                    onChange={event => setScheduleDraft(current => ({ ...current, plannedEndAt: event.target.value }))}
-                  />
-                </FormField>
-              </div>
-
-              {!isCreateMode && visibleFieldIdSet.has("sys:created-by") ? (
-                <FormField label="Criado por">
-                  <TextInput value={createdByDraft} onChange={event => setCreatedByDraft(event.target.value)} />
-                </FormField>
-              ) : null}
-
-              {visibleCustomFields.map(field => (
-                <FormField label={field.label} key={field.id}>
-                  {(() => {
-                    const options = getFieldOptions(field);
-
-                    if (field.type === "select" && options.length > 0) {
-                      return (
-                        <Select
-                          value={String(customFieldDrafts[field.id] ?? "")}
-                          onChange={event =>
-                            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }))
-                          }
-                        >
-                          <option value="">Selecione...</option>
-                          {options.map(option => (
-                            <option key={`${field.id}-${option}`} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </Select>
-                      );
-                    }
-
-                    if ((field.type === "multi_select" || field.type === "multi-select") && options.length > 0) {
-                      const currentValues = Array.isArray(customFieldDrafts[field.id])
-                        ? (customFieldDrafts[field.id] as string[])
-                        : [];
-
-                      return (
-                        <div className="task-details__multi-pills">
-                          {options.map(option => {
-                            const isChecked = currentValues.includes(option);
-                            return (
-                              <button
-                                key={`${field.id}-${option}`}
-                                type="button"
-                                className={`task-details__multi-pill ${isChecked ? "is-active" : ""}`}
-                                onClick={() => {
-                                  const next = isChecked
-                                    ? currentValues.filter(entry => entry !== option)
-                                    : Array.from(new Set([...currentValues, option]));
-                                  setCustomFieldDrafts(current => ({ ...current, [field.id]: next }));
-                                }}
-                              >
-                                {isChecked ? (
-                                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
-                                    <path d="M1.5 5l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                ) : (
-                                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="9" height="9">
-                                    <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                  </svg>
-                                )}
-                                {option}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    }
-
-                    if (field.type === "boolean") {
-                      const isOn = customFieldDrafts[field.id] === true;
-                      return (
-                        <button
-                          type="button"
-                          className={`task-details__toggle-switch ${isOn ? "is-on" : ""}`}
-                          onClick={() =>
-                            setCustomFieldDrafts(current => ({ ...current, [field.id]: !isOn }))
-                          }
-                          aria-pressed={isOn}
-                        >
-                          <span className="task-details__toggle-track">
-                            <span className="task-details__toggle-thumb" />
-                          </span>
-                          <span className="task-details__toggle-label">{isOn ? "Ativado" : "Desativado"}</span>
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <TextInput
-                        value={
-                          Array.isArray(customFieldDrafts[field.id])
-                            ? (customFieldDrafts[field.id] as string[]).join(", ")
-                            : String(customFieldDrafts[field.id] ?? "")
-                        }
-                        onChange={event =>
-                          setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
-                        }
-                      />
-                    );
-                  })()}
-                </FormField>
-              ))}
-            </div>
-          </section>
-
-          {!isCreateMode && task ? (
-            <section className="task-details__panel task-details__panel--docs">
-              <div className="task-details__section-head">
-                <h3 className="task-details__summary-style-title">Docs vinculadas</h3>
-                <span className="task-details__section-caption">{`${linkedDocuments.length} vinculada(s)`}</span>
-              </div>
-
-              {isDocsLoading ? (
-                <p className="task-details__muted">Carregando docs...</p>
-              ) : (
-                <>
-                  <div className="task-details__doc-link-row">
-                    <Select
-                      value={documentToLinkId}
-                      onChange={(event) => setDocumentToLinkId(event.target.value)}
-                      disabled={isLinkingDocument || linkableDocuments.length === 0}
-                    >
-                      <option value="">Selecione uma doc...</option>
-                      {linkableDocuments.map((document) => (
-                        <option key={document.id} value={document.id}>
-                          {document.title}
-                        </option>
-                      ))}
-                    </Select>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void handleLinkDocument()}
-                      disabled={!documentToLinkId || isLinkingDocument}
-                    >
-                      {isLinkingDocument ? "Vinculando..." : "Vincular"}
-                    </Button>
-                  </div>
-
-                  {linkedDocuments.length === 0 ? (
-                    <p className="task-details__muted">Nenhuma doc vinculada a este card.</p>
-                  ) : (
-                    <ul className="task-details__linked-docs">
-                      {linkedDocuments.map((document) => (
-                        <li key={document.id}>
-                          <div>
-                            <strong>{document.title}</strong>
-                            <span>{`Atualizada em ${new Date(document.updatedAt).toLocaleString("pt-BR")}`}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => void handleUnlinkDocument(document.id)}
-                            disabled={unlinkingDocumentId === document.id}
-                          >
-                            {unlinkingDocumentId === document.id ? "Removendo..." : "Remover"}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-
-              {docsError ? <p className="task-details__error">{docsError}</p> : null}
-            </section>
-          ) : null}
-
-          {!isCreateMode && task ? (
-            <section className="task-details__panel task-details__panel--ai">
-              <div className="task-details__section-head">
-                <h3 className="task-details__summary-style-title">IA do card</h3>
-                <span className="task-details__section-caption">
-                  {linkedDocuments.length > 0 ? "Usa card + docs vinculadas" : "Usa contexto do card"}
-                </span>
-              </div>
-
-              <FormField label="Agente">
-                <Select value={selectedAgentId} onChange={(event) => setSelectedAgentId(event.target.value)}>
-                  {editModeAiAgents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-
-              <div ref={aiMessagesRef} className="task-details__ai-messages">
-                {aiMessages.length === 0 ? (
-                  <div className="task-details__ai-empty-state">
-                    <div className="task-details__ai-empty-avatar" aria-hidden="true">
-                      IA
-                    </div>
-                    <h4>Converse com a IA deste card</h4>
-                    <p>A resposta usa o contexto do card aberto e das docs vinculadas.</p>
-                  </div>
-                ) : (
-                  aiMessages.map((message) => (
-                    <article key={message.id} className={`task-details__ai-message task-details__ai-message--${message.role}`}>
-                      <div className="task-details__ai-message-avatar" aria-hidden="true">
-                        {message.role === "assistant" ? "IA" : message.role === "user" ? "VO" : "SI"}
-                      </div>
-                      <div className="task-details__ai-message-bubble">
-                        <header>
-                          <strong>
-                            {message.role === "assistant" ? "Dask IA" : message.role === "user" ? "Voce" : "Sistema"}
-                          </strong>
-                          <span>{new Date(message.createdAt).toLocaleTimeString("pt-BR")}</span>
-                        </header>
-                        <p>{message.content}</p>
-                      </div>
-                    </article>
-                  ))
-                )}
-
-                {isAiRunning ? (
-                  <article className="task-details__ai-message task-details__ai-message--thinking">
-                    <div className="task-details__ai-message-avatar" aria-hidden="true">
-                      IA
-                    </div>
-                    <div className="task-details__ai-message-bubble">
-                      <header>
-                        <strong>Dask IA</strong>
-                        <span>Pensando...</span>
-                      </header>
-                      <div className="task-details__ai-thinking-dots" aria-label="IA pensando">
-                        <span />
-                        <span />
-                        <span />
-                      </div>
-                    </div>
-                  </article>
-                ) : null}
-              </div>
-
-              <div className="task-details__ai-composer">
-                <div className="task-details__ai-composer-shell">
-                  <Textarea
-                    rows={3}
-                    className="task-details__ai-composer-input"
-                    value={aiPrompt}
-                    onChange={(event) => setAiPrompt(event.target.value)}
-                    onKeyDown={handleAiPromptKeyDown}
-                    placeholder="Pergunte algo sobre este card e as docs vinculadas..."
-                  />
-                  <button
-                    type="button"
-                    className="task-details__ai-send-button"
-                    aria-label="Enviar mensagem"
-                    onClick={() => void handleRunAiOnCard()}
-                    disabled={!canSendAiPrompt}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M5 19 19 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M9 5h10v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </div>
-                <p className="task-details__ai-composer-hint">Enter envia - Shift + Enter quebra linha</p>
-              </div>
-
-              {aiError ? <p className="task-details__error">{aiError}</p> : null}
-            </section>
-          ) : null}
+          {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
         </aside>
       </div>
 

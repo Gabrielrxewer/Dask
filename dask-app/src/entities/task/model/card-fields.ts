@@ -11,7 +11,7 @@ export const systemCardFieldDefinitions: TaskFieldDefinition[] = [
   { id: "sys:created-by", label: "Criado por", type: "user", source: "system" },
   { id: "sys:assignee", label: "Responsavel", type: "user", source: "system", capabilities: { selectable: true } },
   { id: "sys:tags", label: "Tags", type: "multi_select", source: "system", capabilities: { multiSelectable: true } },
-  { id: "sys:checklist", label: "Checklist", type: "text", source: "system" },
+  { id: "sys:checklist", label: "Checklist", type: "checklist", source: "system" },
   { id: "sys:schedule", label: "Planejamento", type: "datetime", source: "system" },
   { id: "sys:due-date", label: "Prazo", type: "date", source: "system" }
 ];
@@ -157,13 +157,15 @@ export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "typ
 
   const labels: Record<string, string> = {
     text: "Text",
+    long_text: "Long Text",
     number: "Number",
     date: "Date",
     datetime: "DateTime",
     boolean: "Boolean",
     select: "Select",
     multi_select: "Multi Select",
-    user: "User"
+    user: "User",
+    checklist: "Checklist"
   };
 
   return labels[normalizedType] ?? normalizedType;

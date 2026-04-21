@@ -13,7 +13,22 @@ import type {
 } from "@/modules/billing";
 import { useWorkspace } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
-import { Button, FormField, Select, TextInput } from "@/shared/ui";
+import {
+  Button,
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHeader,
+  DataTableRow,
+  EmptyState,
+  FormField,
+  LoadingState,
+  Section,
+  Select,
+  StatusBadge,
+  TextInput
+} from "@/shared/ui";
+import { BoardMetrics } from "@/widgets/board-metrics";
 import { AppShell } from "@/widgets/app-shell";
 import "./billing-page.css";
 
@@ -42,6 +57,12 @@ const CATALOG_KIND_LABEL: Record<ConnectCatalogItemKind, string> = {
 const CATALOG_BILLING_LABEL: Record<ConnectCatalogBillingType, string> = {
   ONE_TIME: "Avulso",
   SUBSCRIPTION: "Assinatura"
+};
+
+const BADGE_TONE_BY_STATUS: Record<StatusTone, "default" | "success" | "warning"> = {
+  active: "success",
+  attention: "warning",
+  blocked: "default"
 };
 
 function mapOrderStatusTone(status: ConnectPaymentOrderStatus): StatusTone {
@@ -97,7 +118,6 @@ export function BillingPage() {
   const [catalogItemName, setCatalogItemName] = useState("");
   const [catalogItemDescription, setCatalogItemDescription] = useState("");
   const [catalogItemAmount, setCatalogItemAmount] = useState("");
-
   const [amount, setAmount] = useState("100.00");
   const [description, setDescription] = useState("Servico prestado via Dask");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -264,10 +284,7 @@ export function BillingPage() {
 
   const canCreateCheckout = connectState === "ready" && connectStatus?.chargesEnabled === true;
   const checkoutResult = searchParams.get("checkout");
-  const onboardingChecklist = useMemo(
-    () => buildOnboardingChecklist(connectStatus),
-    [connectStatus]
-  );
+  const onboardingChecklist = useMemo(() => buildOnboardingChecklist(connectStatus), [connectStatus]);
   const nextOnboardingAction = useMemo(
     () => getNextOnboardingAction(connectStatus, onboardingChecklist),
     [connectStatus, onboardingChecklist]
@@ -281,8 +298,8 @@ export function BillingPage() {
           connectState === "ready" && connectStatus ? "Conectada" : connectState === "loading" ? "Carregando" : "Nao conectada",
         tone:
           connectState === "ready" && connectStatus
-            ? (connectStatus.detailsSubmitted ? "active" : "attention")
-            : "blocked" as StatusTone
+            ? ((connectStatus.detailsSubmitted ? "active" : "attention") as StatusTone)
+            : ("blocked" as StatusTone)
       },
       {
         key: "charges",
@@ -311,10 +328,7 @@ export function BillingPage() {
     [connectState, connectStatus]
   );
   const pendingItems = onboardingChecklist.filter((item) => !item.done);
-  const activeCatalogItems = useMemo(
-    () => catalogItems.filter((item) => item.isActive),
-    [catalogItems]
-  );
+  const activeCatalogItems = useMemo(() => catalogItems.filter((item) => item.isActive), [catalogItems]);
   const selectedCatalogItem = useMemo(
     () => activeCatalogItems.find((item) => item.id === selectedCatalogItemId) ?? null,
     [activeCatalogItems, selectedCatalogItemId]
@@ -462,412 +476,400 @@ export function BillingPage() {
       ? Boolean(selectedCatalogItem)
       : Boolean(amountInCents && description.trim().length >= 3));
 
+  const metricCards = [
+    { label: "Conta Stripe", value: connectState === "ready" && connectStatus ? "Conectada" : "Pendente" },
+    { label: "Cobrancas", value: paymentOrders.length },
+    { label: "Catalogo", value: catalogItems.length },
+    { label: "Pendencias", value: pendingItems.length }
+  ];
+
   return (
-    <AppShell
-      metrics={metrics}
-      hideSidebarBrandMark
-      pageTitle="Cobranca"
-      pageLabel="Financeiro"
-    >
-      <div className="billing-page">
-        <header className="billing-page__header">
-          <h1>Cobranca</h1>
-          <p>Gerencie cadastro, cobranca e repasses da sua conta Stripe Connect.</p>
-        </header>
+    <AppShell metrics={metrics} hideSidebarBrandMark pageTitle="Cobranca" pageLabel="Financeiro">
+      <div className="billing-view workspace-view">
+        <BoardMetrics metrics={metrics} cards={metricCards} className="billing-view__metrics workspace-view__metrics" />
 
         {checkoutResult === "success" ? (
-          <div className="billing-page__result billing-page__result--success">
+          <div className="billing-view__result billing-view__result--success">
             Pagamento concluido. A Stripe confirmou o checkout com sucesso.
           </div>
         ) : null}
         {checkoutResult === "cancel" ? (
-          <div className="billing-page__result billing-page__result--warning">
+          <div className="billing-view__result billing-view__result--warning">
             Checkout cancelado. Revise os dados e tente novamente quando quiser.
           </div>
         ) : null}
 
-        <section className="billing-page__status-row">
-          {statusCards.map((item) => (
-            <article key={item.key} className="billing-page__status-tile">
-              <span className={`billing-page__badge billing-page__badge--${item.tone}`}>{item.value}</span>
-              <p>{item.label}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="billing-page__onboarding-card">
-          <div className="billing-page__onboarding-copy">
-            <h2>{onboardingSummary.title}</h2>
-            <p>{onboardingSummary.subtitle}</p>
-            <div className="billing-page__progress">
-              <span style={{ width: `${onboardingSummary.progress}%` }} />
+        <Section
+          title="Cobranca Connect"
+          subtitle="Gerencie cadastro, cobranca e repasses com o mesmo estilo visual da timeline."
+          actions={
+            <div className="billing-view__toolbar workspace-view__actions">
+              <StatusBadge>{canCreateCheckout ? "Checkout liberado" : "Cadastro pendente"}</StatusBadge>
+              <Button type="button" onClick={() => void handleOpenOnboarding()} disabled={isOpeningOnboarding}>
+                {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
+              </Button>
             </div>
-            <div className="billing-page__steps">
-              <span className={connectStatus?.detailsSubmitted ? "is-done" : "is-pending"}>Cadastro</span>
-              <span className={connectStatus?.chargesEnabled ? "is-done" : "is-blocked"}>Cobranca</span>
-              <span className={connectStatus?.payoutsEnabled ? "is-done" : "is-blocked"}>Repasse</span>
-            </div>
-            <p className="billing-page__next-step"><strong>Proximo passo:</strong> {nextOnboardingAction}</p>
-          </div>
-          <div className="billing-page__onboarding-actions">
-            <Button type="button" onClick={() => void handleOpenOnboarding()} disabled={isOpeningOnboarding}>
-              {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => document.getElementById("billing-pendencias")?.scrollIntoView({ behavior: "smooth" })}>
-              Ver pendencias
-            </Button>
-          </div>
-        </section>
-
-        <section className="billing-page__card" id="billing-pendencias">
-          <div className="billing-page__card-head">
-            <h3>Pendencias de cadastro</h3>
-            {alertMessage ? (
-              <span className={`billing-page__mini-alert billing-page__mini-alert--${alertTone}`}>
-                {alertMessage}
-              </span>
-            ) : null}
-          </div>
-          {pendingItems.length === 0 ? (
-            <p className="billing-page__empty">Nenhuma pendencia. Sua conta esta pronta.</p>
-          ) : (
-            <ul className="billing-page__pending-list">
-              {pendingItems.map((item) => (
-                <li key={item.key}>
-                  <strong>{item.title}</strong>
-                  <p>{item.description}</p>
-                </li>
+          }
+          className="billing-view__section workspace-view__section"
+        >
+          <div className="billing-view__stack">
+            <div className="billing-view__status-row">
+              {statusCards.map((item) => (
+                <article key={item.key} className="billing-view__status-tile">
+                  <StatusBadge tone={BADGE_TONE_BY_STATUS[item.tone]}>{item.value}</StatusBadge>
+                  <p>{item.label}</p>
+                </article>
               ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="billing-page__card">
-          <div className="billing-page__card-head">
-            <h3>Catalogo de produtos e servicos</h3>
-            <span className="billing-page__locked-label">{catalogItems.length} itens</span>
-          </div>
-
-          <div className="billing-page__catalog-create">
-            <div className="billing-page__form-grid">
-              <FormField label="Tipo">
-                <Select
-                  value={catalogItemKind}
-                  onChange={(event) => setCatalogItemKind(event.target.value as ConnectCatalogItemKind)}
-                >
-                  <option value="SERVICE">Servico</option>
-                  <option value="PRODUCT">Produto</option>
-                </Select>
-              </FormField>
-
-              <FormField label="Modelo">
-                <Select
-                  value={catalogItemBillingType}
-                  onChange={(event) => setCatalogItemBillingType(event.target.value as ConnectCatalogBillingType)}
-                >
-                  <option value="ONE_TIME">Cobranca avulsa</option>
-                  <option value="SUBSCRIPTION">Assinatura recorrente</option>
-                </Select>
-              </FormField>
             </div>
 
-            <div className="billing-page__form-grid">
-              <FormField label="Nome">
-                <TextInput
-                  value={catalogItemName}
-                  onChange={(event) => setCatalogItemName(event.target.value)}
-                  placeholder="Ex.: Consultoria mensal"
-                />
-              </FormField>
+            <div className="billing-view__onboarding-card">
+              <div className="billing-view__onboarding-copy">
+                <h2>{onboardingSummary.title}</h2>
+                <p>{onboardingSummary.subtitle}</p>
+                <div className="billing-view__progress">
+                  <span style={{ width: `${onboardingSummary.progress}%` }} />
+                </div>
+                <div className="billing-view__steps">
+                  <span className={connectStatus?.detailsSubmitted ? "is-done" : "is-pending"}>Cadastro</span>
+                  <span className={connectStatus?.chargesEnabled ? "is-done" : "is-blocked"}>Cobranca</span>
+                  <span className={connectStatus?.payoutsEnabled ? "is-done" : "is-blocked"}>Repasse</span>
+                </div>
+                <p className="billing-view__next-step"><strong>Proximo passo:</strong> {nextOnboardingAction}</p>
+              </div>
+              <div className="billing-view__onboarding-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById("billing-pendencias")?.scrollIntoView({ behavior: "smooth" })}
+                >
+                  Ver pendencias
+                </Button>
+              </div>
+            </div>
 
-              {catalogItemBillingType === "SUBSCRIPTION" ? (
-                <FormField label="Recorrencia">
-                  <Select
-                    value={catalogItemRecurringInterval}
-                    onChange={(event) =>
-                      setCatalogItemRecurringInterval(event.target.value as ConnectCatalogRecurringInterval)
-                    }
-                  >
-                    <option value="MONTH">Mensal</option>
-                    <option value="YEAR">Anual</option>
-                    <option value="WEEK">Semanal</option>
-                    <option value="DAY">Diaria</option>
-                  </Select>
-                </FormField>
+            <div className="billing-view__card" id="billing-pendencias">
+              <div className="billing-view__card-head">
+                <h3>Pendencias de cadastro</h3>
+                {alertMessage ? <StatusBadge tone={alertTone}>{alertMessage}</StatusBadge> : null}
+              </div>
+              {pendingItems.length === 0 ? (
+                <EmptyState>Nenhuma pendencia. Sua conta esta pronta.</EmptyState>
               ) : (
-                <FormField label="Recorrencia">
-                  <TextInput value="Nao recorrente" readOnly />
-                </FormField>
+                <ul className="billing-view__pending-list">
+                  {pendingItems.map((item) => (
+                    <li key={item.key}>
+                      <strong>{item.title}</strong>
+                      <p>{item.description}</p>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 
-            <div className="billing-page__form-grid">
-              <FormField label="Valor (R$)">
-                <TextInput
-                  value={catalogItemAmount}
-                  onChange={(event) => setCatalogItemAmount(event.target.value)}
-                  placeholder="249.90"
-                />
-              </FormField>
+            <div className="billing-view__card">
+              <div className="billing-view__card-head">
+                <h3>Catalogo de produtos e servicos</h3>
+                <StatusBadge>{catalogItems.length} itens</StatusBadge>
+              </div>
 
-              <FormField label="Descricao (opcional)">
-                <TextInput
-                  value={catalogItemDescription}
-                  onChange={(event) => setCatalogItemDescription(event.target.value)}
-                  placeholder="Escopo resumido do item"
-                />
-              </FormField>
-            </div>
+              <div className="billing-view__catalog-create">
+                <div className="billing-view__form-grid">
+                  <FormField label="Tipo" className="billing-view__field">
+                    <Select
+                      value={catalogItemKind}
+                      onChange={(event) => setCatalogItemKind(event.target.value as ConnectCatalogItemKind)}
+                    >
+                      <option value="SERVICE">Servico</option>
+                      <option value="PRODUCT">Produto</option>
+                    </Select>
+                  </FormField>
 
-            <div className="billing-page__actions">
-              <Button
-                type="button"
-                onClick={() => void handleCreateCatalogItem()}
-                disabled={isCreatingCatalogItem || !catalogItemAmountInCents || catalogItemDisplayName.length < 2}
-              >
-                {isCreatingCatalogItem ? "Salvando item..." : "Adicionar ao catalogo"}
-              </Button>
-            </div>
-            {catalogError ? <p className="billing-page__error">{catalogError}</p> : null}
-          </div>
-
-          {catalogLoadState === "loading" ? (
-            <p className="billing-page__empty">Carregando catalogo...</p>
-          ) : null}
-          {catalogLoadState === "loaded" && catalogItems.length === 0 ? (
-            <p className="billing-page__empty">
-              Nenhum item cadastrado. Crie produtos ou servicos para cobrar em um clique.
-            </p>
-          ) : null}
-          {catalogLoadState === "loaded" && catalogItems.length > 0 ? (
-            <ul className="billing-page__catalog-list">
-              {catalogItems.map((item) => (
-                <li key={item.id}>
-                  <div>
-                    <p>
-                      <strong>{item.name}</strong>
-                      <span>{CATALOG_KIND_LABEL[item.kind]} • {CATALOG_BILLING_LABEL[item.billingType]}</span>
-                    </p>
-                    <small>
-                      {formatAmount(item.amount, item.currency)}
-                      {item.description ? ` - ${item.description}` : ""}
-                    </small>
-                  </div>
-                  <Button type="button" variant="outline" onClick={() => handleUseCatalogItem(item)}>
-                    Usar para cobrar
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-
-        <section className={`billing-page__card ${!canCreateCheckout ? "is-disabled" : ""}`}>
-          <div className="billing-page__card-head">
-            <h3>Nova cobranca</h3>
-            {!canCreateCheckout ? (
-              <span className="billing-page__locked-label">Complete o cadastro para liberar cobrancas</span>
-            ) : null}
-          </div>
-
-          <fieldset disabled={!canCreateCheckout} className="billing-page__fieldset">
-            <div className="billing-page__form-grid">
-              <FormField label="Produto/servico do catalogo">
-                <Select
-                  value={selectedCatalogItemId}
-                  onChange={(event) => {
-                    const nextCatalogItemId = event.target.value;
-                    setSelectedCatalogItemId(nextCatalogItemId);
-                    if (!nextCatalogItemId) {
-                      setChargeSource("manual");
-                      return;
-                    }
-
-                    const item = activeCatalogItems.find((catalogItem) => catalogItem.id === nextCatalogItemId);
-                    if (!item) {
-                      setChargeSource("manual");
-                      return;
-                    }
-
-                    setChargeSource("catalog");
-                    setAmount((item.amount / 100).toFixed(2));
-                    setDescription(item.name);
-                  }}
-                >
-                  <option value="">Cobranca avulsa (sem produto)</option>
-                  {activeCatalogItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} - {formatAmount(item.amount, item.currency)}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-
-              <FormField label="E-mail do cliente (opcional)">
-                <TextInput
-                  value={customerEmail}
-                  onChange={(event) => setCustomerEmail(event.target.value)}
-                  placeholder="cliente@empresa.com"
-                />
-              </FormField>
-            </div>
-
-            {chargeSource === "catalog" ? (
-              selectedCatalogItem ? (
-                <div className="billing-page__review-grid">
-                  <span>
-                    <strong>Valor</strong>
-                    {formatAmount(selectedCatalogItem.amount, selectedCatalogItem.currency)}
-                  </span>
-                  <span>
-                    <strong>Descricao</strong>
-                    {selectedCatalogItem.description || selectedCatalogItem.name}
-                  </span>
-                  <span>
-                    <strong>Tipo</strong>
-                    {CATALOG_BILLING_LABEL[selectedCatalogItem.billingType]}
-                  </span>
+                  <FormField label="Modelo" className="billing-view__field">
+                    <Select
+                      value={catalogItemBillingType}
+                      onChange={(event) => setCatalogItemBillingType(event.target.value as ConnectCatalogBillingType)}
+                    >
+                      <option value="ONE_TIME">Cobranca avulsa</option>
+                      <option value="SUBSCRIPTION">Assinatura recorrente</option>
+                    </Select>
+                  </FormField>
                 </div>
-              ) : (
-                <p className="billing-page__empty">
-                  Selecione um produto/servico do catalogo para preencher os dados automaticamente.
-                </p>
-              )
-            ) : (
-              <>
-                <div className="billing-page__form-grid">
-                  <FormField label="Valor (R$)">
+
+                <div className="billing-view__form-grid">
+                  <FormField label="Nome" className="billing-view__field">
                     <TextInput
-                      value={amount}
-                      onChange={(event) => setAmount(event.target.value)}
-                      placeholder="100.00"
+                      value={catalogItemName}
+                      onChange={(event) => setCatalogItemName(event.target.value)}
+                      placeholder="Ex.: Consultoria mensal"
+                    />
+                  </FormField>
+
+                  {catalogItemBillingType === "SUBSCRIPTION" ? (
+                    <FormField label="Recorrencia" className="billing-view__field">
+                      <Select
+                        value={catalogItemRecurringInterval}
+                        onChange={(event) =>
+                          setCatalogItemRecurringInterval(event.target.value as ConnectCatalogRecurringInterval)
+                        }
+                      >
+                        <option value="MONTH">Mensal</option>
+                        <option value="YEAR">Anual</option>
+                        <option value="WEEK">Semanal</option>
+                        <option value="DAY">Diaria</option>
+                      </Select>
+                    </FormField>
+                  ) : (
+                    <FormField label="Recorrencia" className="billing-view__field">
+                      <TextInput value="Nao recorrente" readOnly />
+                    </FormField>
+                  )}
+                </div>
+
+                <div className="billing-view__form-grid">
+                  <FormField label="Valor (R$)" className="billing-view__field">
+                    <TextInput
+                      value={catalogItemAmount}
+                      onChange={(event) => setCatalogItemAmount(event.target.value)}
+                      placeholder="249.90"
+                    />
+                  </FormField>
+
+                  <FormField label="Descricao (opcional)" className="billing-view__field">
+                    <TextInput
+                      value={catalogItemDescription}
+                      onChange={(event) => setCatalogItemDescription(event.target.value)}
+                      placeholder="Escopo resumido do item"
                     />
                   </FormField>
                 </div>
 
-                <FormField label="Descricao">
-                  <TextInput
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Descricao da cobranca"
-                  />
-                </FormField>
-              </>
-            )}
+                <div className="billing-view__actions">
+                  <Button
+                    type="button"
+                    onClick={() => void handleCreateCatalogItem()}
+                    disabled={isCreatingCatalogItem || !catalogItemAmountInCents || catalogItemDisplayName.length < 2}
+                  >
+                    {isCreatingCatalogItem ? "Salvando item..." : "Adicionar ao catalogo"}
+                  </Button>
+                </div>
+                {catalogError ? <p className="billing-view__error">{catalogError}</p> : null}
+              </div>
 
-            <div className="billing-page__actions">
-              <Button
-                type="button"
-                onClick={() => setIsReviewOpen(true)}
-                disabled={!canReviewCharge}
-              >
-                Revisar cobranca
-              </Button>
-            </div>
-          </fieldset>
-
-          {checkoutError ? <p className="billing-page__error">{checkoutError}</p> : null}
-        </section>
-
-        {isReviewOpen ? (
-          <section className="billing-page__card">
-            <div className="billing-page__card-head">
-              <h3>Revisao antes do checkout</h3>
-              <span className="billing-page__locked-label">Pagamento final na Stripe</span>
-            </div>
-            <div className="billing-page__review-grid">
-              <span>
-                <strong>Valor</strong>
-                {chargeSource === "catalog" && selectedCatalogItem
-                  ? formatAmount(selectedCatalogItem.amount, selectedCatalogItem.currency)
-                  : `R$ ${((amountInCents ?? 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-              </span>
-              <span>
-                <strong>Descricao</strong>
-                {chargeSource === "catalog" && selectedCatalogItem
-                  ? selectedCatalogItem.description || selectedCatalogItem.name
-                  : description}
-              </span>
-              <span>
-                <strong>Cliente</strong>
-                {customerEmail.trim() || "Nao informado"}
-              </span>
-              <span>
-                <strong>Origem</strong>
-                {chargeSource === "catalog"
-                  ? `Catalogo (${selectedCatalogItem ? CATALOG_BILLING_LABEL[selectedCatalogItem.billingType] : "item"})`
-                  : "Cobranca avulsa"}
-              </span>
-              <span>
-                <strong>Taxa plataforma</strong>
-                Aplicada automaticamente
-              </span>
-            </div>
-            <div className="billing-page__actions">
-              <Button type="button" variant="outline" onClick={() => setIsReviewOpen(false)}>
-                Voltar e editar
-              </Button>
-              <Button type="button" onClick={() => void handleCreateCheckout()} disabled={isCreatingCheckout}>
-                {isCreatingCheckout ? "Redirecionando..." : "Continuar para Stripe"}
-              </Button>
-            </div>
-          </section>
-        ) : null}
-
-        <section className="billing-page__card">
-          <div className="billing-page__card-head">
-            <h3>Cobrancas recentes</h3>
-            <span className="billing-page__locked-label">{paymentOrders.length} itens</span>
-          </div>
-
-          {paymentOrdersLoadState === "loading" ? (
-            <p className="billing-page__empty">Carregando historico de cobrancas...</p>
-          ) : null}
-
-          {paymentOrdersLoadState === "error" ? (
-            <p className="billing-page__error">{paymentOrdersError}</p>
-          ) : null}
-
-          {paymentOrdersLoadState === "loaded" && !hasPaymentOrders ? (
-            <p className="billing-page__empty">Nenhuma cobranca criada ainda.</p>
-          ) : null}
-
-          {paymentOrdersLoadState === "loaded" && hasPaymentOrders ? (
-            <div className="billing-page__history-table-wrap">
-              <table className="billing-page__history-table">
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Valor</th>
-                    <th>Descricao</th>
-                    <th>Cliente</th>
-                    <th>Criada em</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paymentOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td>
-                        <span className={`billing-page__badge billing-page__badge--${mapOrderStatusTone(order.status)}`}>
-                          {ORDER_STATUS_LABEL[order.status]}
-                        </span>
-                      </td>
-                      <td>
-                        {new Intl.NumberFormat("pt-BR", {
-                          style: "currency",
-                          currency: order.currency.toUpperCase()
-                        }).format(order.amount / 100)}
-                      </td>
-                      <td>{order.description}</td>
-                      <td>{order.customerEmail ?? "Nao informado"}</td>
-                      <td>{formatOrderDate(order.createdAt)}</td>
-                    </tr>
+              {catalogLoadState === "loading" ? <LoadingState text="Carregando catalogo..." /> : null}
+              {catalogLoadState === "loaded" && catalogItems.length === 0 ? (
+                <EmptyState>Nenhum item cadastrado. Crie produtos ou servicos para cobrar em um clique.</EmptyState>
+              ) : null}
+              {catalogLoadState === "loaded" && catalogItems.length > 0 ? (
+                <ul className="billing-view__catalog-list">
+                  {catalogItems.map((item) => (
+                    <li key={item.id}>
+                      <div>
+                        <p>
+                          <strong>{item.name}</strong>
+                          <span>{CATALOG_KIND_LABEL[item.kind]} - {CATALOG_BILLING_LABEL[item.billingType]}</span>
+                        </p>
+                        <small>
+                          {formatAmount(item.amount, item.currency)}
+                          {item.description ? ` - ${item.description}` : ""}
+                        </small>
+                      </div>
+                      <Button type="button" variant="outline" onClick={() => handleUseCatalogItem(item)}>
+                        Usar para cobrar
+                      </Button>
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+              ) : null}
             </div>
-          ) : null}
-        </section>
+
+            <div className={`billing-view__card ${!canCreateCheckout ? "is-disabled" : ""}`}>
+              <div className="billing-view__card-head">
+                <h3>Nova cobranca</h3>
+                {!canCreateCheckout ? <StatusBadge>Complete o cadastro para liberar cobrancas</StatusBadge> : null}
+              </div>
+
+              <fieldset disabled={!canCreateCheckout} className="billing-view__fieldset">
+                <div className="billing-view__form-grid">
+                  <FormField label="Produto/servico do catalogo" className="billing-view__field">
+                    <Select
+                      value={selectedCatalogItemId}
+                      onChange={(event) => {
+                        const nextCatalogItemId = event.target.value;
+                        setSelectedCatalogItemId(nextCatalogItemId);
+                        if (!nextCatalogItemId) {
+                          setChargeSource("manual");
+                          return;
+                        }
+
+                        const item = activeCatalogItems.find((catalogItem) => catalogItem.id === nextCatalogItemId);
+                        if (!item) {
+                          setChargeSource("manual");
+                          return;
+                        }
+
+                        setChargeSource("catalog");
+                        setAmount((item.amount / 100).toFixed(2));
+                        setDescription(item.name);
+                      }}
+                    >
+                      <option value="">Cobranca avulsa (sem produto)</option>
+                      {activeCatalogItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} - {formatAmount(item.amount, item.currency)}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
+
+                  <FormField label="E-mail do cliente (opcional)" className="billing-view__field">
+                    <TextInput
+                      value={customerEmail}
+                      onChange={(event) => setCustomerEmail(event.target.value)}
+                      placeholder="cliente@empresa.com"
+                    />
+                  </FormField>
+                </div>
+
+                {chargeSource === "catalog" ? (
+                  selectedCatalogItem ? (
+                    <div className="billing-view__review-grid">
+                      <span>
+                        <strong>Valor</strong>
+                        {formatAmount(selectedCatalogItem.amount, selectedCatalogItem.currency)}
+                      </span>
+                      <span>
+                        <strong>Descricao</strong>
+                        {selectedCatalogItem.description || selectedCatalogItem.name}
+                      </span>
+                      <span>
+                        <strong>Tipo</strong>
+                        {CATALOG_BILLING_LABEL[selectedCatalogItem.billingType]}
+                      </span>
+                    </div>
+                  ) : (
+                    <EmptyState>Selecione um produto ou servico do catalogo para preencher os dados automaticamente.</EmptyState>
+                  )
+                ) : (
+                  <>
+                    <div className="billing-view__form-grid">
+                      <FormField label="Valor (R$)" className="billing-view__field">
+                        <TextInput
+                          value={amount}
+                          onChange={(event) => setAmount(event.target.value)}
+                          placeholder="100.00"
+                        />
+                      </FormField>
+                    </div>
+
+                    <FormField label="Descricao" className="billing-view__field">
+                      <TextInput
+                        value={description}
+                        onChange={(event) => setDescription(event.target.value)}
+                        placeholder="Descricao da cobranca"
+                      />
+                    </FormField>
+                  </>
+                )}
+
+                <div className="billing-view__actions">
+                  <Button type="button" onClick={() => setIsReviewOpen(true)} disabled={!canReviewCharge}>
+                    Revisar cobranca
+                  </Button>
+                </div>
+              </fieldset>
+
+              {checkoutError ? <p className="billing-view__error">{checkoutError}</p> : null}
+            </div>
+
+            {isReviewOpen ? (
+              <div className="billing-view__card">
+                <div className="billing-view__card-head">
+                  <h3>Revisao antes do checkout</h3>
+                  <StatusBadge>Pagamento final na Stripe</StatusBadge>
+                </div>
+                <div className="billing-view__review-grid">
+                  <span>
+                    <strong>Valor</strong>
+                    {chargeSource === "catalog" && selectedCatalogItem
+                      ? formatAmount(selectedCatalogItem.amount, selectedCatalogItem.currency)
+                      : `R$ ${((amountInCents ?? 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+                  </span>
+                  <span>
+                    <strong>Descricao</strong>
+                    {chargeSource === "catalog" && selectedCatalogItem
+                      ? selectedCatalogItem.description || selectedCatalogItem.name
+                      : description}
+                  </span>
+                  <span>
+                    <strong>Cliente</strong>
+                    {customerEmail.trim() || "Nao informado"}
+                  </span>
+                  <span>
+                    <strong>Origem</strong>
+                    {chargeSource === "catalog"
+                      ? `Catalogo (${selectedCatalogItem ? CATALOG_BILLING_LABEL[selectedCatalogItem.billingType] : "item"})`
+                      : "Cobranca avulsa"}
+                  </span>
+                  <span>
+                    <strong>Taxa plataforma</strong>
+                    Aplicada automaticamente
+                  </span>
+                </div>
+                <div className="billing-view__actions">
+                  <Button type="button" variant="outline" onClick={() => setIsReviewOpen(false)}>
+                    Voltar e editar
+                  </Button>
+                  <Button type="button" onClick={() => void handleCreateCheckout()} disabled={isCreatingCheckout}>
+                    {isCreatingCheckout ? "Redirecionando..." : "Continuar para Stripe"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="billing-view__card">
+              <div className="billing-view__card-head">
+                <h3>Cobrancas recentes</h3>
+                <StatusBadge>{paymentOrders.length} itens</StatusBadge>
+              </div>
+
+              {paymentOrdersLoadState === "loading" ? (
+                <LoadingState text="Carregando historico de cobrancas..." />
+              ) : null}
+              {paymentOrdersLoadState === "error" ? (
+                <p className="billing-view__error">{paymentOrdersError}</p>
+              ) : null}
+              {paymentOrdersLoadState === "loaded" && !hasPaymentOrders ? (
+                <EmptyState>Nenhuma cobranca criada ainda.</EmptyState>
+              ) : null}
+              {paymentOrdersLoadState === "loaded" && hasPaymentOrders ? (
+                <DataTable className="billing-view__table" columns="0.9fr 0.9fr 1.25fr 1fr 1fr" responsiveMinWidth="880px">
+                  <DataTableHeader>
+                    <DataTableCell>Status</DataTableCell>
+                    <DataTableCell>Valor</DataTableCell>
+                    <DataTableCell>Descricao</DataTableCell>
+                    <DataTableCell>Cliente</DataTableCell>
+                    <DataTableCell>Criada em</DataTableCell>
+                  </DataTableHeader>
+                  <DataTableBody>
+                    {paymentOrders.map((order) => (
+                      <DataTableRow key={order.id}>
+                        <DataTableCell>
+                          <StatusBadge tone={BADGE_TONE_BY_STATUS[mapOrderStatusTone(order.status)]}>
+                            {ORDER_STATUS_LABEL[order.status]}
+                          </StatusBadge>
+                        </DataTableCell>
+                        <DataTableCell>{formatAmount(order.amount, order.currency)}</DataTableCell>
+                        <DataTableCell>{order.description}</DataTableCell>
+                        <DataTableCell>{order.customerEmail ?? "Nao informado"}</DataTableCell>
+                        <DataTableCell>{formatOrderDate(order.createdAt)}</DataTableCell>
+                      </DataTableRow>
+                    ))}
+                  </DataTableBody>
+                </DataTable>
+              ) : null}
+            </div>
+          </div>
+        </Section>
       </div>
     </AppShell>
   );

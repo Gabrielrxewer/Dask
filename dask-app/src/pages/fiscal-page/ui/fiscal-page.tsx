@@ -19,9 +19,11 @@ import {
   DataTableCell,
   DataTableHeader,
   DataTableRow,
+  EmptyState,
   FormField,
-  MetricCard,
+  LoadingState,
   ModalShell,
+  Section,
   Select,
   StatusBadge,
   Tabs,
@@ -29,6 +31,7 @@ import {
   Textarea
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
+import { BoardMetrics } from "@/widgets/board-metrics";
 import "./fiscal-page.css";
 
 type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "wizard" | "settings";
@@ -71,6 +74,33 @@ const STATUS_LABELS: Record<string, string> = {
   SYNCED: "Sincronizada",
   READY: "Pronta",
   ISSUED: "Emitida"
+};
+
+const SECTION_COPY: Record<FiscalTab, { title: string; subtitle: string }> = {
+  dashboard: {
+    title: "Painel fiscal",
+    subtitle: "Acompanhe emissao, recebimento e pendencias com a mesma leitura visual da timeline."
+  },
+  issued: {
+    title: "Documentos emitidos",
+    subtitle: "Consulte referencias, status e acoes operacionais da fila de emissao."
+  },
+  received: {
+    title: "Documentos recebidos",
+    subtitle: "Sincronize entradas e acompanhe XMLs, PDFs e manifestacoes."
+  },
+  stripe: {
+    title: "Fila Stripe",
+    subtitle: "Gerencie drafts gerados a partir de eventos financeiros aguardando emissao."
+  },
+  wizard: {
+    title: "Wizard de emissao",
+    subtitle: "Monte uma emissao manual com empresa, cliente e item em um fluxo unico."
+  },
+  settings: {
+    title: "Configuracao fiscal",
+    subtitle: "Cadastre empresas, tokens e valide o ambiente de emissao."
+  }
 };
 
 function mapTone(status: string): "default" | "success" | "warning" {
@@ -288,46 +318,73 @@ export function FiscalPage() {
   };
 
   const authorizedToday = documents.filter((item) => item.status === "AUTHORIZED").length;
+  const activeSection = SECTION_COPY[tab];
+  const fiscalMetricCards = [
+    { label: "Emitidas hoje", value: dashboard?.counters.issuedToday ?? 0 },
+    { label: "Pendentes", value: dashboard?.counters.pending ?? 0 },
+    { label: "Recebidas", value: dashboard?.counters.received ?? 0 },
+    { label: "Rejeitadas", value: dashboard?.counters.rejected ?? 0 },
+    { label: "Empresas fiscais", value: companies.length },
+    { label: "Autorizadas", value: authorizedToday }
+  ];
 
   return (
-    <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Fiscal" pageTitle="Modulo Fiscal">
-      <div className="fiscal-page">
-        <header className="fiscal-page__header">
-          <h1>Fiscal</h1>
-          <div className="fiscal-page__header-actions">
-            <Button variant="outline" onClick={() => void loadAll()} disabled={isLoading || isSubmitting}>
-              Atualizar
-            </Button>
-            <Button onClick={() => setTab("wizard")} disabled={isSubmitting}>
-              Nova emissao
-            </Button>
-          </div>
-        </header>
+    <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Fiscal" pageTitle="Fiscal">
+      <div className="fiscal-view workspace-view">
+        <BoardMetrics metrics={metrics} cards={fiscalMetricCards} className="fiscal-view__metrics workspace-view__metrics" />
 
-        {message ? <div className="fiscal-page__feedback fiscal-page__feedback--ok">{message}</div> : null}
-        {error ? <div className="fiscal-page__feedback fiscal-page__feedback--error">{error}</div> : null}
+        {message ? <div className="fiscal-view__feedback fiscal-view__feedback--ok">{message}</div> : null}
+        {error ? <div className="fiscal-view__feedback fiscal-view__feedback--error">{error}</div> : null}
 
-        <Tabs<FiscalTab> value={tab} items={TAB_ITEMS} onChange={setTab} />
-
-        {tab === "dashboard" ? (
-          <section className="fiscal-page__section">
-            <div className="fiscal-page__metrics">
-              <MetricCard label="Emitidas hoje" value={dashboard?.counters.issuedToday ?? 0} />
-              <MetricCard label="Pendentes" value={dashboard?.counters.pending ?? 0} />
-              <MetricCard label="Rejeitadas" value={dashboard?.counters.rejected ?? 0} />
-              <MetricCard label="Recebidas" value={dashboard?.counters.received ?? 0} />
-              <MetricCard label="Em revisao" value={dashboard?.counters.pendingReview ?? 0} />
-              <MetricCard label="Autorizadas (lista)" value={authorizedToday} />
+        <Section
+          title={activeSection.title}
+          subtitle={activeSection.subtitle}
+          actions={
+            <div className="fiscal-view__header-actions workspace-view__actions">
+              <StatusBadge>{TAB_ITEMS.find((item) => item.id === tab)?.label ?? "Fiscal"}</StatusBadge>
+              <Button variant="outline" onClick={() => void loadAll()} disabled={isLoading || isSubmitting}>
+                Atualizar
+              </Button>
+              <Button onClick={() => setTab("wizard")} disabled={isSubmitting}>
+                Nova emissao
+              </Button>
             </div>
-          </section>
-        ) : null}
+          }
+          className="fiscal-view__section workspace-view__section"
+        >
+          <div className="fiscal-view__stack">
+            <Tabs<FiscalTab> value={tab} items={TAB_ITEMS} onChange={setTab} className="fiscal-view__tabs" />
 
-        {tab === "issued" ? (
-          <section className="fiscal-page__section">
-            <FormField label="Buscar documentos">
-              <TextInput value={issuedSearch} onChange={(event) => setIssuedSearch(event.target.value)} placeholder="Referencia, venda, Focus..." />
-            </FormField>
-            <DataTable columns="1fr 0.7fr 0.9fr 0.9fr 1fr 1.2fr" responsiveMinWidth="960px">
+            {tab === "dashboard" ? (
+              isLoading && !dashboard ? (
+                <LoadingState text="Carregando painel fiscal..." />
+              ) : (
+                <div className="fiscal-view__summary-grid">
+                  <article className="fiscal-view__summary-card">
+                    <span className="fiscal-view__summary-label">Em revisao</span>
+                    <strong>{dashboard?.counters.pendingReview ?? 0}</strong>
+                    <p>Notas que ainda exigem conferencia ou ajuste manual.</p>
+                  </article>
+                  <article className="fiscal-view__summary-card">
+                    <span className="fiscal-view__summary-label">Fila Stripe</span>
+                    <strong>{drafts.length}</strong>
+                    <p>Drafts aguardando emissao a partir de eventos financeiros.</p>
+                  </article>
+                  <article className="fiscal-view__summary-card">
+                    <span className="fiscal-view__summary-label">Empresas ativas</span>
+                    <strong>{companies.length}</strong>
+                    <p>Configuracoes fiscais disponiveis para emissao e sincronizacao.</p>
+                  </article>
+                </div>
+              )
+            ) : null}
+
+            {tab === "issued" ? (
+              <>
+                <FormField label="Buscar documentos" className="fiscal-view__field">
+                  <TextInput value={issuedSearch} onChange={(event) => setIssuedSearch(event.target.value)} placeholder="Referencia, venda, Focus..." />
+                </FormField>
+                <DataTable className="fiscal-view__table" columns="1fr 0.7fr 0.9fr 0.9fr 1fr 1.2fr" responsiveMinWidth="960px">
               <DataTableHeader>
                 <DataTableCell>Referencia</DataTableCell>
                 <DataTableCell>Tipo</DataTableCell>
@@ -337,7 +394,9 @@ export function FiscalPage() {
                 <DataTableCell>Acoes</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {documents.length === 0 ? (
+                {isLoading && documents.length === 0 ? (
+                  <LoadingState text="Carregando documentos emitidos..." />
+                ) : documents.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhum documento encontrado.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -368,37 +427,37 @@ export function FiscalPage() {
                 )}
               </DataTableBody>
             </DataTable>
-          </section>
-        ) : null}
+              </>
+            ) : null}
 
-        {tab === "received" ? (
-          <section className="fiscal-page__section">
-            <div className="fiscal-page__inline-grid">
-              <FormField label="Buscar recebidas">
-                <TextInput value={receivedSearch} onChange={(event) => setReceivedSearch(event.target.value)} placeholder="Fornecedor, chave..." />
-              </FormField>
-              <FormField label="Tipo sync">
-                <Select value={syncType} onChange={(event) => setSyncType(event.target.value as FiscalReceivedType)}>
-                  <option value="NFE_MDE">NFe (MD-e)</option>
-                  <option value="NFSE_NFSER">NFSe (NFSeR)</option>
-                </Select>
-              </FormField>
-              <FormField label="Empresa">
-                <Select value={syncCompanyConfigId} onChange={(event) => setSyncCompanyConfigId(event.target.value)}>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>{company.displayName}</option>
-                  ))}
-                </Select>
-              </FormField>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => void runAction(() => fiscalService.syncReceived(workspaceId, { companyConfigId: syncCompanyConfigId, type: syncType }), "Sincronizacao iniciada.")}
-              disabled={isSubmitting || !syncCompanyConfigId}
-            >
-              Sincronizar recebidas
-            </Button>
-            <DataTable columns="0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr" responsiveMinWidth="920px">
+            {tab === "received" ? (
+              <>
+                <div className="fiscal-view__inline-grid">
+                  <FormField label="Buscar recebidas" className="fiscal-view__field">
+                    <TextInput value={receivedSearch} onChange={(event) => setReceivedSearch(event.target.value)} placeholder="Fornecedor, chave..." />
+                  </FormField>
+                  <FormField label="Tipo sync" className="fiscal-view__field">
+                    <Select value={syncType} onChange={(event) => setSyncType(event.target.value as FiscalReceivedType)}>
+                      <option value="NFE_MDE">NFe (MD-e)</option>
+                      <option value="NFSE_NFSER">NFSe (NFSeR)</option>
+                    </Select>
+                  </FormField>
+                  <FormField label="Empresa" className="fiscal-view__field">
+                    <Select value={syncCompanyConfigId} onChange={(event) => setSyncCompanyConfigId(event.target.value)}>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>{company.displayName}</option>
+                      ))}
+                    </Select>
+                  </FormField>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => void runAction(() => fiscalService.syncReceived(workspaceId, { companyConfigId: syncCompanyConfigId, type: syncType }), "Sincronizacao iniciada.")}
+                  disabled={isSubmitting || !syncCompanyConfigId}
+                >
+                  Sincronizar recebidas
+                </Button>
+                <DataTable className="fiscal-view__table" columns="0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr" responsiveMinWidth="920px">
               <DataTableHeader>
                 <DataTableCell>Tipo</DataTableCell>
                 <DataTableCell>Fornecedor</DataTableCell>
@@ -408,7 +467,9 @@ export function FiscalPage() {
                 <DataTableCell>Arquivos</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {received.length === 0 ? (
+                {isLoading && received.length === 0 ? (
+                  <LoadingState text="Carregando recebidas..." />
+                ) : received.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhuma nota recebida encontrada.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -436,12 +497,11 @@ export function FiscalPage() {
                 )}
               </DataTableBody>
             </DataTable>
-          </section>
-        ) : null}
+              </>
+            ) : null}
 
-        {tab === "stripe" ? (
-          <section className="fiscal-page__section">
-            <DataTable columns="1fr 0.8fr 0.8fr 1fr 0.8fr" responsiveMinWidth="900px">
+            {tab === "stripe" ? (
+              <DataTable className="fiscal-view__table" columns="1fr 0.8fr 0.8fr 1fr 0.8fr" responsiveMinWidth="900px">
               <DataTableHeader>
                 <DataTableCell>Session Stripe</DataTableCell>
                 <DataTableCell>Tipo</DataTableCell>
@@ -450,7 +510,9 @@ export function FiscalPage() {
                 <DataTableCell>Acoes</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {drafts.length === 0 ? (
+                {isLoading && drafts.length === 0 ? (
+                  <LoadingState text="Carregando drafts Stripe..." />
+                ) : drafts.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhum draft Stripe pendente.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -475,63 +537,62 @@ export function FiscalPage() {
                 )}
               </DataTableBody>
             </DataTable>
-          </section>
-        ) : null}
+            ) : null}
 
-        {tab === "wizard" ? (
-          <section className="fiscal-page__section">
-            <div className="fiscal-page__inline-grid">
-              <FormField label="Tipo">
+            {tab === "wizard" ? (
+              <>
+                <div className="fiscal-view__inline-grid">
+                  <FormField label="Tipo" className="fiscal-view__field">
                 <Select value={wizard.documentType} onChange={(event) => setWizard((current) => ({ ...current, documentType: event.target.value as FiscalDocumentType }))}>
                   <option value="NFE">NF-e</option>
                   <option value="NFSE">NFS-e</option>
                 </Select>
               </FormField>
-              <FormField label="Empresa">
+                  <FormField label="Empresa" className="fiscal-view__field">
                 <Select value={wizard.companyConfigId} onChange={(event) => setWizard((current) => ({ ...current, companyConfigId: event.target.value }))}>
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>{company.displayName}</option>
                   ))}
                 </Select>
               </FormField>
-              <FormField label="Referencia">
+                  <FormField label="Referencia" className="fiscal-view__field">
                 <TextInput value={wizard.reference} onChange={(event) => setWizard((current) => ({ ...current, reference: event.target.value }))} />
               </FormField>
-            </div>
-            <div className="fiscal-page__inline-grid">
-              <FormField label="Cliente">
+                </div>
+                <div className="fiscal-view__inline-grid">
+                  <FormField label="Cliente" className="fiscal-view__field">
                 <TextInput value={wizard.customerName} onChange={(event) => setWizard((current) => ({ ...current, customerName: event.target.value }))} />
               </FormField>
-              <FormField label="Documento">
+                  <FormField label="Documento" className="fiscal-view__field">
                 <TextInput value={wizard.customerDocument} onChange={(event) => setWizard((current) => ({ ...current, customerDocument: event.target.value }))} />
               </FormField>
-              <FormField label="Item">
+                  <FormField label="Item" className="fiscal-view__field">
                 <TextInput value={wizard.itemName} onChange={(event) => setWizard((current) => ({ ...current, itemName: event.target.value }))} />
               </FormField>
-            </div>
-            <div className="fiscal-page__inline-grid">
-              <FormField label="Qtd"><TextInput value={wizard.quantity} onChange={(event) => setWizard((current) => ({ ...current, quantity: event.target.value }))} /></FormField>
-              <FormField label="Unitario"><TextInput value={wizard.unitPrice} onChange={(event) => setWizard((current) => ({ ...current, unitPrice: event.target.value }))} /></FormField>
-              <FormField label="Desconto"><TextInput value={wizard.discount} onChange={(event) => setWizard((current) => ({ ...current, discount: event.target.value }))} /></FormField>
-            </div>
-            <FormField label="Observacoes">
+                </div>
+                <div className="fiscal-view__inline-grid">
+                  <FormField label="Qtd" className="fiscal-view__field"><TextInput value={wizard.quantity} onChange={(event) => setWizard((current) => ({ ...current, quantity: event.target.value }))} /></FormField>
+                  <FormField label="Unitario" className="fiscal-view__field"><TextInput value={wizard.unitPrice} onChange={(event) => setWizard((current) => ({ ...current, unitPrice: event.target.value }))} /></FormField>
+                  <FormField label="Desconto" className="fiscal-view__field"><TextInput value={wizard.discount} onChange={(event) => setWizard((current) => ({ ...current, discount: event.target.value }))} /></FormField>
+                </div>
+                <FormField label="Observacoes" className="fiscal-view__field">
               <Textarea value={wizard.notes} onChange={(event) => setWizard((current) => ({ ...current, notes: event.target.value }))} rows={3} />
             </FormField>
-            <Button onClick={() => void submitWizard()} disabled={isSubmitting}>Emitir documento</Button>
-          </section>
-        ) : null}
+                <Button onClick={() => void submitWizard()} disabled={isSubmitting}>Emitir documento</Button>
+              </>
+            ) : null}
 
-        {tab === "settings" ? (
-          <section className="fiscal-page__section">
-            <div className="fiscal-page__inline-grid">
-              <FormField label="Nome exibicao"><TextInput value={companyForm.displayName} onChange={(event) => setCompanyForm((current) => ({ ...current, displayName: event.target.value }))} /></FormField>
-              <FormField label="Razao social"><TextInput value={companyForm.legalName} onChange={(event) => setCompanyForm((current) => ({ ...current, legalName: event.target.value }))} /></FormField>
-              <FormField label="CNPJ"><TextInput value={companyForm.cnpj} onChange={(event) => setCompanyForm((current) => ({ ...current, cnpj: event.target.value }))} /></FormField>
-            </div>
-            <FormField label="Token Focus">
+            {tab === "settings" ? (
+              <>
+                <div className="fiscal-view__inline-grid">
+                  <FormField label="Nome exibicao" className="fiscal-view__field"><TextInput value={companyForm.displayName} onChange={(event) => setCompanyForm((current) => ({ ...current, displayName: event.target.value }))} /></FormField>
+                  <FormField label="Razao social" className="fiscal-view__field"><TextInput value={companyForm.legalName} onChange={(event) => setCompanyForm((current) => ({ ...current, legalName: event.target.value }))} /></FormField>
+                  <FormField label="CNPJ" className="fiscal-view__field"><TextInput value={companyForm.cnpj} onChange={(event) => setCompanyForm((current) => ({ ...current, cnpj: event.target.value }))} /></FormField>
+                </div>
+                <FormField label="Token Focus" className="fiscal-view__field">
               <TextInput value={companyForm.focusToken} onChange={(event) => setCompanyForm((current) => ({ ...current, focusToken: event.target.value }))} />
             </FormField>
-            <div className="fiscal-page__row-actions">
+                <div className="fiscal-view__row-actions">
               <Button
                 onClick={() =>
                   void runAction(
@@ -550,7 +611,7 @@ export function FiscalPage() {
                 Cadastrar empresa
               </Button>
             </div>
-            <DataTable columns="1fr 0.9fr 0.9fr 0.8fr" responsiveMinWidth="880px">
+                <DataTable className="fiscal-view__table" columns="1fr 0.9fr 0.9fr 0.8fr" responsiveMinWidth="880px">
               <DataTableHeader>
                 <DataTableCell>Empresa</DataTableCell>
                 <DataTableCell>CNPJ</DataTableCell>
@@ -558,7 +619,9 @@ export function FiscalPage() {
                 <DataTableCell>Validar</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {companies.length === 0 ? (
+                {isLoading && companies.length === 0 ? (
+                  <LoadingState text="Carregando empresas fiscais..." />
+                ) : companies.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhuma empresa fiscal cadastrada.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -581,28 +644,34 @@ export function FiscalPage() {
                 )}
               </DataTableBody>
             </DataTable>
-          </section>
-        ) : null}
+              </>
+            ) : null}
+
+            {!isLoading && tab !== "dashboard" && !workspaceId ? (
+              <EmptyState>Selecione um workspace para acessar o modulo fiscal.</EmptyState>
+            ) : null}
+          </div>
+        </Section>
       </div>
 
       {detailDocumentId ? (
         <ModalShell
           titleId="fiscal-document-details"
-          className="fiscal-page__modal"
+          className="fiscal-view__modal"
           onClose={() => {
             setDetailDocumentId(null);
             setDetails(null);
           }}
         >
-          <header className="fiscal-page__modal-header">
+          <header className="fiscal-view__modal-header">
             <h2 id="fiscal-document-details">Detalhe da nota</h2>
             <button type="button" onClick={() => setDetailDocumentId(null)}>x</button>
           </header>
 
           {detailLoading || !details ? (
-            <p className="fiscal-page__empty">Carregando detalhes...</p>
+            <p className="fiscal-view__empty">Carregando detalhes...</p>
           ) : (
-            <div className="fiscal-page__modal-content">
+            <div className="fiscal-view__modal-content">
               <p><strong>Referencia:</strong> {details.document.internalReference}</p>
               <p><strong>Status:</strong> {STATUS_LABELS[details.document.status] ?? details.document.status}</p>
               <p><strong>Focus:</strong> {details.document.focusStatus ?? "-"}</p>

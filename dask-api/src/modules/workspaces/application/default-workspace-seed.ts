@@ -1,7 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
+import { SYSTEM_FIELD_SEEDS } from '@/modules/workspace-platform/application/field-platform';
+import { isRecord, mapInputTypeToPrisma } from '@/modules/workspace-platform/application/shared';
 import {
   getWorkspaceTemplateByKey,
+  type WorkspaceTemplateFieldBinding,
   type WorkspaceTemplateKey
 } from '@/modules/workspaces/application/workspace-template-catalog';
 
@@ -40,7 +43,22 @@ type DefaultCustomFieldSeed = {
   name: string;
   slug: string;
   description?: string;
-  type: 'TEXT' | 'LONG_TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'BOOLEAN' | 'SELECT' | 'MULTI_SELECT' | 'USER';
+  type:
+    | 'TEXT'
+    | 'LONG_TEXT'
+    | 'NUMBER'
+    | 'DATE'
+    | 'DATETIME'
+    | 'BOOLEAN'
+    | 'SELECT'
+    | 'MULTI_SELECT'
+    | 'USER'
+    | 'CHECKLIST'
+    | 'PRIORITY'
+    | 'STATUS'
+    | 'TAG'
+    | 'SCHEDULE'
+    | 'WORK_ITEM_TYPE';
   required?: boolean;
   options?: Array<{ label: string; value: string; color?: string }>;
   scopeTypeSlugs: string[];
@@ -625,6 +643,362 @@ function buildStatusToColumnSlugMap(columns: DefaultColumnSeed[]): Record<string
   }, {});
 }
 
+type TemplateFieldLayoutMaps = {
+  visibleCardFieldIds: string[];
+  visibleFieldsByType: Record<string, string[]>;
+  detailVisibleFieldsByType: Record<string, string[]>;
+  detailFieldZoneByType: Record<string, Record<string, 'main' | 'side'>>;
+};
+
+function mapTemplateFieldTypeToSeed(type: unknown): DefaultCustomFieldSeed['type'] {
+  switch (type) {
+    case 'long_text':
+      return 'LONG_TEXT';
+    case 'number':
+      return 'NUMBER';
+    case 'date':
+      return 'DATE';
+    case 'datetime':
+      return 'DATETIME';
+    case 'boolean':
+      return 'BOOLEAN';
+    case 'select':
+      return 'SELECT';
+    case 'multi_select':
+      return 'MULTI_SELECT';
+    case 'user':
+      return 'USER';
+    case 'checklist':
+      return 'CHECKLIST';
+    case 'priority':
+      return 'PRIORITY';
+    case 'status':
+      return 'STATUS';
+    case 'tag':
+      return 'TAG';
+    case 'schedule':
+      return 'SCHEDULE';
+    case 'work_item_type':
+      return 'WORK_ITEM_TYPE';
+    default:
+      return 'TEXT';
+  }
+}
+
+function resolveTemplateFieldDefinitions(
+  templateKey: WorkspaceTemplateKey | undefined,
+  fallbackCustomFields: DefaultCustomFieldSeed[]
+): DefaultCustomFieldSeed[] {
+  const selectedTemplate = getWorkspaceTemplateByKey(templateKey);
+  const schema = selectedTemplate?.schema;
+
+  if (!isRecord(schema) || !Array.isArray(schema.fieldDefinitions)) {
+    return fallbackCustomFields;
+  }
+
+  const definitions = schema.fieldDefinitions.reduce<DefaultCustomFieldSeed[]>((acc, rawDefinition) => {
+    if (!isRecord(rawDefinition)) {
+      return acc;
+    }
+
+    const slug = typeof rawDefinition.slug === 'string' ? rawDefinition.slug.trim() : '';
+    const name = typeof rawDefinition.label === 'string' ? rawDefinition.label.trim() : '';
+    const scopeTypeSlugs = Array.isArray(rawDefinition.scopeTypeIds)
+      ? rawDefinition.scopeTypeIds.filter(
+          (typeId): typeId is string => typeof typeId === 'string' && typeId.trim().length > 0
+        )
+      : [];
+
+    if (!slug || !name || scopeTypeSlugs.length === 0) {
+      return acc;
+    }
+
+    acc.push({
+      name,
+      slug,
+      description:
+        typeof rawDefinition.description === 'string' && rawDefinition.description.trim().length > 0
+          ? rawDefinition.description
+          : undefined,
+      type: mapTemplateFieldTypeToSeed(rawDefinition.type),
+      required: rawDefinition.required === true,
+      options: Array.isArray(rawDefinition.options)
+        ? rawDefinition.options.reduce<Array<{ label: string; value: string; color?: string }>>((optionsAcc, rawOption) => {
+            if (!isRecord(rawOption)) {
+              return optionsAcc;
+            }
+
+            const label = typeof rawOption.label === 'string' ? rawOption.label.trim() : '';
+            const value = typeof rawOption.value === 'string' ? rawOption.value.trim() : '';
+            if (!label || !value) {
+              return optionsAcc;
+            }
+
+            optionsAcc.push({
+              label,
+              value,
+              color: typeof rawOption.color === 'string' && rawOption.color.trim().length > 0 ? rawOption.color : undefined
+            });
+            return optionsAcc;
+          }, [])
+        : undefined,
+      scopeTypeSlugs,
+      settings: isRecord(rawDefinition.config) ? rawDefinition.config : undefined
+    });
+
+    return acc;
+  }, []);
+
+  return definitions.length > 0 ? definitions : fallbackCustomFields;
+}
+
+function buildFieldLayoutMapsFromTemplateBindings(input: {
+  templateKey: WorkspaceTemplateKey | undefined;
+  itemTypes: DefaultTypeSeed[];
+  fallbackVisibleCardFieldIds: string[];
+  fallbackDetailVisibleFieldIds: string[];
+}): TemplateFieldLayoutMaps {
+  const fallback: TemplateFieldLayoutMaps = {
+    visibleCardFieldIds: [...input.fallbackVisibleCardFieldIds],
+    visibleFieldsByType: buildDefaultFieldMapByType(input.itemTypes, input.fallbackVisibleCardFieldIds),
+    detailVisibleFieldsByType: buildDefaultFieldMapByType(input.itemTypes, input.fallbackDetailVisibleFieldIds),
+    detailFieldZoneByType: {}
+  };
+
+  const selectedTemplate = getWorkspaceTemplateByKey(input.templateKey);
+  const schema = selectedTemplate?.schema;
+
+  if (!isRecord(schema) || !Array.isArray(schema.fieldBindings)) {
+    return fallback;
+  }
+
+  const typeSlugSet = new Set(input.itemTypes.map((itemType) => itemType.slug));
+  const visibleFieldsByType = input.itemTypes.reduce<Record<string, string[]>>((acc, itemType) => {
+    acc[itemType.slug] = [];
+    return acc;
+  }, {});
+  const detailVisibleFieldsByType = input.itemTypes.reduce<Record<string, string[]>>((acc, itemType) => {
+    acc[itemType.slug] = [];
+    return acc;
+  }, {});
+  const detailFieldZoneByType = input.itemTypes.reduce<Record<string, Record<string, 'main' | 'side'>>>((acc, itemType) => {
+    acc[itemType.slug] = {};
+    return acc;
+  }, {});
+
+  const bindings = schema.fieldBindings
+    .filter((binding): binding is WorkspaceTemplateFieldBinding => isRecord(binding))
+    .map((binding) => ({
+      fieldId: typeof binding.fieldId === 'string' ? binding.fieldId.trim() : '',
+      typeId: typeof binding.typeId === 'string' ? binding.typeId.trim() : '',
+      displayContext: binding.displayContext === 'detail' ? 'detail' : 'card',
+      order: typeof binding.order === 'number' ? binding.order : 0,
+      section: (binding.section === 'main' ? 'main' : 'side') as 'main' | 'side',
+      isVisible: binding.isVisible !== false
+    }))
+    .filter((binding) => binding.fieldId.length > 0 && typeSlugSet.has(binding.typeId) && binding.isVisible)
+    .sort((left, right) => {
+      if (left.typeId !== right.typeId) {
+        return left.typeId.localeCompare(right.typeId);
+      }
+
+      if (left.displayContext !== right.displayContext) {
+        return left.displayContext.localeCompare(right.displayContext);
+      }
+
+      return left.order - right.order;
+    });
+
+  if (bindings.length === 0) {
+    return fallback;
+  }
+
+  for (const binding of bindings) {
+    if (binding.displayContext === 'card') {
+      const list = visibleFieldsByType[binding.typeId] ?? [];
+      if (!list.includes(binding.fieldId)) {
+        list.push(binding.fieldId);
+      }
+      visibleFieldsByType[binding.typeId] = list;
+      continue;
+    }
+
+    const list = detailVisibleFieldsByType[binding.typeId] ?? [];
+    if (!list.includes(binding.fieldId)) {
+      list.push(binding.fieldId);
+    }
+    detailVisibleFieldsByType[binding.typeId] = list;
+    detailFieldZoneByType[binding.typeId] = {
+      ...(detailFieldZoneByType[binding.typeId] ?? {}),
+      [binding.fieldId]: binding.section
+    };
+  }
+
+  for (const itemType of input.itemTypes) {
+    if (visibleFieldsByType[itemType.slug].length === 0) {
+      visibleFieldsByType[itemType.slug] = [...(fallback.visibleFieldsByType[itemType.slug] ?? [])];
+    }
+
+    if (detailVisibleFieldsByType[itemType.slug].length === 0) {
+      detailVisibleFieldsByType[itemType.slug] = [...(fallback.detailVisibleFieldsByType[itemType.slug] ?? [])];
+    }
+  }
+
+  const firstTypeSlug = input.itemTypes[0]?.slug;
+
+  return {
+    visibleCardFieldIds: firstTypeSlug
+      ? [...(visibleFieldsByType[firstTypeSlug] ?? fallback.visibleCardFieldIds)]
+      : fallback.visibleCardFieldIds,
+    visibleFieldsByType,
+    detailVisibleFieldsByType,
+    detailFieldZoneByType
+  };
+}
+
+function readStoredFieldMap(settings: unknown, key: 'visibleFieldsByType' | 'detailVisibleFieldsByType'): Record<string, string[]> {
+  if (!isRecord(settings) || !isRecord(settings[key])) {
+    return {};
+  }
+
+  return Object.entries(settings[key]).reduce<Record<string, string[]>>((acc, [typeSlug, fieldIds]) => {
+    if (!Array.isArray(fieldIds)) {
+      return acc;
+    }
+
+    acc[typeSlug] = fieldIds.filter((fieldId): fieldId is string => typeof fieldId === 'string' && fieldId.trim().length > 0);
+    return acc;
+  }, {});
+}
+
+function readStoredDetailZoneMap(settings: unknown): Record<string, Record<string, 'main' | 'side'>> {
+  if (!isRecord(settings) || !isRecord(settings.detailFieldZoneByType)) {
+    return {};
+  }
+
+  return Object.entries(settings.detailFieldZoneByType).reduce<Record<string, Record<string, 'main' | 'side'>>>(
+    (acc, [typeSlug, zoneMap]) => {
+      if (!isRecord(zoneMap)) {
+        return acc;
+      }
+
+      acc[typeSlug] = Object.entries(zoneMap).reduce<Record<string, 'main' | 'side'>>((memo, [fieldSlug, zone]) => {
+        if (zone === 'main') {
+          memo[fieldSlug] = 'main';
+          return memo;
+        }
+
+        memo[fieldSlug] = 'side';
+        return memo;
+      }, {});
+
+      return acc;
+    },
+    {}
+  );
+}
+
+function resolveSystemFieldDetailSection(fieldSlug: string): 'main' | 'side' {
+  const systemField = SYSTEM_FIELD_SEEDS.find((field) => field.slug === fieldSlug);
+  if (!systemField?.settings || typeof systemField.settings.detailSection !== 'string') {
+    return 'side';
+  }
+
+  return systemField.settings.detailSection === 'main' ? 'main' : 'side';
+}
+
+async function seedFieldBindingsFromPreferences(input: {
+  prisma: PrismaExecutor;
+  workspaceId: string;
+  typeSlugs: string[];
+  typeIdBySlug: Map<string, string>;
+  fieldIdBySlug: Map<string, string>;
+  preferences: { visibleCardFieldIds: unknown; settings: unknown };
+}) {
+  const existingBindings = await input.prisma.workItemFieldBinding.findMany({
+    where: { workspaceId: input.workspaceId },
+    include: {
+      field: {
+        select: { slug: true }
+      },
+      type: {
+        select: { slug: true }
+      }
+    }
+  });
+
+  const existingKeySet = new Set(
+    existingBindings.map((binding) => `${binding.type.slug}:${binding.displayContext}:${binding.field.slug}`)
+  );
+
+  const settings = input.preferences.settings;
+  const fallbackCardFieldIds = Array.isArray(input.preferences.visibleCardFieldIds)
+    ? input.preferences.visibleCardFieldIds.filter((fieldId): fieldId is string => typeof fieldId === 'string')
+    : defaultSystemCardFieldIds;
+  const storedCardMap = readStoredFieldMap(settings, 'visibleFieldsByType');
+  const storedDetailMap = readStoredFieldMap(settings, 'detailVisibleFieldsByType');
+  const storedDetailZones = readStoredDetailZoneMap(settings);
+
+  for (const typeSlug of input.typeSlugs) {
+    const typeId = input.typeIdBySlug.get(typeSlug);
+    if (!typeId) {
+      continue;
+    }
+
+    const cardFieldSlugs = storedCardMap[typeSlug] ?? fallbackCardFieldIds;
+    for (const [index, fieldSlug] of cardFieldSlugs.entries()) {
+      const fieldId = input.fieldIdBySlug.get(fieldSlug);
+      if (!fieldId) {
+        continue;
+      }
+
+      const bindingKey = `${typeSlug}:card:${fieldSlug}`;
+      if (existingKeySet.has(bindingKey)) {
+        continue;
+      }
+
+      await input.prisma.workItemFieldBinding.create({
+        data: {
+          workspaceId: input.workspaceId,
+          typeId,
+          fieldId,
+          displayContext: 'card',
+          position: index,
+          isVisible: true
+        }
+      });
+      existingKeySet.add(bindingKey);
+    }
+
+    const detailFieldSlugs = storedDetailMap[typeSlug] ?? defaultSystemDetailFieldIds;
+    for (const [index, fieldSlug] of detailFieldSlugs.entries()) {
+      const fieldId = input.fieldIdBySlug.get(fieldSlug);
+      if (!fieldId) {
+        continue;
+      }
+
+      const bindingKey = `${typeSlug}:detail:${fieldSlug}`;
+      if (existingKeySet.has(bindingKey)) {
+        continue;
+      }
+
+      const section = storedDetailZones[typeSlug]?.[fieldSlug] ?? resolveSystemFieldDetailSection(fieldSlug);
+      await input.prisma.workItemFieldBinding.create({
+        data: {
+          workspaceId: input.workspaceId,
+          typeId,
+          fieldId,
+          displayContext: 'detail',
+          position: index,
+          section,
+          isVisible: true
+        }
+      });
+      existingKeySet.add(bindingKey);
+    }
+  }
+}
+
 function getSeededBoardViews(
   templateKey: WorkspaceTemplateKey | undefined,
   fallbackBoardViews: DefaultBoardViewSeed[]
@@ -831,26 +1205,28 @@ export async function seedWorkspaceConfigurationDefaults(
   }
 
   const seededBoardViews = getSeededBoardViews(templateKey, preset.defaultBoardViews);
+  const seededTemplateCustomFields = resolveTemplateFieldDefinitions(templateKey, preset.customFields);
+  const seededTemplateFieldLayouts = buildFieldLayoutMapsFromTemplateBindings({
+    templateKey,
+    itemTypes: preset.itemTypes,
+    fallbackVisibleCardFieldIds: preset.defaultVisibleCardFields,
+    fallbackDetailVisibleFieldIds: preset.defaultVisibleDetailFields
+  });
   const defaultBoardMode = seededBoardViews[0]?.key ?? preset.defaultBoardMode;
 
-  await prisma.workspacePreferences.upsert({
+  const preferences = await prisma.workspacePreferences.upsert({
     where: { workspaceId },
     create: {
       workspaceId,
       defaultBoardMode,
       dateFormat: 'dd/mm/yyyy',
-      visibleCardFieldIds: toPrismaJson(preset.defaultVisibleCardFields),
+      visibleCardFieldIds: toPrismaJson(seededTemplateFieldLayouts.visibleCardFieldIds),
       settings: toPrismaJson({
         templateKey: preset.templateKey,
         cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION,
-        visibleFieldsByType: buildDefaultFieldMapByType(
-          preset.itemTypes,
-          preset.defaultVisibleCardFields
-        ),
-        detailVisibleFieldsByType: buildDefaultFieldMapByType(
-          preset.itemTypes,
-          preset.defaultVisibleDetailFields
-        ),
+        visibleFieldsByType: seededTemplateFieldLayouts.visibleFieldsByType,
+        detailVisibleFieldsByType: seededTemplateFieldLayouts.detailVisibleFieldsByType,
+        detailFieldZoneByType: seededTemplateFieldLayouts.detailFieldZoneByType,
         perspectives: seededBoardViews.map((view, position) => ({
           key: view.key,
           name: view.name,
@@ -872,7 +1248,44 @@ export async function seedWorkspaceConfigurationDefaults(
     update: {}
   });
 
-  for (const [index, customFieldSeed] of preset.customFields.entries()) {
+  const fieldIdBySlug = new Map<string, string>();
+
+  for (const [index, systemFieldSeed] of SYSTEM_FIELD_SEEDS.entries()) {
+    const systemField = await prisma.customFieldDefinition.upsert({
+      where: {
+        workspaceId_slug: {
+          workspaceId,
+          slug: systemFieldSeed.slug
+        }
+      },
+      create: {
+        workspaceId,
+        name: systemFieldSeed.name,
+        slug: systemFieldSeed.slug,
+        description: systemFieldSeed.description,
+        type: mapInputTypeToPrisma(systemFieldSeed.type),
+        isSystem: true,
+        required: Boolean(systemFieldSeed.required),
+        isEditable: systemFieldSeed.isEditable ?? true,
+        isRemovable: systemFieldSeed.isRemovable ?? true,
+        position: index,
+        settings: toPrismaJson(systemFieldSeed.settings ?? { source: 'system' })
+      },
+      update: {
+        position: index,
+        isSystem: true,
+        required: Boolean(systemFieldSeed.required),
+        isEditable: systemFieldSeed.isEditable ?? true,
+        isRemovable: systemFieldSeed.isRemovable ?? true,
+        isActive: true,
+        settings: toPrismaJson(systemFieldSeed.settings ?? { source: 'system' })
+      }
+    });
+
+    fieldIdBySlug.set(systemFieldSeed.slug, systemField.id);
+  }
+
+  for (const [index, customFieldSeed] of seededTemplateCustomFields.entries()) {
     const templateFieldSettings = {
       ...(customFieldSeed.settings ?? {}),
       source: 'seed.default',
@@ -892,16 +1305,22 @@ export async function seedWorkspaceConfigurationDefaults(
         slug: customFieldSeed.slug,
         description: customFieldSeed.description,
         type: customFieldSeed.type,
+        isSystem: false,
         required: Boolean(customFieldSeed.required),
-        position: index,
+        isEditable: true,
+        isRemovable: true,
+        position: SYSTEM_FIELD_SEEDS.length + index,
         settings: toPrismaJson(templateFieldSettings)
       },
       update: {
-        position: index,
+        position: SYSTEM_FIELD_SEEDS.length + index,
+        isSystem: false,
         isActive: true,
         settings: toPrismaJson(templateFieldSettings)
       }
     });
+
+    fieldIdBySlug.set(customFieldSeed.slug, customField.id);
 
     for (const [optionIndex, option] of (customFieldSeed.options ?? []).entries()) {
       await prisma.customFieldOption.upsert({
@@ -948,6 +1367,18 @@ export async function seedWorkspaceConfigurationDefaults(
       });
     }
   }
+
+  await seedFieldBindingsFromPreferences({
+    prisma,
+    workspaceId,
+    typeSlugs: preset.itemTypes.map((itemType) => itemType.slug),
+    typeIdBySlug: typeBySlug,
+    fieldIdBySlug,
+    preferences: {
+      visibleCardFieldIds: preferences.visibleCardFieldIds,
+      settings: preferences.settings
+    }
+  });
 
   return {
     defaultBoardId: board.id

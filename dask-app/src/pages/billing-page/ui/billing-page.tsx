@@ -289,7 +289,7 @@ export function BillingPage() {
     () => getNextOnboardingAction(connectStatus, onboardingChecklist),
     [connectStatus, onboardingChecklist]
   );
-  const statusCards = useMemo(
+  const statusCards = useMemo<Array<{ key: string; label: string; value: string; tone: StatusTone }>>(
     () => [
       {
         key: "stripe",

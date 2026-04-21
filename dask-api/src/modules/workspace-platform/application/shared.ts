@@ -11,7 +11,13 @@ export type CustomFieldInputType =
   | 'boolean'
   | 'select'
   | 'multi_select'
-  | 'user';
+  | 'user'
+  | 'checklist'
+  | 'priority'
+  | 'status'
+  | 'tag'
+  | 'schedule'
+  | 'work_item_type';
 
 export function isRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -120,6 +126,18 @@ export function mapCustomFieldTypeToInput(type: CustomFieldType): CustomFieldInp
       return 'multi_select';
     case CustomFieldType.USER:
       return 'user';
+    case CustomFieldType.CHECKLIST:
+      return 'checklist';
+    case CustomFieldType.PRIORITY:
+      return 'priority';
+    case CustomFieldType.STATUS:
+      return 'status';
+    case CustomFieldType.TAG:
+      return 'tag';
+    case CustomFieldType.SCHEDULE:
+      return 'schedule';
+    case CustomFieldType.WORK_ITEM_TYPE:
+      return 'work_item_type';
     default:
       return 'text';
   }
@@ -127,23 +145,49 @@ export function mapCustomFieldTypeToInput(type: CustomFieldType): CustomFieldInp
 
 export function mapCustomFieldTypeToFrontend(type: CustomFieldType):
   | 'text'
+  | 'long_text'
   | 'number'
   | 'date'
+  | 'datetime'
   | 'select'
-  | 'multi-select'
-  | 'boolean' {
+  | 'multi_select'
+  | 'boolean'
+  | 'user'
+  | 'checklist'
+  | 'priority'
+  | 'status'
+  | 'tag'
+  | 'schedule'
+  | 'work_item_type' {
   switch (type) {
+    case CustomFieldType.LONG_TEXT:
+      return 'long_text';
     case CustomFieldType.NUMBER:
       return 'number';
     case CustomFieldType.DATE:
-    case CustomFieldType.DATETIME:
       return 'date';
+    case CustomFieldType.DATETIME:
+      return 'datetime';
     case CustomFieldType.SELECT:
       return 'select';
     case CustomFieldType.MULTI_SELECT:
-      return 'multi-select';
+      return 'multi_select';
     case CustomFieldType.BOOLEAN:
       return 'boolean';
+    case CustomFieldType.USER:
+      return 'user';
+    case CustomFieldType.CHECKLIST:
+      return 'checklist';
+    case CustomFieldType.PRIORITY:
+      return 'priority';
+    case CustomFieldType.STATUS:
+      return 'status';
+    case CustomFieldType.TAG:
+      return 'tag';
+    case CustomFieldType.SCHEDULE:
+      return 'schedule';
+    case CustomFieldType.WORK_ITEM_TYPE:
+      return 'work_item_type';
     default:
       return 'text';
   }
@@ -169,9 +213,88 @@ export function mapInputTypeToPrisma(type: CustomFieldInputType): CustomFieldTyp
       return CustomFieldType.MULTI_SELECT;
     case 'user':
       return CustomFieldType.USER;
+    case 'checklist':
+      return CustomFieldType.CHECKLIST;
+    case 'priority':
+      return CustomFieldType.PRIORITY;
+    case 'status':
+      return CustomFieldType.STATUS;
+    case 'tag':
+      return CustomFieldType.TAG;
+    case 'schedule':
+      return CustomFieldType.SCHEDULE;
+    case 'work_item_type':
+      return CustomFieldType.WORK_ITEM_TYPE;
     default:
       return CustomFieldType.TEXT;
   }
+}
+
+export function isSelectableFieldType(type: CustomFieldInputType): boolean {
+  return (
+    type === 'select' ||
+    type === 'multi_select' ||
+    type === 'user' ||
+    type === 'priority' ||
+    type === 'status' ||
+    type === 'tag' ||
+    type === 'work_item_type'
+  );
+}
+
+export function isSystemOnlyFieldType(type: CustomFieldInputType): boolean {
+  return type === 'priority' || type === 'status' || type === 'tag' || type === 'schedule' || type === 'work_item_type';
+}
+
+export function buildFieldSourceTag(input: { isSystem: boolean; settings: unknown }): 'system' | 'template' | 'custom' {
+  if (input.isSystem) {
+    return 'system';
+  }
+
+  if (isRecord(input.settings) && typeof input.settings.source === 'string' && input.settings.source.startsWith('seed.')) {
+    return 'template';
+  }
+
+  return 'custom';
+}
+
+export function readFieldStorageConfig(settings: unknown): JsonRecord | null {
+  if (!isRecord(settings) || !isRecord(settings.storage)) {
+    return null;
+  }
+
+  return settings.storage;
+}
+
+export function normalizeFieldDisplayContext(context: unknown): 'card' | 'detail' {
+  return context === 'card' ? 'card' : 'detail';
+}
+
+export function normalizeFieldSection(section: unknown): string | null {
+  if (typeof section !== 'string') {
+    return null;
+  }
+
+  const trimmed = section.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function inferFieldCapabilities(type: CustomFieldInputType, settings: unknown): JsonRecord {
+  const capabilities: JsonRecord = {};
+
+  if (type === 'select' || type === 'user' || type === 'priority' || type === 'status' || type === 'work_item_type') {
+    capabilities.selectable = true;
+  }
+
+  if (type === 'multi_select' || type === 'tag') {
+    capabilities.multiSelectable = true;
+  }
+
+  if ((type === 'text' || type === 'long_text') && isRecord(settings) && settings.allowAiGeneration === true) {
+    capabilities.aiEnhance = true;
+  }
+
+  return capabilities;
 }
 
 export function summarizeAutomationPart(part: unknown): string {

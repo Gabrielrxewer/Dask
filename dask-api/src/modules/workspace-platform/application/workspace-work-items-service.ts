@@ -1,5 +1,5 @@
 import type { Prisma} from '@prisma/client';
-import { CustomFieldType, type PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
@@ -11,7 +11,6 @@ import {
   getColorFromId,
   getInitials,
   isRecord,
-  mapCustomFieldTypeToFrontend,
   parseChecklist,
   parsePriority,
   summarizeAutomationPart,
@@ -161,22 +160,52 @@ export class WorkspaceWorkItemsService {
       fieldDefinitions: config.customFieldDefinitions
         .filter((field) => field.isActive)
         .sort((left, right) => left.order - right.order)
-        .map((field) => {
-          const type = mapCustomFieldTypeToFrontend(this.toPrismaFieldType(field.type));
-          const aiEnhance = this.isAiEnabledInFieldSettings(field.settings);
-
-          return {
-            id: field.slug,
-            label: field.name,
-            type,
-            options: field.options.map((option) => option.label),
-            capabilities: aiEnhance ? { aiEnhance: true } : undefined
-          };
-        }),
+        .map((field) => ({
+          id: field.slug,
+          definitionId: field.definitionId ?? field.id,
+          label: field.label ?? field.name,
+          name: field.name,
+          slug: field.slug,
+          description: field.description,
+          type: field.type,
+          source: field.source,
+          required: field.required,
+          isSystem: field.isSystem,
+          isEditable: field.isEditable,
+          isRemovable: field.isRemovable,
+          isActive: field.isActive,
+          order: field.order,
+          config: field.config,
+          defaultValue: field.defaultValue,
+          options: Array.isArray(field.options)
+            ? field.options
+                .filter((option: { isActive?: boolean }) => option.isActive !== false)
+                .map((option: { id: string; label: string; value: string; color: string | null; order: number; isActive: boolean }) => ({
+                  id: option.id,
+                  label: option.label,
+                  value: option.value,
+                  color: option.color,
+                  order: option.order,
+                  isActive: option.isActive
+                }))
+            : [],
+          capabilities: field.capabilities,
+          storage: field.storage
+        })),
+      fieldBindings: config.fieldBindings,
       cardLayout: {
         visibleFieldIds: config.preferences.visibleCardFieldIds,
         visibleFieldIdsByType: config.preferences.visibleFieldsByType ?? {},
-        detailVisibleFieldIdsByType: config.preferences.detailVisibleFieldsByType ?? {}
+        detailVisibleFieldIdsByType: config.preferences.detailVisibleFieldsByType ?? {},
+        detailFieldZoneByType:
+          config.preferences.settings &&
+          typeof config.preferences.settings === 'object' &&
+          !Array.isArray(config.preferences.settings) &&
+          typeof config.preferences.settings.detailFieldZoneByType === 'object' &&
+          config.preferences.settings.detailFieldZoneByType !== null &&
+          !Array.isArray(config.preferences.settings.detailFieldZoneByType)
+            ? (config.preferences.settings.detailFieldZoneByType as Record<string, Record<string, 'main' | 'side'>>)
+            : {}
       },
       perspectives:
         boardPerspectives.length > 0
@@ -1459,6 +1488,7 @@ export class WorkspaceWorkItemsService {
       id: workItem.id,
       title: workItem.title,
       text: workItem.description ?? '',
+      createdById: workItem.createdBy,
       type: workItem.type.slug,
       status: workItem.state.slug,
       position: workItem.position,
@@ -1615,39 +1645,6 @@ export class WorkspaceWorkItemsService {
       toColumnId: item.column.id,
       toColumnKey: item.column.slug
     };
-  }
-
-  private toPrismaFieldType(type: string): CustomFieldType {
-    switch (type) {
-      case 'text':
-        return CustomFieldType.TEXT;
-      case 'long_text':
-        return CustomFieldType.LONG_TEXT;
-      case 'number':
-        return CustomFieldType.NUMBER;
-      case 'date':
-        return CustomFieldType.DATE;
-      case 'datetime':
-        return CustomFieldType.DATETIME;
-      case 'boolean':
-        return CustomFieldType.BOOLEAN;
-      case 'select':
-        return CustomFieldType.SELECT;
-      case 'multi_select':
-        return CustomFieldType.MULTI_SELECT;
-      case 'user':
-        return CustomFieldType.USER;
-      default:
-        return CustomFieldType.TEXT;
-    }
-  }
-
-  private isAiEnabledInFieldSettings(settings: unknown): boolean {
-    if (!isRecord(settings)) {
-      return false;
-    }
-
-    return settings.allowAiGeneration === true || settings.aiEnhance === true;
   }
 
   private resolveBoardPerspectivesFromSettings(

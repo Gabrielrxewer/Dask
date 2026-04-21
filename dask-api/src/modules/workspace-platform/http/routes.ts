@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { MembershipRole, Prisma, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
@@ -7,7 +7,7 @@ import {
   requireWorkspacePermission,
   requireWorkspaceRole,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import type { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
@@ -30,6 +30,7 @@ import {
   patchCustomFieldDto,
   createWorkspaceAccessGroupDto,
   patchItemTypeDto,
+  replaceItemTypeFieldBindingsDto,
   patchWorkspaceAccessGroupDto,
   patchWorkspaceModuleEntitlementsDto,
   patchPreferencesDto,
@@ -581,6 +582,22 @@ export const buildWorkspacePlatformRoutes = (deps: {
     })
   );
 
+  router.put(
+    '/workspaces/:workspaceId/item-types/:typeId/field-bindings',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { typeId } = itemTypeParamsDto.parse(req.params);
+      const payload = replaceItemTypeFieldBindingsDto.parse(req.body);
+      await deps.workspaceConfigService.replaceItemTypeFieldBindings({
+        workspaceId: req.workspace!.id,
+        typeId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(204).send();
+    })
+  );
+
   router.get(
     '/workspaces/:workspaceId/workflow-states',
     asyncHandler(async (req, res) => {
@@ -1064,3 +1081,4 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   return router;
 };
+

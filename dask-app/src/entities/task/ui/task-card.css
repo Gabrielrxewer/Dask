@@ -568,9 +568,12 @@
 }
 
 .task-card__meta {
-  display: grid;
-  justify-items: end;
-  gap: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   color: #4a6682;
   font-size: var(--font-size-2xs);
   font-weight: 600;

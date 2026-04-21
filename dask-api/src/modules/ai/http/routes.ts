@@ -1,11 +1,11 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspaceModule,
   requireWorkspacePermission,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { AIAgentService } from '@/modules/ai/application/ai-agent-service';
 import type { ImprovementRequestService } from '@/modules/ai/application/improvement-request-service';
@@ -181,3 +181,4 @@ export const buildAiRoutes = (deps: {
 
   return router;
 };
+

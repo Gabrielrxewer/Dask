@@ -1,5 +1,5 @@
 import type { MemberId, MembersById } from "@/entities/member";
-import type { BoardConfig, Task, TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
+import type { BoardConfig, Task, TaskChecklist, TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 
 export type WorkspaceBoardMode = string;
 export type WorkspaceDateFormat = "dd/mm/yyyy" | "mm/dd/yyyy";
@@ -16,9 +16,9 @@ export interface WorkspacePreferences {
   defaultBoardMode: WorkspaceBoardMode;
   dateFormat: WorkspaceDateFormat;
   visibleCardFieldIds: string[];
-  /** Campos visiveis por tipo de work item. Sobrepoe visibleCardFieldIds para aquele tipo. */
+  /** Compatibilidade legada. O runtime principal deve ler boardConfig.fieldBindings. */
   visibleFieldsByType?: Record<string, string[]>;
-  /** Campos visiveis no detalhe expandido por tipo de work item. */
+  /** Compatibilidade legada. O runtime principal deve ler boardConfig.fieldBindings. */
   detailVisibleFieldsByType?: Record<string, string[]>;
   settings?: Record<string, unknown>;
 }
@@ -32,6 +32,12 @@ export interface CreateTaskInput {
   columnId?: string;
   stateId?: string;
   position?: number;
+  assigneeId?: MemberId | null;
+  dueDate?: string | null;
+  tags?: string[];
+  checklist?: TaskChecklist;
+  fields?: Record<string, unknown>;
+  customFieldValues?: Record<string, unknown>;
 }
 
 export interface TaskScheduleInput {
@@ -48,7 +54,9 @@ export interface UpdateTaskInput {
   dueDate?: string | null;
   tags?: string[];
   priority?: TaskPriority;
+  checklist?: TaskChecklist;
   fields?: Record<string, unknown>;
+  customFieldValues?: Record<string, unknown>;
 }
 
 export type CalendarIntegrationProvider = "teams" | "google-calendar" | "outlook-calendar" | "zoom" | "manual";
@@ -321,13 +329,54 @@ export interface ApiItemType {
 
 export interface ApiCustomField {
   id: string;
+  definitionId?: string;
   name: string;
   slug: string;
   type: string;
+  description?: string | null;
+  source?: "system" | "template" | "custom";
   required: boolean;
+  isSystem?: boolean;
+  isEditable?: boolean;
+  isRemovable?: boolean;
   isActive: boolean;
+  order?: number;
+  defaultValue?: unknown;
   settings?: CustomFieldSettings | null;
-  options: Array<{ id: string; label: string; value: string; color: string | null }>;
+  config?: Record<string, unknown> | null;
+  options: Array<{
+    id: string;
+    label: string;
+    value: string;
+    color: string | null;
+    order?: number;
+    isActive?: boolean;
+  }>;
+  scopeTypeIds?: string[];
+  bindings?: Array<{
+    id: string;
+    fieldId: string;
+    typeId: string;
+    fieldDefinitionId?: string;
+    workItemTypeId?: string;
+    displayContext: "card" | "detail";
+    order: number;
+    section?: string | null;
+    isVisible: boolean;
+    isRequiredOverride?: boolean | null;
+    isReadonlyOverride?: boolean | null;
+  }>;
+}
+
+export interface WorkItemFieldBindingInput {
+  fieldDefinitionId: string;
+  displayContext: "card" | "detail";
+  order: number;
+  section?: string | null;
+  isVisible?: boolean;
+  isRequiredOverride?: boolean | null;
+  isReadonlyOverride?: boolean | null;
+  settings?: Record<string, unknown> | null;
 }
 
 export interface CustomFieldSettings {
@@ -376,12 +425,20 @@ export type CustomFieldType =
   | "boolean"
   | "select"
   | "multi_select"
-  | "checklist";
+  | "user"
+  | "checklist"
+  | "priority"
+  | "status"
+  | "tag"
+  | "schedule"
+  | "work_item_type";
 
 export interface CustomFieldOptionInput {
   label: string;
   value: string;
   color?: string;
+  order?: number;
+  isActive?: boolean;
 }
 
 export interface CreateCustomFieldInput {
@@ -389,8 +446,12 @@ export interface CreateCustomFieldInput {
   type: CustomFieldType;
   description?: string;
   required?: boolean;
+  isEditable?: boolean;
+  isRemovable?: boolean;
+  defaultValue?: unknown;
   settings?: CustomFieldSettings;
   options?: CustomFieldOptionInput[];
+  scopeTypeIds?: string[];
 }
 
 export interface UpdateCustomFieldInput {
@@ -398,9 +459,13 @@ export interface UpdateCustomFieldInput {
   type?: CustomFieldType;
   description?: string;
   required?: boolean;
+  isEditable?: boolean;
+  isRemovable?: boolean;
   isActive?: boolean;
+  defaultValue?: unknown;
   settings?: CustomFieldSettings;
   options?: CustomFieldOptionInput[];
+  scopeTypeIds?: string[];
 }
 
 export interface WorkspaceService {
@@ -507,6 +572,11 @@ export interface WorkspaceService {
   createItemType: (workspaceSlug: string, input: CreateItemTypeInput) => Promise<WorkspaceSnapshot>;
   updateItemType: (workspaceSlug: string, typeId: string, input: UpdateItemTypeInput) => Promise<WorkspaceSnapshot>;
   deleteItemType: (workspaceSlug: string, typeId: string) => Promise<WorkspaceSnapshot>;
+  replaceItemTypeFieldBindings: (
+    workspaceSlug: string,
+    typeId: string,
+    bindings: WorkItemFieldBindingInput[]
+  ) => Promise<WorkspaceSnapshot>;
 
   createCustomField: (workspaceSlug: string, input: CreateCustomFieldInput) => Promise<WorkspaceSnapshot>;
   updateCustomField: (workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) => Promise<WorkspaceSnapshot>;
@@ -552,7 +622,7 @@ export interface WorkspaceService {
   updateAiAgent: (
     workspaceSlug: string,
     agentId: string,
-    patch: Partial<CreateAiAgentInput> & { description?: string | null }
+    patch: Omit<Partial<CreateAiAgentInput>, "description"> & { description?: string | null }
   ) => Promise<{ id: string }>;
   runAiAgentOnItem: (
     workspaceSlug: string,

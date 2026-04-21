@@ -32,7 +32,6 @@ export function ListPage() {
     updateTaskCustomField,
     updateTaskSchedule,
     updateTask,
-    toggleChecklistItem,
     listAiAgents,
     runAiAgentOnItem,
     runAiRiskAnalysis,
@@ -253,7 +252,6 @@ export function ListPage() {
           onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
           onUpdateSchedule={(taskId, input) => void updateTaskSchedule(taskId, input)}
           onSaveTask={(taskId, input) => void updateTask(taskId, input)}
-          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}
           onRunAiRiskAnalysis={runAiRiskAnalysis}

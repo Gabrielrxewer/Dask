@@ -9,10 +9,13 @@ import type {
 
 function makeRepository(): Mocked<WorkspacesRepository> {
   return {
+    findWorkspaceById: vi.fn(),
+    updateWorkspace: vi.fn(),
     createWorkspace: vi.fn(),
     createBoard: vi.fn(),
     createTemplate: vi.fn(),
     listUserWorkspaces: vi.fn(),
+    getUserSubscriptionAccess: vi.fn().mockResolvedValue(null),
     getOrganizationRoleForUser: vi.fn(),
     getWorkspaceRoleForUser: vi.fn(),
     listBoardsByWorkspace: vi.fn(),

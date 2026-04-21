@@ -267,12 +267,12 @@ export class AutomationViewService {
   }
 
   private async resolveBoardFallbackColumns(workspaceId: string): Promise<DefaultColumnSeed[]> {
-    const prismaAny = this.prisma as any;
-    if (!prismaAny.boardColumn?.findMany) {
+    const boardColumnDelegate = this.prisma.boardColumn;
+    if (!boardColumnDelegate) {
       return [];
     }
 
-    const columns = (await prismaAny.boardColumn.findMany({
+    const columns = await boardColumnDelegate.findMany({
       where: {
         workspaceId,
         isActive: true
@@ -293,9 +293,9 @@ export class AutomationViewService {
         }
       },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }]
-    })) as Array<any>;
+    });
 
-    return columns.map((column: any, index: number) => {
+    return columns.map((column, index: number) => {
       const firstState = column.stateMappings[0]?.state;
       return {
         key: toSlug(firstState?.slug ?? column.slug),

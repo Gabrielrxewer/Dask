@@ -38,7 +38,7 @@ export function groupTasksByStatus(
   });
 
   Object.values(grouped).forEach(statusTasks => {
-    statusTasks.sort((left, right) => left.position - right.position);
+    statusTasks.sort((left, right) => (left.position ?? 0) - (right.position ?? 0));
   });
 
   return grouped;

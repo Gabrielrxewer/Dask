@@ -4,30 +4,69 @@ export type TaskStatusId = string;
 export type TaskPriority = 0 | 1 | 2 | 3 | 4;
 export type TaskType = string;
 
-export type TaskCustomFieldValue = string | number | boolean | string[] | null;
+export type TaskCustomFieldValue = string | number | boolean | string[] | TaskChecklist | Record<string, unknown> | null;
 export type TaskCustomFields = Record<string, TaskCustomFieldValue>;
 
 export type TaskFieldType =
   | "text"
   | "long_text"
-  | "text_ai"
   | "number"
   | "date"
   | "datetime"
-  | "schedule"
   | "select"
-  | "multi-select"
   | "multi_select"
   | "boolean"
   | "user"
-  | "checklist";
+  | "checklist"
+  | "priority"
+  | "status"
+  | "tag"
+  | "schedule"
+  | "work_item_type";
 
-export type TaskFieldSource = "system" | "custom";
+export type TaskFieldSource = "system" | "template" | "custom";
 
 export interface TaskFieldCapabilities {
   aiEnhance?: boolean;
   selectable?: boolean;
   multiSelectable?: boolean;
+}
+
+export interface TaskFieldOption {
+  id: string;
+  label: string;
+  value: string;
+  color?: string | null;
+  order?: number;
+  isActive?: boolean;
+}
+
+export type TaskFieldBindingDisplayContext = "card" | "detail";
+export type TaskFieldSurface = "detail" | "form" | "inline" | "table" | "card" | "filter";
+export type TaskFieldCardArea = "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
+export type TaskFieldDetailZone = "main" | "side";
+export type TaskFieldVisualPriority = "primary" | "secondary" | "supporting";
+
+export interface TaskFieldBindingSettings {
+  cardArea?: TaskFieldCardArea;
+  detailZone?: TaskFieldDetailZone;
+  visualPriority?: TaskFieldVisualPriority;
+  surfaces?: Partial<Record<TaskFieldSurface, boolean>>;
+}
+
+export interface TaskFieldBinding {
+  id: string;
+  fieldId: string;
+  typeId: string;
+  fieldDefinitionId?: string;
+  workItemTypeId?: string;
+  displayContext: TaskFieldBindingDisplayContext;
+  order: number;
+  section?: string | null;
+  isVisible: boolean;
+  isRequiredOverride?: boolean | null;
+  isReadonlyOverride?: boolean | null;
+  settings?: TaskFieldBindingSettings | null;
 }
 
 export interface ChecklistItem {
@@ -51,9 +90,10 @@ export interface Task {
   id: string;
   title: string;
   text: string;
+  createdById?: string;
   type: TaskType;
   status: TaskStatusId;
-  position: number;
+  position?: number;
   priority: TaskPriority;
   tags: string[];
   assignee: MemberId;
@@ -88,11 +128,24 @@ export interface TaskTypeMetaItem {
 
 export interface TaskFieldDefinition {
   id: string;
+  definitionId?: string;
   label: string;
+  name?: string;
+  slug?: string;
+  description?: string | null;
   type: TaskFieldType;
-  options?: string[];
+  options?: TaskFieldOption[];
   source?: TaskFieldSource;
+  required?: boolean;
+  isSystem?: boolean;
+  isEditable?: boolean;
+  isRemovable?: boolean;
+  isActive?: boolean;
+  order?: number;
+  config?: Record<string, unknown> | null;
+  defaultValue?: TaskCustomFieldValue;
   capabilities?: TaskFieldCapabilities;
+  storage?: Record<string, unknown> | null;
 }
 
 export interface CardLayoutConfig {
@@ -127,6 +180,9 @@ export interface BoardConfig {
   statuses: TaskStatus[];
   taskTypes: TaskTypeMetaItem[];
   fieldDefinitions: TaskFieldDefinition[];
+  /** Fonte primaria de exibicao por tipo/contexto. */
+  fieldBindings?: TaskFieldBinding[];
+  /** Compatibilidade legada para consumidores ainda nao migrados. */
   cardLayout: CardLayoutConfig;
   perspectives: BoardViewConfig[];
   /** @deprecated Use perspectives. */

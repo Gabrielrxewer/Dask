@@ -1,5 +1,4 @@
-import type { Prisma} from '@prisma/client';
-import { type PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import {
   automationRuleSpecSchema,
@@ -522,12 +521,12 @@ export class AutomationRuntimeService {
       return;
     }
 
-    const prismaAny = this.prisma as any;
-    if (!prismaAny.workflowState?.findFirst) {
+    const workflowStateDelegate = this.prisma.workflowState;
+    if (!workflowStateDelegate) {
       return;
     }
 
-    let targetState = await prismaAny.workflowState.findFirst({
+    let targetState = await workflowStateDelegate.findFirst({
       where: {
         workspaceId: input.workspaceId,
         slug: normalizedColumnKey,
@@ -539,8 +538,9 @@ export class AutomationRuntimeService {
       }
     });
 
-    let targetBoardColumn = prismaAny.boardColumn?.findFirst
-      ? await prismaAny.boardColumn.findFirst({
+    const boardColumnDelegate = this.prisma.boardColumn;
+    let targetBoardColumn = boardColumnDelegate
+      ? await boardColumnDelegate.findFirst({
           where: {
             workspaceId: input.workspaceId,
             slug: normalizedColumnKey,
@@ -552,8 +552,9 @@ export class AutomationRuntimeService {
         })
       : null;
 
-    if (!targetBoardColumn && targetState && prismaAny.columnStateMapping?.findFirst) {
-      const stateMapping = await prismaAny.columnStateMapping.findFirst({
+    const columnStateMappingDelegate = this.prisma.columnStateMapping;
+    if (!targetBoardColumn && targetState && columnStateMappingDelegate) {
+      const stateMapping = await columnStateMappingDelegate.findFirst({
         where: {
           workspaceId: input.workspaceId,
           stateId: targetState.id
@@ -576,8 +577,8 @@ export class AutomationRuntimeService {
       }
     }
 
-    if (!targetState && targetBoardColumn && prismaAny.columnStateMapping?.findFirst) {
-      const columnMapping = await prismaAny.columnStateMapping.findFirst({
+    if (!targetState && targetBoardColumn && columnStateMappingDelegate) {
+      const columnMapping = await columnStateMappingDelegate.findFirst({
         where: {
           workspaceId: input.workspaceId,
           columnId: targetBoardColumn.id

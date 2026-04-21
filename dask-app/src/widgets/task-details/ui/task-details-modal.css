@@ -162,6 +162,34 @@
   padding: 14px;
 }
 
+.task-details__field-frame {
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.task-details__field-frame--simple {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.5) 100%);
+  border-color: rgba(216, 229, 243, 0.78);
+  box-shadow: 0 4px 10px rgba(12, 40, 71, 0.025);
+}
+
+.task-details__field-frame--complex {
+  background:
+    radial-gradient(circle at top left, rgba(24, 121, 245, 0.05), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(251, 253, 255, 0.74) 100%);
+  border-color: rgba(205, 221, 239, 0.92);
+  box-shadow: 0 10px 22px rgba(12, 40, 71, 0.05);
+}
+
+.task-details__field-frame--meta {
+  background: linear-gradient(180deg, rgba(252, 253, 255, 0.5) 0%, rgba(248, 251, 255, 0.34) 100%);
+  border-color: rgba(223, 234, 246, 0.76);
+  box-shadow: none;
+}
+
+.task-details__field-frame--readonly {
+  backdrop-filter: blur(10px);
+}
+
 .task-details__panel--summary,
 .task-details__panel--owner {
   min-height: 108px;
@@ -1268,6 +1296,26 @@
 .app-theme[data-theme="dark"] .task-details__panel {
   background: linear-gradient(180deg, rgba(16, 36, 53, 0.96) 0%, rgba(11, 28, 41, 0.98) 100%);
   border-color: rgba(79, 120, 150, 0.64);
+}
+
+.app-theme[data-theme="dark"] .task-details__field-frame--simple {
+  background: linear-gradient(180deg, rgba(16, 36, 53, 0.9) 0%, rgba(11, 28, 41, 0.82) 100%);
+  border-color: rgba(79, 120, 150, 0.52);
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .task-details__field-frame--complex {
+  background:
+    radial-gradient(circle at top left, rgba(65, 140, 210, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(17, 39, 58, 0.96) 0%, rgba(11, 28, 41, 0.92) 100%);
+  border-color: rgba(88, 134, 168, 0.72);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+.app-theme[data-theme="dark"] .task-details__field-frame--meta {
+  background: linear-gradient(180deg, rgba(14, 31, 46, 0.76) 0%, rgba(10, 23, 35, 0.68) 100%);
+  border-color: rgba(79, 120, 150, 0.48);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .task-details__header-copy h2,

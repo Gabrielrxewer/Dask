@@ -1,10 +1,10 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspaceModule,
   requireWorkspacePermission,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { MarketingService } from '@/modules/marketing/application/marketing-service';
 import {
@@ -384,3 +384,4 @@ export const buildMarketingRoutes = (deps: {
 
   return router;
 };
+

@@ -1,17 +1,13 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type HTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import type { MembersById } from "@/entities/member";
 import {
-  buildTaskChecklistSummary,
-  buildTaskTypeMetaMap,
-  getTaskTypeDisplayMeta,
-  isSystemCardFieldId,
-  priorityMeta,
-  resolveFieldIdsForTaskType
+  priorityMeta
 } from "@/entities/task";
-import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition, TaskPriority } from "@/entities/task";
-import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
+import { buildTaskCardRenderModel, CARD_SLOT_LIMITS, type TaskCardDebugSnapshot, type TaskCardSlotArea } from "@/entities/task/model/task-card-render-model";
+import type { BoardConfig, Task, TaskFieldDefinition, TaskPriority, TaskStatus } from "@/entities/task";
+import { WorkItemFieldRenderer } from "@/entities/task/ui/field-presentation";
 import { cn } from "@/shared/lib/cn";
-import { formatShortDate } from "@/shared/lib/date/format-date";
 import "./task-card.css";
 
 interface TaskCardProps {
@@ -19,7 +15,26 @@ interface TaskCardProps {
   boardConfig: BoardConfig;
   compact?: boolean;
   draggable?: boolean;
-  fieldSlotRenderer?: (slot: { fieldId: string; area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta"; content: ReactNode }) => ReactNode;
+  getFieldSlotProps?: (slot: {
+    fieldId: string;
+    area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
+    visualPriority: "primary" | "secondary" | "supporting";
+    field: TaskFieldDefinition;
+    value: ReturnType<typeof buildTaskCardRenderModel>["resolvedFields"][number]["value"];
+    index: number;
+    slotLimit: number;
+    occupiedCount: number;
+  }) => HTMLAttributes<HTMLElement>;
+  renderEmptySlot?: (slot: {
+    area: TaskCardSlotArea;
+    index: number;
+    occupiedCount: number;
+    slotLimit: number;
+    availableCount: number;
+  }) => ReactNode;
+  membersById?: MembersById;
+  displayStatuses?: TaskStatus[];
+  onDebugSnapshot?: (snapshot: TaskCardDebugSnapshot) => void;
   creatorName?: string;
   assigneeName?: string;
   statusLabel?: string;
@@ -32,43 +47,16 @@ interface TaskCardProps {
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
 }
 
-type TaskCardSlotArea = "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
-
-function formatCustomFieldValue(value: TaskCustomFieldValue, definition: TaskFieldDefinition): string {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  }
-
-  if (definition.type === "boolean") {
-    return value ? "Sim" : "Nao";
-  }
-
-  if (value === null || typeof value === "undefined" || value === "") {
-    return "-";
-  }
-
-  return String(value);
-}
-
-function getSystemFieldArea(fieldId: string): TaskCardSlotArea {
-  if (fieldId === "sys:type" || fieldId === "sys:status") return "badge";
-  if (fieldId === "sys:title") return "title";
-  if (fieldId === "sys:description") return "description";
-  if (fieldId === "sys:tags") return "tags";
-  if (fieldId === "sys:checklist" || fieldId === "sys:due-date") return "meta";
-  return "summary";
-}
-
 export function TaskCard({
   task,
   boardConfig,
   compact = false,
   draggable = true,
-  fieldSlotRenderer,
-  creatorName,
-  assigneeName,
-  statusLabel,
-  assigneeSlot = null,
+  getFieldSlotProps,
+  renderEmptySlot,
+  membersById,
+  displayStatuses,
+  onDebugSnapshot,
   onDragStart,
   onDragEnd,
   isDragging = false,
@@ -76,66 +64,103 @@ export function TaskCard({
   onDelete,
   onUpdatePriority
 }: TaskCardProps) {
-  const checklist = buildTaskChecklistSummary(task);
   const [isMounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
-  const typeMap = buildTaskTypeMetaMap(boardConfig.taskTypes);
-  const type = getTaskTypeDisplayMeta(typeMap, task.type);
-  const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>((acc, field) => {
-    acc[field.id] = field;
-    return acc;
-  }, {});
-
-  const effectiveVisibleFieldIds = resolveFieldIdsForTaskType(
-    task.type,
-    boardConfig.cardLayout.visibleFieldIdsByType,
-    boardConfig.cardLayout.visibleFieldIds
-  );
-  const visibleFieldIdSet = new Set(effectiveVisibleFieldIds);
-  const visibleCustomFieldIds = effectiveVisibleFieldIds.filter(fieldId => !isSystemCardFieldId(fieldId));
-
-  const visibleFields = visibleCustomFieldIds
-    .map(fieldId => ({
-      definition: fieldMap[fieldId],
-      value: task.customFields[fieldId]
-    }))
-    .filter(
-      (item): item is { definition: TaskFieldDefinition; value: TaskCustomFieldValue } =>
-        Boolean(item.definition)
-    );
-
-  const showType = visibleFieldIdSet.has("sys:type");
-  const showStatus = visibleFieldIdSet.has("sys:status");
-  const showTitle = visibleFieldIdSet.has("sys:title");
-  const showDescription = visibleFieldIdSet.has("sys:description");
-  const showCreatedBy = visibleFieldIdSet.has("sys:created-by");
-  const showAssignee = visibleFieldIdSet.has("sys:assignee");
-  const showTags = visibleFieldIdSet.has("sys:tags");
-  const showChecklist = visibleFieldIdSet.has("sys:checklist");
-  const showDueDate = visibleFieldIdSet.has("sys:due-date");
-  const hasMetaFooter = showChecklist || showDueDate;
-
   const canOpen = typeof onOpen === "function";
-  const authorLabel = creatorName ?? "Usuario";
-  const ownerLabel = assigneeName ?? authorLabel;
-  const displayTags = task.tags.slice(0, 4);
-  const hiddenTagsCount = Math.max(task.tags.length - displayTags.length, 0);
-  const typeLabel = type.label?.trim() || task.type;
-  const typeIconName = resolveTaskTypeIconName(type.id);
+  const resolvedStatuses = displayStatuses ?? boardConfig.statuses;
+
+  const { resolvedFields, debugSnapshot } = useMemo(
+    () =>
+      buildTaskCardRenderModel({
+        task,
+        boardConfig,
+        statuses: resolvedStatuses,
+        membersById
+      }),
+    [boardConfig, membersById, resolvedStatuses, task]
+  );
+
+  const badgeFields = resolvedFields.filter(field => field.area === "badge");
+  const titleFields = resolvedFields.filter(field => field.area === "title");
+  const descriptionFields = resolvedFields.filter(field => field.area === "description");
+  const summaryFields = resolvedFields.filter(field => field.area === "summary");
+  const tagFields = resolvedFields.filter(field => field.area === "tags");
+  const customFields = resolvedFields.filter(field => field.area === "custom-field");
+  const metaFields = resolvedFields.filter(field => field.area === "meta");
+  const emptySlotCountByArea = {
+    badge: Math.max(0, CARD_SLOT_LIMITS.badge - badgeFields.length),
+    title: Math.max(0, CARD_SLOT_LIMITS.title - titleFields.length),
+    description: Math.max(0, CARD_SLOT_LIMITS.description - descriptionFields.length),
+    summary: Math.max(0, CARD_SLOT_LIMITS.summary - summaryFields.length),
+    tags: Math.max(0, CARD_SLOT_LIMITS.tags - tagFields.length),
+    "custom-field": Math.max(0, CARD_SLOT_LIMITS["custom-field"] - customFields.length),
+    meta: Math.max(0, CARD_SLOT_LIMITS.meta - metaFields.length)
+  } satisfies Record<TaskCardSlotArea, number>;
   const priorityLabel = priorityMeta[task.priority]?.label ?? "Prioridade";
-  const renderFieldSlot = (
-    fieldId: string,
+  const hasMenuActions = canOpen || typeof onDelete === "function" || typeof onUpdatePriority === "function";
+  const hasHeader = badgeFields.length > 0 || hasMenuActions || emptySlotCountByArea.badge > 0;
+
+  const resolveFieldSlotProps = (
+    field: (typeof resolvedFields)[number],
     area: TaskCardSlotArea,
-    content: ReactNode
-  ) => (fieldSlotRenderer ? fieldSlotRenderer({ fieldId, area, content }) : content);
+    index: number,
+    occupiedCount: number
+  ): HTMLAttributes<HTMLElement> =>
+    getFieldSlotProps?.({
+      fieldId: field.definition.id,
+      area,
+      visualPriority: field.visualPriority,
+      field: field.definition,
+      value: field.value,
+      index,
+      slotLimit: CARD_SLOT_LIMITS[area],
+      occupiedCount
+    }) ?? {};
+
+  const renderEmptySlots = (area: TaskCardSlotArea, occupiedCount: number) => {
+    if (!renderEmptySlot) {
+      return null;
+    }
+
+    const slotLimit = CARD_SLOT_LIMITS[area];
+    const availableCount = Math.max(0, slotLimit - occupiedCount);
+    return Array.from({ length: availableCount }, (_, offset) => (
+      <Fragment key={`empty-${area}-${occupiedCount + offset}`}>
+        {renderEmptySlot({
+          area,
+          index: occupiedCount + offset,
+          occupiedCount,
+          slotLimit,
+          availableCount
+        })}
+      </Fragment>
+    ));
+  };
+
+  const renderFieldValue = (field: (typeof resolvedFields)[number]) => (
+    <WorkItemFieldRenderer
+      field={field.definition}
+      value={field.value}
+      mode="display"
+      context="card"
+      boardConfig={boardConfig}
+      statuses={resolvedStatuses}
+      task={task}
+      membersById={membersById}
+    />
+  );
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    onDebugSnapshot?.(debugSnapshot);
+  }, [debugSnapshot, onDebugSnapshot]);
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -144,10 +169,7 @@ export function TaskCard({
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
-      if (
-        target &&
-        (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target))
-      ) {
+      if (target && (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target))) {
         return;
       }
       setIsMenuOpen(false);
@@ -206,47 +228,40 @@ export function TaskCard({
     };
   }, [isMenuOpen]);
 
-  const orderedSummaryFieldIds = effectiveVisibleFieldIds.filter(
-    fieldId =>
-      visibleFieldIdSet.has(fieldId) &&
-      (fieldId === "sys:created-by" || fieldId === "sys:assignee")
-  );
+  const renderSummaryField = (field: (typeof resolvedFields)[number], index: number, occupiedCount: number) => {
+    const slotProps = resolveFieldSlotProps(field, "summary", index, occupiedCount);
+    const { className, ...nativeProps } = slotProps;
 
-  const orderedMetaFieldIds = effectiveVisibleFieldIds.filter(
-    fieldId =>
-      visibleFieldIdSet.has(fieldId) &&
-      (fieldId === "sys:checklist" || fieldId === "sys:due-date")
-  );
-
-  const renderedSummaryFields = orderedSummaryFieldIds.map(fieldId => {
-    if (fieldId === "sys:created-by") {
-      return renderFieldSlot(
-        fieldId,
-        getSystemFieldArea(fieldId),
-        <span className="task-card__summary-item" key={fieldId}>
-          <strong>Criado por</strong>
-          <span>{authorLabel}</span>
-        </span>
-      );
-    }
-
-    return renderFieldSlot(
-      fieldId,
-      getSystemFieldArea(fieldId),
-      <span className="task-card__summary-item" key={fieldId}>
-        <strong>Responsavel</strong>
-        <span>{ownerLabel}</span>
+    return (
+      <span className={cn("task-card__summary-item", className)} key={field.definition.id} {...nativeProps}>
+        <strong>{field.definition.label}</strong>
+        <span>{renderFieldValue(field)}</span>
       </span>
     );
-  });
+  };
 
-  const renderedMetaFields = orderedMetaFieldIds.map(fieldId => {
-    if (fieldId === "sys:checklist") {
-      return renderFieldSlot(fieldId, getSystemFieldArea(fieldId), <span key={fieldId}>{`Checklist ${checklist.done}/${checklist.total}`}</span>);
-    }
+  const renderCustomField = (field: (typeof resolvedFields)[number], index: number, occupiedCount: number) => {
+    const slotProps = resolveFieldSlotProps(field, "custom-field", index, occupiedCount);
+    const { className, ...nativeProps } = slotProps;
 
-    return renderFieldSlot(fieldId, getSystemFieldArea(fieldId), <span key={fieldId}>{`Prazo ${formatShortDate(task.due)}`}</span>);
-  });
+    return (
+      <span className={cn("task-card__field", className)} key={field.definition.id} {...nativeProps}>
+        <strong>{field.definition.label}</strong>
+        <span className="task-card__field-value">{renderFieldValue(field)}</span>
+      </span>
+    );
+  };
+
+  const renderMetaField = (field: (typeof resolvedFields)[number], index: number, occupiedCount: number) => {
+    const slotProps = resolveFieldSlotProps(field, "meta", index, occupiedCount);
+    const { className, ...nativeProps } = slotProps;
+
+    return (
+      <span className={className} key={field.definition.id} {...nativeProps}>
+        {renderFieldValue(field)}
+      </span>
+    );
+  };
 
   return (
     <article
@@ -275,106 +290,101 @@ export function TaskCard({
       tabIndex={canOpen ? 0 : undefined}
       aria-label={canOpen ? `Abrir detalhes da tarefa ${task.title}` : undefined}
     >
-      <header className="task-card__head">
-        <div className="task-card__badges">
-          {showType ? (
-            renderFieldSlot(
-              "sys:type",
-              "badge",
-              <span
-                className="task-card__type-icon"
-                role="img"
-                aria-label={typeLabel}
-                title={typeLabel}
-                style={{
-                  color: type.text
-                }}
-              >
-                <TaskTypeIcon name={typeIconName} />
-              </span>
-            )
-          ) : null}
+      {hasHeader ? (
+        <header className="task-card__head">
+          <div className="task-card__badges">
+            {badgeFields.map(field => {
+              const slotProps = resolveFieldSlotProps(field, "badge", badgeFields.indexOf(field), badgeFields.length);
+              const { className, ...nativeProps } = slotProps;
 
-          {showStatus ? renderFieldSlot("sys:status", "badge", <span className="task-card__tag">{statusLabel ?? task.status}</span>) : null}
-        </div>
-        <button
-          ref={menuButtonRef}
-          className="task-card__ghost"
-          type="button"
-          aria-label="Mais acoes"
-          aria-haspopup="menu"
-          aria-expanded={isMenuOpen}
-          aria-controls={isMenuOpen ? menuId : undefined}
-          onClick={event => {
-            event.stopPropagation();
-            setIsMenuOpen(current => !current);
-          }}
-        >
-          <span aria-hidden="true">•••</span>
-        </button>
-      </header>
-
-      {showTitle ? renderFieldSlot("sys:title", "title", <h4 className="task-card__title">{task.title}</h4>) : null}
-      {showDescription && task.text
-        ? renderFieldSlot("sys:description", "description", <p className="task-card__text">{task.text}</p>)
-        : null}
-
-      {showCreatedBy || showAssignee ? (
-        <div className="task-card__summary">
-          {renderedSummaryFields}
-        </div>
-      ) : null}
-
-      {showTags ? (
-        renderFieldSlot(
-          "sys:tags",
-          "tags",
-          <div className="task-card__tags">
-            {displayTags.map(tag => (
-              <span className="task-card__tag" key={tag}>
-                {tag}
-              </span>
-            ))}
-            {hiddenTagsCount > 0 ? <span className="task-card__tag task-card__tag--more">{`+${hiddenTagsCount}`}</span> : null}
+              return (
+                <span className={className} key={field.definition.id} {...nativeProps}>
+                  {renderFieldValue(field)}
+                </span>
+              );
+            })}
+            {renderEmptySlots("badge", badgeFields.length)}
           </div>
-        )
+          {hasMenuActions ? (
+            <button
+              ref={menuButtonRef}
+              className="task-card__ghost"
+              type="button"
+              aria-label="Mais acoes"
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              aria-controls={isMenuOpen ? menuId : undefined}
+              onClick={event => {
+                event.stopPropagation();
+                setIsMenuOpen(current => !current);
+              }}
+            >
+              <span aria-hidden="true">...</span>
+            </button>
+          ) : null}
+        </header>
       ) : null}
 
-      {visibleFields.length > 0 ? (
-        <div className="task-card__fields">
-          {visibleFields.map(({ definition, value }) => (
-            renderFieldSlot(
-              definition.id,
-              "custom-field",
-              <span className="task-card__field" key={definition.id}>
-                <strong>{definition.label}</strong>
-                <span className="task-card__field-value">{formatCustomFieldValue(value, definition)}</span>
-              </span>
-            )
-          ))}
+      {titleFields.map(field => {
+        const slotProps = resolveFieldSlotProps(field, "title", titleFields.indexOf(field), titleFields.length);
+        const { className, ...nativeProps } = slotProps;
+
+        return (
+          <h4 className={cn("task-card__title", className)} key={field.definition.id} {...nativeProps}>
+            {renderFieldValue(field)}
+          </h4>
+        );
+      })}
+      {renderEmptySlots("title", titleFields.length)}
+
+      {descriptionFields.map(field => {
+        const slotProps = resolveFieldSlotProps(field, "description", descriptionFields.indexOf(field), descriptionFields.length);
+        const { className, ...nativeProps } = slotProps;
+
+        return (
+          <p className={cn("task-card__text", className)} key={field.definition.id} {...nativeProps}>
+            {renderFieldValue(field)}
+          </p>
+        );
+      })}
+      {renderEmptySlots("description", descriptionFields.length)}
+
+      {summaryFields.length > 0 || emptySlotCountByArea.summary > 0 ? (
+        <div className="task-card__summary">
+          {summaryFields.map((field, index) => renderSummaryField(field, index, summaryFields.length))}
+          {renderEmptySlots("summary", summaryFields.length)}
         </div>
       ) : null}
 
-      {showAssignee || hasMetaFooter ? (
+      {tagFields.map(field => {
+        const slotProps = resolveFieldSlotProps(field, "tags", tagFields.indexOf(field), tagFields.length);
+        const { className, ...nativeProps } = slotProps;
+
+        return (
+          <div className={cn("task-card__tags", className)} key={field.definition.id} {...nativeProps}>
+            {renderFieldValue(field)}
+          </div>
+        );
+      })}
+      {renderEmptySlots("tags", tagFields.length)}
+
+      {customFields.length > 0 || emptySlotCountByArea["custom-field"] > 0 ? (
+        <div className="task-card__fields">
+          {customFields.map((field, index) => renderCustomField(field, index, customFields.length))}
+          {renderEmptySlots("custom-field", customFields.length)}
+        </div>
+      ) : null}
+
+      {metaFields.length > 0 || emptySlotCountByArea.meta > 0 ? (
         <footer className="task-card__footer">
-          {showAssignee ? (
-            <div className="task-card__owner">
-              {assigneeSlot}
-              <div className="task-card__owner-text">
-                <strong>Responsavel</strong>
-                <span>{ownerLabel}</span>
-              </div>
-            </div>
-          ) : null}
-          {hasMetaFooter ? (
-            <div className="task-card__meta">
-              {renderedMetaFields}
-            </div>
-          ) : null}
+          <div className="task-card__meta">
+            {metaFields.map((field, index) => renderMetaField(field, index, metaFields.length))}
+            {renderEmptySlots("meta", metaFields.length)}
+          </div>
         </footer>
       ) : null}
 
-      {isMounted && isMenuOpen
+      {hasMenuActions && isMounted && isMenuOpen
         ? createPortal(
             <div
               ref={menuRef}

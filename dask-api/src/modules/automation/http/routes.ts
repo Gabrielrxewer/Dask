@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/core/http/async-handler';
@@ -6,7 +6,7 @@ import {
   requireWorkspaceModule,
   requireWorkspacePermission,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { AutomationService } from '@/modules/automation/application/automation-service';
 import type { AutomationViewService } from '@/modules/automation/application/automation-view-service';
@@ -350,3 +350,4 @@ export const buildAutomationRoutes = (deps: {
 const zRuleIdOnly = z.object({
   ruleId: z.string().uuid()
 });
+

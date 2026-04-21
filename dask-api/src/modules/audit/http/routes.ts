@@ -1,10 +1,10 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspacePermission,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { AuditService } from '@/modules/audit/application/audit-service';
 import {
@@ -35,3 +35,4 @@ export const buildAuditRoutes = (deps: {
 
   return router;
 };
+

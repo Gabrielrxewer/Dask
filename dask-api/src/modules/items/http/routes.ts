@@ -1,11 +1,11 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspacePermission,
   requireWorkspaceRole,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { ItemsService } from '@/modules/items/application/items-service';
 import { createItemDto, updateItemDto } from '@/modules/items/http/dto';
@@ -53,3 +53,4 @@ export const buildItemsRoutes = (deps: {
 
   return router;
 };
+

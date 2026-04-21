@@ -41,6 +41,7 @@ export type {
   UpdateBoardColumnInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
+  WorkItemFieldBindingInput,
   WorkspaceAutomation,
   WorkspaceBoardMode,
   WorkspaceDocument,

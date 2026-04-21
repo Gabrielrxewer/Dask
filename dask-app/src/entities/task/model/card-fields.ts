@@ -1,25 +1,6 @@
 import type { TaskFieldDefinition } from "@/entities/task/model/types";
 
-export const CARD_FIELDS_SCHEMA_VERSION = 2;
-
-export const systemCardFieldDefinitions: TaskFieldDefinition[] = [
-  { id: "sys:type", label: "Tipo", type: "select", source: "system", capabilities: { selectable: true } },
-  { id: "sys:priority", label: "Prioridade", type: "select", source: "system", capabilities: { selectable: true } },
-  { id: "sys:status", label: "Status", type: "select", source: "system", capabilities: { selectable: true } },
-  { id: "sys:title", label: "Titulo", type: "text", source: "system" },
-  { id: "sys:description", label: "Descricao", type: "text_ai", source: "system", capabilities: { aiEnhance: true } },
-  { id: "sys:created-by", label: "Criado por", type: "user", source: "system" },
-  { id: "sys:assignee", label: "Responsavel", type: "user", source: "system", capabilities: { selectable: true } },
-  { id: "sys:tags", label: "Tags", type: "multi_select", source: "system", capabilities: { multiSelectable: true } },
-  { id: "sys:checklist", label: "Checklist", type: "checklist", source: "system" },
-  { id: "sys:schedule", label: "Planejamento", type: "schedule", source: "system" },
-  { id: "sys:due-date", label: "Prazo", type: "date", source: "system" }
-];
-
-const systemFieldIdSet = new Set(systemCardFieldDefinitions.map(field => field.id));
-const defaultSystemFieldIds = systemCardFieldDefinitions
-  .filter(field => field.id !== "sys:schedule")
-  .map(field => field.id);
+export const CARD_FIELDS_SCHEMA_VERSION = 3;
 
 function uniqueNonEmptyIds(fieldIds: string[]): string[] {
   return Array.from(
@@ -33,35 +14,22 @@ function uniqueNonEmptyIds(fieldIds: string[]): string[] {
 }
 
 export function isSystemCardFieldId(fieldId: string): boolean {
-  return systemFieldIdSet.has(fieldId);
+  return fieldId.startsWith("sys:");
 }
 
-export function mergeCardFieldDefinitions(customFieldDefinitions: TaskFieldDefinition[]): TaskFieldDefinition[] {
-  const customFiltered = customFieldDefinitions
-    .filter(field => !isSystemCardFieldId(field.id))
-    .map(field => ({
-      ...field,
-      source: field.source ?? "custom",
-      capabilities: field.capabilities ?? inferCapabilitiesByType(field.type)
-    }));
-  return [...systemCardFieldDefinitions, ...customFiltered];
+export function mergeCardFieldDefinitions(fieldDefinitions: TaskFieldDefinition[]): TaskFieldDefinition[] {
+  return fieldDefinitions.map(field => ({
+    ...field,
+    source: field.source ?? (isSystemCardFieldId(field.id) ? "system" : "custom"),
+    capabilities: field.capabilities ?? inferCapabilitiesByType(field.type, field.config)
+  }));
 }
 
 export function resolveVisibleCardFieldIds(
   fieldIds: string[],
-  settings?: Record<string, unknown>
+  _settings?: Record<string, unknown>
 ): string[] {
-  const normalized = uniqueNonEmptyIds(fieldIds);
-  const schemaVersion =
-    typeof settings?.cardFieldSchemaVersion === "number"
-      ? settings.cardFieldSchemaVersion
-      : undefined;
-
-  if (schemaVersion === CARD_FIELDS_SCHEMA_VERSION || normalized.some(isSystemCardFieldId)) {
-    return normalized;
-  }
-
-  return uniqueNonEmptyIds([...defaultSystemFieldIds, ...normalized]);
+  return uniqueNonEmptyIds(fieldIds);
 }
 
 export function resolveFieldIdsForTaskType(
@@ -77,16 +45,27 @@ export function resolveFieldIdsForTaskType(
   return uniqueNonEmptyIds(fallbackFieldIds);
 }
 
-export function inferCapabilitiesByType(type: TaskFieldDefinition["type"]) {
-  if (type === "text_ai") {
-    return { aiEnhance: true };
+function canAiEnhance(config?: Record<string, unknown> | null): boolean {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return false;
   }
 
-  if (type === "select" || type === "user") {
+  return config.allowAiGeneration === true;
+}
+
+export function inferCapabilitiesByType(
+  type: TaskFieldDefinition["type"],
+  config?: Record<string, unknown> | null
+) {
+  if (type === "text" || type === "long_text") {
+    return canAiEnhance(config) ? { aiEnhance: true } : {};
+  }
+
+  if (type === "select" || type === "user" || type === "priority" || type === "status" || type === "work_item_type") {
     return { selectable: true };
   }
 
-  if (type === "multi_select" || type === "multi-select") {
+  if (type === "multi_select" || type === "tag") {
     return { multiSelectable: true };
   }
 
@@ -136,6 +115,14 @@ export function applyFieldCapabilityOverrides(
       nextCapabilities.aiEnhance = override.aiEnhance;
     }
 
+    if (typeof override.selectable === "boolean") {
+      nextCapabilities.selectable = override.selectable;
+    }
+
+    if (typeof override.multiSelectable === "boolean") {
+      nextCapabilities.multiSelectable = override.multiSelectable;
+    }
+
     return {
       ...definition,
       capabilities: nextCapabilities
@@ -144,30 +131,27 @@ export function applyFieldCapabilityOverrides(
 }
 
 export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "type" | "capabilities">): string {
-  const aiEnabled =
-    typeof definition.capabilities?.aiEnhance === "boolean"
-      ? definition.capabilities.aiEnhance
-      : definition.type === "text_ai";
-
-  if (aiEnabled) {
-    return "Text IA";
+  if (definition.capabilities?.aiEnhance === true) {
+    return "Texto IA";
   }
 
-  const normalizedType = definition.type === "multi-select" ? "multi_select" : definition.type;
-
-  const labels: Record<string, string> = {
-    text: "Text",
-    long_text: "Long Text",
-    number: "Number",
-    date: "Date",
-    datetime: "DateTime",
-    schedule: "Schedule",
-    boolean: "Boolean",
-    select: "Select",
-    multi_select: "Multi Select",
-    user: "User",
-    checklist: "Checklist"
+  const labels: Record<TaskFieldDefinition["type"], string> = {
+    text: "Texto curto",
+    long_text: "Texto longo",
+    number: "Numero",
+    date: "Data",
+    datetime: "Data e hora",
+    select: "Selecao unica",
+    multi_select: "Selecao multipla",
+    boolean: "Sim / Nao",
+    user: "Usuario",
+    checklist: "Checklist",
+    priority: "Prioridade",
+    status: "Status",
+    tag: "Tags",
+    schedule: "Planejamento",
+    work_item_type: "Tipo de item"
   };
 
-  return labels[normalizedType] ?? normalizedType;
+  return labels[definition.type] ?? definition.type;
 }

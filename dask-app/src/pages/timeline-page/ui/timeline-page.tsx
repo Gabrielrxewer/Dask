@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { buildTaskChecklistSummary, buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type Task } from "@/entities/task";
+import {
+  buildTaskChecklistSummary,
+  buildTaskTypeMetaMap,
+  getTaskTypeDisplayMeta,
+  matchesTaskFieldStorage,
+  resolveTaskFieldValue,
+  type Task
+} from "@/entities/task";
+import { WorkItemFieldRenderer } from "@/entities/task/ui/field-presentation";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import type { AiAgentSummary } from "@/modules/workspace/model";
 import {
@@ -82,7 +90,6 @@ export function TimelinePage() {
     updateTaskCustomField,
     updateTaskSchedule,
     updateTask,
-    toggleChecklistItem,
     listAiAgents,
     runAiAgentOnItem,
     runAiRiskAnalysis,
@@ -125,6 +132,21 @@ export function TimelinePage() {
         return acc;
       }, {}),
     [boardConfig.statuses]
+  );
+
+  const titleField = useMemo(
+    () => boardConfig.fieldDefinitions.find(field => matchesTaskFieldStorage(field, { kind: "item_property", property: "title" })),
+    [boardConfig.fieldDefinitions]
+  );
+
+  const statusField = useMemo(
+    () => boardConfig.fieldDefinitions.find(field => matchesTaskFieldStorage(field, { kind: "item_property", property: "stateSlug" })),
+    [boardConfig.fieldDefinitions]
+  );
+
+  const checklistField = useMemo(
+    () => boardConfig.fieldDefinitions.find(field => matchesTaskFieldStorage(field, { kind: "item_property", property: "checklist" })),
+    [boardConfig.fieldDefinitions]
   );
 
   const tasksWithWindow = useMemo(
@@ -235,8 +257,53 @@ export function TimelinePage() {
                       <DataTableRow key={task.id}>
                         <DataTableCell>
                           <button type="button" className="timeline-view__meta" onClick={() => selectTask(task.id)}>
-                            <strong>{task.title}</strong>
-                            <p>{`${statusLabel} - ${checklist.done}/${checklist.total} checklist`}</p>
+                            <strong>
+                              {titleField ? (
+                                <WorkItemFieldRenderer
+                                  field={titleField}
+                                  value={resolveTaskFieldValue(task, titleField)}
+                                  mode="display"
+                                  context="table"
+                                  boardConfig={boardConfig}
+                                  statuses={boardConfig.statuses}
+                                  task={task}
+                                />
+                              ) : (
+                                task.title
+                              )}
+                            </strong>
+                            <div className="timeline-view__meta-support">
+                              <span>
+                                {statusField ? (
+                                  <WorkItemFieldRenderer
+                                    field={statusField}
+                                    value={resolveTaskFieldValue(task, statusField)}
+                                    mode="display"
+                                    context="table"
+                                    boardConfig={boardConfig}
+                                    statuses={boardConfig.statuses}
+                                    task={task}
+                                  />
+                                ) : (
+                                  statusLabel
+                                )}
+                              </span>
+                              <span>
+                                {checklistField ? (
+                                  <WorkItemFieldRenderer
+                                    field={checklistField}
+                                    value={resolveTaskFieldValue(task, checklistField)}
+                                    mode="display"
+                                    context="table"
+                                    boardConfig={boardConfig}
+                                    statuses={boardConfig.statuses}
+                                    task={task}
+                                  />
+                                ) : (
+                                  `${checklist.done}/${checklist.total} checklist`
+                                )}
+                              </span>
+                            </div>
                           </button>
                         </DataTableCell>
 
@@ -274,7 +341,19 @@ export function TimelinePage() {
                                 className="timeline-view__column-chip is-current"
                                 onClick={() => selectTask(task.id)}
                               >
-                                {statusLabel}
+                                {statusField ? (
+                                  <WorkItemFieldRenderer
+                                    field={statusField}
+                                    value={resolveTaskFieldValue(task, statusField)}
+                                    mode="display"
+                                    context="table"
+                                    boardConfig={boardConfig}
+                                    statuses={boardConfig.statuses}
+                                    task={task}
+                                  />
+                                ) : (
+                                  statusLabel
+                                )}
                               </button>
                             </div>
                           )}
@@ -306,7 +385,6 @@ export function TimelinePage() {
           onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
           onUpdateSchedule={(taskId, input) => void updateTaskSchedule(taskId, input)}
           onSaveTask={(taskId, input) => void updateTask(taskId, input)}
-          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}
           onRunAiRiskAnalysis={runAiRiskAnalysis}

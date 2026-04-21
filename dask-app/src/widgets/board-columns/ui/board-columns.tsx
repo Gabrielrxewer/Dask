@@ -37,7 +37,6 @@ interface BoardColumnsProps {
   ) => Promise<void> | void;
   onUpdateTaskSchedule: (taskId: string, input: TaskScheduleInput) => Promise<void> | void;
   onSaveTask: (taskId: string, input: UpdateTaskInput) => Promise<void> | void;
-  onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
   onCreateTask?: (statusId: TaskStatusId, input: CreateTaskInput) => void | Promise<void>;
   createTaskTypes?: Array<{ id: string; label: string }>;
   aiAgents: AiAgentSummary[];
@@ -116,7 +115,7 @@ function normalizeTaskPositions(tasks: Task[]): Task[] {
 
   return Array.from(grouped.values()).flatMap(statusTasks =>
     [...statusTasks]
-      .sort((left, right) => left.position - right.position)
+      .sort((left, right) => (left.position ?? 0) - (right.position ?? 0))
       .map((task, index) => ({ ...task, position: index }))
   );
 }
@@ -131,7 +130,7 @@ function moveTaskLocally(tasks: Task[], taskId: string, nextStatus: TaskStatusId
   const nextTasks = remainingTasks.map(task => ({ ...task }));
   const targetTasks = nextTasks
     .filter(task => task.status === nextStatus)
-    .sort((left, right) => left.position - right.position);
+    .sort((left, right) => (left.position ?? 0) - (right.position ?? 0));
   const insertAt = Math.max(0, Math.min(nextPosition, targetTasks.length));
 
   targetTasks.splice(insertAt, 0, {
@@ -177,7 +176,6 @@ export function BoardColumns({
   onUpdateTaskCustomField,
   onUpdateTaskSchedule,
   onSaveTask,
-  onToggleChecklistItem,
   onCreateTask,
   createTaskTypes,
   aiAgents,
@@ -356,6 +354,8 @@ export function BoardColumns({
                       task={task}
                       boardConfig={boardConfig}
                       compact={compactCards}
+                      membersById={membersById}
+                      displayStatuses={statuses}
                       statusLabel={status.label}
                       creatorName={resolveCreatorName(task)}
                       assigneeName={membersById[task.assignee]?.name ?? "Usuario"}
@@ -397,7 +397,6 @@ export function BoardColumns({
           onUpdateSchedule={onUpdateTaskSchedule}
           onSaveTask={onSaveTask}
           onUpdateStatus={statusId => onMoveTask(selectedTask.id, statusId)}
-          onToggleChecklistItem={onToggleChecklistItem}
           aiAgents={aiAgents}
           onRunAiAgentOnItem={onRunAiAgentOnItem}
           onRunAiRiskAnalysis={onRunAiRiskAnalysis}

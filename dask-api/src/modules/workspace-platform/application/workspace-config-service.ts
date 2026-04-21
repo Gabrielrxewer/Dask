@@ -1,4 +1,4 @@
-import { MembershipRole, type CustomFieldType, type PrismaClient } from '@prisma/client';
+import { MembershipRole, Prisma, type CustomFieldType, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { resolveWorkspaceAccessPolicy, type WorkspaceModuleKey } from '@/modules/identity/domain/access-policy';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
@@ -7,8 +7,15 @@ import {
   type WorkspaceTemplateKey
 } from '@/modules/workspaces/application/workspace-template-catalog';
 import {
+  buildLegacyFieldLayoutMaps,
+  serializeFieldBinding,
+  serializeFieldDefinition
+} from '@/modules/workspace-platform/application/field-platform';
+import {
+  isSystemOnlyFieldType,
   mapCustomFieldTypeToInput,
   mapInputTypeToPrisma,
+  normalizeFieldSection,
   sanitizeHexColor,
   toJsonValue,
   toSlug,
@@ -157,6 +164,97 @@ export class WorkspaceConfigService {
     });
 
     return this.serializeItemType(itemType);
+  }
+
+  public async replaceItemTypeFieldBindings(input: {
+    workspaceId: string;
+    typeId: string;
+    userId: string;
+    payload: {
+      bindings: Array<{
+        fieldDefinitionId: string;
+        displayContext: 'card' | 'detail';
+        order: number;
+        section?: string | null;
+        isVisible?: boolean;
+        isRequiredOverride?: boolean | null;
+        isReadonlyOverride?: boolean | null;
+        settings?: JsonRecord | null;
+      }>;
+    };
+  }) {
+    await this.ensureConfigWritableWorkspace(input.workspaceId, input.userId);
+
+    const itemType = await this.prisma.workItemType.findFirst({
+      where: { id: input.typeId, workspaceId: input.workspaceId },
+      select: { id: true }
+    });
+
+    if (!itemType) {
+      throw new AppError('Work item type not found', 404);
+    }
+
+    const uniqueFieldDefinitionIds = Array.from(
+      new Set(input.payload.bindings.map((binding) => binding.fieldDefinitionId))
+    );
+
+    if (uniqueFieldDefinitionIds.length > 0) {
+      const existingFields = await this.prisma.customFieldDefinition.findMany({
+        where: {
+          workspaceId: input.workspaceId,
+          id: {
+            in: uniqueFieldDefinitionIds
+          }
+        },
+        select: { id: true }
+      });
+
+      if (existingFields.length !== uniqueFieldDefinitionIds.length) {
+        throw new AppError('One or more field definitions do not belong to this workspace', 400);
+      }
+    }
+
+    const seenBindings = new Set<string>();
+    const normalizedBindings = input.payload.bindings.map((binding) => {
+      const dedupeKey = `${binding.displayContext}:${binding.fieldDefinitionId}`;
+      if (seenBindings.has(dedupeKey)) {
+        throw new AppError('Duplicated field binding for the same type/context', 422);
+      }
+      seenBindings.add(dedupeKey);
+
+      return {
+        workspaceId: input.workspaceId,
+        typeId: itemType.id,
+        fieldId: binding.fieldDefinitionId,
+        displayContext: binding.displayContext,
+        position: binding.order,
+        section: normalizeFieldSection(binding.section) ?? null,
+        isVisible: binding.isVisible ?? true,
+        isRequiredOverride: binding.isRequiredOverride ?? null,
+        isReadonlyOverride: binding.isReadonlyOverride ?? null,
+        settings:
+          binding.settings === undefined
+            ? undefined
+            : binding.settings === null
+              ? Prisma.JsonNull
+              : toJsonValue(binding.settings)
+      };
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workItemFieldBinding.deleteMany({
+        where: {
+          workspaceId: input.workspaceId,
+          typeId: itemType.id
+        }
+      });
+
+      if (normalizedBindings.length > 0) {
+        await tx.workItemFieldBinding.createMany({
+          data: normalizedBindings
+        });
+      }
+    });
   }
 
   public async listWorkflowStates(input: { workspaceId: string; userId: string }) {
@@ -415,13 +513,23 @@ export class WorkspaceConfigService {
       where: { workspaceId: input.workspaceId },
       include: {
         options: {
-          where: { isActive: true },
           orderBy: { position: 'asc' }
         },
         scopes: {
           select: {
             typeId: true
           }
+        },
+        bindings: {
+          include: {
+            type: {
+              select: {
+                id: true,
+                slug: true
+              }
+            }
+          },
+          orderBy: [{ displayContext: 'asc' }, { position: 'asc' }]
         }
       },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }]
@@ -439,14 +547,21 @@ export class WorkspaceConfigService {
       description?: string;
       type: CustomFieldInputType;
       required?: boolean;
+      isEditable?: boolean;
+      isRemovable?: boolean;
       order?: number;
       isActive?: boolean;
+      defaultValue?: unknown;
       settings?: JsonRecord;
       options?: Array<{ label: string; value: string; color?: string; order?: number; isActive?: boolean }>;
       scopeTypeIds?: string[];
     };
   }) {
     await this.ensureConfigWritableWorkspace(input.workspaceId, input.userId);
+
+    if (isSystemOnlyFieldType(input.payload.type)) {
+      throw new AppError('This field type is reserved for system fields', 422);
+    }
 
     const field = await this.prisma.customFieldDefinition.create({
       data: {
@@ -455,10 +570,14 @@ export class WorkspaceConfigService {
         slug: toSlug(input.payload.slug ?? input.payload.name),
         description: input.payload.description,
         type: mapInputTypeToPrisma(input.payload.type),
+        isSystem: false,
         required: input.payload.required ?? false,
+        isEditable: input.payload.isEditable ?? true,
+        isRemovable: input.payload.isRemovable ?? true,
         position: input.payload.order ?? (await this.prisma.customFieldDefinition.count({ where: { workspaceId: input.workspaceId } })),
         isActive: input.payload.isActive ?? true,
-        settings: input.payload.settings ? toJsonValue(input.payload.settings) : undefined
+        settings: input.payload.settings ? toJsonValue(input.payload.settings) : undefined,
+        defaultValue: input.payload.defaultValue !== undefined ? toJsonValue(input.payload.defaultValue) : undefined
       }
     });
 
@@ -489,8 +608,11 @@ export class WorkspaceConfigService {
       description?: string | null;
       type?: CustomFieldInputType;
       required?: boolean;
+      isEditable?: boolean;
+      isRemovable?: boolean;
       order?: number;
       isActive?: boolean;
+      defaultValue?: unknown;
       settings?: JsonRecord;
       options?: Array<{ label: string; value: string; color?: string; order?: number; isActive?: boolean }>;
       scopeTypeIds?: string[];
@@ -503,6 +625,29 @@ export class WorkspaceConfigService {
       throw new AppError('Custom field not found', 404);
     }
 
+    if (current.isSystem && input.payload.type && input.payload.type !== mapCustomFieldTypeToInput(current.type)) {
+      throw new AppError('System field types cannot be changed', 422);
+    }
+
+    if (
+      current.isEditable === false &&
+      (
+        input.payload.name !== undefined ||
+        input.payload.slug !== undefined ||
+        input.payload.description !== undefined ||
+        input.payload.required !== undefined ||
+        input.payload.settings !== undefined ||
+        input.payload.defaultValue !== undefined ||
+        input.payload.options !== undefined
+      )
+    ) {
+      throw new AppError('This system field is read-only', 422);
+    }
+
+    if (current.isRemovable === false && input.payload.isActive === false) {
+      throw new AppError('This system field cannot be removed', 422);
+    }
+
     await this.prisma.customFieldDefinition.update({
       where: { id: current.id },
       data: {
@@ -511,9 +656,12 @@ export class WorkspaceConfigService {
         description: input.payload.description,
         type: input.payload.type ? mapInputTypeToPrisma(input.payload.type) : undefined,
         required: input.payload.required,
+        isEditable: input.payload.isEditable,
+        isRemovable: input.payload.isRemovable,
         position: input.payload.order,
         isActive: input.payload.isActive,
-        settings: input.payload.settings !== undefined ? toJsonValue(input.payload.settings) : undefined
+        settings: input.payload.settings !== undefined ? toJsonValue(input.payload.settings) : undefined,
+        defaultValue: input.payload.defaultValue !== undefined ? toJsonValue(input.payload.defaultValue) : undefined
       }
     });
 
@@ -595,6 +743,26 @@ export class WorkspaceConfigService {
             : undefined
       }
     });
+
+    if (
+      input.payload.visibleFieldsByType !== undefined ||
+      input.payload.detailVisibleFieldsByType !== undefined ||
+      (input.payload.settings !== undefined && input.payload.settings.detailFieldZoneByType !== undefined)
+    ) {
+      await this.replaceFieldBindingsFromPreferences(input.workspaceId, {
+        visibleCardFieldIds:
+          input.payload.visibleCardFieldIds ??
+          (Array.isArray(preferences.visibleCardFieldIds)
+            ? preferences.visibleCardFieldIds.filter((value): value is string => typeof value === 'string')
+            : []),
+        visibleFieldsByType: input.payload.visibleFieldsByType,
+        detailVisibleFieldsByType: input.payload.detailVisibleFieldsByType,
+        detailFieldZoneByType:
+          input.payload.settings && typeof input.payload.settings.detailFieldZoneByType === 'object'
+            ? (input.payload.settings.detailFieldZoneByType as Record<string, Record<string, string>>)
+            : undefined
+      });
+    }
 
     return this.serializePreferences(preferences);
   }
@@ -765,7 +933,7 @@ export class WorkspaceConfigService {
   }
 
   public async loadWorkspaceConfig(workspaceId: string) {
-    const [itemTypes, workflowStates, boardColumns, tags, customFieldDefinitions, preferences] = await Promise.all([
+    const [itemTypes, workflowStates, boardColumns, tags, customFieldDefinitions, fieldBindings, preferences] = await Promise.all([
       this.prisma.workItemType.findMany({ where: { workspaceId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] }),
       this.prisma.workflowState.findMany({ where: { workspaceId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] }),
       this.prisma.boardColumn.findMany({
@@ -791,7 +959,6 @@ export class WorkspaceConfigService {
         where: { workspaceId },
         include: {
           options: {
-            where: { isActive: true },
             orderBy: { position: 'asc' }
           },
           scopes: {
@@ -802,6 +969,24 @@ export class WorkspaceConfigService {
         },
         orderBy: [{ position: 'asc' }, { createdAt: 'asc' }]
       }),
+      this.prisma.workItemFieldBinding.findMany({
+        where: { workspaceId },
+        include: {
+          field: {
+            select: {
+              id: true,
+              slug: true
+            }
+          },
+          type: {
+            select: {
+              id: true,
+              slug: true
+            }
+          }
+        },
+        orderBy: [{ typeId: 'asc' }, { displayContext: 'asc' }, { position: 'asc' }, { createdAt: 'asc' }]
+      }),
       this.prisma.workspacePreferences.findUnique({ where: { workspaceId } })
     ]);
 
@@ -809,13 +994,33 @@ export class WorkspaceConfigService {
       throw new AppError('Workspace preferences not found', 404);
     }
 
+    const serializedFieldBindings = fieldBindings.map((binding) =>
+      serializeFieldBinding({
+        id: binding.id,
+        fieldId: binding.fieldId,
+        fieldSlug: binding.field.slug,
+        typeId: binding.typeId,
+        typeSlug: binding.type.slug,
+        displayContext: binding.displayContext === 'card' ? 'card' : 'detail',
+        order: binding.position,
+        section: binding.section,
+        isVisible: binding.isVisible,
+        isRequiredOverride: binding.isRequiredOverride,
+        isReadonlyOverride: binding.isReadonlyOverride,
+        settings: binding.settings
+      })
+    );
+
+    const layoutMaps = buildLegacyFieldLayoutMaps(serializedFieldBindings);
+
     return {
       itemTypes: itemTypes.map((entry) => this.serializeItemType(entry)),
       workflowStates: workflowStates.map((entry) => this.serializeWorkflowState(entry)),
       boardColumns: boardColumns.map((entry) => this.serializeBoardColumn(entry)),
       tags: tags.map((entry) => this.serializeTag(entry)),
       customFieldDefinitions: customFieldDefinitions.map((entry) => this.serializeCustomField(entry)),
-      preferences: this.serializePreferences(preferences)
+      fieldBindings: serializedFieldBindings,
+      preferences: this.serializePreferences(preferences, layoutMaps)
     };
   }
 
@@ -856,13 +1061,23 @@ export class WorkspaceConfigService {
       },
       include: {
         options: {
-          where: { isActive: true },
           orderBy: { position: 'asc' }
         },
         scopes: {
           select: {
             typeId: true
           }
+        },
+        bindings: {
+          include: {
+            type: {
+              select: {
+                id: true,
+                slug: true
+              }
+            }
+          },
+          orderBy: [{ displayContext: 'asc' }, { position: 'asc' }]
         }
       }
     });
@@ -966,6 +1181,128 @@ export class WorkspaceConfigService {
         await tx.customFieldScope.createMany({
           data: uniqueTypeIds.map((typeId) => ({ fieldId, typeId }))
         });
+      }
+    });
+  }
+
+  private async replaceFieldBindingsFromPreferences(
+    workspaceId: string,
+    input: {
+      visibleCardFieldIds?: string[];
+      visibleFieldsByType?: Record<string, string[]>;
+      detailVisibleFieldsByType?: Record<string, string[]>;
+      detailFieldZoneByType?: Record<string, Record<string, string>>;
+    }
+  ) {
+    const [itemTypes, fields, existingBindings] = await Promise.all([
+      this.prisma.workItemType.findMany({
+        where: { workspaceId, isActive: true },
+        select: { id: true, slug: true },
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }]
+      }),
+      this.prisma.customFieldDefinition.findMany({
+        where: { workspaceId, isActive: true },
+        select: { id: true, slug: true }
+      }),
+      this.prisma.workItemFieldBinding.findMany({
+        where: { workspaceId },
+        include: {
+          type: { select: { slug: true } },
+          field: { select: { slug: true } }
+        },
+        orderBy: [{ displayContext: 'asc' }, { position: 'asc' }]
+      })
+    ]);
+
+    const fieldIdBySlug = new Map(fields.map((field) => [field.slug, field.id]));
+    const existingDetailFieldIdsByType = existingBindings.reduce<Record<string, string[]>>((acc, binding) => {
+      if (binding.displayContext !== 'detail') {
+        return acc;
+      }
+
+      const list = acc[binding.type.slug] ?? [];
+      list.push(binding.field.slug);
+      acc[binding.type.slug] = list;
+      return acc;
+    }, {});
+    const existingDetailZonesByType = existingBindings.reduce<Record<string, Record<string, string>>>((acc, binding) => {
+      if (binding.displayContext !== 'detail') {
+        return acc;
+      }
+
+      const zoneMap = acc[binding.type.slug] ?? {};
+      zoneMap[binding.field.slug] = normalizeFieldSection(binding.section) ?? 'side';
+      acc[binding.type.slug] = zoneMap;
+      return acc;
+    }, {});
+
+    await this.prisma.$transaction(async (tx) => {
+      if (input.visibleFieldsByType !== undefined || input.visibleCardFieldIds !== undefined) {
+        await tx.workItemFieldBinding.deleteMany({
+          where: {
+            workspaceId,
+            displayContext: 'card'
+          }
+        });
+
+        for (const itemType of itemTypes) {
+          const fieldSlugs = input.visibleFieldsByType?.[itemType.slug] ?? input.visibleCardFieldIds ?? [];
+          let position = 0;
+
+          for (const fieldSlug of fieldSlugs) {
+            const fieldId = fieldIdBySlug.get(fieldSlug);
+            if (!fieldId) {
+              continue;
+            }
+
+            await tx.workItemFieldBinding.create({
+              data: {
+                workspaceId,
+                typeId: itemType.id,
+                fieldId,
+                displayContext: 'card',
+                position,
+                isVisible: true
+              }
+            });
+            position += 1;
+          }
+        }
+      }
+
+      if (input.detailVisibleFieldsByType !== undefined || input.detailFieldZoneByType !== undefined) {
+        await tx.workItemFieldBinding.deleteMany({
+          where: {
+            workspaceId,
+            displayContext: 'detail'
+          }
+        });
+
+        for (const itemType of itemTypes) {
+          const fieldSlugs = input.detailVisibleFieldsByType?.[itemType.slug] ?? existingDetailFieldIdsByType[itemType.slug] ?? [];
+          const zoneMap = input.detailFieldZoneByType?.[itemType.slug] ?? existingDetailZonesByType[itemType.slug] ?? {};
+          let position = 0;
+
+          for (const fieldSlug of fieldSlugs) {
+            const fieldId = fieldIdBySlug.get(fieldSlug);
+            if (!fieldId) {
+              continue;
+            }
+
+            await tx.workItemFieldBinding.create({
+              data: {
+                workspaceId,
+                typeId: itemType.id,
+                fieldId,
+                displayContext: 'detail',
+                position,
+                section: normalizeFieldSection(zoneMap[fieldSlug]) ?? 'side',
+                isVisible: true
+              }
+            });
+            position += 1;
+          }
+        }
       }
     });
   }
@@ -1104,10 +1441,14 @@ export class WorkspaceConfigService {
     slug: string;
     description: string | null;
     type: CustomFieldType;
+    isSystem: boolean;
     required: boolean;
+    isEditable: boolean;
+    isRemovable: boolean;
     position: number;
     isActive: boolean;
     settings: unknown;
+    defaultValue: unknown;
     createdAt: Date;
     updatedAt: Date;
     options: Array<{
@@ -1119,18 +1460,34 @@ export class WorkspaceConfigService {
       isActive: boolean;
     }>;
     scopes: Array<{ typeId: string }>;
+    bindings?: Array<{
+      id: string;
+      fieldId: string;
+      typeId: string;
+      displayContext: string;
+      position: number;
+      section: string | null;
+      isVisible: boolean;
+      isRequiredOverride: boolean | null;
+      isReadonlyOverride: boolean | null;
+      settings: unknown;
+      type: { id: string; slug: string };
+    }>;
   }) {
-    return {
+    const base = serializeFieldDefinition({
       id: field.id,
-      workspaceId: field.workspaceId,
-      name: field.name,
       slug: field.slug,
+      name: field.name,
       description: field.description,
       type: mapCustomFieldTypeToInput(field.type),
       required: field.required,
-      order: field.position,
+      isSystem: field.isSystem,
+      isEditable: field.isEditable,
+      isRemovable: field.isRemovable,
       isActive: field.isActive,
+      order: field.position,
       settings: field.settings,
+      defaultValue: field.defaultValue,
       options: field.options.map((option) => ({
         id: option.id,
         label: option.label,
@@ -1138,8 +1495,32 @@ export class WorkspaceConfigService {
         color: option.color,
         order: option.position,
         isActive: option.isActive
-      })),
+      }))
+    });
+
+    return {
+      ...base,
+      id: field.id,
+      workspaceId: field.workspaceId,
       scopeTypeIds: field.scopes.map((scope) => scope.typeId),
+      bindings: Array.isArray(field.bindings)
+        ? field.bindings.map((binding) =>
+            serializeFieldBinding({
+              id: binding.id,
+              fieldId: binding.fieldId,
+              fieldSlug: field.slug,
+              typeId: binding.typeId,
+              typeSlug: binding.type.slug,
+              displayContext: binding.displayContext === 'card' ? 'card' : 'detail',
+              order: binding.position,
+              section: binding.section,
+              isVisible: binding.isVisible,
+              isRequiredOverride: binding.isRequiredOverride,
+              isReadonlyOverride: binding.isReadonlyOverride,
+              settings: binding.settings
+            })
+          )
+        : [],
       createdAt: field.createdAt,
       updatedAt: field.updatedAt
     };
@@ -1152,11 +1533,24 @@ export class WorkspaceConfigService {
     visibleCardFieldIds: unknown;
     settings: unknown;
     updatedAt: Date;
+  }, layoutMaps?: {
+    visibleFieldIdsByType: Record<string, string[]>;
+    detailVisibleFieldIdsByType: Record<string, string[]>;
+    detailFieldZoneByType: Record<string, Record<string, 'main' | 'side'>>;
   }) {
     const settings =
       preferences.settings && typeof preferences.settings === 'object' && !Array.isArray(preferences.settings)
         ? (preferences.settings as Record<string, unknown>)
         : {};
+
+    const visibleFieldsByType = layoutMaps?.visibleFieldIdsByType ?? this.extractFieldMap(settings.visibleFieldsByType);
+    const detailVisibleFieldsByType =
+      layoutMaps?.detailVisibleFieldIdsByType ?? this.extractFieldMap(settings.detailVisibleFieldsByType);
+    const detailFieldZoneByType =
+      layoutMaps?.detailFieldZoneByType ??
+      (settings.detailFieldZoneByType && typeof settings.detailFieldZoneByType === 'object' && !Array.isArray(settings.detailFieldZoneByType)
+        ? (settings.detailFieldZoneByType as Record<string, Record<string, 'main' | 'side'>>)
+        : {});
 
     return {
       workspaceId: preferences.workspaceId,
@@ -1165,9 +1559,12 @@ export class WorkspaceConfigService {
       visibleCardFieldIds: Array.isArray(preferences.visibleCardFieldIds)
         ? preferences.visibleCardFieldIds.filter((value): value is string => typeof value === 'string')
         : [],
-      visibleFieldsByType: this.extractFieldMap(settings.visibleFieldsByType),
-      detailVisibleFieldsByType: this.extractFieldMap(settings.detailVisibleFieldsByType),
-      settings,
+      visibleFieldsByType,
+      detailVisibleFieldsByType,
+      settings: {
+        ...settings,
+        detailFieldZoneByType
+      },
       updatedAt: preferences.updatedAt
     };
   }

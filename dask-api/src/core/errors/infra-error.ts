@@ -1,5 +1,5 @@
 import { AppError } from '@/core/errors/app-error';
-import { getInfraStates, markInfraDependencyFailure } from '@/infra/runtime/infra-health';
+import { getInfraStates, markInfraDependencyFailure } from '@/core/runtime/infra-state';
 
 const INFRA_RETRY_SECONDS = 10;
 const NETWORK_ERROR_CODES = new Set([

@@ -3,18 +3,15 @@ import { AIAgentService } from '@/modules/ai/application/ai-agent-service';
 
 function buildPrismaMock() {
   return {
-    aIAgent: {
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      create: vi.fn(),
-      updateMany: vi.fn()
-    },
     aIAgentRun: {
       count: vi.fn(),
       aggregate: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       findMany: vi.fn()
+    },
+    workspaceDocument: {
+      findMany: vi.fn().mockResolvedValue([])
     },
     item: {
       findFirst: vi.fn(),
@@ -23,17 +20,44 @@ function buildPrismaMock() {
   };
 }
 
+function buildAgent(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'agent-1',
+    workspaceId: 'ws-1',
+    key: 'risk-analyst',
+    name: 'Risk Analyst',
+    description: null,
+    model: 'gpt-4.1-mini',
+    temperature: 0.2,
+    systemPrompt: 'test',
+    config: {},
+    isActive: true,
+    isDefault: false,
+    updatedAt: new Date(),
+    ...overrides
+  };
+}
+
+function buildAgentRepository(agentOverrides: Record<string, unknown> = {}) {
+  return {
+    existsForWorkspace: vi.fn().mockResolvedValue(true),
+    findActiveById: vi.fn().mockResolvedValue(buildAgent(agentOverrides)),
+    findTopActive: vi.fn().mockResolvedValue(buildAgent(agentOverrides)),
+    listForWorkspace: vi.fn().mockResolvedValue([]),
+    create: vi.fn(),
+    patch: vi.fn()
+  };
+}
+
+function buildEventPublisher() {
+  return {
+    publish: vi.fn().mockResolvedValue(undefined)
+  };
+}
+
 describe('AIAgentService', () => {
   it('enforces workspace/agent rate limits', async () => {
     const prisma = buildPrismaMock();
-    prisma.aIAgent.findFirst.mockResolvedValue({
-      id: 'agent-1',
-      workspaceId: 'ws-1',
-      model: 'gpt-4.1-mini',
-      temperature: 0.2,
-      systemPrompt: 'test',
-      config: {}
-    });
     prisma.item.findFirst.mockResolvedValue({
       id: 'item-1',
       workspaceId: 'ws-1',
@@ -46,13 +70,16 @@ describe('AIAgentService', () => {
       metadata: {},
       checklist: {},
       updatedAt: new Date(),
-      history: []
+      history: [],
+      documentLinks: []
     });
     prisma.aIAgentRun.count.mockResolvedValue(99999);
     prisma.aIAgentRun.aggregate.mockResolvedValue({ _sum: { totalTokens: 0 } });
 
+    const agentRepository = buildAgentRepository();
     const service = new AIAgentService(
       prisma as any,
+      agentRepository as any,
       {
         generateText: vi.fn(),
         improveDescription: vi.fn(),
@@ -60,7 +87,8 @@ describe('AIAgentService', () => {
         classify: vi.fn()
       } as any,
       { search: vi.fn().mockResolvedValue([]) } as any,
-      { can: vi.fn().mockResolvedValue(true) } as any
+      { can: vi.fn().mockResolvedValue(true) } as any,
+      buildEventPublisher() as any
     );
 
     await expect(
@@ -78,14 +106,6 @@ describe('AIAgentService', () => {
 
   it('redacts sensitive input before provider call', async () => {
     const prisma = buildPrismaMock();
-    prisma.aIAgent.findFirst.mockResolvedValue({
-      id: 'agent-1',
-      workspaceId: 'ws-1',
-      model: 'gpt-4.1-mini',
-      temperature: 0.2,
-      systemPrompt: 'test',
-      config: {}
-    });
     prisma.item.findFirst.mockResolvedValue({
       id: 'item-1',
       workspaceId: 'ws-1',
@@ -98,7 +118,8 @@ describe('AIAgentService', () => {
       metadata: {},
       checklist: {},
       updatedAt: new Date(),
-      history: []
+      history: [],
+      documentLinks: []
     });
     prisma.aIAgentRun.count.mockResolvedValue(0);
     prisma.aIAgentRun.aggregate.mockResolvedValue({ _sum: { totalTokens: 0 } });
@@ -114,8 +135,10 @@ describe('AIAgentService', () => {
       toolCalls: []
     });
 
+    const agentRepository = buildAgentRepository();
     const service = new AIAgentService(
       prisma as any,
+      agentRepository as any,
       {
         generateText,
         improveDescription: vi.fn(),
@@ -123,7 +146,8 @@ describe('AIAgentService', () => {
         classify: vi.fn()
       } as any,
       { search: vi.fn().mockResolvedValue([]) } as any,
-      { can: vi.fn().mockResolvedValue(true) } as any
+      { can: vi.fn().mockResolvedValue(true) } as any,
+      buildEventPublisher() as any
     );
 
     await service.runAgentOnItem({
@@ -142,14 +166,6 @@ describe('AIAgentService', () => {
 
   it('executes allowed tool actions with ACL', async () => {
     const prisma = buildPrismaMock();
-    prisma.aIAgent.findFirst.mockResolvedValue({
-      id: 'agent-1',
-      workspaceId: 'ws-1',
-      model: 'gpt-4.1-mini',
-      temperature: 0.2,
-      systemPrompt: 'test',
-      config: { tools: { enabled: true, allowed: ['set_item_status'] } }
-    });
     prisma.item.findFirst.mockResolvedValue({
       id: 'item-1',
       workspaceId: 'ws-1',
@@ -162,7 +178,8 @@ describe('AIAgentService', () => {
       metadata: {},
       checklist: {},
       updatedAt: new Date(),
-      history: []
+      history: [],
+      documentLinks: []
     });
     prisma.item.updateMany.mockResolvedValue({ count: 1 });
     prisma.aIAgentRun.count.mockResolvedValue(0);
@@ -170,8 +187,13 @@ describe('AIAgentService', () => {
     prisma.aIAgentRun.create.mockResolvedValue({ id: 'run-1' });
     prisma.aIAgentRun.update.mockResolvedValue({});
 
+    const agentRepository = buildAgentRepository({
+      config: { tools: { enabled: true, allowed: ['set_item_status'] } }
+    });
+    const eventPublisher = buildEventPublisher();
     const service = new AIAgentService(
       prisma as any,
+      agentRepository as any,
       {
         generateText: vi.fn().mockResolvedValue({
           content: 'done',
@@ -191,7 +213,8 @@ describe('AIAgentService', () => {
         classify: vi.fn()
       } as any,
       { search: vi.fn().mockResolvedValue([]) } as any,
-      { can: vi.fn().mockResolvedValue(true) } as any
+      { can: vi.fn().mockResolvedValue(true) } as any,
+      eventPublisher as any
     );
 
     await service.runAgentOnItem({
@@ -205,6 +228,6 @@ describe('AIAgentService', () => {
     });
 
     expect(prisma.item.updateMany).toHaveBeenCalled();
+    expect(eventPublisher.publish).toHaveBeenCalled();
   });
 });
-

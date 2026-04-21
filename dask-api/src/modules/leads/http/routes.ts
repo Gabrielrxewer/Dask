@@ -4,7 +4,7 @@ import {
   requireWorkspaceModule,
   requireWorkspacePermission,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { LeadsService } from '@/modules/leads/application/leads-service';
 import {
@@ -211,3 +211,4 @@ export const buildLeadsRoutes = (deps: {
 
   return router;
 };
+

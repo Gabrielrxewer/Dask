@@ -101,7 +101,8 @@ async function invokeRoute(
   };
   const next = vi.fn();
 
-  await handler(req, res, next);
+  handler(req, res, next);
+  await new Promise<void>((resolve) => setImmediate(resolve));
 
   expect(next).not.toHaveBeenCalled();
   return { res };

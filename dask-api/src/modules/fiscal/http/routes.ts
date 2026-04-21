@@ -1,11 +1,11 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspaceModule,
   requireWorkspacePermission,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { FiscalService } from '@/modules/fiscal/application/fiscal-service';
 import {
@@ -375,3 +375,4 @@ export const buildFiscalRoutes = (deps: {
 
   return router;
 };
+

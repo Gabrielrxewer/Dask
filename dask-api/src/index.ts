@@ -1,4 +1,4 @@
-import '@/core/http/request-context';
+﻿import '@/modules/identity/http/request-context';
 import type { AddressInfo } from 'node:net';
 import { env } from '@/core/config/env';
 import { getLogger } from '@/core/logging/logger';
@@ -105,3 +105,4 @@ process.once('SIGUSR2', () => {
     process.kill(process.pid, 'SIGUSR2');
   });
 });
+

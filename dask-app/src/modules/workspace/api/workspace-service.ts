@@ -22,6 +22,7 @@ import type {
   UpdateBoardColumnInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
+  WorkItemFieldBindingInput,
   TaskScheduleInput,
   UpdateTaskInput,
   WorkspaceDocument,
@@ -252,6 +253,11 @@ export const workspaceService: WorkspaceService = {
       ...(input.stateId ? { stateId: input.stateId } : {}),
       ...(input.statusId && !input.stateId ? { stateSlug: input.statusId } : {}),
       ...(typeof input.position === "number" ? { position: input.position } : {}),
+      ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId } : {}),
+      ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
+      ...(input.tags !== undefined ? { tags: input.tags } : {}),
+      ...(input.fields !== undefined ? { fields: input.fields } : {}),
+      ...(input.customFieldValues !== undefined ? { customFieldValues: input.customFieldValues } : {}),
       metadata: { priority: input.priority }
     }, {
       authMode: "required",
@@ -375,6 +381,10 @@ export const workspaceService: WorkspaceService = {
 
     if (input.fields !== undefined) {
       payload.fields = input.fields;
+    }
+
+    if (input.customFieldValues !== undefined) {
+      payload.customFieldValues = input.customFieldValues;
     }
 
     if (input.tags !== undefined) {
@@ -580,6 +590,23 @@ export const workspaceService: WorkspaceService = {
       authMode: "required",
       retryOnUnauthorized: true
     });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async replaceItemTypeFieldBindings(
+    workspaceSlug: string,
+    typeId: string,
+    bindings: WorkItemFieldBindingInput[]
+  ) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.put(
+      `/workspaces/${workspaceId}/item-types/${typeId}/field-bindings`,
+      { bindings },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
     return fetchSnapshot(workspaceSlug);
   },
 
@@ -798,7 +825,7 @@ export const workspaceService: WorkspaceService = {
   async updateAiAgent(
     workspaceSlug: string,
     agentId: string,
-    patch: Partial<CreateAiAgentInput> & { description?: string | null }
+    patch: Omit<Partial<CreateAiAgentInput>, "description"> & { description?: string | null }
   ): Promise<{ id: string }> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.patch<{ id: string }>(`/ai/workspaces/${workspaceId}/agents/${agentId}`, patch, {

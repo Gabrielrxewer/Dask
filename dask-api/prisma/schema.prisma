@@ -30,6 +30,12 @@ enum CustomFieldType {
   SELECT
   MULTI_SELECT
   USER
+  CHECKLIST
+  PRIORITY
+  STATUS
+  TAG
+  SCHEDULE
+  WORK_ITEM_TYPE
 }
 
 enum AuthProvider {
@@ -614,6 +620,7 @@ model Workspace {
   columnStateMappings    ColumnStateMapping[]
   tagDefinitions         TagDefinition[]
   customFieldDefinitions CustomFieldDefinition[]
+  fieldBindings          WorkItemFieldBinding[]
   preferences            WorkspacePreferences?
   workItems              Item[]
   automationRules        AutomationRule[]
@@ -1751,6 +1758,7 @@ model WorkItemType {
   workspace           Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   items               Item[]
   customFieldScopes   CustomFieldScope[]
+  fieldBindings       WorkItemFieldBinding[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, isActive])
@@ -1848,19 +1856,47 @@ model CustomFieldDefinition {
   slug          String
   description   String?
   type          CustomFieldType
+  isSystem      Boolean             @default(false)
   required      Boolean             @default(false)
+  isEditable    Boolean             @default(true)
+  isRemovable   Boolean             @default(true)
   position      Int
   isActive      Boolean             @default(true)
   settings      Json?
+  defaultValue  Json?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   workspace     Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   options       CustomFieldOption[]
   values        CustomFieldValue[]
   scopes        CustomFieldScope[]
+  bindings      WorkItemFieldBinding[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, isActive])
+}
+
+model WorkItemFieldBinding {
+  id                 String                @id @default(uuid())
+  workspaceId        String
+  typeId             String
+  fieldId            String
+  displayContext     String                @default("detail")
+  position           Int                   @default(0)
+  section            String?
+  isVisible          Boolean               @default(true)
+  isRequiredOverride Boolean?
+  isReadonlyOverride Boolean?
+  settings           Json?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type               WorkItemType          @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  field              CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([typeId, fieldId, displayContext])
+  @@index([workspaceId, typeId, displayContext, position])
+  @@index([workspaceId, fieldId, displayContext])
 }
 
 model CustomFieldOption {

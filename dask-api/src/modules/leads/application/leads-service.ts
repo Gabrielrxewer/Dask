@@ -13,7 +13,7 @@ import type {
 } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
-import { EventPublisher } from '@/core/events/event-publisher';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import {
   buildWebhookIdempotencyKey,
   computeLeadStatus,

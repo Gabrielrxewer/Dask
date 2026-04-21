@@ -19,7 +19,9 @@ const FIELD_TYPE_OPTIONS: Array<{ value: CustomFieldType; label: string }> = [
   { value: "datetime", label: "Data e hora" },
   { value: "boolean", label: "Sim / Nao" },
   { value: "select", label: "Selecao unica" },
-  { value: "multi_select", label: "Selecao multipla" }
+  { value: "multi_select", label: "Selecao multipla" },
+  { value: "user", label: "Usuario" },
+  { value: "checklist", label: "Checklist" }
 ];
 
 const FIELD_TYPE_LABEL: Record<string, string> = Object.fromEntries(
@@ -32,14 +34,11 @@ function getFieldTypeLabel(type: string): string {
 
 function getUnifiedFieldTypeLabel(type: string, allowAiGeneration: boolean): string {
   if (allowAiGeneration && canToggleAiByType(type)) {
-    return "Text IA";
+    return "Texto IA";
   }
-
-  const normalizedType = type === "multi-select" ? "multi_select" : type;
 
   const labels: Record<string, string> = {
     text: "Texto curto",
-    text_ai: "Texto curto",
     long_text: "Texto longo",
     number: "Numero",
     date: "Data",
@@ -47,10 +46,11 @@ function getUnifiedFieldTypeLabel(type: string, allowAiGeneration: boolean): str
     boolean: "Sim / Nao",
     select: "Selecao unica",
     multi_select: "Selecao multipla",
-    user: "Usuario"
+    user: "Usuario",
+    checklist: "Checklist"
   };
 
-  return labels[normalizedType] ?? normalizedType;
+  return labels[type] ?? type;
 }
 
 interface EditState {
@@ -91,7 +91,7 @@ function readAllowAiGeneration(settings: ApiCustomField["settings"]): boolean {
 }
 
 function canToggleAiByType(type: string): boolean {
-  return type === "text" || type === "text_ai";
+  return type === "text" || type === "long_text";
 }
 
 const KNOWN_TEMPLATE_FIELD_SLUGS = new Set(["story-points", "severity", "confidence", "impact", "sla-hours"]);
@@ -345,7 +345,7 @@ export function CustomFieldsSettings() {
         const allowAiGeneration =
           typeof explicitSystemCapability === "boolean"
             ? explicitSystemCapability
-            : field.capabilities?.aiEnhance === true || field.type === "text_ai";
+            : field.capabilities?.aiEnhance === true;
 
         return {
           id: field.id,

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { getInfraStates, hasCriticalInfraFailure } from '@/infra/runtime/infra-health';
+import { getInfraStates, hasCriticalInfraFailure } from '@/core/runtime/infra-state';
 
 const INFRA_RETRY_SECONDS = 10;
 

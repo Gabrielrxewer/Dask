@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
-  buildTaskChecklistSummary,
+  buildTaskInputFromFieldDrafts,
   buildTaskTypeMetaMap,
+  createTaskFieldDrafts,
   getTaskTypeDisplayMeta,
-  isSystemCardFieldId,
-  priorityMeta,
-  resolveFieldIdsForTaskType,
-  taskPriorityOptions
+  isTaskFieldValueEmpty,
+  matchesTaskFieldStorage,
+  resolveWorkItemFieldBindingsForContext
 } from "@/entities/task";
 import type {
   BoardConfig,
@@ -26,7 +26,14 @@ import type {
   WorkItemLinkedDocument,
   WorkspaceDocument
 } from "@/modules/workspace/model";
-import { Button, FormField, ModalShell, Select, TextInput, Textarea } from "@/shared/ui";
+import {
+  FieldShell,
+  WorkItemFieldRenderer,
+  normalizeTaskFieldPresentationValue,
+  resolveFieldShellStyle,
+  validateTaskFieldPresentationValue
+} from "@/entities/task/ui/field-presentation";
+import { Button, ModalShell } from "@/shared/ui";
 import "./task-details-modal.css";
 
 type DetailZone = "main" | "side";
@@ -53,7 +60,6 @@ type TaskDetailsModalProps =
       creatorName?: string;
       boardConfig: BoardConfig;
       onSaveTask: (taskId: string, input: UpdateTaskInput) => Promise<void> | void;
-      onToggleChecklistItem: (taskId: string, itemId: string) => Promise<void> | void;
       onUpdatePriority: (taskId: string, priority: TaskPriority) => Promise<void> | void;
       onUpdateStatus: (taskId: string, statusId: TaskStatusId) => Promise<void> | void;
       onUpdateTitle: (taskId: string, title: string) => Promise<void> | void;
@@ -77,92 +83,12 @@ type TaskDetailsModalProps =
       onClose: () => void;
     };
 
-interface ScheduleDraft {
-  plannedStartAt: string;
-  plannedEndAt: string;
+function toJsonComparable(value: unknown) {
+  return JSON.stringify(value ?? null);
 }
 
-type CardAiMessageRole = "user" | "assistant" | "system";
-
-interface CardAiMessage {
-  id: string;
-  role: CardAiMessageRole;
-  content: string;
-  createdAt: string;
-}
-
-function createMessageId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function normalizeDateTimeInput(value: string | null | undefined): string {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  const pad = (entry: number) => entry.toString().padStart(2, "0");
-  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
-}
-
-function parseDateTime(value: string | null | undefined): number | null {
-  if (!value || value.trim().length === 0) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
-}
-
-function normalizeDateInput(value: string | null | undefined): string {
-  if (!value) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toISOString().slice(0, 10);
-}
-
-function getFieldOptions(definition: TaskFieldDefinition): string[] {
-  if (!Array.isArray(definition.options)) return [];
-  return definition.options.map(option => String(option).trim()).filter(Boolean);
-}
-
-function normalizeFieldType(type: TaskFieldDefinition["type"]): string {
-  return type === "multi-select" ? "multi_select" : type;
-}
-
-function normalizeFieldValue(definition: TaskFieldDefinition, value: TaskCustomFieldValue): TaskCustomFieldValue {
-  if (definition.type === "number") {
-    const asString = String(value ?? "").trim();
-    if (!asString) return null;
-    const parsed = Number(asString);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  if (definition.type === "boolean") return value === true;
-
-  if (definition.type === "select") {
-    const asString = String(value ?? "").trim();
-    return asString.length > 0 ? asString : null;
-  }
-
-  if (definition.type === "multi_select" || definition.type === "multi-select") {
-    if (Array.isArray(value)) return value.map(entry => entry.trim()).filter(Boolean);
-    return String(value ?? "")
-      .split(",")
-      .map(entry => entry.trim())
-      .filter(Boolean);
-  }
-
-  return value ?? "";
-}
-
-function getDefaultDetailZone(fieldId: string): DetailZone {
-  if (
-    fieldId === "sys:title" ||
-    fieldId === "sys:description" ||
-    fieldId === "sys:priority" ||
-    fieldId === "sys:checklist"
-  ) {
-    return "main";
-  }
-
-  return "side";
+function isReadonlyField(field: TaskFieldDefinition) {
+  return field.isEditable === false || matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" });
 }
 
 export function TaskDetailsModal(props: TaskDetailsModalProps) {
@@ -173,447 +99,194 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const availableTags = props.availableTags ?? [];
 
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
-  const fieldMap = useMemo(
-    () =>
-      boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>((acc, field) => {
-        acc[field.id] = field;
-        return acc;
-      }, {}),
-    [boardConfig.fieldDefinitions]
-  );
-
-  const initialType = boardConfig.taskTypes[0]?.id ?? "task";
-  const initialStatusId = isCreateMode ? props.initialStatusId : props.status.id;
-  const createStatusId = props.mode === "create" ? props.initialStatusId : "";
-  const initialAssigneeId = isCreateMode ? Object.values(props.membersById)[0]?.id ?? "" : props.task.assignee;
-
-  const [titleDraft, setTitleDraft] = useState(isCreateMode ? "" : props.task.title);
-  const [descriptionDraft, setDescriptionDraft] = useState(isCreateMode ? "" : props.task.text);
-  const [typeDraft, setTypeDraft] = useState(isCreateMode ? initialType : props.task.type);
-  const [assigneeDraft, setAssigneeDraft] = useState(initialAssigneeId);
-  const [dueDateDraft, setDueDateDraft] = useState(isCreateMode ? "" : normalizeDateInput(props.task.due));
-  const [tagsDraft, setTagsDraft] = useState<string[]>(isCreateMode ? [] : props.task.tags);
-  const [createdByDraft, setCreatedByDraft] = useState(
-    isCreateMode
-      ? ""
-      : typeof props.task.customFields["createdBy"] === "string"
-        ? String(props.task.customFields["createdBy"])
-        : props.creatorName ?? props.assignee.name
-  );
-  const [statusDraft, setStatusDraft] = useState(initialStatusId);
-  const [priorityDraft, setPriorityDraft] = useState<TaskPriority>(isCreateMode ? 2 : props.task.priority);
-  const [customFieldDrafts, setCustomFieldDrafts] = useState<Record<string, TaskCustomFieldValue>>({});
-  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft>({
-    plannedStartAt: isCreateMode ? "" : normalizeDateTimeInput(props.task.plannedStartAt),
-    plannedEndAt: isCreateMode ? "" : normalizeDateTimeInput(props.task.plannedEndAt)
-  });
-  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
-  const [tagInputDraft, setTagInputDraft] = useState("");
+  const initialTypeId = task?.type ?? boardConfig.taskTypes[0]?.id ?? "task";
+  const [selectedTypeId, setSelectedTypeId] = useState(initialTypeId);
+  const [fieldDrafts, setFieldDrafts] = useState<Record<string, TaskCustomFieldValue>>({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [availableDocuments, setAvailableDocuments] = useState<WorkspaceDocument[]>([]);
-  const [linkedDocuments, setLinkedDocuments] = useState<WorkItemLinkedDocument[]>([]);
-  const [documentToLinkId, setDocumentToLinkId] = useState("");
-  const [isDocsLoading, setIsDocsLoading] = useState(false);
-  const [isLinkingDocument, setIsLinkingDocument] = useState(false);
-  const [unlinkingDocumentId, setUnlinkingDocumentId] = useState<string | null>(null);
-  const [docsError, setDocsError] = useState("");
-  const [selectedAgentId, setSelectedAgentId] = useState("");
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiMessages, setAiMessages] = useState<CardAiMessage[]>([]);
-  const [isAiRunning, setIsAiRunning] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const aiMessagesRef = useRef<HTMLDivElement | null>(null);
 
-  const memberOptions = useMemo(
-    () => Object.values(props.membersById).sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
-    [props.membersById]
-  );
-
-  const selectedAssignee =
-    props.membersById[assigneeDraft] ??
-    (props.mode === "edit" ? props.assignee : memberOptions[0]);
-  const listWorkspaceDocuments =
-    props.mode === "edit" ? props.listWorkspaceDocuments : null;
-  const listWorkItemLinkedDocuments =
-    props.mode === "edit" ? props.listWorkItemLinkedDocuments : null;
-  const editModeAiAgents = props.mode === "edit" ? props.aiAgents : [];
-
-  const linkableDocuments = useMemo(() => {
-    if (isCreateMode) {
-      return [];
-    }
-
-    const linkedIds = new Set(linkedDocuments.map((document) => document.id));
-    return availableDocuments.filter((document) => !linkedIds.has(document.id));
-  }, [availableDocuments, isCreateMode, linkedDocuments]);
-
-  const visibleCardFieldIds = useMemo(
+  const detailBindings = useMemo(
     () =>
-      resolveFieldIdsForTaskType(
-        typeDraft,
-        boardConfig.cardLayout.visibleFieldIdsByType,
-        boardConfig.cardLayout.visibleFieldIds
+      resolveWorkItemFieldBindingsForContext(
+        boardConfig,
+        selectedTypeId,
+        isCreateMode ? "form" : "detail"
       ),
-    [boardConfig.cardLayout, typeDraft]
+    [boardConfig, isCreateMode, selectedTypeId]
   );
 
-  const visibleDetailFieldIds = useMemo(
-    () => resolveFieldIdsForTaskType(typeDraft, boardConfig.cardLayout.detailVisibleFieldIdsByType, visibleCardFieldIds),
-    [boardConfig.cardLayout.detailVisibleFieldIdsByType, typeDraft, visibleCardFieldIds]
-  );
-
-  const visibleFieldIdSet = useMemo(() => {
-    if (isCreateMode) {
-      return new Set([
-        "sys:title",
-        "sys:description",
-        "sys:type",
-        "sys:status",
-        "sys:priority",
-        "sys:assignee",
-        "sys:due-date",
-        "sys:tags",
-        "sys:schedule"
-      ]);
-    }
-
-    return new Set(visibleDetailFieldIds);
-  }, [isCreateMode, visibleDetailFieldIds]);
-
-  const visibleCustomFields = useMemo(
-    () =>
-      visibleDetailFieldIds
-        .filter(fieldId => !isSystemCardFieldId(fieldId))
-        .map(fieldId => fieldMap[fieldId])
-        .filter((field): field is TaskFieldDefinition => Boolean(field)),
-    [fieldMap, visibleDetailFieldIds]
-  );
-  const detailZonesByFieldId = useMemo(
-    () => boardConfig.cardLayout.detailFieldZoneByType?.[typeDraft] ?? {},
-    [boardConfig.cardLayout.detailFieldZoneByType, typeDraft]
-  );
   const orderedVisibleFields = useMemo(
-    () =>
-      visibleDetailFieldIds
-        .map(fieldId => fieldMap[fieldId])
-        .filter((field): field is TaskFieldDefinition => Boolean(field)),
-    [fieldMap, visibleDetailFieldIds]
+    () => detailBindings.map(binding => binding.field),
+    [detailBindings]
   );
-  const mainColumnFields = useMemo(
-    () => orderedVisibleFields.filter(field => (detailZonesByFieldId[field.id] ?? getDefaultDetailZone(field.id)) === "main"),
-    [detailZonesByFieldId, orderedVisibleFields]
-  );
-  const sideColumnFields = useMemo(
-    () => orderedVisibleFields.filter(field => (detailZonesByFieldId[field.id] ?? getDefaultDetailZone(field.id)) === "side"),
-    [detailZonesByFieldId, orderedVisibleFields]
+
+  const initialFieldDrafts = useMemo(
+    () => createTaskFieldDrafts(task, orderedVisibleFields),
+    [orderedVisibleFields, task]
   );
 
   useEffect(() => {
-    if (!isCreateMode) {
-      return;
-    }
-
-    setTitleDraft("");
-    setDescriptionDraft("");
-    setTypeDraft(initialType);
-    setAssigneeDraft(initialAssigneeId);
-    setDueDateDraft("");
-    setTagsDraft([]);
-    setCreatedByDraft("");
-    setStatusDraft(createStatusId);
-    setPriorityDraft(2);
-    setScheduleDraft({ plannedStartAt: "", plannedEndAt: "" });
-    setIsMetadataCollapsed(false);
-    setTagInputDraft("");
-    setCustomFieldDrafts({});
-    setError("");
-  }, [createStatusId, isCreateMode, initialAssigneeId, initialType]);
+    setSelectedTypeId(initialTypeId);
+  }, [initialTypeId]);
 
   useEffect(() => {
-    if (isCreateMode) {
-      return;
-    }
-
-    setTitleDraft(props.task.title);
-    setDescriptionDraft(props.task.text);
-    setTypeDraft(props.task.type);
-    setAssigneeDraft(props.task.assignee);
-    setDueDateDraft(normalizeDateInput(props.task.due));
-    setTagsDraft(props.task.tags);
-    setCreatedByDraft(
-      typeof props.task.customFields["createdBy"] === "string"
-        ? String(props.task.customFields["createdBy"])
-        : props.creatorName ?? props.assignee.name
-    );
-    setStatusDraft(props.status.id);
-    setPriorityDraft(props.task.priority);
-    setScheduleDraft({
-      plannedStartAt: normalizeDateTimeInput(props.task.plannedStartAt),
-      plannedEndAt: normalizeDateTimeInput(props.task.plannedEndAt)
-    });
-    setIsMetadataCollapsed(false);
-    setTagInputDraft("");
-    setError("");
-    setCustomFieldDrafts(
-      Object.keys(props.task.customFields).reduce<Record<string, TaskCustomFieldValue>>((acc, fieldId) => {
-        acc[fieldId] = props.task.customFields[fieldId] ?? null;
-        return acc;
-      }, {})
-    );
-  }, [
-    isCreateMode,
-    props.mode,
-    props.mode === "edit" ? props.task.id : null,
-    props.mode === "edit" ? props.status.id : null
-  ]);
-
-  useEffect(() => {
-    setCustomFieldDrafts(current => {
-      const next = { ...current };
-
-      for (const field of visibleCustomFields) {
-        if (!(field.id in next)) {
-          next[field.id] = task?.customFields[field.id] ?? null;
+    setFieldDrafts(current => {
+      const seeded = createTaskFieldDrafts(task, orderedVisibleFields);
+      if (isCreateMode) {
+        for (const field of orderedVisibleFields) {
+          if (field.id in current) {
+            seeded[field.id] = current[field.id];
+          }
         }
       }
-
-      return next;
+      return seeded;
     });
-  }, [task, visibleCustomFields]);
+  }, [isCreateMode, orderedVisibleFields, task]);
 
   useEffect(() => {
-    if (props.mode !== "edit" || !task) {
-      setAvailableDocuments([]);
-      setLinkedDocuments([]);
-      setDocumentToLinkId("");
-      setDocsError("");
-      return;
-    }
+    setError("");
+  }, [selectedTypeId, task?.id]);
 
-    let mounted = true;
-    setIsDocsLoading(true);
-    setDocsError("");
-    setLinkedDocuments(task.linkedDocuments ?? []);
+  const mainColumnFields = useMemo(
+    () => detailBindings.filter(binding => binding.zone === "main").map(binding => binding.field),
+    [detailBindings]
+  );
 
-    if (!listWorkspaceDocuments || !listWorkItemLinkedDocuments) {
-      setIsDocsLoading(false);
-      return;
-    }
+  const sideColumnFields = useMemo(
+    () => detailBindings.filter(binding => binding.zone === "side").map(binding => binding.field),
+    [detailBindings]
+  );
 
-    Promise.all([listWorkspaceDocuments(), listWorkItemLinkedDocuments(task.id)])
-      .then(([workspaceDocuments, linked]) => {
-        if (!mounted) {
-          return;
-        }
-        setAvailableDocuments(workspaceDocuments);
-        setLinkedDocuments(linked);
-      })
-      .catch((loadError) => {
-        if (!mounted) {
-          return;
-        }
-        setDocsError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar docs vinculadas.");
-      })
-      .finally(() => {
-        if (mounted) {
-          setIsDocsLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [
-    props.mode,
-    listWorkspaceDocuments,
-    listWorkItemLinkedDocuments,
-    task?.id
-  ]);
-
-  useEffect(() => {
-    if (props.mode !== "edit") {
-      return;
-    }
-    setSelectedAgentId(editModeAiAgents[0]?.id ?? "");
-    setAiPrompt("");
-    setAiMessages([]);
-    setAiError("");
-  }, [props.mode, editModeAiAgents, task?.id]);
-
-  useEffect(() => {
-    if (!aiMessagesRef.current) {
-      return;
-    }
-    aiMessagesRef.current.scrollTop = aiMessagesRef.current.scrollHeight;
-  }, [aiMessages.length, isAiRunning]);
-
-  const checklist = task ? buildTaskChecklistSummary(task) : { done: 0, total: 0, percent: 0 };
-  const activeTypeMeta = getTaskTypeDisplayMeta(typeMap, typeDraft);
-  const activeStatusLabel = statuses.find(option => option.id === statusDraft)?.label ?? statusDraft;
-  const priority = priorityMeta[priorityDraft] ?? priorityMeta[2];
-  const canSave = isCreateMode ? titleDraft.trim().length >= 2 && !saving : !saving;
+  const activeTypeMeta = getTaskTypeDisplayMeta(typeMap, selectedTypeId);
   const accentVars = {
     "--task-accent-background": activeTypeMeta.background,
     "--task-accent-border": activeTypeMeta.border,
     "--task-accent-text": activeTypeMeta.text
   } as CSSProperties;
 
-  const hasChanges =
-    !isCreateMode &&
-    task &&
-    ((visibleFieldIdSet.has("sys:title") && titleDraft.trim() !== task.title) ||
-      descriptionDraft !== task.text ||
-      typeDraft !== task.type ||
-      assigneeDraft !== task.assignee ||
-      dueDateDraft !== normalizeDateInput(task.due) ||
-      JSON.stringify(tagsDraft) !== JSON.stringify(task.tags) ||
-      createdByDraft.trim() !==
-        (
-          typeof task.customFields["createdBy"] === "string"
-            ? String(task.customFields["createdBy"]).trim()
-            : (props.creatorName ?? props.assignee.name).trim()
-        ) ||
-      statusDraft !== props.status.id ||
-      priorityDraft !== task.priority ||
-      scheduleDraft.plannedStartAt !== normalizeDateTimeInput(task.plannedStartAt) ||
-      scheduleDraft.plannedEndAt !== normalizeDateTimeInput(task.plannedEndAt) ||
-      visibleCustomFields.some(field => {
-        const current = task.customFields[field.id] ?? null;
-        const draft = normalizeFieldValue(field, customFieldDrafts[field.id] ?? null);
-        return JSON.stringify(current) !== JSON.stringify(draft);
-      }));
-  const canSendAiPrompt = aiPrompt.trim().length >= 2 && !isAiRunning && editModeAiAgents.length > 0;
+  const normalizedCurrentDrafts = useMemo(
+    () =>
+      orderedVisibleFields.reduce<Record<string, TaskCustomFieldValue>>((acc, field) => {
+        acc[field.id] = normalizeTaskFieldPresentationValue(field, fieldDrafts[field.id] ?? null);
+        return acc;
+      }, {}),
+    [fieldDrafts, orderedVisibleFields]
+  );
 
-  const handleLinkDocument = async () => {
-    if (props.mode !== "edit" || !task || !documentToLinkId) {
-      return;
+  const hasChanges = useMemo(() => {
+    if (isCreateMode || !task) {
+      return false;
     }
 
-    setIsLinkingDocument(true);
-    setDocsError("");
+    return orderedVisibleFields.some(
+      field => toJsonComparable(normalizedCurrentDrafts[field.id]) !== toJsonComparable(initialFieldDrafts[field.id])
+    );
+  }, [initialFieldDrafts, isCreateMode, normalizedCurrentDrafts, orderedVisibleFields, task]);
 
-    try {
-      const nextLinkedDocuments = await props.linkDocumentToWorkItem(task.id, documentToLinkId);
-      setLinkedDocuments(nextLinkedDocuments);
-      setDocumentToLinkId("");
-    } catch (linkError) {
-      setDocsError(linkError instanceof Error ? linkError.message : "Nao foi possivel vincular a doc.");
-    } finally {
-      setIsLinkingDocument(false);
-    }
-  };
+  const fieldErrorsById = useMemo(
+    () =>
+      orderedVisibleFields.reduce<Record<string, string>>((acc, field) => {
+        const value = normalizedCurrentDrafts[field.id];
 
-  const handleUnlinkDocument = async (documentId: string) => {
-    if (props.mode !== "edit" || !task) {
-      return;
-    }
-
-    setUnlinkingDocumentId(documentId);
-    setDocsError("");
-    try {
-      await props.unlinkDocumentFromWorkItem(task.id, documentId);
-      setLinkedDocuments((current) => current.filter((document) => document.id !== documentId));
-    } catch (unlinkError) {
-      setDocsError(unlinkError instanceof Error ? unlinkError.message : "Nao foi possivel remover a doc vinculada.");
-    } finally {
-      setUnlinkingDocumentId((current) => (current === documentId ? null : current));
-    }
-  };
-
-  const handleRunAiOnCard = async () => {
-    if (props.mode !== "edit" || !task) {
-      return;
-    }
-
-    const prompt = aiPrompt.trim();
-    if (prompt.length < 2) {
-      setAiError("Digite uma instrucao para a IA.");
-      return;
-    }
-
-    const targetAgentId = selectedAgentId || editModeAiAgents[0]?.id;
-    if (!targetAgentId) {
-      setAiError("Nenhum agente de IA ativo para este workspace.");
-      return;
-    }
-
-    const linkedDocsContext =
-      linkedDocuments.length > 0
-        ? linkedDocuments.map((document) => `- ${document.title} (${document.id})`).join("\n")
-        : "- Sem docs vinculadas.";
-
-    const enrichedInstruction = [
-      prompt,
-      "",
-      "Considere o contexto completo deste card e das docs vinculadas abaixo na resposta:",
-      linkedDocsContext
-    ].join("\n");
-
-    const userMessage: CardAiMessage = {
-      id: createMessageId(),
-      role: "user",
-      content: prompt,
-      createdAt: new Date().toISOString()
-    };
-
-    setAiMessages((current) => [...current, userMessage]);
-    setAiError("");
-    setIsAiRunning(true);
-
-    try {
-      const result = await props.onRunAiAgentOnItem(task.id, targetAgentId, {
-        instruction: enrichedInstruction,
-        includeSemanticContext: true,
-        topKContextDocs: 5
-      });
-
-      setAiMessages((current) => [
-        ...current,
-        {
-          id: result.runId || createMessageId(),
-          role: "assistant",
-          content: result.content,
-          createdAt: new Date().toISOString()
+        if (field.required === true && isTaskFieldValueEmpty(field, value)) {
+          acc[field.id] = `Preencha o campo "${field.label}".`;
+          return acc;
         }
-      ]);
-      setAiPrompt("");
-    } catch (runError) {
-      setAiError(runError instanceof Error ? runError.message : "Nao foi possivel consultar a IA agora.");
-      setAiMessages((current) => [
-        ...current,
-        {
-          id: createMessageId(),
-          role: "system",
-          content: "Falha ao executar a IA para este card.",
-          createdAt: new Date().toISOString()
+
+        const validationError = validateTaskFieldPresentationValue({
+          field,
+          value,
+          boardConfig,
+          statuses,
+          membersById: props.membersById,
+          availableTags,
+          task
+        });
+
+        if (validationError) {
+          acc[field.id] = validationError;
         }
-      ]);
-    } finally {
-      setIsAiRunning(false);
+
+        return acc;
+      }, {}),
+    [availableTags, boardConfig, normalizedCurrentDrafts, orderedVisibleFields, props.membersById, statuses, task]
+  );
+
+  const firstFieldError = useMemo(() => {
+    const fieldWithError = orderedVisibleFields.find(field => typeof fieldErrorsById[field.id] === "string");
+    return fieldWithError ? fieldErrorsById[fieldWithError.id] ?? "" : "";
+  }, [fieldErrorsById, orderedVisibleFields]);
+
+  const canSave = isCreateMode ? !saving && !firstFieldError : !saving && hasChanges && !firstFieldError;
+
+  const updateFieldDraft = (field: TaskFieldDefinition, value: TaskCustomFieldValue) => {
+    setFieldDrafts(current => ({
+      ...current,
+      [field.id]: value
+    }));
+
+    if (field.type === "work_item_type" && typeof value === "string" && value.trim().length > 0) {
+      setSelectedTypeId(value);
     }
   };
 
-  const handleAiPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      if (canSendAiPrompt) {
-        void handleRunAiOnCard();
-      }
-    }
+  const renderFieldPanel = (field: TaskFieldDefinition, zone: DetailZone) => {
+    const readOnly = isReadonlyField(field) && !isCreateMode;
+    const fieldError = fieldErrorsById[field.id] ?? null;
+    const mode = readOnly ? "display" : "edit";
+    const context = isCreateMode ? "form" : "detail";
+    const shellStyle = resolveFieldShellStyle({
+      field,
+      mode,
+      context,
+      readonly: readOnly
+    });
+
+    return (
+      <section
+        key={field.id}
+        className={`${zone === "main" ? "task-details__section" : "task-details__panel"} task-details__field-frame task-details__field-frame--${shellStyle.kind}${readOnly ? " task-details__field-frame--readonly" : ""}`}
+      >
+        <FieldShell
+          label={field.label}
+          hint={field.description}
+          required={field.required}
+          error={fieldError}
+          readonly={readOnly}
+          kind={shellStyle.kind}
+          helpMode={shellStyle.helpMode}
+        >
+          <WorkItemFieldRenderer
+            field={field}
+            value={normalizedCurrentDrafts[field.id]}
+            mode={mode}
+            context={context}
+            boardConfig={boardConfig}
+            statuses={statuses}
+            membersById={props.membersById}
+            availableTags={availableTags}
+            task={task}
+            readonly={readOnly}
+            disabled={saving}
+            autoFocus={isCreateMode && orderedVisibleFields[0]?.id === field.id}
+            onChange={value => updateFieldDraft(field, value)}
+            error={fieldError}
+          />
+        </FieldShell>
+      </section>
+    );
   };
 
   const handleSubmit = async () => {
-    const trimmedTitle = titleDraft.trim();
-    if (trimmedTitle.length < 2) {
-      setError("O titulo precisa ter ao menos 2 caracteres.");
+    if (firstFieldError) {
+      setError(firstFieldError);
       return;
     }
 
-    const start = parseDateTime(scheduleDraft.plannedStartAt);
-    const end = parseDateTime(scheduleDraft.plannedEndAt);
-    if (start !== null && end !== null && end <= start) {
-      setError("A data final precisa ser maior que a inicial.");
+    const draftPayload = buildTaskInputFromFieldDrafts(orderedVisibleFields, normalizedCurrentDrafts);
+    const nextTitle = typeof draftPayload.title === "string" ? draftPayload.title.trim() : "";
+    if (nextTitle.length < 2) {
+      setError("O titulo precisa ter ao menos 2 caracteres.");
       return;
     }
 
@@ -622,566 +295,145 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
     try {
       if (isCreateMode) {
-        await Promise.resolve(
-          props.onCreateTask({
-            type: typeDraft,
-            title: trimmedTitle,
-            description: descriptionDraft,
-            priority: priorityDraft,
-            statusId: statusDraft
-          })
-        );
+        const payload: CreateTaskInput = {
+          type: typeof draftPayload.type === "string" && draftPayload.type.length > 0 ? draftPayload.type : selectedTypeId,
+          title: nextTitle,
+          description: typeof draftPayload.description === "string" ? draftPayload.description : "",
+          priority: typeof draftPayload.priority === "number" ? (draftPayload.priority as TaskPriority) : 2,
+          statusId: typeof draftPayload.statusId === "string" ? draftPayload.statusId : props.initialStatusId,
+          assigneeId: draftPayload.assigneeId,
+          dueDate: draftPayload.dueDate,
+          tags: draftPayload.tags,
+          fields: draftPayload.fields,
+          customFieldValues: draftPayload.customFieldValues
+        };
+
+        await Promise.resolve(props.onCreateTask(payload));
         props.onClose();
         return;
       }
 
-      if (!task) return;
-
-      const fields: Record<string, unknown> = { ...task.customFields };
-      let hasFieldChanges = false;
-
-      for (const field of visibleCustomFields) {
-        const normalized = normalizeFieldValue(field, customFieldDrafts[field.id] ?? null);
-        if (JSON.stringify(normalized) !== JSON.stringify(task.customFields[field.id] ?? null)) {
-          fields[field.id] = normalized;
-          hasFieldChanges = true;
-        }
+      if (!task) {
+        return;
       }
 
-      const nextStart = scheduleDraft.plannedStartAt.trim() || null;
-      const nextEnd = scheduleDraft.plannedEndAt.trim() || null;
-      if (nextStart !== (task.customFields.plannedStartAt ?? null) || nextEnd !== (task.customFields.plannedEndAt ?? null)) {
-        fields.plannedStartAt = nextStart;
-        fields.plannedEndAt = nextEnd;
-        hasFieldChanges = true;
+      const currentPayload = buildTaskInputFromFieldDrafts(orderedVisibleFields, initialFieldDrafts);
+      const nextPayload: UpdateTaskInput = {};
+
+      if (nextTitle !== task.title) {
+        nextPayload.title = nextTitle;
       }
 
-      const payload: UpdateTaskInput = {};
-      if (visibleFieldIdSet.has("sys:title") && trimmedTitle !== task.title) payload.title = trimmedTitle;
-      if (descriptionDraft !== task.text) payload.description = descriptionDraft;
-      if (visibleFieldIdSet.has("sys:type") && typeDraft !== task.type) payload.typeSlug = typeDraft;
-      if (visibleFieldIdSet.has("sys:assignee") && assigneeDraft !== task.assignee) payload.assigneeId = assigneeDraft;
-      if (visibleFieldIdSet.has("sys:due-date") && dueDateDraft !== normalizeDateInput(task.due)) {
-        payload.dueDate = dueDateDraft.trim() || null;
+      if (typeof draftPayload.description === "string" && draftPayload.description !== currentPayload.description) {
+        nextPayload.description = draftPayload.description;
       }
-      if (visibleFieldIdSet.has("sys:tags") && JSON.stringify(tagsDraft) !== JSON.stringify(task.tags)) {
-        payload.tags = tagsDraft;
-      }
-      if (statusDraft !== props.status.id) payload.stateId = statusDraft;
-      if (priorityDraft !== task.priority) payload.priority = priorityDraft;
-      if (
-        visibleFieldIdSet.has("sys:created-by") &&
-        createdByDraft.trim() !==
-          (
-            typeof task.customFields["createdBy"] === "string"
-              ? String(task.customFields["createdBy"]).trim()
-              : (props.creatorName ?? props.assignee.name).trim()
-          )
-      ) {
-        fields.createdBy = createdByDraft.trim();
-        hasFieldChanges = true;
-      }
-      if (hasFieldChanges) payload.fields = fields;
 
-      if (Object.keys(payload).length === 0) return;
+      if (typeof draftPayload.typeSlug === "string" && draftPayload.typeSlug !== currentPayload.typeSlug) {
+        nextPayload.typeSlug = draftPayload.typeSlug;
+      }
 
-      await Promise.resolve(props.onSaveTask(task.id, payload));
+      if (draftPayload.stateId !== currentPayload.stateId && typeof draftPayload.stateId === "string") {
+        nextPayload.stateId = draftPayload.stateId;
+      }
+
+      if (draftPayload.assigneeId !== currentPayload.assigneeId) {
+        nextPayload.assigneeId = (draftPayload.assigneeId as string | null | undefined) ?? null;
+      }
+
+      if (draftPayload.dueDate !== currentPayload.dueDate) {
+        nextPayload.dueDate = (draftPayload.dueDate as string | null | undefined) ?? null;
+      }
+
+      if (toJsonComparable(draftPayload.tags) !== toJsonComparable(currentPayload.tags)) {
+        nextPayload.tags = Array.isArray(draftPayload.tags) ? draftPayload.tags : [];
+      }
+
+      if (draftPayload.priority !== currentPayload.priority && typeof draftPayload.priority === "number") {
+        nextPayload.priority = draftPayload.priority as TaskPriority;
+      }
+
+      if (toJsonComparable(draftPayload.fields) !== toJsonComparable(currentPayload.fields)) {
+        nextPayload.fields = (draftPayload.fields as Record<string, unknown> | undefined) ?? {};
+      }
+
+      if (toJsonComparable(draftPayload.customFieldValues) !== toJsonComparable(currentPayload.customFieldValues)) {
+        nextPayload.customFieldValues = (draftPayload.customFieldValues as Record<string, unknown> | undefined) ?? {};
+      }
+
+      if (Object.keys(nextPayload).length === 0) {
+        return;
+      }
+
+      await Promise.resolve(props.onSaveTask(task.id, nextPayload));
     } catch {
-      setError(isCreateMode ? "Nao foi possivel criar a tarefa." : "Nao foi possivel salvar as alteracoes.");
+      setError(isCreateMode ? "Nao foi possivel criar o item." : "Nao foi possivel salvar as alteracoes.");
     } finally {
       setSaving(false);
     }
   };
 
-  const renderFieldBody = (field: TaskFieldDefinition) => {
-    const normalizedType = normalizeFieldType(field.type);
-    const options =
-      field.id === "sys:type"
-        ? boardConfig.taskTypes.map(taskType => taskType.label)
-        : field.id === "sys:status"
-          ? statuses.map(option => option.label)
-          : field.id === "sys:priority"
-            ? taskPriorityOptions.map(option => priorityMeta[option].label)
-            : getFieldOptions(field);
-
-    if (field.id === "sys:title" || normalizedType === "text") {
-      return (
-        <TextInput
-          id="task-details-title-input"
-          className="task-details__title-input"
-          value={field.id === "sys:title" ? titleDraft : String(customFieldDrafts[field.id] ?? "")}
-          onChange={event => {
-            if (field.id === "sys:title") {
-              setTitleDraft(event.target.value);
-              return;
-            }
-
-            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }));
-          }}
-          placeholder={field.id === "sys:title" ? "Ex: Ajustar fluxo de aprovacao com cliente" : `Ex: ${field.label}`}
-          autoFocus={field.id === "sys:title"}
-        />
-      );
-    }
-
-    if (normalizedType === "text_ai" || normalizedType === "long_text") {
-      return (
-        <Textarea
-          className="task-details__textarea"
-          value={field.id === "sys:description" ? descriptionDraft : String(customFieldDrafts[field.id] ?? "")}
-          onChange={event => {
-            if (field.id === "sys:description") {
-              setDescriptionDraft(event.target.value);
-              return;
-            }
-
-            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }));
-          }}
-          placeholder={
-            field.id === "sys:description"
-              ? "Descreva o contexto, o objetivo da entrega e o que precisa estar pronto ao final."
-              : `Descreva ${field.label.toLowerCase()}.`
-          }
-        />
-      );
-    }
-
-    if (normalizedType === "multi_select") {
-      return (
-        <div
-          className="task-details__tag-field"
-          onClick={event => {
-            const input = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>(".task-details__tag-text-input");
-            input?.focus();
-          }}
-        >
-          <div className="task-details__tag-chips-row">
-            {(field.id === "sys:tags"
-              ? tagsDraft
-              : Array.isArray(customFieldDrafts[field.id])
-                ? (customFieldDrafts[field.id] as string[])
-                : []
-            ).map(tag => (
-              <span key={tag} className="task-details__editable-tag">
-                <span className="task-details__editable-tag-text">{tag}</span>
-                <button
-                  type="button"
-                  className="task-details__tag-remove"
-                  onClick={event => {
-                    event.stopPropagation();
-                    if (field.id === "sys:tags") {
-                      setTagsDraft(current => current.filter(t => t !== tag));
-                      return;
-                    }
-
-                    const currentValues = Array.isArray(customFieldDrafts[field.id])
-                      ? (customFieldDrafts[field.id] as string[])
-                      : [];
-                    setCustomFieldDrafts(current => ({
-                      ...current,
-                      [field.id]: currentValues.filter(entry => entry !== tag)
-                    }));
-                  }}
-                  aria-label={`Remover tag ${tag}`}
-                >
-                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true" width="8" height="8">
-                    <path d="M8 2L2 8M2 2l6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </span>
-            ))}
-            <input
-              className="task-details__tag-text-input"
-              value={tagInputDraft}
-              onChange={event => setTagInputDraft(event.target.value)}
-              onKeyDown={event => {
-                const currentValues =
-                  field.id === "sys:tags"
-                    ? tagsDraft
-                    : Array.isArray(customFieldDrafts[field.id])
-                      ? (customFieldDrafts[field.id] as string[])
-                      : [];
-
-                if (event.key === "Enter" || event.key === ",") {
-                  event.preventDefault();
-                  const trimmed = tagInputDraft.trim().replace(/,$/g, "");
-                  if (trimmed && !currentValues.includes(trimmed)) {
-                    if (field.id === "sys:tags") {
-                      setTagsDraft(current => [...current, trimmed]);
-                    } else {
-                      setCustomFieldDrafts(current => ({ ...current, [field.id]: [...currentValues, trimmed] }));
-                    }
-                  }
-                  setTagInputDraft("");
-                } else if (event.key === "Backspace" && !tagInputDraft && currentValues.length > 0) {
-                  if (field.id === "sys:tags") {
-                    setTagsDraft(current => current.slice(0, -1));
-                  } else {
-                    setCustomFieldDrafts(current => ({ ...current, [field.id]: currentValues.slice(0, -1) }));
-                  }
-                }
-              }}
-              placeholder={
-                (
-                  field.id === "sys:tags"
-                    ? tagsDraft
-                    : Array.isArray(customFieldDrafts[field.id])
-                      ? (customFieldDrafts[field.id] as string[])
-                      : []
-                ).length === 0
-                  ? "Digite e pressione Enter para adicionar..."
-                  : ""
-              }
-              size={1}
-            />
-          </div>
-          {field.id === "sys:tags" && availableTags.filter(tag => !tagsDraft.includes(tag.name)).length > 0 ? (
-            <div className="task-details__tag-suggestions">
-              <span className="task-details__tag-suggestions-label">Sugeridas:</span>
-              {availableTags
-                .filter(tag => !tagsDraft.includes(tag.name))
-                .slice(0, 6)
-                .map(tag => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    className="task-details__tag-suggestion"
-                    onClick={() => {
-                      if (!tagsDraft.includes(tag.name)) {
-                        setTagsDraft(current => [...current, tag.name]);
-                      }
-                    }}
-                  >
-                    {tag.name}
-                  </button>
-                ))}
-            </div>
-          ) : null}
-        </div>
-      );
-    }
-
-    if (normalizedType === "select") {
-      const selectValue =
-        field.id === "sys:type"
-          ? typeDraft
-          : field.id === "sys:status"
-            ? statusDraft
-            : field.id === "sys:priority"
-              ? String(priorityDraft)
-              : String(customFieldDrafts[field.id] ?? "");
-
-      return (
-        <FormField label={field.label}>
-          <Select
-            value={selectValue}
-            onChange={event => {
-              if (field.id === "sys:type") {
-                setTypeDraft(event.target.value);
-                return;
-              }
-
-              if (field.id === "sys:status") {
-                setStatusDraft(event.target.value);
-                return;
-              }
-
-              if (field.id === "sys:priority") {
-                setPriorityDraft(Number(event.target.value) as TaskPriority);
-                return;
-              }
-
-              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
-            }}
-          >
-            <option value="">Selecione...</option>
-            {field.id === "sys:type"
-              ? boardConfig.taskTypes.map(taskType => (
-                  <option key={taskType.id} value={taskType.id}>
-                    {taskType.label}
-                  </option>
-                ))
-              : field.id === "sys:status"
-                ? statuses.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))
-                : field.id === "sys:priority"
-                  ? taskPriorityOptions.map(option => (
-                      <option key={option} value={option}>
-                        {priorityMeta[option].label}
-                      </option>
-                    ))
-                  : options.map(option => (
-                      <option key={`${field.id}-${option}`} value={option}>
-                        {option}
-                      </option>
-                    ))}
-          </Select>
-        </FormField>
-      );
-    }
-
-    if (normalizedType === "user") {
-      const userValue =
-        field.id === "sys:assignee"
-          ? assigneeDraft
-          : field.id === "sys:created-by"
-            ? createdByDraft
-            : String(customFieldDrafts[field.id] ?? "");
-
-      if (field.capabilities?.selectable !== true) {
-        return (
-          <FormField label={field.label}>
-            <TextInput
-              value={userValue}
-              onChange={event => {
-                if (field.id === "sys:created-by") {
-                  setCreatedByDraft(event.target.value);
-                  return;
-                }
-
-                setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
-              }}
-            />
-          </FormField>
-        );
-      }
-
-      return (
-        <FormField label={field.label}>
-          <Select
-            value={userValue}
-            onChange={event => {
-              if (field.id === "sys:assignee") {
-                setAssigneeDraft(event.target.value);
-                return;
-              }
-
-              if (field.id === "sys:created-by") {
-                setCreatedByDraft(event.target.value);
-                return;
-              }
-
-              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
-            }}
-          >
-            <option value="">Selecione...</option>
-            {memberOptions.map(member => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-      );
-    }
-
-    if (normalizedType === "date") {
-      return (
-        <FormField label={field.label}>
-          <TextInput
-            type="date"
-            value={field.id === "sys:due-date" ? dueDateDraft : String(customFieldDrafts[field.id] ?? "")}
-            onChange={event => {
-              if (field.id === "sys:due-date") {
-                setDueDateDraft(event.target.value);
-                return;
-              }
-
-              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }));
-            }}
-          />
-        </FormField>
-      );
-    }
-
-    if (normalizedType === "schedule") {
-      return (
-        <div className="task-details__schedule-grid">
-          <FormField label="Inicio">
-            <TextInput
-              type="datetime-local"
-              value={scheduleDraft.plannedStartAt}
-              onChange={event => setScheduleDraft(current => ({ ...current, plannedStartAt: event.target.value }))}
-            />
-          </FormField>
-          <FormField label="Fim">
-            <TextInput
-              type="datetime-local"
-              value={scheduleDraft.plannedEndAt}
-              onChange={event => setScheduleDraft(current => ({ ...current, plannedEndAt: event.target.value }))}
-            />
-          </FormField>
-        </div>
-      );
-    }
-
-    if (normalizedType === "datetime") {
-      return (
-        <FormField label={field.label}>
-          <TextInput
-            type="datetime-local"
-            value={String(customFieldDrafts[field.id] ?? "")}
-            onChange={event => setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value || null }))}
-          />
-        </FormField>
-      );
-    }
-
-    if (normalizedType === "checklist") {
-      if (!task || isCreateMode) {
-        return <p className="task-details__muted">O checklist aparece depois que o item for criado.</p>;
-      }
-
-      return (
-        <>
-          <div className="task-details__section-head">
-            <span className="task-details__section-caption">{`${checklist.done}/${checklist.total} concluidos`}</span>
-          </div>
-          <div className="task-details__progress-track">
-            <div className="task-details__progress-fill" style={{ width: `${checklist.percent}%` }} />
-          </div>
-          <ul className="task-details__checklist">
-            {task.checklist.items.map(item => (
-              <li className={item.done ? "is-done" : ""} key={item.id}>
-                <button
-                  type="button"
-                  className="task-details__check-toggle"
-                  aria-pressed={item.done}
-                  onClick={() => void props.onToggleChecklistItem(task.id, item.id)}
-                >
-                  {item.done ? (
-                    <svg viewBox="0 0 14 14" fill="none" aria-hidden="true" width="10" height="10">
-                      <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : null}
-                </button>
-                <p>{item.label}</p>
-              </li>
-            ))}
-          </ul>
-        </>
-      );
-    }
-
-    if (normalizedType === "boolean") {
-      const isOn = customFieldDrafts[field.id] === true;
-      return (
-        <button
-          type="button"
-          className={`task-details__toggle-switch ${isOn ? "is-on" : ""}`}
-          onClick={() =>
-            setCustomFieldDrafts(current => ({ ...current, [field.id]: !isOn }))
-          }
-          aria-pressed={isOn}
-        >
-          <span className="task-details__toggle-track">
-            <span className="task-details__toggle-thumb" />
-          </span>
-          <span className="task-details__toggle-label">{isOn ? "Ativado" : "Desativado"}</span>
-        </button>
-      );
-    }
-
-    if (normalizedType === "number") {
-      return (
-        <FormField label={field.label}>
-          <TextInput
-            type="number"
-            value={String(customFieldDrafts[field.id] ?? "")}
-            onChange={event =>
-              setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
-            }
-          />
-        </FormField>
-      );
-    }
-
-    return (
-      <FormField label={field.label}>
-        <TextInput
-          value={
-            Array.isArray(customFieldDrafts[field.id])
-              ? (customFieldDrafts[field.id] as string[]).join(", ")
-              : String(customFieldDrafts[field.id] ?? "")
-          }
-          onChange={event =>
-            setCustomFieldDrafts(current => ({ ...current, [field.id]: event.target.value }))
-          }
-        />
-      </FormField>
-    );
-  };
-
-  const renderFieldPanel = (field: TaskFieldDefinition, zone: DetailZone) => (
-    <section
-      key={field.id}
-      className={zone === "main" ? "task-details__section" : "task-details__panel"}
-    >
-      <div className="task-details__section-head">
-        <h3 className="task-details__summary-style-title">{field.label}</h3>
-      </div>
-      {renderFieldBody(field)}
-    </section>
-  );
-
   return (
     <ModalShell titleId="task-details-title" className="task-details" onClose={props.onClose}>
-      <header className="task-details__topbar">
-        <div className="task-details__header-copy">
-          <p className="task-details__breadcrumbs">{isCreateMode ? "Novo item" : "Work item"}</p>
-          <h2 id="task-details-title">{isCreateMode ? "Criar tarefa" : "Editar tarefa"}</h2>
+      <div style={accentVars}>
+        <header className="task-details__topbar">
+          <div className="task-details__header-copy">
+            <p className="task-details__breadcrumbs">{isCreateMode ? "Novo item" : "Work item"}</p>
+            <h2 id="task-details-title">{isCreateMode ? "Criar work item" : "Editar work item"}</h2>
+          </div>
+          <button className="task-details__close" type="button" onClick={props.onClose} aria-label="Fechar editor">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" width="16" height="16">
+              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </header>
+
+        <div className={`task-details__body ${isCreateMode ? "task-details__body--create" : "task-details__body--edit"}`}>
+          <section className="task-details__main">
+            {mainColumnFields.length > 0 ? (
+              mainColumnFields.map(field => renderFieldPanel(field, "main"))
+            ) : (
+              <section className="task-details__section">
+                <div className="task-details__section-head">
+                  <h3 className="task-details__summary-style-title">Sem campos principais</h3>
+                </div>
+                <p className="task-details__muted">Associe campos a este tipo de item para montar o formulario.</p>
+              </section>
+            )}
+          </section>
+
+          <aside className="task-details__side">
+            {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
+          </aside>
         </div>
-        <button className="task-details__close" type="button" onClick={props.onClose} aria-label="Fechar editor">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" width="16" height="16">
-            <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </header>
 
-      <div
-        className={`task-details__body task-details__body--compact ${
-          isCreateMode ? "task-details__body--create" : "task-details__body--edit"
-        }`}
-      >
-        <section className="task-details__main">
-          {mainColumnFields.map(field => renderFieldPanel(field, "main"))}
-        </section>
-
-        <aside className="task-details__side">
-          {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
-        </aside>
+        <footer className="task-details__actionbar">
+          <div className="task-details__actionbar-copy">
+            {error ? (
+              <p className="task-details__error">{error}</p>
+            ) : (
+              <p>
+                {isCreateMode
+                  ? "Os campos exibidos aqui seguem o schema configurado para este tipo de work item."
+                  : "A edicao usa o mesmo registry de tipos do card e das configuracoes do workspace."}
+              </p>
+            )}
+          </div>
+          <div className="task-details__actionbar-actions">
+            <Button type="button" size="sm" variant="outline" onClick={props.onClose} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              onClick={() => void handleSubmit()}
+              disabled={!canSave}
+            >
+              {saving ? (isCreateMode ? "Criando..." : "Salvando...") : isCreateMode ? "Criar item" : "Salvar alteracoes"}
+            </Button>
+          </div>
+        </footer>
       </div>
-
-      <footer className="task-details__actionbar">
-        <div className="task-details__actionbar-copy">
-          {error ? (
-            <p className="task-details__error">{error}</p>
-          ) : (
-            <p>
-              {isCreateMode
-                ? "Preencha o essencial agora e ajuste os demais metadados depois sem trocar de interface."
-                : "Mesma tela para criar e editar, com foco no preenchimento rapido e organizado."}
-            </p>
-          )}
-        </div>
-        <div className="task-details__actionbar-actions">
-          <Button type="button" size="sm" variant="outline" onClick={props.onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="primary"
-            onClick={() => void handleSubmit()}
-            disabled={isCreateMode ? !canSave : !hasChanges || saving}
-          >
-            {saving ? (isCreateMode ? "Criando..." : "Salvando...") : isCreateMode ? "Criar tarefa" : "Salvar alteracoes"}
-          </Button>
-        </div>
-      </footer>
     </ModalShell>
   );
 }

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { MembershipRole, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
@@ -6,7 +6,7 @@ import {
   requireWorkspacePermission,
   requireWorkspaceRole,
   workspaceScopeMiddleware
-} from '@/core/http/workspace-scope-middleware';
+} from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { WorkspacesService } from '@/modules/workspaces/application/workspaces-service';
 import {
@@ -257,3 +257,4 @@ export const buildWorkspacesRoutes = (deps: {
 
   return router;
 };
+

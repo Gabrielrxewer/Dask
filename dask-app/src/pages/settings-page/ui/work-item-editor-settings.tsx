@@ -1,24 +1,61 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DragEvent, ReactNode } from "react";
-import { MemberAvatar } from "@/entities/member";
+import type { DragEvent, MouseEvent, ReactNode } from "react";
 import {
   applyFieldCapabilityOverrides,
-  CARD_FIELDS_SCHEMA_VERSION,
+  buildTaskFieldBindingsForType,
+  CARD_SLOT_LIMITS,
   factoryBoardConfig,
   getTaskFieldTypeLabel,
-  inferCapabilitiesByType,
-  isSystemCardFieldId,
+  isTaskFieldValueEmpty,
   mergeCardFieldDefinitions,
-  resolveFieldIdsForTaskType,
+  resolveTaskFieldCardArea,
+  resolveTaskFieldValue,
+  resolveTaskFieldDetailZone,
+  resolveWorkItemFieldBindings,
+  readTaskFieldStorage,
   TaskCard
 } from "@/entities/task";
-import type { BoardConfig, Task, TaskCustomFieldValue, TaskFieldDefinition } from "@/entities/task";
-import type { ApiCustomField, ApiItemType, CustomFieldType } from "@/modules/workspace/model";
+import type {
+  BoardConfig,
+  Task,
+  TaskCustomFieldValue,
+  TaskCardDebugSnapshot,
+  TaskCardSlotArea,
+  TaskFieldBinding,
+  TaskFieldCardArea,
+  TaskFieldDefinition,
+  TaskFieldVisualPriority
+} from "@/entities/task";
+import type { ApiBoardColumn, ApiCustomField, ApiItemType, ApiWorkflowState, CustomFieldType } from "@/modules/workspace/model";
 import { useWorkspace } from "@/modules/workspace";
+import {
+  applyFieldDrop,
+  isEditorDropTargetEqual,
+  resolveDetailInsertIndex,
+  type DetailZone,
+  type EditorDropTarget,
+  type LayoutDraft,
+  type LayoutScope
+} from "@/pages/settings-page/model/work-item-layout-editor";
+import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
 import { Button, FormField, TextInput } from "@/shared/ui";
 import "./work-item-editor-settings.css";
 
 const DEFAULT_TYPE_COLOR = "#0a86e8";
+
+const CARD_SLOT_AREA_META: Array<{ area: TaskCardSlotArea; label: string }> = [
+  { area: "badge", label: "Badges" },
+  { area: "title", label: "Titulo" },
+  { area: "description", label: "Descricao" },
+  { area: "summary", label: "Resumo" },
+  { area: "tags", label: "Tags" },
+  { area: "custom-field", label: "Campos extras" },
+  { area: "meta", label: "Rodape" }
+];
+
+const CARD_SLOT_AREA_LABELS = Object.fromEntries(
+  CARD_SLOT_AREA_META.map(({ area, label }) => [area, label])
+) as Record<TaskCardSlotArea, string>;
 
 const FIELD_TYPE_OPTIONS: Array<{
   value: CustomFieldType;
@@ -32,13 +69,21 @@ const FIELD_TYPE_OPTIONS: Array<{
   { value: "datetime", label: "Data e hora", caption: "Agenda e planejamento." },
   { value: "boolean", label: "Sim / Nao", caption: "Alternancia rapida." },
   { value: "select", label: "Selecao unica", caption: "Uma opcao entre varias." },
-  { value: "multi_select", label: "Selecao multipla", caption: "Etiquetas e combinacoes." }
+  { value: "multi_select", label: "Selecao multipla", caption: "Etiquetas e combinacoes." },
+  { value: "user", label: "Usuario", caption: "Pessoa responsavel ou autora." },
+  { value: "checklist", label: "Checklist", caption: "Lista operacional com marcacao." }
 ];
 
 const PREVIEW_CARD_TITLE = "Refinar experiencia do checkout";
 const PREVIEW_CARD_DESCRIPTION = "Ajustar fluxo, copy e validacoes para reduzir friccao no funil.";
 const PREVIEW_CARD_TAGS = ["ux", "receita", "q2"];
-const PREVIEW_CREATED_BY = "Marina Costa";
+const PREVIEW_CARD_IDENTIFIER = "WK-2048";
+const PREVIEW_CREATED_BY = {
+  id: "preview-creator",
+  name: "Marina Costa",
+  initials: "MC",
+  color: "#ffd7bf"
+};
 const PREVIEW_ASSIGNEE = {
   id: "preview-member",
   name: "Squad Produto",
@@ -46,19 +91,25 @@ const PREVIEW_ASSIGNEE = {
   color: "#b8dafd"
 };
 const PREVIEW_DUE_DATE = "2026-04-26";
-
-type LayoutScope = "card" | "detail";
-type DetailZone = "main" | "side";
+const PREVIEW_DATETIME = "2026-04-28T14:20:00.000Z";
+const PREVIEW_SCHEDULE = {
+  plannedStartAt: "2026-04-24T09:00:00.000Z",
+  plannedEndAt: "2026-04-26T18:00:00.000Z"
+};
+const PREVIEW_CHECKLIST = {
+  items: [
+    { id: "check-1", label: "Mapear friccoes do fluxo", done: true },
+    { id: "check-2", label: "Revisar copy dos CTAs", done: true },
+    { id: "check-3", label: "Ajustar validacoes do formulario", done: true },
+    { id: "check-4", label: "Validar eventos de conversao", done: false },
+    { id: "check-5", label: "Publicar experimento", done: false }
+  ]
+};
 
 interface FieldOptionDraft {
   id: string;
   label: string;
   value: string;
-}
-
-interface LayoutDraft {
-  card: string[];
-  detail: string[];
 }
 
 interface TypeDraft {
@@ -68,6 +119,7 @@ interface TypeDraft {
 
 interface FieldDraft {
   id: string;
+  runtimeFieldId: string;
   name: string;
   type: CustomFieldType;
   required: boolean;
@@ -80,6 +132,7 @@ interface PendingFieldSetup {
   targetScope: LayoutScope;
   targetIndex: number;
   targetDetailZone?: DetailZone;
+  dropTarget?: EditorDropTarget | null;
   name: string;
   required: boolean;
   allowAiGeneration: boolean;
@@ -96,25 +149,6 @@ interface FieldLibraryItem extends TaskFieldDefinition {
   allowAiGeneration: boolean;
 }
 
-function mapCustomFieldTypeToTaskFieldType(type: CustomFieldType): TaskFieldDefinition["type"] {
-  return type;
-}
-
-function toTaskFieldDefinition(field: ApiCustomField): TaskFieldDefinition {
-  const type = mapCustomFieldTypeToTaskFieldType(field.type as CustomFieldType);
-
-  return {
-    id: field.id,
-    label: field.name,
-    type,
-    source: "custom",
-    options: field.options.map((option) => option.label),
-    capabilities: {
-      ...inferCapabilitiesByType(type),
-      ...(readAllowAiGeneration(field.settings) ? { aiEnhance: true } : {})
-    }
-  };
-}
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
@@ -127,38 +161,6 @@ function sanitizeFieldIds(values: string[], allowedFieldIds?: Set<string>): stri
         .filter((v) => v.length > 0 && (!allowedFieldIds || allowedFieldIds.has(v)))
     )
   );
-}
-
-function sanitizeFieldMapByType(
-  input: Record<string, string[]>,
-  allowedFieldIds?: Set<string>
-): Record<string, string[]> {
-  return Object.entries(input).reduce<Record<string, string[]>>((acc, [slug, ids]) => {
-    const s = slug.trim();
-    if (!s) return acc;
-    acc[s] = sanitizeFieldIds(Array.isArray(ids) ? ids : [], allowedFieldIds);
-    return acc;
-  }, {});
-}
-
-function sanitizeDetailZoneMapByType(
-  input: Record<string, Record<string, DetailZone>>,
-  allowedFieldIds?: Set<string>
-): Record<string, Record<string, DetailZone>> {
-  return Object.entries(input).reduce<Record<string, Record<string, DetailZone>>>((acc, [slug, map]) => {
-    const s = slug.trim();
-    if (!s || !map || typeof map !== "object" || Array.isArray(map)) return acc;
-
-    const nextMap = Object.entries(map).reduce<Record<string, DetailZone>>((memo, [fieldId, zone]) => {
-      const normalizedFieldId = fieldId.trim();
-      if (!normalizedFieldId || (allowedFieldIds && !allowedFieldIds.has(normalizedFieldId))) return memo;
-      memo[normalizedFieldId] = zone === "main" ? "main" : "side";
-      return memo;
-    }, {});
-
-    acc[s] = nextMap;
-    return acc;
-  }, {});
 }
 
 function areSameOrderedIds(a: string[], b: string[]): boolean {
@@ -227,86 +229,183 @@ function createEmptyOptionDraft(index: number): FieldOptionDraft {
   return { id: `new-opt-${Date.now()}-${index}`, label: "", value: "" };
 }
 
+function getPreviewOptionLabels(field: TaskFieldDefinition): string[] {
+  return (field.options ?? []).map((option) => option.label).filter(Boolean);
+}
+
 function getPreviewValue(field: TaskFieldDefinition): string {
-  const sys: Record<string, string> = {
-    "sys:type": "Growth",
-    "sys:priority": "Alta",
-    "sys:status": "Em validacao",
-    "sys:title": "Refinar experiencia do checkout",
-    "sys:description": "Ajustar fluxo, copy e validacoes...",
-    "sys:created-by": "Marina Costa",
-    "sys:assignee": "Squad Produto",
-    "sys:tags": "ux, receita, q2",
-    "sys:checklist": "3 / 5 concluidos",
-    "sys:schedule": "24/04 - 26/04",
-    "sys:due-date": "26/04/2026"
-  };
-  if (sys[field.id]) return sys[field.id];
+  const identity = `${field.id} ${field.slug ?? ""} ${field.label}`.toLowerCase();
+  if ((field.type === "text" || field.type === "number") && (/\bid\b/.test(identity) || identity.includes("codigo") || identity.includes("identificador"))) {
+    return PREVIEW_CARD_IDENTIFIER;
+  }
+  if (field.type === "work_item_type") return "Growth";
+  if (field.type === "priority") return "Alta";
+  if (field.type === "status") return "Em validacao";
+  if (field.type === "text") return PREVIEW_CARD_TITLE;
+  if (field.type === "long_text") return PREVIEW_CARD_DESCRIPTION;
+  if (field.type === "user") return PREVIEW_ASSIGNEE.name;
+  if (field.type === "tag") return PREVIEW_CARD_TAGS.join(", ");
   if (field.type === "boolean") return "Ativado";
   if (field.type === "number") return "42";
   if (field.type === "date") return "28/04/2026";
   if (field.type === "datetime") return "28/04 14:20";
   if (field.type === "schedule") return "24/04 09:00 -> 26/04 18:00";
-  if (field.type === "select" || field.type === "multi_select" || field.type === "multi-select") {
-    return field.options?.slice(0, 2).join(", ") || "Opcao A";
+  if (field.type === "select" || field.type === "multi_select") {
+    return getPreviewOptionLabels(field).slice(0, 2).join(", ") || "Opcao A";
   }
+  if (field.type === "checklist") return "3 / 5 concluidos";
   return "Valor de exemplo";
 }
 
-function getPreviewCustomFieldValue(field: TaskFieldDefinition): TaskCustomFieldValue {
+function getPreviewSampleFieldValue(input: {
+  field: TaskFieldDefinition;
+  typeId: string;
+  statusId: string;
+  priority: 0 | 1 | 2 | 3 | 4;
+}): TaskCustomFieldValue {
+  const { field, typeId, statusId, priority } = input;
+  const identity = `${field.id} ${field.slug ?? ""} ${field.label}`.toLowerCase();
+
+  if ((field.type === "text" || field.type === "number") && (/\bid\b/.test(identity) || identity.includes("codigo") || identity.includes("identificador"))) {
+    return PREVIEW_CARD_IDENTIFIER;
+  }
+  if (field.type === "work_item_type") return typeId;
+  if (field.type === "priority") return priority;
+  if (field.type === "status") return statusId;
   if (field.type === "boolean") return true;
   if (field.type === "number") return 42;
-  if (field.type === "date") return "2026-04-28";
-  if (field.type === "datetime") return "2026-04-28 14:20";
-  if (field.type === "schedule") return "2026-04-24 09:00 -> 2026-04-26 18:00";
-  if (field.type === "select") return field.options?.[0] ?? "Opcao A";
-  if (field.type === "multi_select" || field.type === "multi-select") {
-    const options = field.options?.slice(0, 2).filter(Boolean) ?? [];
+  if (field.type === "date") return PREVIEW_DUE_DATE;
+  if (field.type === "datetime") return PREVIEW_DATETIME;
+  if (field.type === "user") return PREVIEW_ASSIGNEE.id;
+  if (field.type === "tag") return PREVIEW_CARD_TAGS;
+  if (field.type === "schedule") return PREVIEW_SCHEDULE;
+  if (field.type === "checklist") return PREVIEW_CHECKLIST;
+  if (field.type === "select") return field.options?.[0]?.value ?? "Opcao A";
+  if (field.type === "multi_select") {
+    const options = field.options?.slice(0, 2).map((option) => option.value).filter(Boolean) ?? [];
     return options.length > 0 ? options : ["Opcao A", "Opcao B"];
   }
-  return "Valor de exemplo";
+  return field.type === "long_text" ? PREVIEW_CARD_DESCRIPTION : "Valor de exemplo";
 }
 
-function renderPreviewFieldValueByType(field: TaskFieldDefinition): ReactNode {
-  const normalizedType = field.type === "multi-select" ? "multi_select" : field.type;
-
-  if (normalizedType === "text_ai" || normalizedType === "long_text") {
-    return <p className="workitem-editor-v2__detail-preview-copy">{getPreviewValue(field)}</p>;
+function buildPreviewTask(input: {
+  fields: TaskFieldDefinition[];
+  typeId: string;
+  statusId: string;
+  sourceTask?: Task | null;
+}): Task {
+  const sourceTask = input.sourceTask ?? null;
+  if (sourceTask) {
+    return {
+      ...sourceTask,
+      linkedDocuments: [...(sourceTask.linkedDocuments ?? [])],
+      tags: [...sourceTask.tags],
+      checklist: { items: sourceTask.checklist.items.map((item) => ({ ...item })) },
+      customFields: { ...(sourceTask.customFields ?? {}) }
+    };
   }
 
-  if (normalizedType === "multi_select") {
-    const values = String(getPreviewValue(field))
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
+  const previewTask: Task = {
+    id: "preview-work-item",
+    title: PREVIEW_CARD_TITLE,
+    text: PREVIEW_CARD_DESCRIPTION,
+    createdById: PREVIEW_CREATED_BY.id,
+    type: input.typeId,
+    status: input.statusId,
+    position: 0,
+    priority: 2,
+    tags: [...PREVIEW_CARD_TAGS],
+    assignee: PREVIEW_ASSIGNEE.id,
+    checklist: { items: PREVIEW_CHECKLIST.items.map((item) => ({ ...item })) },
+    due: PREVIEW_DUE_DATE,
+    plannedStartAt: PREVIEW_SCHEDULE.plannedStartAt,
+    plannedEndAt: PREVIEW_SCHEDULE.plannedEndAt,
+    linkedDocuments: [],
+    customFields: {}
+  };
 
+  input.fields.forEach((field) => {
+    const currentValue = resolveTaskFieldValue(previewTask, field);
+    if (!isTaskFieldValueEmpty(field, currentValue)) return;
+
+    const sampleValue = getPreviewSampleFieldValue({
+      field,
+      typeId: input.typeId,
+      statusId: previewTask.status,
+      priority: previewTask.priority
+    });
+
+    if (isTaskFieldValueEmpty(field, sampleValue)) return;
+
+    const storage = readTaskFieldStorage(field);
+    const kind = typeof storage?.kind === "string" ? storage.kind : "";
+    const property = typeof storage?.property === "string" ? storage.property : "";
+
+    if (kind === "item_property") {
+      switch (property) {
+        case "title": previewTask.title = typeof sampleValue === "string" ? sampleValue : PREVIEW_CARD_TITLE; return;
+        case "description": previewTask.text = typeof sampleValue === "string" ? sampleValue : PREVIEW_CARD_DESCRIPTION; return;
+        case "typeSlug": previewTask.type = typeof sampleValue === "string" ? sampleValue : input.typeId; return;
+        case "stateSlug": previewTask.status = typeof sampleValue === "string" ? sampleValue : input.statusId; return;
+        case "assigneeId": previewTask.assignee = typeof sampleValue === "string" ? sampleValue : PREVIEW_ASSIGNEE.id; return;
+        case "dueDate": previewTask.due = typeof sampleValue === "string" ? sampleValue : PREVIEW_DUE_DATE; return;
+        case "createdBy": previewTask.createdById = typeof sampleValue === "string" ? sampleValue : PREVIEW_CREATED_BY.id; return;
+        case "checklist":
+          if (sampleValue && typeof sampleValue === "object" && "items" in sampleValue) {
+            previewTask.checklist = sampleValue as Task["checklist"];
+          }
+          return;
+        default: break;
+      }
+    }
+
+    if (kind === "metadata" && property === "priority") {
+      previewTask.priority = typeof sampleValue === "number" ? (sampleValue as Task["priority"]) : previewTask.priority;
+      return;
+    }
+
+    if (kind === "item_relation" && property === "tags") {
+      previewTask.tags = Array.isArray(sampleValue) ? sampleValue.map((value) => String(value)) : [...PREVIEW_CARD_TAGS];
+      return;
+    }
+
+    if (kind === "legacy_fields" && property === "schedule" && sampleValue && typeof sampleValue === "object" && !Array.isArray(sampleValue)) {
+      const schedule = sampleValue as Record<string, unknown>;
+      previewTask.plannedStartAt = typeof schedule.plannedStartAt === "string" ? schedule.plannedStartAt : previewTask.plannedStartAt;
+      previewTask.plannedEndAt = typeof schedule.plannedEndAt === "string" ? schedule.plannedEndAt : previewTask.plannedEndAt;
+      return;
+    }
+
+    previewTask.customFields[field.id] = sampleValue;
+    if (field.slug && field.slug !== field.id) previewTask.customFields[field.slug] = sampleValue;
+  });
+
+  return previewTask;
+}
+
+function renderPreviewFieldValue(field: TaskFieldDefinition): ReactNode {
+  if (field.type === "long_text") {
+    return <p className="wie__detail-preview-copy">{getPreviewValue(field)}</p>;
+  }
+  if (field.type === "multi_select" || field.type === "tag") {
+    const values = String(getPreviewValue(field)).split(",").map((v) => v.trim()).filter(Boolean);
     return (
-      <div className="workitem-editor-v2__detail-preview-pills">
-        {values.map((value) => (
-          <span key={value} className="workitem-editor-v2__detail-preview-pill">{value}</span>
-        ))}
+      <div className="wie__detail-preview-pills">
+        {values.map((v) => <span key={v} className="wie__detail-preview-pill">{v}</span>)}
       </div>
     );
   }
-
-  if (normalizedType === "checklist") {
+  if (field.type === "checklist") {
     return (
-      <div className="workitem-editor-v2__detail-preview-checklist">
-        <span className="workitem-editor-v2__detail-preview-progress">3 de 5 concluidos</span>
-        <div className="workitem-editor-v2__detail-preview-progressbar"><i /></div>
+      <div className="wie__detail-preview-checklist">
+        <span className="wie__detail-preview-progress">3 de 5 concluidos</span>
+        <div className="wie__detail-preview-progressbar"><i /></div>
       </div>
     );
   }
-
-  if (normalizedType === "boolean") {
-    return <div className="workitem-editor-v2__detail-preview-input">Ativado</div>;
-  }
-
-  if (normalizedType === "schedule") {
-    return <div className="workitem-editor-v2__detail-preview-input">{"24/04 09:00 -> 26/04 18:00"}</div>;
-  }
-
-  return <div className="workitem-editor-v2__detail-preview-input">{getPreviewValue(field)}</div>;
+  if (field.type === "boolean") return <div className="wie__detail-preview-input">Ativado</div>;
+  if (field.type === "schedule") return <div className="wie__detail-preview-input">24/04 09:00 → 26/04 18:00</div>;
+  return <div className="wie__detail-preview-input">{getPreviewValue(field)}</div>;
 }
 
 function removeFieldFromScope(draft: LayoutDraft, scope: LayoutScope, fieldId: string): LayoutDraft {
@@ -315,114 +414,14 @@ function removeFieldFromScope(draft: LayoutDraft, scope: LayoutScope, fieldId: s
     : { ...draft, detail: draft.detail.filter((id) => id !== fieldId) };
 }
 
-function moveFieldInLayout(
-  draft: LayoutDraft,
-  payload: { fieldId: string; origin: "library" | "card" | "detail" },
-  targetScope: LayoutScope,
-  targetIndex: number,
-  allowedFieldIds: Set<string>
-): LayoutDraft {
-  if (!allowedFieldIds.has(payload.fieldId)) return draft;
-
-  const nextCard = [...draft.card];
-  const nextDetail = [...draft.detail];
-
-  if (payload.origin === "card") {
-    const i = nextCard.indexOf(payload.fieldId);
-    if (i >= 0) nextCard.splice(i, 1);
-  }
-  if (payload.origin === "detail") {
-    const i = nextDetail.indexOf(payload.fieldId);
-    if (i >= 0) nextDetail.splice(i, 1);
-  }
-
-  const list = targetScope === "card" ? nextCard : nextDetail;
-  const cur = list.indexOf(payload.fieldId);
-  if (cur >= 0) list.splice(cur, 1);
-  list.splice(Math.max(0, Math.min(targetIndex, list.length)), 0, payload.fieldId);
-
-  return {
-    card: sanitizeFieldIds(nextCard, allowedFieldIds),
-    detail: sanitizeFieldIds(nextDetail, allowedFieldIds)
-  };
-}
-
-function computeDropIndex(
-  event: DragEvent<HTMLElement>,
-  draggingFieldId: string | null,
-  scope: LayoutScope
-): number {
-  const items = Array.from(
-    event.currentTarget.querySelectorAll<HTMLElement>(`[data-workitem-slot="${scope}"]`)
-  ).filter((el) => !draggingFieldId || el.dataset.fieldId !== draggingFieldId);
-
-  for (let i = 0; i < items.length; i++) {
-    const rect = items[i].getBoundingClientRect();
-    if (event.clientY < rect.top + rect.height / 2) return i;
-  }
-  return items.length;
-}
-
 function addFieldIdToList(ids: string[], fieldId: string, index: number): string[] {
   const filtered = ids.filter((id) => id !== fieldId);
   filtered.splice(Math.max(0, Math.min(index, filtered.length)), 0, fieldId);
   return Array.from(new Set(filtered));
 }
 
-function getDefaultDetailZone(fieldId: string): DetailZone {
-  if (
-    fieldId === "sys:title" ||
-    fieldId === "sys:description" ||
-    fieldId === "sys:priority" ||
-    fieldId === "sys:checklist"
-  ) {
-    return "main";
-  }
-
-  return "side";
-}
-
-function computeDropIndexForSelector(
-  event: DragEvent<HTMLElement>,
-  selector: string,
-  draggingFieldId: string | null
-): number {
-  const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(selector)).filter(
-    (el) => !draggingFieldId || el.dataset.fieldId !== draggingFieldId
-  );
-
-  for (let i = 0; i < items.length; i += 1) {
-    const rect = items[i].getBoundingClientRect();
-    if (event.clientY < rect.top + rect.height / 2) return i;
-  }
-
-  return items.length;
-}
-
-function resolveDetailInsertIndex(
-  orderedFieldIds: string[],
-  detailZones: Record<string, DetailZone>,
-  zone: DetailZone,
-  zoneIndex: number,
-  draggingFieldId?: string
-): number {
-  const filteredOrder = draggingFieldId ? orderedFieldIds.filter((fieldId) => fieldId !== draggingFieldId) : orderedFieldIds;
-  const zoneFieldIds = filteredOrder.filter((fieldId) => (detailZones[fieldId] ?? getDefaultDetailZone(fieldId)) === zone);
-
-  if (zoneFieldIds.length === 0) {
-    return zone === "main" ? 0 : filteredOrder.length;
-  }
-
-  if (zoneIndex <= 0) {
-    return filteredOrder.indexOf(zoneFieldIds[0]);
-  }
-
-  if (zoneIndex >= zoneFieldIds.length) {
-    const lastZoneFieldId = zoneFieldIds[zoneFieldIds.length - 1];
-    return filteredOrder.indexOf(lastZoneFieldId) + 1;
-  }
-
-  return filteredOrder.indexOf(zoneFieldIds[zoneIndex]);
+function getDefaultDetailZone(field: TaskFieldDefinition | undefined): DetailZone {
+  return field ? resolveTaskFieldDetailZone(field) : "side";
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -430,6 +429,8 @@ function resolveDetailInsertIndex(
 export function WorkItemEditorSettings() {
   const {
     snapshot,
+    fetchBoardColumns,
+    fetchWorkflowStates,
     fetchItemTypes,
     fetchCustomFields,
     createItemType,
@@ -438,6 +439,7 @@ export function WorkItemEditorSettings() {
     createCustomField,
     updateCustomField,
     deleteCustomField,
+    replaceItemTypeFieldBindings,
     updatePreferences
   } = useWorkspace();
 
@@ -455,54 +457,64 @@ export function WorkItemEditorSettings() {
   const fieldCapabilitiesById = useMemo(() => readFieldCapabilitiesById(settings), [settings]);
   const allowedFieldIds = useMemo(() => new Set(allFields.map((f) => f.id)), [allFields]);
 
-  const persistedVisibleFieldsByType = useMemo(
-    () => sanitizeFieldMapByType(snapshot?.preferences.visibleFieldsByType ?? {}, allowedFieldIds),
-    [allowedFieldIds, snapshot?.preferences.visibleFieldsByType]
-  );
-  const persistedDetailFieldsByType = useMemo(
-    () => sanitizeFieldMapByType(snapshot?.preferences.detailVisibleFieldsByType ?? {}, allowedFieldIds),
-    [allowedFieldIds, snapshot?.preferences.detailVisibleFieldsByType]
-  );
-  const persistedDetailZonesByType = useMemo(
-    () =>
-      sanitizeDetailZoneMapByType(
-        ((settings.detailFieldZoneByType as Record<string, Record<string, DetailZone>> | undefined) ?? {}),
-        allowedFieldIds
-      ),
-    [allowedFieldIds, settings.detailFieldZoneByType]
-  );
-
+  // ── Data state ──────────────────────────────────────────────────────────
   const [itemTypes, setItemTypes] = useState<ApiItemType[]>([]);
   const [customFields, setCustomFields] = useState<ApiCustomField[]>([]);
+  const [boardColumns, setBoardColumns] = useState<ApiBoardColumn[]>([]);
+  const [workflowStates, setWorkflowStates] = useState<ApiWorkflowState[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ── Type navigation ──────────────────────────────────────────────────────
   const [activeTypeSlug, setActiveTypeSlug] = useState("");
+
+  // ── Layout drafts ────────────────────────────────────────────────────────
   const [layoutDraftsByTypeSlug, setLayoutDraftsByTypeSlug] = useState<Record<string, LayoutDraft>>({});
   const [detailZoneDraftsByTypeSlug, setDetailZoneDraftsByTypeSlug] = useState<Record<string, Record<string, DetailZone>>>({});
+  const [cardAreaDraftsByTypeSlug, setCardAreaDraftsByTypeSlug] = useState<Record<string, Record<string, TaskFieldCardArea>>>({});
   const [savingLayout, setSavingLayout] = useState(false);
   const [layoutMessage, setLayoutMessage] = useState("");
+
+  // ── Type composer ────────────────────────────────────────────────────────
   const [typeComposer, setTypeComposer] = useState<TypeDraft | null>(null);
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [typeSaving, setTypeSaving] = useState(false);
   const [typeDeletingId, setTypeDeletingId] = useState<string | null>(null);
+
+  // ── Field panels ─────────────────────────────────────────────────────────
   const [fieldDraft, setFieldDraft] = useState<FieldDraft | null>(null);
   const [pendingFieldSetup, setPendingFieldSetup] = useState<PendingFieldSetup | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
   const [fieldDeletingId, setFieldDeletingId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState("");
-  const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ scope: LayoutScope; index: number } | null>(null);
-  const [activePreviewTab, setActivePreviewTab] = useState<"card" | "detail">("card");
 
+  // ── Canvas interaction ───────────────────────────────────────────────────
+  const [activeCanvasTab, setActiveCanvasTab] = useState<"card" | "detail">("card");
+  const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
+  const [dropTarget, setDropTarget] = useState<EditorDropTarget | null>(null);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [previewCardDebug, setPreviewCardDebug] = useState<TaskCardDebugSnapshot | null>(null);
+
+  // ── Library filter ───────────────────────────────────────────────────────
+  const [librarySearch, setLibrarySearch] = useState("");
+
+  // ── Load ─────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextTypes, nextFields] = await Promise.all([fetchItemTypes(), fetchCustomFields()]);
+      const [nextTypes, nextFields, nextBoardColumns, nextWorkflowStates] = await Promise.all([
+        fetchItemTypes(),
+        fetchCustomFields(),
+        fetchBoardColumns(),
+        fetchWorkflowStates()
+      ]);
       setItemTypes(nextTypes);
       setCustomFields(nextFields);
+      setBoardColumns(nextBoardColumns.filter((c) => c.isActive).sort((a, b) => a.order - b.order));
+      setWorkflowStates(nextWorkflowStates.filter((s) => s.isActive));
     } finally {
       setLoading(false);
     }
-  }, [fetchCustomFields, fetchItemTypes]);
+  }, [fetchBoardColumns, fetchCustomFields, fetchItemTypes, fetchWorkflowStates]);
 
   useEffect(() => { void loadData(); }, [loadData]);
 
@@ -520,28 +532,34 @@ export function WorkItemEditorSettings() {
     [activeItemTypes, activeTypeSlug]
   );
 
-  const customFieldById = useMemo(
-    () => customFields.reduce<Record<string, ApiCustomField>>((acc, f) => { acc[f.id] = f; return acc; }, {}),
+  const customFieldByRuntimeId = useMemo(
+    () =>
+      customFields.reduce<Record<string, ApiCustomField>>((acc, field) => {
+        acc[field.id] = field;
+        acc[field.slug] = field;
+        if (field.definitionId) acc[field.definitionId] = field;
+        return acc;
+      }, {}),
     [customFields]
   );
 
   const libraryFields = useMemo<FieldLibraryItem[]>(
     () =>
       allFields.map((field) => {
-        const cf = customFieldById[field.id];
+        const cf = customFieldByRuntimeId[field.id] ?? (field.definitionId ? customFieldByRuntimeId[field.definitionId] : undefined);
         const explicit = fieldCapabilitiesById[field.id]?.aiEnhance;
         const allowAiGeneration =
           typeof explicit === "boolean"
             ? explicit
-            : field.capabilities?.aiEnhance === true || field.type === "text_ai" || readAllowAiGeneration(cf?.settings);
+            : field.capabilities?.aiEnhance === true || readAllowAiGeneration(cf?.settings);
         return {
           ...field,
           optionsCount: cf?.options.length ?? field.options?.length ?? 0,
-          required: cf?.required ?? false,
+          required: cf?.required ?? field.required ?? false,
           allowAiGeneration
         };
       }),
-    [allFields, customFieldById, fieldCapabilitiesById]
+    [allFields, customFieldByRuntimeId, fieldCapabilitiesById]
   );
 
   const fieldsById = useMemo(
@@ -549,33 +567,93 @@ export function WorkItemEditorSettings() {
     [libraryFields]
   );
 
+  const persistedDetailZonesByType = useMemo(
+    () =>
+      activeItemTypes.reduce<Record<string, Record<string, DetailZone>>>((acc, itemType) => {
+        acc[itemType.slug] = Object.fromEntries(
+          resolveWorkItemFieldBindings(boardConfig, itemType.slug, "detail").map((binding) => [binding.field.id, binding.zone])
+        );
+        return acc;
+      }, {}),
+    [activeItemTypes, boardConfig]
+  );
+
+  const persistedCardAreasByType = useMemo(
+    () =>
+      activeItemTypes.reduce<Record<string, Record<string, TaskFieldCardArea>>>((acc, itemType) => {
+        acc[itemType.slug] = Object.fromEntries(
+          resolveWorkItemFieldBindings(boardConfig, itemType.slug, "card").map((binding) => [binding.field.id, binding.cardArea])
+        );
+        return acc;
+      }, {}),
+    [activeItemTypes, boardConfig]
+  );
+
   const getEffectiveLayout = useCallback(
     (typeSlug: string): LayoutDraft => ({
-      card: resolveFieldIdsForTaskType(typeSlug, persistedVisibleFieldsByType, boardConfig.cardLayout.visibleFieldIds),
-      detail: resolveFieldIdsForTaskType(
-        typeSlug,
-        persistedDetailFieldsByType,
-        resolveFieldIdsForTaskType(typeSlug, persistedVisibleFieldsByType, boardConfig.cardLayout.visibleFieldIds)
-      )
+      card: resolveWorkItemFieldBindings(boardConfig, typeSlug, "card").map((binding) => binding.field.id),
+      detail: resolveWorkItemFieldBindings(boardConfig, typeSlug, "detail").map((binding) => binding.field.id)
     }),
-    [boardConfig.cardLayout.visibleFieldIds, persistedDetailFieldsByType, persistedVisibleFieldsByType]
+    [boardConfig]
   );
 
   const activeLayout = activeType
     ? layoutDraftsByTypeSlug[activeType.slug] ?? getEffectiveLayout(activeType.slug)
     : { card: [], detail: [] };
+
   const activeDetailZones = activeType
     ? {
-        ...Object.fromEntries(activeLayout.detail.map((fieldId) => [fieldId, getDefaultDetailZone(fieldId)])),
+        ...Object.fromEntries(activeLayout.detail.map((fieldId) => [fieldId, getDefaultDetailZone(fieldsById[fieldId])])),
         ...(persistedDetailZonesByType[activeType.slug] ?? {}),
         ...(detailZoneDraftsByTypeSlug[activeType.slug] ?? {})
       }
     : {};
 
+  const activeCardAreaDrafts = activeType ? (cardAreaDraftsByTypeSlug[activeType.slug] ?? {}) : {};
+  const activeCardAreasByFieldId = useMemo(
+    () =>
+      Object.fromEntries(
+        activeLayout.card.map((fieldId) => [
+          fieldId,
+          activeCardAreaDrafts[fieldId] ??
+            persistedCardAreasByType[activeType?.slug ?? ""]?.[fieldId] ??
+            (fieldsById[fieldId] ? resolveTaskFieldCardArea(fieldsById[fieldId]) : "custom-field")
+        ])
+      ) as Record<string, TaskFieldCardArea>,
+    [activeCardAreaDrafts, activeLayout.card, activeType?.slug, fieldsById, persistedCardAreasByType]
+  );
+
+  const cardFieldSet = useMemo(() => new Set(activeLayout.card), [activeLayout.card]);
+  const detailFieldSet = useMemo(() => new Set(activeLayout.detail), [activeLayout.detail]);
+
   const cardFields = activeLayout.card.map((id) => fieldsById[id]).filter((f): f is FieldLibraryItem => Boolean(f));
   const detailFields = activeLayout.detail.map((id) => fieldsById[id]).filter((f): f is FieldLibraryItem => Boolean(f));
-  const detailMainFields = detailFields.filter((field) => activeDetailZones[field.id] === "main");
-  const detailSideFields = detailFields.filter((field) => activeDetailZones[field.id] !== "main");
+  const detailMainFields = detailFields.filter((f) => activeDetailZones[f.id] === "main");
+  const detailSideFields = detailFields.filter((f) => activeDetailZones[f.id] !== "main");
+
+  // Library grouping by usage
+  const filteredLibraryFields = useMemo(() => {
+    if (!librarySearch.trim()) return libraryFields;
+    const q = librarySearch.trim().toLowerCase();
+    return libraryFields.filter((f) => f.label.toLowerCase().includes(q) || getTaskFieldTypeLabel(f).toLowerCase().includes(q));
+  }, [libraryFields, librarySearch]);
+
+  const libraryFieldsInBoth = useMemo(
+    () => filteredLibraryFields.filter((f) => cardFieldSet.has(f.id) && detailFieldSet.has(f.id)),
+    [filteredLibraryFields, cardFieldSet, detailFieldSet]
+  );
+  const libraryFieldsInCardOnly = useMemo(
+    () => filteredLibraryFields.filter((f) => cardFieldSet.has(f.id) && !detailFieldSet.has(f.id)),
+    [filteredLibraryFields, cardFieldSet, detailFieldSet]
+  );
+  const libraryFieldsInDetailOnly = useMemo(
+    () => filteredLibraryFields.filter((f) => !cardFieldSet.has(f.id) && detailFieldSet.has(f.id)),
+    [filteredLibraryFields, cardFieldSet, detailFieldSet]
+  );
+  const libraryFieldsUnused = useMemo(
+    () => filteredLibraryFields.filter((f) => !cardFieldSet.has(f.id) && !detailFieldSet.has(f.id)),
+    [filteredLibraryFields, cardFieldSet, detailFieldSet]
+  );
 
   const hasUnsavedLayout = Boolean(
     activeType &&
@@ -585,10 +663,13 @@ export function WorkItemEditorSettings() {
             !areSameOrderedIds(activeLayout.detail, getEffectiveLayout(activeType.slug).detail))) ||
         (detailZoneDraftsByTypeSlug[activeType.slug] &&
           JSON.stringify(detailZoneDraftsByTypeSlug[activeType.slug]) !==
-            JSON.stringify(persistedDetailZonesByType[activeType.slug] ?? {}))
+            JSON.stringify(persistedDetailZonesByType[activeType.slug] ?? {})) ||
+        (cardAreaDraftsByTypeSlug[activeType.slug] &&
+          Object.keys(cardAreaDraftsByTypeSlug[activeType.slug]).length > 0)
       )
   );
 
+  // ── Layout handlers ───────────────────────────────────────────────────────
   const handleUpdateLayout = useCallback(
     (typeSlug: string, next: LayoutDraft) => {
       setLayoutMessage("");
@@ -608,6 +689,82 @@ export function WorkItemEditorSettings() {
     setDetailZoneDraftsByTypeSlug((cur) => ({ ...cur, [typeSlug]: next }));
   }, []);
 
+  const handleAddFieldToLayout = useCallback(
+    (fieldId: string, scope: LayoutScope) => {
+      if (!activeType) return;
+      const next: LayoutDraft = scope === "card"
+        ? { ...activeLayout, card: [...activeLayout.card.filter((id) => id !== fieldId), fieldId] }
+        : { ...activeLayout, detail: [...activeLayout.detail.filter((id) => id !== fieldId), fieldId] };
+      handleUpdateLayout(activeType.slug, next);
+      setSelectedFieldId(fieldId);
+      setActiveCanvasTab(scope);
+    },
+    [activeLayout, activeType, handleUpdateLayout]
+  );
+
+  const handleRemoveFromLayout = useCallback(
+    (fieldId: string, scope: LayoutScope) => {
+      if (!activeType) return;
+      handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, scope, fieldId));
+    },
+    [activeLayout, activeType, handleUpdateLayout]
+  );
+
+  const handleSetDetailZoneForField = useCallback(
+    (fieldId: string, zone: DetailZone) => {
+      if (!activeType) return;
+      handleUpdateDetailZones(activeType.slug, { ...activeDetailZones, [fieldId]: zone });
+    },
+    [activeDetailZones, activeType, handleUpdateDetailZones]
+  );
+
+  const handleSyncCardAreaDraft = useCallback(
+    (typeSlug: string, fieldId: string, nextArea: TaskFieldCardArea) => {
+      setLayoutMessage("");
+      setCardAreaDraftsByTypeSlug((cur) => {
+        const baselineArea =
+          persistedCardAreasByType[typeSlug]?.[fieldId] ??
+          (fieldsById[fieldId] ? resolveTaskFieldCardArea(fieldsById[fieldId]) : null);
+        const currentDrafts = { ...(cur[typeSlug] ?? {}) };
+
+        if (baselineArea && baselineArea === nextArea) {
+          delete currentDrafts[fieldId];
+        } else {
+          currentDrafts[fieldId] = nextArea;
+        }
+
+        if (Object.keys(currentDrafts).length === 0) {
+          if (!(typeSlug in cur)) {
+            return cur;
+          }
+
+          const next = { ...cur };
+          delete next[typeSlug];
+          return next;
+        }
+
+        return {
+          ...cur,
+          [typeSlug]: currentDrafts
+        };
+      });
+    },
+    [fieldsById, persistedCardAreasByType]
+  );
+
+  const handleSetCardAreaForField = useCallback(
+    (fieldId: string, area: TaskFieldCardArea) => {
+      if (!activeType) return;
+      handleSyncCardAreaDraft(activeType.slug, fieldId, area);
+    },
+    [activeType, handleSyncCardAreaDraft]
+  );
+
+  // ── Drag handlers ─────────────────────────────────────────────────────────
+  const updateDropTarget = useCallback((nextTarget: EditorDropTarget | null) => {
+    setDropTarget((current) => (isEditorDropTargetEqual(current, nextTarget) ? current : nextTarget));
+  }, []);
+
   const handleDragStartField = (event: DragEvent<HTMLElement>, fieldId: string, origin: "library" | "card" | "detail") => {
     setDragPayload({ kind: "field", fieldId, origin });
     event.dataTransfer.effectAllowed = "move";
@@ -622,139 +779,136 @@ export function WorkItemEditorSettings() {
 
   const handleDragEnd = () => {
     setDragPayload(null);
-    setDropTarget(null);
+    updateDropTarget(null);
   };
 
-  const applyDropAtIndex = useCallback(
-    (scope: LayoutScope, index: number) => {
+  const applyResolvedDropTarget = useCallback(
+    (target: EditorDropTarget) => {
       if (!activeType || !dragPayload) return;
 
       if (dragPayload.kind === "type") {
         setFieldError("");
         setFieldDraft(null);
+        setTypeComposer(null);
         setPendingFieldSetup({
           type: dragPayload.type,
-          targetScope: scope,
-          targetIndex: index,
-          targetDetailZone: scope === "detail" ? "side" : undefined,
+          targetScope: target.surface === "card" ? "card" : "detail",
+          targetIndex: target.surface === "card" ? activeLayout.card.length : activeLayout.detail.length,
+          targetDetailZone: target.surface === "detail" ? target.zone : undefined,
+          dropTarget: target,
           name: "",
           required: false,
           allowAiGeneration: false,
           options: []
         });
-        setDropTarget(null);
+        updateDropTarget(null);
         return;
       }
 
-      handleUpdateLayout(activeType.slug, moveFieldInLayout(activeLayout, dragPayload, scope, index, allowedFieldIds));
-      setDropTarget(null);
-    },
-    [activeLayout, activeType, allowedFieldIds, dragPayload, handleUpdateLayout]
-  );
-
-  const applyDropAtDetailZoneIndex = useCallback(
-    (zone: DetailZone, index: number) => {
-      if (!activeType || !dragPayload) return;
-
-      const nextDetailIndex = resolveDetailInsertIndex(
-        activeLayout.detail,
-        activeDetailZones,
-        zone,
-        index,
-        dragPayload.kind === "field" ? dragPayload.fieldId : undefined
-      );
-
-      if (dragPayload.kind === "type") {
-        setFieldError("");
-        setFieldDraft(null);
-        setPendingFieldSetup({
-          type: dragPayload.type,
-          targetScope: "detail",
-          targetIndex: nextDetailIndex,
-          targetDetailZone: zone,
-          name: "",
-          required: false,
-          allowAiGeneration: false,
-          options: []
-        });
-        setDropTarget(null);
-        return;
-      }
-
-      const fieldId = dragPayload.fieldId;
-      handleUpdateLayout(activeType.slug, moveFieldInLayout(activeLayout, dragPayload, "detail", nextDetailIndex, allowedFieldIds));
-      handleUpdateDetailZones(activeType.slug, {
-        ...activeDetailZones,
-        [fieldId]: zone
+      const nextDrop = applyFieldDrop({
+        draft: activeLayout,
+        payload: dragPayload,
+        target,
+        allowedFieldIds,
+        cardAreasByFieldId: activeCardAreasByFieldId,
+        detailZonesByFieldId: activeDetailZones
       });
-      setDropTarget(null);
+
+      handleUpdateLayout(activeType.slug, nextDrop.layout);
+
+      if (target.surface === "detail") {
+        handleUpdateDetailZones(activeType.slug, nextDrop.detailZonesByFieldId);
+      }
+
+      if (target.surface === "card") {
+        handleSyncCardAreaDraft(activeType.slug, dragPayload.fieldId, nextDrop.cardAreasByFieldId[dragPayload.fieldId]);
+      }
+
+      setSelectedFieldId(dragPayload.fieldId);
+      updateDropTarget(null);
     },
-    [activeDetailZones, activeLayout, activeType, allowedFieldIds, dragPayload, handleUpdateDetailZones, handleUpdateLayout]
+    [
+      activeDetailZones,
+      activeLayout,
+      activeType,
+      allowedFieldIds,
+      dragPayload,
+      handleSyncCardAreaDraft,
+      handleUpdateDetailZones,
+      handleUpdateLayout,
+      activeCardAreasByFieldId,
+      updateDropTarget
+    ]
   );
 
-  const handleDropIntoScope = (event: DragEvent<HTMLElement>, scope: LayoutScope) => {
-    event.preventDefault();
-    if (!dragPayload) return;
+  const handleDropOnTarget = useCallback(
+    (event: DragEvent<HTMLElement>, target: EditorDropTarget) => {
+      event.preventDefault();
+      event.stopPropagation();
+      applyResolvedDropTarget(target);
+    },
+    [applyResolvedDropTarget]
+  );
 
-    const index =
-      dropTarget?.scope === scope
-        ? dropTarget.index
-        : computeDropIndex(event, dragPayload.kind === "field" ? dragPayload.fieldId : null, scope);
+  const handlePreviewSurfaceDragOver = useCallback(
+    (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      if (!dragPayload) return;
+      event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
+    },
+    [dragPayload]
+  );
 
-    applyDropAtIndex(scope, index);
-  };
+  const makeSurfaceDragLeaveHandler = useCallback(
+    (surface: LayoutScope) => (event: DragEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null) && dropTarget?.surface === surface) {
+        updateDropTarget(null);
+      }
+    },
+    [dropTarget, updateDropTarget]
+  );
 
-  const makeDetailZoneDragOverHandler = (zone: DetailZone) => (event: DragEvent<HTMLElement>) => {
-    event.preventDefault();
-    if (!dragPayload) return;
-    setDropTarget({
-      scope: "detail",
-      index: computeDropIndexForSelector(
-        event,
-        `[data-workitem-slot="detail"][data-detail-zone="${zone}"]`,
-        dragPayload.kind === "field" ? dragPayload.fieldId : null
-      )
-    });
-  };
-
-  const makeDetailZoneDragLeaveHandler = (event: DragEvent<HTMLElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setDropTarget((cur) => (cur?.scope === "detail" ? null : cur));
-    }
-  };
-
+  // ── Save/discard ──────────────────────────────────────────────────────────
   const handleSaveLayout = async () => {
-    if (!activeType || !snapshot) return;
+    if (!activeType) return;
     setSavingLayout(true);
     setLayoutMessage("");
     try {
-      const nextDetailZones = sanitizeDetailZoneMapByType(
-        {
-          ...(persistedDetailZonesByType ?? {}),
-          [activeType.slug]: Object.fromEntries(
-            activeLayout.detail.map((fieldId) => [fieldId, activeDetailZones[fieldId] ?? getDefaultDetailZone(fieldId)])
-          )
-        },
-        allowedFieldIds
-      );
+      const savedCardAreaDrafts = cardAreaDraftsByTypeSlug[activeType.slug] ?? {};
+      const bindings = buildTaskFieldBindingsForType({
+        typeId: activeType.slug,
+        fieldDefinitions: allFields,
+        fieldBindings: boardConfig.fieldBindings,
+        cardFieldIds: activeLayout.card,
+        detailFieldIds: activeLayout.detail,
+        detailZonesByFieldId: activeDetailZones
+      })
+        .map((binding) => {
+          if (binding.displayContext === "card" && savedCardAreaDrafts[binding.fieldId]) {
+            binding = { ...binding, settings: { ...(binding.settings ?? {}), cardArea: savedCardAreaDrafts[binding.fieldId] } };
+          }
+          return binding;
+        })
+        .map((binding) => {
+          const field = fieldsById[binding.fieldId];
+          if (!field?.definitionId) return null;
+          return {
+            fieldDefinitionId: field.definitionId,
+            displayContext: binding.displayContext,
+            order: binding.order,
+            section: binding.section,
+            isVisible: binding.isVisible,
+            isRequiredOverride: binding.isRequiredOverride,
+            isReadonlyOverride: binding.isReadonlyOverride,
+            settings: (binding.settings ?? null) as Record<string, unknown> | null
+          };
+        })
+        .filter((binding): binding is NonNullable<typeof binding> => binding !== null);
 
-      await updatePreferences({
-        visibleFieldsByType: sanitizeFieldMapByType(
-          { ...(snapshot.preferences.visibleFieldsByType ?? {}), [activeType.slug]: activeLayout.card },
-          allowedFieldIds
-        ),
-        detailVisibleFieldsByType: sanitizeFieldMapByType(
-          { ...(snapshot.preferences.detailVisibleFieldsByType ?? {}), [activeType.slug]: activeLayout.detail },
-          allowedFieldIds
-        ),
-        settings: {
-          ...settings,
-          cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION,
-          detailFieldZoneByType: nextDetailZones
-        }
-      });
+      await replaceItemTypeFieldBindings(activeType.id, bindings);
       setLayoutDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
       setDetailZoneDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
+      setCardAreaDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
       setLayoutMessage("Layout salvo com sucesso.");
     } catch {
       setLayoutMessage("Nao foi possivel salvar agora.");
@@ -768,8 +922,10 @@ export function WorkItemEditorSettings() {
     setLayoutMessage("");
     setLayoutDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
     setDetailZoneDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
+    setCardAreaDraftsByTypeSlug((cur) => { const n = { ...cur }; delete n[activeType.slug]; return n; });
   };
 
+  // ── Type CRUD ─────────────────────────────────────────────────────────────
   const persistFieldCapabilities = useCallback(
     async (fieldId: string, aiEnhance: boolean) => {
       if (!snapshot) return;
@@ -806,6 +962,7 @@ export function WorkItemEditorSettings() {
     finally { setTypeDeletingId(null); }
   };
 
+  // ── Field CRUD ────────────────────────────────────────────────────────────
   const handleConfirmFieldSetup = async () => {
     if (!pendingFieldSetup?.name.trim() || !activeType) return;
 
@@ -835,20 +992,42 @@ export function WorkItemEditorSettings() {
         .sort((a, b) => (b.id > a.id ? 1 : -1))[0];
 
       if (newField) {
-        const { targetScope: sc, targetIndex: idx, targetDetailZone } = pendingFieldSetup;
-        setLayoutDraftsByTypeSlug((cur) => ({
-          ...cur,
-          [activeType.slug]: {
-            card: sc === "card" ? addFieldIdToList(activeLayout.card, newField.id, idx) : [...activeLayout.card],
-            detail: sc === "detail" ? addFieldIdToList(activeLayout.detail, newField.id, idx) : [...activeLayout.detail]
-          }
-        }));
-        if (sc === "detail") {
-          handleUpdateDetailZones(activeType.slug, {
-            ...activeDetailZones,
-            [newField.id]: targetDetailZone ?? "side"
+        const newFieldRuntimeId = newField.slug;
+        const { targetScope: sc, targetIndex: idx, targetDetailZone, dropTarget } = pendingFieldSetup;
+
+        if (dropTarget) {
+          const nextDrop = applyFieldDrop({
+            draft: activeLayout,
+            payload: { fieldId: newFieldRuntimeId, origin: "library" },
+            target: dropTarget,
+            allowedFieldIds: new Set([...allowedFieldIds, newFieldRuntimeId]),
+            cardAreasByFieldId: activeCardAreasByFieldId,
+            detailZonesByFieldId: activeDetailZones
           });
+
+          handleUpdateLayout(activeType.slug, nextDrop.layout);
+
+          if (dropTarget.surface === "detail") {
+            handleUpdateDetailZones(activeType.slug, nextDrop.detailZonesByFieldId);
+          }
+
+          if (dropTarget.surface === "card") {
+            handleSyncCardAreaDraft(activeType.slug, newFieldRuntimeId, nextDrop.cardAreasByFieldId[newFieldRuntimeId]);
+          }
+        } else {
+          setLayoutDraftsByTypeSlug((cur) => ({
+            ...cur,
+            [activeType.slug]: {
+              card: sc === "card" ? addFieldIdToList(activeLayout.card, newFieldRuntimeId, idx) : [...activeLayout.card],
+              detail: sc === "detail" ? addFieldIdToList(activeLayout.detail, newFieldRuntimeId, idx) : [...activeLayout.detail]
+            }
+          }));
+          if (sc === "detail") {
+            handleUpdateDetailZones(activeType.slug, { ...activeDetailZones, [newFieldRuntimeId]: targetDetailZone ?? "side" });
+          }
         }
+        setSelectedFieldId(newFieldRuntimeId);
+        setActiveCanvasTab(sc);
       }
       setPendingFieldSetup(null);
     } finally {
@@ -873,8 +1052,13 @@ export function WorkItemEditorSettings() {
         settings: { allowAiGeneration: supportsAiGeneration(fieldDraft.type) ? fieldDraft.allowAiGeneration : false },
         options: supportsSelectableOptions(fieldDraft.type) ? normalizedOptions : []
       });
-      await persistFieldCapabilities(fieldDraft.id, supportsAiGeneration(fieldDraft.type) && fieldDraft.allowAiGeneration);
+      await persistFieldCapabilities(
+        fieldDraft.runtimeFieldId,
+        supportsAiGeneration(fieldDraft.type) && fieldDraft.allowAiGeneration
+      );
+      const savedFieldId = fieldDraft.runtimeFieldId;
       setFieldDraft(null);
+      setSelectedFieldId(savedFieldId);
       await loadData();
     } finally {
       setFieldSaving(false);
@@ -886,131 +1070,22 @@ export function WorkItemEditorSettings() {
     try {
       await deleteCustomField(fieldId);
       if (fieldDraft?.id === fieldId) setFieldDraft(null);
+      if (selectedFieldId === fieldId) setSelectedFieldId(null);
       await loadData();
     } finally {
       setFieldDeletingId(null);
     }
   };
 
-  const isDraggingType = dragPayload?.kind === "type";
-  const isDragging = dragPayload !== null;
-  const activePendingTypeLabel = pendingFieldSetup
-    ? (FIELD_TYPE_OPTIONS.find((o) => o.value === pendingFieldSetup.type)?.label ?? pendingFieldSetup.type)
-    : null;
-  const typeColor = activeType?.color || DEFAULT_TYPE_COLOR;
-  const previewTypeId = activeType?.slug ?? boardConfig.taskTypes[0]?.id ?? "preview-type";
-  const previewTypeLabel = activeType?.name ?? boardConfig.taskTypes.find((type) => type.id === previewTypeId)?.label ?? "Tipo";
-  const previewTypeColor =
-    activeType?.color ?? boardConfig.taskTypes.find((type) => type.id === previewTypeId)?.text ?? DEFAULT_TYPE_COLOR;
-  const previewStatus = boardConfig.statuses[0] ?? { id: "preview-status", label: "Em validacao", dot: DEFAULT_TYPE_COLOR };
-
-  const previewTaskTypes = useMemo(() => {
-    const previewTypeMeta = {
-      id: previewTypeId,
-      label: previewTypeLabel,
-      background: `${previewTypeColor}1a`,
-      border: `${previewTypeColor}66`,
-      text: previewTypeColor
-    };
-
-    if (boardConfig.taskTypes.some((type) => type.id === previewTypeId)) {
-      return boardConfig.taskTypes.map((type) => (type.id === previewTypeId ? { ...type, ...previewTypeMeta } : type));
-    }
-
-    return [...boardConfig.taskTypes, previewTypeMeta];
-  }, [boardConfig.taskTypes, previewTypeColor, previewTypeId, previewTypeLabel]);
-
-  const previewBoardConfig = useMemo<BoardConfig>(
-    () => ({
-      ...boardConfig,
-      taskTypes: previewTaskTypes,
-      fieldDefinitions: allFields.map(({ id, label, type, options, source, capabilities }) => ({
-        id,
-        label,
-        type,
-        options,
-        source,
-        capabilities
-      })),
-      cardLayout: {
-        ...boardConfig.cardLayout,
-        visibleFieldIds: activeLayout.card,
-        visibleFieldIdsByType: {
-          ...(boardConfig.cardLayout.visibleFieldIdsByType ?? {}),
-          ...(activeType ? { [activeType.slug]: activeLayout.card } : {})
-        }
-      }
-    }),
-    [activeLayout.card, activeType, allFields, boardConfig, previewTaskTypes]
-  );
-
-  const previewTask = useMemo<Task>(
-    () => ({
-      id: "preview-work-item",
-      title: PREVIEW_CARD_TITLE,
-      text: PREVIEW_CARD_DESCRIPTION,
-      type: previewTypeId,
-      status: previewStatus.id,
-      position: 0,
-      priority: 2,
-      tags: PREVIEW_CARD_TAGS,
-      assignee: PREVIEW_ASSIGNEE.id,
-      checklist: {
-        items: [
-          { id: "check-1", label: "Mapear friccoes do fluxo", done: true },
-          { id: "check-2", label: "Revisar copy dos CTAs", done: true },
-          { id: "check-3", label: "Ajustar validacoes do formulario", done: true },
-          { id: "check-4", label: "Validar eventos de conversao", done: false },
-          { id: "check-5", label: "Publicar experimento", done: false }
-        ]
-      },
-      due: PREVIEW_DUE_DATE,
-      plannedStartAt: null,
-      plannedEndAt: null,
-      linkedDocuments: [],
-      customFields: libraryFields.reduce<Record<string, TaskCustomFieldValue>>((acc, field) => {
-        if (!isSystemCardFieldId(field.id)) {
-          acc[field.id] = getPreviewCustomFieldValue(field);
-        }
-        return acc;
-      }, {})
-    }),
-    [libraryFields, previewStatus.id, previewTypeId]
-  );
-
-  const cardPreviewFieldIds = useMemo(() => activeLayout.card, [activeLayout.card]);
-
-  const handleDropIntoCardPreview = (event: DragEvent<HTMLElement>) => {
-    event.preventDefault();
-    applyDropAtIndex("card", activeLayout.card.length);
-  };
-
-  const handlePreviewCardDragStart = (event: DragEvent<HTMLElement>, _taskId: string) => {
-    event.preventDefault();
-  };
-
-  const makeDragOverHandler = (scope: LayoutScope) => (event: DragEvent<HTMLElement>) => {
-    event.preventDefault();
-    if (!dragPayload) return;
-    setDropTarget({
-      scope,
-      index: computeDropIndex(event, dragPayload.kind === "field" ? dragPayload.fieldId : null, scope)
-    });
-  };
-
-  const makeDragLeaveHandler = (scope: LayoutScope) => (event: DragEvent<HTMLElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setDropTarget((cur) => (cur?.scope === scope ? null : cur));
-    }
-  };
-
   const openFieldEdit = (fieldId: string) => {
-    const raw = customFieldById[fieldId];
+    const raw = customFieldByRuntimeId[fieldId];
     if (!raw) return;
     setFieldError("");
     setPendingFieldSetup(null);
+    setTypeComposer(null);
     setFieldDraft({
       id: raw.id,
+      runtimeFieldId: fieldId,
       name: raw.name,
       type: raw.type as CustomFieldType,
       required: raw.required,
@@ -1019,198 +1094,915 @@ export function WorkItemEditorSettings() {
     });
   };
 
-  const renderCardPreviewSlot = ({
+  const openNewFieldPanel = (type: CustomFieldType) => {
+    setFieldError("");
+    setFieldDraft(null);
+    setTypeComposer(null);
+    setPendingFieldSetup({
+      type,
+      targetScope: activeCanvasTab,
+      targetIndex: (activeCanvasTab === "card" ? activeLayout.card : activeLayout.detail).length,
+      targetDetailZone: activeCanvasTab === "detail" ? "side" : undefined,
+      dropTarget: null,
+      name: "",
+      required: false,
+      allowAiGeneration: false,
+      options: []
+    });
+  };
+
+  // ── Preview computation ──────────────────────────────────────────────────
+  const typeColor = activeType?.color || DEFAULT_TYPE_COLOR;
+  const previewTypeId = activeType?.slug ?? boardConfig.taskTypes[0]?.id ?? "preview-type";
+  const previewTypeLabel = activeType?.name ?? boardConfig.taskTypes.find((t) => t.id === previewTypeId)?.label ?? "Tipo";
+  const previewTypeColor = activeType?.color ?? boardConfig.taskTypes.find((t) => t.id === previewTypeId)?.text ?? DEFAULT_TYPE_COLOR;
+
+  const previewPerspectives = useMemo<BoardConfig["perspectives"]>(() => {
+    if (Array.isArray((boardConfig as { perspectives?: unknown }).perspectives)) {
+      return (boardConfig as { perspectives: BoardConfig["perspectives"] }).perspectives;
+    }
+    if (Array.isArray((boardConfig as { views?: unknown }).views)) {
+      return (boardConfig as { views: BoardConfig["perspectives"] }).views;
+    }
+    return [];
+  }, [boardConfig]);
+
+  const previewBoardMode = snapshot?.preferences.defaultBoardMode ?? previewPerspectives[0]?.id ?? "dev";
+  const previewPerspective = previewPerspectives.find((p) => p.id === previewBoardMode) ?? previewPerspectives[0] ?? null;
+
+  const previewProjectedTasks = useMemo(
+    () => mapTasksForBoardPerspective(snapshot?.tasks ?? [], previewPerspective),
+    [previewPerspective, snapshot?.tasks]
+  );
+
+  const previewBoardColumnsPerspective = useMemo(
+    () =>
+      previewPerspective?.statusSource.kind === "workflow_state"
+        ? buildBoardColumnsRuntimeView(previewProjectedTasks, boardColumns, workflowStates, previewPerspective?.visibleBoardColumnIds)
+        : null,
+    [boardColumns, previewPerspective, previewProjectedTasks, workflowStates]
+  );
+
+  const previewRuntimeStatuses = previewBoardColumnsPerspective?.statuses ?? previewPerspective?.statuses ?? boardConfig.statuses;
+  const previewRuntimeTasks = previewBoardColumnsPerspective?.tasks ?? previewProjectedTasks;
+  const previewSourceTask = useMemo(
+    () => previewRuntimeTasks.find((task) => task.type === previewTypeId) ?? null,
+    [previewRuntimeTasks, previewTypeId]
+  );
+  const previewStatus =
+    previewRuntimeStatuses.find((s) => s.id === previewSourceTask?.status) ??
+    previewRuntimeStatuses[0] ??
+    { id: "preview-status", label: "Em validacao", dot: DEFAULT_TYPE_COLOR };
+
+  const previewTaskTypes = useMemo(() => {
+    const meta = {
+      id: previewTypeId,
+      label: previewTypeLabel,
+      background: `${previewTypeColor}1a`,
+      border: `${previewTypeColor}66`,
+      text: previewTypeColor
+    };
+    if (boardConfig.taskTypes.some((t) => t.id === previewTypeId)) {
+      return boardConfig.taskTypes.map((t) => (t.id === previewTypeId ? { ...t, ...meta } : t));
+    }
+    return [...boardConfig.taskTypes, meta];
+  }, [boardConfig.taskTypes, previewTypeColor, previewTypeId, previewTypeLabel]);
+
+  const previewFieldBindings = useMemo<TaskFieldBinding[]>(() => {
+    if (!activeType) return Array.isArray(boardConfig.fieldBindings) ? boardConfig.fieldBindings : [];
+    const otherTypeBindings = Array.isArray(boardConfig.fieldBindings)
+      ? boardConfig.fieldBindings.filter((b) => b.typeId !== activeType.slug)
+      : [];
+    const rawActiveBindings = buildTaskFieldBindingsForType({
+      typeId: activeType.slug,
+      fieldDefinitions: allFields,
+      fieldBindings: boardConfig.fieldBindings,
+      cardFieldIds: activeLayout.card,
+      detailFieldIds: activeLayout.detail,
+      detailZonesByFieldId: activeDetailZones
+    });
+    const activeCardAreaDraftsSnapshot = activeCardAreaDrafts;
+    const activeBindings = rawActiveBindings.map((binding) => {
+      if (binding.displayContext !== "card") return binding;
+      const areaOverride = activeCardAreaDraftsSnapshot[binding.fieldId];
+      if (!areaOverride) return binding;
+      return { ...binding, settings: { ...(binding.settings ?? {}), cardArea: areaOverride } };
+    });
+    return [...otherTypeBindings, ...activeBindings];
+  }, [activeCardAreaDrafts, activeDetailZones, activeLayout.card, activeLayout.detail, activeType, allFields, boardConfig.fieldBindings]);
+
+  const previewBoardConfig = useMemo<BoardConfig>(
+    () => ({ ...boardConfig, taskTypes: previewTaskTypes, fieldDefinitions: allFields, fieldBindings: previewFieldBindings }),
+    [allFields, boardConfig, previewFieldBindings, previewTaskTypes]
+  );
+
+  const previewTask = useMemo<Task>(
+    () =>
+      buildPreviewTask({
+        fields: libraryFields,
+        typeId: previewTypeId,
+        statusId: previewStatus.id,
+        sourceTask: previewSourceTask
+      }),
+    [libraryFields, previewSourceTask, previewStatus.id, previewTypeId]
+  );
+
+  const previewMembersById = useMemo(
+    () => ({ ...(snapshot?.membersById ?? {}), [PREVIEW_CREATED_BY.id]: PREVIEW_CREATED_BY, [PREVIEW_ASSIGNEE.id]: PREVIEW_ASSIGNEE }),
+    [snapshot?.membersById]
+  );
+
+  const isDragging = dragPayload !== null;
+  const isDraggingType = dragPayload?.kind === "type";
+
+  // ── Properties panel derived ──────────────────────────────────────────────
+  const selectedField = selectedFieldId ? fieldsById[selectedFieldId] : null;
+  const selectedInCard = selectedFieldId ? cardFieldSet.has(selectedFieldId) : false;
+  const selectedInDetail = selectedFieldId ? detailFieldSet.has(selectedFieldId) : false;
+  const selectedDetailZone = selectedFieldId
+    ? (activeDetailZones[selectedFieldId] ?? getDefaultDetailZone(fieldsById[selectedFieldId]))
+    : "side";
+  const selectedRawField = selectedFieldId ? customFieldByRuntimeId[selectedFieldId] : null;
+
+  const activePendingTypeLabel = pendingFieldSetup
+    ? (FIELD_TYPE_OPTIONS.find((o) => o.value === pendingFieldSetup.type)?.label ?? pendingFieldSetup.type)
+    : null;
+  const pendingFieldTargetLabel = useMemo(() => {
+    if (!pendingFieldSetup) {
+      return "";
+    }
+
+    const target = pendingFieldSetup.dropTarget;
+    if (!target) {
+      if (pendingFieldSetup.targetScope === "card") {
+        return "Card do board";
+      }
+      return `Formulario — ${pendingFieldSetup.targetDetailZone === "main" ? "Coluna principal" : "Barra lateral"}`;
+    }
+
+    if (target.surface === "card") {
+      if (target.kind === "replace-field") {
+        return `Card do board — substitui ${fieldsById[target.targetFieldId]?.label ?? "campo"}`;
+      }
+      return `Card do board — ${CARD_SLOT_AREA_LABELS[target.area]}`;
+    }
+
+    const zoneLabel = target.zone === "main" ? "Coluna principal" : "Barra lateral";
+    if (target.kind === "replace-field") {
+      return `Formulario — ${zoneLabel} — substitui ${fieldsById[target.targetFieldId]?.label ?? "campo"}`;
+    }
+
+    return `Formulario — ${zoneLabel}`;
+  }, [fieldsById, pendingFieldSetup]);
+
+  // ── Card preview field props ──────────────────────────────────────────────
+  const getCardPreviewFieldProps = ({
     fieldId,
     area,
-    content
+    visualPriority
   }: {
     fieldId: string;
-    area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
-    content: ReactNode;
+    area: TaskFieldCardArea;
+    visualPriority: TaskFieldVisualPriority;
+    index: number;
+    slotLimit: number;
+    occupiedCount: number;
   }) => {
-    const slotIndex = cardPreviewFieldIds.indexOf(fieldId);
-    const isDropTarget = dropTarget?.scope === "card" && dropTarget?.index === slotIndex;
+    const isReplaceTarget =
+      dropTarget?.surface === "card" &&
+      dropTarget.kind === "replace-field" &&
+      dropTarget.targetFieldId === fieldId;
+    const isSelected = selectedFieldId === fieldId;
+    const isSelfDrag = dragPayload?.kind === "field" && dragPayload.fieldId === fieldId;
+
+    return {
+      className: `wie__card-field wie__card-field--${area}${isSelected ? " is-selected" : ""}${isReplaceTarget ? " is-replace-target" : ""}`,
+      "data-workitem-slot": "card",
+      "data-field-id": fieldId,
+      "data-visual-priority": visualPriority,
+      "data-drop-intent": isReplaceTarget ? "replace" : undefined,
+      "data-drop-label": isReplaceTarget ? "Substituir" : undefined,
+      draggable: true,
+      onClick: (event: MouseEvent<HTMLElement>) => {
+        event.stopPropagation();
+        setSelectedFieldId(fieldId);
+        setFieldDraft(null);
+        setPendingFieldSetup(null);
+        setTypeComposer(null);
+      },
+      onDragStart: (event: DragEvent<HTMLElement>) => {
+        setSelectedFieldId(fieldId);
+        handleDragStartField(event, fieldId, "card");
+      },
+      onDragOver: (event: DragEvent<HTMLElement>) => {
+        if (!dragPayload || isSelfDrag) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
+        updateDropTarget({
+          surface: "card",
+          kind: "replace-field",
+          targetFieldId: fieldId,
+          area
+        });
+      },
+      onDrop: (event: DragEvent<HTMLElement>) => {
+        if (isSelfDrag) return;
+        handleDropOnTarget(event, {
+          surface: "card",
+          kind: "replace-field",
+          targetFieldId: fieldId,
+          area
+        });
+      },
+      onDragEnd: handleDragEnd
+    };
+  };
+
+  // ── Renders ───────────────────────────────────────────────────────────────
+
+  const renderCardEmptySlot = ({
+    area,
+    index,
+    occupiedCount,
+    slotLimit
+  }: {
+    area: TaskCardSlotArea;
+    index: number;
+    occupiedCount: number;
+    slotLimit: number;
+    availableCount: number;
+  }) => {
+    const target: EditorDropTarget = {
+      surface: "card",
+      kind: "empty-slot",
+      area,
+      index
+    };
+    const isTarget =
+      dropTarget?.surface === "card" &&
+      dropTarget.kind === "empty-slot" &&
+      dropTarget.area === area &&
+      dropTarget.index === index;
+    const SlotTag = area === "badge" || area === "summary" || area === "meta" ? "span" : "div";
+
+    return (
+      <SlotTag
+        className={`wie__card-empty-slot wie__card-empty-slot--${area}${isTarget ? " is-target" : ""}`}
+        data-slot-area={area}
+        data-drop-intent={isTarget ? "vacancy" : undefined}
+        onDragOver={(event) => {
+          if (!dragPayload) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
+          updateDropTarget(target);
+        }}
+        onDrop={(event) => handleDropOnTarget(event, target)}
+      >
+        <span className="wie__card-empty-slot-label">Solte aqui</span>
+        <span className="wie__card-empty-slot-count">{occupiedCount}/{slotLimit}</span>
+      </SlotTag>
+    );
+  };
+
+  const renderLibraryChip = (field: FieldLibraryItem) => {
+    const inCard = cardFieldSet.has(field.id);
+    const inDetail = detailFieldSet.has(field.id);
+    const isSelected = selectedFieldId === field.id;
+
+    let usageLabel = "";
+    if (inCard && inDetail) usageLabel = "card + form";
+    else if (inCard) usageLabel = "card";
+    else if (inDetail) usageLabel = "form";
 
     return (
       <div
-        key={`${fieldId}-${area}`}
-        className={`workitem-editor-v2__card-preview-slot workitem-editor-v2__card-preview-slot--${area}${isDropTarget ? " is-drop-target" : ""}`}
-        data-workitem-slot="card"
-        data-field-id={fieldId}
+        key={field.id}
+        className={`wie__lib-chip${isSelected ? " is-selected" : ""}${inCard || inDetail ? " is-used" : ""}`}
         draggable
-        onDragStart={(e) => handleDragStartField(e, fieldId, "card")}
+        onDragStart={(e) => handleDragStartField(e, field.id, "library")}
         onDragEnd={handleDragEnd}
+        onClick={() => {
+          setSelectedFieldId(field.id);
+          setFieldDraft(null);
+          setPendingFieldSetup(null);
+          setTypeComposer(null);
+        }}
       >
-        <div className="workitem-editor-v2__card-preview-slot-content">{content}</div>
-        <div className="workitem-editor-v2__card-preview-slot-actions" draggable={false}>
-          {customFieldById[fieldId] ? (
-            <button
-              type="button"
-              className="workitem-editor-v2__field-action-edit"
-              draggable={false}
-              onClick={(e) => { e.stopPropagation(); openFieldEdit(fieldId); }}
-              title="Editar campo"
-            >
-              E
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="workitem-editor-v2__field-action-remove"
-            draggable={false}
-            onClick={(e) => {
-              e.stopPropagation();
-              activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", fieldId));
-            }}
-            title="Remover do card"
-          >
-            x
-          </button>
+        <div className="wie__lib-chip-info">
+          <span className="wie__lib-chip-label">{field.label}</span>
+          <span className="wie__lib-chip-type">{getTaskFieldTypeLabel(field)}</span>
         </div>
+        {usageLabel ? <span className="wie__lib-chip-badge">{usageLabel}</span> : null}
+      </div>
+    );
+  };
+
+  const renderDetailInsertTarget = (zone: DetailZone, index: number) => {
+    const target: EditorDropTarget = {
+      surface: "detail",
+      kind: "insert",
+      zone,
+      index
+    };
+    const isTarget =
+      dropTarget?.surface === "detail" &&
+      dropTarget.kind === "insert" &&
+      dropTarget.zone === zone &&
+      dropTarget.index === index;
+
+    return (
+      <div
+        key={`detail-insert-${zone}-${index}`}
+        className={`wie__detail-insert-target${zone === "side" ? " is-side" : ""}${isTarget ? " is-target" : ""}`}
+        data-detail-zone={zone}
+        data-drop-intent={isTarget ? "vacancy" : undefined}
+        onDragOver={(event) => {
+          if (!dragPayload) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
+          updateDropTarget(target);
+        }}
+        onDrop={(event) => handleDropOnTarget(event, target)}
+      >
+        <span>Solte aqui</span>
       </div>
     );
   };
 
   const renderDetailFieldCard = (field: FieldLibraryItem, zone: DetailZone, index: number) => {
-    const isDropLineVisible = dropTarget?.scope === "detail" && dropTarget.index === index;
+    const isReplaceTarget =
+      dropTarget?.surface === "detail" &&
+      dropTarget.kind === "replace-field" &&
+      dropTarget.targetFieldId === field.id &&
+      dropTarget.zone === zone;
+    const isSelected = selectedFieldId === field.id;
+    const isSelfDrag = dragPayload?.kind === "field" && dragPayload.fieldId === field.id;
+
     return (
-      <div key={`detail-${zone}-${field.id}`} className="workitem-editor-v2__detail-preview-slot-wrap">
-        {isDropLineVisible ? <div className="workitem-editor-v2__drop-line" /> : null}
+      <div key={`detail-${zone}-${field.id}`} className="wie__detail-slot-wrap">
+        {isDragging ? renderDetailInsertTarget(zone, index) : null}
         <div
-          className={`workitem-editor-v2__detail-preview-card${zone === "side" ? " is-side" : ""}`}
+          className={`wie__detail-field-card${zone === "side" ? " is-side" : ""}${isSelected ? " is-selected" : ""}${isReplaceTarget ? " is-replace-target" : ""}`}
           data-workitem-slot="detail"
           data-detail-zone={zone}
           data-field-id={field.id}
+          data-drop-intent={isReplaceTarget ? "replace" : undefined}
+          data-drop-label={isReplaceTarget ? "Substituir" : undefined}
           draggable
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedFieldId(field.id);
+            setFieldDraft(null);
+            setPendingFieldSetup(null);
+            setTypeComposer(null);
+          }}
           onDragStart={(e) => handleDragStartField(e, field.id, "detail")}
+          onDragOver={(event) => {
+            if (!dragPayload || isSelfDrag) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
+            updateDropTarget({
+              surface: "detail",
+              kind: "replace-field",
+              targetFieldId: field.id,
+              zone
+            });
+          }}
+          onDrop={(event) => {
+            if (isSelfDrag) return;
+            handleDropOnTarget(event, {
+              surface: "detail",
+              kind: "replace-field",
+              targetFieldId: field.id,
+              zone
+            });
+          }}
           onDragEnd={handleDragEnd}
         >
-          <div className="workitem-editor-v2__detail-preview-card-head">
-            <div>
-              <strong>{field.label}</strong>
-              <span>{getTaskFieldTypeLabel(field)}</span>
+          <div className="wie__detail-field-card-head">
+            <div className="wie__detail-field-card-meta">
+              <span className="wie__detail-field-card-label">{field.label}</span>
+              <span className="wie__detail-field-card-type">{getTaskFieldTypeLabel(field)}</span>
             </div>
-            <div className="workitem-editor-v2__card-field-actions" draggable={false}>
-              {customFieldById[field.id] ? (
-                <button
-                  type="button"
-                  className="workitem-editor-v2__field-action-edit"
-                  draggable={false}
-                  onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
-                  title="Editar campo"
-                >
-                  E
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="workitem-editor-v2__field-action-remove"
-                draggable={false}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "detail", field.id));
-                }}
-                title="Remover do formulário"
-              >
-                x
-              </button>
-            </div>
+            <div className="wie__detail-field-card-handle" draggable={false}>⠿</div>
           </div>
-          <div className="workitem-editor-v2__detail-preview-card-body">{renderPreviewFieldValueByType(field)}</div>
+          <div className="wie__detail-field-card-body">{renderPreviewFieldValue(field)}</div>
         </div>
       </div>
     );
   };
 
+  // ── Slot panel ────────────────────────────────────────────────────────────
+
+
+  // ── Properties panel content ──────────────────────────────────────────────
+
+  const renderPropertiesPanel = () => {
+    // 1. Creating new field
+    if (pendingFieldSetup) {
+      return (
+        <div className="wie__props-panel">
+          <div className="wie__props-head">
+            <span className="wie__props-eyebrow">Novo campo — {activePendingTypeLabel}</span>
+            <h3 className="wie__props-title">Configurar campo</h3>
+          </div>
+          <div className="wie__props-scroll">
+            <FormField label="Label do campo">
+              <TextInput
+                value={pendingFieldSetup.name}
+                placeholder="Ex: Titulo, Impacto, Prazo..."
+                autoFocus
+                onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, name: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !supportsSelectableOptions(pendingFieldSetup.type)) void handleConfirmFieldSetup();
+                  if (e.key === "Escape") setPendingFieldSetup(null);
+                }}
+              />
+            </FormField>
+            <div className="wie__props-target-info">
+              <span>Posicao:</span>
+              <strong>{pendingFieldTargetLabel}</strong>
+            </div>
+            <div className="wie__props-toggles">
+              <label>
+                <input type="checkbox" checked={pendingFieldSetup.required}
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, required: e.target.checked })} />
+                Obrigatorio
+              </label>
+              <label>
+                <input type="checkbox" checked={pendingFieldSetup.allowAiGeneration}
+                  disabled={!supportsAiGeneration(pendingFieldSetup.type)}
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, allowAiGeneration: e.target.checked })} />
+                IA no campo
+              </label>
+            </div>
+            {supportsSelectableOptions(pendingFieldSetup.type) ? (
+              <div className="wie__props-options">
+                <div className="wie__props-options-head">
+                  <strong>Opcoes</strong>
+                  <button type="button" onClick={() =>
+                    setPendingFieldSetup({ ...pendingFieldSetup, options: [...pendingFieldSetup.options, createEmptyOptionDraft(pendingFieldSetup.options.length + 1)] })
+                  }>+ Adicionar</button>
+                </div>
+                {pendingFieldSetup.options.map((opt) => (
+                  <div key={opt.id} className="wie__props-option-row">
+                    <TextInput value={opt.label} placeholder="Label"
+                      onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
+                    <button type="button" className="wie__props-option-remove"
+                      onClick={() => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.filter((o) => o.id !== opt.id) })}>×</button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {fieldError ? <p className="wie__props-error">{fieldError}</p> : null}
+            <div className="wie__props-actions">
+              <Button type="button" size="sm" onClick={() => void handleConfirmFieldSetup()} disabled={fieldSaving || !pendingFieldSetup.name.trim()}>
+                {fieldSaving ? "Criando..." : "Criar e adicionar"}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { setPendingFieldSetup(null); setFieldError(""); }}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. Editing existing field definition
+    if (fieldDraft) {
+      return (
+        <div className="wie__props-panel">
+          <div className="wie__props-head">
+            <span className="wie__props-eyebrow">Campo customizado</span>
+            <h3 className="wie__props-title">Editar definicao</h3>
+          </div>
+          <div className="wie__props-scroll">
+            <FormField label="Label do campo">
+              <TextInput value={fieldDraft.name} placeholder="Ex: Impacto esperado"
+                onChange={(e) => setFieldDraft({ ...fieldDraft, name: e.target.value })} />
+            </FormField>
+            <div className="wie__props-field-types">
+              {FIELD_TYPE_OPTIONS.map((opt) => (
+                <button key={opt.value} type="button"
+                  className={`wie__props-type-btn${fieldDraft.type === opt.value ? " is-active" : ""}`}
+                  onClick={() => setFieldDraft({ ...fieldDraft, type: opt.value, allowAiGeneration: supportsAiGeneration(opt.value) ? fieldDraft.allowAiGeneration : false })}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="wie__props-toggles">
+              <label>
+                <input type="checkbox" checked={fieldDraft.required}
+                  onChange={(e) => setFieldDraft({ ...fieldDraft, required: e.target.checked })} />
+                Obrigatorio
+              </label>
+              <label>
+                <input type="checkbox" checked={fieldDraft.allowAiGeneration}
+                  disabled={!supportsAiGeneration(fieldDraft.type)}
+                  onChange={(e) => setFieldDraft({ ...fieldDraft, allowAiGeneration: e.target.checked })} />
+                IA no campo
+              </label>
+            </div>
+            {supportsSelectableOptions(fieldDraft.type) ? (
+              <div className="wie__props-options">
+                <div className="wie__props-options-head">
+                  <strong>Opcoes</strong>
+                  <button type="button" onClick={() =>
+                    setFieldDraft({ ...fieldDraft, options: [...fieldDraft.options, createEmptyOptionDraft(fieldDraft.options.length + 1)] })
+                  }>+ Adicionar</button>
+                </div>
+                {fieldDraft.options.map((opt) => (
+                  <div key={opt.id} className="wie__props-option-row">
+                    <TextInput value={opt.label} placeholder="Label"
+                      onChange={(e) => setFieldDraft({ ...fieldDraft, options: fieldDraft.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
+                    <button type="button" className="wie__props-option-remove"
+                      onClick={() => setFieldDraft({ ...fieldDraft, options: fieldDraft.options.filter((o) => o.id !== opt.id) })}>×</button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {fieldError ? <p className="wie__props-error">{fieldError}</p> : null}
+            <div className="wie__props-actions">
+              <Button type="button" size="sm" onClick={() => void handleSaveField()} disabled={fieldSaving || !fieldDraft.name.trim()}>
+                {fieldSaving ? "Salvando..." : "Salvar campo"}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { setFieldDraft(null); setFieldError(""); setSelectedFieldId(fieldDraft.runtimeFieldId); }}>
+                Cancelar
+              </Button>
+            </div>
+            <div className="wie__props-danger-zone">
+              <Button type="button" size="sm" variant="outline"
+                onClick={() => void handleDeleteField(fieldDraft.id)}
+                disabled={fieldDeletingId === fieldDraft.id}>
+                {fieldDeletingId === fieldDraft.id ? "Removendo..." : "Excluir campo permanentemente"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 3. Creating/editing item type
+    if (typeComposer) {
+      return (
+        <div className="wie__props-panel">
+          <div className="wie__props-head">
+            <span className="wie__props-eyebrow">Tipo de item</span>
+            <h3 className="wie__props-title">{editingTypeId ? "Editar tipo" : "Novo tipo"}</h3>
+          </div>
+          <div className="wie__props-scroll">
+            <FormField label="Nome do tipo">
+              <TextInput
+                value={typeComposer.name}
+                placeholder="Ex: Growth, Operacao, Bug..."
+                autoFocus
+                onChange={(e) => setTypeComposer({ ...typeComposer, name: e.target.value })}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSaveType(); if (e.key === "Escape") { setTypeComposer(null); setEditingTypeId(null); } }}
+              />
+            </FormField>
+            <FormField label="Cor">
+              <div className="wie__props-color-row">
+                <input type="color" value={typeComposer.color}
+                  onChange={(e) => setTypeComposer({ ...typeComposer, color: e.target.value })} />
+                <TextInput value={typeComposer.color}
+                  onChange={(e) => setTypeComposer({ ...typeComposer, color: e.target.value })} />
+              </div>
+            </FormField>
+            <div className="wie__props-actions">
+              <Button type="button" size="sm" onClick={() => void handleSaveType()} disabled={typeSaving || !typeComposer.name.trim()}>
+                {typeSaving ? "Salvando..." : "Salvar tipo"}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { setTypeComposer(null); setEditingTypeId(null); }}>
+                Cancelar
+              </Button>
+            </div>
+            {editingTypeId ? (
+              <div className="wie__props-danger-zone">
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => void handleDeleteType(editingTypeId)}
+                  disabled={typeDeletingId === editingTypeId}>
+                  {typeDeletingId === editingTypeId ? "Removendo..." : "Excluir tipo"}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+
+    // 4. Field selected — show binding properties
+    if (selectedField) {
+      const isCustom = selectedField.source === "custom";
+      const isSystem = selectedField.source === "system";
+
+      return (
+        <div className="wie__props-panel">
+          <div className="wie__props-head">
+            <span className="wie__props-eyebrow">{isSystem ? "Campo de sistema" : "Campo customizado"}</span>
+            <h3 className="wie__props-title">{selectedField.label}</h3>
+            <span className="wie__props-type-badge">{getTaskFieldTypeLabel(selectedField)}</span>
+          </div>
+          <div className="wie__props-scroll">
+            {/* Usage in card */}
+            <div className="wie__props-usage-section">
+              <div className="wie__props-usage-label">
+                <span>Card do board</span>
+                {selectedInCard ? <span className="wie__props-badge is-active">incluido</span> : <span className="wie__props-badge">fora</span>}
+              </div>
+              {selectedInCard ? (
+                <div className="wie__props-usage-actions">
+                  <p className="wie__props-usage-hint">
+                    Posicao {activeLayout.card.indexOf(selectedFieldId!) + 1} de {activeLayout.card.length}.
+                    Arraste no canvas para reordenar.
+                  </p>
+                  <div className="wie__props-area-selector">
+                    <span className="wie__props-area-label">Slot no card:</span>
+                    <div className="wie__props-area-btns">
+                      {CARD_SLOT_AREA_META.map(({ area, label }) => {
+                        const currentArea =
+                          (activeCardAreaDrafts[selectedField.id] as TaskFieldCardArea | undefined) ??
+                          (previewCardDebug?.fields.find((f) => f.fieldId === selectedField.id)?.area as TaskFieldCardArea | undefined);
+                        const isActive = currentArea === area;
+                        const areaCount = (previewCardDebug?.zones[area] ?? []).filter(
+                          (id) => previewCardDebug?.fields.find((f) => f.fieldId === id)?.rendered
+                        ).length;
+                        const limit = CARD_SLOT_LIMITS[area];
+                        const wouldExceed = !isActive && areaCount >= limit;
+                        return (
+                          <button
+                            key={area}
+                            type="button"
+                            className={`wie__props-area-btn${isActive ? " is-active" : ""}${wouldExceed ? " is-full" : ""}`}
+                            title={wouldExceed ? `Slot lotado (${areaCount}/${limit})` : label}
+                            onClick={() => handleSetCardAreaForField(selectedField.id, area)}
+                          >
+                            {label}
+                            {wouldExceed ? <span className="wie__props-area-full-dot" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" variant="outline"
+                    onClick={() => handleRemoveFromLayout(selectedField.id, "card")}>
+                    Remover do card
+                  </Button>
+                </div>
+              ) : (
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => handleAddFieldToLayout(selectedField.id, "card")}>
+                  + Adicionar ao card
+                </Button>
+              )}
+            </div>
+
+            <div className="wie__props-divider" />
+
+            {/* Usage in form */}
+            <div className="wie__props-usage-section">
+              <div className="wie__props-usage-label">
+                <span>Formulario expandido</span>
+                {selectedInDetail ? <span className="wie__props-badge is-active">incluido</span> : <span className="wie__props-badge">fora</span>}
+              </div>
+              {selectedInDetail ? (
+                <div className="wie__props-usage-actions">
+                  <div className="wie__props-zone-row">
+                    <span>Zona:</span>
+                    <div className="wie__props-zone-switcher">
+                      <button type="button"
+                        className={`wie__props-zone-btn${selectedDetailZone === "main" ? " is-active" : ""}`}
+                        onClick={() => handleSetDetailZoneForField(selectedField.id, "main")}>
+                        Principal
+                      </button>
+                      <button type="button"
+                        className={`wie__props-zone-btn${selectedDetailZone !== "main" ? " is-active" : ""}`}
+                        onClick={() => handleSetDetailZoneForField(selectedField.id, "side")}>
+                        Lateral
+                      </button>
+                    </div>
+                  </div>
+                  <p className="wie__props-usage-hint">
+                    Posicao {activeLayout.detail.indexOf(selectedFieldId!) + 1} de {activeLayout.detail.length} campos no formulario.
+                    Arraste no canvas para reordenar.
+                  </p>
+                  <Button type="button" size="sm" variant="outline"
+                    onClick={() => handleRemoveFromLayout(selectedField.id, "detail")}>
+                    Remover do formulario
+                  </Button>
+                </div>
+              ) : (
+                <div className="wie__props-usage-actions">
+                  <p className="wie__props-usage-hint">Escolha a zona onde o campo deve aparecer:</p>
+                  <div className="wie__props-add-zone-btns">
+                    <Button type="button" size="sm" variant="outline"
+                      onClick={() => {
+                        handleAddFieldToLayout(selectedField.id, "detail");
+                        handleSetDetailZoneForField(selectedField.id, "main");
+                      }}>
+                      + Coluna principal
+                    </Button>
+                    <Button type="button" size="sm" variant="outline"
+                      onClick={() => handleAddFieldToLayout(selectedField.id, "detail")}>
+                      + Barra lateral
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Field definition actions (custom fields only) */}
+            {isCustom && selectedRawField ? (
+              <>
+                <div className="wie__props-divider" />
+                <div className="wie__props-definition-section">
+                  <span className="wie__props-section-label">Definicao do campo</span>
+                  <p className="wie__props-section-hint">
+                    Editar o campo afeta todos os tipos que o utilizam.
+                  </p>
+                  <div className="wie__props-actions">
+                    <Button type="button" size="sm" variant="outline"
+                      onClick={() => openFieldEdit(selectedField.id)}>
+                      Editar definicao
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {isSystem ? (
+              <>
+                <div className="wie__props-divider" />
+                <p className="wie__props-system-note">
+                  Campo de sistema. A definicao e gerenciada pela plataforma.
+                </p>
+              </>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+
+    // 5. Idle
+    return (
+      <div className="wie__props-panel is-idle">
+        <div className="wie__props-idle">
+          <div className="wie__props-idle-icon">⠿</div>
+          <strong>Nenhum campo selecionado</strong>
+          <p>
+            Clique em qualquer campo no canvas ou na biblioteca para ver e editar suas propriedades e posicao no layout.
+          </p>
+          <div className="wie__props-idle-tips">
+            <div className="wie__props-idle-tip">
+              <span>Biblioteca</span>
+              <p>Clique em um campo para selecionar. Arraste para posicionar no canvas.</p>
+            </div>
+            <div className="wie__props-idle-tip">
+              <span>Canvas</span>
+              <p>Clique em um campo para ver suas propriedades. Arraste para reordenar.</p>
+            </div>
+            <div className="wie__props-idle-tip">
+              <span>Novo campo</span>
+              <p>Clique ou arraste um tipo da secao "Novo campo" na biblioteca.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="workitem-editor-v2">
-      {/* ── Topbar ─────────────────────────────────────────────────────── */}
-      <div className="workitem-editor-v2__topbar">
-        <div className="workitem-editor-v2__tabs">
+    <div className="wie">
+      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
+      <div className="wie__topbar">
+        <div className="wie__tabs">
           {activeItemTypes.map((type) => (
-            <div key={type.id} className={`workitem-editor-v2__tab${activeType?.slug === type.slug ? " is-active" : ""}`}>
-              <button type="button" onClick={() => setActiveTypeSlug(type.slug)}>
-                <i style={{ background: type.color || DEFAULT_TYPE_COLOR }} />
+            <div key={type.id} className={`wie__tab${activeType?.slug === type.slug ? " is-active" : ""}`}>
+              <button type="button" className="wie__tab-btn" onClick={() => setActiveTypeSlug(type.slug)}>
+                <i className="wie__tab-dot" style={{ background: type.color || DEFAULT_TYPE_COLOR }} />
                 {type.name}
+              </button>
+              <button
+                type="button"
+                className="wie__tab-edit"
+                title={`Editar tipo ${type.name}`}
+                onClick={() => {
+                  setEditingTypeId(type.id);
+                  setTypeComposer({ name: type.name, color: type.color || DEFAULT_TYPE_COLOR });
+                  setFieldDraft(null);
+                  setPendingFieldSetup(null);
+                  setSelectedFieldId(null);
+                }}
+              >
+                ✎
               </button>
             </div>
           ))}
           <button
             type="button"
-            className="workitem-editor-v2__add-tab"
-            onClick={() => { setEditingTypeId(null); setTypeComposer({ name: "", color: DEFAULT_TYPE_COLOR }); }}
+            className="wie__add-tab"
+            onClick={() => {
+              setEditingTypeId(null);
+              setTypeComposer({ name: "", color: DEFAULT_TYPE_COLOR });
+              setFieldDraft(null);
+              setPendingFieldSetup(null);
+              setSelectedFieldId(null);
+            }}
           >
-            Novo tipo
+            + Novo tipo
           </button>
         </div>
 
-        <div className="workitem-editor-v2__save-area">
-          <div className="workitem-editor-v2__summary">
-            <span><strong>{activeItemTypes.length}</strong> tipos</span>
-            <span><strong>{customFields.filter((f) => f.isActive !== false).length}</strong> campos</span>
+        <div className="wie__topbar-right">
+          {hasUnsavedLayout ? <span className="wie__unsaved-indicator">Alteracoes nao salvas</span> : null}
+          <div className="wie__summary">
             <span><strong>{cardFields.length}</strong> no card</span>
-            <span><strong>{detailFields.length}</strong> no expandido</span>
+            <span><strong>{detailFields.length}</strong> no form</span>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={handleDiscardLayout} disabled={!hasUnsavedLayout || savingLayout}>
             Descartar
           </Button>
           <Button type="button" size="sm" onClick={() => void handleSaveLayout()} disabled={!hasUnsavedLayout || savingLayout}>
-            {savingLayout ? "Salvando..." : "Salvar"}
+            {savingLayout ? "Salvando..." : "Salvar layout"}
           </Button>
         </div>
       </div>
 
-      {/* ── Main area ──────────────────────────────────────────────────── */}
-      <div className="workitem-editor-v2__body">
+      {/* ── Body ─────────────────────────────────────────────────────────────── */}
+      <div className="wie__body">
         {loading ? (
-          <div className="workitem-editor-v2__loading">
-            <div className="workitem-editor-v2__skeleton" style={{ flex: "0 0 280px" }} />
-            <div className="workitem-editor-v2__skeleton" style={{ flex: 1 }} />
+          <div className="wie__loading">
+            <div className="wie__skeleton" style={{ flex: "0 0 240px" }} />
+            <div className="wie__skeleton" style={{ flex: 1 }} />
+            <div className="wie__skeleton" style={{ flex: "0 0 280px" }} />
           </div>
         ) : (
           <>
-            {/* ── Library ─────────────────────────────────────────────── */}
-            <aside className="workitem-editor-v2__library">
-              <div className="workitem-editor-v2__library-head">
-                <span>Biblioteca</span>
-                <h2>Campos disponíveis</h2>
+            {/* ── Library ────────────────────────────────────────────────────── */}
+            <aside className="wie__library">
+              <div className="wie__lib-head">
+                <div className="wie__lib-title-row">
+                  <span className="wie__lib-eyebrow">Biblioteca</span>
+                  <strong className="wie__lib-title">Campos</strong>
+                </div>
+                <input
+                  className="wie__lib-search"
+                  type="search"
+                  placeholder="Buscar campo..."
+                  value={librarySearch}
+                  onChange={(e) => setLibrarySearch(e.target.value)}
+                />
               </div>
 
-              <div className="workitem-editor-v2__lib-scroll">
-                <div className="workitem-editor-v2__lib-section">
-                  <p className="workitem-editor-v2__lib-section-title">Campos do item</p>
-                  <p className="workitem-editor-v2__lib-hint">
-                    Tudo aqui e tratado como campo do tipo. Se nao estiver no editor, nao entra no layout.
-                  </p>
-                  <div className="workitem-editor-v2__sys-fields">
-                    {libraryFields.map((field) => (
-                      <div
-                        key={field.id}
-                        className="workitem-editor-v2__sys-chip"
-                        draggable
-                        onDragStart={(e) => handleDragStartField(e, field.id, "library")}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <span>{field.label}</span>
-                        <small>{field.source === "system" ? getTaskFieldTypeLabel(field) : `${getTaskFieldTypeLabel(field)} · editavel`}</small>
-                      </div>
-                    ))}
+              <div className="wie__lib-scroll">
+                {/* In card only */}
+                {libraryFieldsInCardOnly.length > 0 && (
+                  <div className="wie__lib-group">
+                    <p className="wie__lib-group-title is-card">No card</p>
+                    {libraryFieldsInCardOnly.map(renderLibraryChip)}
                   </div>
+                )}
+                {/* In both */}
+                {libraryFieldsInBoth.length > 0 && (
+                  <div className="wie__lib-group">
+                    <p className="wie__lib-group-title is-both">Card + formulario</p>
+                    {libraryFieldsInBoth.map(renderLibraryChip)}
+                  </div>
+                )}
+                {/* In detail only */}
+                {libraryFieldsInDetailOnly.length > 0 && (
+                  <div className="wie__lib-group">
+                    <p className="wie__lib-group-title is-detail">No formulario</p>
+                    {libraryFieldsInDetailOnly.map(renderLibraryChip)}
+                  </div>
+                )}
+                {/* Unused */}
+                <div className="wie__lib-group">
+                  <p className="wie__lib-group-title">Disponiveis</p>
+                  {libraryFieldsUnused.length === 0 ? (
+                    <p className="wie__lib-empty">Todos os campos estao no layout.</p>
+                  ) : (
+                    libraryFieldsUnused.map(renderLibraryChip)
+                  )}
                 </div>
 
-                <div className="workitem-editor-v2__lib-section">
-                  <p className="workitem-editor-v2__lib-section-title">Novo campo</p>
-                  <p className="workitem-editor-v2__lib-hint">
-                    Arraste para o card ou formulário para criar e configurar.
-                  </p>
-                  <div className="workitem-editor-v2__type-tiles">
+                {/* New field types */}
+                <div className="wie__lib-group wie__lib-group--new">
+                  <p className="wie__lib-group-title">Novo campo</p>
+                  <p className="wie__lib-hint">Clique para criar. Arraste para posicionar no canvas.</p>
+                  <div className="wie__type-tiles">
                     {FIELD_TYPE_OPTIONS.map((opt) => (
                       <div
                         key={opt.value}
-                        className="workitem-editor-v2__type-tile"
+                        className="wie__type-tile"
                         draggable
                         onDragStart={(e) => handleDragStartType(e, opt.value)}
                         onDragEnd={handleDragEnd}
+                        onClick={() => openNewFieldPanel(opt.value)}
                       >
                         <strong>{opt.label}</strong>
                         <span>{opt.caption}</span>
@@ -1221,551 +2013,157 @@ export function WorkItemEditorSettings() {
               </div>
             </aside>
 
-            {/* ── Previews (stacked) ──────────────────────────────────── */}
-            <div className="workitem-editor-v2__previews">
-              <div className="workitem-editor-v2__preview-switcher" role="tablist" aria-label="Alternar preview do work item">
+            {/* ── Canvas ───────────────────────────────────────────────────────── */}
+            <div className="wie__canvas">
+              <div className="wie__canvas-tabs" role="tablist">
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={activePreviewTab === "card"}
-                  className={`workitem-editor-v2__preview-tab${activePreviewTab === "card" ? " is-active" : ""}`}
-                  onClick={() => setActivePreviewTab("card")}
+                  aria-selected={activeCanvasTab === "card"}
+                  className={`wie__canvas-tab${activeCanvasTab === "card" ? " is-active" : ""}`}
+                  onClick={() => setActiveCanvasTab("card")}
                 >
-                  Preview do card
+                  Card do board
+                  {cardFields.length > 0 ? <span className="wie__canvas-tab-count">{cardFields.length}</span> : null}
                 </button>
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={activePreviewTab === "detail"}
-                  className={`workitem-editor-v2__preview-tab${activePreviewTab === "detail" ? " is-active" : ""}`}
-                  onClick={() => setActivePreviewTab("detail")}
+                  aria-selected={activeCanvasTab === "detail"}
+                  className={`wie__canvas-tab${activeCanvasTab === "detail" ? " is-active" : ""}`}
+                  onClick={() => setActiveCanvasTab("detail")}
                 >
-                  Preview do formulario
+                  Formulario expandido
+                  {detailFields.length > 0 ? <span className="wie__canvas-tab-count">{detailFields.length}</span> : null}
                 </button>
               </div>
 
-              {/* Card editor */}
-              <section className={`workitem-editor-v2__panel${activePreviewTab === "card" ? "" : " is-hidden"}`}>
-                <div className="workitem-editor-v2__panel-head">
-                  <div>
-                    <span>Card do board</span>
-                    <h2>Como aparece no kanban</h2>
-                  </div>
-                  <small>{cardFields.length} campo{cardFields.length !== 1 ? "s" : ""}</small>
-                </div>
-
-                <div className="workitem-editor-v2__card-stage">
-                  <div
-                    className={`workitem-editor-v2__card-preview-drop${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                    onDragOver={makeDragOverHandler("card")}
-                    onDragLeave={makeDragLeaveHandler("card")}
-                    onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "card"); }}
-                  >
-                    <TaskCard
-                      task={previewTask}
-                      boardConfig={previewBoardConfig}
-                      creatorName={PREVIEW_CREATED_BY}
-                      assigneeName={PREVIEW_ASSIGNEE.name}
-                      statusLabel={previewStatus.label}
-                      assigneeSlot={<MemberAvatar member={PREVIEW_ASSIGNEE} />}
-                      draggable={false}
-                      fieldSlotRenderer={renderCardPreviewSlot}
-                      onDragStart={handlePreviewCardDragStart}
-                      onDragEnd={handleDragEnd}
-                    />
-                    {dropTarget?.scope === "card" && dropTarget?.index === cardPreviewFieldIds.length ? (
-                      <div className="workitem-editor-v2__card-preview-drop-line" />
-                    ) : null}
-                    <div className={`workitem-editor-v2__card-preview-hint${isDragging ? " is-visible" : ""}`}>
-                      {isDraggingType
-                        ? "Solte sobre o preview para criar o campo no card."
-                        : "Arraste da biblioteca e edite os campos direto no proprio preview."}
-                    </div>
-                  </div>
-
-                  {false ? <div className="workitem-editor-v2__card-tools">
-                    <div className="workitem-editor-v2__card-tools-head">
-                      <strong>Campos ativos no card</strong>
-                      <p>Reordene por aqui sem distorcer a aparencia real do card no board.</p>
-                    </div>
-
-                    <div
-                      className={`workitem-editor-v2__card-fields${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                      onDragOver={makeDragOverHandler("card")}
-                      onDragLeave={makeDragLeaveHandler("card")}
-                      onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "card"); }}
-                    >
-                      {cardFields.length === 0 ? (
-                        <p className="workitem-editor-v2__zone-empty">
-                          Arraste campos da biblioteca ou solte direto no preview do card.
-                        </p>
-                      ) : (
-                        cardFields.map((field, index) => (
-                          <div key={`card-f-${field.id}`} className="workitem-editor-v2__card-slot-wrap">
-                            {dropTarget?.scope === "card" && dropTarget?.index === index ? (
-                              <div className="workitem-editor-v2__drop-line" />
-                            ) : null}
-                            <div
-                              className="workitem-editor-v2__card-field"
-                              data-workitem-slot="card"
-                              data-field-id={field.id}
-                              draggable
-                              onDragStart={(e) => handleDragStartField(e, field.id, "card")}
-                              onDragEnd={handleDragEnd}
-                            >
-                              <div className="workitem-editor-v2__card-field-info">
-                                <span className="workitem-editor-v2__card-field-label">{field.label}</span>
-                                <span className="workitem-editor-v2__card-field-value">{getPreviewValue(field)}</span>
-                              </div>
-                              <div className="workitem-editor-v2__card-field-actions" draggable={false}>
-                                {!isSystemCardFieldId(field.id) ? (
-                                  <button
-                                    type="button"
-                                    className="workitem-editor-v2__field-action-edit"
-                                    draggable={false}
-                                    onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
-                                    title="Editar campo"
-                                  >
-                                    âœŽ
-                                  </button>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  className="workitem-editor-v2__field-action-remove"
-                                  draggable={false}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", field.id));
-                                  }}
-                                  title="Remover do card"
-                                >
-                                  Ã—
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                      {dropTarget?.scope === "card" && dropTarget?.index === cardFields.length ? (
-                        <div className="workitem-editor-v2__drop-line" />
-                      ) : null}
-                    </div>
-                  </div> : null}
-                </div>
-
-                {false ? <div className="workitem-editor-v2__card-mock">
-                  <div className="workitem-editor-v2__card-mock-accent" style={{ background: typeColor }} />
-                  <div className="workitem-editor-v2__card-mock-body">
-                    <div className="workitem-editor-v2__card-mock-meta">
-                      <span className="workitem-editor-v2__card-mock-type" style={{ background: `${typeColor}22`, color: typeColor }}>
-                        {activeType?.name ?? "Tipo"}
-                      </span>
-                      <span className="workitem-editor-v2__card-mock-status">Em validacao</span>
-                    </div>
-                    <p className="workitem-editor-v2__card-mock-title">Refinar experiencia do checkout</p>
-
-                    {/* Drop zone — field chips directly in card */}
-                    <div
-                      className={`workitem-editor-v2__card-fields${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                      onDragOver={makeDragOverHandler("card")}
-                      onDragLeave={makeDragLeaveHandler("card")}
-                      onDrop={(e) => { e.preventDefault(); handleDropIntoScope(e, "card"); }}
-                    >
-                      {cardFields.length === 0 ? (
-                        <p className="workitem-editor-v2__zone-empty">
-                          Arraste campos da biblioteca aqui
-                        </p>
-                      ) : (
-                        cardFields.map((field, index) => (
-                          <div key={`card-f-${field.id}`} className="workitem-editor-v2__card-slot-wrap">
-                            {dropTarget?.scope === "card" && dropTarget?.index === index ? (
-                              <div className="workitem-editor-v2__drop-line" />
-                            ) : null}
-                            <div
-                              className="workitem-editor-v2__card-field"
-                              data-workitem-slot="card"
-                              data-field-id={field.id}
-                              draggable
-                              onDragStart={(e) => handleDragStartField(e, field.id, "card")}
-                              onDragEnd={handleDragEnd}
-                            >
-                              <div className="workitem-editor-v2__card-field-info">
-                                <span className="workitem-editor-v2__card-field-label">{field.label}</span>
-                                <span className="workitem-editor-v2__card-field-value">{getPreviewValue(field)}</span>
-                              </div>
-                              <div className="workitem-editor-v2__card-field-actions" draggable={false}>
-                                {!isSystemCardFieldId(field.id) ? (
-                                  <button
-                                    type="button"
-                                    className="workitem-editor-v2__field-action-edit"
-                                    draggable={false}
-                                    onClick={(e) => { e.stopPropagation(); openFieldEdit(field.id); }}
-                                    title="Editar campo"
-                                  >
-                                    ✎
-                                  </button>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  className="workitem-editor-v2__field-action-remove"
-                                  draggable={false}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    activeType && handleUpdateLayout(activeType.slug, removeFieldFromScope(activeLayout, "card", field.id));
-                                  }}
-                                  title="Remover do card"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                      {dropTarget?.scope === "card" && dropTarget?.index === cardFields.length ? (
-                        <div className="workitem-editor-v2__drop-line" />
-                      ) : null}
-                    </div>
-                  </div>
-                </div> : null}
-              </section>
-
-              {/* Detail editor */}
-              <section className={`workitem-editor-v2__panel${activePreviewTab === "detail" ? "" : " is-hidden"}`}>
-                <div className="workitem-editor-v2__panel-head">
-                  <div>
-                    <span>Work item aberto</span>
-                    <h2>Formulário expandido</h2>
-                  </div>
-                  <small>{detailFields.length} campo{detailFields.length !== 1 ? "s" : ""}</small>
-                </div>
-
-                <div className="workitem-editor-v2__detail-shell">
-                  <div className="workitem-editor-v2__detail-topbar">
-                    <div>
-                      <span className="workitem-editor-v2__detail-eyebrow">Mesmo visual do item aberto</span>
-                      <strong>{activeType?.name ?? "Tipo"}</strong>
-                    </div>
-                    <div className="workitem-editor-v2__detail-topbar-chips">
-                      <span>Resumo</span>
-                      <span>{previewStatus.label}</span>
-                    </div>
-                  </div>
-
-                  <div className="workitem-editor-v2__detail-layout">
-                    <div className="workitem-editor-v2__detail-column">
-                      <section className="workitem-editor-v2__detail-hero-panel">
-                        <div className="workitem-editor-v2__detail-hero-accent" style={{ background: typeColor }} />
-                        <div className="workitem-editor-v2__detail-hero-copy">
-                          <span>{activeType?.name ?? "Tipo"}</span>
-                          <h3>{PREVIEW_CARD_TITLE}</h3>
-                          <p>{PREVIEW_CARD_DESCRIPTION}</p>
-                        </div>
-                      </section>
-
-                      <div
-                        className={`workitem-editor-v2__detail-zone${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                        onDragOver={makeDetailZoneDragOverHandler("main")}
-                        onDragLeave={makeDetailZoneDragLeaveHandler}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const index = computeDropIndexForSelector(
-                            e,
-                            '[data-workitem-slot="detail"][data-detail-zone="main"]',
-                            dragPayload?.kind === "field" ? dragPayload.fieldId : null
-                          );
-                          applyDropAtDetailZoneIndex("main", index);
-                        }}
-                      >
-                        <div className="workitem-editor-v2__detail-zone-head">
-                          <span>Conteudo principal</span>
-                          <strong>{detailMainFields.length} campo{detailMainFields.length !== 1 ? "s" : ""}</strong>
-                        </div>
-
-                        {detailMainFields.length === 0 ? (
-                          <p className="workitem-editor-v2__zone-empty">Arraste campos para a coluna principal do item aberto.</p>
-                        ) : (
-                          detailMainFields.map((field, index) => renderDetailFieldCard(field, "main", index))
-                        )}
-
-                        {dropTarget?.scope === "detail" && dropTarget?.index === detailMainFields.length ? (
-                          <div className="workitem-editor-v2__drop-line" />
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <aside className="workitem-editor-v2__detail-sidebar">
-                      <section className="workitem-editor-v2__detail-summary-panel">
-                        <span className="workitem-editor-v2__detail-eyebrow">Resumo</span>
-                        <div className="workitem-editor-v2__detail-preview-pills">
-                          <span className="workitem-editor-v2__detail-preview-pill">Bug</span>
-                          <span className="workitem-editor-v2__detail-preview-pill">{previewStatus.label}</span>
-                          <span className="workitem-editor-v2__detail-preview-pill">13 campos</span>
-                        </div>
-                      </section>
-
-                      <div
-                        className={`workitem-editor-v2__detail-zone is-side${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                        onDragOver={makeDetailZoneDragOverHandler("side")}
-                        onDragLeave={makeDetailZoneDragLeaveHandler}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const index = computeDropIndexForSelector(
-                            e,
-                            '[data-workitem-slot="detail"][data-detail-zone="side"]',
-                            dragPayload?.kind === "field" ? dragPayload.fieldId : null
-                          );
-                          applyDropAtDetailZoneIndex("side", index);
-                        }}
-                      >
-                        <div className="workitem-editor-v2__detail-zone-head">
-                          <span>Barra lateral</span>
-                          <strong>{detailSideFields.length} campo{detailSideFields.length !== 1 ? "s" : ""}</strong>
-                        </div>
-
-                        {detailSideFields.length === 0 ? (
-                          <p className="workitem-editor-v2__zone-empty">Solte aqui os campos da lateral, como metadados e apoio.</p>
-                        ) : (
-                          detailSideFields.map((field, index) => renderDetailFieldCard(field, "side", index))
-                        )}
-
-                        {dropTarget?.scope === "detail" && dropTarget?.index === detailSideFields.length ? (
-                          <div className="workitem-editor-v2__drop-line" />
-                        ) : null}
-                      </div>
-                    </aside>
-                  </div>
-
-                  <div className={`workitem-editor-v2__detail-drop-hint${isDragging ? " is-visible" : ""}`}>
+              {/* Card canvas */}
+              <section className={`wie__canvas-panel wie__canvas-panel--card${activeCanvasTab === "card" ? "" : " is-hidden"}`}>
+                <div
+                  className={`wie__card-stage${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                  onDragOver={handlePreviewSurfaceDragOver}
+                  onDragLeave={makeSurfaceDragLeaveHandler("card")}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (dropTarget?.surface === "card") {
+                      applyResolvedDropTarget(dropTarget);
+                    }
+                  }}
+                  onClick={() => setSelectedFieldId(null)}
+                >
+                  <TaskCard
+                    task={previewTask}
+                    boardConfig={previewBoardConfig}
+                    membersById={previewMembersById}
+                    displayStatuses={previewRuntimeStatuses}
+                    draggable={false}
+                    getFieldSlotProps={getCardPreviewFieldProps}
+                    renderEmptySlot={renderCardEmptySlot}
+                    onDebugSnapshot={setPreviewCardDebug}
+                    onDragStart={(e) => e.preventDefault()}
+                    onDragEnd={handleDragEnd}
+                  />
+                  <div className={`wie__stage-hint${isDragging ? " is-visible" : ""}`}>
                     {isDraggingType
-                      ? "Solte em qualquer lado do preview para criar e posicionar o campo."
-                      : "Arraste os campos entre conteudo principal e barra lateral, igual ao card aberto."}
+                      ? "Solte em uma vaga para criar ou em um campo para substituir."
+                      : "Passe sobre uma vaga para inserir ou sobre um campo para substituir."}
                   </div>
                 </div>
               </section>
 
+              {/* Form canvas */}
+              <section className={`wie__canvas-panel${activeCanvasTab === "detail" ? "" : " is-hidden"}`}>
+                <div className="wie__form-stage">
+                  {/* Main column */}
+                  <div className="wie__form-column">
+                    <div className="wie__form-hero">
+                      <div className="wie__form-hero-accent" style={{ background: typeColor }} />
+                      <div className="wie__form-hero-copy">
+                        <span>{activeType?.name ?? "Tipo"}</span>
+                        <h3>{PREVIEW_CARD_TITLE}</h3>
+                        <p>{PREVIEW_CARD_DESCRIPTION}</p>
+                      </div>
+                    </div>
+                    <div
+                      className={`wie__form-zone${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                      onDragOver={handlePreviewSurfaceDragOver}
+                      onDragLeave={makeSurfaceDragLeaveHandler("detail")}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (dropTarget?.surface === "detail" && dropTarget.zone === "main") {
+                          applyResolvedDropTarget(dropTarget);
+                        }
+                      }}
+                    >
+                      <div className="wie__form-zone-head">
+                        <span>Coluna principal</span>
+                        <strong>{detailMainFields.length} campo{detailMainFields.length !== 1 ? "s" : ""}</strong>
+                      </div>
+                      {detailMainFields.length === 0 ? (
+                        isDragging ? renderDetailInsertTarget("main", 0) : <p className="wie__form-zone-empty">Arraste campos para a coluna principal.</p>
+                      ) : (
+                        <>
+                          {detailMainFields.map((field, index) => renderDetailFieldCard(field, "main", index))}
+                          {isDragging ? renderDetailInsertTarget("main", detailMainFields.length) : null}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sidebar */}
+                  <aside className="wie__form-sidebar">
+                    <div className="wie__form-summary-panel">
+                      <span className="wie__form-eyebrow">Resumo</span>
+                      <div className="wie__form-summary-chips">
+                        <span>{activeType?.name ?? "Tipo"}</span>
+                        <span>{previewStatus.label}</span>
+                        <span>{detailFields.length} campos</span>
+                      </div>
+                    </div>
+                    <div
+                      className={`wie__form-zone is-side${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
+                      onDragOver={handlePreviewSurfaceDragOver}
+                      onDragLeave={makeSurfaceDragLeaveHandler("detail")}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (dropTarget?.surface === "detail" && dropTarget.zone === "side") {
+                          applyResolvedDropTarget(dropTarget);
+                        }
+                      }}
+                    >
+                      <div className="wie__form-zone-head">
+                        <span>Barra lateral</span>
+                        <strong>{detailSideFields.length} campo{detailSideFields.length !== 1 ? "s" : ""}</strong>
+                      </div>
+                      {detailSideFields.length === 0 ? (
+                        isDragging ? renderDetailInsertTarget("side", 0) : <p className="wie__form-zone-empty">Arraste campos de apoio e metadados para a lateral.</p>
+                      ) : (
+                        <>
+                          {detailSideFields.map((field, index) => renderDetailFieldCard(field, "side", index))}
+                          {isDragging ? renderDetailInsertTarget("side", detailSideFields.length) : null}
+                        </>
+                      )}
+                    </div>
+                  </aside>
+                </div>
+                <div className={`wie__stage-hint${isDragging ? " is-visible" : ""}`}>
+                  {isDraggingType
+                    ? "Solte em uma vaga para criar ou em um campo para substituir."
+                    : "Solte em uma vaga para inserir ou em um campo para substituir."}
+                </div>
+              </section>
             </div>
+
+            {/* ── Properties ──────────────────────────────────────────────────── */}
+            <aside className="wie__props">
+              {renderPropertiesPanel()}
+            </aside>
           </>
         )}
       </div>
 
-      {/* ── Bottom row ─────────────────────────────────────────────────── */}
-      {false ? <div className="workitem-editor-v2__composer-row">
-        {/* Type composer */}
-        <section className="workitem-editor-v2__composer">
-          <header>
-            <span>Tipo ativo</span>
-            <h3>{editingTypeId ? "Editar tipo" : typeComposer ? "Novo tipo" : (activeType?.name ?? "Sem tipo")}</h3>
-          </header>
-
-          {typeComposer ? (
-            <>
-              <FormField label="Nome">
-                <TextInput
-                  value={typeComposer.name}
-                  placeholder="Ex: Growth, Operacao, Bugs..."
-                  onChange={(e) => setTypeComposer({ ...typeComposer, name: e.target.value })}
-                />
-              </FormField>
-              <FormField label="Cor">
-                <div className="workitem-editor-v2__color-row">
-                  <input type="color" value={typeComposer.color} onChange={(e) => setTypeComposer({ ...typeComposer, color: e.target.value })} />
-                  <TextInput value={typeComposer.color} onChange={(e) => setTypeComposer({ ...typeComposer, color: e.target.value })} />
-                </div>
-              </FormField>
-              <div className="workitem-editor-v2__composer-actions">
-                <Button type="button" size="sm" onClick={() => void handleSaveType()} disabled={typeSaving || !typeComposer.name.trim()}>
-                  {typeSaving ? "Salvando..." : "Salvar tipo"}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => { setTypeComposer(null); setEditingTypeId(null); }}>
-                  Cancelar
-                </Button>
-              </div>
-            </>
-          ) : activeType ? (
-            <div className="workitem-editor-v2__type-card-inline">
-              <div>
-                <strong>{activeType.name}</strong>
-                <small>{cardFields.length} no card &bull; {detailFields.length} no expandido</small>
-              </div>
-              <div className="workitem-editor-v2__composer-actions">
-                <Button type="button" size="sm" variant="outline"
-                  onClick={() => { setEditingTypeId(activeType.id); setTypeComposer({ name: activeType.name, color: activeType.color || DEFAULT_TYPE_COLOR }); }}
-                >
-                  Editar
-                </Button>
-                <Button type="button" size="sm" variant="outline"
-                  onClick={() => void handleDeleteType(activeType.id)}
-                  disabled={typeDeletingId === activeType.id}
-                >
-                  {typeDeletingId === activeType.id ? "Removendo..." : "Remover"}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <p className="workitem-editor-v2__empty">Crie o primeiro tipo para comecar.</p>
-          )}
-        </section>
-
-        {/* Field config panel */}
-        <section className="workitem-editor-v2__composer">
-          {pendingFieldSetup ? (
-            <>
-              <header>
-                <span>Novo campo — {activePendingTypeLabel}</span>
-                <h3>Configurar campo</h3>
-              </header>
-
-              <FormField label="Label do campo">
-                <TextInput
-                  value={pendingFieldSetup.name}
-                  placeholder="Ex: Titulo, Impacto esperado, Prazo..."
-                  autoFocus
-                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, name: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !supportsSelectableOptions(pendingFieldSetup.type)) void handleConfirmFieldSetup();
-                    if (e.key === "Escape") setPendingFieldSetup(null);
-                  }}
-                />
-              </FormField>
-
-              <div className="workitem-editor-v2__toggles">
-                <label>
-                  <input type="checkbox" checked={pendingFieldSetup.required}
-                    onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, required: e.target.checked })} />
-                  Obrigatório
-                </label>
-                <label>
-                  <input type="checkbox" checked={pendingFieldSetup.allowAiGeneration}
-                    disabled={!supportsAiGeneration(pendingFieldSetup.type)}
-                    onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, allowAiGeneration: e.target.checked })} />
-                  IA no campo
-                </label>
-              </div>
-
-              {supportsSelectableOptions(pendingFieldSetup.type) ? (
-                <div className="workitem-editor-v2__options">
-                  <div className="workitem-editor-v2__options-head">
-                    <strong>Opções</strong>
-                    <button type="button"
-                      onClick={() => setPendingFieldSetup({
-                        ...pendingFieldSetup,
-                        options: [...pendingFieldSetup.options, createEmptyOptionDraft(pendingFieldSetup.options.length + 1)]
-                      })}>
-                      Adicionar
-                    </button>
-                  </div>
-                  {pendingFieldSetup.options.map((opt) => (
-                    <div key={opt.id} className="workitem-editor-v2__option-row">
-                      <TextInput value={opt.label} placeholder="Label"
-                        onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
-                      <TextInput value={opt.value} placeholder="valor_interno"
-                        onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, options: pendingFieldSetup.options.map((o) => o.id === opt.id ? { ...o, value: e.target.value } : o) })} />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              {fieldError ? <p className="workitem-editor-v2__error">{fieldError}</p> : null}
-
-              <div className="workitem-editor-v2__composer-actions">
-                <Button type="button" size="sm" onClick={() => void handleConfirmFieldSetup()} disabled={fieldSaving || !pendingFieldSetup.name.trim()}>
-                  {fieldSaving ? "Criando..." : "Adicionar ao layout"}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => { setPendingFieldSetup(null); setFieldError(""); }}>
-                  Cancelar
-                </Button>
-              </div>
-            </>
-          ) : fieldDraft ? (
-            <>
-              <header>
-                <span>Campo customizado</span>
-                <h3>Editar campo</h3>
-              </header>
-
-              <FormField label="Label do campo">
-                <TextInput value={fieldDraft.name} placeholder="Ex: Impacto esperado"
-                  onChange={(e) => setFieldDraft({ ...fieldDraft, name: e.target.value })} />
-              </FormField>
-
-              <div className="workitem-editor-v2__field-types">
-                {FIELD_TYPE_OPTIONS.map((opt) => (
-                  <button key={opt.value} type="button"
-                    className={`workitem-editor-v2__field-type${fieldDraft.type === opt.value ? " is-active" : ""}`}
-                    onClick={() => setFieldDraft({ ...fieldDraft, type: opt.value, allowAiGeneration: supportsAiGeneration(opt.value) ? fieldDraft.allowAiGeneration : false })}>
-                    <strong>{opt.label}</strong>
-                    <span>{opt.caption}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="workitem-editor-v2__toggles">
-                <label>
-                  <input type="checkbox" checked={fieldDraft.required}
-                    onChange={(e) => setFieldDraft({ ...fieldDraft, required: e.target.checked })} />
-                  Obrigatório
-                </label>
-                <label>
-                  <input type="checkbox" checked={fieldDraft.allowAiGeneration}
-                    disabled={!supportsAiGeneration(fieldDraft.type)}
-                    onChange={(e) => setFieldDraft({ ...fieldDraft, allowAiGeneration: e.target.checked })} />
-                  IA no campo
-                </label>
-              </div>
-
-              {supportsSelectableOptions(fieldDraft.type) ? (
-                <div className="workitem-editor-v2__options">
-                  <div className="workitem-editor-v2__options-head">
-                    <strong>Opções</strong>
-                    <button type="button"
-                      onClick={() => setFieldDraft({ ...fieldDraft, options: [...fieldDraft.options, createEmptyOptionDraft(fieldDraft.options.length + 1)] })}>
-                      Adicionar
-                    </button>
-                  </div>
-                  {fieldDraft.options.map((opt) => (
-                    <div key={opt.id} className="workitem-editor-v2__option-row">
-                      <TextInput value={opt.label} placeholder="Label"
-                        onChange={(e) => setFieldDraft({ ...fieldDraft, options: fieldDraft.options.map((o) => o.id === opt.id ? { ...o, label: e.target.value } : o) })} />
-                      <TextInput value={opt.value} placeholder="valor_interno"
-                        onChange={(e) => setFieldDraft({ ...fieldDraft, options: fieldDraft.options.map((o) => o.id === opt.id ? { ...o, value: e.target.value } : o) })} />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              {fieldError ? <p className="workitem-editor-v2__error">{fieldError}</p> : null}
-
-              <div className="workitem-editor-v2__composer-actions">
-                <Button type="button" size="sm" onClick={() => void handleSaveField()} disabled={fieldSaving || !fieldDraft.name.trim()}>
-                  {fieldSaving ? "Salvando..." : "Salvar campo"}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => { setFieldDraft(null); setFieldError(""); }}>
-                  Cancelar
-                </Button>
-                <Button type="button" size="sm" variant="outline"
-                  onClick={() => void handleDeleteField(fieldDraft.id)}
-                  disabled={fieldDeletingId === fieldDraft.id}>
-                  {fieldDeletingId === fieldDraft.id ? "Removendo..." : "Remover campo"}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="workitem-editor-v2__field-idle">
-              <header>
-                <span>Campo</span>
-                <h3>Nenhum campo selecionado</h3>
-              </header>
-              <p className="workitem-editor-v2__empty">
-                Arraste um tipo da biblioteca para o card ou formulário para criar um novo campo.
-                Clique em ✎ em qualquer campo customizado para editar suas propriedades.
-              </p>
-            </div>
-          )}
-        </section>
-      </div> : null}
-
-      {layoutMessage ? <p className="workitem-editor-v2__footer-message">{layoutMessage}</p> : null}
+      {layoutMessage ? <p className="wie__footer-message">{layoutMessage}</p> : null}
     </div>
   );
 }

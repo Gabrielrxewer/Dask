@@ -24,6 +24,7 @@ export type {
   WorkspaceAutomation,
   WorkspaceBoardMode,
   WorkspaceDocument,
+  WorkItemFieldBindingInput,
   WorkItemLinkedDocument,
   WorkspaceDateFormat,
   WorkspacePreferences,

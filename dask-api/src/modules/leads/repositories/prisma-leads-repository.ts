@@ -1,17 +1,17 @@
-﻿import {
+﻿import type {
   LeadDistributionStatus,
   LeadIntegrationEventStatus,
   LeadIntegrationSource,
   LeadQualificationStatus,
   LeadStatus,
-  type Lead,
-  type LeadActivity,
-  type LeadAssignment,
-  type LeadConversion,
-  type LeadIntegrationEvent,
-  type LeadNurtureTouch,
-  type Prisma,
-  type PrismaClient
+  Lead,
+  LeadActivity,
+  LeadAssignment,
+  LeadConversion,
+  LeadIntegrationEvent,
+  LeadNurtureTouch,
+  Prisma,
+  PrismaClient
 } from '@prisma/client';
 import type { LeadsDashboard, LeadsRepository, LeadWithRelations } from '@/modules/leads/repositories/leads-repository';
 

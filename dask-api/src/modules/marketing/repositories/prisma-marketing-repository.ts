@@ -1,4 +1,4 @@
-import type { Lead, LeadActivity, LeadNurtureTouch, Prisma, PrismaClient } from '@prisma/client';
+﻿import type { Lead, LeadActivity, LeadNurtureTouch, LeadStatus, Prisma, PrismaClient } from '@prisma/client';
 import type { SegmentFilter, SegmentRule } from '@/modules/marketing/domain/types';
 import type {
   MarketingCampaignDetails,
@@ -135,11 +135,114 @@ function evaluateFilter(lead: Lead, filter: SegmentFilter, billingStatusByEmail:
   return filter.rules.every((rule) => evaluateRule(lead, rule, billingStatusByEmail));
 }
 
+type DbRecord = Record<string, unknown>;
+type GroupByCountRow = {
+  type?: string | null;
+  status?: string | null;
+  leadId?: string | null;
+  _count: {
+    _all?: number | null;
+  };
+  _max: {
+    occurredAt?: Date | null;
+  };
+};
+type AggregateRevenueResult = {
+  _sum: {
+    revenueInfluenced?: number | null;
+  };
+};
+type MarketingCampaignDetailsRecord = DbRecord & {
+  variants: DbRecord[];
+  segment: DbRecord | null;
+  template: DbRecord | null;
+  senderProfile: DbRecord | null;
+  events: DbRecord[];
+  sends: DbRecord[];
+};
+type MarketingContactPreferenceRecord = DbRecord & {
+  leadId: string | null;
+};
+type MarketingRepositoryDb = PrismaClient & {
+  marketingCampaign: {
+    count(args: DbRecord): Promise<number>;
+    findMany(args: DbRecord): Promise<MarketingCampaignListItem[]>;
+    findFirst(args: DbRecord): Promise<MarketingCampaignDetailsRecord | null>;
+    create(args: DbRecord): Promise<DbRecord>;
+    updateMany(args: DbRecord): Promise<{ count: number }>;
+    findUnique(args: DbRecord): Promise<DbRecord | null>;
+  };
+  marketingAutomationFlow: {
+    count(args: DbRecord): Promise<number>;
+    findMany(args: DbRecord): Promise<DbRecord[]>;
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingCampaignSend: {
+    count(args: DbRecord): Promise<number>;
+    create(args: DbRecord): Promise<DbRecord>;
+    findMany(args: DbRecord): Promise<DbRecord[]>;
+    findUnique(args: DbRecord): Promise<DbRecord | null>;
+    update(args: DbRecord): Promise<DbRecord>;
+    findFirst(args: DbRecord): Promise<DbRecord | null>;
+    groupBy(args: DbRecord): Promise<GroupByCountRow[]>;
+  };
+  marketingEvent: {
+    groupBy(args: DbRecord): Promise<GroupByCountRow[]>;
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingAttribution: {
+    count(args: DbRecord): Promise<number>;
+    aggregate(args: DbRecord): Promise<AggregateRevenueResult>;
+  };
+  marketingCampaignVariant: {
+    create(args: DbRecord): Promise<DbRecord>;
+    update(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingAudienceSegment: {
+    findMany(args: DbRecord): Promise<DbRecord[]>;
+    findFirst(args: DbRecord): Promise<DbRecord | null>;
+    create(args: DbRecord): Promise<DbRecord>;
+    updateMany(args: DbRecord): Promise<{ count: number }>;
+    findUnique(args: DbRecord): Promise<DbRecord | null>;
+  };
+  marketingEmailTemplate: {
+    findMany(args: DbRecord): Promise<DbRecord[]>;
+    findFirst(args: DbRecord): Promise<DbRecord | null>;
+    create(args: DbRecord): Promise<DbRecord>;
+    updateMany(args: DbRecord): Promise<{ count: number }>;
+    findUnique(args: DbRecord): Promise<DbRecord | null>;
+  };
+  marketingSenderProfile: {
+    findMany(args: DbRecord): Promise<DbRecord[]>;
+    findFirst(args: DbRecord): Promise<DbRecord | null>;
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingContactPreference: {
+    findMany(args: DbRecord): Promise<MarketingContactPreferenceRecord[]>;
+    findFirst(args: DbRecord): Promise<DbRecord | null>;
+    update(args: DbRecord): Promise<DbRecord>;
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingLeadScoreEvent: {
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingAutomationStep: {
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+  marketingAutomationEnrollment: {
+    create(args: DbRecord): Promise<DbRecord>;
+  };
+};
+
 export class PrismaMarketingRepository implements MarketingRepository {
   public constructor(private readonly prisma: PrismaClient) {}
 
+  private get db(): MarketingRepositoryDb {
+    return this.prisma as unknown as MarketingRepositoryDb;
+  }
+
   public async getDashboard(workspaceId: string): Promise<MarketingDashboard> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     const [
       activeCampaigns,
@@ -176,12 +279,12 @@ export class PrismaMarketingRepository implements MarketingRepository {
       })
     ]);
 
-    const sent = eventsByType.find((entry: any) => entry.type === 'EMAIL_SENT')?._count?._all ?? 0;
-    const opened = eventsByType.find((entry: any) => entry.type === 'EMAIL_OPENED')?._count?._all ?? 0;
-    const clicked = eventsByType.find((entry: any) => entry.type === 'EMAIL_CLICKED')?._count?._all ?? 0;
+    const sent = eventsByType.find((entry) => entry.type === 'EMAIL_SENT')?._count?._all ?? 0;
+    const opened = eventsByType.find((entry) => entry.type === 'EMAIL_OPENED')?._count?._all ?? 0;
+    const clicked = eventsByType.find((entry) => entry.type === 'EMAIL_CLICKED')?._count?._all ?? 0;
     const converted =
-      eventsByType.find((entry: any) => entry.type === 'CUSTOMER_CONVERTED')?._count?._all ??
-      eventsByType.find((entry: any) => entry.type === 'OPPORTUNITY_INFLUENCED')?._count?._all ??
+      eventsByType.find((entry) => entry.type === 'CUSTOMER_CONVERTED')?._count?._all ??
+      eventsByType.find((entry) => entry.type === 'OPPORTUNITY_INFLUENCED')?._count?._all ??
       0;
 
     return {
@@ -205,7 +308,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
     search?: string;
     limit: number;
   }): Promise<MarketingCampaignListItem[]> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     return db.marketingCampaign.findMany({
       where: {
@@ -229,7 +332,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async findCampaignById(workspaceId: string, campaignId: string): Promise<MarketingCampaignDetails | null> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     const campaign = await db.marketingCampaign.findFirst({
       where: {
@@ -270,12 +373,12 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async createCampaign(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingCampaign.create({ data: asRecord(data) });
   }
 
   public async updateCampaign(workspaceId: string, campaignId: string, data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     await db.marketingCampaign.updateMany({
       where: {
@@ -285,21 +388,26 @@ export class PrismaMarketingRepository implements MarketingRepository {
       data: asRecord(data)
     });
 
-    return db.marketingCampaign.findUnique({ where: { id: campaignId } });
+    const campaign = await db.marketingCampaign.findUnique({ where: { id: campaignId } });
+    if (!campaign) {
+      throw new Error('Campaign not found after update');
+    }
+
+    return campaign;
   }
 
   public async createCampaignVariant(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingCampaignVariant.create({ data: asRecord(data) });
   }
 
   public async updateCampaignVariant(variantId: string, data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingCampaignVariant.update({ where: { id: variantId }, data: asRecord(data) });
   }
 
   public async listSegments(workspaceId: string): Promise<Record<string, unknown>[]> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingAudienceSegment.findMany({
       where: { workspaceId },
       orderBy: [{ isSystem: 'desc' }, { updatedAt: 'desc' }]
@@ -307,27 +415,32 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async findSegmentById(workspaceId: string, segmentId: string): Promise<Record<string, unknown> | null> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingAudienceSegment.findFirst({ where: { id: segmentId, workspaceId } });
   }
 
   public async createSegment(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingAudienceSegment.create({ data: asRecord(data) });
   }
 
   public async updateSegment(workspaceId: string, segmentId: string, data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     await db.marketingAudienceSegment.updateMany({
       where: { id: segmentId, workspaceId },
       data: asRecord(data)
     });
 
-    return db.marketingAudienceSegment.findUnique({ where: { id: segmentId } });
+    const segment = await db.marketingAudienceSegment.findUnique({ where: { id: segmentId } });
+    if (!segment) {
+      throw new Error('Segment not found after update');
+    }
+
+    return segment;
   }
 
   public async listTemplates(workspaceId: string): Promise<Record<string, unknown>[]> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingEmailTemplate.findMany({
       where: { workspaceId, isArchived: false },
       orderBy: [{ isSystem: 'desc' }, { updatedAt: 'desc' }]
@@ -335,33 +448,38 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async findTemplateById(workspaceId: string, templateId: string): Promise<Record<string, unknown> | null> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingEmailTemplate.findFirst({ where: { id: templateId, workspaceId } });
   }
 
   public async findTemplateBySlug(workspaceId: string, slug: string): Promise<Record<string, unknown> | null> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingEmailTemplate.findFirst({ where: { workspaceId, slug } });
   }
 
   public async createTemplate(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingEmailTemplate.create({ data: asRecord(data) });
   }
 
   public async updateTemplate(workspaceId: string, templateId: string, data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     await db.marketingEmailTemplate.updateMany({
       where: { id: templateId, workspaceId },
       data: asRecord(data)
     });
 
-    return db.marketingEmailTemplate.findUnique({ where: { id: templateId } });
+    const template = await db.marketingEmailTemplate.findUnique({ where: { id: templateId } });
+    if (!template) {
+      throw new Error('Template not found after update');
+    }
+
+    return template;
   }
 
   public async listSenderProfiles(workspaceId: string): Promise<Record<string, unknown>[]> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     return db.marketingSenderProfile.findMany({
       where: { workspaceId },
@@ -370,7 +488,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async findDefaultSenderProfile(workspaceId: string): Promise<Record<string, unknown> | null> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     return db.marketingSenderProfile.findFirst({
       where: { workspaceId, isDefault: true },
@@ -379,7 +497,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async createSenderProfile(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingSenderProfile.create({ data: asRecord(data) });
   }
 
@@ -390,23 +508,27 @@ export class PrismaMarketingRepository implements MarketingRepository {
     consentStatus?: string;
     limit: number;
   }): Promise<Array<{ lead: Lead; preference: Record<string, unknown> | null; lastEventAt: Date | null }>> {
-    const db = this.prisma as any;
+    const db = this.db;
+
+    const where: Prisma.LeadWhereInput = {
+      workspaceId: input.workspaceId
+    };
+
+    if (input.status) {
+      where.status = input.status as LeadStatus;
+    }
+
+    if (input.search) {
+      where.OR = [
+        { fullName: { contains: input.search, mode: 'insensitive' } },
+        { email: { contains: input.search, mode: 'insensitive' } },
+        { companyName: { contains: input.search, mode: 'insensitive' } },
+        { interest: { contains: input.search, mode: 'insensitive' } }
+      ];
+    }
 
     const leads: Lead[] = await db.lead.findMany({
-      where: {
-        workspaceId: input.workspaceId,
-        ...(input.status ? { status: input.status } : {}),
-        ...(input.search
-          ? {
-              OR: [
-                { fullName: { contains: input.search, mode: 'insensitive' } },
-                { email: { contains: input.search, mode: 'insensitive' } },
-                { companyName: { contains: input.search, mode: 'insensitive' } },
-                { interest: { contains: input.search, mode: 'insensitive' } }
-              ]
-            }
-          : {})
-      },
+      where,
       orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
       take: input.limit
     });
@@ -461,7 +583,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
     filter: SegmentFilter;
     limit: number;
   }): Promise<Lead[]> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     const seedWhere: Record<string, unknown> = {
       workspaceId: input.workspaceId
@@ -518,7 +640,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async upsertContactPreference(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     const payload = asRecord(data);
 
     const workspaceId = String(payload.workspaceId);
@@ -545,12 +667,12 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async createCampaignSend(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingCampaignSend.create({ data: asRecord(data) });
   }
 
   public async listCampaignSends(campaignId: string): Promise<Record<string, unknown>[]> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingCampaignSend.findMany({
       where: { campaignId },
       orderBy: { createdAt: 'desc' }
@@ -558,7 +680,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async findCampaignSendById(sendId: string): Promise<Record<string, unknown> | null> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     return db.marketingCampaignSend.findUnique({
       where: { id: sendId },
@@ -572,7 +694,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async updateCampaignSend(sendId: string, data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingCampaignSend.update({ where: { id: sendId }, data: asRecord(data) });
   }
 
@@ -580,7 +702,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
     workspaceId: string,
     providerMessageId: string
   ): Promise<Record<string, unknown> | null> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     return db.marketingCampaignSend.findFirst({
       where: {
@@ -591,7 +713,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async createMarketingEvent(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingEvent.create({ data: asRecord(data) });
   }
 
@@ -599,7 +721,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
     byType: Array<{ type: string; total: number }>;
     byStatus: Array<{ status: string; total: number }>;
   }> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     const [eventsByType, sendsByStatus] = await Promise.all([
       db.marketingEvent.groupBy({
@@ -615,8 +737,8 @@ export class PrismaMarketingRepository implements MarketingRepository {
     ]);
 
     return {
-      byType: eventsByType.map((entry: any) => ({ type: String(entry.type), total: Number(entry._count._all ?? 0) })),
-      byStatus: sendsByStatus.map((entry: any) => ({
+      byType: eventsByType.map((entry) => ({ type: String(entry.type), total: Number(entry._count._all ?? 0) })),
+      byStatus: sendsByStatus.map((entry) => ({
         status: String(entry.status),
         total: Number(entry._count._all ?? 0)
       }))
@@ -652,7 +774,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async createLeadScoreEvent(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingLeadScoreEvent.create({ data: asRecord(data) });
   }
 
@@ -672,7 +794,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async listAutomationFlows(workspaceId: string): Promise<Record<string, unknown>[]> {
-    const db = this.prisma as any;
+    const db = this.db;
 
     return db.marketingAutomationFlow.findMany({
       where: { workspaceId },
@@ -690,17 +812,19 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }
 
   public async createAutomationFlow(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingAutomationFlow.create({ data: asRecord(data) });
   }
 
   public async createAutomationStep(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingAutomationStep.create({ data: asRecord(data) });
   }
 
   public async createAutomationEnrollment(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
-    const db = this.prisma as any;
+    const db = this.db;
     return db.marketingAutomationEnrollment.create({ data: asRecord(data) });
   }
 }
+
+

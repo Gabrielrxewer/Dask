@@ -2,6 +2,7 @@
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
+import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
 import {
   applyFieldCapabilityOverrides,
   buildBoardMetrics,
@@ -11,7 +12,6 @@ import {
   type Task,
   type TaskCustomFieldValue,
   type TaskPriority,
-  type TaskStatus,
   type TaskStatusId
 } from "@/entities/task";
 import { currentUserId, membersById } from "@/entities/member";
@@ -25,58 +25,6 @@ import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
 import "./board-page.css";
-
-/**
- * Constroi as colunas visuais do board a partir das board columns do backend,
- * remapeando o status de cada task para o ID da board column correspondente.
- *
- * Mapping:
- *   task.status (slug) -> workflowState.id (UUID) -> boardColumn.id (UUID)
- */
-function buildBoardColumnsView(
-  tasks: Task[],
-  boardCols: ApiBoardColumn[],
-  workflowStates: ApiWorkflowState[],
-  visibleBoardColumnIds?: string[]
-): { statuses: TaskStatus[]; tasks: Task[] } | null {
-  if (boardCols.length === 0) return null;
-
-  const scopedColumns =
-    Array.isArray(visibleBoardColumnIds) && visibleBoardColumnIds.length > 0
-      ? visibleBoardColumnIds
-          .map(columnId => boardCols.find(column => column.id === columnId))
-          .filter((column): column is ApiBoardColumn => Boolean(column))
-      : boardCols;
-
-  if (scopedColumns.length === 0) return null;
-
-  const slugToUUID = new Map(workflowStates.map(s => [s.slug, s.id]));
-  const uuidToCol = new Map<string, ApiBoardColumn>();
-  for (const col of scopedColumns) {
-    for (const stateId of col.stateIds) {
-      uuidToCol.set(stateId, col);
-    }
-  }
-
-  const statuses: TaskStatus[] = scopedColumns.map(col => {
-    const firstState = workflowStates.find(s => s.id === col.stateIds[0]);
-    return {
-      id: col.id,
-      label: col.name,
-      dot: firstState?.color ?? "#64748b"
-    };
-  });
-
-  const remappedTasks = tasks.map(task => {
-    const stateUUID = slugToUUID.get(task.status);
-    if (!stateUUID) return task;
-    const col = uuidToCol.get(stateUUID);
-    if (!col) return task;
-    return { ...task, status: col.id };
-  });
-
-  return { statuses, tasks: remappedTasks };
-}
 
 export function BoardPage() {
   const { user } = useAuth();
@@ -93,7 +41,6 @@ export function BoardPage() {
     updateTaskCustomField,
     updateTaskSchedule,
     updateTask,
-    toggleChecklistItem,
     fetchBoardColumns,
     fetchWorkflowStates,
     listAiAgents,
@@ -143,33 +90,8 @@ export function BoardPage() {
       ),
       snapshot?.preferences.settings
     ),
-    cardLayout: {
-      visibleFieldIds:
-        snapshot?.preferences.visibleCardFieldIds ??
-        (Array.isArray(rawBoardConfig?.cardLayout?.visibleFieldIds)
-          ? rawBoardConfig.cardLayout.visibleFieldIds
-          : factoryBoardConfig.cardLayout.visibleFieldIds),
-      visibleFieldIdsByType: Object.entries(snapshot?.preferences.visibleFieldsByType ?? {}).reduce<Record<string, string[]>>(
-        (acc, [typeId, fieldIds]) => {
-          acc[typeId] = fieldIds;
-          return acc;
-        },
-        {}
-      ),
-      detailVisibleFieldIdsByType: Object.entries(
-        snapshot?.preferences.detailVisibleFieldsByType ?? {}
-      ).reduce<Record<string, string[]>>((acc, [typeId, fieldIds]) => {
-        acc[typeId] = fieldIds;
-        return acc;
-      }, {}),
-      detailFieldZoneByType: Object.entries(
-        ((snapshot?.preferences.settings as { detailFieldZoneByType?: Record<string, Record<string, "main" | "side">> } | undefined)
-          ?.detailFieldZoneByType ?? {})
-      ).reduce<Record<string, Record<string, "main" | "side">>>((acc, [typeId, fieldZones]) => {
-        acc[typeId] = fieldZones;
-        return acc;
-      }, {})
-    },
+    fieldBindings: Array.isArray(rawBoardConfig?.fieldBindings) ? rawBoardConfig.fieldBindings : factoryBoardConfig.fieldBindings,
+    cardLayout: rawBoardConfig?.cardLayout ?? factoryBoardConfig.cardLayout,
     perspectives: rawPerspectives
   };
 
@@ -239,34 +161,7 @@ export function BoardPage() {
   const activePerspective = boardPerspectives.find(perspective => perspective.id === mode) ?? boardPerspectives[0];
 
   const mapTasksForPerspective = useMemo(
-    () => (sourceTasks: typeof tasks) => {
-      if (!activePerspective) {
-        return sourceTasks;
-      }
-
-      const filteredByType =
-        activePerspective.allowedTaskTypes && activePerspective.allowedTaskTypes.length > 0
-          ? sourceTasks.filter(task => activePerspective.allowedTaskTypes?.includes(task.type))
-          : sourceTasks;
-
-      return filteredByType.map(task => {
-        if (activePerspective.statusSource.kind === "workflow_state") {
-          return task;
-        }
-
-        const rawValue = task.customFields[activePerspective.statusSource.fieldId];
-        if (typeof rawValue === "string" && rawValue.trim().length > 0) {
-          return { ...task, status: rawValue };
-        }
-
-        const fallback =
-          activePerspective.statusSource.fallbackByStatus?.[task.status] ??
-          activePerspective.statuses[0]?.id ??
-          task.status;
-
-        return { ...task, status: fallback };
-      });
-    },
+    () => (sourceTasks: typeof tasks) => mapTasksForBoardPerspective(sourceTasks, activePerspective),
     [activePerspective]
   );
 
@@ -275,7 +170,7 @@ export function BoardPage() {
   const boardColumnsPerspective = useMemo(
     () =>
       useBoardColumnsProjection
-        ? buildBoardColumnsView(
+        ? buildBoardColumnsRuntimeView(
             mapTasksForPerspective(filteredTasks),
             apiBoardCols,
             apiWorkflowStates,
@@ -294,7 +189,7 @@ export function BoardPage() {
   const boardColumnsPerspectiveAll = useMemo(
     () =>
       useBoardColumnsProjection
-        ? buildBoardColumnsView(
+        ? buildBoardColumnsRuntimeView(
             mapTasksForPerspective(tasks),
             apiBoardCols,
             apiWorkflowStates,
@@ -463,7 +358,6 @@ export function BoardPage() {
               onUpdateTaskCustomField={handleUpdateTaskCustomField}
               onUpdateTaskSchedule={handleUpdateTaskSchedule}
               onSaveTask={updateTask}
-              onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
               aiAgents={aiAgents}
               availableTags={availableTags}
               onRunAiAgentOnItem={runAiAgentOnItem}

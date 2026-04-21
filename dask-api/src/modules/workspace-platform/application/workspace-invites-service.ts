@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { MembershipRole, type PrismaClient } from '@prisma/client';
+import type { MembershipRole, PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';

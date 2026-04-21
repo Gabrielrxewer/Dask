@@ -97,6 +97,19 @@
   line-height: 1.35;
 }
 
+.timeline-view__meta-support {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.timeline-view__meta-support > span {
+  display: inline-flex;
+  align-items: center;
+}
+
 .timeline-view__meta:hover strong {
   color: var(--timeline-accent-strong);
 }

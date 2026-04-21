@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type Task } from "@/entities/task";
 import {
@@ -95,7 +95,7 @@ const SLOT_MINUTES = 30;
 const AGENDA_ROW_HEIGHT = 34;
 const RESOURCE_KEYS = ["resource", "resources", "recurso", "recursos", "room", "sala", "equipment", "equipamento"];
 
-function InfoHint({ label, children }: { label: string; children: string }) {
+function InfoHint({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="agenda-view__info">
       <button type="button" aria-label={label}>i</button>
@@ -231,7 +231,6 @@ export function AgendaPage() {
     updateTaskCustomField,
     updateTaskSchedule,
     updateTask,
-    toggleChecklistItem,
     listAiAgents,
     runAiAgentOnItem,
     runAiRiskAnalysis,
@@ -1157,7 +1156,6 @@ export function AgendaPage() {
           onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
           onUpdateSchedule={(taskId, input) => void updateTaskSchedule(taskId, input)}
           onSaveTask={(taskId, input) => void updateTask(taskId, input)}
-          onToggleChecklistItem={(taskId, itemId) => void toggleChecklistItem(taskId, itemId)}
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}
           onRunAiRiskAnalysis={runAiRiskAnalysis}

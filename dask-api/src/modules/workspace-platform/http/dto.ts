@@ -11,7 +11,13 @@ const customFieldTypeEnum = z.enum([
   'boolean',
   'select',
   'multi_select',
-  'user'
+  'user',
+  'checklist',
+  'priority',
+  'status',
+  'tag',
+  'schedule',
+  'work_item_type'
 ]);
 
 const workspaceTemplateKeyEnum = z.enum([
@@ -149,8 +155,11 @@ export const createCustomFieldDto = z.object({
   description: z.string().optional(),
   type: customFieldTypeEnum,
   required: z.boolean().optional(),
+  isEditable: z.boolean().optional(),
+  isRemovable: z.boolean().optional(),
   order: z.number().int().nonnegative().optional(),
   isActive: z.boolean().optional(),
+  defaultValue: z.unknown().optional(),
   settings: z.record(z.unknown()).optional(),
   options: z.array(customFieldOptionDto).optional(),
   scopeTypeIds: z.array(z.string().uuid()).optional()
@@ -158,6 +167,21 @@ export const createCustomFieldDto = z.object({
 
 export const patchCustomFieldDto = createCustomFieldDto.partial().refine((obj) => Object.keys(obj).length > 0, {
   message: 'At least one field is required'
+});
+
+export const workItemFieldBindingInputDto = z.object({
+  fieldDefinitionId: z.string().uuid(),
+  displayContext: z.enum(['card', 'detail']),
+  order: z.number().int().nonnegative(),
+  section: z.string().nullable().optional(),
+  isVisible: z.boolean().optional(),
+  isRequiredOverride: z.boolean().nullable().optional(),
+  isReadonlyOverride: z.boolean().nullable().optional(),
+  settings: z.record(z.unknown()).nullable().optional()
+});
+
+export const replaceItemTypeFieldBindingsDto = z.object({
+  bindings: z.array(workItemFieldBindingInputDto)
 });
 
 export const patchPreferencesDto = z

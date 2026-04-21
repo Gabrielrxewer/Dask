@@ -21,7 +21,7 @@ const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
 const userProfileStorageKey = "dask:user-profile-preferences";
 const globalThemeStorageKey = "dask:theme-preference";
 const maxProfileAvatarBytes = 2 * 1024 * 1024;
-const userProfileThemes = new Set(["light", "dark", "system"]);
+const userProfileThemes = new Set<UserProfileTheme>(["light", "dark", "system"]);
 const defaultUserProfilePreferences: UserProfilePreferences = {
   autoSave: true,
   density: "comfortable",
@@ -37,11 +37,13 @@ interface UserProfilePreferences {
   density: string;
   language: string;
   notifications: boolean;
-  theme: string;
+  theme: UserProfileTheme;
 }
 
 function normalizeUserProfileTheme(theme: unknown): UserProfileTheme {
-  return typeof theme === "string" && userProfileThemes.has(theme) ? (theme as UserProfileTheme) : "system";
+  return typeof theme === "string" && userProfileThemes.has(theme as UserProfileTheme)
+    ? (theme as UserProfileTheme)
+    : "system";
 }
 
 function getSystemResolvedTheme(): "light" | "dark" {
@@ -910,11 +912,11 @@ export function GlobalLayout() {
                     </div>
                   </div>
                   <div className="user-profile-modal__option-grid" role="radiogroup" aria-label="Tema">
-                    {[
+                    {([
                       { value: "light", label: "Claro", description: "Interface luminosa" },
                       { value: "dark", label: "Escuro", description: "Menos brilho" },
                       { value: "system", label: "Sistema", description: `Usar ${systemTheme === "dark" ? "escuro" : "claro"} do dispositivo` }
-                    ].map(option => (
+                    ] satisfies Array<{ value: UserProfileTheme; label: string; description: string }>).map(option => (
                       <button
                         key={option.value}
                         type="button"

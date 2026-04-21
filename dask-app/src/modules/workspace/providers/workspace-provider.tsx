@@ -27,6 +27,7 @@ import type {
   UpdateBoardColumnInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
+  WorkItemFieldBindingInput,
   WorkspaceAutomation,
   WorkspaceDocument,
   WorkItemLinkedDocument,
@@ -68,6 +69,7 @@ interface WorkspaceContextValue {
   createItemType: (input: CreateItemTypeInput) => Promise<void>;
   updateItemType: (typeId: string, input: UpdateItemTypeInput) => Promise<void>;
   deleteItemType: (typeId: string) => Promise<void>;
+  replaceItemTypeFieldBindings: (typeId: string, bindings: WorkItemFieldBindingInput[]) => Promise<void>;
 
   createCustomField: (input: CreateCustomFieldInput) => Promise<void>;
   updateCustomField: (fieldId: string, input: UpdateCustomFieldInput) => Promise<void>;
@@ -88,7 +90,7 @@ interface WorkspaceContextValue {
   createAiAgent: (input: CreateAiAgentInput) => Promise<{ id: string }>;
   updateAiAgent: (
     agentId: string,
-    patch: Partial<CreateAiAgentInput> & { description?: string | null }
+    patch: Omit<Partial<CreateAiAgentInput>, "description"> & { description?: string | null }
   ) => Promise<{ id: string }>;
   runAiAgentOnItem: (
     itemId: string,
@@ -383,6 +385,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
+  const replaceItemTypeFieldBindings = useCallback(
+    async (typeId: string, bindings: WorkItemFieldBindingInput[]) => {
+      if (!workspaceSlug) return;
+      const nextSnapshot = await workspaceService.replaceItemTypeFieldBindings(workspaceSlug, typeId, bindings);
+      setSnapshot(nextSnapshot);
+    },
+    [workspaceSlug]
+  );
+
   const createCustomField = useCallback(async (input: CreateCustomFieldInput) => {
     if (!workspaceSlug) return;
     const nextSnapshot = await workspaceService.createCustomField(workspaceSlug, input);
@@ -497,7 +508,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const updateAiAgent = useCallback(
     async (
       agentId: string,
-      patch: Partial<CreateAiAgentInput> & { description?: string | null }
+      patch: Omit<Partial<CreateAiAgentInput>, "description"> & { description?: string | null }
     ): Promise<{ id: string }> => {
       if (!workspaceSlug) {
         return { id: "" };
@@ -642,6 +653,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createItemType,
       updateItemType,
       deleteItemType,
+      replaceItemTypeFieldBindings,
       createCustomField,
       updateCustomField,
       deleteCustomField,
@@ -698,6 +710,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createItemType,
       updateItemType,
       deleteItemType,
+      replaceItemTypeFieldBindings,
       createCustomField,
       updateCustomField,
       deleteCustomField,

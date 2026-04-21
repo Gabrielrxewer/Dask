@@ -1093,6 +1093,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           <Button
             type="button"
             size="sm"
+            variant="primary"
             onClick={() => void handleSubmit()}
             disabled={isCreateMode ? !canSave : !hasChanges || saving}
           >

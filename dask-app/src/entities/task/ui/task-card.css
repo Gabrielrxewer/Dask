@@ -420,10 +420,9 @@
   letter-spacing: -0.02em;
   color: var(--text-strong);
   line-height: 1.24;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .task-card__text {

@@ -8,103 +8,18 @@
   --timeline-surface-soft: #f8fafc;
   --timeline-accent: #075f9d;
   --timeline-accent-strong: #064f85;
+  --workspace-view-text: var(--timeline-text);
+  --workspace-view-text-soft: var(--timeline-text-soft);
+  --workspace-view-text-muted: var(--timeline-text-muted);
+  --workspace-view-line: var(--timeline-line);
+  --workspace-view-line-strong: var(--timeline-line-strong);
+  --workspace-view-surface: var(--timeline-surface);
+  --workspace-view-surface-soft: var(--timeline-surface-soft);
+  --workspace-view-accent: var(--timeline-accent);
+  --workspace-view-accent-strong: var(--timeline-accent-strong);
   --doc-line: var(--timeline-line);
   --doc-ink: var(--timeline-text);
   --doc-muted: var(--timeline-text-muted);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  width: 100%;
-  color: var(--timeline-text);
-}
-
-.workspace:has(.timeline-view) {
-  background: var(--timeline-surface-soft);
-  border-color: #d8e4ee;
-  border-radius: var(--radius-xs);
-  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.05);
-  backdrop-filter: none;
-}
-
-.workspace:has(.timeline-view)::before {
-  content: none;
-}
-
-.timeline-view__metrics .shared-metric-card {
-  min-height: 64px;
-  padding: 10px 12px;
-  border-color: #d8e4ee;
-  border-radius: var(--radius-xs);
-  background: var(--timeline-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
-  backdrop-filter: none;
-}
-
-.timeline-view__metrics .shared-metric-card p {
-  color: var(--timeline-text-soft);
-  font-size: var(--font-size-xs);
-  font-weight: 800;
-}
-
-.timeline-view__metrics .shared-metric-card h3 {
-  margin-top: 4px;
-  font-size: 1.08rem;
-  color: var(--timeline-text);
-  letter-spacing: 0;
-}
-
-.timeline-view__section {
-  min-height: 0;
-  border-color: #d8e4ee;
-  border-radius: var(--radius-xs);
-  background: var(--timeline-surface);
-  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.045);
-  backdrop-filter: none;
-}
-
-.timeline-view__section::before {
-  content: none;
-}
-
-.timeline-view__section .shared-section__header {
-  padding: 12px 14px;
-  border-bottom-color: var(--timeline-line);
-  background: var(--timeline-surface);
-}
-
-.timeline-view__section .shared-section__title {
-  color: var(--timeline-text);
-  font-family: var(--font-family-heading);
-  font-size: var(--font-size-title-md);
-  font-weight: 900;
-  letter-spacing: 0;
-}
-
-.timeline-view__section .shared-section__subtitle {
-  color: var(--timeline-text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-}
-
-.timeline-view__section .shared-section__content {
-  padding: 10px;
-  min-height: 0;
-  background: var(--timeline-surface-soft);
-}
-
-.timeline-view__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.timeline-view__actions .shared-status-badge {
-  border-color: var(--timeline-line);
-  background: var(--timeline-surface-soft);
-  color: var(--timeline-text-muted);
 }
 
 .timeline-view__toggle.documentation-page__modes {
@@ -326,37 +241,10 @@
   font-weight: 600;
 }
 
-.app-theme[data-theme="dark"] .timeline-view {
-  --timeline-text: var(--text-strong);
-  --timeline-text-soft: var(--text-soft);
-  --timeline-text-muted: var(--text-muted);
-  --timeline-line: var(--line);
-  --timeline-line-strong: var(--line-strong);
-  --timeline-surface: var(--panel);
-  --timeline-surface-soft: var(--bg-soft);
-  --timeline-accent: var(--accent);
-  --timeline-accent-strong: var(--accent-strong);
-  --doc-line: var(--line);
-  --doc-ink: var(--text-strong);
-  --doc-muted: var(--text-muted);
-}
-
-.app-theme[data-theme="dark"] .workspace:has(.timeline-view),
-.app-theme[data-theme="dark"] .timeline-view__section,
-.app-theme[data-theme="dark"] .timeline-view__metrics .shared-metric-card,
 .app-theme[data-theme="dark"] .timeline-view__table {
   border-color: var(--line) !important;
   background: var(--surface-raised) !important;
   box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .timeline-view__section .shared-section__header {
-  border-bottom-color: var(--line) !important;
-  background: var(--surface-raised) !important;
-}
-
-.app-theme[data-theme="dark"] .timeline-view__section .shared-section__content {
-  background: color-mix(in oklab, var(--panel-soft) 90%, transparent) !important;
 }
 
 .app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__header {
@@ -392,12 +280,6 @@
   border-color: var(--line) !important;
   background: var(--control-surface) !important;
   color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .timeline-view__actions .shared-status-badge {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-muted) !important;
 }
 
 .app-theme[data-theme="dark"] .timeline-view__track {

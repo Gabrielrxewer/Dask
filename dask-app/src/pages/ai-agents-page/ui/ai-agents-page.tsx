@@ -88,10 +88,11 @@ const MODEL_OPTIONS: Array<{ value: string; label: string }> = [
 
 const TOP_K_OPTIONS = ["3", "5", "7", "10"];
 
-const DEFAULT_PROMPT = [
-  "You are a senior workspace assistant.",
-  "Give objective and practical answers.",
-  "When context is missing, state your assumptions."
+const PROMPT_PLACEHOLDER = "Descreva o comportamento do agente.";
+const LEGACY_RISK_ANALYST_PROMPT = [
+  "You are a senior delivery risk analyst.",
+  "Evaluate work-item risk in software/product operations contexts.",
+  "Keep response objective and executable for teams."
 ].join("\n");
 
 function asAgentConfig(value: unknown): AiAgentConfig {
@@ -158,6 +159,15 @@ function isPresetModel(value: string): boolean {
   return MODEL_OPTIONS.some((option) => option.value === value);
 }
 
+function normalizeSystemPrompt(value: string | null | undefined): string {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized === LEGACY_RISK_ANALYST_PROMPT ? "" : value ?? "";
+}
+
 function createDefaultForm(): AgentFormState {
   return {
     id: null,
@@ -167,7 +177,7 @@ function createDefaultForm(): AgentFormState {
     description: "",
     model: "",
     temperature: "0.2",
-    systemPrompt: DEFAULT_PROMPT,
+    systemPrompt: "",
     isActive: true,
     ragSource: "documentation",
     includeSemanticContext: true,
@@ -197,7 +207,7 @@ function formFromAgent(agent: AiAgentSummary): AgentFormState {
     description: agent.description ?? "",
     model: agent.model,
     temperature: String(agent.temperature),
-    systemPrompt: agent.systemPrompt ?? DEFAULT_PROMPT,
+    systemPrompt: normalizeSystemPrompt(agent.systemPrompt),
     isActive: agent.isActive,
     ragSource: source,
     includeSemanticContext: rag.includeSemanticContext !== false,
@@ -445,10 +455,10 @@ export function AiAgentsPage() {
       pageTitle="Agentes de IA"
       pageLabel="AI Studio"
     >
-      <div className="ai-agents-page">
+      <div className="ai-agents-page workspace-view">
         <BoardMetrics
           metrics={metrics}
-          className="ai-agents-page__metrics"
+          className="ai-agents-page__metrics workspace-view__metrics"
           cards={[
             { label: "Agentes cadastrados", value: agents.length },
             { label: "Agentes ativos", value: activeAgentsCount },
@@ -461,7 +471,7 @@ export function AiAgentsPage() {
           <Section
             title="Catalogo de agentes"
             subtitle="Selecione um agente para editar prompt e politica de RAG."
-            className="ai-agents-page__catalog"
+            className="ai-agents-page__catalog workspace-view__panel"
             actions={
               <Button
                 type="button"
@@ -520,7 +530,7 @@ export function AiAgentsPage() {
           <Section
             title={isCreateMode ? "Novo agente customizado" : "Editar agente"}
             subtitle="Defina prompt, modelo e como a IA consulta documentacao e cards."
-            className="ai-agents-page__editor"
+            className="ai-agents-page__editor workspace-view__panel"
             actions={
               <Button
                 type="button"
@@ -625,7 +635,7 @@ export function AiAgentsPage() {
                   rows={8}
                   value={form.systemPrompt}
                   onChange={(event) => updateForm("systemPrompt", event.target.value)}
-                  placeholder="Defina o comportamento e tom do agente."
+                  placeholder={PROMPT_PLACEHOLDER}
                 />
               </FormField>
 

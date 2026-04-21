@@ -168,14 +168,14 @@ export function TimelinePage() {
       hideSidebarBrandMark
       pageTitle="Linha do tempo"
     >
-      <div className="timeline-view">
-        <BoardMetrics metrics={metrics} className="timeline-view__metrics" />
+      <div className="timeline-view workspace-view">
+        <BoardMetrics metrics={metrics} className="timeline-view__metrics workspace-view__metrics" />
 
         <Section
           title="Timeline operacional"
           subtitle="Alterne entre coluna e agenda e acompanhe somente suas atividades."
           actions={
-            <div className="timeline-view__actions">
+            <div className="timeline-view__actions workspace-view__actions">
               <div className="timeline-view__toggle documentation-page__modes" role="tablist" aria-label="Modo da timeline">
                 <button
                   type="button"
@@ -201,7 +201,7 @@ export function TimelinePage() {
               <StatusBadge>{rangeLabel}</StatusBadge>
             </div>
           }
-          className="timeline-view__section"
+          className="timeline-view__section workspace-view__section"
         >
           <div className="timeline-view__stack">
             <DataTable

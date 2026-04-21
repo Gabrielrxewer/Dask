@@ -137,14 +137,14 @@ export function ListPage() {
       hideSidebarBrandMark
       pageTitle="Lista de itens"
     >
-      <div className="list-view">
-        <BoardMetrics metrics={metrics} className="list-view__metrics" />
+      <div className="list-view workspace-view">
+        <BoardMetrics metrics={metrics} className="list-view__metrics workspace-view__metrics" />
 
         <Section
           title="Itens do workspace"
           subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
           actions={
-            <div className="list-view__actions">
+            <div className="list-view__actions workspace-view__actions">
               <DashboardFilter
                 query={filter.query}
                 mineOnly={filter.mineOnly}
@@ -162,7 +162,7 @@ export function ListPage() {
               />
             </div>
           }
-          className="list-view__section"
+          className="list-view__section workspace-view__section"
         >
           <DataTable
             columns="minmax(220px, 2.2fr) 1fr 1fr 1.2fr 0.7fr"

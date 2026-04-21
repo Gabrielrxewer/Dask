@@ -9,6 +9,15 @@
   --agents-surface-muted: #eef4fb;
   --agents-accent: #075f9d;
   --agents-accent-strong: #064f85;
+  --workspace-view-text: var(--agents-text);
+  --workspace-view-text-soft: var(--agents-text-soft);
+  --workspace-view-text-muted: var(--agents-text-muted);
+  --workspace-view-line: var(--agents-line);
+  --workspace-view-line-strong: var(--agents-line-strong);
+  --workspace-view-surface: var(--agents-surface);
+  --workspace-view-surface-soft: var(--agents-surface-soft);
+  --workspace-view-accent: var(--agents-accent);
+  --workspace-view-accent-strong: var(--agents-accent-strong);
   --agents-success-bg: #e8f7ef;
   --agents-success-border: #95d5af;
   --agents-warning-bg: #fff3df;
@@ -20,41 +29,6 @@
   min-height: 0;
   overflow: hidden;
   color: var(--agents-text);
-}
-
-.workspace:has(.ai-agents-page) {
-  background: var(--agents-surface-soft);
-  border-color: #d8e4ee;
-  border-radius: var(--radius-xs);
-  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.05);
-  backdrop-filter: none;
-}
-
-.workspace:has(.ai-agents-page)::before {
-  content: none;
-}
-
-.ai-agents-page__metrics .shared-metric-card {
-  min-height: 64px;
-  padding: 10px 12px;
-  border-color: #d8e4ee;
-  border-radius: var(--radius-xs);
-  background: var(--agents-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
-  backdrop-filter: none;
-}
-
-.ai-agents-page__metrics .shared-metric-card p {
-  color: var(--agents-text-soft);
-  font-size: var(--font-size-xs);
-  font-weight: 800;
-}
-
-.ai-agents-page__metrics .shared-metric-card h3 {
-  margin-top: 4px;
-  font-size: 1.08rem;
-  color: var(--agents-text);
-  letter-spacing: 0;
 }
 
 .ai-agents-page__layout {
@@ -70,39 +44,6 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-color: #d8e4ee;
-  border-radius: var(--radius-xs);
-  background: var(--agents-surface);
-  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.045);
-  backdrop-filter: none;
-}
-
-.ai-agents-page__catalog::before,
-.ai-agents-page__editor::before {
-  content: none;
-}
-
-.ai-agents-page__catalog .shared-section__header,
-.ai-agents-page__editor .shared-section__header {
-  padding: 12px 14px;
-  border-bottom-color: var(--agents-line);
-  background: var(--agents-surface);
-}
-
-.ai-agents-page__catalog .shared-section__title,
-.ai-agents-page__editor .shared-section__title {
-  color: var(--agents-text);
-  font-family: var(--font-family-heading);
-  font-size: var(--font-size-title-md);
-  font-weight: 900;
-  letter-spacing: 0;
-}
-
-.ai-agents-page__catalog .shared-section__subtitle,
-.ai-agents-page__editor .shared-section__subtitle {
-  color: var(--agents-text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
 }
 
 .ai-agents-page__catalog .shared-section__content,
@@ -235,10 +176,11 @@
 .ai-agents-page__field-stack {
   display: grid;
   gap: 8px;
+  width: 100%;
 }
 
 .ai-agents-page__select {
-  min-height: 28px;
+  min-height: 46px;
   font-size: var(--font-size-xs);
   width: 100%;
 }
@@ -250,17 +192,18 @@
 }
 
 .ai-agents-page__select .shared-select__control {
-  min-height: 28px;
-  height: 28px;
+  min-height: 46px;
+  height: 46px;
   border-color: #d8e4ee;
   border-radius: var(--radius-xs);
   background: var(--agents-surface);
   color: var(--agents-text);
-  padding: 0 9px;
+  padding: 0 14px;
 }
 
 .ai-agents-page__select .shared-select__value {
   font-size: var(--font-size-xs);
+  font-weight: 700;
 }
 
 .ai-agents-page__select .shared-select__menu {
@@ -268,15 +211,57 @@
   border-radius: 18px;
   background: var(--agents-surface);
   color: var(--agents-text);
+  padding: 8px;
 }
 
 .ai-agents-page__form .shared-input,
 .ai-agents-page__form .shared-textarea {
+  width: 100%;
   border-color: #d8e4ee;
   border-radius: var(--radius-xs);
   background: var(--agents-surface);
   color: var(--agents-text);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.ai-agents-page__form .shared-input {
+  min-height: 46px;
+  height: 46px;
+  padding: 0 14px;
+}
+
+.ai-agents-page__form .shared-input[type="number"] {
+  appearance: textfield;
+}
+
+.ai-agents-page__select .shared-select__option {
+  min-height: 42px;
+  border-color: transparent;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: var(--agents-text-soft);
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ai-agents-page__select .shared-select__option:hover,
+.ai-agents-page__select .shared-select__option:focus-visible {
+  border-color: #9fc2e2;
+  background: #eef7ff;
+  color: var(--agents-text);
+  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.08);
+}
+
+.ai-agents-page__select .shared-select__option--selected {
+  border-color: #83afd5;
+  background: linear-gradient(180deg, #f7fbff 0%, #e9f4ff 100%);
+  color: var(--agents-text);
+  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.14);
+}
+
+.ai-agents-page__select .shared-select__option--selected:hover,
+.ai-agents-page__select .shared-select__option--selected:focus-visible {
+  border-color: #6d9fc9;
+  background: linear-gradient(180deg, #f2f9ff 0%, #dfefff 100%);
 }
 
 .ai-agents-page__form .shared-input:focus,
@@ -493,25 +478,13 @@
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page {
-  --agents-text: var(--text-strong);
-  --agents-text-soft: var(--text-soft);
-  --agents-text-muted: var(--text-muted);
-  --agents-line: var(--line);
-  --agents-line-strong: var(--line-strong);
-  --agents-surface: var(--panel);
-  --agents-surface-soft: var(--bg-soft);
   --agents-surface-muted: var(--surface-muted);
-  --agents-accent: var(--accent);
-  --agents-accent-strong: var(--accent-strong);
   --agents-success-bg: color-mix(in oklab, var(--success) 14%, var(--panel));
   --agents-success-border: color-mix(in oklab, var(--success) 34%, var(--line));
   --agents-warning-bg: color-mix(in oklab, var(--warning) 14%, var(--panel));
   --agents-warning-border: color-mix(in oklab, var(--warning) 34%, var(--line));
 }
 
-.app-theme[data-theme="dark"] .workspace:has(.ai-agents-page),
-.app-theme[data-theme="dark"] .ai-agents-page__catalog,
-.app-theme[data-theme="dark"] .ai-agents-page__editor,
 .app-theme[data-theme="dark"] .ai-agents-page__metrics .shared-metric-card,
 .app-theme[data-theme="dark"] .ai-agents-page__agent-item,
 .app-theme[data-theme="dark"] .ai-agents-page__rag-panel,
@@ -522,12 +495,6 @@
   border-color: var(--line) !important;
   background: var(--surface-raised) !important;
   box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .ai-agents-page__catalog .shared-section__header,
-.app-theme[data-theme="dark"] .ai-agents-page__editor .shared-section__header {
-  border-bottom-color: var(--line) !important;
-  background: var(--surface-raised) !important;
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__catalog .shared-section__content,
@@ -562,6 +529,20 @@
 .app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__option {
   border-color: var(--line) !important;
   background: var(--control-surface) !important;
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__option:hover,
+.app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__option:focus-visible {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  background: color-mix(in oklab, var(--accent) 16%, var(--control-surface)) !important;
+  color: var(--text-strong) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+}
+
+.app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__option--selected {
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line)) !important;
+  background: color-mix(in oklab, var(--accent) 22%, var(--control-surface)) !important;
   color: var(--text-strong) !important;
 }
 

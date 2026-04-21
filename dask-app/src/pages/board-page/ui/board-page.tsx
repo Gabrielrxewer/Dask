@@ -420,14 +420,14 @@ export function BoardPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <div className="board-view">
-        <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics" />
+      <div className="board-view workspace-view">
+        <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics workspace-view__metrics" />
 
         <Section
           title="Board"
           subtitle={boardSubtitle}
           actions={
-            <div className="board-view__section-actions">
+            <div className="board-view__section-actions workspace-view__actions">
               <DashboardFilter
                 query={filter.query}
                 mineOnly={filter.mineOnly}
@@ -437,7 +437,7 @@ export function BoardPage() {
               <StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>
             </div>
           }
-          className="board-view__canvas"
+          className="board-view__canvas workspace-view__section"
         >
           {isLoading ? (
             <LoadingState text="Carregando workspace..." />

@@ -9,6 +9,9 @@ export default defineConfig(() => {
   return {
     base: normalizedBasePath,
     plugins: [react()],
+    server: {
+      allowedHosts: ["host.docker.internal"]
+    },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url))

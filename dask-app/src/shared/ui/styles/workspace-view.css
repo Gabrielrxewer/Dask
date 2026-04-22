@@ -104,7 +104,7 @@
 }
 
 .workspace-view__actions .dashboard-filter .shared-input,
-.workspace-view__actions .dashboard-filter .shared-button {
+.workspace-view__actions .dashboard-filter .shared-button:not(.shared-button--primary) {
   border-color: var(--workspace-view-accent-line, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 20%, var(--line)));
   background: var(--surface-overlay);
   box-shadow: var(--shadow-soft);
@@ -115,7 +115,7 @@
   font-weight: 700;
 }
 
-.workspace-view__actions .dashboard-filter .shared-button {
+.workspace-view__actions .dashboard-filter .shared-button:not(.shared-button--primary) {
   color: var(--workspace-view-filter-action-text, color-mix(in oklab, var(--workspace-view-text, var(--text-strong)) 80%, var(--accent-strong)));
 }
 
@@ -146,7 +146,7 @@
 }
 
 .app-theme[data-theme="dark"] .workspace-view__actions .dashboard-filter .shared-input,
-.app-theme[data-theme="dark"] .workspace-view__actions .dashboard-filter .shared-button {
+.app-theme[data-theme="dark"] .workspace-view__actions .dashboard-filter .shared-button:not(.shared-button--primary) {
   border-color: var(--line) !important;
   background: var(--control-surface) !important;
   color: var(--text-strong) !important;

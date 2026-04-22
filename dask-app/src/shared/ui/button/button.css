@@ -9,16 +9,16 @@
   font-size: 0.92rem;
   letter-spacing: 0;
   cursor: pointer;
-  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 84%, transparent) inset;
+  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 72%, transparent) inset;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .shared-button:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent) 16%, var(--line));
+  border-color: var(--selected-border);
   background: var(--button-neutral-bg-hover);
-  color: color-mix(in oklab, var(--text-strong) 90%, var(--accent-strong));
-  box-shadow: var(--shadow-card), 0 1px 0 rgba(255, 255, 255, 0.88) inset;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
 }
 
 .shared-button:active {
@@ -27,18 +27,24 @@
 }
 
 .shared-button--primary {
-  border-color: var(--button-primary-border);
+  border-color: transparent;
   background: var(--button-gradient-main);
   color: var(--button-primary-text);
   box-shadow: var(--button-primary-shadow);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
 }
 
 .shared-button--primary:hover {
-  border-color: color-mix(in oklab, var(--accent-strong) 28%, var(--button-primary-border));
+  border-color: transparent;
   background: var(--button-gradient-main-hover);
   color: var(--button-primary-text);
   box-shadow: var(--button-primary-shadow-hover);
-  filter: saturate(1.02) brightness(1.01);
+  filter: saturate(1.04) brightness(1.03);
+}
+
+.shared-button--primary:focus-visible {
+  border-color: transparent;
+  box-shadow: var(--focus-strong), var(--button-primary-shadow-hover);
 }
 
 .shared-button--outline {
@@ -48,9 +54,9 @@
 }
 
 .shared-button--outline.active {
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
-  background: var(--surface-chip-active);
-  color: var(--accent-strong);
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--primary-hover);
 }
 
 .shared-button--sm {

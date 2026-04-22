@@ -25,12 +25,12 @@ body {
 
 html {
   scrollbar-width: thin;
-  scrollbar-color: rgba(70, 130, 214, 0.72) rgba(255, 255, 255, 0.08);
+  scrollbar-color: color-mix(in oklab, var(--primary) 72%, transparent) transparent;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(70, 130, 214, 0.72) rgba(255, 255, 255, 0.08);
+  scrollbar-color: color-mix(in oklab, var(--primary) 72%, transparent) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -41,21 +41,19 @@ html {
 *::-webkit-scrollbar-track {
   margin: 10px 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(18, 45, 79, 0.06) 100%);
+  background: color-mix(in oklab, var(--surface-2) 84%, transparent);
 }
 
 *::-webkit-scrollbar-thumb {
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: padding-box;
-  background: linear-gradient(180deg, rgba(44, 120, 230, 0.92) 0%, rgba(125, 97, 238, 0.82) 52%, rgba(40, 207, 199, 0.88) 100%);
-  box-shadow:
-    0 8px 18px rgba(12, 42, 71, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-hover) 100%);
+  box-shadow: 0 6px 14px color-mix(in oklab, var(--primary) 18%, transparent);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(40, 112, 220, 1) 0%, rgba(117, 89, 228, 0.92) 52%, rgba(34, 192, 186, 0.96) 100%);
+  background: linear-gradient(180deg, var(--primary-hover) 0%, var(--primary-active) 100%);
 }
 
 *::-webkit-scrollbar-corner {
@@ -70,7 +68,7 @@ textarea {
 }
 
 :where(a, button, input, select, textarea):focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--accent-strong) 72%, #ffffff);
+  outline: 2px solid color-mix(in oklab, var(--primary) 58%, var(--surface-1));
   outline-offset: 2px;
   box-shadow: var(--focus);
 }

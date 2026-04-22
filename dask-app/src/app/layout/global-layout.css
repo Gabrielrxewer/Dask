@@ -5,30 +5,26 @@
   --global-sidebar-width: 280px;
   --global-chrome-border: var(--chrome-border);
   --global-chrome-surface:
-    radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 24%),
-    radial-gradient(circle at 84% 0%, rgba(255, 255, 255, 0.06) 0%, transparent 26%),
-    linear-gradient(90deg, rgba(16, 53, 87, 0.98) 0%, rgba(24, 98, 152, 0.98) 46%, rgba(18, 142, 132, 0.98) 100%);
+    radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 24%),
+    linear-gradient(90deg, rgba(24, 50, 74, 0.98) 0%, rgba(30, 59, 86, 0.98) 100%);
   --global-chrome-highlight:
-    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0) 100%);
-  --global-chrome-shadow-top: 0 8px 18px rgba(8, 31, 53, 0.12);
-  --global-chrome-shadow-bottom: 0 -6px 14px rgba(8, 31, 53, 0.1);
+    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);
+  --global-chrome-shadow-top: 0 8px 18px rgba(18, 50, 74, 0.12);
+  --global-chrome-shadow-bottom: 0 -6px 14px rgba(18, 50, 74, 0.1);
   --global-chrome-pill-bg: var(--chrome-pill-bg);
   --global-chrome-pill-bg-hover: var(--chrome-pill-bg-hover);
   --global-chrome-pill-border: var(--chrome-pill-border);
   --global-chrome-text: var(--chrome-text-strong);
   --global-chrome-text-soft: var(--chrome-text-muted);
-  --global-floating-border: color-mix(in oklab, var(--line) 84%, white 16%);
+  --global-floating-border: var(--border-default);
   --global-floating-surface: var(--chrome-surface-floating);
-  --global-floating-shadow:
-    0 28px 60px rgba(15, 41, 72, 0.16),
-    0 10px 24px rgba(36, 80, 128, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.86) inset;
+  --global-floating-shadow: var(--shadow-3);
   --global-floating-title: var(--text-strong);
   --global-floating-text: var(--text-soft);
   --global-floating-text-muted: var(--text-muted);
-  --global-floating-icon-bg: linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 82%, white) 0%, color-mix(in oklab, var(--success-soft) 74%, white) 100%);
-  --global-floating-icon-border: color-mix(in oklab, var(--accent) 18%, var(--line));
-  --global-floating-icon-text: color-mix(in oklab, var(--accent-strong) 78%, var(--text-strong));
+  --global-floating-icon-bg: linear-gradient(135deg, var(--selected-bg) 0%, color-mix(in oklab, var(--success-bg) 78%, var(--surface-1)) 100%);
+  --global-floating-icon-border: color-mix(in oklab, var(--primary) 20%, var(--border-default));
+  --global-floating-icon-text: color-mix(in oklab, var(--primary-hover) 76%, var(--text-primary));
 }
 
 .global-layout {
@@ -56,10 +52,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0.14) 20%, transparent 40%),
-    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 18%, transparent 36%),
-    radial-gradient(circle at 56% 92%, rgba(255, 255, 255, 0.18) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 18%, transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
   z-index: 0;
 }
 
@@ -101,10 +95,8 @@ body.shared-modal-open .global-footer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 22% 50%, rgba(48, 213, 205, 0.06) 0%, transparent 20%),
-    radial-gradient(circle at 78% 50%, rgba(125, 97, 238, 0.06) 0%, transparent 20%);
-  opacity: 0.7;
+  background: radial-gradient(circle at 22% 50%, rgba(47, 128, 237, 0.08) 0%, transparent 20%);
+  opacity: 0.56;
 }
 
 .global-header {
@@ -1250,18 +1242,17 @@ body.shared-modal-open .global-footer {
 
 .global-layout__main:not(.global-layout__main--public) {
   color: var(--text);
-  background: color-mix(in oklab, var(--panel-soft) 78%, white);
+  background: color-mix(in oklab, var(--surface-2) 82%, var(--surface-1));
   text-rendering: geometricPrecision;
 }
 
 .app-theme[data-theme="dark"] {
   --global-chrome-border: var(--chrome-border);
   --global-chrome-surface:
-    radial-gradient(circle at 12% 0%, rgba(90, 183, 255, 0.18) 0%, transparent 24%),
-    radial-gradient(circle at 88% 0%, rgba(126, 111, 255, 0.16) 0%, transparent 26%),
-    linear-gradient(90deg, rgba(4, 18, 31, 0.98) 0%, rgba(8, 34, 54, 0.98) 38%, rgba(9, 47, 73, 0.98) 72%, rgba(7, 63, 85, 0.96) 100%);
+    radial-gradient(circle at 12% 0%, rgba(47, 128, 237, 0.1) 0%, transparent 24%),
+    linear-gradient(90deg, rgba(9, 17, 27, 0.98) 0%, rgba(12, 22, 34, 0.98) 100%);
   --global-chrome-highlight:
-    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0) 100%);
+    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0) 100%);
   --global-chrome-shadow-top:
     0 10px 24px rgba(0, 0, 0, 0.24),
     0 1px 0 rgba(255, 255, 255, 0.04) inset;
@@ -1273,17 +1264,14 @@ body.shared-modal-open .global-footer {
   --global-chrome-pill-border: var(--chrome-pill-border);
   --global-chrome-text: var(--chrome-text-strong);
   --global-chrome-text-soft: var(--chrome-text-muted);
-  --global-floating-border: color-mix(in oklab, var(--line) 84%, transparent);
+  --global-floating-border: var(--border-default);
   --global-floating-surface: var(--chrome-surface-floating-dark);
-  --global-floating-shadow:
-    0 28px 60px rgba(0, 0, 0, 0.28),
-    0 10px 24px rgba(0, 0, 0, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  --global-floating-shadow: var(--shadow-3);
   --global-floating-title: var(--text-strong);
   --global-floating-text: var(--text-soft);
   --global-floating-text-muted: var(--text-muted);
-  --global-floating-icon-bg: linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 62%, var(--panel)) 0%, color-mix(in oklab, var(--success-soft) 58%, var(--panel)) 100%);
-  --global-floating-icon-border: color-mix(in oklab, var(--accent) 24%, var(--line));
+  --global-floating-icon-bg: linear-gradient(135deg, var(--selected-bg) 0%, color-mix(in oklab, var(--success-bg) 60%, var(--surface-1)) 100%);
+  --global-floating-icon-border: color-mix(in oklab, var(--primary) 24%, var(--border-default));
   --global-floating-icon-text: var(--accent-strong);
 }
 
@@ -1292,52 +1280,40 @@ body.shared-modal-open .global-footer {
 }
 
 .app-theme[data-theme="dark"] .global-layout__main:not(.global-layout__main--public) {
-  background: #081827;
+  background: color-mix(in oklab, var(--surface-2) 74%, var(--bg-app));
 }
 
 .app-theme[data-theme="dark"] .global-header__user-menu,
 .app-theme[data-theme="dark"] .global-header__billing-menu,
 .user-profile-modal--dark {
-  border-color: rgba(65, 102, 130, 0.82);
-  background: linear-gradient(180deg, rgba(15, 34, 51, 0.98) 0%, rgba(10, 28, 43, 0.96) 100%) !important;
+  border-color: var(--border-default);
+  background: var(--surface-overlay-strong) !important;
   color: var(--text) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__header {
-  border-bottom-color: rgba(65, 102, 130, 0.72);
-  background:
-    radial-gradient(circle at 12% 0%, rgba(90, 183, 255, 0.18) 0%, transparent 24%),
-    radial-gradient(circle at 88% 0%, rgba(126, 111, 255, 0.16) 0%, transparent 26%),
-    linear-gradient(90deg, rgba(4, 18, 31, 0.98) 0%, rgba(8, 34, 54, 0.98) 38%, rgba(9, 47, 73, 0.98) 72%, rgba(7, 63, 85, 0.96) 100%);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  border-bottom-color: var(--border-default);
+  background: var(--surface-section-header);
+  box-shadow: var(--shadow-soft);
 }
 
 .user-profile-modal--dark .user-profile-modal__body,
 .user-profile-modal--dark .user-profile-modal__footer {
-  background: linear-gradient(180deg, rgba(9, 25, 39, 0.96) 0%, rgba(8, 22, 35, 0.94) 100%) !important;
+  background: var(--surface-raised) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__footer {
-  background:
-    radial-gradient(circle at 12% 100%, rgba(90, 183, 255, 0.14) 0%, transparent 26%),
-    radial-gradient(circle at 88% 100%, rgba(126, 111, 255, 0.12) 0%, transparent 28%),
-    linear-gradient(90deg, rgba(4, 18, 31, 0.98) 0%, rgba(8, 34, 54, 0.98) 38%, rgba(9, 47, 73, 0.98) 72%, rgba(7, 63, 85, 0.96) 100%);
-  box-shadow:
-    0 -10px 24px rgba(0, 0, 0, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  background: var(--surface-section-content);
+  box-shadow: none;
 }
 
 .user-profile-modal--dark .user-profile-modal__panel,
 .user-profile-modal--dark .user-profile-modal__summary-grid div,
 .user-profile-modal--dark .user-profile-modal__choice,
 .user-profile-modal--dark .user-profile-modal__toggle {
-  border-color: rgba(65, 102, 130, 0.76) !important;
-  background: linear-gradient(180deg, rgba(16, 35, 52, 0.96) 0%, rgba(11, 27, 42, 0.9) 100%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 14px 28px rgba(0, 0, 0, 0.18);
+  border-color: var(--border-default) !important;
+  background: var(--surface-elevated) !important;
+  box-shadow: var(--shadow-soft);
 }
 
 .user-profile-modal--dark .user-profile-modal__header h2,
@@ -1356,14 +1332,14 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__body label,
 .user-profile-modal--dark .user-profile-modal__body button,
 .user-profile-modal--dark .user-profile-modal__footer button {
-  color: #e8f3fc !important;
+  color: var(--text-primary) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__eyebrow,
 .user-profile-modal--dark .user-profile-modal__section-label,
 .user-profile-modal--dark .user-profile-modal__field span,
 .user-profile-modal--dark .user-profile-modal__choice-copy span {
-  color: #b9d3e8 !important;
+  color: var(--text-secondary) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__header p,
@@ -1379,72 +1355,70 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__choice-copy small,
 .user-profile-modal--dark .user-profile-modal__summary-grid small,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__value--muted {
-  color: #93adc4 !important;
+  color: var(--text-muted) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__secondary {
-  color: #d7e7f5 !important;
+  color: var(--text-primary) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__summary-grid div::before {
-  background: linear-gradient(90deg, #3ab3ff, #27d2c5);
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
 }
 
 .user-profile-modal--dark .user-profile-modal__section-icon {
-  border-color: rgba(95, 182, 248, 0.26);
-  background: linear-gradient(135deg, rgba(20, 56, 83, 0.98), rgba(15, 66, 66, 0.94));
-  color: #8fd2ff;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 .user-profile-modal--dark .user-profile-modal__plan-badge {
-  border-color: rgba(95, 182, 248, 0.28);
-  background: linear-gradient(180deg, rgba(16, 42, 64, 0.94), rgba(12, 31, 48, 0.88));
-  color: #cfe9ff;
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.18);
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
 }
 
 .user-profile-modal--dark .user-profile-modal__choice--active {
-  border-color: rgba(90, 183, 255, 0.62);
-  background: linear-gradient(135deg, rgba(14, 55, 83, 0.98), rgba(9, 62, 60, 0.94));
-  box-shadow: 0 0 0 3px rgba(90, 183, 255, 0.12), 0 18px 30px rgba(0, 0, 0, 0.22);
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 12%, transparent), var(--shadow-soft);
 }
 
 .user-profile-modal--dark .user-profile-modal__choice::after {
-  border-color: rgba(121, 156, 183, 0.55);
-  background: rgba(10, 28, 43, 0.96);
+  border-color: var(--border-strong);
+  background: var(--surface-1);
 }
 
 .user-profile-modal--dark .user-profile-modal__choice:hover,
 .user-profile-modal--dark .user-profile-modal__summary-grid div:hover,
 .user-profile-modal--dark .user-profile-modal__toggle:hover {
-  border-color: rgba(95, 182, 248, 0.34);
-  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.22);
+  border-color: var(--selected-border);
+  box-shadow: var(--shadow-card);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__control,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__menu,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__option {
-  border-color: rgba(65, 102, 130, 0.76) !important;
-  background: linear-gradient(180deg, #142c40 0%, #102538 100%) !important;
+  border-color: var(--border-default) !important;
+  background: var(--control-surface) !important;
   color: var(--text-strong) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__control:hover,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__option:hover {
-  background: linear-gradient(180deg, #18364d 0%, #132d44 100%) !important;
+  background: var(--control-surface-hover) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__menu {
-  box-shadow:
-    0 24px 44px rgba(0, 0, 0, 0.32),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset !important;
+  box-shadow: var(--shadow-3) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__option--selected {
-  background: rgba(95, 182, 248, 0.16) !important;
-  border-color: rgba(95, 182, 248, 0.38) !important;
-  color: #f3f9ff !important;
+  background: var(--selected-bg) !important;
+  border-color: var(--selected-border) !important;
+  color: var(--text-primary) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__summary-grid strong,
@@ -1455,42 +1429,40 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal--dark .user-profile-modal__secondary:hover,
 .user-profile-modal--dark .user-profile-modal__close:hover {
-  border-color: rgba(95, 182, 248, 0.34);
-  background: rgba(24, 58, 84, 0.9);
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.18);
+  border-color: var(--selected-border);
+  background: var(--button-neutral-bg-hover);
+  box-shadow: var(--shadow-soft);
 }
 
 .user-profile-modal--dark .user-profile-modal__footer {
-  border-top-color: rgba(65, 102, 130, 0.72);
+  border-top-color: var(--border-default);
 }
 
 .user-profile-modal--dark .user-profile-modal__secondary,
 .user-profile-modal--dark .user-profile-modal__close,
 .user-profile-modal--dark .shared-user-avatar__actions button {
-  border-color: rgba(65, 102, 130, 0.82);
-  background: rgba(18, 43, 64, 0.72);
-  color: #f3f9ff !important;
+  border-color: var(--border-default);
+  background: var(--button-neutral-bg);
+  color: var(--text-primary) !important;
 }
 
 .user-profile-modal--dark .shared-user-avatar__actions button:first-of-type {
-  border-color: rgba(95, 182, 248, 0.38) !important;
-  background: linear-gradient(180deg, rgba(18, 55, 83, 0.96) 0%, rgba(15, 44, 67, 0.92) 100%) !important;
-  color: #f3f9ff !important;
+  border-color: var(--button-primary-border) !important;
+  background: var(--button-gradient-main) !important;
+  color: var(--button-primary-text) !important;
 }
 
 .user-profile-modal--dark .shared-user-avatar__actions button:hover:not(:disabled) {
-  border-color: rgba(95, 182, 248, 0.48) !important;
-  background: linear-gradient(180deg, rgba(24, 66, 97, 0.98) 0%, rgba(18, 52, 78, 0.96) 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.2) !important;
+  border-color: var(--selected-border) !important;
+  background: var(--button-neutral-bg-hover) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-soft) !important;
   transform: translateY(-1px);
 }
 
 .user-profile-modal--dark .shared-user-avatar__actions button:focus-visible {
   outline: none;
-  box-shadow:
-    0 0 0 3px rgba(95, 182, 248, 0.22),
-    0 12px 22px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: var(--focus-strong) !important;
 }
 
 .global-layout__main--public {

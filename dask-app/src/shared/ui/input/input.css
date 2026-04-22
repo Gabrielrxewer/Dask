@@ -8,7 +8,7 @@
   font-size: var(--font-size-sm);
   color: var(--text-strong);
   font-weight: 600;
-  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 74%, transparent) inset;
+  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent) inset;
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -19,9 +19,9 @@
 }
 
 .shared-input:hover {
-  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
+  border-color: var(--selected-border);
   background: var(--control-surface-hover);
-  box-shadow: var(--shadow-card), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  box-shadow: var(--shadow-soft);
 }
 
 .shared-input::placeholder {

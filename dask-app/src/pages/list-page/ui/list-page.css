@@ -1,13 +1,13 @@
 .list-view {
-  --list-text: #071f35;
-  --list-text-soft: #1f405e;
-  --list-text-muted: #365b7a;
-  --list-line: #b8cada;
-  --list-line-strong: #83afd5;
-  --list-surface: #ffffff;
-  --list-surface-soft: #f8fafc;
-  --list-accent: #075f9d;
-  --list-accent-strong: #064f85;
+  --list-text: var(--text-strong);
+  --list-text-soft: var(--text-soft);
+  --list-text-muted: var(--text-muted);
+  --list-line: var(--line);
+  --list-line-strong: var(--line-contrast);
+  --list-surface: var(--surface-overlay);
+  --list-surface-soft: var(--surface-section-content);
+  --list-accent: var(--accent);
+  --list-accent-strong: var(--accent-strong);
   --workspace-view-text: var(--list-text);
   --workspace-view-text-soft: var(--list-text-soft);
   --workspace-view-text-muted: var(--list-text-muted);
@@ -17,7 +17,7 @@
   --workspace-view-surface-soft: var(--list-surface-soft);
   --workspace-view-accent: var(--list-accent);
   --workspace-view-accent-strong: var(--list-accent-strong);
-  --workspace-view-filter-action-text: #214d78;
+  --workspace-view-filter-action-text: color-mix(in oklab, var(--accent-strong) 70%, var(--text-strong));
 }
 
 .list-view__create-task {

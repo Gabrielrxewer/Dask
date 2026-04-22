@@ -1,63 +1,87 @@
 :root {
-  --bg: #f3f7fb;
-  --bg-soft: #e6eef8;
-  --bg-deep: #0f2b47;
+  --bg-app: #f4f7fb;
+  --bg-subtle: #e9f0f7;
+  --surface-1: #ffffff;
+  --surface-2: #fafcfe;
+  --surface-3: #eef3f8;
+  --border-subtle: #e5ecf4;
+  --border-default: #d7e1ec;
+  --border-strong: #bccada;
+  --text-primary: #18324a;
+  --text-secondary: #6b8096;
+  --text-muted: #8ea0b2;
+  --text-inverse: #f7fbff;
+  --primary: #2f80ed;
+  --primary-hover: #256fd1;
+  --primary-active: #1f5fb5;
+  --secondary: #f1f5f9;
+  --secondary-hover: #e6edf5;
+  --success: #238454;
+  --warning: #b7791f;
+  --danger: #c75a5a;
+  --info: #3178c6;
+  --success-bg: #eaf6ef;
+  --warning-bg: #fcf3e3;
+  --danger-bg: #fbecec;
+  --info-bg: #eaf2fd;
+  --success-border: #bfe2cc;
+  --warning-border: #ecd1a3;
+  --danger-border: #edc1c1;
+  --info-border: #bfd4f3;
+  --focus-ring: color-mix(in oklab, var(--primary) 24%, transparent);
+  --selected-bg: color-mix(in oklab, var(--primary) 10%, var(--surface-1));
+  --selected-border: color-mix(in oklab, var(--primary) 30%, var(--border-default));
+
+  --bg: var(--bg-app);
+  --bg-soft: var(--bg-subtle);
+  --bg-deep: #dce7f2;
   --body-background:
-    radial-gradient(circle at 10% 0%, rgba(113, 186, 245, 0.42) 0%, transparent 32%),
-    radial-gradient(circle at 92% 6%, rgba(65, 205, 177, 0.22) 0%, transparent 24%),
-    radial-gradient(circle at 52% 88%, rgba(34, 121, 204, 0.1) 0%, transparent 30%),
-    linear-gradient(180deg, #f8fbff 0%, #f2f7fd 34%, var(--bg) 68%, #e9f1f9 100%);
-  --panel: #ffffff;
-  --panel-soft: #f5faff;
-  --panel-muted: #eaf2fb;
-  --text: #17344f;
-  --text-strong: #0c2340;
-  --text-soft: #4f6982;
-  --text-muted: #6d8499;
-  --text-placeholder: #8195a8;
-  --text-inverse: #f6fbff;
-  --line: #d0dde9;
-  --line-soft: #e1ebf4;
-  --line-strong: #b6cbdf;
-  --line-contrast: #9fb9d1;
-  --accent: #157fd4;
-  --accent-strong: #0e5fa5;
-  --accent-soft: #e5f2ff;
-  --accent-soft-strong: #d3eaff;
-  --brand-gradient-soft: linear-gradient(130deg, #a8dbff 0%, #9df2df 100%);
-  --brand-gradient-main: linear-gradient(130deg, #0d3d67 0%, #1477c4 54%, #12a196 100%);
-  --brand-gradient-main-hover: linear-gradient(130deg, #0b3559 0%, #126cae 54%, #109086 100%);
-  --brand-gradient-login: linear-gradient(135deg, #10406b 0%, #1b7bd0 44%, #14a79b 100%);
-  --brand-gradient-login-hover: linear-gradient(135deg, #0e385f 0%, #1770bc 44%, #12968d 100%);
-  --button-gradient-main: linear-gradient(135deg, #11426f 0%, #1487df 100%);
-  --button-gradient-main-hover: linear-gradient(135deg, #0e3960 0%, #1279c8 100%);
+    radial-gradient(circle at 14% 0%, rgba(47, 128, 237, 0.1) 0%, transparent 28%),
+    radial-gradient(circle at 84% 10%, rgba(24, 50, 74, 0.05) 0%, transparent 26%),
+    linear-gradient(180deg, #f8fbfe 0%, var(--bg-app) 56%, #eef3f8 100%);
+  --panel: var(--surface-1);
+  --panel-soft: var(--surface-2);
+  --panel-muted: var(--surface-3);
+  --text: var(--text-secondary);
+  --text-strong: var(--text-primary);
+  --text-soft: var(--text-secondary);
+  --text-placeholder: color-mix(in oklab, var(--text-secondary) 74%, white);
+  --line: var(--border-default);
+  --line-soft: var(--border-subtle);
+  --line-strong: var(--border-strong);
+  --line-contrast: color-mix(in oklab, var(--border-strong) 82%, var(--text-secondary));
+  --accent: var(--primary);
+  --accent-strong: var(--primary-hover);
+  --accent-soft: color-mix(in oklab, var(--primary) 8%, white);
+  --accent-soft-strong: color-mix(in oklab, var(--primary) 14%, white);
+  --brand-gradient-soft: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  --brand-gradient-main: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  --brand-gradient-main-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
+  --brand-gradient-login: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  --brand-gradient-login-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
+  --button-gradient-main: linear-gradient(135deg, #18324a 0%, #295f97 100%);
+  --button-gradient-main-hover: linear-gradient(135deg, #14283b 0%, #234f7e 100%);
   --ambient-surface:
-    radial-gradient(circle at 16% 24%, rgba(96, 171, 236, 0.18) 0%, rgba(96, 171, 236, 0.03) 28%, transparent 44%),
-    radial-gradient(circle at 80% 20%, rgba(21, 127, 212, 0.12) 0%, rgba(21, 127, 212, 0.02) 24%, transparent 40%),
-    radial-gradient(circle at 72% 74%, rgba(20, 161, 149, 0.11) 0%, rgba(20, 161, 149, 0.02) 26%, transparent 46%),
-    linear-gradient(135deg, rgba(86, 161, 227, 0.08) 0%, rgba(21, 127, 212, 0.08) 42%, rgba(20, 161, 149, 0.1) 100%),
-    linear-gradient(180deg, #f8fbff 0%, #edf5fd 52%, #e6eff8 100%);
-  --glass-surface: linear-gradient(180deg, rgba(251, 253, 255, 0.9) 0%, rgba(243, 248, 255, 0.8) 100%);
-  --glass-surface-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 249, 255, 0.9) 100%);
-  --glass-border: rgba(193, 207, 223, 0.78);
-  --glass-highlight: rgba(255, 255, 255, 0.92);
-  --chrome-surface: linear-gradient(180deg, rgba(8, 34, 60, 0.97) 0%, rgba(9, 51, 82, 0.95) 100%);
-  --chrome-overlay: linear-gradient(125deg, rgba(33, 153, 201, 0.12), rgba(17, 121, 171, 0.06));
-  --chrome-border: rgba(165, 194, 219, 0.34);
-  --chrome-pill-border: rgba(177, 205, 227, 0.32);
-  --chrome-text-strong: #f2f8fd;
-  --chrome-text-muted: rgba(223, 238, 251, 0.76);
-  --chrome-pill-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(221, 236, 248, 0.12) 100%);
-  --chrome-pill-bg-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(228, 240, 250, 0.18) 100%);
-  --chrome-surface-floating: linear-gradient(180deg, rgba(250, 253, 255, 0.98) 0%, rgba(243, 248, 253, 0.96) 100%);
-  --success: #1f9660;
-  --success-soft: #e6f6ee;
-  --warn: #b37a23;
-  --warn-soft: #fbf1e2;
-  --danger: #cf5050;
-  --danger-soft: #fbebeb;
-  --info: #2b82c5;
-  --info-soft: #e7f2fc;
+    radial-gradient(circle at 16% 18%, rgba(47, 128, 237, 0.07) 0%, transparent 28%),
+    linear-gradient(180deg, #f8fbfe 0%, var(--bg-app) 54%, #edf3f8 100%);
+  --glass-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(250, 252, 254, 0.92) 100%);
+  --glass-surface-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 252, 254, 0.96) 100%);
+  --glass-border: rgba(215, 225, 236, 0.86);
+  --glass-highlight: rgba(255, 255, 255, 0.88);
+  --chrome-surface: linear-gradient(180deg, rgba(24, 50, 74, 0.98) 0%, rgba(30, 59, 86, 0.98) 100%);
+  --chrome-overlay: linear-gradient(125deg, rgba(47, 128, 237, 0.08), rgba(255, 255, 255, 0.02));
+  --chrome-border: rgba(133, 160, 186, 0.28);
+  --chrome-pill-border: rgba(201, 214, 227, 0.3);
+  --chrome-text-strong: #f4f8fc;
+  --chrome-text-muted: rgba(228, 236, 245, 0.76);
+  --chrome-pill-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(244, 248, 252, 0.08) 100%);
+  --chrome-pill-bg-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(244, 248, 252, 0.12) 100%);
+  --chrome-surface-floating: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 254, 0.96) 100%);
+  --success-soft: var(--success-bg);
+  --warn: var(--warning);
+  --warn-soft: var(--warning-bg);
+  --danger-soft: var(--danger-bg);
+  --info-soft: var(--info-bg);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -89,195 +113,192 @@
   --font-size-title-md: 1.22rem;
   --font-size-title-lg: 1.5rem;
 
-  --shadow-1: 0 14px 34px rgba(14, 40, 67, 0.07);
-  --shadow-2: 0 24px 54px rgba(12, 36, 61, 0.1);
-  --shadow-3: 0 32px 72px rgba(10, 30, 50, 0.14);
-  --focus: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
+  --shadow-1: 0 12px 28px rgba(18, 50, 74, 0.06);
+  --shadow-2: 0 18px 42px rgba(18, 50, 74, 0.08);
+  --shadow-3: 0 24px 56px rgba(18, 50, 74, 0.12);
+  --focus: 0 0 0 3px var(--focus-ring);
   --focus-strong:
-    0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent),
-    0 14px 28px color-mix(in oklab, var(--accent) 10%, transparent);
-  --state-hover: color-mix(in oklab, var(--accent) 7%, transparent);
-  --state-active: color-mix(in oklab, var(--accent) 13%, transparent);
+    0 0 0 4px color-mix(in oklab, var(--primary) 18%, transparent),
+    0 10px 24px color-mix(in oklab, var(--primary) 8%, transparent);
+  --state-hover: color-mix(in oklab, var(--primary) 7%, transparent);
+  --state-active: color-mix(in oklab, var(--primary) 13%, transparent);
   --state-disabled-opacity: 0.55;
-  --surface-card:
-    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(245, 250, 255, 0.9) 100%);
-  --surface-card-hover:
-    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(239, 246, 255, 0.96) 100%);
-  --surface-section: color-mix(in oklab, var(--panel) 95%, transparent);
-  --surface-section-header:
-    linear-gradient(180deg, color-mix(in oklab, white 76%, var(--panel-soft)) 0%, color-mix(in oklab, white 22%, transparent) 100%);
-  --surface-section-content:
-    linear-gradient(180deg, color-mix(in oklab, white 74%, var(--panel-soft)) 0%, color-mix(in oklab, var(--panel-soft) 80%, white) 100%);
-  --surface-elevated:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.93) 100%);
-  --surface-overlay:
-    linear-gradient(180deg, rgba(248, 251, 255, 0.97) 0%, rgba(241, 247, 255, 0.93) 100%);
-  --surface-overlay-strong:
-    linear-gradient(180deg, rgba(252, 254, 255, 0.99) 0%, rgba(244, 249, 255, 0.97) 100%);
-  --surface-chip: color-mix(in oklab, var(--panel-soft) 62%, white);
-  --surface-chip-active: color-mix(in oklab, var(--accent-soft) 80%, white);
-  --surface-table-header: color-mix(in oklab, var(--panel-soft) 84%, white);
-  --surface-table-row-hover: color-mix(in oklab, var(--accent) 5%, white);
-  --shadow-soft: 0 10px 22px rgba(12, 36, 61, 0.05);
+  --surface-card: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 252, 254, 0.96) 100%);
+  --surface-card-hover: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(247, 250, 253, 0.98) 100%);
+  --surface-section: var(--surface-1);
+  --surface-section-header: linear-gradient(180deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  --surface-section-content: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+  --surface-elevated: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(249, 252, 254, 0.98) 100%);
+  --surface-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 254, 0.96) 100%);
+  --surface-overlay-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.995) 0%, rgba(250, 252, 254, 0.985) 100%);
+  --surface-chip: color-mix(in oklab, var(--surface-2) 82%, var(--surface-1));
+  --surface-chip-active: var(--selected-bg);
+  --surface-table-header: color-mix(in oklab, var(--surface-2) 92%, var(--surface-1));
+  --surface-table-row-hover: color-mix(in oklab, var(--primary) 6%, var(--surface-1));
+  --shadow-soft: 0 8px 18px rgba(18, 50, 74, 0.05);
   --shadow-card:
-    0 18px 36px rgba(12, 36, 61, 0.07),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    0 14px 30px rgba(18, 50, 74, 0.07),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
   --shadow-card-hover:
-    0 22px 42px rgba(12, 36, 61, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 18px 36px rgba(18, 50, 74, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.92) inset;
   --control-height-sm: 34px;
   --control-height-md: 42px;
   --control-height-lg: 46px;
   --control-padding-x: 12px;
-  --control-border: 1px solid var(--line);
-  --control-border-strong: color-mix(in oklab, var(--accent) 32%, var(--line));
-  --control-surface: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
-  --control-surface-hover: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
-  --control-surface-active: linear-gradient(180deg, #fbfdff 0%, #e8f3ff 100%);
-  --surface-raised:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 250, 255, 0.92) 100%);
-  --surface-muted: linear-gradient(180deg, #fbfdff 0%, #f1f6fc 100%);
-  --button-neutral-text: var(--text-strong);
-  --button-neutral-border: color-mix(in oklab, var(--line) 86%, white 14%);
+  --control-border: 1px solid var(--border-default);
+  --control-border-strong: var(--selected-border);
+  --control-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 252, 254, 0.96) 100%);
+  --control-surface-hover: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(247, 250, 253, 0.98) 100%);
+  --control-surface-active: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(245, 249, 253, 0.98) 100%);
+  --surface-raised: linear-gradient(180deg, rgba(255, 255, 255, 0.985) 0%, rgba(248, 251, 254, 0.97) 100%);
+  --surface-muted: linear-gradient(180deg, rgba(250, 252, 254, 0.98) 0%, rgba(243, 247, 251, 0.98) 100%);
+  --button-neutral-text: var(--text-primary);
+  --button-neutral-border: var(--border-default);
   --button-neutral-bg: var(--surface-elevated);
   --button-neutral-bg-hover: var(--surface-overlay-strong);
   --button-primary-text: #ffffff;
-  --button-primary-border: color-mix(in oklab, var(--accent) 24%, white 76%);
+  --button-primary-border: color-mix(in oklab, #18324a 58%, #295f97);
   --button-primary-shadow:
-    0 18px 36px rgba(8, 31, 53, 0.2),
-    0 10px 20px rgba(21, 127, 212, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
-  --button-primary-shadow-hover:
-    0 22px 40px rgba(8, 31, 53, 0.24),
-    0 12px 22px rgba(21, 127, 212, 0.22),
+    0 16px 30px rgba(24, 50, 74, 0.22),
+    0 6px 14px rgba(24, 50, 74, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.16) inset;
-  --status-default-border: color-mix(in oklab, var(--line) 82%, white 18%);
+  --button-primary-shadow-hover:
+    0 20px 36px rgba(24, 50, 74, 0.28),
+    0 8px 18px rgba(24, 50, 74, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.14) inset;
+  --status-default-border: var(--border-default);
   --status-default-bg: var(--surface-chip);
-  --status-default-text: var(--text-soft);
-  --status-success-border: color-mix(in oklab, var(--success) 46%, white 54%);
-  --status-warning-border: color-mix(in oklab, var(--warn) 46%, white 54%);
-  --status-danger-border: color-mix(in oklab, var(--danger) 42%, white 58%);
-  --status-info-border: color-mix(in oklab, var(--info) 46%, white 54%);
-  --chrome-surface-floating-dark: linear-gradient(180deg, rgba(12, 31, 46, 0.98) 0%, rgba(9, 25, 38, 0.96) 100%);
+  --status-default-text: var(--text-secondary);
+  --status-success-border: var(--success-border);
+  --status-warning-border: var(--warning-border);
+  --status-danger-border: var(--danger-border);
+  --status-info-border: var(--info-border);
+  --chrome-surface-floating-dark: linear-gradient(180deg, rgba(14, 24, 36, 0.98) 0%, rgba(10, 18, 28, 0.96) 100%);
 }
 
 .app-theme[data-theme="dark"] {
-  --bg: #040b12;
-  --bg-soft: #081520;
-  --bg-deep: #02070d;
+  --bg-app: #08111b;
+  --bg-subtle: #0b1520;
+  --surface-1: #0e1824;
+  --surface-2: #132131;
+  --surface-3: #182838;
+  --border-subtle: #1b2c3d;
+  --border-default: #21364d;
+  --border-strong: #35506d;
+  --text-primary: #eaf2fb;
+  --text-secondary: #93a7bc;
+  --text-muted: #71869b;
+  --text-inverse: #08111b;
+  --primary: #2f80ed;
+  --primary-hover: #256fd1;
+  --primary-active: #1d5aad;
+  --secondary: #162534;
+  --secondary-hover: #1b2d40;
+  --success: #52b788;
+  --warning: #d4a048;
+  --danger: #de7b7b;
+  --info: #5ca0ea;
+  --success-bg: #10281d;
+  --warning-bg: #312312;
+  --danger-bg: #34181c;
+  --info-bg: #122336;
+  --success-border: #24523a;
+  --warning-border: #6b4a1d;
+  --danger-border: #6d3137;
+  --info-border: #25486c;
+  --focus-ring: color-mix(in oklab, var(--primary) 30%, transparent);
+  --selected-bg: color-mix(in oklab, var(--primary) 12%, var(--surface-1));
+  --selected-border: color-mix(in oklab, var(--primary) 36%, var(--border-default));
+
+  --bg: var(--bg-app);
+  --bg-soft: var(--bg-subtle);
+  --bg-deep: #050b12;
   --body-background:
-    radial-gradient(circle at 12% 0%, rgba(27, 89, 150, 0.18) 0%, transparent 28%),
-    radial-gradient(circle at 88% 10%, rgba(10, 90, 118, 0.12) 0%, transparent 24%),
-    radial-gradient(circle at 52% 82%, rgba(15, 134, 126, 0.08) 0%, transparent 28%),
-    linear-gradient(180deg, #040b12 0%, #061019 52%, #03080f 100%);
-  --panel: #0a1621;
-  --panel-soft: #0f1f2d;
-  --panel-muted: #132636;
-  --text: #d5e3ef;
-  --text-strong: #f4f9fd;
-  --text-soft: #afc2d2;
-  --text-muted: #8399ac;
-  --text-placeholder: #6e879c;
-  --text-inverse: #f5fbff;
-  --line: #1f3346;
-  --line-soft: #1a2b3c;
-  --line-strong: #355066;
-  --line-contrast: #49657a;
-  --accent: #58a9e6;
-  --accent-strong: #87caf8;
-  --accent-soft: #0f2939;
-  --accent-soft-strong: #123245;
-  --brand-gradient-soft: linear-gradient(130deg, #123f63 0%, #14544f 100%);
-  --brand-gradient-main: linear-gradient(130deg, #0d395f 0%, #1667a3 52%, #148d86 100%);
-  --brand-gradient-main-hover: linear-gradient(130deg, #12456f 0%, #1973b3 52%, #17a097 100%);
-  --button-gradient-main: linear-gradient(135deg, #0f4c7a 0%, #177f79 100%);
-  --button-gradient-main-hover: linear-gradient(135deg, #12588e 0%, #1a9089 100%);
+    radial-gradient(circle at 14% 0%, rgba(47, 128, 237, 0.08) 0%, transparent 26%),
+    linear-gradient(180deg, #08111b 0%, #09131f 54%, #060d15 100%);
+  --panel: var(--surface-1);
+  --panel-soft: var(--surface-2);
+  --panel-muted: var(--surface-3);
+  --text: var(--text-secondary);
+  --text-strong: var(--text-primary);
+  --text-soft: var(--text-secondary);
+  --text-placeholder: color-mix(in oklab, var(--text-secondary) 72%, transparent);
+  --line: var(--border-default);
+  --line-soft: var(--border-subtle);
+  --line-strong: var(--border-strong);
+  --line-contrast: color-mix(in oklab, var(--border-strong) 82%, var(--text-secondary));
+  --accent: var(--primary);
+  --accent-strong: #7fb3f4;
+  --accent-soft: color-mix(in oklab, var(--primary) 13%, var(--surface-1));
+  --accent-soft-strong: color-mix(in oklab, var(--primary) 18%, var(--surface-2));
+  --brand-gradient-soft: linear-gradient(135deg, color-mix(in oklab, var(--surface-2) 88%, var(--surface-1)) 0%, color-mix(in oklab, var(--surface-3) 82%, var(--surface-1)) 100%);
+  --brand-gradient-main: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  --brand-gradient-main-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
+  --button-gradient-main: linear-gradient(135deg, #0c253d 0%, #14344f 100%);
+  --button-gradient-main-hover: linear-gradient(135deg, #13304b 0%, #1a4666 100%);
   --ambient-surface:
-    radial-gradient(circle at 18% 16%, rgba(27, 96, 166, 0.14) 0%, transparent 28%),
-    radial-gradient(circle at 82% 20%, rgba(22, 119, 121, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, #040b12 0%, #07131d 54%, #03080f 100%);
-  --glass-surface: linear-gradient(180deg, rgba(10, 24, 36, 0.92) 0%, rgba(7, 18, 28, 0.86) 100%);
-  --glass-surface-strong: linear-gradient(180deg, rgba(12, 28, 42, 0.96) 0%, rgba(8, 21, 32, 0.92) 100%);
-  --glass-border: rgba(54, 84, 109, 0.72);
+    radial-gradient(circle at 14% 16%, rgba(47, 128, 237, 0.06) 0%, transparent 28%),
+    linear-gradient(180deg, #08111b 0%, #0a1420 56%, #070f18 100%);
+  --glass-surface: linear-gradient(180deg, rgba(16, 27, 39, 0.94) 0%, rgba(12, 21, 31, 0.92) 100%);
+  --glass-surface-strong: linear-gradient(180deg, rgba(18, 30, 43, 0.98) 0%, rgba(13, 22, 32, 0.96) 100%);
+  --glass-border: rgba(33, 54, 77, 0.82);
   --glass-highlight: rgba(255, 255, 255, 0.08);
-  --chrome-surface: linear-gradient(180deg, rgba(2, 10, 18, 0.98) 0%, rgba(4, 20, 33, 0.96) 100%);
-  --chrome-overlay: linear-gradient(125deg, rgba(33, 153, 201, 0.08), rgba(17, 121, 171, 0.04));
-  --chrome-border: rgba(66, 107, 139, 0.26);
-  --chrome-pill-border: rgba(89, 136, 168, 0.22);
-  --success: #4eb780;
-  --success-soft: #102d20;
-  --warn: #d7aa61;
-  --warn-soft: #2f2212;
-  --danger: #e97b7b;
-  --danger-soft: #3b171b;
-  --info: #63ace0;
-  --info-soft: #10283a;
-  --shadow-1: 0 16px 34px rgba(0, 0, 0, 0.32);
-  --shadow-2: 0 26px 56px rgba(0, 0, 0, 0.38);
-  --shadow-3: 0 36px 82px rgba(0, 0, 0, 0.46);
-  --focus: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
-  --focus-strong:
-    0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent),
-    0 16px 34px rgba(0, 0, 0, 0.28);
-  --surface-card:
-    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 9%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(11, 24, 36, 0.98) 0%, rgba(8, 18, 28, 0.95) 100%);
-  --surface-card-hover:
-    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 13%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(13, 28, 42, 0.98) 0%, rgba(9, 21, 32, 0.96) 100%);
-  --surface-section: color-mix(in oklab, var(--panel) 92%, transparent);
-  --surface-section-header:
-    linear-gradient(180deg, color-mix(in oklab, var(--panel-soft) 92%, transparent) 0%, color-mix(in oklab, var(--panel) 78%, transparent) 100%);
-  --surface-section-content:
-    linear-gradient(180deg, color-mix(in oklab, var(--panel-soft) 88%, transparent) 0%, color-mix(in oklab, var(--panel) 82%, transparent) 100%);
-  --surface-elevated:
-    linear-gradient(180deg, rgba(11, 25, 38, 0.98) 0%, rgba(8, 18, 28, 0.95) 100%);
-  --surface-overlay:
-    linear-gradient(180deg, rgba(10, 23, 35, 0.98) 0%, rgba(7, 17, 26, 0.96) 100%);
-  --surface-overlay-strong:
-    linear-gradient(180deg, rgba(12, 26, 39, 0.99) 0%, rgba(7, 18, 28, 0.98) 100%);
-  --surface-chip: color-mix(in oklab, var(--panel-soft) 72%, var(--panel));
-  --surface-chip-active: color-mix(in oklab, var(--accent) 13%, var(--panel));
-  --surface-table-header: color-mix(in oklab, var(--panel-soft) 78%, var(--panel));
-  --surface-table-row-hover: color-mix(in oklab, var(--accent) 7%, var(--panel));
-  --shadow-soft: 0 10px 22px rgba(0, 0, 0, 0.24);
+  --chrome-surface: linear-gradient(180deg, rgba(9, 17, 27, 0.98) 0%, rgba(12, 22, 34, 0.98) 100%);
+  --chrome-overlay: linear-gradient(125deg, rgba(47, 128, 237, 0.08), rgba(255, 255, 255, 0.02));
+  --chrome-border: rgba(58, 85, 112, 0.34);
+  --chrome-pill-border: rgba(58, 85, 112, 0.38);
+  --chrome-text-strong: #edf4fb;
+  --chrome-text-muted: rgba(210, 223, 236, 0.74);
+  --chrome-pill-bg: linear-gradient(180deg, rgba(19, 33, 49, 0.9) 0%, rgba(14, 24, 36, 0.86) 100%);
+  --chrome-pill-bg-hover: linear-gradient(180deg, rgba(24, 40, 58, 0.96) 0%, rgba(16, 29, 42, 0.92) 100%);
+  --shadow-1: 0 14px 30px rgba(0, 0, 0, 0.24);
+  --shadow-2: 0 22px 46px rgba(0, 0, 0, 0.3);
+  --shadow-3: 0 30px 64px rgba(0, 0, 0, 0.38);
+  --surface-card: linear-gradient(180deg, rgba(15, 25, 37, 0.98) 0%, rgba(13, 22, 32, 0.96) 100%);
+  --surface-card-hover: linear-gradient(180deg, rgba(18, 29, 42, 0.99) 0%, rgba(14, 24, 35, 0.98) 100%);
+  --surface-section: var(--surface-1);
+  --surface-section-header: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%);
+  --surface-section-content: linear-gradient(180deg, rgba(15, 25, 37, 0.98) 0%, rgba(13, 22, 32, 0.98) 100%);
+  --surface-elevated: linear-gradient(180deg, rgba(16, 27, 39, 0.98) 0%, rgba(12, 21, 31, 0.96) 100%);
+  --surface-overlay: linear-gradient(180deg, rgba(15, 25, 37, 0.985) 0%, rgba(11, 19, 28, 0.97) 100%);
+  --surface-overlay-strong: linear-gradient(180deg, rgba(18, 30, 43, 0.99) 0%, rgba(12, 21, 31, 0.985) 100%);
+  --surface-chip: color-mix(in oklab, var(--surface-2) 84%, var(--surface-1));
+  --surface-chip-active: var(--selected-bg);
+  --surface-table-header: color-mix(in oklab, var(--surface-2) 90%, var(--surface-1));
+  --surface-table-row-hover: color-mix(in oklab, var(--primary) 7%, var(--surface-1));
+  --shadow-soft: 0 8px 18px rgba(0, 0, 0, 0.18);
   --shadow-card:
-    0 18px 38px rgba(0, 0, 0, 0.3),
+    0 16px 32px rgba(0, 0, 0, 0.24),
     0 1px 0 rgba(255, 255, 255, 0.05) inset;
   --shadow-card-hover:
-    0 24px 46px rgba(0, 0, 0, 0.36),
+    0 20px 40px rgba(0, 0, 0, 0.3),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
-  --control-border: 1px solid var(--line);
-  --control-border-strong: color-mix(in oklab, var(--accent) 32%, var(--line));
-  --control-surface: linear-gradient(180deg, #0f2233 0%, #0b1a28 100%);
-  --control-surface-hover: linear-gradient(180deg, #132a3f 0%, #0d2031 100%);
-  --control-surface-active: linear-gradient(180deg, #163149 0%, #102638 100%);
-  --surface-raised: linear-gradient(180deg, rgba(10, 23, 35, 0.96) 0%, rgba(7, 17, 26, 0.92) 100%);
-  --surface-muted: linear-gradient(180deg, #112334 0%, #0b1b2a 100%);
-  --button-neutral-text: var(--text-strong);
-  --button-neutral-border: color-mix(in oklab, var(--line) 88%, transparent);
-  --button-neutral-bg: var(--control-surface);
-  --button-neutral-bg-hover: var(--control-surface-hover);
-  --button-primary-border: color-mix(in oklab, var(--accent) 30%, var(--line));
+  --control-border: 1px solid var(--border-default);
+  --control-border-strong: var(--selected-border);
+  --control-surface: linear-gradient(180deg, rgba(19, 33, 49, 0.94) 0%, rgba(14, 24, 36, 0.92) 100%);
+  --control-surface-hover: linear-gradient(180deg, rgba(23, 39, 58, 0.96) 0%, rgba(16, 29, 42, 0.94) 100%);
+  --control-surface-active: linear-gradient(180deg, rgba(26, 46, 68, 0.98) 0%, rgba(18, 33, 48, 0.96) 100%);
+  --surface-raised: linear-gradient(180deg, rgba(16, 27, 39, 0.98) 0%, rgba(12, 21, 31, 0.96) 100%);
+  --surface-muted: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.94) 100%);
+  --button-neutral-text: var(--text-primary);
+  --button-neutral-border: var(--border-default);
+  --button-neutral-bg: var(--surface-elevated);
+  --button-neutral-bg-hover: var(--surface-overlay-strong);
+  --button-primary-border: color-mix(in oklab, #14344f 56%, #2f80ed);
   --button-primary-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.3),
-    0 10px 20px color-mix(in oklab, var(--accent) 14%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    0 16px 30px rgba(0, 0, 0, 0.24),
+    0 10px 20px rgba(12, 37, 61, 0.3),
+    0 0 0 1px rgba(127, 179, 244, 0.08) inset;
   --button-primary-shadow-hover:
-    0 22px 40px rgba(0, 0, 0, 0.34),
-    0 12px 22px color-mix(in oklab, var(--accent) 18%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset;
-  --status-default-border: color-mix(in oklab, var(--line) 86%, transparent);
+    0 20px 36px rgba(0, 0, 0, 0.3),
+    0 12px 24px rgba(20, 52, 79, 0.36),
+    0 0 0 1px rgba(127, 179, 244, 0.12) inset;
+  --status-default-border: var(--border-default);
   --status-default-bg: var(--surface-chip);
-  --status-default-text: var(--text-soft);
-  --status-success-border: color-mix(in oklab, var(--success) 34%, var(--line));
-  --status-warning-border: color-mix(in oklab, var(--warn) 34%, var(--line));
-  --status-danger-border: color-mix(in oklab, var(--danger) 32%, var(--line));
-  --status-info-border: color-mix(in oklab, var(--info) 34%, var(--line));
-  --chrome-text-strong: #eef7ff;
-  --chrome-text-muted: rgba(221, 237, 250, 0.76);
-  --chrome-pill-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(123, 177, 214, 0.06) 100%);
-  --chrome-pill-bg-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(123, 177, 214, 0.09) 100%);
+  --status-default-text: var(--text-secondary);
+  --status-success-border: var(--success-border);
+  --status-warning-border: var(--warning-border);
+  --status-danger-border: var(--danger-border);
+  --status-info-border: var(--info-border);
 }

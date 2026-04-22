@@ -46,11 +46,13 @@
   border: 1px solid var(--builder-line);
   border-radius: var(--radius-xs);
   background: var(--surface-overlay);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 48%, transparent);
 }
 
 .board-top-nav__tabs .shared-tabs__item {
   flex: 1 1 0;
   border: 0;
+  border-right: 1px solid color-mix(in oklab, var(--builder-line) 72%, transparent);
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
@@ -60,17 +62,51 @@
   font-size: 0.78rem;
   font-weight: 800;
   text-align: center;
+  box-shadow: none;
 }
 
 .board-top-nav__tabs .shared-tabs__item:hover {
-  background: var(--surface-table-row-hover);
-  color: var(--builder-accent-strong);
+  background: color-mix(in oklab, var(--builder-accent) 8%, var(--surface-1));
+  color: var(--builder-text);
+}
+
+.board-top-nav__tabs .shared-tabs__item:last-child {
+  border-right: 0;
 }
 
 .board-top-nav__tabs .shared-tabs__item--active {
-  background: var(--surface-section-content);
-  color: var(--builder-accent);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--builder-accent) 16%, var(--surface-1)) 0%, color-mix(in oklab, var(--builder-accent) 8%, var(--surface-1)) 100%);
+  color: var(--builder-text);
   border-bottom-color: var(--builder-accent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--builder-accent) 16%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--builder-accent) 18%, transparent);
+}
+
+.app-theme[data-theme="dark"] .board-top-nav__tabs.shared-tabs {
+  background: color-mix(in oklab, var(--surface-2) 86%, var(--surface-1));
+  border-color: var(--border-default);
+}
+
+.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item {
+  color: var(--text-secondary);
+  border-right-color: color-mix(in oklab, var(--border-default) 82%, transparent);
+}
+
+.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item:hover {
+  background: color-mix(in oklab, var(--primary) 10%, var(--surface-1));
+  color: var(--text-primary);
+}
+
+.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--primary) 24%, var(--surface-2)) 0%, color-mix(in oklab, var(--primary) 16%, var(--surface-1)) 100%);
+  color: var(--text-primary);
+  border-bottom-color: var(--primary);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--primary) 28%, transparent),
+    inset 0 -2px 0 color-mix(in oklab, var(--primary) 48%, transparent);
 }
 
 .board-view__section-actions {

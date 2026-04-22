@@ -34,7 +34,6 @@ export function DashboardFilter({
 
       <Button
         variant="primary"
-        size="sm"
         className={mineOnly ? "dashboard-filter__mine-button active" : "dashboard-filter__mine-button"}
         onClick={onMineToggle}
         aria-pressed={mineOnly}

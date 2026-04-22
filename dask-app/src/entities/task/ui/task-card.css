@@ -1,59 +1,56 @@
 .task-card {
-  --task-card-priority-soft: rgba(245, 158, 11, 0.09);
-  --task-card-priority-soft-strong: rgba(245, 158, 11, 0.16);
-  --task-card-priority-border: #f59e0b;
+  --task-card-priority-soft: color-mix(in oklab, var(--warning) 10%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--warning) 18%, var(--surface-1));
+  --task-card-priority-border: var(--warning);
   border-radius: 14px;
-  border: 1px solid #dce8f7;
-  border-left: 4px solid #f59e0b;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.88) 100%),
-    linear-gradient(135deg, var(--task-card-priority-soft-strong) 0%, var(--task-card-priority-soft) 58%, rgba(255, 255, 255, 0.68) 100%);
+  border: 1px solid var(--border-default);
+  border-left: 4px solid var(--task-card-priority-border);
+  background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
   padding: 13px 12px 12px;
   cursor: grab;
-  box-shadow: 0 8px 16px rgba(22, 56, 97, 0.08);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--task-card-priority-soft) 32%, transparent),
+    var(--shadow-soft);
   animation: board-rise 0.35s ease both;
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .task-card--priority-0 {
-  --task-card-priority-soft: rgba(211, 47, 47, 0.08);
-  --task-card-priority-soft-strong: rgba(211, 47, 47, 0.16);
-  --task-card-priority-border: #d32f2f;
-  border-left-color: #d32f2f;
+  --task-card-priority-soft: color-mix(in oklab, var(--danger) 10%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--danger) 18%, var(--surface-1));
+  --task-card-priority-border: var(--danger);
 }
 
 .task-card--priority-1 {
-  --task-card-priority-soft: rgba(239, 108, 0, 0.08);
-  --task-card-priority-soft-strong: rgba(239, 108, 0, 0.16);
-  --task-card-priority-border: #ef6c00;
-  border-left-color: #ef6c00;
+  --task-card-priority-soft: color-mix(in oklab, var(--warning) 12%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--warning) 22%, var(--surface-1));
+  --task-card-priority-border: color-mix(in oklab, var(--warning) 78%, #8b5415);
 }
 
 .task-card--priority-2 {
-  --task-card-priority-soft: rgba(245, 158, 11, 0.08);
-  --task-card-priority-soft-strong: rgba(245, 158, 11, 0.16);
-  --task-card-priority-border: #f59e0b;
-  border-left-color: #f59e0b;
+  --task-card-priority-soft: color-mix(in oklab, var(--warning) 10%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--warning) 18%, var(--surface-1));
+  --task-card-priority-border: var(--warning);
 }
 
 .task-card--priority-3 {
-  --task-card-priority-soft: rgba(56, 142, 60, 0.08);
-  --task-card-priority-soft-strong: rgba(56, 142, 60, 0.16);
-  --task-card-priority-border: #388e3c;
-  border-left-color: #388e3c;
+  --task-card-priority-soft: color-mix(in oklab, var(--success) 10%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--success) 18%, var(--surface-1));
+  --task-card-priority-border: var(--success);
 }
 
 .task-card--priority-4 {
-  --task-card-priority-soft: rgba(25, 118, 210, 0.08);
-  --task-card-priority-soft-strong: rgba(25, 118, 210, 0.16);
-  --task-card-priority-border: #1976d2;
-  border-left-color: #1976d2;
+  --task-card-priority-soft: color-mix(in oklab, var(--info) 10%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--info) 18%, var(--surface-1));
+  --task-card-priority-border: var(--info);
 }
 
 .task-card:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 28%, #c7dbf3);
-  box-shadow: 0 14px 24px rgba(15, 43, 74, 0.11);
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 28%, var(--border-default));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--task-card-priority-border) 12%, transparent),
+    var(--shadow-card);
 }
 
 .task-card:active {
@@ -61,14 +58,14 @@
 }
 
 .task-card:focus-visible {
-  outline: 2px solid #62b2ff;
+  outline: 2px solid color-mix(in oklab, var(--primary) 42%, transparent);
   outline-offset: 2px;
 }
 
 .task-card--dragging {
   opacity: 0.35;
   transform: scale(0.98);
-  box-shadow: 0 4px 10px rgba(12, 42, 73, 0.08);
+  box-shadow: 0 4px 10px color-mix(in oklab, var(--text-primary) 8%, transparent);
 }
 
 .task-card--drag-preview {
@@ -106,7 +103,7 @@
   background: transparent;
   border: 0;
   box-shadow: none;
-  color: #325779;
+  color: var(--text-secondary);
 }
 
 .task-card__type-icon svg {
@@ -129,28 +126,28 @@
 }
 
 .task-card__priority--0 {
-  background: #ffe5e5;
-  color: #9f1f1f;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .task-card__priority--1 {
-  background: #ffeddc;
-  color: #a34b00;
+  background: color-mix(in oklab, var(--warning-bg) 90%, var(--surface-1));
+  color: color-mix(in oklab, var(--warning) 88%, #6f430f);
 }
 
 .task-card__priority--2 {
-  background: #fff4d9;
-  color: #8a5f00;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .task-card__priority--3 {
-  background: #e5f7eb;
-  color: #1f6d3c;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .task-card__priority--4 {
-  background: #e8f1ff;
-  color: #1c5794;
+  background: var(--info-bg);
+  color: var(--info);
 }
 
 .task-card__ghost {
@@ -161,8 +158,8 @@
   height: 32px;
   border-radius: 10px;
   border: 0;
-  background: rgba(255, 255, 255, 0.54);
-  color: #7b8da3;
+  background: color-mix(in oklab, var(--surface-1) 72%, transparent);
+  color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
@@ -180,14 +177,14 @@
 
 .task-card__ghost:hover,
 .task-card__ghost[aria-expanded="true"] {
-  background: rgba(231, 241, 255, 0.92);
-  color: #1c5794;
-  box-shadow: 0 8px 16px rgba(28, 87, 148, 0.12);
+  background: var(--selected-bg);
+  color: var(--primary-hover);
+  box-shadow: 0 8px 16px color-mix(in oklab, var(--primary) 14%, transparent);
   transform: translateY(-1px);
 }
 
 .task-card__ghost:focus-visible {
-  outline: 2px solid #62b2ff;
+  outline: 2px solid color-mix(in oklab, var(--primary) 42%, transparent);
   outline-offset: 2px;
 }
 
@@ -199,14 +196,10 @@
   display: grid;
   gap: 0;
   padding: 8px 0;
-  border: 1px solid color-mix(in oklab, var(--line, #d6dee8) 82%, white 18%);
+  border: 1px solid var(--border-default);
   border-radius: 18px;
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent, #3b82f6) 12%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel, #ffffff) 96%, white 4%) 0%, color-mix(in oklab, var(--panel-soft, #f7fbff) 92%, white 8%) 100%);
-  box-shadow:
-    0 20px 36px color-mix(in oklab, var(--text-strong, #102e4e) 16%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  background: var(--surface-overlay-strong);
+  box-shadow: var(--shadow-3);
   backdrop-filter: blur(14px) saturate(120%);
   z-index: 11000;
 }
@@ -218,7 +211,7 @@
 }
 
 .task-card__menu-section + .task-card__menu-section {
-  border-top: 1px solid color-mix(in oklab, var(--line, #d6dee8) 76%, transparent);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .task-card__menu-group {
@@ -231,7 +224,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--text-muted, #58738f) 92%, var(--accent, #3b82f6) 8%);
+  color: color-mix(in oklab, var(--text-muted) 92%, var(--primary) 8%);
   padding: 2px 4px 0;
 }
 
@@ -243,7 +236,7 @@
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
-  color: var(--text-strong, #173b59);
+  color: var(--text-primary);
   text-align: left;
   padding: 9px 12px;
   font-size: 0.8rem;
@@ -256,22 +249,22 @@
 .task-card__menu-action:hover,
 .task-card__menu-action:focus-visible,
 .task-card__menu-action--active {
-  background: color-mix(in oklab, var(--accent, #3b82f6) 10%, var(--panel, #ffffff));
-  border-color: color-mix(in oklab, var(--accent, #3b82f6) 18%, var(--line, #d6dee8));
-  color: var(--text-strong, #102e4e);
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--text-primary);
 }
 
 .task-card__menu-action--danger {
-  background: color-mix(in oklab, #d32f2f 9%, var(--panel, #ffffff));
-  border-color: color-mix(in oklab, #d32f2f 22%, var(--line, #d6dee8));
-  color: #b42318;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
 }
 
 .task-card__menu-action--danger:hover,
 .task-card__menu-action--danger:focus-visible {
-  background: color-mix(in oklab, #d32f2f 18%, var(--panel, #ffffff));
-  border-color: color-mix(in oklab, #d32f2f 34%, var(--line, #d6dee8));
-  color: #7a1f1f;
+  background: color-mix(in oklab, var(--danger-bg) 82%, var(--surface-1));
+  border-color: color-mix(in oklab, var(--danger) 28%, var(--danger-border));
+  color: color-mix(in oklab, var(--danger) 82%, black);
 }
 
 .task-card__menu-action:focus-visible {
@@ -292,10 +285,10 @@
   gap: 6px;
   min-width: 0;
   padding: 7px 9px;
-  border: 1px solid color-mix(in oklab, var(--line, #d6dee8) 80%, transparent);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: color-mix(in oklab, var(--panel-soft, #f7fbff) 82%, white 18%);
-  color: var(--text, #2b4a66);
+  background: var(--surface-chip);
+  color: var(--text-secondary);
   font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
@@ -305,9 +298,9 @@
 .task-card__menu-priority-pill:hover,
 .task-card__menu-priority-pill:focus-visible,
 .task-card__menu-priority-pill--active {
-  background: color-mix(in oklab, var(--accent, #3b82f6) 12%, var(--panel, #ffffff));
-  border-color: color-mix(in oklab, var(--accent, #3b82f6) 22%, var(--line, #d6dee8));
-  color: var(--text-strong, #102e4e);
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--text-primary);
   transform: translateY(-1px);
 }
 
@@ -324,35 +317,31 @@
 
 .task-card__menu-helper {
   font-size: 0.7rem;
-  color: var(--text-muted, #58738f);
+  color: var(--text-muted);
   padding: 0 4px;
 }
 
-.task-card__menu-priority-dot--0 { background: #d32f2f; }
-.task-card__menu-priority-dot--1 { background: #ef6c00; }
-.task-card__menu-priority-dot--2 { background: #f59e0b; }
-.task-card__menu-priority-dot--3 { background: #388e3c; }
-.task-card__menu-priority-dot--4 { background: #1976d2; }
+.task-card__menu-priority-dot--0 { background: var(--danger); }
+.task-card__menu-priority-dot--1 { background: color-mix(in oklab, var(--warning) 78%, #8b5415); }
+.task-card__menu-priority-dot--2 { background: var(--warning); }
+.task-card__menu-priority-dot--3 { background: var(--success); }
+.task-card__menu-priority-dot--4 { background: var(--info); }
 
 .app-theme[data-theme="dark"] .task-card__ghost {
-  background: rgba(17, 33, 49, 0.7);
-  color: #9db6cf;
+  background: color-mix(in oklab, var(--surface-2) 72%, transparent);
+  color: var(--text-secondary);
 }
 
 .app-theme[data-theme="dark"] .task-card__ghost:hover,
 .app-theme[data-theme="dark"] .task-card__ghost[aria-expanded="true"] {
-  background: rgba(29, 62, 96, 0.92);
-  color: #d4e7fb;
+  background: var(--selected-bg);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .task-card__menu {
-  border-color: color-mix(in oklab, var(--line) 88%, white 12%);
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 14%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised) 98%, var(--panel)) 0%, color-mix(in oklab, var(--panel) 94%, black 6%) 100%);
-  box-shadow:
-    0 24px 42px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 color-mix(in oklab, white 8%, transparent);
+  border-color: var(--border-default);
+  background: var(--surface-overlay-strong);
+  box-shadow: var(--shadow-3);
 }
 
 .app-theme[data-theme="dark"] .task-card__menu-label {
@@ -366,35 +355,35 @@
 .app-theme[data-theme="dark"] .task-card__menu-action:hover,
 .app-theme[data-theme="dark"] .task-card__menu-action:focus-visible,
 .app-theme[data-theme="dark"] .task-card__menu-action--active {
-  background: color-mix(in oklab, var(--accent) 12%, var(--panel));
-  border-color: color-mix(in oklab, var(--accent) 22%, var(--line));
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
   color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .task-card__menu-action--danger {
-  background: color-mix(in oklab, #d32f2f 16%, var(--panel));
-  border-color: color-mix(in oklab, #d32f2f 28%, var(--line));
-  color: #ff9f9f;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
 }
 
 .app-theme[data-theme="dark"] .task-card__menu-action--danger:hover,
 .app-theme[data-theme="dark"] .task-card__menu-action--danger:focus-visible {
-  background: color-mix(in oklab, #d32f2f 26%, var(--panel));
-  border-color: color-mix(in oklab, #d32f2f 40%, var(--line));
-  color: #ffd6d6;
+  background: color-mix(in oklab, var(--danger-bg) 88%, var(--surface-1));
+  border-color: color-mix(in oklab, var(--danger) 34%, var(--danger-border));
+  color: color-mix(in oklab, var(--danger) 90%, white);
 }
 
 .app-theme[data-theme="dark"] .task-card__menu-priority-pill {
-  border-color: color-mix(in oklab, var(--line) 88%, transparent);
-  background: color-mix(in oklab, var(--control-surface) 92%, transparent);
+  border-color: var(--border-default);
+  background: var(--surface-chip);
   color: var(--text);
 }
 
 .app-theme[data-theme="dark"] .task-card__menu-priority-pill:hover,
 .app-theme[data-theme="dark"] .task-card__menu-priority-pill:focus-visible,
 .app-theme[data-theme="dark"] .task-card__menu-priority-pill--active {
-  background: color-mix(in oklab, var(--accent) 14%, var(--panel));
-  border-color: color-mix(in oklab, var(--accent) 22%, var(--line));
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
   color: var(--text-strong);
 }
 
@@ -449,16 +438,16 @@
   gap: 3px;
   min-width: 0;
   padding: 7px 8px;
-  border: 1px solid #e4edf8;
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: #f8fbff;
+  background: var(--surface-2);
 }
 
 .task-card__summary-item strong {
   font-size: 0.66rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #3f5f7d;
+  color: var(--text-secondary);
 }
 
 .task-card__summary-item span {
@@ -468,7 +457,7 @@
   white-space: nowrap;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #183a58;
+  color: var(--text-primary);
 }
 
 .task-card__tags {
@@ -484,13 +473,13 @@
   padding: 4px 8px;
   font-size: var(--font-size-2xs);
   font-weight: 600;
-  background: #e7f1ff;
-  color: #1c5794;
+  background: var(--info-bg);
+  color: var(--info);
 }
 
 .task-card__tag--more {
-  background: #eff4fb;
-  color: #405f7d;
+  background: var(--surface-3);
+  color: var(--text-secondary);
 }
 
 .task-card__fields {
@@ -503,17 +492,17 @@
 .task-card__field {
   display: grid;
   gap: 4px;
-  border: 1px solid #e4edf8;
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 6px 8px;
   font-size: var(--font-size-2xs);
-  color: #203f5c;
-  background: #f8fbff;
+  color: var(--text-primary);
+  background: var(--surface-2);
 }
 
 .task-card__field strong {
   font-weight: 700;
-  color: #3f5f7d;
+  color: var(--text-secondary);
   font-size: 0.64rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -522,7 +511,7 @@
 .task-card__field-value {
   font-size: 0.74rem;
   font-weight: 700;
-  color: #183a58;
+  color: var(--text-primary);
   line-height: 1.25;
   word-break: break-word;
 }
@@ -534,7 +523,7 @@
   margin-top: 12px;
   gap: 10px;
   padding-top: 10px;
-  border-top: 1px solid #edf3fa;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .task-card__owner {
@@ -554,7 +543,7 @@
   font-size: 0.66rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #3f5f7d;
+  color: var(--text-secondary);
 }
 
 .task-card__owner-text span {
@@ -564,7 +553,7 @@
   white-space: nowrap;
   font-size: 0.74rem;
   font-weight: 700;
-  color: #183a58;
+  color: var(--text-primary);
 }
 
 .task-card__meta {
@@ -574,7 +563,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: #4a6682;
+  color: var(--text-secondary);
   font-size: var(--font-size-2xs);
   font-weight: 600;
 }

@@ -1,5 +1,5 @@
 .shared-card {
-  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
+  border: 1px solid var(--border-default);
   background: var(--surface-card);
   border-radius: 28px;
   box-shadow: var(--shadow-card);
@@ -13,14 +13,14 @@
 
 .shared-card--interactive:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--accent) 16%, var(--line));
+  border-color: var(--selected-border);
   background: var(--surface-card-hover);
   box-shadow: var(--shadow-card-hover);
 }
 
 .shared-metric-card {
   position: relative;
-  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
+  border: 1px solid var(--border-default);
   border-radius: 24px;
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
@@ -56,17 +56,16 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
-  background:
-    linear-gradient(180deg, color-mix(in oklab, white 92%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 34%, var(--panel)) 100%);
-  color: color-mix(in oklab, var(--accent-strong) 74%, var(--text-strong));
+  border: 1px solid var(--selected-border);
+  background: color-mix(in oklab, var(--selected-bg) 72%, var(--surface-1));
+  color: var(--primary-hover);
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
   box-shadow:
     var(--shadow-soft),
-    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 72%, transparent);
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 56%, transparent);
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -87,13 +86,12 @@
 
 .shared-metric-card__info-button:hover,
 .shared-metric-card__info-button[aria-expanded="true"] {
-  border-color: color-mix(in oklab, var(--accent) 48%, var(--line));
-  background:
-    linear-gradient(180deg, color-mix(in oklab, white 88%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 58%, var(--panel)) 100%);
-  color: color-mix(in oklab, var(--accent-strong) 86%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--border-default));
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-1));
+  color: var(--primary-hover);
   box-shadow:
     var(--shadow-soft),
-    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 76%, transparent);
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 56%, transparent);
   transform: translateY(-1px);
 }
 
@@ -102,15 +100,13 @@
   top: calc(100% + 8px);
   right: 0;
   width: min(320px, 72vw);
-  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--line));
+  border: 1px solid var(--selected-border);
   border-radius: 12px;
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 38%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel) 96%, var(--accent-soft)) 0%, color-mix(in oklab, var(--panel-soft) 88%, var(--panel)) 100%);
+  background: var(--surface-overlay-strong);
   color: var(--text-strong);
   box-shadow:
     var(--shadow-card-hover),
-    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 68%, transparent);
+    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 50%, transparent);
   padding: 12px;
   pointer-events: none;
   z-index: 400;
@@ -152,33 +148,20 @@
   line-height: 1.05;
 }
 
-.app-theme[data-theme="dark"] .shared-metric-card__info-button {
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--panel) 96%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 44%, var(--panel)) 100%);
-  color: color-mix(in oklab, var(--accent-strong) 84%, var(--text-strong));
-  box-shadow:
-    0 10px 20px color-mix(in oklab, black 22%, transparent),
-    inset 0 1px 0 color-mix(in oklab, white 7%, transparent);
-}
-
 .app-theme[data-theme="dark"] .shared-metric-card__info-button:focus-visible {
   outline-color: color-mix(in oklab, var(--accent-strong) 42%, transparent);
 }
 
 .app-theme[data-theme="dark"] .shared-metric-card__info-button:hover,
 .app-theme[data-theme="dark"] .shared-metric-card__info-button[aria-expanded="true"] {
-  border-color: color-mix(in oklab, var(--accent-strong) 44%, var(--line));
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--panel) 94%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 62%, var(--panel)) 100%);
+  border-color: color-mix(in oklab, var(--primary) 46%, var(--border-default));
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-1));
   color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .shared-metric-card__info-popover {
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 10%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel) 96%, var(--accent-soft)) 0%, color-mix(in oklab, var(--panel-soft) 88%, var(--panel)) 100%);
+  border-color: var(--selected-border);
+  background: var(--surface-overlay-strong);
   box-shadow:
     0 18px 36px color-mix(in oklab, black 36%, transparent),
     inset 0 1px 0 color-mix(in oklab, white 7%, transparent);

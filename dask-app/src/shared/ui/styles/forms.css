@@ -5,7 +5,7 @@
   background: var(--control-surface);
   border-radius: 14px;
   color: var(--text-strong);
-  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 74%, transparent) inset;
+  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent) inset;
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -79,10 +79,10 @@
   max-height: min(280px, 42vh);
   overflow: auto;
   padding: 8px;
-  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
+  border: 1px solid var(--border-default);
   border-radius: 18px;
   background: var(--surface-overlay-strong);
-  box-shadow: var(--shadow-3), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 80%, transparent) inset;
+  box-shadow: var(--shadow-3), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 62%, transparent) inset;
   backdrop-filter: blur(16px) saturate(124%);
 }
 
@@ -106,14 +106,14 @@
 
 .shared-select__option:hover,
 .shared-select__option:focus-visible {
-  border-color: color-mix(in oklab, var(--accent) 16%, var(--line));
-  background: var(--surface-chip);
+  border-color: var(--selected-border);
+  background: color-mix(in oklab, var(--selected-bg) 78%, var(--surface-1));
   color: var(--text-strong);
 }
 
 .shared-select__option--selected {
-  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
-  background: var(--surface-chip-active);
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
   color: var(--text-strong);
   box-shadow: var(--shadow-soft);
 }
@@ -141,9 +141,9 @@
 
 .shared-select__control:hover,
 .shared-textarea:hover {
-  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
+  border-color: var(--selected-border);
   background: var(--control-surface-hover);
-  box-shadow: var(--shadow-card), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  box-shadow: var(--shadow-soft);
 }
 
 .shared-textarea::placeholder {
@@ -157,7 +157,7 @@
 
 .shared-form-field__label {
   font-size: var(--font-size-label);
-  color: color-mix(in oklab, var(--text-strong) 78%, var(--accent-strong));
+  color: color-mix(in oklab, var(--text-primary) 84%, var(--primary-hover));
   font-weight: 700;
   letter-spacing: 0.015em;
 }

@@ -4,8 +4,8 @@
 }
 
 .app-theme[data-theme="dark"] ::selection {
-  background: color-mix(in oklab, var(--accent) 34%, transparent);
-  color: var(--text-strong);
+  background: color-mix(in oklab, var(--primary) 28%, transparent);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -46,7 +46,7 @@
   .shared-section__title,
   .shared-card__title
 ) {
-  color: var(--text-strong);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -92,33 +92,8 @@
   [class*="__metric"],
   [class*="__stat"]
 ) {
-  border-color: var(--line) !important;
+  border-color: var(--border-default) !important;
   color: var(--text);
-}
-
-.app-theme[data-theme="dark"] :where(
-  .workspace,
-  .shared-card,
-  .shared-metric-card,
-  .shared-section,
-  .shared-modal,
-  .shared-data-table,
-  .task-details-modal,
-  [class*="__card"],
-  [class*="__panel"],
-  [class*="__section"],
-  [class*="__modal"],
-  [class*="__surface"],
-  [class*="__shell"],
-  [class*="__toolbar"],
-  [class*="__form"],
-  [class*="__preview"],
-  [class*="__summary"],
-  [class*="__metric"],
-  [class*="__stat"]
-) {
-  background: var(--surface-raised) !important;
-  box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -126,53 +101,12 @@
   .shared-section__content,
   .shared-empty-state,
   .shared-card,
-  .shared-metric-card
+  .shared-metric-card,
+  .shared-modal,
+  .shared-data-table
 ) {
   background: var(--surface-raised) !important;
-  border-color: var(--line) !important;
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] :where(.shared-metric-card p, .shared-empty-state) {
-  color: var(--text-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .shared-metric-card h3 {
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  [class*="__row"],
-  [class*="__item"],
-  [class*="__column"],
-  [class*="__cell"],
-  [class*="__option"],
-  [class*="__entry"],
-  .shared-data-table tr,
-  .shared-tabs__list
-) {
-  border-color: var(--line) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  [class*="__row"]:not([class*="actions"]):not([class*="icon"]),
-  [class*="__item"]:not([class*="actions"]):not([class*="icon"]),
-  [class*="__column"],
-  [class*="__cell"],
-  [class*="__option"],
-  [class*="__entry"]
-) {
-  background-color: color-mix(in oklab, var(--panel) 82%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  [class*="__row"]:hover,
-  [class*="__item"]:hover,
-  [class*="__option"]:hover,
-  [class*="__entry"]:hover,
-  .shared-data-table tr:hover
-) {
-  background-color: color-mix(in oklab, var(--accent) 10%, var(--panel)) !important;
+  border-color: var(--border-default) !important;
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -186,8 +120,8 @@
   .shared-select__option
 ) {
   background: var(--control-surface) !important;
-  border-color: var(--line) !important;
-  color: var(--text-strong) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
 }
 
 .app-theme[data-theme="dark"] :where(input, textarea)::placeholder {
@@ -203,7 +137,7 @@
   .shared-select__control:hover
 ) {
   background: var(--control-surface-hover) !important;
-  border-color: var(--control-border-strong) !important;
+  border-color: var(--selected-border) !important;
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -219,24 +153,9 @@
   .shared-textarea:focus-visible,
   .shared-select__control:focus-within
 ) {
-  border-color: var(--accent) !important;
+  border-color: var(--selected-border) !important;
   box-shadow: var(--focus) !important;
   outline: none;
-}
-
-.app-theme[data-theme="dark"] :where(
-  button,
-  .shared-button,
-  [role="button"]
-) {
-  border-color: color-mix(in oklab, var(--line) 86%, transparent);
-}
-
-.app-theme[data-theme="dark"] :where(
-  button:not([class*="primary"]):not([class*="danger"]):not([class*="destructive"]),
-  .shared-button:not(.shared-button--primary):not(.shared-button--danger)
-) {
-  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -244,12 +163,10 @@
   .shared-button--outline,
   button:not([class*="primary"]):not([class*="danger"]):not([class*="destructive"])
 ) {
-  background: var(--control-surface) !important;
-  border-color: var(--line) !important;
-  color: var(--text-strong) !important;
-  box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: var(--button-neutral-bg) !important;
+  border-color: var(--button-neutral-border) !important;
+  color: var(--button-neutral-text) !important;
+  box-shadow: var(--shadow-soft);
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -257,523 +174,8 @@
   .shared-button--outline:hover,
   button:not([class*="primary"]):not([class*="danger"]):not([class*="destructive"]):hover
 ) {
-  background: var(--control-surface-hover) !important;
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  [class*="badge"],
-  [class*="chip"],
-  [class*="tag"],
-  [class*="pill"],
-  [class*="status"]
-) {
-  border-color: color-mix(in oklab, var(--line) 88%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .shared-data-table thead,
-  .shared-data-table th,
-  [class*="__header"],
-  [class*="__head"],
-  [class*="__footer"],
-  [class*="__aside"]
-) {
-  border-color: var(--line) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .shared-data-table thead,
-  .shared-data-table th
-) {
-  background: var(--surface-muted) !important;
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] a:not(.sidebar__menu-link) {
-  color: var(--accent-strong);
-}
-
-.app-theme[data-theme="dark"] hr {
-  border-color: var(--line);
-}
-
-.app-theme[data-theme="dark"] .app-shell {
-  background: transparent;
-}
-
-.app-theme[data-theme="dark"] .workspace {
-  background: var(--panel) !important;
-  border-color: var(--line) !important;
-  box-shadow: var(--shadow-2);
-}
-
-.app-theme[data-theme="dark"] .workspace__content {
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] :where(
-  .global-layout__main,
-  .global-layout__main:not(.global-layout__main--public)
-) {
-  background: var(--body-background) !important;
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] .sidebar {
-  --sidebar-ink: var(--text-strong);
-  --sidebar-muted: var(--text-muted);
-  --sidebar-line: var(--line);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-strong: var(--accent-strong);
-  --sidebar-item: var(--text-soft);
-  --sidebar-item-soft: color-mix(in oklab, var(--accent) 10%, transparent);
-  --sidebar-item-line: color-mix(in oklab, var(--accent) 20%, var(--line));
-  --sidebar-foot-bg: var(--panel);
-  background: var(--panel) !important;
-  color: var(--text);
-  border-right-color: var(--line);
-  box-shadow: 18px 0 40px rgba(0, 0, 0, 0.24);
-}
-
-.app-theme[data-theme="dark"] .sidebar__brand {
-  background:
-    linear-gradient(135deg, rgba(10, 134, 232, 0.18) 0%, rgba(15, 159, 152, 0.14) 100%),
-    var(--surface-muted) !important;
-  border-bottom-color: var(--line);
-}
-
-.app-theme[data-theme="dark"] .sidebar__brand-title,
-.app-theme[data-theme="dark"] .sidebar__sprint-name,
-.app-theme[data-theme="dark"] .sidebar__menu-link-label {
-  color: var(--text-strong);
-  text-shadow: none;
-}
-
-.app-theme[data-theme="dark"] .sidebar__brand-subtitle,
-.app-theme[data-theme="dark"] .sidebar__menu-title,
-.app-theme[data-theme="dark"] .sidebar__sprint-meta {
-  color: var(--text-muted);
-  text-shadow: none;
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-title::after {
-  background: linear-gradient(90deg, var(--line), transparent);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-blue,
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-cyan {
-  --sidebar-item: var(--accent);
-  --sidebar-item-soft: color-mix(in oklab, var(--accent) 13%, transparent);
-  --sidebar-item-line: color-mix(in oklab, var(--accent) 34%, var(--line));
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-mint {
-  --sidebar-item: #50d7ba;
-  --sidebar-item-soft: rgba(80, 215, 186, 0.13);
-  --sidebar-item-line: rgba(80, 215, 186, 0.32);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-amber {
-  --sidebar-item: var(--warn);
-  --sidebar-item-soft: rgba(240, 189, 99, 0.13);
-  --sidebar-item-line: rgba(240, 189, 99, 0.32);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-rose {
-  --sidebar-item: #ff8fa3;
-  --sidebar-item-soft: rgba(255, 143, 163, 0.13);
-  --sidebar-item-line: rgba(255, 143, 163, 0.32);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-violet {
-  --sidebar-item: #b8a7ff;
-  --sidebar-item-soft: rgba(184, 167, 255, 0.13);
-  --sidebar-item-line: rgba(184, 167, 255, 0.32);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--tone-slate {
-  --sidebar-item: var(--text-soft);
-  --sidebar-item-soft: color-mix(in oklab, var(--text-soft) 12%, transparent);
-  --sidebar-item-line: var(--line);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link:hover,
-.app-theme[data-theme="dark"] .sidebar__menu-link--active {
-  background: var(--sidebar-item-soft);
-  border-color: var(--sidebar-item-line);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-link--active .sidebar__menu-link-label {
-  color: var(--sidebar-item);
-}
-
-.app-theme[data-theme="dark"] .sidebar__menu-icon,
-.app-theme[data-theme="dark"] .sidebar__sprint-card {
-  background: var(--surface-muted) !important;
-  border-color: var(--sidebar-item-line);
-  color: var(--sidebar-item);
-  box-shadow: none;
-}
-
-.app-theme[data-theme="dark"] .sidebar__track {
-  background: color-mix(in oklab, var(--line) 78%, transparent);
-}
-
-.app-theme[data-theme="dark"] .app-shell__nav-backdrop {
-  background: rgba(1, 8, 16, 0.62);
-}
-
-.app-theme[data-theme="dark"] :where(
-  .board-view,
-  .board-top-nav__tabs,
-  .board-view__canvas.shared-section,
-  .board-view__canvas .shared-section__header,
-  .board-view__canvas .shared-section__content,
-  .board-view__metrics .shared-metric-card,
-  .board-column,
-  .board-columns-wrap,
-  .board-column__head,
-  .board-column__list,
-  .board-column__empty,
-  .task-card,
-  .task-details-modal__header,
-  .task-details-modal__body,
-  .task-details-modal__aside,
-  .task-details-modal__footer
-) {
-  background: var(--surface-raised) !important;
-  border-color: var(--line) !important;
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] .board-view {
-  --builder-text: var(--text-strong);
-  --builder-text-soft: var(--text-soft);
-  --builder-text-muted: var(--text-muted);
-  --builder-line: var(--line);
-  --builder-line-strong: var(--line-strong);
-  --builder-surface: var(--panel);
-  --builder-surface-soft: var(--panel-soft);
-  --builder-accent: var(--accent);
-  --builder-accent-strong: var(--accent-strong);
-}
-
-.app-theme[data-theme="dark"] .workspace:has(.board-view) {
-  background: var(--panel) !important;
-  border-color: var(--line) !important;
-  box-shadow: var(--shadow-2);
-}
-
-.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item {
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item:hover,
-.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active {
-  background: color-mix(in oklab, var(--accent) 12%, var(--panel)) !important;
-  color: var(--accent-strong) !important;
-  border-bottom-color: var(--accent) !important;
-}
-
-.app-theme[data-theme="dark"] .board-column__title h2,
-.app-theme[data-theme="dark"] .board-view__canvas .shared-section__title {
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .board-column__counter {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
-  color: var(--accent-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .board-column__empty {
-  border-style: dashed;
-  color: var(--text-muted) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .task-card__summary-item,
-  .task-card__field,
-  .task-card__tag
-) {
-  background: color-mix(in oklab, var(--panel-soft) 88%, transparent) !important;
-  border-color: color-mix(in oklab, var(--accent) 20%, var(--line)) !important;
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] :where(
-  .task-card__summary-item strong,
-  .task-card__field strong,
-  .task-card__owner-text strong
-) {
-  color: var(--text-muted) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .task-card__summary-item span,
-  .task-card__field-value,
-  .task-card__owner-text span,
-  .task-card__title
-) {
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .task-card__footer,
-  .task-card__meta
-) {
-  border-color: var(--line) !important;
-  color: var(--text-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .task-card {
-  background:
-    linear-gradient(180deg, rgba(8, 23, 36, 0.82) 0%, rgba(7, 20, 32, 0.94) 100%),
-    linear-gradient(135deg, var(--task-card-priority-soft-strong) 0%, var(--task-card-priority-soft) 58%, rgba(255, 255, 255, 0.04) 100%) !important;
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 24%, var(--line)) !important;
-  border-left-color: var(--task-card-priority-border) !important;
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.app-theme[data-theme="dark"] .task-card--priority-0 {
-  --task-card-priority-soft: rgba(255, 91, 91, 0.14);
-  --task-card-priority-soft-strong: rgba(255, 91, 91, 0.28);
-  --task-card-priority-border: #ff6b6b;
-}
-
-.app-theme[data-theme="dark"] .task-card--priority-1 {
-  --task-card-priority-soft: rgba(255, 159, 67, 0.14);
-  --task-card-priority-soft-strong: rgba(255, 159, 67, 0.26);
-  --task-card-priority-border: #ff9f43;
-}
-
-.app-theme[data-theme="dark"] .task-card--priority-2 {
-  --task-card-priority-soft: rgba(255, 214, 92, 0.12);
-  --task-card-priority-soft-strong: rgba(255, 214, 92, 0.24);
-  --task-card-priority-border: #ffd65c;
-}
-
-.app-theme[data-theme="dark"] .task-card--priority-3 {
-  --task-card-priority-soft: rgba(72, 187, 120, 0.13);
-  --task-card-priority-soft-strong: rgba(72, 187, 120, 0.26);
-  --task-card-priority-border: #48bb78;
-}
-
-.app-theme[data-theme="dark"] .task-card--priority-4 {
-  --task-card-priority-soft: rgba(100, 181, 246, 0.13);
-  --task-card-priority-soft-strong: rgba(100, 181, 246, 0.26);
-  --task-card-priority-border: #64b5f6;
-}
-
-.app-theme[data-theme="dark"] .task-card:hover {
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 48%, var(--line)) !important;
-  box-shadow: var(--shadow-2);
-}
-
-.app-theme[data-theme="dark"] :where(
-  .general-settings__builder-hero,
-  .general-settings__progress,
-  .general-settings__step-card,
-  .general-settings__step-card em,
-  .general-settings__active-panel,
-  .general-settings__preference-card,
-  .general-settings__summary-card,
-  .general-settings__workspace-profile,
-  .general-settings__templates,
-  .general-settings__editable-row,
-  .general-settings__empty-row,
-  .general-settings__template-card,
-  .general-settings__template-modal,
-  .settings-shell__nav,
-  .settings-shell__content,
-  .settings-view__card,
-  .members-settings__card,
-  .members-settings__member-card,
-  .members-settings__permission-card,
-  .columns-settings__create-header,
-  .columns-settings__row,
-  .workflow-states-settings__create-header,
-  .workflow-states-settings__row,
-  .item-types-settings__create-header,
-  .item-types-settings__row,
-  .custom-fields-settings__create-header,
-  .custom-fields-settings__row,
-  .custom-fields-settings__all-field-row,
-  .perspectives-settings__card,
-  .perspectives-settings__create-row
-) {
-  background: var(--surface-raised) !important;
-  border-color: var(--line) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .general-settings__preview-column,
-  .general-settings__preview-card,
-  .general-settings__inline-action,
-  .general-settings__summary-grid span,
-  .general-settings__members-cta,
-  .general-settings__template-preview span,
-  .general-settings__step-card:hover,
-  .general-settings__step-card.is-active,
-  .general-settings__template-card.is-selected
-) {
-  background: color-mix(in oklab, var(--panel-soft) 86%, transparent) !important;
-  border-color: color-mix(in oklab, var(--accent) 20%, var(--line)) !important;
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] .general-settings__progress > span {
-  background: color-mix(in oklab, var(--line) 72%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .settings-shell__nav-link,
-  .settings-view__checkbox-row,
-  .members-settings__row,
-  .members-settings__permissions-header,
-  .members-settings__permissions-row,
-  .custom-fields-settings__checkbox,
-  .perspectives-settings__checkbox-row
-) {
-  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
-  border-color: var(--line) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .settings-shell__nav-link:hover,
-  .settings-shell__nav-link.is-active,
-  .settings-view__checkbox-row:hover,
-  .members-settings__row:hover,
-  .custom-fields-settings__checkbox:hover,
-  .custom-fields-settings__checkbox:focus-within,
-  .perspectives-settings__checkbox-row:hover
-) {
-  background: color-mix(in oklab, var(--accent) 12%, var(--panel)) !important;
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .general-settings,
-  .columns-settings,
-  .workflow-states-settings,
-  .item-types-settings,
-  .custom-fields-settings,
-  .perspectives-settings,
-  .members-settings
-) {
-  --builder-text: var(--text-strong);
-  --builder-text-soft: var(--text-soft);
-  --builder-text-muted: var(--text-muted);
-  --builder-line: var(--line);
-  --builder-line-strong: var(--line-strong);
-  --builder-surface: var(--panel);
-  --builder-surface-soft: var(--panel-soft);
-  --builder-accent: var(--accent);
-  --builder-accent-strong: var(--accent-strong);
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] :where(
-  .toast,
-  .shared-feedback,
-  .workspace-selector-page__create-card,
-  .workspace-selector-page__workspace,
-  .workspace-selector-page__state,
-  .workspace-selector-page__list,
-  .workspace-selector-page__feedback,
-  [class*="__feedback"]
-) {
-  background: var(--surface-raised) !important;
-  border-color: var(--line) !important;
-  color: var(--text);
-}
-
-.app-theme[data-theme="dark"] .workspace-selector-page__workspace-copy strong {
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .workspace-selector-page__workspace-copy span,
-.app-theme[data-theme="dark"] .workspace-selector-page__workspace-copy small {
-  color: var(--text-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .workspace-selector-page__error {
-  background: var(--danger-soft) !important;
-  border-color: color-mix(in oklab, var(--danger) 34%, var(--line)) !important;
-  color: var(--danger) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .global-header__user,
-  .global-header__user:hover
-) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(233, 243, 252, 0.16) 100%) !important;
-  border-color: rgba(186, 220, 242, 0.42) !important;
-  color: #e4f1fb !important;
-}
-
-.app-theme[data-theme="dark"] .global-header__user:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.21) 0%, rgba(240, 248, 255, 0.16) 100%) !important;
-  border-color: rgba(198, 229, 247, 0.6) !important;
-}
-
-.app-theme[data-theme="dark"] .global-header__user-name {
-  color: #e4f1fb !important;
-}
-
-.app-theme[data-theme="dark"] .global-header__user-avatar .shared-user-avatar__media {
-  background: linear-gradient(135deg, rgba(11, 66, 111, 0.94) 0%, rgba(10, 134, 232, 0.92) 56%, rgba(15, 159, 152, 0.9) 100%) !important;
-  border-color: rgba(177, 213, 234, 0.7) !important;
-  color: #ffffff !important;
-  box-shadow:
-    0 6px 14px rgba(15, 57, 89, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .global-header__user-menu,
-  .global-header__billing-card,
-  .global-header__user-menu-actions button,
-  .global-header__billing-actions button
-) {
-  background: linear-gradient(180deg, rgba(9, 31, 48, 0.98) 0%, rgba(7, 24, 38, 0.96) 100%) !important;
-  border-color: rgba(124, 178, 216, 0.42) !important;
-  color: #f4fbff !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .global-header__user-menu-head,
-  .global-header__billing-card
-) {
-  border-color: rgba(124, 178, 216, 0.34) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .global-header__user-menu-head p,
-  .global-header__billing-copy strong
-) {
-  color: #f4fbff !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .global-header__user-menu-head small,
-  .global-header__billing-copy span,
-  .global-header__billing-copy small,
-  .global-header__billing-metadata p
-) {
-  color: rgba(221, 237, 250, 0.72) !important;
-}
-
-.app-theme[data-theme="dark"] :where(
-  .shared-tabs__trigger,
-  [class*="__tab"],
-  [class*="__nav-link"]
-) {
-  color: var(--text-soft);
+  background: var(--button-neutral-bg-hover) !important;
+  border-color: var(--selected-border) !important;
 }
 
 .app-theme[data-theme="dark"] :where(
@@ -784,37 +186,15 @@
   [class*="__nav-link"]:hover,
   [class*="__nav-link"].is-active
 ) {
-  color: var(--text-strong);
-  background: color-mix(in oklab, var(--accent) 12%, transparent);
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+  color: var(--text-primary);
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
 }
 
-.app-theme[data-theme="dark"] :where(
-  .list-view__section .shared-section__header,
-  .list-view__section .shared-section__content,
-  .timeline-view__section .shared-section__header,
-  .timeline-view__section .shared-section__content,
-  .agenda-view__section .shared-section__header,
-  .agenda-view__section .shared-section__content,
-  .automations-view__section .shared-section__header,
-  .automations-view__section .shared-section__content,
-  .list-view__metrics .shared-metric-card,
-  .timeline-view__metrics .shared-metric-card,
-  .agenda-view__metrics .shared-metric-card,
-  .automations-view__metrics .shared-metric-card
-) {
-  background: var(--surface-raised) !important;
-  border-color: var(--line) !important;
-  color: var(--text);
+.app-theme[data-theme="dark"] a:not(.sidebar__menu-link) {
+  color: var(--accent-strong);
 }
 
-.app-theme[data-theme="dark"] :where(
-  .list-view .shared-empty-state,
-  .timeline-view .shared-empty-state,
-  .agenda-view .shared-empty-state,
-  .automations-view .shared-empty-state
-) {
-  background: color-mix(in oklab, var(--panel-soft) 90%, transparent) !important;
-  border-color: var(--line) !important;
-  color: var(--text-muted) !important;
+.app-theme[data-theme="dark"] hr {
+  border-color: var(--border-default);
 }

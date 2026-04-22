@@ -16,18 +16,18 @@
 
 .board-column {
   flex: 0 0 280px;
-  background: #ffffff;
-  border: 1px solid #d8e4ee;
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-xs);
   min-height: max(62vh, 100%);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  box-shadow: var(--shadow-soft);
 }
 
 .board-column--drop-target {
-  border-color: #83afd5;
-  box-shadow: 0 0 0 2px rgba(14, 141, 247, 0.12) inset;
+  border-color: var(--selected-border);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 12%, transparent) inset;
 }
 
 .board-column__head {
@@ -36,8 +36,8 @@
   align-items: center;
   min-height: 44px;
   padding: 9px 10px;
-  border-bottom: 1px solid #d8e4ee;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-1);
 }
 
 .board-column__title {
@@ -50,14 +50,14 @@
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  box-shadow: 0 0 0 3px rgba(10, 134, 232, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 10%, transparent);
 }
 
 .board-column__title h2 {
   margin: 0;
   font-size: var(--font-size-sm);
   letter-spacing: 0;
-  color: #071f35;
+  color: var(--text-primary);
   font-weight: 900;
 }
 
@@ -66,8 +66,8 @@
   min-height: 24px;
   display: inline-grid;
   place-items: center;
-  background: #e8f3fe;
-  color: #075f9d;
+  background: var(--selected-bg);
+  color: var(--primary-hover);
   font-size: 0.78rem;
   font-weight: 900;
   border-radius: var(--radius-xs);
@@ -81,7 +81,7 @@
   display: grid;
   gap: 8px;
   align-content: start;
-  background: #f8fafc;
+  background: var(--surface-2);
 }
 
 .board-column__item {
@@ -92,25 +92,23 @@
 .board-column__drop-indicator {
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.12);
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 12%, transparent);
 }
 
 .board-column__create-task {
   width: 100%;
   justify-content: center;
   min-height: 38px;
-  box-shadow:
-    0 10px 20px rgba(8, 31, 53, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  box-shadow: var(--button-primary-shadow);
 }
 
 .board-column__empty {
   margin: 0;
-  border: 1px dashed #cfdce8;
+  border: 1px dashed var(--border-default);
   border-radius: var(--radius-xs);
-  background: #ffffff;
-  color: #365b7a;
+  background: var(--surface-1);
+  color: var(--text-secondary);
   font-size: var(--font-size-xs);
   font-weight: 700;
   padding: 12px;
@@ -121,14 +119,10 @@
   display: grid;
   gap: 0;
   padding: 30px 28px 24px;
-  border: 1px solid color-mix(in oklab, var(--line, #d6dee8) 82%, white 18%);
+  border: 1px solid var(--border-default);
   border-radius: 18px;
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent, #3b82f6) 12%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel, #ffffff) 99%, white 1%) 0%, color-mix(in oklab, var(--panel-soft, #f7fbff) 98%, white 2%) 100%);
-  box-shadow:
-    0 20px 36px color-mix(in oklab, var(--text-strong, #102e4e) 16%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  background: var(--surface-overlay-strong);
+  box-shadow: var(--shadow-3);
   backdrop-filter: none;
   animation: board-delete-dialog-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -140,10 +134,9 @@
   place-items: center;
   margin: 0 auto 18px;
   border-radius: 20px;
-  background:
-    linear-gradient(180deg, rgba(211, 47, 47, 0.16) 0%, rgba(211, 47, 47, 0.1) 100%);
-  color: #c62828;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  background: var(--danger-bg);
+  color: var(--danger);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 48%, transparent);
 }
 
 .board-delete-dialog__icon svg {
@@ -162,18 +155,18 @@
   font-size: 1.12rem;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: var(--text-strong, #0b2238);
+  color: var(--text-primary);
 }
 
 .board-delete-dialog__description {
   margin: 0;
-  color: var(--text-soft, #4c6680);
+  color: var(--text-secondary);
   font-size: 0.92rem;
   line-height: 1.6;
 }
 
 .board-delete-dialog__description strong {
-  color: var(--text-strong, #0b2238);
+  color: var(--text-primary);
 }
 
 .board-delete-dialog__actions {
@@ -187,16 +180,14 @@
   min-width: 138px;
   height: 42px;
   padding: 0 18px;
-  border: 1px solid rgba(211, 47, 47, 0.28);
+  border: 1px solid var(--danger-border);
   border-radius: 12px;
-  background: linear-gradient(180deg, #d94747 0%, #bf3030 100%);
-  color: #fff8f8;
+  background: linear-gradient(180deg, var(--danger) 0%, color-mix(in oklab, var(--danger) 78%, #741d1d) 100%);
+  color: var(--text-inverse);
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow:
-    0 12px 24px rgba(211, 47, 47, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: 0 12px 24px color-mix(in oklab, var(--danger) 24%, transparent);
   transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
 }
 
@@ -204,13 +195,11 @@
 .board-delete-dialog__confirm:focus-visible {
   transform: translateY(-1px);
   filter: saturate(1.06);
-  box-shadow:
-    0 16px 28px rgba(211, 47, 47, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  box-shadow: 0 16px 28px color-mix(in oklab, var(--danger) 30%, transparent);
 }
 
 .board-delete-dialog__confirm:focus-visible {
-  outline: 2px solid rgba(217, 71, 71, 0.28);
+  outline: 2px solid color-mix(in oklab, var(--danger) 28%, transparent);
   outline-offset: 2px;
 }
 
@@ -218,24 +207,18 @@
   opacity: 0.62;
   cursor: not-allowed;
   transform: none;
-  box-shadow:
-    0 8px 18px rgba(211, 47, 47, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--danger) 18%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-delete-dialog {
-  border-color: color-mix(in oklab, var(--line) 88%, white 12%);
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 14%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised) 99%, var(--panel)) 0%, color-mix(in oklab, var(--panel) 98%, black 2%) 100%);
-  box-shadow:
-    0 20px 36px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 color-mix(in oklab, white 7%, transparent);
+  border-color: var(--border-default);
+  background: var(--surface-overlay-strong);
+  box-shadow: var(--shadow-3);
 }
 
 .app-theme[data-theme="dark"] .board-delete-dialog__icon {
-  background: linear-gradient(180deg, rgba(211, 47, 47, 0.2) 0%, rgba(120, 18, 18, 0.2) 100%);
-  color: #ff8b8b;
+  background: var(--danger-bg);
+  color: var(--danger);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 

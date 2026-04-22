@@ -586,10 +586,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr)) 32px;
   gap: 7px;
   align-items: center;
-  border: 1px solid color-mix(in oklab, var(--doc-line) 74%, transparent);
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--panel) 50%, transparent);
-  padding: 5px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   position: relative;
   z-index: 1;
 }
@@ -1291,6 +1291,8 @@
 
 .app-theme[data-theme="dark"] .documentation-page__modes {
   color: var(--text);
+  background: transparent;
+  border: 0;
 }
 
 .app-theme[data-theme="dark"] .documentation-page__mode-chip {

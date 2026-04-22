@@ -54,14 +54,26 @@
 
 .dashboard-filter .shared-button {
   white-space: nowrap;
-  min-height: 38px;
-  box-shadow: 0 8px 18px rgba(12, 42, 71, 0.05);
+}
+
+.dashboard-filter__mine-button {
+  min-height: 38px !important;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
 }
 
 .dashboard-filter__mine-button,
 .dashboard-filter__mine-button:hover,
 .dashboard-filter__mine-button:focus-visible {
   color: #ffffff !important;
+}
+
+.dashboard-filter__mine-button.active,
+.dashboard-filter__mine-button[aria-pressed="true"] {
+  background: var(--button-gradient-main-hover) !important;
+  box-shadow: var(--button-primary-shadow-hover) !important;
 }
 
 @media (max-width: 760px) {

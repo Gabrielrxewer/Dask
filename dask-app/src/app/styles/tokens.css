@@ -59,8 +59,8 @@
   --brand-gradient-main-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
   --brand-gradient-login: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   --brand-gradient-login-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
-  --button-gradient-main: linear-gradient(135deg, #18324a 0%, #295f97 100%);
-  --button-gradient-main-hover: linear-gradient(135deg, #14283b 0%, #234f7e 100%);
+  --button-gradient-main: linear-gradient(135deg, #2d5479 0%, #4575ab 100%);
+  --button-gradient-main-hover: linear-gradient(135deg, #264a6b 0%, #3d6797 100%);
   --ambient-surface:
     radial-gradient(circle at 16% 18%, rgba(47, 128, 237, 0.07) 0%, transparent 28%),
     linear-gradient(180deg, #f8fbfe 0%, var(--bg-app) 54%, #edf3f8 100%);
@@ -158,15 +158,15 @@
   --button-neutral-bg: var(--surface-elevated);
   --button-neutral-bg-hover: var(--surface-overlay-strong);
   --button-primary-text: #ffffff;
-  --button-primary-border: color-mix(in oklab, #18324a 58%, #295f97);
+  --button-primary-border: color-mix(in oklab, #2d5479 54%, #4575ab);
   --button-primary-shadow:
-    0 16px 30px rgba(24, 50, 74, 0.22),
-    0 6px 14px rgba(24, 50, 74, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+    0 16px 30px rgba(12, 30, 49, 0.26),
+    0 8px 16px rgba(52, 109, 165, 0.22),
+    0 1px 0 rgba(220, 238, 252, 0.18) inset;
   --button-primary-shadow-hover:
-    0 20px 36px rgba(24, 50, 74, 0.28),
-    0 8px 18px rgba(24, 50, 74, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.14) inset;
+    0 20px 36px rgba(12, 30, 49, 0.3),
+    0 10px 20px rgba(52, 109, 165, 0.28),
+    0 1px 0 rgba(220, 238, 252, 0.16) inset;
   --status-default-border: var(--border-default);
   --status-default-bg: var(--surface-chip);
   --status-default-text: var(--text-secondary);
@@ -235,8 +235,8 @@
   --brand-gradient-soft: linear-gradient(135deg, color-mix(in oklab, var(--surface-2) 88%, var(--surface-1)) 0%, color-mix(in oklab, var(--surface-3) 82%, var(--surface-1)) 100%);
   --brand-gradient-main: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   --brand-gradient-main-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
-  --button-gradient-main: linear-gradient(135deg, #0c253d 0%, #14344f 100%);
-  --button-gradient-main-hover: linear-gradient(135deg, #13304b 0%, #1a4666 100%);
+  --button-gradient-main: linear-gradient(135deg, #071524 0%, #0c2c4a 34%, #0b3a61 100%);
+  --button-gradient-main-hover: linear-gradient(135deg, #0a1b2b 0%, #103456 34%, #10426d 100%);
   --ambient-surface:
     radial-gradient(circle at 14% 16%, rgba(47, 128, 237, 0.06) 0%, transparent 28%),
     linear-gradient(180deg, #08111b 0%, #0a1420 56%, #070f18 100%);
@@ -285,15 +285,15 @@
   --button-neutral-border: var(--border-default);
   --button-neutral-bg: var(--surface-elevated);
   --button-neutral-bg-hover: var(--surface-overlay-strong);
-  --button-primary-border: color-mix(in oklab, #14344f 56%, #2f80ed);
+  --button-primary-border: color-mix(in oklab, #0c2c4a 52%, #2f80ed);
   --button-primary-shadow:
-    0 16px 30px rgba(0, 0, 0, 0.24),
-    0 10px 20px rgba(12, 37, 61, 0.3),
-    0 0 0 1px rgba(127, 179, 244, 0.08) inset;
+    0 16px 30px rgba(0, 0, 0, 0.3),
+    0 10px 20px rgba(10, 44, 75, 0.38),
+    0 0 0 1px rgba(138, 190, 248, 0.12) inset;
   --button-primary-shadow-hover:
-    0 20px 36px rgba(0, 0, 0, 0.3),
-    0 12px 24px rgba(20, 52, 79, 0.36),
-    0 0 0 1px rgba(127, 179, 244, 0.12) inset;
+    0 20px 36px rgba(0, 0, 0, 0.36),
+    0 12px 24px rgba(12, 54, 91, 0.44),
+    0 0 0 1px rgba(138, 190, 248, 0.16) inset;
   --status-default-border: var(--border-default);
   --status-default-bg: var(--surface-chip);
   --status-default-text: var(--text-secondary);

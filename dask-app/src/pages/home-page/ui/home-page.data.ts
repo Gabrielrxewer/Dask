@@ -16,17 +16,17 @@ export const heroBadges: HomeBadge[] = [
 export const heroSignals: HomeSignal[] = [
   {
     label: "Continuidade operacional",
-    value: "o mesmo contexto atravessa toda a jornada",
+    value: "O mesmo contexto atravessa toda a jornada",
     description: "Lead, escopo, documentacao, execucao, agenda e cobranca deixam de viver em ferramentas separadas."
   },
   {
     label: "Menos retrabalho",
-    value: "pare de reescrever o mesmo trabalho",
+    value: "Pare de reescrever o mesmo trabalho",
     description: "O que foi vendido alimenta o escopo. O que foi documentado orienta a execucao. O que foi executado sustenta o faturamento."
   },
   {
     label: "IA ao longo do fluxo",
-    value: "inteligencia aplicada no contexto certo",
+    value: "Inteligencia aplicada no contexto certo",
     description: "A IA apoia transicao, analise e decisao dentro da operacao, em vez de virar um assistente solto fora do processo."
   }
 ];

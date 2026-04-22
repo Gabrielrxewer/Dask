@@ -1,7 +1,10 @@
 .global-loading-overlay {
   position: fixed;
-  inset: 0;
-  z-index: 1200;
+  top: var(--global-header-height);
+  right: 0;
+  bottom: var(--global-footer-height);
+  left: 0;
+  z-index: 35;
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -39,7 +39,6 @@ interface BoardColumnsProps {
   onUpdateTaskChecklist: (taskId: string, checklist: Task["checklist"]) => Promise<void> | void;
   onSaveTask: (taskId: string, input: UpdateTaskInput) => Promise<void> | void;
   onCreateTask?: (statusId: TaskStatusId, input: CreateTaskInput) => void | Promise<void>;
-  createTaskTypes?: Array<{ id: string; label: string }>;
   aiAgents: AiAgentSummary[];
   availableTags?: Array<{ id: string; name: string; color: string }>;
   onRunAiAgentOnItem: (
@@ -179,7 +178,6 @@ export function BoardColumns({
   onUpdateTaskChecklist,
   onSaveTask,
   onCreateTask,
-  createTaskTypes,
   aiAgents,
   availableTags = [],
   onRunAiAgentOnItem,
@@ -341,6 +339,7 @@ export function BoardColumns({
                     statuses={statuses}
                     boardConfig={boardConfig}
                     membersById={membersById}
+                    taskTypes={boardConfig.taskTypes}
                     availableTags={availableTags}
                   />
                 ) : null}

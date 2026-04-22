@@ -43,6 +43,7 @@ type TaskDetailsModalProps =
       mode: "create";
       statuses: TaskStatus[];
       initialStatusId: TaskStatusId;
+      initialTypeId: string;
       membersById: MembersById;
       boardConfig: BoardConfig;
       onCreateTask: (input: CreateTaskInput) => Promise<void> | void;
@@ -99,7 +100,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const availableTags = props.availableTags ?? [];
 
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
-  const initialTypeId = task?.type ?? boardConfig.taskTypes[0]?.id ?? "task";
+  const initialTypeId = task?.type ?? (props.mode === "create" ? props.initialTypeId : boardConfig.taskTypes[0]?.id ?? "task");
   const [selectedTypeId, setSelectedTypeId] = useState(initialTypeId);
   const [fieldDrafts, setFieldDrafts] = useState<Record<string, TaskCustomFieldValue>>({});
   const [error, setError] = useState("");
@@ -116,8 +117,15 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   );
 
   const orderedVisibleFields = useMemo(
-    () => detailBindings.map(binding => binding.field),
-    [detailBindings]
+    () =>
+      detailBindings
+        .map(binding => binding.field)
+        .filter(field =>
+          isCreateMode
+            ? !(field.type === "work_item_type" || matchesTaskFieldStorage(field, { kind: "item_property", property: "typeSlug" }))
+            : true
+        ),
+    [detailBindings, isCreateMode]
   );
 
   const initialFieldDrafts = useMemo(
@@ -148,13 +156,21 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   }, [selectedTypeId, task?.id]);
 
   const mainColumnFields = useMemo(
-    () => detailBindings.filter(binding => binding.zone === "main").map(binding => binding.field),
-    [detailBindings]
+    () =>
+      detailBindings
+        .filter(binding => binding.zone === "main")
+        .map(binding => binding.field)
+        .filter(field => orderedVisibleFields.some(visibleField => visibleField.id === field.id)),
+    [detailBindings, orderedVisibleFields]
   );
 
   const sideColumnFields = useMemo(
-    () => detailBindings.filter(binding => binding.zone === "side").map(binding => binding.field),
-    [detailBindings]
+    () =>
+      detailBindings
+        .filter(binding => binding.zone === "side")
+        .map(binding => binding.field)
+        .filter(field => orderedVisibleFields.some(visibleField => visibleField.id === field.id)),
+    [detailBindings, orderedVisibleFields]
   );
 
   const activeTypeMeta = getTaskTypeDisplayMeta(typeMap, selectedTypeId);

@@ -334,7 +334,6 @@ export function BoardPage() {
               membersById={activeMembers}
               compactCards={Boolean(activePerspective?.compactCards)}
               onCreateTask={(statusId, input) => void handleCreateTask(statusId, input)}
-              createTaskTypes={boardConfig.taskTypes.map((taskType) => ({ id: taskType.id, label: taskType.label }))}
               onMoveTask={handleMoveTask}
               onDeleteTask={handleDeleteTask}
               onUpdatePriority={handleUpdatePriority}

@@ -446,6 +446,110 @@
   color: #8fd2ff;
 }
 
+.app-theme[data-theme="dark"] .choose-plan__eyebrow,
+.app-theme[data-theme="dark"] .choose-plan__plan-name {
+  color: var(--accent);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__title {
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__description,
+.app-theme[data-theme="dark"] .choose-plan__price-period,
+.app-theme[data-theme="dark"] .choose-plan__plan-description,
+.app-theme[data-theme="dark"] .choose-plan__feature {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__description a {
+  color: #8fd2ff;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__card,
+.app-theme[data-theme="dark"] .choose-plan__card--featured {
+  border-color: var(--line) !important;
+  background:
+    radial-gradient(circle at 16% 0%, color-mix(in oklab, var(--accent-soft) 14%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised) 94%, var(--panel)) 0%, color-mix(in oklab, var(--surface-section-content) 90%, var(--panel)) 100%) !important;
+  box-shadow:
+    0 24px 52px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__card--featured {
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line)) !important;
+  background:
+    radial-gradient(circle at 16% 0%, color-mix(in oklab, var(--accent-soft) 18%, transparent) 0%, transparent 34%),
+    radial-gradient(circle at 92% 8%, rgba(40, 207, 199, 0.14) 0%, transparent 30%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised) 96%, var(--panel)) 0%, color-mix(in oklab, var(--surface-section-content) 92%, var(--panel)) 100%) !important;
+  box-shadow:
+    0 28px 58px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(125, 97, 238, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__card:hover,
+.app-theme[data-theme="dark"] .choose-plan__card--featured:hover {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line)) !important;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__badge {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 26px rgba(9, 20, 34, 0.36);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__price-value,
+.app-theme[data-theme="dark"] .choose-plan__card--featured .choose-plan__price-value {
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__feature::before {
+  color: #4ed0a1;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__action {
+  border-color: rgba(65, 102, 130, 0.82);
+  background: linear-gradient(180deg, #142c40 0%, #102538 100%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__action:hover:not(:disabled) {
+  color: var(--text-strong);
+  border-color: rgba(95, 182, 248, 0.42);
+  background: linear-gradient(180deg, #18364d 0%, #132d44 100%);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__card--featured .choose-plan__action {
+  border-color: rgba(189, 226, 249, 0.26);
+  color: #f4fbff;
+  background: var(--brand-gradient-login);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__card--featured .choose-plan__action:hover:not(:disabled) {
+  border-color: rgba(208, 234, 249, 0.46);
+  color: #f4fbff;
+  background: var(--brand-gradient-login-hover);
+}
+
+.app-theme[data-theme="dark"] .choose-plan__action:disabled {
+  opacity: 0.72;
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .choose-plan__error {
+  border-color: color-mix(in oklab, var(--danger) 34%, var(--line));
+  background: color-mix(in oklab, var(--danger-soft) 22%, var(--panel));
+  color: #ffb7ab;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
 .choose-plan__error {
   width: min(720px, 100%);
   margin: 0 auto;

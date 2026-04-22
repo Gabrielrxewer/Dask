@@ -31,6 +31,19 @@
   gap: 12px;
 }
 
+.fiscal-view__metrics {
+  --workspace-view-text: var(--text-strong);
+  --workspace-view-text-soft: var(--text-soft);
+  --workspace-view-text-muted: var(--text-muted);
+  --workspace-view-line: var(--line);
+  --workspace-view-line-strong: var(--line-contrast);
+  --workspace-view-surface: var(--surface-overlay);
+  --workspace-view-surface-soft: var(--surface-section-content);
+  --workspace-view-accent: var(--accent);
+  --workspace-view-accent-strong: var(--accent-strong);
+  --workspace-view-card-border: var(--line);
+}
+
 .fiscal-view__header-actions {
   align-items: center;
 }

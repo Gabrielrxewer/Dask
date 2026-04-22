@@ -1,14 +1,31 @@
 .ai-agents-page {
-  --agents-text: #071f35;
-  --agents-text-soft: #1f405e;
-  --agents-text-muted: #365b7a;
-  --agents-line: #b8cada;
-  --agents-line-strong: #83afd5;
-  --agents-surface: #ffffff;
-  --agents-surface-soft: #f8fafc;
-  --agents-surface-muted: #eef4fb;
-  --agents-accent: #075f9d;
-  --agents-accent-strong: #064f85;
+  --agents-text: color-mix(in oklab, var(--text-strong) 96%, #041220);
+  --agents-text-soft: color-mix(in oklab, var(--text-soft) 84%, #10273a);
+  --agents-text-muted: color-mix(in oklab, var(--text-muted) 88%, #27425c);
+  --agents-line: color-mix(in oklab, var(--line) 88%, #8ea7bf);
+  --agents-line-strong: color-mix(in oklab, var(--line-contrast) 78%, var(--accent));
+  --agents-surface: color-mix(in oklab, var(--surface-overlay) 84%, #f1f6fb);
+  --agents-surface-soft: color-mix(in oklab, var(--surface-section-content) 70%, #e7eef6);
+  --agents-surface-muted: color-mix(in oklab, var(--surface-muted) 80%, #dce7f2);
+  --agents-surface-strong: color-mix(in oklab, var(--surface-raised) 76%, #dfe9f4);
+  --agents-field-border: color-mix(in oklab, var(--line) 84%, var(--accent));
+  --agents-field-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, white 82%, var(--agents-surface)) 0%,
+    color-mix(in oklab, var(--agents-surface-muted) 92%, var(--agents-surface)) 100%
+  );
+  --agents-field-surface-strong: linear-gradient(
+    180deg,
+    color-mix(in oklab, white 88%, var(--agents-surface)) 0%,
+    color-mix(in oklab, var(--agents-surface-strong) 92%, var(--agents-surface)) 100%
+  );
+  --agents-accent: color-mix(in oklab, var(--accent) 80%, #0b5f99);
+  --agents-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, #094772);
+  --agents-shadow: 0 10px 24px rgba(6, 23, 39, 0.08);
+  --agents-shadow-strong: 0 16px 34px rgba(6, 23, 39, 0.12);
+  --agents-field-shadow:
+    0 12px 28px rgba(6, 23, 39, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
   --workspace-view-text: var(--agents-text);
   --workspace-view-text-soft: var(--agents-text-soft);
   --workspace-view-text-muted: var(--agents-text-muted);
@@ -18,6 +35,10 @@
   --workspace-view-surface-soft: var(--agents-surface-soft);
   --workspace-view-accent: var(--agents-accent);
   --workspace-view-accent-strong: var(--agents-accent-strong);
+  --workspace-view-frame-border: color-mix(in oklab, var(--agents-line) 90%, var(--agents-accent));
+  --workspace-view-panel-border: color-mix(in oklab, var(--agents-line) 92%, var(--agents-accent));
+  --workspace-view-card-border: color-mix(in oklab, var(--agents-line) 92%, var(--agents-accent));
+  --workspace-view-filter-action-text: color-mix(in oklab, var(--agents-accent-strong) 76%, var(--agents-text));
   --agents-success-bg: #e8f7ef;
   --agents-success-border: #95d5af;
   --agents-warning-bg: #fff3df;
@@ -29,6 +50,12 @@
   min-height: 0;
   overflow: hidden;
   color: var(--agents-text);
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--agents-accent) 10%, transparent) 0%, transparent 34%),
+    radial-gradient(circle at 100% 0%, color-mix(in oklab, var(--agents-line-strong) 16%, transparent) 0%, transparent 28%),
+    linear-gradient(180deg, color-mix(in oklab, var(--agents-surface-soft) 72%, white) 0%, color-mix(in oklab, var(--agents-surface-soft) 94%, var(--agents-surface-muted)) 100%);
+  border-radius: var(--radius-xs);
+  padding: 2px;
 }
 
 .ai-agents-page__layout {
@@ -37,6 +64,19 @@
   gap: 12px;
   min-height: 0;
   flex: 1 1 auto;
+}
+
+.ai-agents-page__metrics {
+  --workspace-view-text: var(--text-strong);
+  --workspace-view-text-soft: var(--text-soft);
+  --workspace-view-text-muted: var(--text-muted);
+  --workspace-view-line: var(--line);
+  --workspace-view-line-strong: var(--line-contrast);
+  --workspace-view-surface: var(--surface-overlay);
+  --workspace-view-surface-soft: var(--surface-section-content);
+  --workspace-view-accent: var(--accent);
+  --workspace-view-accent-strong: var(--accent-strong);
+  --workspace-view-card-border: var(--line);
 }
 
 .ai-agents-page__catalog,
@@ -52,7 +92,8 @@
   min-height: 0;
   overflow: auto;
   padding: 10px;
-  background: var(--agents-surface-soft);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--agents-surface-soft) 72%, white) 0%, color-mix(in oklab, var(--agents-surface-soft) 96%, var(--agents-surface-muted)) 100%);
 }
 
 .ai-agents-page__catalog .shared-section__actions .shared-button,
@@ -72,7 +113,7 @@
 .ai-agents-page__editor .shared-section__actions .shared-button--outline,
 .ai-agents-page__actions .shared-button--outline {
   border-color: var(--agents-line);
-  background: var(--agents-surface);
+  background: color-mix(in oklab, var(--agents-surface) 88%, var(--agents-surface-muted));
   color: var(--agents-text-soft);
 }
 
@@ -83,10 +124,11 @@
 }
 
 .ai-agents-page__agent-item {
-  border: 1px solid #d8e4ee;
+  border: 1px solid color-mix(in oklab, var(--agents-line) 90%, white);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--agents-surface) 78%, white) 0%, color-mix(in oklab, var(--agents-surface-strong) 88%, var(--agents-surface)) 100%);
+  box-shadow: var(--agents-shadow);
   padding: 12px;
   text-align: left;
   display: grid;
@@ -129,15 +171,17 @@
 
 .ai-agents-page__agent-item:hover {
   transform: translateY(-1px);
-  border-color: #9fc2e2;
-  background: #eef7ff;
-  box-shadow: 0 12px 22px rgba(18, 56, 92, 0.09);
+  border-color: color-mix(in oklab, var(--agents-accent) 24%, var(--agents-line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 58%, var(--agents-surface)) 0%, color-mix(in oklab, var(--selected-bg) 88%, var(--agents-surface-strong)) 100%);
+  box-shadow: var(--agents-shadow-strong);
 }
 
 .ai-agents-page__agent-item--active {
-  border-color: #9fc2e2;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f8ff 100%);
-  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.12), 0 12px 24px rgba(18, 56, 92, 0.08);
+  border-color: color-mix(in oklab, var(--agents-accent) 34%, var(--agents-line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 38%, white) 0%, color-mix(in oklab, var(--selected-bg) 88%, var(--agents-surface-strong)) 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--agents-accent) 16%, transparent), var(--agents-shadow-strong);
 }
 
 .ai-agents-page__agent-item .shared-status-badge {
@@ -194,11 +238,12 @@
 .ai-agents-page__select .shared-select__control {
   min-height: 46px;
   height: 46px;
-  border-color: #d8e4ee;
+  border-color: var(--agents-field-border);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
+  background: var(--agents-field-surface);
   color: var(--agents-text);
   padding: 0 14px;
+  box-shadow: var(--agents-field-shadow);
 }
 
 .ai-agents-page__select .shared-select__value {
@@ -207,21 +252,22 @@
 }
 
 .ai-agents-page__select .shared-select__menu {
-  border-color: #d8e4ee;
+  border-color: var(--agents-field-border);
   border-radius: 18px;
-  background: var(--agents-surface);
+  background: var(--agents-field-surface-strong);
   color: var(--agents-text);
   padding: 8px;
+  box-shadow: var(--agents-shadow-strong);
 }
 
 .ai-agents-page__form .shared-input,
 .ai-agents-page__form .shared-textarea {
   width: 100%;
-  border-color: #d8e4ee;
+  border-color: var(--agents-field-border);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
+  background: var(--agents-field-surface);
   color: var(--agents-text);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: var(--agents-field-shadow);
 }
 
 .ai-agents-page__form .shared-input {
@@ -245,35 +291,35 @@
 
 .ai-agents-page__select .shared-select__option:hover,
 .ai-agents-page__select .shared-select__option:focus-visible {
-  border-color: #9fc2e2;
-  background: #eef7ff;
+  border-color: color-mix(in oklab, var(--agents-accent) 24%, var(--agents-line));
+  background: color-mix(in oklab, var(--selected-bg) 78%, var(--agents-surface));
   color: var(--agents-text);
-  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.08);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--agents-accent) 10%, transparent);
 }
 
 .ai-agents-page__select .shared-select__option--selected {
-  border-color: #83afd5;
-  background: linear-gradient(180deg, #f7fbff 0%, #e9f4ff 100%);
+  border-color: color-mix(in oklab, var(--agents-accent) 34%, var(--agents-line));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 48%, white) 0%, color-mix(in oklab, var(--selected-bg) 92%, var(--agents-surface)) 100%);
   color: var(--agents-text);
-  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.14);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--agents-accent) 14%, transparent);
 }
 
 .ai-agents-page__select .shared-select__option--selected:hover,
 .ai-agents-page__select .shared-select__option--selected:focus-visible {
-  border-color: #6d9fc9;
-  background: linear-gradient(180deg, #f2f9ff 0%, #dfefff 100%);
+  border-color: color-mix(in oklab, var(--agents-accent) 42%, var(--agents-line));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 58%, white) 0%, color-mix(in oklab, var(--selected-bg) 96%, var(--agents-surface)) 100%);
 }
 
 .ai-agents-page__form .shared-input:focus,
 .ai-agents-page__form .shared-textarea:focus {
-  border-color: #83afd5;
-  box-shadow: 0 0 0 3px rgba(7, 95, 157, 0.1);
+  border-color: color-mix(in oklab, var(--agents-accent) 36%, var(--agents-line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--agents-accent) 12%, transparent);
 }
 
 .ai-agents-page__select .shared-select__control:focus,
 .ai-agents-page__select .shared-select__control:focus-within {
-  border-color: #83afd5;
-  box-shadow: 0 0 0 3px rgba(7, 95, 157, 0.1);
+  border-color: color-mix(in oklab, var(--agents-accent) 36%, var(--agents-line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--agents-accent) 12%, transparent);
 }
 
 .ai-agents-page__toggles {
@@ -283,9 +329,9 @@
 }
 
 .ai-agents-page__toggle {
-  border: 1px solid #d8e4ee;
+  border: 1px solid var(--agents-field-border);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
+  background: var(--agents-field-surface);
   min-height: 46px;
   padding: 0 12px;
   display: flex;
@@ -294,7 +340,7 @@
   color: var(--agents-text-soft);
   font-size: var(--font-size-xs);
   font-weight: 700;
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.03);
+  box-shadow: var(--agents-field-shadow);
 }
 
 .ai-agents-page__toggle input {
@@ -304,10 +350,10 @@
 }
 
 .ai-agents-page__rag-panel {
-  border: 1px solid #d8e4ee;
+  border: 1px solid var(--agents-field-border);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  background: var(--agents-field-surface-strong);
+  box-shadow: var(--agents-field-shadow);
   padding: 12px;
   display: grid;
   gap: 12px;
@@ -352,10 +398,10 @@
 }
 
 .ai-agents-page__rag-option {
-  border: 1px solid #d8e4ee;
+  border: 1px solid var(--agents-field-border);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.03);
+  background: var(--agents-field-surface);
+  box-shadow: var(--agents-field-shadow);
   padding: 10px;
   text-align: left;
   display: grid;
@@ -378,14 +424,14 @@
 
 .ai-agents-page__rag-option:hover {
   transform: translateY(-1px);
-  border-color: #9fc2e2;
-  background: #eef7ff;
+  border-color: color-mix(in oklab, var(--agents-accent) 24%, var(--agents-line));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 58%, white) 0%, color-mix(in oklab, var(--selected-bg) 94%, var(--agents-surface)) 100%);
 }
 
 .ai-agents-page__rag-option--active {
-  border-color: #9fc2e2;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f8ff 100%);
-  box-shadow: inset 0 0 0 1px rgba(7, 95, 157, 0.12), 0 12px 22px rgba(18, 56, 92, 0.06);
+  border-color: color-mix(in oklab, var(--agents-accent) 34%, var(--agents-line));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 42%, white) 0%, color-mix(in oklab, var(--selected-bg) 92%, var(--agents-surface)) 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--agents-accent) 14%, transparent), var(--agents-shadow);
 }
 
 .ai-agents-page__tools-list,
@@ -408,16 +454,16 @@
 }
 
 .ai-agents-page__tool-item {
-  border: 1px solid #d8e4ee;
+  border: 1px solid var(--agents-field-border);
   border-radius: var(--radius-xs);
-  background: var(--agents-surface);
+  background: var(--agents-field-surface);
   min-height: 56px;
   padding: 10px 12px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   align-items: start;
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.03);
+  box-shadow: var(--agents-field-shadow);
 }
 
 .ai-agents-page__tool-item input {
@@ -447,7 +493,7 @@
   justify-content: flex-end;
   gap: 10px;
   padding-top: 10px;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0), var(--agents-surface-soft) 56%);
+  background: linear-gradient(180deg, transparent 0%, color-mix(in oklab, var(--agents-surface-soft) 92%, var(--agents-surface-muted)) 52%, color-mix(in oklab, var(--agents-surface-soft) 98%, var(--agents-surface-muted)) 100%);
 }
 
 .ai-agents-page__error {
@@ -461,7 +507,8 @@
   border: 1px dashed var(--agents-line);
   border-radius: var(--radius-xs);
   padding: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #f5f9fd 100%);
+  background: linear-gradient(180deg, color-mix(in oklab, white 76%, var(--agents-surface)) 0%, color-mix(in oklab, var(--agents-surface-soft) 92%, var(--agents-surface-muted)) 100%);
+  box-shadow: var(--agents-shadow);
 }
 
 .ai-agents-page__empty h3 {
@@ -478,11 +525,39 @@
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page {
+  --agents-text: var(--text-primary);
+  --agents-text-soft: var(--text-soft);
+  --agents-text-muted: var(--text-muted);
+  --agents-line: var(--border-default);
+  --agents-line-strong: color-mix(in oklab, var(--selected-border) 64%, var(--accent));
+  --agents-surface: var(--surface-raised);
+  --agents-surface-soft: color-mix(in oklab, var(--panel-soft) 86%, var(--panel));
   --agents-surface-muted: var(--surface-muted);
+  --agents-surface-strong: color-mix(in oklab, var(--surface-raised) 74%, black);
+  --agents-field-border: color-mix(in oklab, var(--line) 74%, var(--accent));
+  --agents-field-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 92%, var(--panel)) 0%,
+    color-mix(in oklab, var(--control-surface) 84%, var(--panel)) 100%
+  );
+  --agents-field-surface-strong: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 96%, var(--panel)) 0%,
+    color-mix(in oklab, var(--surface-raised) 82%, black) 100%
+  );
+  --agents-shadow: var(--shadow-1);
+  --agents-shadow-strong: 0 18px 34px color-mix(in oklab, black 32%, transparent);
+  --agents-field-shadow:
+    0 14px 30px color-mix(in oklab, black 22%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
   --agents-success-bg: color-mix(in oklab, var(--success) 14%, var(--panel));
   --agents-success-border: color-mix(in oklab, var(--success) 34%, var(--line));
   --agents-warning-bg: color-mix(in oklab, var(--warning) 14%, var(--panel));
   --agents-warning-border: color-mix(in oklab, var(--warning) 34%, var(--line));
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 14%, transparent) 0%, transparent 34%),
+    radial-gradient(circle at 100% 0%, color-mix(in oklab, var(--selected-border) 16%, transparent) 0%, transparent 24%),
+    linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, black) 0%, color-mix(in oklab, var(--panel-soft) 82%, black) 100%);
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__metrics .shared-metric-card,
@@ -500,7 +575,7 @@
 .app-theme[data-theme="dark"] .ai-agents-page__catalog .shared-section__content,
 .app-theme[data-theme="dark"] .ai-agents-page__editor .shared-section__content,
 .app-theme[data-theme="dark"] .ai-agents-page__actions {
-  background: color-mix(in oklab, var(--panel-soft) 90%, transparent) !important;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--panel-soft) 92%, transparent) 0%, color-mix(in oklab, var(--panel) 86%, black) 100%) !important;
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__agent-item:hover,
@@ -508,27 +583,28 @@
 .app-theme[data-theme="dark"] .ai-agents-page__agent-item--active,
 .app-theme[data-theme="dark"] .ai-agents-page__rag-option--active {
   border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 12%, var(--panel)) 0%, color-mix(in oklab, var(--selected-bg) 88%, var(--panel)) 100%) !important;
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__form .shared-input,
 .app-theme[data-theme="dark"] .ai-agents-page__form .shared-textarea {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
+  border-color: var(--agents-field-border) !important;
+  background: var(--agents-field-surface) !important;
   color: var(--text-strong) !important;
-  box-shadow: none;
+  box-shadow: var(--agents-field-shadow) !important;
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__control {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
+  border-color: var(--agents-field-border) !important;
+  background: var(--agents-field-surface) !important;
   color: var(--text-strong) !important;
+  box-shadow: var(--agents-field-shadow) !important;
 }
 
 .app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__menu,
 .app-theme[data-theme="dark"] .ai-agents-page__select .shared-select__option {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
+  border-color: var(--agents-field-border) !important;
+  background: var(--agents-field-surface-strong) !important;
   color: var(--text-strong) !important;
 }
 

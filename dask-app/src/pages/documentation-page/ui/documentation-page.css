@@ -5,6 +5,25 @@
   --doc-surface: var(--surface-section-content);
   --doc-surface-soft: var(--surface-elevated);
   --doc-surface-muted: color-mix(in oklab, var(--panel-muted) 72%, var(--surface-1));
+  --doc-panel-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-soft) 18%, var(--surface-section-content)) 0%,
+    color-mix(in oklab, var(--selected-bg) 34%, var(--surface-elevated)) 100%
+  );
+  --doc-field-border: color-mix(in oklab, var(--line) 84%, var(--accent));
+  --doc-field-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, white 82%, var(--surface-elevated)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 94%, var(--surface-1)) 100%
+  );
+  --doc-field-surface-strong: linear-gradient(
+    180deg,
+    color-mix(in oklab, white 88%, var(--surface-elevated)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 88%, var(--surface-1)) 100%
+  );
+  --doc-field-shadow:
+    0 12px 28px color-mix(in oklab, var(--text-strong) 7%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 56%, transparent);
   --doc-chat-surface: linear-gradient(
     180deg,
     color-mix(in oklab, var(--surface-section-content) 96%, var(--selected-bg)) 0%,
@@ -44,7 +63,7 @@
 .documentation-page__assistant-pane {
   border-radius: 16px;
   border: 1px solid var(--doc-line);
-  background: var(--doc-surface);
+  background: var(--doc-panel-surface);
   box-shadow:
     0 16px 34px rgba(10, 42, 71, 0.06),
     inset 0 1px 0 color-mix(in oklab, white 50%, transparent);
@@ -189,6 +208,9 @@
 
 .documentation-page__editor-title .shared-input {
   font-weight: 760;
+  border-color: var(--doc-field-border);
+  background: var(--doc-field-surface-strong);
+  box-shadow: var(--doc-field-shadow);
 }
 
 .documentation-page__editor-title p {
@@ -369,10 +391,16 @@
   padding: 18px;
   font-size: 0.95rem;
   line-height: 1.68;
+  background: var(--doc-field-surface-strong);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 48%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--doc-field-border) 78%, transparent);
 }
 
 .documentation-page__editor-textarea:focus {
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 48%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 42%, transparent);
 }
 
 .documentation-page__editor-preview {
@@ -381,7 +409,11 @@
   min-height: 0;
   overflow: auto;
   border-left: 1px solid var(--doc-line);
-  background: var(--surface-section-content);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, white 76%, var(--surface-section-content)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 94%, var(--surface-1)) 100%
+  );
 }
 
 .documentation-page__editor-body--preview .documentation-page__editor-preview {
@@ -973,14 +1005,11 @@
   order: 2;
   min-height: 84px;
   border: 1px solid color-mix(in oklab, var(--doc-line) 82%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 100%, transparent), color-mix(in oklab, var(--surface-section-content) 92%, var(--surface-1)));
+  background: var(--doc-field-surface);
   border-radius: 12px;
   padding: 10px 50px 10px 14px;
   position: relative;
-  box-shadow:
-    0 12px 24px color-mix(in oklab, var(--text-strong) 5%, transparent),
-    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 54%, transparent);
+  box-shadow: var(--doc-field-shadow);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -1133,6 +1162,25 @@
   --doc-surface: var(--surface-section-content);
   --doc-surface-soft: var(--surface-elevated);
   --doc-surface-muted: color-mix(in oklab, var(--panel-muted) 54%, var(--surface-1));
+  --doc-panel-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 94%, var(--panel)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) 100%
+  );
+  --doc-field-border: color-mix(in oklab, var(--line) 74%, var(--accent));
+  --doc-field-surface: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 92%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 82%, var(--bg-deep)) 100%
+  );
+  --doc-field-surface-strong: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 96%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 78%, var(--bg-deep)) 100%
+  );
+  --doc-field-shadow:
+    0 14px 30px color-mix(in oklab, black 22%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
   --doc-chat-surface: linear-gradient(
     180deg,
     color-mix(in oklab, var(--surface-section-content) 94%, var(--bg-deep)) 0%,
@@ -1168,7 +1216,7 @@
   .documentation-page__assistant-pane
 ) {
   border-color: color-mix(in oklab, var(--line) 72%, transparent);
-  background: var(--doc-surface);
+  background: var(--doc-panel-surface);
   box-shadow:
     0 24px 44px rgba(0, 0, 0, 0.24),
     0 1px 0 rgba(255, 255, 255, 0.04) inset;
@@ -1185,12 +1233,10 @@
 
 .app-theme[data-theme="dark"] .documentation-page__files-actions .shared-button,
 .app-theme[data-theme="dark"] .documentation-page__editor-title .shared-input {
-  border-color: rgba(83, 126, 158, 0.72);
-  background: linear-gradient(180deg, rgba(18, 42, 61, 0.96) 0%, rgba(13, 31, 46, 0.98) 100%);
+  border-color: var(--doc-field-border);
+  background: var(--doc-field-surface-strong);
   color: var(--text-strong);
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  box-shadow: var(--doc-field-shadow);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__editor-title .shared-input::placeholder {
@@ -1251,13 +1297,20 @@
 }
 
 .app-theme[data-theme="dark"] .documentation-page__editor-textarea {
-  background: transparent;
+  background: var(--doc-field-surface-strong);
   color: var(--text);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 5%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--doc-field-border) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__editor-preview {
   border-left-color: rgba(65, 99, 125, 0.72);
-  background: var(--surface-section-content);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-section-content) 94%, var(--bg-deep)) 0%,
+    color-mix(in oklab, var(--surface-section-content) 82%, var(--bg-deep)) 100%
+  );
 }
 
 .app-theme[data-theme="dark"] .documentation-page__editor-preview :where(h1, h2, h3, h4, h5, h6) {
@@ -1425,12 +1478,9 @@
 }
 
 .app-theme[data-theme="dark"] .documentation-page__composer-shell {
-  border-color: color-mix(in oklab, var(--line) 66%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 92%, var(--bg-deep)), color-mix(in oklab, var(--surface-section-content) 84%, var(--bg-deep)));
-  box-shadow:
-    0 12px 24px color-mix(in oklab, black 16%, transparent),
-    inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
+  border-color: var(--doc-field-border);
+  background: var(--doc-field-surface);
+  box-shadow: var(--doc-field-shadow);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__composer-shell:focus-within {

@@ -2,9 +2,9 @@
   min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
   display: grid;
   align-content: center;
-  gap: clamp(18px, 2.4vw, 28px);
+  gap: clamp(14px, 1.8vw, 22px);
   width: 100%;
-  padding: clamp(24px, 3.6vw, 44px) clamp(18px, 3.6vw, 40px);
+  padding: clamp(16px, 2.2vw, 28px) clamp(18px, 3vw, 36px);
   position: relative;
   overflow: hidden;
 }
@@ -19,32 +19,43 @@
 }
 
 .choose-plan::before {
-  inset: 110px auto auto -90px;
-  width: 240px;
-  height: 240px;
+  inset: 88px auto auto -90px;
+  width: 220px;
+  height: 220px;
   background: radial-gradient(circle, rgba(127, 195, 255, 0.22) 0%, rgba(127, 195, 255, 0.04) 56%, transparent 74%);
 }
 
 .choose-plan::after {
-  inset: auto -86px 120px auto;
-  width: 280px;
-  height: 280px;
+  inset: auto -86px 80px auto;
+  width: 260px;
+  height: 260px;
   background: radial-gradient(circle, rgba(73, 204, 198, 0.2) 0%, rgba(145, 106, 237, 0.06) 58%, transparent 76%);
 }
 
-.choose-plan__header,
-.choose-plan__plans,
+.choose-plan__intro,
 .choose-plan__current-subscription,
-.choose-plan__notice,
-.choose-plan__error {
+.choose-plan__plans,
+.choose-plan__footer {
   position: relative;
   z-index: 1;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.choose-plan__intro {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: stretch;
 }
 
 .choose-plan__header {
   display: grid;
-  gap: 12px;
-  width: min(760px, 100%);
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: min(860px, 100%);
   margin: 0 auto;
   text-align: center;
 }
@@ -52,47 +63,57 @@
 .choose-plan__eyebrow {
   margin: 0;
   color: #2a628f;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
 }
 
 .choose-plan__title {
-  margin: 0 auto;
-  max-width: 14ch;
+  margin: 0;
+  width: min(100%, 15ch);
+  max-width: 15ch;
   color: #0f243b;
-  font-size: clamp(2rem, 1.75rem + 0.9vw, 2.8rem);
-  line-height: 0.96;
-  letter-spacing: 0;
+  font-size: clamp(2.1rem, 1.85rem + 0.9vw, 3.05rem);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
+.choose-plan__title,
 .choose-plan__description {
-  margin: 0 auto;
-  max-width: 62ch;
+  margin-inline: auto;
+}
+
+.choose-plan__description {
+  display: block;
+  margin: 0;
+  width: min(100%, 64ch);
+  max-width: 64ch;
   color: #516b85;
-  font-size: 1rem;
-  line-height: 1.72;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.choose-plan__description--legal {
+  width: min(100%, 72ch);
+  max-width: 72ch;
 }
 
 .choose-plan__plans {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(18px, 2.4vw, 26px);
-  width: min(1260px, 100%);
-  margin: 0 auto;
+  gap: clamp(16px, 2vw, 24px);
   align-items: stretch;
 }
 
 .choose-plan__current-subscription {
-  width: min(1260px, 100%);
-  margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px;
+  gap: 10px 16px;
+  padding: 12px 18px;
   border: 1px solid rgba(166, 199, 225, 0.84);
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 249, 255, 0.64) 100%);
@@ -103,7 +124,8 @@
 
 .choose-plan__current-subscription-copy {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+  align-content: start;
 }
 
 .choose-plan__current-subscription-eyebrow {
@@ -118,13 +140,15 @@
 .choose-plan__current-subscription h2 {
   margin: 0;
   color: #10233f;
-  font-size: 1.1rem;
+  font-size: 1rem;
+  line-height: 1.12;
 }
 
 .choose-plan__current-subscription p {
   margin: 0;
   color: #58718b;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  line-height: 1.34;
 }
 
 .choose-plan__cancel-note {
@@ -133,15 +157,16 @@
 }
 
 .choose-plan__portal-btn {
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 16px;
   border: 1px solid rgba(182, 209, 231, 0.9);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
   color: #214d78;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .choose-plan__portal-btn:disabled {
@@ -155,10 +180,10 @@
   height: 100%;
   display: grid;
   grid-template-rows: auto auto auto 1fr auto;
-  gap: 14px;
-  padding: clamp(24px, 2.8vw, 30px);
+  gap: 10px;
+  padding: clamp(20px, 2.2vw, 26px);
   border: 1px solid rgba(166, 199, 225, 0.84);
-  border-radius: 28px;
+  border-radius: 24px;
   background:
     radial-gradient(circle at 16% 0%, rgba(44, 120, 230, 0.1) 0%, transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 249, 255, 0.64) 100%);
@@ -223,7 +248,7 @@
 
 .choose-plan__price-value {
   color: #000000;
-  font-size: clamp(2.45rem, 2.1rem + 1vw, 3.25rem);
+  font-size: clamp(2.35rem, 2rem + 1vw, 3rem);
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0;
@@ -240,22 +265,23 @@
 
 .choose-plan__price-period {
   color: #58718b;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
 .choose-plan__plan-description {
-  max-width: 42ch;
+  max-width: 44ch;
   margin: 0;
   color: #58718b;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 .choose-plan__features {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
-  gap: 5px;
+  gap: 6px 16px;
   margin: 0;
   padding: 2px 0 0;
   list-style: none;
@@ -266,8 +292,8 @@
   align-items: flex-start;
   gap: 8px;
   color: #58718b;
-  font-size: 13px;
-  line-height: 1.38;
+  font-size: 0.83rem;
+  line-height: 1.32;
 }
 
 .choose-plan__feature::before {
@@ -280,9 +306,9 @@
 
 .choose-plan__action {
   width: 100%;
-  min-height: 48px;
-  margin-top: 8px;
-  padding: 0 22px;
+  min-height: 46px;
+  margin-top: 4px;
+  padding: 0 20px;
   border: 1px solid rgba(182, 209, 231, 0.9);
   border-radius: 14px;
   display: inline-flex;
@@ -294,7 +320,7 @@
     0 12px 24px rgba(12, 42, 71, 0.08),
     0 1px 0 rgba(255, 255, 255, 0.84) inset;
   color: #214d78;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
@@ -355,13 +381,23 @@
   animation: choose-plan-spin 0.6s linear infinite;
 }
 
+.choose-plan__footer {
+  display: grid;
+  gap: 10px;
+}
+
 .choose-plan__notice {
-  width: min(560px, 100%);
-  margin: -4px auto 0;
+  width: min(720px, 100%);
+  margin: 0 auto;
   color: #758fa7;
   text-align: center;
-  font-size: 0.84rem;
-  line-height: 1.56;
+  font-size: 0.8rem;
+  line-height: 1.48;
+}
+
+.choose-plan__notice--summary {
+  width: min(980px, 100%);
+  white-space: nowrap;
 }
 
 .choose-plan__notice a {
@@ -411,16 +447,16 @@
 }
 
 .choose-plan__error {
-  width: min(560px, 100%);
-  margin: -4px auto 0;
-  padding: 11px 14px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 10px 14px;
   border: 1px solid rgba(224, 153, 143, 0.74);
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 245, 243, 0.96) 0%, rgba(255, 239, 236, 0.9) 100%);
   color: #963629;
   text-align: center;
-  font-size: 0.84rem;
-  line-height: 1.5;
+  font-size: 0.82rem;
+  line-height: 1.45;
   box-shadow: 0 12px 24px rgba(108, 42, 30, 0.08);
 }
 
@@ -430,40 +466,60 @@
   }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1100px) {
   .choose-plan {
     align-content: start;
     overflow: auto;
   }
 
+  .choose-plan__current-subscription {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 920px) {
   .choose-plan__plans {
     grid-template-columns: 1fr;
   }
 
-  .choose-plan__current-subscription {
-    flex-direction: column;
-    align-items: flex-start;
+  .choose-plan__features {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 680px) {
   .choose-plan {
-    padding: 20px 16px 28px;
+    padding: 18px 16px 24px;
   }
 
   .choose-plan__title {
     font-size: 2rem;
+    max-width: 14ch;
   }
 
   .choose-plan__description {
-    font-size: 0.94rem;
-    line-height: 1.6;
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .choose-plan__current-subscription {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .choose-plan__notice--summary {
+    white-space: normal;
+  }
+
+  .choose-plan__portal-btn {
+    width: 100%;
+    white-space: normal;
   }
 
   .choose-plan__card,
   .choose-plan__card--featured {
-    padding: 22px;
-    border-radius: 24px;
+    padding: 20px;
+    border-radius: 22px;
   }
 }
 

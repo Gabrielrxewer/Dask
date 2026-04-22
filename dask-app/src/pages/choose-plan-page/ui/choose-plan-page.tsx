@@ -102,19 +102,17 @@ export function ChoosePlanPage() {
 
   return (
     <main className="choose-plan">
-      <header className="choose-plan__header">
-        <p className="choose-plan__eyebrow">Planos e precos</p>
-        <h1 className="choose-plan__title">Escolha o plano ideal para você</h1>
-        <p className="choose-plan__description">
-          Acesso completo a plataforma apos a confirmacao do pagamento. Cobranca mensal recorrente, cancele quando
-          quiser.
-        </p>
-        <p className="choose-plan__description">
-          Antes de pagar, revise os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
-          <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. Ao clicar em "Assinar", voce concorda
-          com ambos.
-        </p>
-      </header>
+      <section className="choose-plan__intro">
+        <header className="choose-plan__header">
+          <p className="choose-plan__eyebrow">Planos e precos</p>
+          <h1 className="choose-plan__title">Escolha o plano ideal para voce</h1>
+          <p className="choose-plan__description choose-plan__description--legal">
+            Antes de pagar, revise os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
+            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. Ao clicar em "Assinar", voce concorda
+            com ambos.
+          </p>
+        </header>
+      </section>
 
       {status ? (
         <section className="choose-plan__current-subscription" aria-label="Resumo da assinatura atual">
@@ -151,8 +149,10 @@ export function ChoosePlanPage() {
           </div>
           <p className="choose-plan__plan-description">{PLAN_DISPLAY.PERSONAL.description}</p>
           <ul className="choose-plan__features">
-            {PLAN_FEATURES.PERSONAL.map((f) => (
-              <li key={f} className="choose-plan__feature">{f}</li>
+            {PLAN_FEATURES.PERSONAL.map((feature) => (
+              <li key={feature} className="choose-plan__feature">
+                {feature}
+              </li>
             ))}
           </ul>
           <button
@@ -174,8 +174,10 @@ export function ChoosePlanPage() {
           </div>
           <p className="choose-plan__plan-description">{PLAN_DISPLAY.BUSINESS.description}</p>
           <ul className="choose-plan__features">
-            {PLAN_FEATURES.BUSINESS.map((f) => (
-              <li key={f} className="choose-plan__feature">{f}</li>
+            {PLAN_FEATURES.BUSINESS.map((feature) => (
+              <li key={feature} className="choose-plan__feature">
+                {feature}
+              </li>
             ))}
           </ul>
           <button
@@ -189,13 +191,18 @@ export function ChoosePlanPage() {
         </article>
       </div>
 
-      {error && <p className="choose-plan__error">{error}</p>}
+      <div className="choose-plan__footer">
+        {error && <p className="choose-plan__error">{error}</p>}
 
-      <p className="choose-plan__notice">
-        O acesso e liberado automaticamente apos a confirmacao do pagamento pelo Stripe. Nenhum dado de cartao e
-        armazenado pelo Dask. Ao assinar, voce concorda com os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e
-        com a <Link to={routePaths.privacyPolicy}> Politica de Privacidade</Link>.
-      </p>
+        <p className="choose-plan__notice choose-plan__notice--summary">
+          Acesso completo a plataforma apos a confirmacao do pagamento. Cobranca mensal recorrente, cancele quando
+          quiser.
+        </p>
+
+        <p className="choose-plan__notice">
+          Pagamento processado com seguranca via Stripe. Nenhum dado de cartao e armazenado pelo Dask.
+        </p>
+      </div>
     </main>
   );
 }

@@ -1,207 +1,1127 @@
-.members-settings {
+/* ─── Layout ─────────────────────────────────────────────────────────────────── */
+
+.ms {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 16px;
 }
 
-.members-settings__card {
+.ms-section {
   width: 100%;
 }
 
-.members-settings__invite-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
+.ms-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
 }
 
-.members-settings__actions {
+.ms-section-label {
+  margin: 0 0 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-soft);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ms-section-top-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+/* ─── Overview ───────────────────────────────────────────────────────────────── */
+
+.ms-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 780px) {
+  .ms-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 440px) {
+  .ms-overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Feedback bar ───────────────────────────────────────────────────────────── */
+
+.ms-feedback-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface-card) 92%, transparent);
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  font-size: var(--font-size-xs);
+}
+
+.ms-feedback-bar__ok {
+  color: #1f6b43;
+}
+
+.ms-feedback-bar__err {
+  color: #ad2f2f;
+}
+
+/* ─── Chips & badges ─────────────────────────────────────────────────────────── */
+
+.ms-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.ms-chips--sm {
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.ms-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+  background: var(--surface-overlay);
+  font-size: 11px;
+  color: var(--text-soft);
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-chips--sm .ms-chip {
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
+.ms-chip--role {
+  border-color: color-mix(in oklab, #6366f1 28%, var(--line));
+  background: color-mix(in oklab, #6366f1 10%, var(--surface-overlay));
+  color: color-mix(in oklab, #6366f1 80%, var(--text-strong));
+}
+
+.ms-chip--group {
+  border-color: color-mix(in oklab, #059669 28%, var(--line));
+  background: color-mix(in oklab, #059669 10%, var(--surface-overlay));
+  color: color-mix(in oklab, #059669 80%, var(--text-strong));
+}
+
+.ms-chip--allow {
+  border-color: color-mix(in oklab, #16a34a 30%, var(--line));
+  background: color-mix(in oklab, #16a34a 10%, var(--surface-overlay));
+  color: color-mix(in oklab, #16a34a 82%, var(--text-strong));
+}
+
+.ms-chip--deny {
+  border-color: color-mix(in oklab, #dc2626 28%, var(--line));
+  background: color-mix(in oklab, #dc2626 10%, var(--surface-overlay));
+  color: color-mix(in oklab, #dc2626 80%, var(--text-strong));
+}
+
+.ms-chip--module {
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--accent) 82%, var(--text-strong));
+}
+
+.ms-chip--more {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ms-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.ms-chip__remove:hover {
+  opacity: 1;
+}
+
+.ms-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  background: color-mix(in oklab, var(--line) 40%, var(--surface-overlay));
+  color: var(--text-soft);
+  border: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+  white-space: nowrap;
+}
+
+.ms-badge--green {
+  background: color-mix(in oklab, #16a34a 14%, var(--surface-overlay));
+  color: color-mix(in oklab, #16a34a 85%, var(--text-strong));
+  border-color: color-mix(in oklab, #16a34a 26%, var(--line));
+}
+
+.ms-badge--red {
+  background: color-mix(in oklab, #dc2626 12%, var(--surface-overlay));
+  color: color-mix(in oklab, #dc2626 82%, var(--text-strong));
+  border-color: color-mix(in oklab, #dc2626 24%, var(--line));
+}
+
+.ms-badge--blue {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--accent) 82%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
+}
+
+/* ─── Role chips (invite selector) ───────────────────────────────────────────── */
+
+.ms-role-row {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.members-settings__feedback {
-  color: #1f6b43;
+.ms-role-chip {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+  background: var(--surface-overlay);
+  color: var(--text-soft);
   font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, color 0.16s;
 }
 
-.members-settings__error {
-  color: #ad2f2f;
-  font-size: var(--font-size-xs);
+.ms-role-chip:hover {
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+  color: var(--text-strong);
 }
 
-.members-settings__hint {
-  margin: 0;
-  color: #5f7790;
-  font-size: var(--font-size-xs);
+.ms-role-chip--active {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--accent) 86%, var(--text-strong));
 }
 
-.members-settings__list {
+/* ─── Invite form ─────────────────────────────────────────────────────────────── */
+
+.ms-invite-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-card) 60%, transparent);
+  margin-bottom: 20px;
+}
+
+.ms-invite-form__action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ─── Invite list ─────────────────────────────────────────────────────────────── */
+
+.ms-invite-list {
   display: grid;
   gap: 8px;
 }
 
-.members-settings__row {
+.ms-invite-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  border: 1px solid rgba(187, 209, 230, 0.64);
-  border-radius: 16px;
-  padding: 11px 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-card) 72%, transparent);
+  flex-wrap: wrap;
 }
 
-.members-settings__row-content {
+.ms-invite-row__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent) 18%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--accent) 86%, var(--text-strong));
+  font-size: 14px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
+}
+
+.ms-invite-row__info {
   display: grid;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
-.members-settings__row-content strong {
+.ms-invite-row__info strong {
   font-size: var(--font-size-sm);
-  color: #1e3a5f;
+  color: var(--text-strong);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-invite-row__info span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.ms-invite-row__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── Module cards ────────────────────────────────────────────────────────────── */
+
+.ms-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.ms-module-card {
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: color-mix(in oklab, var(--surface-card) 60%, transparent);
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.ms-module-card--enabled {
+  border-color: color-mix(in oklab, var(--accent) 22%, var(--line));
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-card));
+}
+
+.ms-module-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ms-module-card__info {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ms-module-card__info strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.ms-module-card__info span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.ms-module-card__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
-.members-settings__row-content span {
-  font-size: var(--font-size-xs);
-  color: #6d86a1;
-}
+/* ─── Toggle switch ───────────────────────────────────────────────────────────── */
 
-.members-settings__row-actions {
+.ms-toggle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+  background: color-mix(in oklab, var(--line) 40%, var(--surface-overlay));
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  padding: 2px;
+  transition: background 0.2s, border-color 0.2s;
+  position: relative;
 }
 
-.members-settings__role-editor {
-  display: grid;
-  gap: 8px;
+.ms-toggle--on {
+  background: color-mix(in oklab, var(--accent) 72%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 50%, var(--line));
 }
 
-.members-settings__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--font-size-xs);
-  color: #35597d;
+.ms-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.members-settings__member-card {
-  border: 1px solid rgba(187, 209, 230, 0.64);
-  border-radius: 16px;
-  padding: 11px 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(244, 249, 255, 0.72) 100%);
+.ms-toggle__knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.ms-toggle--on .ms-toggle__knob {
+  transform: translateX(18px);
+}
+
+.ms-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--line) 80%, transparent);
+  flex-shrink: 0;
+}
+
+.ms-status-dot--on {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px color-mix(in oklab, #22c55e 18%, transparent);
+}
+
+/* ─── Group list ─────────────────────────────────────────────────────────────── */
+
+.ms-group-list {
   display: grid;
   gap: 10px;
 }
 
-.members-settings__permissions-table {
-  border: 1px solid rgba(187, 209, 230, 0.64);
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.members-settings__permissions-header,
-.members-settings__permissions-row {
+.ms-group-card {
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: color-mix(in oklab, var(--surface-card) 72%, transparent);
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(6, minmax(72px, 1fr));
+  gap: 10px;
 }
 
-.members-settings__permissions-header {
-  background: rgba(233, 244, 255, 0.86);
+.ms-group-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.members-settings__permissions-row:nth-child(even) {
-  background: rgba(248, 252, 255, 0.72);
+.ms-group-card__info {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
 }
 
-.members-settings__permissions-header span,
-.members-settings__permissions-row span {
-  padding: 10px 12px;
-  font-size: var(--font-size-xs);
-  color: #35597d;
-  border-right: 1px solid rgba(187, 209, 230, 0.46);
-}
-
-.members-settings__permissions-header span {
+.ms-group-card__info strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
   font-weight: 700;
-  color: #173553;
 }
 
-.members-settings__permissions-header span:last-child,
-.members-settings__permissions-row span:last-child {
-  border-right: none;
+.ms-group-card__info span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
 }
 
-.members-settings__permissions-row + .members-settings__permissions-row {
-  border-top: 1px solid rgba(187, 209, 230, 0.46);
+.ms-group-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.members-settings__permissions-row span:not(:first-child),
-.members-settings__permissions-header span:not(:first-child) {
-  text-align: center;
-}
-
-.members-settings__permissions-row span:first-child,
-.members-settings__permissions-header span:first-child {
-  text-align: left;
-}
-
-.members-settings__permissions-row span:first-child {
-  color: #49698b;
-}
-
-.members-settings__permission-card {
-  border: 1px solid rgba(187, 209, 230, 0.64);
-  border-radius: 14px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.78);
+.ms-group-card__preview {
   display: grid;
   gap: 6px;
 }
 
-.members-settings__permission-card h3 {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: #173553;
+/* ─── Member list ─────────────────────────────────────────────────────────────── */
+
+.ms-member-list {
+  display: grid;
+  gap: 8px;
 }
 
-.members-settings__permission-card p {
+.ms-member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-card) 72%, transparent);
+  transition: border-color 0.16s, background 0.16s;
+  flex-wrap: wrap;
+}
+
+.ms-member-row:hover {
+  border-color: color-mix(in oklab, var(--accent) 16%, var(--line));
+  background: color-mix(in oklab, var(--accent) 4%, var(--surface-card));
+}
+
+.ms-member-row__info {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ms-member-row__info strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-member-row__info span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-member-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* ─── Permission picker ───────────────────────────────────────────────────────── */
+
+.ms-perm-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.ms-perm-picker__search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ms-perm-picker__list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  border-radius: 12px;
+  padding: 8px;
+  background: color-mix(in oklab, var(--surface-card) 60%, transparent);
+}
+
+.ms-perm-picker__group {
+  margin-bottom: 10px;
+}
+
+.ms-perm-picker__group:last-child {
+  margin-bottom: 0;
+}
+
+.ms-perm-picker__group-label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 6px;
+}
+
+.ms-perm-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.ms-perm-picker__item:hover {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.ms-perm-picker__item input[type="checkbox"] {
+  accent-color: var(--accent, #6366f1);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ms-perm-picker__item span {
+  font-size: 12px;
+  color: var(--text-soft);
+  font-family: monospace;
+}
+
+/* ─── Module picker ───────────────────────────────────────────────────────────── */
+
+.ms-module-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ms-module-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+  background: var(--surface-overlay);
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, color 0.16s;
+}
+
+.ms-module-chip:hover {
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  color: var(--text-strong);
+}
+
+.ms-module-chip--active {
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--accent) 88%, var(--text-strong));
+}
+
+/* ─── Group picker ────────────────────────────────────────────────────────────── */
+
+.ms-group-picker {
+  display: grid;
+  gap: 6px;
+}
+
+.ms-group-picker__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-card) 60%, transparent);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ms-group-picker__item:hover {
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface-card));
+}
+
+.ms-group-picker__item input[type="checkbox"] {
+  accent-color: var(--accent, #6366f1);
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ms-group-picker__info {
+  display: grid;
+  gap: 2px;
+}
+
+.ms-group-picker__info strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.ms-group-picker__info span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* ─── Toggle label (checkbox) ─────────────────────────────────────────────────── */
+
+.ms-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-xs);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.ms-toggle-label input[type="checkbox"] {
+  accent-color: var(--accent, #6366f1);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* ─── Permission source blocks ────────────────────────────────────────────────── */
+
+.ms-perm-source {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, #6366f1 16%, var(--line));
+  background: color-mix(in oklab, #6366f1 5%, var(--surface-card));
+}
+
+.ms-perm-source--deny {
+  border-color: color-mix(in oklab, #dc2626 16%, var(--line));
+  background: color-mix(in oklab, #dc2626 5%, var(--surface-card));
+}
+
+.ms-perm-source__label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ─── Role selector (drawer) ──────────────────────────────────────────────────── */
+
+.ms-role-selector {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ms-role-btn {
+  display: grid;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-overlay) 80%, transparent);
+  cursor: pointer;
+  transition: border-color 0.16s, background 0.16s;
+  gap: 3px;
+}
+
+.ms-role-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ms-role-btn:not(:disabled):hover {
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-overlay));
+}
+
+.ms-role-btn--active {
+  border-color: color-mix(in oklab, var(--accent) 44%, var(--line));
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-overlay));
+}
+
+.ms-role-btn strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.ms-role-btn span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* ─── Permission breakdown (summary) ──────────────────────────────────────────── */
+
+.ms-perm-breakdown {
+  display: grid;
+  gap: 12px;
+}
+
+.ms-perm-breakdown__layer {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-card) 60%, transparent);
+  display: grid;
+  gap: 8px;
+}
+
+.ms-perm-breakdown__effective {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--line));
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-card));
+  display: grid;
+  gap: 8px;
+}
+
+.ms-perm-breakdown__layer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ms-perm-breakdown__layer-header strong {
+  font-size: var(--font-size-xs);
+  color: var(--text-strong);
+  font-weight: 700;
+  flex: 1;
+}
+
+.ms-perm-breakdown__layer-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.ms-perm-breakdown__layer-icon--role {
+  background: #6366f1;
+}
+
+.ms-perm-breakdown__layer-icon--group {
+  background: #059669;
+}
+
+.ms-perm-breakdown__layer-icon--override {
+  background: #f59e0b;
+}
+
+/* ─── Group preview (in group editor info tab) ─────────────────────────────────── */
+
+.ms-group-preview {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-card) 60%, transparent);
+  display: grid;
+  gap: 8px;
+}
+
+.ms-group-preview__label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ─── Drawer (modal) ──────────────────────────────────────────────────────────── */
+
+.ms-drawer {
+  width: min(560px, 96vw);
+  background: var(--surface-card, white);
+  border-radius: var(--radius-xl, 24px);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+}
+
+.ms-drawer__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+}
+
+.ms-drawer__header-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.ms-drawer__header-info--full {
+  min-width: 0;
+  flex: 1;
+}
+
+.ms-drawer__header-info h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-drawer__header-info p {
   margin: 0;
   font-size: var(--font-size-xs);
-  color: #587391;
-  line-height: 1.4;
+  color: var(--text-muted);
 }
 
-.members-settings__permission-card span {
+.ms-drawer__close {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: var(--surface-overlay);
+  color: var(--text-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ms-drawer__close:hover {
+  background: color-mix(in oklab, var(--line) 30%, var(--surface-overlay));
+  border-color: color-mix(in oklab, var(--line) 90%, transparent);
+}
+
+.ms-drawer__owner-banner {
+  padding: 10px 20px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: color-mix(in oklab, #f59e0b 82%, var(--text-strong));
+  background: color-mix(in oklab, #f59e0b 10%, var(--surface-card));
+  border-bottom: 1px solid color-mix(in oklab, #f59e0b 20%, var(--line));
+}
+
+.ms-drawer__nav {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 64%, transparent);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.ms-drawer__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ms-drawer__nav-btn:hover {
+  background: color-mix(in oklab, var(--line) 20%, transparent);
+  color: var(--text-strong);
+}
+
+.ms-drawer__nav-btn--active {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--accent) 88%, var(--text-strong));
+}
+
+.ms-drawer__body {
+  overflow-y: auto;
+  padding: 16px 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.ms-drawer__section {
+  display: grid;
+  gap: 14px;
+}
+
+.ms-drawer__section-hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ms-drawer__error {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: var(--font-size-xs);
+  color: #ad2f2f;
+  background: color-mix(in oklab, #dc2626 6%, var(--surface-card));
+  border-top: 1px solid color-mix(in oklab, #dc2626 14%, var(--line));
+}
+
+.ms-drawer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid color-mix(in oklab, var(--line) 64%, transparent);
+  flex-shrink: 0;
+}
+
+/* ─── Permissions matrix ──────────────────────────────────────────────────────── */
+
+.ms-matrix {
+  display: grid;
+  gap: 12px;
+}
+
+.ms-matrix__search {
+  max-width: 320px;
+}
+
+.ms-matrix__wrap {
+  overflow-x: auto;
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  border-radius: 14px;
+}
+
+.ms-matrix__table {
+  min-width: 700px;
+}
+
+.ms-matrix__header {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(6, minmax(80px, 1fr));
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface-card));
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ms-matrix__perm-col,
+.ms-matrix__role-col {
+  padding: 10px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-soft);
+  border-right: 1px solid color-mix(in oklab, var(--line) 52%, transparent);
+}
+
+.ms-matrix__perm-col:last-child,
+.ms-matrix__role-col:last-child {
+  border-right: none;
+}
+
+.ms-matrix__header .ms-matrix__role-col {
+  text-align: center;
+  color: var(--text-strong);
+}
+
+.ms-matrix__group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  text-align: left;
   font-size: 11px;
-  color: #8aadcc;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: color-mix(in oklab, var(--surface-card) 80%, var(--surface-overlay));
+  border: none;
+  border-top: 1px solid color-mix(in oklab, var(--line) 52%, transparent);
+  cursor: pointer;
+  transition: background 0.14s;
 }
 
-@media (max-width: 860px) {
-  .members-settings__invite-grid {
-    grid-template-columns: 1fr;
-  }
+.ms-matrix__group-header:hover {
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-card));
+}
 
-  .members-settings__row {
-    align-items: stretch;
+.ms-matrix__group-chevron {
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+.ms-matrix__row {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(6, minmax(80px, 1fr));
+  border-top: 1px solid color-mix(in oklab, var(--line) 42%, transparent);
+  transition: background 0.12s;
+}
+
+.ms-matrix__row:hover {
+  background: color-mix(in oklab, var(--accent) 4%, transparent);
+}
+
+.ms-matrix__row .ms-matrix__perm-col {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-soft);
+}
+
+.ms-matrix__cell {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ms-matrix__cell--yes {
+  color: #16a34a;
+}
+
+.ms-matrix__cell--no {
+  color: color-mix(in oklab, var(--line) 80%, transparent);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 680px) {
+  .ms-member-row,
+  .ms-invite-row {
     flex-direction: column;
+    align-items: flex-start;
   }
 
-  .members-settings__role-editor {
+  .ms-member-row__meta,
+  .ms-invite-row__actions {
     width: 100%;
   }
 
-  .members-settings__permissions-table {
-    overflow-x: auto;
+  .ms-module-grid {
+    grid-template-columns: 1fr;
   }
 
-  .members-settings__permissions-header,
-  .members-settings__permissions-row {
-    min-width: 760px;
+  .ms-drawer {
+    width: 96vw;
+    max-height: 92vh;
   }
 }

@@ -244,8 +244,8 @@ function ValueSection() {
     >
       <SectionIntro
         eyebrow="Por que Dask"
-        title="Continuidade operacional, nao fragmentacao."
-        description="O mesmo dado evolui do comercial a entrega e ao faturamento. Isso reduz retrabalho, preserva contexto e acelera a operacao real de software houses, fabricas de software e times de produto."
+        title="Continuidade operacional, sem fragmentacao."
+        description="O mesmo contexto segue do comercial a entrega e ao faturamento. Menos retrabalho, mais clareza e uma operacao mais fluida para times de software."
       />
 
       <div className="home-page__pillar-grid" aria-label="Beneficios centrais do Dask">
@@ -357,8 +357,11 @@ export function HomePage() {
   return (
     <main className="home-page">
       <div className="home-page__container">
-        <div className="home-page__view home-page__view--stacked">
+        <div className="home-page__view">
           <HomeHeroView isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("inteligencia")} />
+        </div>
+
+        <div className="home-page__view">
           <ValueSection />
         </div>
 

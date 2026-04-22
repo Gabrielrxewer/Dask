@@ -392,34 +392,32 @@ function buildPreviewTask(input: {
   sourceTask?: Task | null;
 }): Task {
   const sourceTask = input.sourceTask ?? null;
-  if (sourceTask) {
-    return {
-      ...sourceTask,
-      linkedDocuments: [...(sourceTask.linkedDocuments ?? [])],
-      tags: [...sourceTask.tags],
-      checklist: { items: sourceTask.checklist.items.map((item) => ({ ...item })) },
-      customFields: { ...(sourceTask.customFields ?? {}) }
-    };
-  }
-
-  const previewTask: Task = {
-    id: "preview-work-item",
-    title: PREVIEW_CARD_TITLE,
-    text: PREVIEW_CARD_DESCRIPTION,
-    createdById: PREVIEW_CREATED_BY.id,
-    type: input.typeId,
-    status: input.statusId,
-    position: 0,
-    priority: 2,
-    tags: [...PREVIEW_CARD_TAGS],
-    assignee: PREVIEW_ASSIGNEE.id,
-    checklist: { items: PREVIEW_CHECKLIST.items.map((item) => ({ ...item })) },
-    due: PREVIEW_DUE_DATE,
-    plannedStartAt: PREVIEW_SCHEDULE.plannedStartAt,
-    plannedEndAt: PREVIEW_SCHEDULE.plannedEndAt,
-    linkedDocuments: [],
-    customFields: {}
-  };
+  const previewTask: Task = sourceTask
+    ? {
+        ...sourceTask,
+        linkedDocuments: [...(sourceTask.linkedDocuments ?? [])],
+        tags: [...sourceTask.tags],
+        checklist: { items: sourceTask.checklist.items.map((item) => ({ ...item })) },
+        customFields: { ...(sourceTask.customFields ?? {}) }
+      }
+    : {
+        id: "preview-work-item",
+        title: PREVIEW_CARD_TITLE,
+        text: PREVIEW_CARD_DESCRIPTION,
+        createdById: PREVIEW_CREATED_BY.id,
+        type: input.typeId,
+        status: input.statusId,
+        position: 0,
+        priority: 2,
+        tags: [...PREVIEW_CARD_TAGS],
+        assignee: PREVIEW_ASSIGNEE.id,
+        checklist: { items: PREVIEW_CHECKLIST.items.map((item) => ({ ...item })) },
+        due: PREVIEW_DUE_DATE,
+        plannedStartAt: PREVIEW_SCHEDULE.plannedStartAt,
+        plannedEndAt: PREVIEW_SCHEDULE.plannedEndAt,
+        linkedDocuments: [],
+        customFields: {}
+      };
 
   input.fields.forEach((field) => {
     const currentValue = resolveTaskFieldValue(previewTask, field);
@@ -1535,7 +1533,7 @@ export function WorkItemEditorSettings() {
       "data-field-id": fieldId,
       "data-visual-priority": visualPriority,
       "data-drop-intent": isReplaceTarget ? "replace" : undefined,
-      "data-drop-label": isReplaceTarget ? "Substituir" : undefined,
+      "data-drop-label": isReplaceTarget ? "Mover aqui" : undefined,
       draggable: true,
       onClick: (event: MouseEvent<HTMLElement>) => {
         event.stopPropagation();
@@ -1545,6 +1543,7 @@ export function WorkItemEditorSettings() {
         setTypeComposer(null);
       },
       onDragStart: (event: DragEvent<HTMLElement>) => {
+        event.stopPropagation();
         setSelectedFieldId(fieldId);
         handleDragStartField(event, fieldId, "card");
       },
@@ -1635,7 +1634,10 @@ export function WorkItemEditorSettings() {
         key={field.id}
         className={`wie__lib-chip${isSelected ? " is-selected" : ""}${inCard || inDetail ? " is-used" : ""}`}
         draggable
-        onDragStart={(e) => handleDragStartField(e, field.id, "library")}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          handleDragStartField(e, field.id, "library");
+        }}
         onDragEnd={handleDragEnd}
         onClick={() => {
           setSelectedFieldId(field.id);
@@ -1704,7 +1706,7 @@ export function WorkItemEditorSettings() {
           data-detail-zone={zone}
           data-field-id={field.id}
           data-drop-intent={isReplaceTarget ? "replace" : undefined}
-          data-drop-label={isReplaceTarget ? "Substituir" : undefined}
+          data-drop-label={isReplaceTarget ? "Mover aqui" : undefined}
           draggable
           onClick={(e) => {
             e.stopPropagation();
@@ -1713,7 +1715,10 @@ export function WorkItemEditorSettings() {
             setPendingFieldSetup(null);
             setTypeComposer(null);
           }}
-          onDragStart={(e) => handleDragStartField(e, field.id, "detail")}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            handleDragStartField(e, field.id, "detail");
+          }}
           onDragOver={(event) => {
             if (!dragPayload || isSelfDrag) return;
             event.preventDefault();
@@ -2250,21 +2255,15 @@ export function WorkItemEditorSettings() {
                               (activeCardAreaDrafts[selectedField.id] as TaskFieldCardArea | undefined) ??
                               (previewCardDebug?.fields.find((f) => f.fieldId === selectedField.id)?.area as TaskFieldCardArea | undefined);
                             const isActive = currentArea === area;
-                            const areaCount = (previewCardDebug?.zones[area] ?? []).filter(
-                              (id) => previewCardDebug?.fields.find((f) => f.fieldId === id)?.rendered
-                            ).length;
-                            const limit = CARD_SLOT_LIMITS[area];
-                            const wouldExceed = !isActive && areaCount >= limit;
                             return (
                               <button
                                 key={area}
                                 type="button"
-                                className={`wie__props-area-btn${isActive ? " is-active" : ""}${wouldExceed ? " is-full" : ""}`}
-                                title={wouldExceed ? `Slot lotado (${areaCount}/${limit})` : label}
+                                className={`wie__props-area-btn${isActive ? " is-active" : ""}`}
+                                title={label}
                                 onClick={() => handleSetCardAreaForField(selectedField.id, area)}
                               >
                                 {label}
-                                {wouldExceed ? <span className="wie__props-area-full-dot" /> : null}
                               </button>
                             );
                           })}
@@ -2563,8 +2562,8 @@ export function WorkItemEditorSettings() {
                   <TaskCard
                     task={previewTask}
                     boardConfig={previewBoardConfig}
+                    ignoreSlotLimits
                     contextualDisplay={{
-                      suppressStatus: true,
                       suppressCreatedByWhenAssigneeVisible: true
                     }}
                     membersById={previewMembersById}
@@ -2573,7 +2572,11 @@ export function WorkItemEditorSettings() {
                     getFieldSlotProps={getCardPreviewFieldProps}
                     renderEmptySlot={renderCardEmptySlot}
                     onDebugSnapshot={setPreviewCardDebug}
-                    onDragStart={(e) => e.preventDefault()}
+                    onDragStart={(e) => {
+                      if (e.target === e.currentTarget) {
+                        e.preventDefault();
+                      }
+                    }}
                     onDragEnd={handleDragEnd}
                   />
                   <div className={`wie__stage-hint${isDragging ? " is-visible" : ""}`}>

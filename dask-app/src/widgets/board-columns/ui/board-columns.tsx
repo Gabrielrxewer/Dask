@@ -356,7 +356,6 @@ export function BoardColumns({
                       boardConfig={boardConfig}
                       compact={compactCards}
                       contextualDisplay={{
-                        suppressStatus: true,
                         suppressCreatedByWhenAssigneeVisible: true
                       }}
                       membersById={membersById}

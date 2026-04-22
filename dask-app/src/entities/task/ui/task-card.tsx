@@ -16,6 +16,7 @@ interface TaskCardProps {
   boardConfig: BoardConfig;
   compact?: boolean;
   draggable?: boolean;
+  ignoreSlotLimits?: boolean;
   contextualDisplay?: {
     suppressStatus?: boolean;
     suppressCreatedByWhenAssigneeVisible?: boolean;
@@ -58,6 +59,7 @@ export function TaskCard({
   boardConfig,
   compact = false,
   draggable = true,
+  ignoreSlotLimits = false,
   contextualDisplay,
   getFieldSlotProps,
   renderEmptySlot,
@@ -87,9 +89,10 @@ export function TaskCard({
         task,
         boardConfig,
         statuses: resolvedStatuses,
-        membersById
+        membersById,
+        ignoreSlotLimits
       }),
-    [boardConfig, membersById, resolvedStatuses, task]
+    [boardConfig, ignoreSlotLimits, membersById, resolvedStatuses, task]
   );
 
   const filteredFields = useMemo(() => {

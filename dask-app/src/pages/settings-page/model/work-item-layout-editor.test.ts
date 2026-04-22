@@ -52,7 +52,7 @@ const detailZonesByFieldId = {
 } as const;
 
 describe("work-item layout editor drop model", () => {
-  it("substitui diretamente o campo alvo ao dropar sobre ele", () => {
+  it("insere antes do campo alvo ao dropar sobre ele sem remover o campo existente", () => {
     const result = applyFieldDrop({
       draft: {
         card: ["sys:title", "summary", "due"],
@@ -73,8 +73,8 @@ describe("work-item layout editor drop model", () => {
       detailZonesByFieldId: { ...detailZonesByFieldId }
     });
 
-    expect(result.layout.card).toEqual(["sys:title", "reviewer", "due"]);
-    expect(result.layout.card).not.toContain("summary");
+    expect(result.layout.card).toEqual(["sys:title", "reviewer", "summary", "due"]);
+    expect(result.layout.card).toContain("summary");
     expect(result.cardAreasByFieldId.reviewer).toBe("summary");
   });
 
@@ -173,6 +173,6 @@ describe("work-item layout editor drop model", () => {
 
     expect(cardBindings.map((binding) => binding.fieldId)).toEqual(finalLayout.layout.card);
     expect(cardBindings.find((binding) => binding.fieldId === "summary")?.settings?.cardArea).toBe("meta");
-    expect(cardBindings.find((binding) => binding.fieldId === "due")).toBeUndefined();
+    expect(cardBindings.find((binding) => binding.fieldId === "due")).toBeDefined();
   });
 });

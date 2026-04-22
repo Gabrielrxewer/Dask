@@ -151,6 +151,7 @@ export function buildTaskCardRenderModel(input: {
   boardConfig: BoardConfig;
   statuses?: TaskStatus[];
   membersById?: MembersById;
+  ignoreSlotLimits?: boolean;
 }): TaskCardRenderModel {
   const statuses = input.statuses ?? input.boardConfig.statuses;
   const bindings = resolveWorkItemFieldBindings(input.boardConfig, input.task.type, "card");
@@ -165,6 +166,10 @@ export function buildTaskCardRenderModel(input: {
     }))
     .filter((field) => field.area === "title" || shouldRenderEmptyFieldOnCard(field.definition) || !isTaskFieldValueEmpty(field.definition, field.value))
     .filter((field) => {
+      if (input.ignoreSlotLimits) {
+        return true;
+      }
+
       const count = areaCount[field.area] ?? 0;
       const limit = CARD_SLOT_LIMITS[field.area];
       if (count >= limit) return false;

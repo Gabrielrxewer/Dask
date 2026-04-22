@@ -198,10 +198,8 @@ export function applyFieldDrop(input: {
 
   if (target.surface === "card") {
     if (target.kind === "replace-field") {
-      replacedFieldId = target.targetFieldId;
-      const replaceIndex = nextCard.indexOf(target.targetFieldId);
-      nextCard = removeFieldId(nextCard, target.targetFieldId);
-      nextCard.splice(replaceIndex >= 0 ? replaceIndex : nextCard.length, 0, payload.fieldId);
+      const insertIndex = nextCard.indexOf(target.targetFieldId);
+      nextCard.splice(insertIndex >= 0 ? insertIndex : nextCard.length, 0, payload.fieldId);
     } else {
       const insertIndex = resolveCardInsertIndex({
         orderedFieldIds: nextCard,
@@ -227,10 +225,8 @@ export function applyFieldDrop(input: {
   }
 
   if (target.kind === "replace-field") {
-    replacedFieldId = target.targetFieldId;
-    const replaceIndex = nextDetail.indexOf(target.targetFieldId);
-    nextDetail = removeFieldId(nextDetail, target.targetFieldId);
-    nextDetail.splice(replaceIndex >= 0 ? replaceIndex : nextDetail.length, 0, payload.fieldId);
+    const insertIndex = nextDetail.indexOf(target.targetFieldId);
+    nextDetail.splice(insertIndex >= 0 ? insertIndex : nextDetail.length, 0, payload.fieldId);
   } else {
     const insertIndex = resolveDetailInsertIndex(nextDetail, detailZonesByFieldId, target.zone, target.index);
     nextDetail.splice(insertIndex, 0, payload.fieldId);

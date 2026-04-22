@@ -227,7 +227,7 @@
 
 .leads-page__modal {
   width: min(920px, calc(100vw - 36px));
-  max-height: calc(100vh - 36px);
+  max-height: 100%;
 }
 
 .leads-page__modal-header {

@@ -1,6 +1,6 @@
 .task-details {
   width: min(1320px, 92vw);
-  max-height: calc(100dvh - 24px);
+  max-height: 100%;
   background:
     radial-gradient(circle at top left, rgba(24, 121, 245, 0.1), transparent 30%),
     radial-gradient(circle at bottom right, rgba(15, 195, 174, 0.1), transparent 28%),
@@ -16,6 +16,7 @@
 .task-details__surface {
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
@@ -1670,11 +1671,11 @@
 @media (max-width: 1024px) {
   .task-details {
     width: min(100vw - 16px, 100%);
-    max-height: calc(100dvh - 16px);
+    max-height: 100%;
   }
 
   .task-details__surface {
-    max-height: inherit;
+    max-height: 100%;
   }
 
   .task-details__body {

@@ -3,11 +3,22 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/shared/lib/cn";
 
+const modalOpenClassName = "shared-modal-open";
+const modalCounterDatasetKey = "sharedModalCount";
+
 interface ModalShellProps {
   titleId: string;
   className?: string;
   onClose: () => void;
   children: ReactNode;
+}
+
+function updateBodyModalState(delta: number) {
+  const currentCount = Number(document.body.dataset[modalCounterDatasetKey] ?? "0");
+  const nextCount = Math.max(0, currentCount + delta);
+
+  document.body.dataset[modalCounterDatasetKey] = String(nextCount);
+  document.body.classList.toggle(modalOpenClassName, nextCount > 0);
 }
 
 export function ModalShell({ titleId, className = "", onClose, children }: ModalShellProps) {
@@ -24,10 +35,12 @@ export function ModalShell({ titleId, className = "", onClose, children }: Modal
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    updateBodyModalState(1);
     window.addEventListener("keydown", onEscape);
 
     return () => {
       window.removeEventListener("keydown", onEscape);
+      updateBodyModalState(-1);
       document.body.style.overflow = previousOverflow;
     };
   }, [onClose]);

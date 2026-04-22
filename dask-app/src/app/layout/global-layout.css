@@ -66,6 +66,11 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.06);
 }
 
+body.shared-modal-open .global-header,
+body.shared-modal-open .global-footer {
+  z-index: 10010;
+}
+
 .global-header::before,
 .global-footer::before {
   content: "";
@@ -689,7 +694,7 @@
 
 .user-profile-modal {
   width: min(820px, 96vw);
-  max-height: min(820px, calc(100dvh - 28px));
+  max-height: min(820px, 100%);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1643,7 +1648,7 @@
 
   .user-profile-modal {
     width: calc(100vw - 16px);
-    max-height: calc(100dvh - 16px);
+    max-height: 100%;
   }
 
   .user-profile-modal__header {

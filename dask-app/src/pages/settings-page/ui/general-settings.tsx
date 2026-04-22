@@ -9,7 +9,7 @@ import { useWorkspace } from "@/modules/workspace";
 import type { WorkspaceProfile, WorkspaceTemplateOption } from "@/modules/workspace/model";
 import { buildWorkspaceSettingsMembersPath, buildWorkspaceSelectorPath } from "@/app/router";
 import { isApiError } from "@/shared/api/http-client";
-import { Button, FormField, Select, Textarea, TextInput } from "@/shared/ui";
+import { Button, FormField, ModalShell, Select, Textarea, TextInput } from "@/shared/ui";
 import "./general-settings.css";
 
 type BoardPerspective = {
@@ -593,8 +593,12 @@ export function GeneralSettings() {
       </section>
 
       {templateToConfirm ? (
-        <div className="general-settings__modal-backdrop" role="presentation">
-          <section className="general-settings__template-modal" role="dialog" aria-modal="true" aria-labelledby="template-confirm-title">
+        <ModalShell
+          titleId="template-confirm-title"
+          className="general-settings__template-modal"
+          onClose={() => setTemplateToConfirm(null)}
+        >
+          <>
             <div
               className="general-settings__modal-preview"
               style={{ "--template-accent": TEMPLATE_ACCENTS[templateToConfirm.key] } as CSSProperties}
@@ -627,8 +631,8 @@ export function GeneralSettings() {
                 {isResettingTemplate ? "Aplicando..." : "Usar template"}
               </Button>
             </div>
-          </section>
-        </div>
+          </>
+        </ModalShell>
       ) : null}
     </div>
   );

@@ -60,6 +60,15 @@ export class PrismaIdentityRepository implements IdentityRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  public updateUser(userId: string, input: { name: string }): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: input.name
+      }
+    });
+  }
+
   public updateUserPreferences(userId: string, preferences: unknown): Promise<User> {
     return this.prisma.user.update({
       where: { id: userId },

@@ -85,6 +85,13 @@ export const authService: AuthServiceContract = {
     });
   },
 
+  updateUserProfile(input) {
+    return apiClient.patch<AuthenticatedUser>("/auth/me", input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
   updateUserAvatar(input) {
     return apiClient.patch<AuthenticatedUser>("/auth/me/avatar", input, {
       authMode: "required",

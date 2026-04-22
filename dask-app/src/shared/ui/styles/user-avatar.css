@@ -127,8 +127,13 @@
 .shared-user-avatar__actions button:hover:not(:disabled) {
   border-color: rgba(10, 134, 232, 0.34);
   background: #ffffff;
-  box-shadow: 0 10px 20px rgba(12, 42, 71, 0.08);
   transform: translateY(-1px);
+}
+
+.shared-user-avatar__actions button:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: rgba(10, 134, 232, 0.4);
 }
 
 .shared-user-avatar__actions button:disabled {

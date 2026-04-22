@@ -1,7 +1,13 @@
 import { isApiError } from "@/shared/api/http-client";
 import { createSessionTransport, type SessionTransport } from "@/shared/lib/auth/session-transport";
 import { authService } from "@/features/auth/api/auth-service";
-import type { AuthServiceContract, LoginInput, RegisterInput, UpdateUserAvatarInput } from "@/features/auth/api/types";
+import type {
+  AuthServiceContract,
+  LoginInput,
+  RegisterInput,
+  UpdateUserAvatarInput,
+  UpdateUserProfileInput
+} from "@/features/auth/api/types";
 import type { AuthenticatedUser } from "@/entities/user";
 import type { AuthSnapshot, AuthState } from "@/features/auth/model/types";
 
@@ -265,6 +271,17 @@ export class AuthStore {
       status: prev.status === "session_expired" ? "unauthenticated" : prev.status,
       sessionNotice: null
     }));
+  }
+
+  public async updateUserProfile(input: UpdateUserProfileInput): Promise<AuthenticatedUser> {
+    const user = await this.authService.updateUserProfile(input);
+    this.setState(prev => ({
+      ...prev,
+      user,
+      status: prev.status === "refreshing" ? "authenticated" : prev.status,
+      errorMessage: null
+    }));
+    return user;
   }
 
   public async updateUserAvatar(input: UpdateUserAvatarInput): Promise<AuthenticatedUser> {

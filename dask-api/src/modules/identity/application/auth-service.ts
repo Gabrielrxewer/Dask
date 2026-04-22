@@ -746,6 +746,23 @@ export class AuthService {
     return toUserProfile(user, isPlatformAdmin);
   }
 
+  public async updateProfile(
+    userId: string,
+    input: { name: string }
+  ): Promise<UserProfile> {
+    const user = await this.identityRepository.findUserById(userId);
+    if (!user) {
+      throw new AppError('User not found.', 404);
+    }
+
+    const updated = await this.identityRepository.updateUser(user.id, {
+      name: input.name.trim()
+    });
+
+    const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(updated.id);
+    return toUserProfile(updated, isPlatformAdmin);
+  }
+
   public async updateAvatar(
     userId: string,
     input: { manualAvatarDataUrl: string | null; removeProviderAvatar?: boolean }

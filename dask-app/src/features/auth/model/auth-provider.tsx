@@ -13,7 +13,7 @@ import { beginGlobalLoading, releaseInitialGlobalLoading } from "@/shared/lib/lo
 import { createAuthStore, type AuthStore } from "@/features/auth/model/auth-store";
 import { useAuthBootstrap } from "@/features/auth/model/use-auth-bootstrap";
 import type { LoginInput, RegisterInput } from "@/features/auth/api/types";
-import type { UpdateUserAvatarInput } from "@/features/auth/api/types";
+import type { UpdateUserAvatarInput, UpdateUserProfileInput } from "@/features/auth/api/types";
 import type { AuthenticatedUser } from "@/entities/user";
 import type { AuthSnapshot } from "@/features/auth/model/types";
 
@@ -25,6 +25,7 @@ interface AuthContextValue extends AuthSnapshot {
   logoutAll: () => Promise<void>;
   refresh: () => Promise<string | null>;
   clearSessionNotice: () => void;
+  updateUserProfile: (input: UpdateUserProfileInput) => Promise<AuthenticatedUser>;
   updateUserAvatar: (input: UpdateUserAvatarInput) => Promise<AuthenticatedUser>;
 }
 
@@ -98,6 +99,7 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
   const logoutAll = useCallback(() => store.logoutAll(), [store]);
   const refresh = useCallback(() => store.refreshAccessToken(), [store]);
   const clearSessionNotice = useCallback(() => store.clearSessionNotice(), [store]);
+  const updateUserProfile = useCallback((input: UpdateUserProfileInput) => store.updateUserProfile(input), [store]);
   const updateUserAvatar = useCallback((input: UpdateUserAvatarInput) => store.updateUserAvatar(input), [store]);
 
   const value = useMemo<AuthContextValue>(
@@ -110,9 +112,10 @@ export function AuthProvider({ children, store: providedStore }: AuthProviderPro
       logoutAll,
       refresh,
       clearSessionNotice,
+      updateUserProfile,
       updateUserAvatar
     }),
-    [snapshot, bootstrap, login, register, logout, logoutAll, refresh, clearSessionNotice, updateUserAvatar]
+    [snapshot, bootstrap, login, register, logout, logoutAll, refresh, clearSessionNotice, updateUserProfile, updateUserAvatar]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

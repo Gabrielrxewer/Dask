@@ -54,6 +54,7 @@ function createAuthServiceMock(): AuthServiceContract {
     confirmPasswordReset: vi.fn(),
     resendVerificationEmail: vi.fn(),
     verifyEmail: vi.fn(),
+    updateUserProfile: vi.fn(),
     updateUserAvatar: vi.fn()
   };
 }

@@ -73,7 +73,7 @@
 .dashboard-filter__mine-button.active,
 .dashboard-filter__mine-button[aria-pressed="true"] {
   background: var(--button-gradient-main-hover) !important;
-  box-shadow: var(--button-primary-shadow-hover) !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 760px) {

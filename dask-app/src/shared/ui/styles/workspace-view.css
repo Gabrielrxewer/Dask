@@ -107,7 +107,7 @@
 .workspace-view__actions .dashboard-filter .shared-button:not(.shared-button--primary) {
   border-color: var(--workspace-view-accent-line, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 20%, var(--line)));
   background: var(--surface-overlay);
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 }
 
 .workspace-view__actions .dashboard-filter .shared-input {

@@ -279,7 +279,7 @@
 @media (min-width: 761px) {
   .login-page__brand {
     position: relative;
-    top: auto;
+    top: -25px;
     left: auto;
     width: min(560px, 100%);
     transform: none;

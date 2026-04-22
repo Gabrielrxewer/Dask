@@ -58,3 +58,7 @@ export const updateUserAvatarDto = z.object({
   manualAvatarDataUrl: z.string().min(1).max(3_000_000).nullable(),
   removeProviderAvatar: z.boolean().optional()
 });
+
+export const updateUserProfileDto = z.object({
+  name: z.string().min(2).max(100).trim()
+});

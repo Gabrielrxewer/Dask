@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/features/auth";
 import { billingService, PLAN_DISPLAY, type BillingStatus } from "@/modules/billing";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
-import { ModalShell, Select, UserAvatar } from "@/shared/ui";
+import { ModalShell, Select, TextInput, UserAvatar } from "@/shared/ui";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
@@ -223,7 +223,7 @@ function formatBillingDate(value: string | null): string {
 export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, status, updateUserAvatar } = useAuth();
+  const { user, status, updateUserAvatar, updateUserProfile } = useAuth();
   const { logout, isSubmitting } = useLogout();
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
@@ -255,7 +255,10 @@ export function GlobalLayout() {
   const [profileNotifications, setProfileNotifications] = useState(defaultUserProfilePreferences.notifications);
   const [profileAutoSave, setProfileAutoSave] = useState(defaultUserProfilePreferences.autoSave);
   const [profilePreferencesOwnerId, setProfilePreferencesOwnerId] = useState<string | null>(null);
+  const [profileNameDraft, setProfileNameDraft] = useState("");
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => getSystemResolvedTheme());
+  const [profileSaveState, setProfileSaveState] = useState<"idle" | "saving" | "error">("idle");
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   const [profileAvatarState, setProfileAvatarState] = useState<"idle" | "saving" | "error">("idle");
   const [profileAvatarError, setProfileAvatarError] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -300,6 +303,7 @@ export function GlobalLayout() {
     }
 
     const storedPreferences = getStoredUserProfilePreferences(user.id) ?? defaultUserProfilePreferences;
+    setProfileNameDraft(user.name);
     setProfileTheme(normalizeUserProfileTheme(storedPreferences.theme));
     setProfileLanguage(storedPreferences.language);
     setProfileDensity(storedPreferences.density);
@@ -308,6 +312,20 @@ export function GlobalLayout() {
     setProfilePreferencesOwnerId(user.id);
     storeGlobalThemePreference(storedPreferences.theme);
   }, [user?.id]);
+
+  useEffect(() => {
+    setProfileNameDraft(user?.name ?? "");
+  }, [user?.name]);
+
+  useEffect(() => {
+    if (!isUserProfileOpen) {
+      setProfileSaveState("idle");
+      setProfileSaveError(null);
+      return;
+    }
+
+    setProfileNameDraft(user?.name ?? "");
+  }, [isUserProfileOpen, user?.name]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -536,6 +554,8 @@ export function GlobalLayout() {
   const currentPlanPrice = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].price : "--";
   const nextBillingDate = formatBillingDate(billingStatus?.currentPeriodEnd ?? null);
   const canUpgradeToBusiness = billingStatus?.plan !== "BUSINESS";
+  const normalizedProfileName = profileNameDraft.trim();
+  const isProfileSaveBusy = profileSaveState === "saving";
   const chromeValue = {
     isSidebarOpen,
     toggleNavigation,
@@ -557,16 +577,35 @@ export function GlobalLayout() {
     }
   };
 
-  const saveUserProfilePreferences = () => {
-    storeUserProfilePreferences(user?.id, {
-      autoSave: profileAutoSave,
-      density: profileDensity,
-      language: profileLanguage,
-      notifications: profileNotifications,
-      theme: profileTheme
-    });
-    storeGlobalThemePreference(profileTheme);
-    setIsUserProfileOpen(false);
+  const saveUserProfilePreferences = async () => {
+    if (!user?.id || normalizedProfileName.length < 2) {
+      setProfileSaveState("error");
+      setProfileSaveError("Informe um nome com pelo menos 2 caracteres.");
+      return;
+    }
+
+    setProfileSaveState("saving");
+    setProfileSaveError(null);
+
+    try {
+      if (normalizedProfileName !== user.name) {
+        await updateUserProfile({ name: normalizedProfileName });
+      }
+
+      storeUserProfilePreferences(user.id, {
+        autoSave: profileAutoSave,
+        density: profileDensity,
+        language: profileLanguage,
+        notifications: profileNotifications,
+        theme: profileTheme
+      });
+      storeGlobalThemePreference(profileTheme);
+      setProfileSaveState("idle");
+      setIsUserProfileOpen(false);
+    } catch (error) {
+      setProfileSaveState("error");
+      setProfileSaveError(error instanceof Error ? error.message : "Nao foi possivel salvar seu perfil.");
+    }
   };
 
   const handleProfileAvatarUpload = async (file: File) => {
@@ -861,7 +900,10 @@ export function GlobalLayout() {
                     <span className="user-profile-modal__eyebrow">Perfil do usuario</span>
                     <h2 id="user-profile-title">{profileLabel}</h2>
                     <p>{profileEmail}</p>
-                    <span className="user-profile-modal__plan-badge">{currentPlanLabel}</span>
+                    <div className="user-profile-modal__identity-badges">
+                      <span className="user-profile-modal__plan-badge">{currentPlanLabel}</span>
+                      <span className="user-profile-modal__meta-badge">{profileSubLabel}</span>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -875,6 +917,39 @@ export function GlobalLayout() {
               </header>
 
               <div className="user-profile-modal__body">
+                <section className="user-profile-modal__panel user-profile-modal__panel--identity">
+                  <div className="user-profile-modal__section-head">
+                    <span className="user-profile-modal__section-icon" aria-hidden="true">
+                      ME
+                    </span>
+                    <div>
+                      <span className="user-profile-modal__section-label">Seus dados</span>
+                      <p>Edite apenas as informacoes basicas da sua conta sem alterar o restante do fluxo.</p>
+                    </div>
+                  </div>
+                  <div className="user-profile-modal__identity-grid">
+                    <label className="user-profile-modal__field">
+                      <span>Nome de usuario</span>
+                      <TextInput
+                        value={profileNameDraft}
+                        onChange={event => {
+                          setProfileNameDraft(event.target.value);
+                          if (profileSaveState === "error") {
+                            setProfileSaveState("idle");
+                            setProfileSaveError(null);
+                          }
+                        }}
+                        placeholder="Como seu nome deve aparecer no Dask"
+                        maxLength={100}
+                      />
+                    </label>
+                    <label className="user-profile-modal__field user-profile-modal__field--readonly">
+                      <span>E-mail</span>
+                      <TextInput value={profileEmail} readOnly aria-readonly="true" />
+                    </label>
+                  </div>
+                </section>
+
                 <section className="user-profile-modal__panel user-profile-modal__panel--summary">
                   <div className="user-profile-modal__section-head">
                     <span className="user-profile-modal__section-icon" aria-hidden="true">
@@ -897,6 +972,10 @@ export function GlobalLayout() {
                     <div>
                       <small>Status</small>
                       <strong>{profileSubLabel}</strong>
+                    </div>
+                    <div>
+                      <small>Proxima cobranca</small>
+                      <strong>{nextBillingDate}</strong>
                     </div>
                   </div>
                 </section>
@@ -994,11 +1073,17 @@ export function GlobalLayout() {
               </div>
 
               <footer className="user-profile-modal__footer">
+                {profileSaveError ? <p className="user-profile-modal__feedback">{profileSaveError}</p> : null}
                 <button type="button" className="user-profile-modal__secondary" onClick={() => setIsUserProfileOpen(false)}>
                   Cancelar
                 </button>
-                <button type="button" className="user-profile-modal__primary" onClick={saveUserProfilePreferences}>
-                  Salvar preferencias
+                <button
+                  type="button"
+                  className="user-profile-modal__primary"
+                  onClick={() => void saveUserProfilePreferences()}
+                  disabled={isProfileSaveBusy}
+                >
+                  {isProfileSaveBusy ? "Salvando..." : "Salvar perfil"}
                 </button>
               </footer>
             </ModalShell>

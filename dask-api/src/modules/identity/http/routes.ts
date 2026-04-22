@@ -26,6 +26,7 @@ import {
   loginDto,
   registerDto,
   requestPasswordResetDto,
+  updateUserProfileDto,
   updateUserAvatarDto
 } from '@/modules/identity/http/dto';
 
@@ -1020,6 +1021,18 @@ export const buildIdentityRoutes = (deps: {
     authMiddleware,
     asyncHandler(async (req, res) => {
       const user = await deps.authService.me(req.auth!.userId);
+      setNoStore(res);
+      res.status(200).json(user);
+    })
+  );
+
+  router.patch(
+    '/auth/me',
+    authMiddleware,
+    csrfGuard,
+    asyncHandler(async (req, res) => {
+      const input = updateUserProfileDto.parse(req.body);
+      const user = await deps.authService.updateProfile(req.auth!.userId, input);
       setNoStore(res);
       res.status(200).json(user);
     })

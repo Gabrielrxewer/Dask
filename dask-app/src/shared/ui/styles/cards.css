@@ -1,14 +1,10 @@
 .shared-card {
-  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
-  background:
-    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(246, 250, 255, 0.72) 100%);
+  border: 1px solid color-mix(in oklab, var(--line) 90%, white 10%);
+  background: var(--surface-card);
   border-radius: 28px;
-  box-shadow:
-    var(--shadow-1),
-    0 1px 0 rgba(255, 255, 255, 0.78) inset;
+  box-shadow: var(--shadow-card);
   padding: 18px;
-  backdrop-filter: blur(12px) saturate(118%);
+  backdrop-filter: blur(12px) saturate(112%);
 }
 
 .shared-card--interactive {
@@ -17,23 +13,20 @@
 
 .shared-card--interactive:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
-  box-shadow: var(--shadow-2);
+  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
+  background: var(--surface-card-hover);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .shared-metric-card {
   position: relative;
-  border: 1px solid color-mix(in oklab, var(--line) 88%, white 12%);
+  border: 1px solid color-mix(in oklab, var(--line) 90%, white 10%);
   border-radius: 24px;
-  background:
-    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(246, 250, 255, 0.74) 100%);
-  box-shadow:
-    var(--shadow-1),
-    0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
   min-height: 78px;
   padding: 16px 18px;
-  backdrop-filter: blur(12px) saturate(118%);
+  backdrop-filter: blur(12px) saturate(112%);
   overflow: visible;
   isolation: isolate;
   z-index: 0;
@@ -72,7 +65,7 @@
   cursor: pointer;
   padding: 0;
   box-shadow:
-    0 6px 14px color-mix(in oklab, var(--text-strong) 8%, transparent),
+    var(--shadow-soft),
     inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 72%, transparent);
   transition:
     background 160ms ease,
@@ -99,7 +92,7 @@
     linear-gradient(180deg, color-mix(in oklab, white 88%, var(--accent-soft)) 0%, color-mix(in oklab, var(--accent-soft) 58%, var(--panel)) 100%);
   color: color-mix(in oklab, var(--accent-strong) 86%, var(--text-strong));
   box-shadow:
-    0 10px 20px color-mix(in oklab, var(--accent) 14%, transparent),
+    var(--shadow-soft),
     inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 76%, transparent);
   transform: translateY(-1px);
 }
@@ -116,7 +109,7 @@
     linear-gradient(180deg, color-mix(in oklab, var(--panel) 96%, var(--accent-soft)) 0%, color-mix(in oklab, var(--panel-soft) 88%, var(--panel)) 100%);
   color: var(--text-strong);
   box-shadow:
-    0 18px 36px color-mix(in oklab, var(--text-strong) 14%, transparent),
+    var(--shadow-card-hover),
     inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 68%, transparent);
   padding: 12px;
   pointer-events: none;
@@ -147,8 +140,8 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .shared-metric-card h3 {

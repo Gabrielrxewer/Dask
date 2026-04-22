@@ -9,10 +9,11 @@
 
 .shared-page-header__label {
   margin: 0;
-  color: #1f4666;
+  color: color-mix(in oklab, var(--accent-strong) 58%, var(--text-soft));
   font-size: var(--font-size-2xs);
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .shared-page-header__title {

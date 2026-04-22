@@ -5,9 +5,7 @@
   background: var(--control-surface);
   border-radius: 14px;
   color: var(--text-strong);
-  box-shadow:
-    var(--shadow-1),
-    0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  box-shadow: var(--shadow-soft), 0 1px 0 rgba(255, 255, 255, 0.76) inset;
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -83,10 +81,8 @@
   padding: 8px;
   border: 1px solid color-mix(in oklab, var(--line) 92%, white 8%);
   border-radius: 18px;
-  background: var(--surface-raised);
-  box-shadow:
-    var(--shadow-3),
-    0 1px 0 rgba(255, 255, 255, 0.86) inset;
+  background: var(--surface-overlay-strong);
+  box-shadow: var(--shadow-3), 0 1px 0 rgba(255, 255, 255, 0.86) inset;
   backdrop-filter: blur(16px) saturate(124%);
 }
 
@@ -111,15 +107,15 @@
 .shared-select__option:hover,
 .shared-select__option:focus-visible {
   border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
-  background: var(--state-hover);
+  background: var(--surface-chip);
   color: var(--text-strong);
 }
 
 .shared-select__option--selected {
   border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
-  background: var(--state-active);
+  background: var(--surface-chip-active);
   color: var(--text-strong);
-  box-shadow: 0 10px 20px color-mix(in oklab, var(--accent) 10%, transparent);
+  box-shadow: var(--shadow-soft);
 }
 
 .shared-select__option:disabled,
@@ -147,9 +143,7 @@
 .shared-textarea:hover {
   border-color: color-mix(in oklab, var(--accent) 22%, var(--line));
   background: var(--control-surface-hover);
-  box-shadow:
-    0 16px 30px color-mix(in oklab, var(--text-strong) 6%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  box-shadow: var(--shadow-card), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .shared-textarea::placeholder {

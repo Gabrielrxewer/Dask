@@ -8,10 +8,12 @@
 }
 
 .workspace:has(.workspace-view) {
-  background: var(--workspace-view-surface-soft);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 8%, transparent) 0%, transparent 34%),
+    var(--workspace-view-surface-soft);
   border-color: var(--workspace-view-frame-border, #d8e4ee);
   border-radius: var(--radius-xs);
-  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.05);
+  box-shadow: var(--shadow-card);
   backdrop-filter: none;
 }
 
@@ -25,7 +27,7 @@
   border-color: var(--workspace-view-card-border, #d8e4ee);
   border-radius: var(--radius-xs);
   background: var(--workspace-view-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  box-shadow: var(--shadow-card);
   backdrop-filter: none;
 }
 
@@ -33,13 +35,15 @@
   color: var(--workspace-view-text-soft);
   font-size: var(--font-size-xs);
   font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .workspace-view__metrics .shared-metric-card h3 {
   margin-top: 4px;
-  font-size: 1.08rem;
+  font-size: 1.14rem;
   color: var(--workspace-view-text);
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
 }
 
 .workspace-view__section.shared-section,
@@ -48,7 +52,7 @@
   border-color: var(--workspace-view-panel-border, #d8e4ee);
   border-radius: var(--radius-xs);
   background: var(--workspace-view-surface);
-  box-shadow: 0 14px 30px rgba(12, 35, 63, 0.045);
+  box-shadow: var(--shadow-card);
   backdrop-filter: none;
 }
 
@@ -61,30 +65,30 @@
 .workspace-view__panel .shared-section__header {
   padding: 12px 14px;
   border-bottom-color: var(--workspace-view-line);
-  background: var(--workspace-view-surface);
+  background: var(--surface-section-header);
 }
 
 .workspace-view__section .shared-section__title,
 .workspace-view__panel .shared-section__title {
   color: var(--workspace-view-text);
   font-family: var(--font-family-heading);
-  font-size: var(--font-size-title-md);
+  font-size: clamp(1.16rem, 1.04rem + 0.18vw, 1.28rem);
   font-weight: 900;
-  letter-spacing: 0;
+  letter-spacing: -0.03em;
 }
 
 .workspace-view__section .shared-section__subtitle,
 .workspace-view__panel .shared-section__subtitle {
   color: var(--workspace-view-text-soft);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .workspace-view__section .shared-section__content,
 .workspace-view__panel .shared-section__content {
   padding: 10px;
   min-height: 0;
-  background: var(--workspace-view-surface-soft);
+  background: var(--surface-section-content);
 }
 
 .workspace-view__actions {
@@ -102,8 +106,8 @@
 .workspace-view__actions .dashboard-filter .shared-input,
 .workspace-view__actions .dashboard-filter .shared-button {
   border-color: var(--workspace-view-accent-line, #9fc2e2);
-  background-color: var(--workspace-view-surface);
-  box-shadow: 0 8px 18px rgba(12, 42, 71, 0.06);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-soft);
 }
 
 .workspace-view__actions .dashboard-filter .shared-input {
@@ -117,8 +121,8 @@
 
 .workspace-view__actions .shared-status-badge {
   border-color: var(--workspace-view-line);
-  background: var(--workspace-view-surface-soft);
-  color: var(--workspace-view-text-muted);
+  background: var(--surface-chip);
+  color: var(--workspace-view-text-soft);
 }
 
 .app-theme[data-theme="dark"] .workspace:has(.workspace-view),

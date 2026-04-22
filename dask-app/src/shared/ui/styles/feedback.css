@@ -3,14 +3,15 @@
   align-items: center;
   gap: 6px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in oklab, var(--line) 82%, white 18%);
   min-height: 28px;
   padding: 0 10px;
   font-size: var(--font-size-xs);
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 800;
+  letter-spacing: 0.03em;
   color: var(--text-soft);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-chip);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.82) inset;
 }
 
 .shared-status-badge--success {

@@ -1,13 +1,13 @@
 .board-view {
-  --builder-text: #071f35;
-  --builder-text-soft: #1f405e;
-  --builder-text-muted: #365b7a;
-  --builder-line: #b8cada;
-  --builder-line-strong: #83afd5;
-  --builder-surface: #ffffff;
-  --builder-surface-soft: #f8fafc;
-  --builder-accent: #075f9d;
-  --builder-accent-strong: #064f85;
+  --builder-text: var(--text-strong);
+  --builder-text-soft: var(--text-soft);
+  --builder-text-muted: var(--text-muted);
+  --builder-line: var(--line);
+  --builder-line-strong: var(--line-contrast);
+  --builder-surface: var(--surface-overlay);
+  --builder-surface-soft: var(--surface-section-content);
+  --builder-accent: var(--accent);
+  --builder-accent-strong: var(--accent-strong);
   --workspace-view-text: var(--builder-text);
   --workspace-view-text-soft: var(--builder-text-soft);
   --workspace-view-text-muted: var(--builder-text-muted);
@@ -17,7 +17,7 @@
   --workspace-view-surface-soft: var(--builder-surface-soft);
   --workspace-view-accent: var(--builder-accent);
   --workspace-view-accent-strong: var(--builder-accent-strong);
-  --workspace-view-filter-action-text: #214d78;
+  --workspace-view-filter-action-text: color-mix(in oklab, var(--accent-strong) 70%, var(--text-strong));
   margin-inline: auto;
 }
 
@@ -45,7 +45,7 @@
   overflow: hidden;
   border: 1px solid var(--builder-line);
   border-radius: var(--radius-xs);
-  background: #ffffff;
+  background: var(--surface-overlay);
 }
 
 .board-top-nav__tabs .shared-tabs__item {
@@ -63,12 +63,12 @@
 }
 
 .board-top-nav__tabs .shared-tabs__item:hover {
-  background: #eef7ff;
+  background: var(--surface-table-row-hover);
   color: var(--builder-accent-strong);
 }
 
 .board-top-nav__tabs .shared-tabs__item--active {
-  background: #f8fbff;
+  background: var(--surface-section-content);
   color: var(--builder-accent);
   border-bottom-color: var(--builder-accent);
 }
@@ -79,7 +79,7 @@
 
 .board-view__canvas .shared-section__content {
   padding: 10px;
-  background: #f8fafc;
+  background: var(--surface-section-content);
 }
 
 @media (min-width: 1141px) {

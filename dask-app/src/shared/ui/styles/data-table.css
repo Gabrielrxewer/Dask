@@ -1,8 +1,8 @@
 .shared-data-table {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-1);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -36,19 +36,19 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background: var(--surface-muted);
+  background: var(--surface-table-header);
 }
 
 .shared-data-table__row {
   min-height: 58px;
   color: var(--text);
   font-weight: 500;
-  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, #fff);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 78%, #fff);
   transition: background 0.16s ease;
 }
 
 .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--panel-soft) 70%, #ffffff);
+  background: var(--surface-table-row-hover);
 }
 
 .shared-data-table__row:last-child {

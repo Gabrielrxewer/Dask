@@ -15,7 +15,9 @@
   --text-soft: #4c6680;
   --text-muted: #6c8399;
   --line: #d9e3ef;
+  --line-soft: #e8eff7;
   --line-strong: #bfd0e2;
+  --line-contrast: #aac1d8;
   --accent: #1986dc;
   --accent-strong: #0f6ebd;
   --accent-soft: #ebf5ff;
@@ -87,6 +89,34 @@
   --state-hover: color-mix(in oklab, var(--accent) 7%, transparent);
   --state-active: color-mix(in oklab, var(--accent) 13%, transparent);
   --state-disabled-opacity: 0.55;
+  --surface-card:
+    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 7%, transparent) 0%, transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 250, 255, 0.86) 100%);
+  --surface-card-hover:
+    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 10%, transparent) 0%, transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 247, 255, 0.92) 100%);
+  --surface-section: color-mix(in oklab, var(--panel) 94%, transparent);
+  --surface-section-header:
+    linear-gradient(180deg, color-mix(in oklab, white 74%, var(--panel-soft)) 0%, color-mix(in oklab, white 22%, transparent) 100%);
+  --surface-section-content:
+    linear-gradient(180deg, color-mix(in oklab, white 72%, var(--panel-soft)) 0%, color-mix(in oklab, var(--panel-soft) 76%, white) 100%);
+  --surface-elevated:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.92) 100%);
+  --surface-overlay:
+    linear-gradient(180deg, rgba(248, 251, 255, 0.96) 0%, rgba(241, 247, 255, 0.92) 100%);
+  --surface-overlay-strong:
+    linear-gradient(180deg, rgba(252, 254, 255, 0.98) 0%, rgba(244, 249, 255, 0.96) 100%);
+  --surface-chip: color-mix(in oklab, var(--panel-soft) 58%, white);
+  --surface-chip-active: color-mix(in oklab, var(--accent-soft) 60%, white);
+  --surface-table-header: color-mix(in oklab, var(--panel-soft) 82%, white);
+  --surface-table-row-hover: color-mix(in oklab, var(--accent) 6%, white);
+  --shadow-soft: 0 10px 22px rgba(12, 36, 61, 0.06);
+  --shadow-card:
+    0 18px 36px rgba(12, 36, 61, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  --shadow-card-hover:
+    0 22px 42px rgba(12, 36, 61, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.84) inset;
   --control-height-sm: 34px;
   --control-height-md: 42px;
   --control-height-lg: 46px;
@@ -118,7 +148,9 @@
   --text-soft: #b4c7da;
   --text-muted: #8ca6be;
   --line: #28455f;
+  --line-soft: #233c53;
   --line-strong: #41637d;
+  --line-contrast: #567894;
   --accent: #5fb6f8;
   --accent-strong: #8bd0ff;
   --accent-soft: #13344b;
@@ -152,6 +184,34 @@
   --focus-strong:
     0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent),
     0 16px 34px rgba(0, 0, 0, 0.28);
+  --surface-card:
+    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, rgba(17, 37, 55, 0.98) 0%, rgba(13, 31, 47, 0.92) 100%);
+  --surface-card-hover:
+    radial-gradient(circle at 14% 0%, color-mix(in oklab, var(--accent) 16%, transparent) 0%, transparent 34%),
+    linear-gradient(180deg, rgba(19, 42, 61, 0.98) 0%, rgba(15, 35, 53, 0.94) 100%);
+  --surface-section: color-mix(in oklab, var(--panel) 92%, transparent);
+  --surface-section-header:
+    linear-gradient(180deg, color-mix(in oklab, var(--panel-soft) 92%, transparent) 0%, color-mix(in oklab, var(--panel) 78%, transparent) 100%);
+  --surface-section-content:
+    linear-gradient(180deg, color-mix(in oklab, var(--panel-soft) 88%, transparent) 0%, color-mix(in oklab, var(--panel) 82%, transparent) 100%);
+  --surface-elevated:
+    linear-gradient(180deg, rgba(18, 40, 58, 0.98) 0%, rgba(14, 31, 47, 0.94) 100%);
+  --surface-overlay:
+    linear-gradient(180deg, rgba(14, 31, 47, 0.98) 0%, rgba(10, 25, 38, 0.96) 100%);
+  --surface-overlay-strong:
+    linear-gradient(180deg, rgba(15, 34, 51, 0.99) 0%, rgba(10, 27, 41, 0.98) 100%);
+  --surface-chip: color-mix(in oklab, var(--panel-soft) 62%, var(--panel));
+  --surface-chip-active: color-mix(in oklab, var(--accent) 16%, var(--panel));
+  --surface-table-header: color-mix(in oklab, var(--panel-soft) 72%, var(--panel));
+  --surface-table-row-hover: color-mix(in oklab, var(--accent) 10%, var(--panel));
+  --shadow-soft: 0 10px 22px rgba(0, 0, 0, 0.18);
+  --shadow-card:
+    0 18px 38px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  --shadow-card-hover:
+    0 24px 46px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
   --control-border: 1px solid var(--line);
   --control-border-strong: color-mix(in oklab, var(--accent) 42%, var(--line));
   --control-surface: linear-gradient(180deg, #142c40 0%, #102538 100%);

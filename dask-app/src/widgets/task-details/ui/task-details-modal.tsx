@@ -304,6 +304,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           assigneeId: draftPayload.assigneeId,
           dueDate: draftPayload.dueDate,
           tags: draftPayload.tags,
+          checklist: draftPayload.checklist,
           fields: draftPayload.fields,
           customFieldValues: draftPayload.customFieldValues
         };
@@ -350,6 +351,10 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
       if (draftPayload.priority !== currentPayload.priority && typeof draftPayload.priority === "number") {
         nextPayload.priority = draftPayload.priority as TaskPriority;
+      }
+
+      if (toJsonComparable(draftPayload.checklist) !== toJsonComparable(currentPayload.checklist)) {
+        nextPayload.checklist = draftPayload.checklist;
       }
 
       if (toJsonComparable(draftPayload.fields) !== toJsonComparable(currentPayload.fields)) {

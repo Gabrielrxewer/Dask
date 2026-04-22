@@ -142,6 +142,10 @@ function buildDisplayValue(input: {
   });
 }
 
+function shouldRenderEmptyFieldOnCard(field: TaskFieldDefinition): boolean {
+  return field.type === "checklist";
+}
+
 export function buildTaskCardRenderModel(input: {
   task: Task;
   boardConfig: BoardConfig;
@@ -159,7 +163,7 @@ export function buildTaskCardRenderModel(input: {
       value: resolveTaskFieldValue(input.task, binding.field),
       visualPriority: binding.visualPriority
     }))
-    .filter((field) => field.area === "title" || !isTaskFieldValueEmpty(field.definition, field.value))
+    .filter((field) => field.area === "title" || shouldRenderEmptyFieldOnCard(field.definition) || !isTaskFieldValueEmpty(field.definition, field.value))
     .filter((field) => {
       const count = areaCount[field.area] ?? 0;
       const limit = CARD_SLOT_LIMITS[field.area];

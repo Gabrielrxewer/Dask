@@ -1,4 +1,4 @@
-type TaskTypeIconName =
+export type TaskTypeIconName =
   | "bug"
   | "user"
   | "checklist"

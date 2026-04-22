@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   formatTaskFieldValue,
   getTaskFieldRegistryEntry,
@@ -7,11 +7,12 @@ import {
 import type {
   TaskChecklist,
   TaskCustomFieldValue,
+  TaskFieldCardArea,
   TaskFieldDefinition,
   TaskFieldOption,
   TaskFieldType
 } from "@/entities/task/model/types";
-import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
+import { TaskTypeIcon, resolveTaskTypeIconName, type TaskTypeIconName } from "@/entities/task/ui/task-type-icon";
 import type {
   FieldPresentationComponentProps,
   FieldTypeBehaviorInput,
@@ -19,6 +20,7 @@ import type {
 } from "@/entities/task/ui/field-presentation/presentation-types";
 import { Button, Select, TextInput, Textarea } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
+import { DateTimePicker } from "./date-time-picker";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -55,6 +57,253 @@ function getChecklistProgress(value: TaskChecklist) {
   return { total, done, percent };
 }
 
+type ChecklistDisplayConfig = {
+  label: string;
+  color: string;
+  icon: TaskTypeIconName;
+};
+
+const DEFAULT_CHECKLIST_DISPLAY: ChecklistDisplayConfig = {
+  label: "Checklist",
+  color: "#0a86e8",
+  icon: "checklist"
+};
+
+const CHECKLIST_ICON_OPTIONS = new Set<TaskTypeIconName>([
+  "bug",
+  "user",
+  "checklist",
+  "book",
+  "layers",
+  "flask",
+  "alert",
+  "wrench",
+  "gear",
+  "document"
+]);
+
+function sanitizeChecklistColor(value: unknown): string {
+  if (typeof value !== "string") {
+    return DEFAULT_CHECKLIST_DISPLAY.color;
+  }
+
+  const normalized = value.trim();
+  return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized : DEFAULT_CHECKLIST_DISPLAY.color;
+}
+
+function resolveChecklistDisplayConfig(field: TaskFieldDefinition): ChecklistDisplayConfig {
+  const source =
+    isRecord(field.config) && isRecord(field.config.checklistDisplay)
+      ? (field.config.checklistDisplay as Record<string, unknown>)
+      : {};
+
+  const label = typeof source.label === "string" && source.label.trim().length > 0
+    ? source.label.trim()
+    : field.label || DEFAULT_CHECKLIST_DISPLAY.label;
+  const icon = typeof source.icon === "string" && CHECKLIST_ICON_OPTIONS.has(source.icon as TaskTypeIconName)
+    ? (source.icon as TaskTypeIconName)
+    : DEFAULT_CHECKLIST_DISPLAY.icon;
+
+  return {
+    label,
+    color: sanitizeChecklistColor(source.color),
+    icon
+  };
+}
+
+function buildChecklistItemId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `check-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ChecklistInteractiveDisplay(props: FieldPresentationComponentProps & { compact?: boolean }) {
+  const display = resolveChecklistDisplayConfig(props.field);
+  const [isOpen, setIsOpen] = useState(false);
+  const [draftItemLabel, setDraftItemLabel] = useState("");
+  const [localChecklist, setLocalChecklist] = useState<TaskChecklist>(props.controller.checklistValue ?? { items: [] });
+  const progress = getChecklistProgress(localChecklist);
+  const canMutate = typeof props.onChange === "function" && !props.disabled && !props.readonly;
+  const isSmallDisplay = resolveCardDisplaySize(props) === "small";
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setLocalChecklist(props.controller.checklistValue ?? { items: [] });
+  }, [props.controller.checklistValue]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && containerRef.current?.contains(target)) {
+        return;
+      }
+
+      setIsOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const persistChecklist = (nextChecklist: TaskChecklist) => {
+    setLocalChecklist(nextChecklist);
+    props.onChange?.(nextChecklist);
+  };
+
+  const toggleItem = (itemId: string) => {
+    persistChecklist({
+      items: localChecklist.items.map(item =>
+        item.id === itemId
+          ? {
+              ...item,
+              done: !item.done
+            }
+          : item
+      )
+    });
+  };
+
+  const addItem = () => {
+    const nextLabel = draftItemLabel.trim();
+    if (!nextLabel) {
+      return;
+    }
+
+    persistChecklist({
+      items: [
+        ...localChecklist.items,
+        {
+          id: buildChecklistItemId(),
+          label: nextLabel,
+          done: false
+        }
+      ]
+    });
+    setDraftItemLabel("");
+    setIsOpen(true);
+  };
+
+  const stopCardOpen = (event: { stopPropagation: () => void }) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        "task-field-presentation__checklist-display",
+        isSmallDisplay && "task-field-presentation__checklist-display--compact",
+        isOpen && "is-open"
+      )}
+      style={{ "--task-checklist-accent": display.color } as CSSProperties}
+      onClick={stopCardOpen}
+      onMouseDown={event => event.stopPropagation()}
+      onKeyDown={event => {
+        if (event.key === " " || event.key === "Enter") {
+          stopCardOpen(event);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="task-field-presentation__checklist-display-trigger"
+        onClick={event => {
+          event.stopPropagation();
+          setIsOpen(current => !current);
+        }}
+        aria-expanded={isOpen}
+      >
+        <span className="task-field-presentation__checklist-display-badge" aria-hidden="true">
+          <TaskTypeIcon name={display.icon} />
+        </span>
+        <span className="task-field-presentation__checklist-display-copy">
+          <strong>{display.label}</strong>
+          <span>
+            {isSmallDisplay
+              ? `${progress.done}/${progress.total}`
+              : progress.total === 0
+                ? "Sem itens"
+                : `${progress.total} ${progress.total === 1 ? "item" : "itens"}`}
+          </span>
+        </span>
+        {!isSmallDisplay ? (
+          <span className="task-field-presentation__checklist-display-metric">{`${progress.done}/${progress.total}`}</span>
+        ) : null}
+      </button>
+
+      {isOpen ? (
+        <div className="task-field-presentation__checklist-display-panel">
+          <div className="task-field-presentation__checklist-summary">
+            <span>{`${progress.done}/${progress.total} concluidos`}</span>
+            <span>{`${progress.percent}%`}</span>
+          </div>
+          <div className="task-field-presentation__checklist-progress">
+            <div className="task-field-presentation__checklist-progress-bar" style={{ width: `${progress.percent}%` }} />
+          </div>
+          {localChecklist.items.length === 0 ? (
+            <p className="task-field-presentation__placeholder">Nenhum item criado ainda.</p>
+          ) : (
+            <ul className="task-field-presentation__checklist-items">
+              {localChecklist.items.map(item => (
+                <li key={item.id} className={cn("task-field-presentation__check-item", item.done && "is-done")}>
+                  <button
+                    type="button"
+                    className="task-field-presentation__check-toggle"
+                    onClick={() => toggleItem(item.id)}
+                    disabled={!canMutate}
+                  >
+                    {item.done ? (
+                      <svg viewBox="0 0 14 14" fill="none" aria-hidden="true" width="10" height="10">
+                        <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : null}
+                  </button>
+                  <span className="task-field-presentation__check-label">{item.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="task-field-presentation__checklist-add">
+            <TextInput
+              value={draftItemLabel}
+              onChange={event => setDraftItemLabel(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  addItem();
+                }
+              }}
+              placeholder={`Novo item em ${display.label.toLowerCase()}...`}
+              disabled={!canMutate}
+            />
+            <Button type="button" size="sm" variant="outline" onClick={addItem} disabled={!draftItemLabel.trim() || !canMutate}>
+              Adicionar
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function resolveEmptyText(field: TaskFieldDefinition): string {
   if (field.type === "multi_select" || field.type === "tag") {
     return "Sem itens selecionados.";
@@ -73,6 +322,116 @@ function resolveEmptyText(field: TaskFieldDefinition): string {
 
 function renderEmpty(field: TaskFieldDefinition) {
   return <span className="task-field-presentation__placeholder">{resolveEmptyText(field)}</span>;
+}
+
+type CardDisplaySize = "small" | "mid" | "title" | "description";
+
+function resolveCardDisplaySize(props: Pick<FieldPresentationComponentProps, "context" | "cardArea">): CardDisplaySize {
+  if (props.context !== "card") {
+    return "mid";
+  }
+
+  if (props.cardArea === "title") {
+    return "title";
+  }
+
+  if (props.cardArea === "description") {
+    return "description";
+  }
+
+  if (props.cardArea === "badge" || props.cardArea === "meta" || props.cardArea === "tags") {
+    return "small";
+  }
+
+  return "mid";
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+function buildCardToneStyle(accent?: string | null): CSSProperties | undefined {
+  if (!accent) {
+    return undefined;
+  }
+
+  return {
+    "--task-card-field-accent": accent
+  } as CSSProperties;
+}
+
+function CardSmallDisplay({
+  primary,
+  secondary,
+  accent,
+  leading
+}: {
+  primary: string;
+  secondary?: string | null;
+  accent?: string | null;
+  leading?: ReactNode;
+}) {
+  return (
+    <span className="task-field-presentation__card-small" style={buildCardToneStyle(accent)}>
+      {leading ? <span className="task-field-presentation__card-small-leading">{leading}</span> : null}
+      <span className="task-field-presentation__card-small-copy">
+        <span className="task-field-presentation__card-small-primary">{primary}</span>
+        {secondary ? <span className="task-field-presentation__card-small-secondary">{secondary}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+function CardMidDisplay({
+  primary,
+  secondary,
+  accent,
+  leading
+}: {
+  primary: string;
+  secondary?: string | null;
+  accent?: string | null;
+  leading?: ReactNode;
+}) {
+  return (
+    <span className="task-field-presentation__card-mid" style={buildCardToneStyle(accent)}>
+      {leading ? <span className="task-field-presentation__card-mid-leading">{leading}</span> : null}
+      <span className="task-field-presentation__card-mid-copy">
+        <span className="task-field-presentation__card-mid-primary">{primary}</span>
+        {secondary ? <span className="task-field-presentation__card-mid-secondary">{secondary}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+function renderCardSizedDisplay(
+  props: FieldPresentationComponentProps,
+  input: {
+    primary: string;
+    secondary?: string | null;
+    accent?: string | null;
+    leading?: ReactNode;
+  }
+) {
+  const size = resolveCardDisplaySize(props);
+
+  if (size === "small") {
+    return <CardSmallDisplay {...input} />;
+  }
+
+  return <CardMidDisplay {...input} />;
+}
+
+function shouldShowCardSecondary(props: Pick<FieldPresentationComponentProps, "cardArea" | "context">): boolean {
+  if (props.context !== "card") {
+    return true;
+  }
+
+  return props.cardArea !== "summary" && props.cardArea !== "custom-field";
 }
 
 function resolveOptionStyle(option: TaskFieldOption | null): CSSProperties | undefined {
@@ -158,7 +517,19 @@ function TextFieldCardDisplay(props: FieldPresentationComponentProps) {
     return null;
   }
 
-  return <span className="task-field-presentation__text task-field-presentation__text--card">{props.controller.displayValue}</span>;
+  const size = resolveCardDisplaySize(props);
+
+  if (size === "title") {
+    return <>{props.controller.displayValue}</>;
+  }
+
+  if (size === "description") {
+    return <span className="task-field-presentation__text task-field-presentation__text--card">{props.controller.displayValue}</span>;
+  }
+
+  return renderCardSizedDisplay(props, {
+    primary: truncateText(props.controller.displayValue, size === "small" ? 18 : 42)
+  });
 }
 
 function TextFieldTableDisplay(props: FieldPresentationComponentProps) {
@@ -195,7 +566,16 @@ function LongTextFieldCardDisplay(props: FieldPresentationComponentProps) {
     return null;
   }
 
-  return <p className="task-field-presentation__long-text task-field-presentation__long-text--card">{props.controller.displayValue}</p>;
+  const size = resolveCardDisplaySize(props);
+
+  if (size === "description") {
+    return <span className="task-field-presentation__long-text task-field-presentation__long-text--card">{props.controller.displayValue}</span>;
+  }
+
+  return renderCardSizedDisplay(props, {
+    primary: truncateText(props.controller.displayValue, size === "small" ? 18 : 46),
+    secondary: size === "mid" ? "Texto longo" : null
+  });
 }
 
 function LongTextFieldEdit(props: FieldPresentationComponentProps) {
@@ -225,6 +605,17 @@ function NumberFieldEdit(props: FieldPresentationComponentProps) {
   );
 }
 
+function NumberFieldCardDisplay(props: FieldPresentationComponentProps) {
+  if (props.controller.numberValue == null) {
+    return null;
+  }
+
+  return renderCardSizedDisplay(props, {
+    primary: String(props.controller.numberValue),
+    secondary: resolveCardDisplaySize(props) === "mid" ? "Numero" : null
+  });
+}
+
 function DateFieldDisplay(props: FieldPresentationComponentProps) {
   if (props.controller.isEmpty) {
     return renderEmpty(props.field);
@@ -241,28 +632,39 @@ function DateFieldTableDisplay(props: FieldPresentationComponentProps) {
   return <OptionPill compact option={{ id: props.controller.displayValue, label: props.controller.displayValue, value: props.controller.displayValue, isActive: true }} />;
 }
 
+function DateFieldCardDisplay(props: FieldPresentationComponentProps) {
+  if (props.controller.isEmpty) {
+    return null;
+  }
+
+  return renderCardSizedDisplay(props, {
+    primary: props.controller.displayValue,
+    secondary: shouldShowCardSecondary(props) ? (props.field.type === "datetime" ? "Data e hora" : "Data") : null
+  });
+}
+
 function DateFieldEdit(props: FieldPresentationComponentProps) {
   return (
-    <TextInput
-      type="date"
-      value={props.controller.stringValue}
-      onChange={event => props.controller.setValue(event.target.value || null)}
-      onBlur={props.onBlur}
-      autoFocus={props.autoFocus}
+    <DateTimePicker
+      mode="date"
+      value={props.controller.stringValue ?? ""}
+      onChange={val => props.controller.setValue(val)}
       disabled={props.controller.disabled || props.controller.readonly}
+      autoFocus={props.autoFocus}
+      placeholder="Definir data"
     />
   );
 }
 
 function DatetimeFieldEdit(props: FieldPresentationComponentProps) {
   return (
-    <TextInput
-      type="datetime-local"
+    <DateTimePicker
+      mode="datetime"
       value={toDateTimeLocalInputValue(props.controller.stringValue)}
-      onChange={event => props.controller.setValue(event.target.value || null)}
-      onBlur={props.onBlur}
-      autoFocus={props.autoFocus}
+      onChange={val => props.controller.setValue(val)}
       disabled={props.controller.disabled || props.controller.readonly}
+      autoFocus={props.autoFocus}
+      placeholder="Definir data e hora"
     />
   );
 }
@@ -281,6 +683,19 @@ function SelectFieldTableDisplay(props: FieldPresentationComponentProps) {
   }
 
   return <OptionPill option={props.controller.selectedOption} compact />;
+}
+
+function SelectFieldCardDisplay(props: FieldPresentationComponentProps) {
+  if (props.controller.isEmpty) {
+    return null;
+  }
+
+  const option = props.controller.selectedOption;
+  return renderCardSizedDisplay(props, {
+    primary: option?.label ?? props.controller.displayValue,
+    secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? props.field.label : null,
+    accent: option?.color ?? null
+  });
 }
 
 function SelectFieldEdit(props: FieldPresentationComponentProps) {
@@ -314,7 +729,21 @@ function MultiSelectFieldCardDisplay(props: FieldPresentationComponentProps) {
     return null;
   }
 
-  return <ChipList options={props.controller.selectedOptions} limit={3} />;
+  const size = resolveCardDisplaySize(props);
+  if (size === "small") {
+    const first = props.controller.selectedOptions[0];
+    const extra = props.controller.selectedOptions.length - 1;
+    return renderCardSizedDisplay(props, {
+      primary: first?.label ?? "Selecionado",
+      secondary: extra > 0 ? `+${extra}` : null,
+      accent: first?.color ?? null
+    });
+  }
+
+  return renderCardSizedDisplay(props, {
+    primary: `${props.controller.selectedOptions.length} itens`,
+    secondary: props.controller.selectedOptions.slice(0, 2).map(option => option.label).join(", ")
+  });
 }
 
 function MultiSelectFieldTableDisplay(props: FieldPresentationComponentProps) {
@@ -450,6 +879,14 @@ function BooleanFieldEdit(props: FieldPresentationComponentProps) {
   );
 }
 
+function BooleanFieldCardDisplay(props: FieldPresentationComponentProps) {
+  return renderCardSizedDisplay(props, {
+    primary: props.controller.booleanValue ? "Ativado" : "Desativado",
+    secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? props.field.label : null,
+    accent: props.controller.booleanValue ? "#0a86e8" : "#94a3b8"
+  });
+}
+
 function UserFieldDisplay(props: FieldPresentationComponentProps) {
   if (props.controller.isEmpty) {
     return renderEmpty(props.field);
@@ -502,50 +939,56 @@ function UserFieldEdit(props: FieldPresentationComponentProps) {
   );
 }
 
-function ChecklistFieldDisplay(props: FieldPresentationComponentProps) {
-  const checklist = props.controller.checklistValue ?? { items: [] };
-  const progress = getChecklistProgress(checklist);
-
-  if (progress.total === 0) {
-    return renderEmpty(props.field);
-  }
-
-  return (
-    <div className="task-field-presentation__checklist">
-      <div className="task-field-presentation__checklist-summary">
-        <span>{`${progress.done}/${progress.total} concluidos`}</span>
-        <span>{`${progress.percent}%`}</span>
-      </div>
-      <div className="task-field-presentation__checklist-progress">
-        <div className="task-field-presentation__checklist-progress-bar" style={{ width: `${progress.percent}%` }} />
-      </div>
-      <ul className="task-field-presentation__checklist-items">
-        {checklist.items.map(item => (
-          <li key={item.id} className={cn("task-field-presentation__check-item", item.done && "is-done")}>
-            <button type="button" className="task-field-presentation__check-toggle" disabled>
-              {item.done ? (
-                <svg viewBox="0 0 14 14" fill="none" aria-hidden="true" width="10" height="10">
-                  <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              ) : null}
-            </button>
-            <span className="task-field-presentation__check-label">{item.label}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function ChecklistFieldCardDisplay(props: FieldPresentationComponentProps) {
-  const checklist = props.controller.checklistValue ?? { items: [] };
-  const progress = getChecklistProgress(checklist);
-
-  if (progress.total === 0) {
+function UserFieldCardDisplay(props: FieldPresentationComponentProps) {
+  if (props.controller.isEmpty) {
     return null;
   }
 
-  return <span className="task-field-presentation__table-value">{`${progress.done}/${progress.total} checklist`}</span>;
+  const option = props.controller.selectedOption;
+  const fullLabel = option?.label ?? props.controller.displayValue;
+  const shortLabel = shouldAbbreviateCreatedByOnCard(props.field, fullLabel, "card")
+    ? abbreviatePersonName(fullLabel)
+    : fullLabel;
+
+  return renderCardSizedDisplay(props, {
+    primary: shortLabel,
+    secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? props.field.label : null,
+    accent: option?.color ?? props.membersById?.[props.controller.stringValue]?.color ?? "#7b9abc",
+    leading: <span className="task-field-presentation__card-avatar">{buildInitials(shortLabel)}</span>
+  });
+}
+
+function ChecklistFieldDisplay(props: FieldPresentationComponentProps) {
+  return <ChecklistInteractiveDisplay {...props} />;
+}
+
+function ChecklistFieldCardDisplay(props: FieldPresentationComponentProps) {
+  if (typeof props.onChange !== "function" || props.disabled || props.readonly) {
+    const display = resolveChecklistDisplayConfig(props.field);
+    const checklist = props.controller.checklistValue ?? { items: [] };
+    const progress = getChecklistProgress(checklist);
+
+    if (progress.total === 0) {
+      return renderCardSizedDisplay(props, {
+        primary: display.label,
+        secondary: shouldShowCardSecondary(props) ? "Sem itens" : null,
+        accent: display.color,
+        leading: <TaskTypeIcon name={display.icon} />
+      });
+    }
+
+    return renderCardSizedDisplay(props, {
+      primary: display.label,
+      secondary:
+        resolveCardDisplaySize(props) === "small"
+          ? `${progress.done}/${progress.total}`
+          : `${progress.total} ${progress.total === 1 ? "item" : "itens"}`,
+      accent: display.color,
+      leading: <TaskTypeIcon name={display.icon} />
+    });
+  }
+
+  return <ChecklistInteractiveDisplay {...props} />;
 }
 
 function ChecklistFieldTableDisplay(props: FieldPresentationComponentProps) {
@@ -603,7 +1046,7 @@ function ChecklistFieldEdit(props: FieldPresentationComponentProps) {
       items: [
         ...checklist.items,
         {
-          id: `check-${Date.now()}`,
+          id: buildChecklistItemId(),
           label: nextLabel,
           done: false
         }
@@ -713,41 +1156,82 @@ function ScheduleFieldTableDisplay(props: FieldPresentationComponentProps) {
   return <span className="task-field-presentation__table-value">{[plannedStartAt, plannedEndAt].filter(Boolean).map(formatDateValue).join(" - ")}</span>;
 }
 
-function ScheduleFieldEdit(props: FieldPresentationComponentProps) {
+function ScheduleFieldCardDisplay(props: FieldPresentationComponentProps) {
   const schedule = props.controller.recordValue ?? {};
   const plannedStartAt = typeof schedule.plannedStartAt === "string" ? schedule.plannedStartAt : "";
   const plannedEndAt = typeof schedule.plannedEndAt === "string" ? schedule.plannedEndAt : "";
 
+  if (!plannedStartAt && !plannedEndAt) {
+    return null;
+  }
+
+  return renderCardSizedDisplay(props, {
+    primary: [plannedStartAt, plannedEndAt].filter(Boolean).map(formatDateValue).join(" - "),
+    secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? "Planejamento" : null
+  });
+}
+
+function ScheduleFieldEdit(props: FieldPresentationComponentProps) {
+  const schedule = props.controller.recordValue ?? {};
+  const plannedStartAt = typeof schedule.plannedStartAt === "string" ? schedule.plannedStartAt : "";
+  const plannedEndAt = typeof schedule.plannedEndAt === "string" ? schedule.plannedEndAt : "";
+  const disabled = props.controller.disabled || props.controller.readonly;
+
+  const startLocal = toDateTimeLocalInputValue(plannedStartAt);
+  const endLocal = toDateTimeLocalInputValue(plannedEndAt);
+
+  const hasStart = startLocal.length > 0;
+  const hasEnd = endLocal.length > 0;
+
+  const startTs = parseDateTime(plannedStartAt);
+  const endTs = parseDateTime(plannedEndAt);
+  const endBeforeStart = startTs !== null && endTs !== null && endTs <= startTs;
+
   return (
     <div className="task-field-presentation__schedule-grid">
-      <label className="task-field-presentation__schedule-field">
-        <span>Inicio</span>
-        <TextInput
-          type="datetime-local"
-          value={toDateTimeLocalInputValue(plannedStartAt)}
-          onChange={event =>
-            props.controller.setValue({
-              plannedStartAt: event.target.value || null,
-              plannedEndAt: plannedEndAt || null
-            })
-          }
-          disabled={props.controller.disabled || props.controller.readonly}
+      <div className={`task-field-presentation__schedule-card task-field-presentation__schedule-card--start${hasStart ? " is-filled" : ""}`}>
+        <span className="task-field-presentation__schedule-label">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          Início
+        </span>
+        <DateTimePicker
+          mode="datetime"
+          value={startLocal}
+          onChange={val => props.controller.setValue({ plannedStartAt: val, plannedEndAt: plannedEndAt || null })}
+          disabled={disabled}
+          placeholder="Definir data de início"
         />
-      </label>
-      <label className="task-field-presentation__schedule-field">
-        <span>Fim</span>
-        <TextInput
-          type="datetime-local"
-          value={toDateTimeLocalInputValue(plannedEndAt)}
-          onChange={event =>
-            props.controller.setValue({
-              plannedStartAt: plannedStartAt || null,
-              plannedEndAt: event.target.value || null
-            })
-          }
-          disabled={props.controller.disabled || props.controller.readonly}
+      </div>
+
+      <div className={`task-field-presentation__schedule-card task-field-presentation__schedule-card--end${hasEnd ? " is-filled" : ""}${endBeforeStart ? " is-invalid" : ""}`}>
+        <span className="task-field-presentation__schedule-label">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <rect x="1.5" y="2" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M8.5 1v2M3.5 1v2M1.5 5h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          Fim
+        </span>
+        <DateTimePicker
+          mode="datetime"
+          value={endLocal}
+          onChange={val => props.controller.setValue({ plannedStartAt: plannedStartAt || null, plannedEndAt: val })}
+          disabled={disabled}
+          placeholder="Definir data de fim"
         />
-      </label>
+      </div>
+
+      {endBeforeStart && (
+        <p className="task-field-presentation__schedule-warning">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 1L13 12H1L7 1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M7 5.5v3M7 10v.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          A data de fim deve ser posterior ao início.
+        </p>
+      )}
     </div>
   );
 }
@@ -771,17 +1255,28 @@ function WorkItemTypeDisplay(props: FieldPresentationComponentProps) {
   const iconName = resolveTaskTypeIconName(taskType.id);
 
   if (props.context === "card") {
-    return (
-      <span
-        className="task-card__type-icon"
-        role="img"
-        aria-label={taskType.label}
-        title={taskType.label}
-        style={{ color: taskType.text }}
-      >
-        <TaskTypeIcon name={iconName} />
-      </span>
-    );
+    const size = resolveCardDisplaySize(props);
+
+    if (size === "small") {
+      return (
+        <span
+          className="task-card__type-icon"
+          role="img"
+          aria-label={taskType.label}
+          title={taskType.label}
+          style={{ color: taskType.text }}
+        >
+          <TaskTypeIcon name={iconName} />
+        </span>
+      );
+    }
+
+    return renderCardSizedDisplay(props, {
+      primary: taskType.label,
+      secondary: shouldShowCardSecondary(props) ? "Tipo" : null,
+      accent: taskType.text,
+      leading: <TaskTypeIcon name={iconName} />
+    });
   }
 
   return (
@@ -926,7 +1421,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: NumberFieldEdit,
       contexts: {
         table: { display: TableValueField },
-        card: { display: TableValueField }
+        card: { display: NumberFieldCardDisplay }
       }
     }
   }),
@@ -943,7 +1438,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: DateFieldEdit,
       contexts: {
         table: { display: DateFieldTableDisplay },
-        card: { display: DateFieldTableDisplay }
+        card: { display: DateFieldCardDisplay }
       }
     }
   }),
@@ -960,7 +1455,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: DatetimeFieldEdit,
       contexts: {
         table: { display: DateFieldTableDisplay },
-        card: { display: DateFieldTableDisplay }
+        card: { display: DateFieldCardDisplay }
       }
     }
   }),
@@ -970,7 +1465,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: SelectFieldEdit,
       contexts: {
         table: { display: SelectFieldTableDisplay },
-        card: { display: SelectFieldTableDisplay }
+        card: { display: SelectFieldCardDisplay }
       }
     }
   }),
@@ -991,7 +1486,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: BooleanFieldEdit,
       contexts: {
         table: { display: BooleanFieldDisplay },
-        card: { display: BooleanFieldDisplay }
+        card: { display: BooleanFieldCardDisplay }
       }
     }
   }),
@@ -1001,7 +1496,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: UserFieldEdit,
       contexts: {
         table: { display: UserFieldDisplay },
-        card: { display: UserFieldDisplay }
+        card: { display: UserFieldCardDisplay }
       }
     }
   }),
@@ -1028,7 +1523,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: SelectFieldEdit,
       contexts: {
         table: { display: SelectFieldTableDisplay },
-        card: { display: SelectFieldTableDisplay }
+        card: { display: SelectFieldCardDisplay }
       }
     }
   }),
@@ -1038,7 +1533,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: SelectFieldEdit,
       contexts: {
         table: { display: SelectFieldTableDisplay },
-        card: { display: SelectFieldTableDisplay }
+        card: { display: SelectFieldCardDisplay }
       }
     }
   }),
@@ -1074,7 +1569,7 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       edit: ScheduleFieldEdit,
       contexts: {
         table: { display: ScheduleFieldTableDisplay },
-        card: { display: ScheduleFieldTableDisplay }
+        card: { display: ScheduleFieldCardDisplay }
       }
     }
   }),

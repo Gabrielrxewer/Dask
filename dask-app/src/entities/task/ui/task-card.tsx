@@ -2,6 +2,7 @@ import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
 import { createPortal } from "react-dom";
 import type { MembersById } from "@/entities/member";
 import {
+  matchesTaskFieldStorage,
   priorityMeta
 } from "@/entities/task";
 import { buildTaskCardRenderModel, CARD_SLOT_LIMITS, type TaskCardDebugSnapshot, type TaskCardSlotArea } from "@/entities/task/model/task-card-render-model";
@@ -45,6 +46,7 @@ interface TaskCardProps {
   onOpen?: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
+  onUpdateChecklist?: (taskId: string, checklist: Task["checklist"]) => Promise<void> | void;
 }
 
 export function TaskCard({
@@ -62,7 +64,8 @@ export function TaskCard({
   isDragging = false,
   onOpen,
   onDelete,
-  onUpdatePriority
+  onUpdatePriority,
+  onUpdateChecklist
 }: TaskCardProps) {
   const [isMounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -151,6 +154,18 @@ export function TaskCard({
       statuses={resolvedStatuses}
       task={task}
       membersById={membersById}
+      cardArea={field.area}
+      onChange={
+        typeof onUpdateChecklist === "function" &&
+        field.definition.type === "checklist" &&
+        matchesTaskFieldStorage(field.definition, { kind: "item_property", property: "checklist" })
+          ? value => {
+              if (value && typeof value === "object" && !Array.isArray(value) && "items" in value) {
+                void onUpdateChecklist(task.id, value as Task["checklist"]);
+              }
+            }
+          : undefined
+      }
     />
   );
 
@@ -245,10 +260,10 @@ export function TaskCard({
     const { className, ...nativeProps } = slotProps;
 
     return (
-      <span className={cn("task-card__field", className)} key={field.definition.id} {...nativeProps}>
+      <div className={cn("task-card__field", className)} key={field.definition.id} {...nativeProps}>
         <strong>{field.definition.label}</strong>
         <span className="task-card__field-value">{renderFieldValue(field)}</span>
-      </span>
+      </div>
     );
   };
 
@@ -257,9 +272,9 @@ export function TaskCard({
     const { className, ...nativeProps } = slotProps;
 
     return (
-      <span className={className} key={field.definition.id} {...nativeProps}>
+      <div className={className} key={field.definition.id} {...nativeProps}>
         {renderFieldValue(field)}
-      </span>
+      </div>
     );
   };
 

@@ -68,6 +68,15 @@ const scheduleField: TaskFieldDefinition = {
   storage: { kind: "legacy_fields", property: "schedule" }
 };
 
+const checklistField: TaskFieldDefinition = {
+  id: "sys:checklist",
+  definitionId: "field-checklist",
+  label: "Checklist",
+  slug: "sys:checklist",
+  type: "checklist",
+  storage: { kind: "item_property", property: "checklist" }
+};
+
 const customSelectField: TaskFieldDefinition = {
   id: "impact-level",
   definitionId: "field-impact-level",
@@ -90,7 +99,7 @@ describe("field-registry", () => {
 
   it("monta payloads dirigidos por tipo e storage", () => {
     const payload = buildTaskInputFromFieldDrafts(
-      [titleField, statusField, tagsField, scheduleField, customSelectField],
+      [titleField, statusField, tagsField, scheduleField, checklistField, customSelectField],
       {
         "sys:title": "Rollout confirmado",
         "sys:status": "done",
@@ -98,6 +107,12 @@ describe("field-registry", () => {
         "sys:schedule": {
           plannedStartAt: "2026-05-05T09:00",
           plannedEndAt: "2026-05-05T11:00"
+        },
+        "sys:checklist": {
+          items: [
+            { id: "chk-3", label: "Criar task no card", done: true },
+            { id: "chk-4", label: "Persistir no banco", done: false }
+          ]
         },
         "impact-level": "medium"
       }
@@ -109,6 +124,12 @@ describe("field-registry", () => {
     expect(payload.fields).toEqual({
       plannedStartAt: "2026-05-05T09:00",
       plannedEndAt: "2026-05-05T11:00"
+    });
+    expect(payload.checklist).toEqual({
+      items: [
+        { id: "chk-3", label: "Criar task no card", done: true },
+        { id: "chk-4", label: "Persistir no banco", done: false }
+      ]
     });
     expect(payload.customFieldValues).toEqual({
       "field-impact-level": "medium"

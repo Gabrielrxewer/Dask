@@ -4,6 +4,7 @@ import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
 import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
 import {
+  applyFieldDefinitionOverrides,
   applyFieldCapabilityOverrides,
   buildBoardMetrics,
   factoryBoardConfig,
@@ -85,8 +86,11 @@ export function BoardPage() {
     statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
     taskTypes: Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes,
     fieldDefinitions: applyFieldCapabilityOverrides(
-      mergeCardFieldDefinitions(
-        Array.isArray(rawBoardConfig?.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : factoryBoardConfig.fieldDefinitions
+      applyFieldDefinitionOverrides(
+        mergeCardFieldDefinitions(
+          Array.isArray(rawBoardConfig?.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : factoryBoardConfig.fieldDefinitions
+        ),
+        snapshot?.preferences.settings
       ),
       snapshot?.preferences.settings
     ),
@@ -296,6 +300,10 @@ export function BoardPage() {
     return updateTaskSchedule(taskId, input);
   };
 
+  const handleUpdateTaskChecklist = (taskId: string, checklist: Task["checklist"]) => {
+    return updateTask(taskId, { checklist });
+  };
+
   const boardSubtitle =
     activeBoardTasks.length === 0 && filter.query.trim().length > 0
       ? "Nenhum item encontrado para essa busca."
@@ -357,6 +365,7 @@ export function BoardPage() {
               onUpdateTaskDescription={handleUpdateTaskDescription}
               onUpdateTaskCustomField={handleUpdateTaskCustomField}
               onUpdateTaskSchedule={handleUpdateTaskSchedule}
+              onUpdateTaskChecklist={handleUpdateTaskChecklist}
               onSaveTask={updateTask}
               aiAgents={aiAgents}
               availableTags={availableTags}

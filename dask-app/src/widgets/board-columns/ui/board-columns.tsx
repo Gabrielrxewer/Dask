@@ -36,6 +36,7 @@ interface BoardColumnsProps {
     value: TaskCustomFieldValue
   ) => Promise<void> | void;
   onUpdateTaskSchedule: (taskId: string, input: TaskScheduleInput) => Promise<void> | void;
+  onUpdateTaskChecklist: (taskId: string, checklist: Task["checklist"]) => Promise<void> | void;
   onSaveTask: (taskId: string, input: UpdateTaskInput) => Promise<void> | void;
   onCreateTask?: (statusId: TaskStatusId, input: CreateTaskInput) => void | Promise<void>;
   createTaskTypes?: Array<{ id: string; label: string }>;
@@ -175,6 +176,7 @@ export function BoardColumns({
   onUpdateTaskDescription,
   onUpdateTaskCustomField,
   onUpdateTaskSchedule,
+  onUpdateTaskChecklist,
   onSaveTask,
   onCreateTask,
   createTaskTypes,
@@ -366,6 +368,7 @@ export function BoardColumns({
                       onOpen={setSelectedTaskId}
                       onDelete={handleRequestDeleteTask}
                       onUpdatePriority={onUpdatePriority}
+                      onUpdateChecklist={onUpdateTaskChecklist}
                     />
                   </div>
                 ))}

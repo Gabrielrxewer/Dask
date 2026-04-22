@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  applyFieldDefinitionOverrides,
   applyFieldCapabilityOverrides,
   mergeCardFieldDefinitions
 } from "@/entities/task";
@@ -322,8 +323,11 @@ export function CustomFieldsSettings() {
   );
 
   const allFields = useMemo(() => {
-    const merged = mergeCardFieldDefinitions(
-      Array.isArray(snapshot?.boardConfig.fieldDefinitions) ? snapshot.boardConfig.fieldDefinitions : []
+    const merged = applyFieldDefinitionOverrides(
+      mergeCardFieldDefinitions(
+        Array.isArray(snapshot?.boardConfig.fieldDefinitions) ? snapshot.boardConfig.fieldDefinitions : []
+      ),
+      snapshot?.preferences.settings
     );
 
     return applyFieldCapabilityOverrides(merged, snapshot?.preferences.settings);

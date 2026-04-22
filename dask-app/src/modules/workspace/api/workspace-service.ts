@@ -256,6 +256,7 @@ export const workspaceService: WorkspaceService = {
       ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId } : {}),
       ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
       ...(input.tags !== undefined ? { tags: input.tags } : {}),
+      ...(input.checklist !== undefined ? { checklist: input.checklist } : {}),
       ...(input.fields !== undefined ? { fields: input.fields } : {}),
       ...(input.customFieldValues !== undefined ? { customFieldValues: input.customFieldValues } : {}),
       metadata: { priority: input.priority }
@@ -377,6 +378,10 @@ export const workspaceService: WorkspaceService = {
 
     if (input.priority !== undefined) {
       payload.metadata = { priority: input.priority };
+    }
+
+    if (input.checklist !== undefined) {
+      payload.checklist = input.checklist;
     }
 
     if (input.fields !== undefined) {

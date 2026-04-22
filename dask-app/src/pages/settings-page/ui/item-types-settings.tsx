@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ApiItemType } from "@/modules/workspace/model";
 import {
+  applyFieldDefinitionOverrides,
   applyFieldCapabilityOverrides,
   CARD_FIELDS_SCHEMA_VERSION,
   factoryBoardConfig,
@@ -88,8 +89,11 @@ export function ItemTypesSettings() {
 
   const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const allFields = applyFieldCapabilityOverrides(
-    mergeCardFieldDefinitions(
-      Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : []
+    applyFieldDefinitionOverrides(
+      mergeCardFieldDefinitions(
+        Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : []
+      ),
+      snapshot?.preferences.settings
     ),
     snapshot?.preferences.settings
   );

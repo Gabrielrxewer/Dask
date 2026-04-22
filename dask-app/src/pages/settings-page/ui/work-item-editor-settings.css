@@ -706,9 +706,25 @@
   cursor: grab;
   border-radius: 10px;
   transition: box-shadow 0.12s, background 0.12s;
+  user-select: none;
+  -webkit-user-drag: element;
 }
 
 .wie__card-field:active { cursor: grabbing; }
+
+.wie__card-field > * {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.wie__card-field button,
+.wie__card-field input,
+.wie__card-field textarea,
+.wie__card-field select,
+.wie__card-field a {
+  pointer-events: none;
+}
 
 .wie__card-field.is-selected {
   outline: 2px solid #0a86e8;
@@ -1545,6 +1561,11 @@
   flex-shrink: 0;
 }
 
+.wie__props-checklist-display {
+  display: grid;
+  gap: 10px;
+}
+
 .wie__props-actions {
   display: flex;
   flex-direction: column;
@@ -1889,6 +1910,7 @@
 
 .app-theme[data-theme="dark"] .wie__field-editor-stage,
 .app-theme[data-theme="dark"] .wie__card-stage,
+.app-theme[data-theme="dark"] .wie__form-stage,
 .app-theme[data-theme="dark"] .wie__canvas-panel--card,
 .app-theme[data-theme="dark"] .wie__canvas-panel--field {
   background:
@@ -1900,6 +1922,15 @@
 .app-theme[data-theme="dark"] .wie__props-panel,
 .app-theme[data-theme="dark"] .wie__detail-slot-wrap {
   background: transparent !important;
+}
+
+.app-theme[data-theme="dark"] .wie__form-hero,
+.app-theme[data-theme="dark"] .wie__form-summary-panel,
+.app-theme[data-theme="dark"] .wie__form-zone,
+.app-theme[data-theme="dark"] .wie__form-summary-chips span {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .wie__tab.is-active,
@@ -1952,12 +1983,19 @@
 .app-theme[data-theme="dark"] .wie__slot-row-label,
 .app-theme[data-theme="dark"] .wie__slot-row-count,
 .app-theme[data-theme="dark"] .wie__props-area-label,
+.app-theme[data-theme="dark"] .wie__form-hero-copy > span,
+.app-theme[data-theme="dark"] .wie__form-hero-copy p,
+.app-theme[data-theme="dark"] .wie__form-eyebrow,
+.app-theme[data-theme="dark"] .wie__form-zone-head span,
+.app-theme[data-theme="dark"] .wie__form-zone-empty,
 .app-theme[data-theme="dark"] .wie__field-editor-empty span,
 .app-theme[data-theme="dark"] .wie__field-editor-empty p {
   color: var(--text-soft) !important;
 }
 
 .app-theme[data-theme="dark"] .wie__field-editor-empty strong,
+.app-theme[data-theme="dark"] .wie__form-hero-copy h3,
+.app-theme[data-theme="dark"] .wie__form-zone-head strong,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-type,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-badges span {
   color: var(--text-strong) !important;
@@ -2047,6 +2085,7 @@
 .app-theme[data-theme="dark"] .wie__canvas-tab-count,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-type,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-badges span,
+.app-theme[data-theme="dark"] .wie__form-summary-chips span,
 .app-theme[data-theme="dark"] .wie__detail-preview-pill,
 .app-theme[data-theme="dark"] .wie__props-badge,
 .app-theme[data-theme="dark"] .wie__props-type-badge {

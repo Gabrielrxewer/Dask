@@ -87,6 +87,22 @@ function readCapabilityOverridesById(settings?: Record<string, unknown>): Record
   }, {});
 }
 
+function readFieldDefinitionOverridesById(settings?: Record<string, unknown>): Record<string, Record<string, unknown>> {
+  const source = settings?.fieldDefinitionsById;
+  if (!isRecord(source)) {
+    return {};
+  }
+
+  return Object.entries(source).reduce<Record<string, Record<string, unknown>>>((acc, [fieldId, value]) => {
+    if (!isRecord(value)) {
+      return acc;
+    }
+
+    acc[fieldId] = value;
+    return acc;
+  }, {});
+}
+
 export function applyFieldCapabilityOverrides(
   fieldDefinitions: TaskFieldDefinition[],
   settings?: Record<string, unknown>
@@ -121,6 +137,37 @@ export function applyFieldCapabilityOverrides(
     return {
       ...definition,
       capabilities: nextCapabilities
+    };
+  });
+}
+
+export function applyFieldDefinitionOverrides(
+  fieldDefinitions: TaskFieldDefinition[],
+  settings?: Record<string, unknown>
+): TaskFieldDefinition[] {
+  const overridesById = readFieldDefinitionOverridesById(settings);
+  if (Object.keys(overridesById).length === 0) {
+    return fieldDefinitions;
+  }
+
+  return fieldDefinitions.map(definition => {
+    const override = overridesById[definition.id];
+    if (!override) {
+      return definition;
+    }
+
+    return {
+      ...definition,
+      label: typeof override.label === "string" && override.label.trim().length > 0 ? override.label : definition.label,
+      name: typeof override.name === "string" && override.name.trim().length > 0 ? override.name : definition.name,
+      type: typeof override.type === "string" ? (override.type as TaskFieldDefinition["type"]) : definition.type,
+      required: typeof override.required === "boolean" ? override.required : definition.required,
+      options: Array.isArray(override.options) ? (override.options as TaskFieldDefinition["options"]) : definition.options,
+      config: {
+        ...(definition.config ?? {}),
+        ...(typeof override.allowAiGeneration === "boolean" ? { allowAiGeneration: override.allowAiGeneration } : {}),
+        ...(isRecord(override.checklistDisplay) ? { checklistDisplay: override.checklistDisplay } : {})
+      }
     };
   });
 }

@@ -5,6 +5,7 @@ import type {
   Task,
   TaskChecklist,
   TaskCustomFieldValue,
+  TaskFieldCardArea,
   TaskFieldDefinition,
   TaskFieldOption,
   TaskFieldType,
@@ -45,6 +46,7 @@ export interface FieldPresentationProps extends FieldPresentationEnvironment {
   onBlur?: () => void;
   error?: string | null;
   placeholder?: string;
+  cardArea?: TaskFieldCardArea;
 }
 
 export type FieldTypeBehaviorInput = FieldPresentationEnvironment & {

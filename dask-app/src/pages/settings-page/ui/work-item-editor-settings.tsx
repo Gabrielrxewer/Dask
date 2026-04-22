@@ -125,6 +125,8 @@ interface FieldDraft {
   required: boolean;
   allowAiGeneration: boolean;
   options: FieldOptionDraft[];
+  checklistIcon: string;
+  checklistColor: string;
 }
 
 interface PendingFieldSetup {
@@ -138,6 +140,8 @@ interface PendingFieldSetup {
   required: boolean;
   allowAiGeneration: boolean;
   options: FieldOptionDraft[];
+  checklistIcon: string;
+  checklistColor: string;
 }
 
 type DragPayload =
@@ -177,6 +181,19 @@ function supportsSelectableOptions(type: CustomFieldType): boolean {
   return type === "select" || type === "multi_select";
 }
 
+function readChecklistDisplaySettings(source: Record<string, unknown> | null | undefined): { icon: string; color: string } {
+  const display =
+    source && typeof source === "object" && !Array.isArray(source) &&
+    source.checklistDisplay && typeof source.checklistDisplay === "object" && !Array.isArray(source.checklistDisplay)
+      ? (source.checklistDisplay as Record<string, unknown>)
+      : {};
+
+  return {
+    icon: typeof display.icon === "string" && display.icon.trim().length > 0 ? display.icon : "checklist",
+    color: typeof display.color === "string" && /^#[0-9a-fA-F]{6}$/.test(display.color) ? display.color : "#0a86e8"
+  };
+}
+
 function readAllowAiGeneration(settings: ApiCustomField["settings"]): boolean {
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return false;
   return settings.allowAiGeneration === true;
@@ -197,14 +214,16 @@ function readFieldCapabilitiesById(settings?: Record<string, unknown>): Record<s
   );
 }
 
-function readFieldDefinitionOverridesById(settings?: Record<string, unknown>): Record<string, Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean }> {
+function readFieldDefinitionOverridesById(
+  settings?: Record<string, unknown>
+): Record<string, Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean; checklistDisplay?: Record<string, unknown> }> {
   const source = settings?.fieldDefinitionsById;
   if (!source || typeof source !== "object" || Array.isArray(source)) return {};
 
-  return Object.entries(source as Record<string, unknown>).reduce<Record<string, Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean }>>(
+  return Object.entries(source as Record<string, unknown>).reduce<Record<string, Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean; checklistDisplay?: Record<string, unknown> }>>(
     (acc, [id, value]) => {
       if (value && typeof value === "object" && !Array.isArray(value)) {
-        acc[id] = value as Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean };
+        acc[id] = value as Partial<TaskFieldDefinition> & { allowAiGeneration?: boolean; checklistDisplay?: Record<string, unknown> };
       }
       return acc;
     },
@@ -232,7 +251,8 @@ function applyFieldDefinitionOverrides(
       options: Array.isArray(override.options) ? (override.options as TaskFieldDefinition["options"]) : definition.options,
       config: {
         ...(definition.config ?? {}),
-        ...(typeof override.allowAiGeneration === "boolean" ? { allowAiGeneration: override.allowAiGeneration } : {})
+        ...(typeof override.allowAiGeneration === "boolean" ? { allowAiGeneration: override.allowAiGeneration } : {}),
+        ...(override.checklistDisplay && typeof override.checklistDisplay === "object" ? { checklistDisplay: override.checklistDisplay } : {})
       }
     };
   });
@@ -273,6 +293,7 @@ function createEmptyOptionDraft(index: number): FieldOptionDraft {
 }
 
 function buildFieldDraftFromApiField(raw: ApiCustomField, runtimeFieldId: string): FieldDraft {
+  const checklistDisplay = readChecklistDisplaySettings((raw.settings as Record<string, unknown> | null | undefined) ?? undefined);
   return {
     id: raw.id,
     runtimeFieldId,
@@ -280,11 +301,14 @@ function buildFieldDraftFromApiField(raw: ApiCustomField, runtimeFieldId: string
     type: raw.type as CustomFieldType,
     required: raw.required,
     allowAiGeneration: readAllowAiGeneration(raw.settings),
-    options: mapApiOptionsToDraft(raw.options)
+    options: mapApiOptionsToDraft(raw.options),
+    checklistIcon: checklistDisplay.icon,
+    checklistColor: checklistDisplay.color
   };
 }
 
 function buildFieldDraftFromDefinition(field: TaskFieldDefinition): FieldDraft {
+  const checklistDisplay = readChecklistDisplaySettings((field.config as Record<string, unknown> | null | undefined) ?? undefined);
   return {
     id: field.definitionId ?? field.id,
     runtimeFieldId: field.id,
@@ -296,7 +320,9 @@ function buildFieldDraftFromDefinition(field: TaskFieldDefinition): FieldDraft {
       id: option.id || `field-opt-${index}`,
       label: option.label,
       value: option.value
-    }))
+    })),
+    checklistIcon: checklistDisplay.icon,
+    checklistColor: checklistDisplay.color
   };
 }
 
@@ -879,7 +905,9 @@ export function WorkItemEditorSettings() {
           name: "",
           required: false,
           allowAiGeneration: false,
-          options: []
+          options: [],
+          checklistIcon: "checklist",
+          checklistColor: "#0a86e8"
         });
         updateDropTarget(null);
         return;
@@ -1042,7 +1070,15 @@ export function WorkItemEditorSettings() {
               type: draft.type,
               required: draft.required,
               options: supportsSelectableOptions(draft.type as CustomFieldType) ? normalizedOptions : [],
-              allowAiGeneration: supportsAiGeneration(draft.type as CustomFieldType) ? draft.allowAiGeneration : false
+              allowAiGeneration: supportsAiGeneration(draft.type as CustomFieldType) ? draft.allowAiGeneration : false,
+              checklistDisplay:
+                draft.type === "checklist"
+                  ? {
+                      icon: draft.checklistIcon,
+                      color: draft.checklistColor,
+                      label: draft.name.trim()
+                    }
+                  : undefined
             }
           }
         }
@@ -1091,7 +1127,18 @@ export function WorkItemEditorSettings() {
         name: pendingFieldSetup.name.trim(),
         type: pendingFieldSetup.type,
         required: pendingFieldSetup.required,
-        settings: { allowAiGeneration: supportsAiGeneration(pendingFieldSetup.type) ? pendingFieldSetup.allowAiGeneration : false },
+        settings: {
+          allowAiGeneration: supportsAiGeneration(pendingFieldSetup.type) ? pendingFieldSetup.allowAiGeneration : false,
+          ...(pendingFieldSetup.type === "checklist"
+            ? {
+                checklistDisplay: {
+                  icon: pendingFieldSetup.checklistIcon,
+                  color: pendingFieldSetup.checklistColor,
+                  label: pendingFieldSetup.name.trim()
+                }
+              }
+            : {})
+        },
         options: supportsSelectableOptions(pendingFieldSetup.type) ? normalizedOptions : []
       });
 
@@ -1167,7 +1214,18 @@ export function WorkItemEditorSettings() {
           name: fieldDraft.name.trim(),
           type: fieldDraft.type as CustomFieldType,
           required: fieldDraft.required,
-          settings: { allowAiGeneration: supportsAiGeneration(fieldDraft.type as CustomFieldType) ? fieldDraft.allowAiGeneration : false },
+          settings: {
+            allowAiGeneration: supportsAiGeneration(fieldDraft.type as CustomFieldType) ? fieldDraft.allowAiGeneration : false,
+            ...(fieldDraft.type === "checklist"
+              ? {
+                  checklistDisplay: {
+                    icon: fieldDraft.checklistIcon,
+                    color: fieldDraft.checklistColor,
+                    label: fieldDraft.name.trim()
+                  }
+                }
+              : {})
+          },
           options: supportsSelectableOptions(fieldDraft.type as CustomFieldType) ? normalizedOptions : []
         });
       }
@@ -1212,7 +1270,9 @@ export function WorkItemEditorSettings() {
       name: "",
       required: false,
       allowAiGeneration: false,
-      options: []
+      options: [],
+      checklistIcon: "checklist",
+      checklistColor: "#0a86e8"
     });
   };
 
@@ -1373,7 +1433,18 @@ export function WorkItemEditorSettings() {
         id: `preview-option-${index + 1}`,
         label: option.label,
         value: option.value
-      }))
+      })),
+      config: {
+        ...(selectedField.config ?? {}),
+        checklistDisplay:
+          fieldDraft.type === "checklist"
+            ? {
+                icon: fieldDraft.checklistIcon,
+                color: fieldDraft.checklistColor,
+                label: fieldDraft.name.trim() || selectedField.label
+              }
+            : (selectedField.config as Record<string, unknown> | null | undefined)?.checklistDisplay
+      }
     };
   }, [fieldDraft, selectedField]);
   const pendingFieldPreview = useMemo<TaskFieldDefinition | null>(() => {
@@ -1388,6 +1459,16 @@ export function WorkItemEditorSettings() {
       required: pendingFieldSetup.required,
       isEditable: true,
       isActive: true,
+      config: {
+        checklistDisplay:
+          pendingFieldSetup.type === "checklist"
+            ? {
+                icon: pendingFieldSetup.checklistIcon,
+                color: pendingFieldSetup.checklistColor,
+                label: pendingFieldSetup.name.trim() || "Novo campo"
+              }
+            : undefined
+      },
       options: normalizeOptionInputs(pendingFieldSetup.options).map((option, index) => ({
         id: `pending-preview-option-${index + 1}`,
         label: option.label,
@@ -1747,6 +1828,30 @@ export function WorkItemEditorSettings() {
               IA no campo
             </label>
           </div>
+          {draft.type === "checklist" ? (
+            <div className="wie__props-checklist-display">
+              <FormField label="Icone do display">
+                <TextInput
+                  value={draft.checklistIcon}
+                  placeholder="checklist, bug, user..."
+                  onChange={(e) => setFieldDraft({ ...draft, checklistIcon: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Cor do display">
+                <div className="wie__props-color-row">
+                  <input
+                    type="color"
+                    value={draft.checklistColor}
+                    onChange={(e) => setFieldDraft({ ...draft, checklistColor: e.target.value })}
+                  />
+                  <TextInput
+                    value={draft.checklistColor}
+                    onChange={(e) => setFieldDraft({ ...draft, checklistColor: e.target.value })}
+                  />
+                </div>
+              </FormField>
+            </div>
+          ) : null}
           {supportsSelectableOptions(draft.type) ? (
             <div className="wie__props-options">
               <div className="wie__props-options-head">
@@ -1833,6 +1938,30 @@ export function WorkItemEditorSettings() {
                 IA no campo
               </label>
             </div>
+            {pendingFieldSetup.type === "checklist" ? (
+              <div className="wie__props-checklist-display">
+                <FormField label="Icone do display">
+                  <TextInput
+                    value={pendingFieldSetup.checklistIcon}
+                    placeholder="checklist, bug, user..."
+                    onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, checklistIcon: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Cor do display">
+                  <div className="wie__props-color-row">
+                    <input
+                      type="color"
+                      value={pendingFieldSetup.checklistColor}
+                      onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, checklistColor: e.target.value })}
+                    />
+                    <TextInput
+                      value={pendingFieldSetup.checklistColor}
+                      onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, checklistColor: e.target.value })}
+                    />
+                  </div>
+                </FormField>
+              </div>
+            ) : null}
             {supportsSelectableOptions(pendingFieldSetup.type) ? (
               <div className="wie__props-options">
                 <div className="wie__props-options-head">

@@ -128,6 +128,9 @@ function ChecklistInteractiveDisplay(props: FieldPresentationComponentProps & { 
   const canMutate = typeof props.onChange === "function" && !props.disabled && !props.readonly;
   const isSmallDisplay = resolveCardDisplaySize(props) === "small";
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const compactChipStyle = isSmallDisplay
+    ? ({ "--task-card-field-accent": display.color } as CSSProperties)
+    : undefined;
 
   useEffect(() => {
     setLocalChecklist(props.controller.checklistValue ?? { items: [] });
@@ -223,26 +226,43 @@ function ChecklistInteractiveDisplay(props: FieldPresentationComponentProps & { 
     >
       <button
         type="button"
-        className="task-field-presentation__checklist-display-trigger"
+        className={cn(
+          "task-field-presentation__checklist-display-trigger",
+          isSmallDisplay && "task-field-presentation__checklist-display-trigger--compact"
+        )}
         onClick={event => {
           event.stopPropagation();
           setIsOpen(current => !current);
         }}
         aria-expanded={isOpen}
       >
-        <span className="task-field-presentation__checklist-display-badge" aria-hidden="true">
-          <TaskTypeIcon name={display.icon} />
-        </span>
-        <span className="task-field-presentation__checklist-display-copy">
-          <strong>{display.label}</strong>
-          <span>
-            {isSmallDisplay
-              ? `${progress.done}/${progress.total}`
-              : progress.total === 0
-                ? "Sem itens"
-                : `${progress.total} ${progress.total === 1 ? "item" : "itens"}`}
+        {isSmallDisplay ? (
+          <span className="task-field-presentation__card-small task-field-presentation__checklist-display-chip" style={compactChipStyle}>
+            <span
+              className="task-field-presentation__checklist-display-badge task-field-presentation__card-mid-leading"
+              aria-hidden="true"
+            >
+              <TaskTypeIcon name={display.icon} />
+            </span>
+            <span className="task-field-presentation__checklist-display-copy task-field-presentation__card-small-copy">
+              <strong className="task-field-presentation__card-small-primary">{`${progress.done}/${progress.total}`}</strong>
+            </span>
           </span>
-        </span>
+        ) : (
+          <>
+            <span className="task-field-presentation__checklist-display-badge" aria-hidden="true">
+              <TaskTypeIcon name={display.icon} />
+            </span>
+            <span className="task-field-presentation__checklist-display-copy">
+              <strong>{display.label}</strong>
+              <span>
+                {progress.total === 0
+                  ? "Sem itens"
+                  : `${progress.total} ${progress.total === 1 ? "item" : "itens"}`}
+              </span>
+            </span>
+          </>
+        )}
         {!isSmallDisplay ? (
           <span className="task-field-presentation__checklist-display-metric">{`${progress.done}/${progress.total}`}</span>
         ) : null}
@@ -431,7 +451,13 @@ function shouldShowCardSecondary(props: Pick<FieldPresentationComponentProps, "c
     return true;
   }
 
-  return props.cardArea !== "summary" && props.cardArea !== "custom-field";
+  return (
+    props.cardArea !== "badge" &&
+    props.cardArea !== "meta" &&
+    props.cardArea !== "tags" &&
+    props.cardArea !== "summary" &&
+    props.cardArea !== "custom-field"
+  );
 }
 
 function resolveOptionStyle(option: TaskFieldOption | null): CSSProperties | undefined {

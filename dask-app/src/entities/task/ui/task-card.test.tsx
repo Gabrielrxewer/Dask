@@ -126,6 +126,52 @@ const createdByBoardConfig: BoardConfig = {
   }
 };
 
+const assigneeAndCreatedByBoardConfig: BoardConfig = {
+  ...factoryBoardConfig,
+  fieldDefinitions: [titleField, assigneeField, createdByField, statusField],
+  fieldBindings: [
+    {
+      id: "binding-title-combined",
+      fieldId: "sys:title",
+      typeId: "bug",
+      displayContext: "card",
+      order: 0,
+      isVisible: true,
+      settings: { cardArea: "title", visualPriority: "primary" }
+    },
+    {
+      id: "binding-status-combined",
+      fieldId: "sys:status",
+      typeId: "bug",
+      displayContext: "card",
+      order: 1,
+      isVisible: true,
+      settings: { cardArea: "badge", visualPriority: "secondary" }
+    },
+    {
+      id: "binding-assignee-combined",
+      fieldId: "sys:assignee",
+      typeId: "bug",
+      displayContext: "card",
+      order: 2,
+      isVisible: true,
+      settings: { cardArea: "summary", visualPriority: "secondary" }
+    },
+    {
+      id: "binding-created-by-combined",
+      fieldId: "sys:created-by",
+      typeId: "bug",
+      displayContext: "card",
+      order: 3,
+      isVisible: true,
+      settings: { cardArea: "summary", visualPriority: "secondary" }
+    }
+  ],
+  cardLayout: {
+    visibleFieldIds: []
+  }
+};
+
 const task: Task = {
   id: "task-1",
   title: "Ajustar preview do kanban",
@@ -171,7 +217,6 @@ describe("TaskCard", () => {
     );
 
     expect(html).toContain("task-card__summary");
-    expect(html).toContain("Responsavel");
     expect(html).toContain("Ana Souza");
     expect(html).not.toContain("task-card__owner");
   });
@@ -288,8 +333,43 @@ describe("TaskCard", () => {
       />
     );
 
-    expect(html).toContain("Criado por");
     expect(html).toContain("Debora O.");
     expect(html).not.toContain("Debora Romitti de Oliveira</span>");
+  });
+
+  it("suprime status e criado por redundantes no board quando o contexto ja mostra essas informacoes", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const html = renderToStaticMarkup(
+      <TaskCard
+        task={task}
+        boardConfig={assigneeAndCreatedByBoardConfig}
+        membersById={{
+          "user-1": {
+            id: "user-1",
+            name: "Ana Souza",
+            initials: "AS",
+            color: "#7b9abc"
+          },
+          "user-2": {
+            id: "user-2",
+            name: "Debora Romitti de Oliveira",
+            initials: "DO",
+            color: "#8ab49c"
+          }
+        }}
+        contextualDisplay={{
+          suppressStatus: true,
+          suppressCreatedByWhenAssigneeVisible: true
+        }}
+        draggable={false}
+        onDragStart={() => undefined}
+        onDragEnd={() => undefined}
+      />
+    );
+
+    expect(html).not.toContain("Backlog");
+    expect(html).toContain("Ana Souza");
+    expect(html).not.toContain("Debora O.");
   });
 });

@@ -44,13 +44,13 @@ import "./work-item-editor-settings.css";
 const DEFAULT_TYPE_COLOR = "#0a86e8";
 
 const CARD_SLOT_AREA_META: Array<{ area: TaskCardSlotArea; label: string }> = [
-  { area: "badge", label: "Badges" },
+  { area: "badge", label: "Topo" },
   { area: "title", label: "Titulo" },
-  { area: "description", label: "Descricao" },
-  { area: "summary", label: "Resumo" },
-  { area: "tags", label: "Tags" },
-  { area: "custom-field", label: "Campos extras" },
-  { area: "meta", label: "Rodape" }
+  { area: "description", label: "Resumo" },
+  { area: "summary", label: "Meta principal" },
+  { area: "tags", label: "Tag principal" },
+  { area: "custom-field", label: "Apoio" },
+  { area: "meta", label: "Base" }
 ];
 
 const CARD_SLOT_AREA_LABELS = Object.fromEntries(
@@ -1600,25 +1600,25 @@ export function WorkItemEditorSettings() {
       dropTarget.index === index;
     const SlotTag = area === "badge" || area === "summary" || area === "meta" ? "span" : "div";
 
-    return (
-      <SlotTag
-        className={`wie__card-empty-slot wie__card-empty-slot--${area}${isTarget ? " is-target" : ""}`}
-        data-slot-area={area}
-        data-drop-intent={isTarget ? "vacancy" : undefined}
+      return (
+        <SlotTag
+          className={`wie__card-empty-slot wie__card-empty-slot--${area}${isTarget ? " is-target" : ""}`}
+          data-slot-area={area}
+          data-drop-intent={isTarget ? "vacancy" : undefined}
         onDragOver={(event) => {
           if (!dragPayload) return;
           event.preventDefault();
           event.stopPropagation();
           event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
           updateDropTarget(target);
-        }}
-        onDrop={(event) => handleDropOnTarget(event, target)}
-      >
-        <span className="wie__card-empty-slot-label">Solte aqui</span>
-        <span className="wie__card-empty-slot-count">{occupiedCount}/{slotLimit}</span>
-      </SlotTag>
-    );
-  };
+          }}
+          onDrop={(event) => handleDropOnTarget(event, target)}
+        >
+          <span className="wie__card-empty-slot-label">+ campo</span>
+          <span className="wie__card-empty-slot-count">{`${occupiedCount}/${slotLimit}`}</span>
+        </SlotTag>
+      );
+    };
 
   const renderLibraryChip = (field: FieldLibraryItem) => {
     const inCard = cardFieldSet.has(field.id);
@@ -2563,6 +2563,10 @@ export function WorkItemEditorSettings() {
                   <TaskCard
                     task={previewTask}
                     boardConfig={previewBoardConfig}
+                    contextualDisplay={{
+                      suppressStatus: true,
+                      suppressCreatedByWhenAssigneeVisible: true
+                    }}
                     membersById={previewMembersById}
                     displayStatuses={previewRuntimeStatuses}
                     draggable={false}

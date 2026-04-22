@@ -619,7 +619,9 @@
   align-items: center;
   justify-content: flex-start;
   padding: 20px 16px;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef5fc 100%);
+  background:
+    radial-gradient(circle at top left, rgba(10, 134, 232, 0.06), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #f2f7fd 100%);
   overflow-y: auto;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
@@ -634,7 +636,7 @@
 }
 
 .wie__card-stage .task-card {
-  width: min(100%, 390px);
+  width: min(100%, 300px);
   margin: 0;
   cursor: default;
   overflow: visible;
@@ -684,15 +686,15 @@
   right: 14px;
   bottom: 12px;
   padding: 9px 12px;
-  border: 1px dashed #c4d8ea;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(196, 216, 234, 0.85);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.84);
   color: #4a7497;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-align: center;
   line-height: 1.4;
-  box-shadow: 0 6px 16px rgba(12, 35, 63, 0.08);
+  box-shadow: 0 10px 20px rgba(12, 35, 63, 0.06);
 }
 
 .wie__stage-hint.is-visible {
@@ -704,8 +706,8 @@
   position: relative;
   min-width: 0;
   cursor: grab;
-  border-radius: 10px;
-  transition: box-shadow 0.12s, background 0.12s;
+  border-radius: 12px;
+  transition: box-shadow 0.12s, background 0.12s, outline-color 0.12s;
   user-select: none;
   -webkit-user-drag: element;
 }
@@ -729,13 +731,13 @@
 .wie__card-field.is-selected {
   outline: 2px solid #0a86e8;
   outline-offset: 2px;
-  background: rgba(10, 134, 232, 0.04);
+  background: rgba(10, 134, 232, 0.03);
 }
 
 .wie__card-field.is-replace-target,
 .wie__detail-field-card.is-replace-target {
-  box-shadow: 0 0 0 2px rgba(10, 134, 232, 0.42);
-  background: rgba(235, 245, 255, 0.92);
+  box-shadow: 0 0 0 2px rgba(10, 134, 232, 0.3);
+  background: rgba(235, 245, 255, 0.56);
 }
 
 .wie__card-field.is-replace-target::after,
@@ -761,20 +763,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 34px;
-  padding: 7px 10px;
-  border: 1px dashed #bfd3e6;
-  border-radius: 11px;
-  background: rgba(246, 250, 255, 0.94);
-  color: #5f7f9f;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px dashed rgba(191, 211, 230, 0.74);
+  border-radius: 999px;
+  background: rgba(248, 251, 255, 0.54);
+  color: #6b88a4;
   transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
 }
 
 .wie__card-empty-slot.is-target {
   border-color: #0a86e8;
-  background: #ebf5ff;
+  background: rgba(235, 245, 255, 0.8);
   color: #0a64b0;
-  box-shadow: 0 0 0 2px rgba(10, 134, 232, 0.12);
+  box-shadow: 0 0 0 2px rgba(10, 134, 232, 0.1);
 }
 
 .wie__card-empty-slot--badge,
@@ -787,26 +789,27 @@
 }
 
 .wie__card-empty-slot--title {
-  min-height: 28px;
+  min-height: 26px;
+  border-radius: 10px;
 }
 
 .wie__card-empty-slot--description,
 .wie__card-empty-slot--custom-field {
-  min-height: 42px;
+  min-height: 34px;
+  border-radius: 12px;
 }
 
 .wie__card-empty-slot-label {
   font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .wie__card-empty-slot-count {
   flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 800;
-  color: #7f9bb5;
+  font-size: 9px;
+  font-weight: 700;
+  color: #88a2ba;
 }
 
 .wie__card-empty-slot.is-target .wie__card-empty-slot-count {
@@ -1914,7 +1917,7 @@
 .app-theme[data-theme="dark"] .wie__canvas-panel--card,
 .app-theme[data-theme="dark"] .wie__canvas-panel--field {
   background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent-soft) 12%, transparent), transparent 30%),
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent-soft) 8%, transparent), transparent 30%),
     linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) 0%, color-mix(in oklab, var(--surface-muted) 92%, var(--panel)) 100%) !important;
 }
 
@@ -2006,6 +2009,26 @@
 .app-theme[data-theme="dark"] .wie__detail-insert-target {
   border-color: var(--line) !important;
   background: var(--surface-muted) !important;
+}
+
+.app-theme[data-theme="dark"] .wie__stage-hint,
+.app-theme[data-theme="dark"] .wie__card-empty-slot {
+  background: color-mix(in oklab, var(--surface-raised) 72%, transparent) !important;
+  border-color: color-mix(in oklab, var(--line) 72%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.app-theme[data-theme="dark"] .wie__card-empty-slot.is-target,
+.app-theme[data-theme="dark"] .wie__stage-hint.is-visible {
+  background: color-mix(in oklab, var(--selected-bg) 62%, var(--surface-raised)) !important;
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line)) !important;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 12%, transparent) !important;
+}
+
+.app-theme[data-theme="dark"] .wie__card-empty-slot-count,
+.app-theme[data-theme="dark"] .wie__stage-hint,
+.app-theme[data-theme="dark"] .wie__card-empty-slot-label {
+  color: var(--text-soft) !important;
 }
 
 .app-theme[data-theme="dark"] .wie input,

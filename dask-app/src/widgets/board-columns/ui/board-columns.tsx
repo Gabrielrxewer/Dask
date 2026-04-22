@@ -356,6 +356,10 @@ export function BoardColumns({
                       task={task}
                       boardConfig={boardConfig}
                       compact={compactCards}
+                      contextualDisplay={{
+                        suppressStatus: true,
+                        suppressCreatedByWhenAssigneeVisible: true
+                      }}
                       membersById={membersById}
                       displayStatuses={statuses}
                       statusLabel={status.label}

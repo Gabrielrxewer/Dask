@@ -1,12 +1,10 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import { BoardColumns } from "@/widgets/board-columns";
 import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
 import {
   applyFieldDefinitionOverrides,
   applyFieldCapabilityOverrides,
-  buildBoardMetrics,
   factoryBoardConfig,
   mergeCardFieldDefinitions,
   type BoardConfig,
@@ -161,7 +159,6 @@ export function BoardPage() {
     [tasks, filter, boardConfig, activeMembers, activeUser]
   );
 
-  const devMetrics = useMemo(() => buildBoardMetrics(tasks), [tasks]);
   const activePerspective = boardPerspectives.find(perspective => perspective.id === mode) ?? boardPerspectives[0];
 
   const mapTasksForPerspective = useMemo(
@@ -212,32 +209,6 @@ export function BoardPage() {
 
   const activeStatuses = boardColumnsPerspective?.statuses ?? activePerspective?.statuses ?? boardConfig.statuses;
   const activeBoardTasks = boardColumnsPerspective?.tasks ?? mapTasksForPerspective(filteredTasks);
-  const activePerspectiveTasks = boardColumnsPerspectiveAll?.tasks ?? mapTasksForPerspective(tasks);
-
-  const modeCards = useMemo(() => {
-    if (!activePerspective || activeStatuses.length === 0) {
-      return [
-        { label: "Total de cards", value: devMetrics.total },
-        { label: "Em progresso", value: devMetrics.doing },
-        { label: "Entrega esta semana", value: devMetrics.dueThisWeek },
-        { label: "Concluido", value: `${devMetrics.donePercent}%` }
-      ];
-    }
-
-    const firstStatus = activeStatuses[0];
-    const lastStatus = activeStatuses[activeStatuses.length - 1];
-    const firstCount = firstStatus ? activePerspectiveTasks.filter(task => task.status === firstStatus.id).length : 0;
-    const doneCount = lastStatus ? activePerspectiveTasks.filter(task => task.status === lastStatus.id).length : 0;
-    const donePercent = activePerspectiveTasks.length > 0 ? Math.round((doneCount / activePerspectiveTasks.length) * 100) : 0;
-
-    return [
-      { label: "Total de cards", value: activePerspectiveTasks.length },
-      { label: firstStatus?.label ?? "Primeira coluna", value: firstCount },
-      { label: lastStatus?.label ?? "Ultima coluna", value: doneCount },
-      { label: "Concluido", value: `${donePercent}%` }
-    ];
-  }, [activePerspective, activeStatuses, activePerspectiveTasks, devMetrics]);
-
   const handleMoveTask = (taskId: string, statusId: TaskStatusId, position?: number) => {
     if (useBoardColumnsProjection && apiBoardCols.length > 0) {
       const col = apiBoardCols.find(c => c.id === statusId);
@@ -322,15 +293,21 @@ export function BoardPage() {
 
   return (
     <AppShell
-      metrics={devMetrics}
+      metrics={{
+        total: 0,
+        doing: 0,
+        review: 0,
+        done: 0,
+        dueThisWeek: 0,
+        donePercent: 0,
+        active: 0
+      }}
       noPageScroll
       hidePageHeader
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
       <div className="board-view workspace-view">
-        <BoardMetrics metrics={devMetrics} cards={modeCards} className="board-view__metrics workspace-view__metrics" />
-
         <Section
           title="Board"
           subtitle={boardSubtitle}

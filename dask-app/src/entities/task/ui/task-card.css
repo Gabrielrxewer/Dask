@@ -1,15 +1,14 @@
 .task-card {
   --task-card-priority-soft: color-mix(in oklab, var(--warning) 10%, var(--surface-1));
-  --task-card-priority-soft-strong: color-mix(in oklab, var(--warning) 18%, var(--surface-1));
   --task-card-priority-border: var(--warning);
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--border-default);
   border-left: 4px solid var(--task-card-priority-border);
-  background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
-  padding: 13px 12px 12px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 96%, white) 0%, var(--surface-1) 100%);
+  padding: 12px 12px 11px;
   cursor: grab;
   box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, var(--task-card-priority-soft) 32%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--task-card-priority-soft) 18%, transparent),
     var(--shadow-soft);
   animation: board-rise 0.35s ease both;
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
@@ -81,8 +80,9 @@
 .task-card__head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
 .task-card__badges {
@@ -112,10 +112,10 @@
 }
 
 .task-card__priority {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  padding: 4px 9px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 0;
   cursor: pointer;
@@ -154,9 +154,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
   border: 0;
   background: color-mix(in oklab, var(--surface-1) 72%, transparent);
   color: var(--text-muted);
@@ -403,12 +403,12 @@
 }
 
 .task-card__title {
-  margin: 10px 0 6px;
-  font-size: 1rem;
-  font-weight: 700;
+  margin: 0 0 4px;
+  font-size: 0.98rem;
+  font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--text-strong);
-  line-height: 1.24;
+  line-height: 1.28;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -417,47 +417,42 @@
 .task-card__text {
   margin: 0;
   color: var(--text-soft);
-  font-size: 0.79rem;
-  font-weight: 500;
-  line-height: 1.42;
+  font-size: 0.84rem;
+  font-weight: 400;
+  line-height: 1.45;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
 .task-card__summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
   margin-top: 10px;
 }
 
 .task-card__summary-item {
-  display: grid;
-  gap: 3px;
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
-  padding: 7px 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: var(--surface-2);
+  width: 100%;
+  max-width: none;
 }
 
-.task-card__summary-item strong {
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+.task-card__summary .task-field-presentation__card-small,
+.task-card__summary .task-field-presentation__card-mid,
+.task-card__summary .task-field-presentation__checklist-display-chip {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start;
 }
 
-.task-card__summary-item span {
+.task-card__summary .task-field-presentation__card-small-copy,
+.task-card__summary .task-field-presentation__card-mid-copy {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-primary);
+  flex: 1;
 }
 
 .task-card__tags {
@@ -486,42 +481,28 @@
   margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 7px;
 }
 
 .task-card__field {
-  display: grid;
-  gap: 4px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 6px 8px;
-  font-size: var(--font-size-2xs);
-  color: var(--text-primary);
-  background: var(--surface-2);
-}
-
-.task-card__field strong {
-  font-weight: 700;
-  color: var(--text-secondary);
-  font-size: 0.64rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
 }
 
 .task-card__field-value {
-  font-size: 0.74rem;
-  font-weight: 700;
+  font-size: 0.76rem;
+  font-weight: 500;
   color: var(--text-primary);
   line-height: 1.25;
   word-break: break-word;
 }
 
 .task-card__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: block;
   margin-top: 12px;
-  gap: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border-subtle);
 }
@@ -557,22 +538,52 @@
 }
 
 .task-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.task-card__meta > * {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+}
+
+.task-card__meta .task-field-presentation__card-small,
+.task-card__meta .task-field-presentation__card-mid,
+.task-card__meta .task-field-presentation__checklist-display-chip {
+  width: 100%;
+  max-width: none;
+}
+
+.task-card__meta .task-field-presentation__checklist-display,
+.task-card__meta .task-field-presentation__checklist-display-trigger--compact {
+  width: 100%;
+}
+
+.task-card__meta .task-field-presentation__checklist-display-chip,
+.task-card__meta .task-field-presentation__card-small,
+.task-card__meta .task-field-presentation__card-mid {
+  justify-content: flex-start;
+}
+
+.task-card__meta .task-field-presentation__card-small-copy,
+.task-card__meta .task-field-presentation__card-mid-copy {
+  min-width: 0;
+  flex: 1;
 }
 
 @media (max-width: 520px) {
-  .task-card__summary {
-    grid-template-columns: 1fr;
+  .task-card {
+    padding-inline: 11px;
   }
 
+  .task-card__summary,
   .task-card__fields {
     grid-template-columns: 1fr;
   }

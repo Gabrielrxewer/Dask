@@ -16,6 +16,10 @@ interface TaskCardProps {
   boardConfig: BoardConfig;
   compact?: boolean;
   draggable?: boolean;
+  contextualDisplay?: {
+    suppressStatus?: boolean;
+    suppressCreatedByWhenAssigneeVisible?: boolean;
+  };
   getFieldSlotProps?: (slot: {
     fieldId: string;
     area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
@@ -54,6 +58,7 @@ export function TaskCard({
   boardConfig,
   compact = false,
   draggable = true,
+  contextualDisplay,
   getFieldSlotProps,
   renderEmptySlot,
   membersById,
@@ -87,13 +92,40 @@ export function TaskCard({
     [boardConfig, membersById, resolvedStatuses, task]
   );
 
-  const badgeFields = resolvedFields.filter(field => field.area === "badge");
-  const titleFields = resolvedFields.filter(field => field.area === "title");
-  const descriptionFields = resolvedFields.filter(field => field.area === "description");
-  const summaryFields = resolvedFields.filter(field => field.area === "summary");
-  const tagFields = resolvedFields.filter(field => field.area === "tags");
-  const customFields = resolvedFields.filter(field => field.area === "custom-field");
-  const metaFields = resolvedFields.filter(field => field.area === "meta");
+  const filteredFields = useMemo(() => {
+    const shouldSuppressStatus = contextualDisplay?.suppressStatus === true;
+    const shouldSuppressCreatedBy = contextualDisplay?.suppressCreatedByWhenAssigneeVisible === true;
+    const hasVisibleAssignee = resolvedFields.some(
+      field => matchesTaskFieldStorage(field.definition, { kind: "item_property", property: "assigneeId" })
+    );
+
+    return resolvedFields.filter(field => {
+      if (
+        shouldSuppressStatus &&
+        matchesTaskFieldStorage(field.definition, { kind: "item_property", property: "stateSlug" })
+      ) {
+        return false;
+      }
+
+      if (
+        shouldSuppressCreatedBy &&
+        hasVisibleAssignee &&
+        matchesTaskFieldStorage(field.definition, { kind: "item_property", property: "createdBy" })
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [contextualDisplay?.suppressCreatedByWhenAssigneeVisible, contextualDisplay?.suppressStatus, resolvedFields]);
+
+  const badgeFields = filteredFields.filter(field => field.area === "badge");
+  const titleFields = filteredFields.filter(field => field.area === "title");
+  const descriptionFields = filteredFields.filter(field => field.area === "description");
+  const summaryFields = filteredFields.filter(field => field.area === "summary");
+  const tagFields = filteredFields.filter(field => field.area === "tags");
+  const customFields = filteredFields.filter(field => field.area === "custom-field");
+  const metaFields = filteredFields.filter(field => field.area === "meta");
   const emptySlotCountByArea = {
     badge: Math.max(0, CARD_SLOT_LIMITS.badge - badgeFields.length),
     title: Math.max(0, CARD_SLOT_LIMITS.title - titleFields.length),
@@ -249,8 +281,7 @@ export function TaskCard({
 
     return (
       <span className={cn("task-card__summary-item", className)} key={field.definition.id} {...nativeProps}>
-        <strong>{field.definition.label}</strong>
-        <span>{renderFieldValue(field)}</span>
+        {renderFieldValue(field)}
       </span>
     );
   };
@@ -261,7 +292,6 @@ export function TaskCard({
 
     return (
       <div className={cn("task-card__field", className)} key={field.definition.id} {...nativeProps}>
-        <strong>{field.definition.label}</strong>
         <span className="task-card__field-value">{renderFieldValue(field)}</span>
       </div>
     );

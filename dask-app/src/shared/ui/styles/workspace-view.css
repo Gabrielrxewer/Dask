@@ -9,9 +9,9 @@
 
 .workspace:has(.workspace-view) {
   background:
-    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 8%, transparent) 0%, transparent 34%),
+    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 7%, transparent) 0%, transparent 34%),
     var(--workspace-view-surface-soft);
-  border-color: var(--workspace-view-frame-border, #d8e4ee);
+  border-color: var(--workspace-view-frame-border, var(--line));
   border-radius: var(--radius-xs);
   box-shadow: var(--shadow-card);
   backdrop-filter: none;
@@ -24,7 +24,7 @@
 .workspace-view__metrics .shared-metric-card {
   min-height: 64px;
   padding: 10px 12px;
-  border-color: var(--workspace-view-card-border, #d8e4ee);
+  border-color: var(--workspace-view-card-border, var(--line));
   border-radius: var(--radius-xs);
   background: var(--workspace-view-surface);
   box-shadow: var(--shadow-card);
@@ -49,7 +49,7 @@
 .workspace-view__section.shared-section,
 .workspace-view__panel.shared-section {
   min-height: 0;
-  border-color: var(--workspace-view-panel-border, #d8e4ee);
+  border-color: var(--workspace-view-panel-border, var(--line));
   border-radius: var(--radius-xs);
   background: var(--workspace-view-surface);
   box-shadow: var(--shadow-card);
@@ -105,7 +105,7 @@
 
 .workspace-view__actions .dashboard-filter .shared-input,
 .workspace-view__actions .dashboard-filter .shared-button {
-  border-color: var(--workspace-view-accent-line, #9fc2e2);
+  border-color: var(--workspace-view-accent-line, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 20%, var(--line)));
   background: var(--surface-overlay);
   box-shadow: var(--shadow-soft);
 }
@@ -116,7 +116,7 @@
 }
 
 .workspace-view__actions .dashboard-filter .shared-button {
-  color: var(--workspace-view-filter-action-text, #214d78);
+  color: var(--workspace-view-filter-action-text, color-mix(in oklab, var(--workspace-view-text, var(--text-strong)) 80%, var(--accent-strong)));
 }
 
 .workspace-view__actions .shared-status-badge {

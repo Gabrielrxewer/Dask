@@ -5,7 +5,7 @@
 }
 
 .shared-tabs__item {
-  border: 1px solid color-mix(in oklab, var(--line) 82%, white 18%);
+  border: 1px solid color-mix(in oklab, var(--line) 84%, white 16%);
   background: var(--surface-overlay);
   color: var(--text-soft);
   border-radius: 18px;
@@ -20,19 +20,19 @@
 
 .shared-tabs__item:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent) 20%, var(--line));
+  border-color: color-mix(in oklab, var(--accent) 18%, var(--line));
   background: var(--surface-overlay-strong);
   color: var(--text-strong);
   box-shadow: var(--shadow-card);
 }
 
 .shared-tabs__item--active {
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
   background:
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 42%, transparent) 0%, color-mix(in oklab, var(--accent) 12%, transparent) 100%),
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 52%, transparent) 0%, color-mix(in oklab, var(--accent) 10%, transparent) 100%),
     var(--surface-overlay-strong);
   color: var(--text-strong);
   box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--accent) 12%, transparent) inset,
     var(--shadow-card);
 }

@@ -11,6 +11,7 @@ import "./global-layout.css";
 
 const homeNavigationItems = [
   { id: "top", label: "Inicio" },
+  { id: "valor", label: "Por que Dask" },
   { id: "inteligencia", label: "Como funciona" },
   { id: "contextos", label: "Adaptabilidade" },
   { id: "estruturas", label: "Estrutura" },
@@ -140,19 +141,18 @@ function getHomeScrollTarget(sectionId: string): HTMLElement | null {
     return null;
   }
 
-  return target.closest(".home-page__view") ?? target;
+  if (sectionId === "top") {
+    return target.closest(".home-page__view") ?? target;
+  }
+
+  return target;
 }
 
 function getHomeSectionScrollTop(scrollContainer: HTMLElement, target: HTMLElement, targetId: string): number {
   const containerRect = scrollContainer.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
-  const defaultTopSpacing = targetId === "top" ? 0 : 14;
-  const alignedTop = targetId === "top"
-    ? 0
-    : targetRect.top - containerRect.top + scrollContainer.scrollTop - defaultTopSpacing;
-
-  if (targetId !== "precos") {
-    return Math.max(0, alignedTop);
+  if (targetId === "top") {
+    return 0;
   }
 
   const centeredTop =
@@ -381,14 +381,26 @@ export function GlobalLayout() {
 
     const updateActiveSection = () => {
       const containerRect = scrollContainer.getBoundingClientRect();
-      const currentSection = homeNavigationItems.reduce((activeId, item) => {
+      const viewportCenter = containerRect.top + containerRect.height / 2;
+      const currentSection = homeNavigationItems.reduce((closestId, item) => {
         const target = getHomeScrollTarget(item.id);
         if (!target) {
-          return activeId;
+          return closestId;
         }
 
-        const targetTop = target.getBoundingClientRect().top - containerRect.top + scrollContainer.scrollTop;
-        return scrollContainer.scrollTop + 120 >= targetTop ? item.id : activeId;
+        const targetRect = target.getBoundingClientRect();
+        const targetCenter = targetRect.top + targetRect.height / 2;
+        const currentDistance = Math.abs(targetCenter - viewportCenter);
+        const closestTarget = getHomeScrollTarget(closestId);
+
+        if (!closestTarget) {
+          return item.id;
+        }
+
+        const closestRect = closestTarget.getBoundingClientRect();
+        const closestCenter = closestRect.top + closestRect.height / 2;
+        const closestDistance = Math.abs(closestCenter - viewportCenter);
+        return currentDistance < closestDistance ? item.id : closestId;
       }, "top");
 
       setActiveHomeSection(currentSection);

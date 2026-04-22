@@ -363,6 +363,9 @@
 
 .wse__board-preview {
   display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .wse__lane {

@@ -23,6 +23,15 @@ const assigneeField: TaskFieldDefinition = {
   config: { cardArea: "summary", detailSection: "side" }
 };
 
+const createdByField: TaskFieldDefinition = {
+  id: "sys:created-by",
+  definitionId: "field-created-by",
+  label: "Criado por",
+  type: "user",
+  storage: { kind: "item_property", property: "createdBy" },
+  config: { cardArea: "summary", detailSection: "side" }
+};
+
 const statusField: TaskFieldDefinition = {
   id: "sys:status",
   definitionId: "field-status",
@@ -82,6 +91,34 @@ const projectedStatusBoardConfig: BoardConfig = {
       order: 1,
       isVisible: true,
       settings: { cardArea: "title", visualPriority: "primary" }
+    }
+  ],
+  cardLayout: {
+    visibleFieldIds: []
+  }
+};
+
+const createdByBoardConfig: BoardConfig = {
+  ...factoryBoardConfig,
+  fieldDefinitions: [titleField, createdByField],
+  fieldBindings: [
+    {
+      id: "binding-title-created-by",
+      fieldId: "sys:title",
+      typeId: "bug",
+      displayContext: "card",
+      order: 0,
+      isVisible: true,
+      settings: { cardArea: "title", visualPriority: "primary" }
+    },
+    {
+      id: "binding-created-by",
+      fieldId: "sys:created-by",
+      typeId: "bug",
+      displayContext: "card",
+      order: 1,
+      isVisible: true,
+      settings: { cardArea: "summary", visualPriority: "secondary" }
     }
   ],
   cardLayout: {
@@ -228,5 +265,31 @@ describe("TaskCard", () => {
     expect(debugSnapshot.task.status).toBe("column-backlog");
     expect(debugSnapshot.fields.find((field) => field.fieldId === "sys:status")?.displayValue).toBe("Backlog");
     expect(debugSnapshot.renderedFieldIds).toEqual(["sys:status", "sys:title"]);
+  });
+
+  it("resume o campo criado por no card quando o nome do usuario e longo", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const html = renderToStaticMarkup(
+      <TaskCard
+        task={task}
+        boardConfig={createdByBoardConfig}
+        membersById={{
+          "user-2": {
+            id: "user-2",
+            name: "Debora Romitti de Oliveira",
+            initials: "DO",
+            color: "#7b9abc"
+          }
+        }}
+        draggable={false}
+        onDragStart={() => undefined}
+        onDragEnd={() => undefined}
+      />
+    );
+
+    expect(html).toContain("Criado por");
+    expect(html).toContain("Debora O.");
+    expect(html).not.toContain("Debora Romitti de Oliveira</span>");
   });
 });

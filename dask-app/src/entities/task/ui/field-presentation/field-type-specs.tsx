@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from "react";
 import {
   formatTaskFieldValue,
-  getTaskFieldRegistryEntry
+  getTaskFieldRegistryEntry,
+  matchesTaskFieldStorage
 } from "@/entities/task/model/field-registry";
 import type {
   TaskChecklist,
@@ -454,9 +455,13 @@ function UserFieldDisplay(props: FieldPresentationComponentProps) {
     return renderEmpty(props.field);
   }
 
+  const option = props.controller.selectedOption;
+  const fullLabel = option?.label ?? props.controller.displayValue;
+  const label = shouldAbbreviateCreatedByOnCard(props.field, fullLabel, props.context)
+    ? abbreviatePersonName(fullLabel)
+    : fullLabel;
+
   if (props.context === "detail" || props.context === "form" || props.readonly) {
-    const option = props.controller.selectedOption;
-    const label = option?.label ?? props.controller.displayValue;
     const accentColor = option?.color ?? props.membersById?.[props.controller.stringValue]?.color ?? "#7b9abc";
 
     return (
@@ -468,12 +473,17 @@ function UserFieldDisplay(props: FieldPresentationComponentProps) {
         >
           {buildInitials(label)}
         </span>
-        <span className="task-field-presentation__identity-label">{label}</span>
+        <span className="task-field-presentation__identity-label" title={fullLabel}>{label}</span>
       </span>
     );
   }
 
-  return <OptionPill option={props.controller.selectedOption} compact={props.context === "table" || props.context === "card"} />;
+  return (
+    <OptionPill
+      option={label === fullLabel ? option : { ...(option ?? { id: fullLabel, value: fullLabel, isActive: true }), label }}
+      compact={props.context === "table" || props.context === "card"}
+    />
+  );
 }
 
 function UserFieldEdit(props: FieldPresentationComponentProps) {
@@ -825,6 +835,35 @@ function buildInitials(value: string): string {
   }
 
   return parts.map(part => part[0]?.toUpperCase() ?? "").join("");
+}
+
+function abbreviatePersonName(value: string): string {
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length < 2) {
+    return value.trim();
+  }
+
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  const lastInitial = lastName[0]?.toUpperCase();
+
+  return lastInitial ? `${firstName} ${lastInitial}.` : firstName;
+}
+
+function shouldAbbreviateCreatedByOnCard(field: TaskFieldDefinition, label: string, context: string): boolean {
+  if (context !== "card") {
+    return false;
+  }
+
+  if (!matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" })) {
+    return false;
+  }
+
+  return label.trim().length > 0;
 }
 
 type FieldTypeSpecConfig = Omit<FieldTypeSpec, "type" | "label">;

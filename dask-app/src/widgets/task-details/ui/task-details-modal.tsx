@@ -374,7 +374,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
   return (
     <ModalShell titleId="task-details-title" className="task-details" onClose={props.onClose}>
-      <div style={accentVars}>
+      <div className="task-details__surface" style={accentVars}>
         <header className="task-details__topbar">
           <div className="task-details__header-copy">
             <p className="task-details__breadcrumbs">{isCreateMode ? "Novo item" : "Work item"}</p>

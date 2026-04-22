@@ -6,11 +6,13 @@
   display: grid;
   place-items: center;
   padding: 12px;
+  overflow-y: auto;
   z-index: 10000;
 }
 
 .shared-modal-shell {
   position: relative;
+  max-width: 100%;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
 }

@@ -13,6 +13,13 @@
   overflow: hidden;
 }
 
+.task-details__surface {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .task-details__topbar,
 .task-details__actionbar {
   display: flex;
@@ -111,6 +118,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.86fr);
+  align-items: start;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px 18px 18px;
@@ -1663,6 +1671,10 @@
   .task-details {
     width: min(100vw - 16px, 100%);
     max-height: calc(100dvh - 16px);
+  }
+
+  .task-details__surface {
+    max-height: inherit;
   }
 
   .task-details__body {

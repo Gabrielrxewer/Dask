@@ -72,6 +72,22 @@ export class PrismaBillingRepository implements BillingRepository {
     });
   }
 
+  async hasGuestWorkspaceMembership(userId: string): Promise<boolean> {
+    const membership = await this.prisma.workspaceMembership.findFirst({
+      where: {
+        userId,
+        role: {
+          not: 'OWNER'
+        }
+      },
+      select: {
+        workspaceId: true
+      }
+    });
+
+    return Boolean(membership);
+  }
+
   async findWorkspaceMembership(
     workspaceId: string,
     userId: string

@@ -66,8 +66,9 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
           ? true
           : userAccess?.hasActiveSubscription === true &&
             userAccess.subscriptionPlan === 'BUSINESS';
+        const hasGuestCorporateAccess = membership.role !== 'OWNER';
 
-        if (!hasCorporateAccess) {
+        if (!hasCorporateAccess && !hasGuestCorporateAccess) {
           next(new AppError('Corporate workspace requires an active BUSINESS plan', 403));
           return;
         }

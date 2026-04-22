@@ -193,7 +193,7 @@ export class WorkspacesService {
       return workspaces;
     }
 
-    return workspaces.filter((workspace) => workspace.kind !== WorkspaceKind.CORPORATE);
+    return workspaces.filter((workspace) => workspace.role !== MembershipRole.OWNER);
   }
 
   public async getWorkspaceProfile(input: { workspaceId: string; userId: string }) {

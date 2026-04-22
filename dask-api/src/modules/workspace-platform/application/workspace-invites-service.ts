@@ -6,6 +6,7 @@ import { logger } from '@/core/logging/logger';
 import type { EmailService } from '@/infra/email/email-service';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const BUSINESS_WORKSPACE_MEMBER_LIMIT = 10;
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -152,6 +153,32 @@ export class WorkspaceInvitesService {
           }
         }
       });
+
+      const [memberCount, pendingInviteCount] = await Promise.all([
+        tx.workspaceMembership.count({
+          where: {
+            workspaceId: input.workspaceId
+          }
+        }),
+        tx.workspaceInvite.count({
+          where: {
+            workspaceId: input.workspaceId,
+            acceptedAt: null,
+            revokedAt: null,
+            expiresAt: {
+              gt: now
+            },
+            ...(existingPending ? { id: { not: existingPending.id } } : {})
+          }
+        })
+      ]);
+
+      if (memberCount + pendingInviteCount >= BUSINESS_WORKSPACE_MEMBER_LIMIT) {
+        throw new AppError(
+          `BUSINESS workspaces allow up to ${BUSINESS_WORKSPACE_MEMBER_LIMIT} people, counting active members and pending invites.`,
+          422
+        );
+      }
 
       const invite = existingPending
         ? await tx.workspaceInvite.update({
@@ -439,6 +466,31 @@ export class WorkspaceInvitesService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      const membershipCount = await tx.workspaceMembership.count({
+        where: {
+          workspaceId: invite.workspaceId
+        }
+      });
+
+      const existingMembership = await tx.workspaceMembership.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId: invite.workspaceId,
+            userId: input.userId
+          }
+        },
+        select: {
+          userId: true
+        }
+      });
+
+      if (!existingMembership && membershipCount >= BUSINESS_WORKSPACE_MEMBER_LIMIT) {
+        throw new AppError(
+          `BUSINESS workspaces allow up to ${BUSINESS_WORKSPACE_MEMBER_LIMIT} people.`,
+          422
+        );
+      }
+
       await tx.workspaceMembership.upsert({
         where: {
           workspaceId_userId: {

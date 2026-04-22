@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildWorkspaceBoardPath } from "@/app/router";
+import { billingStore, useBilling } from "@/modules/billing";
 import { workspaceService, type WorkspaceSummary, type WorkspaceTemplateOption } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { Button, Card, FormField, Select, TextInput } from "@/shared/ui";
@@ -17,6 +18,7 @@ const FALLBACK_TEMPLATES: WorkspaceTemplateOption[] = [
 
 export function WorkspaceSelectorPage() {
   const navigate = useNavigate();
+  const billing = useBilling();
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +33,13 @@ export function WorkspaceSelectorPage() {
   const [error, setError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createFeedback, setCreateFeedback] = useState<string | null>(null);
+  const canCreateWorkspace = billing.status?.canCreateWorkspace ?? false;
+
+  useEffect(() => {
+    if (billing.loadState === "idle") {
+      void billingStore.load();
+    }
+  }, [billing.loadState]);
 
   useEffect(() => {
     let mounted = true;
@@ -62,6 +71,12 @@ export function WorkspaceSelectorPage() {
   }, []);
 
   useEffect(() => {
+    if (!canCreateWorkspace) {
+      setTemplates([]);
+      setIsLoadingTemplates(false);
+      return;
+    }
+
     let mounted = true;
     setIsLoadingTemplates(true);
 
@@ -90,7 +105,7 @@ export function WorkspaceSelectorPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [canCreateWorkspace]);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -187,8 +202,9 @@ export function WorkspaceSelectorPage() {
                 className="no-workspace-page__secondary"
                 type="button"
                 onClick={() => setIsCreateOpen((current) => !current)}
+                disabled={!canCreateWorkspace}
               >
-                {isCreateOpen ? "Fechar criacao" : "Criar novo workspace"}
+                {!canCreateWorkspace ? "Criacao indisponivel" : isCreateOpen ? "Fechar criacao" : "Criar novo workspace"}
               </Button>
               {isCreateOpen ? (
                 <Button type="button" onClick={() => void handleCreateWorkspace()} disabled={isCreating}>
@@ -198,7 +214,13 @@ export function WorkspaceSelectorPage() {
             </div>
           </div>
 
-          {isCreateOpen ? (
+          {!canCreateWorkspace ? (
+            <p className="workspace-selector-page__state">
+              Sua conta foi convidada para workspaces existentes e nao pode criar um workspace proprio sem assinatura.
+            </p>
+          ) : null}
+
+          {isCreateOpen && canCreateWorkspace ? (
             <section className="workspace-selector-page__create-card" aria-label="Criar workspace">
               <div className="workspace-selector-page__create-grid">
                 <FormField label="Tipo">

@@ -176,6 +176,7 @@ export interface BillingRepository {
   findSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | null>;
   findActiveSubscriptionByUserId(userId: string): Promise<Subscription | null>;
   findLatestSubscriptionByUserId(userId: string): Promise<Subscription | null>;
+  hasGuestWorkspaceMembership(userId: string): Promise<boolean>;
   findWorkspaceMembership(workspaceId: string, userId: string): Promise<WorkspaceMembership | null>;
   findWorkspaceBillingConnectInfo(workspaceId: string): Promise<WorkspaceBillingConnectInfo | null>;
   findConnectCatalogItemById(itemId: string): Promise<ConnectCatalogItem | null>;

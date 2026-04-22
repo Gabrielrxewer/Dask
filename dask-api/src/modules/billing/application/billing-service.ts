@@ -264,6 +264,7 @@ export class BillingService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
+    const hasGuestWorkspaceMembership = await this.repo.hasGuestWorkspaceMembership(userId);
     const latestSubscription = await this.repo.findLatestSubscriptionByUserId(userId);
 
     if (process.env.NODE_ENV !== 'production') {
@@ -281,6 +282,7 @@ export class BillingService {
     }
 
     const active = isSubscriptionActive(user.subscriptionStatus as SubscriptionStatus | null);
+    const canAccessPlatform = active || hasGuestWorkspaceMembership;
 
     return {
       hasActiveSubscription: user.hasActiveSubscription,
@@ -288,9 +290,9 @@ export class BillingService {
       status: (user.subscriptionStatus as SubscriptionStatus | null) ?? null,
       currentPeriodEnd: user.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: latestSubscription?.cancelAtPeriodEnd ?? false,
-      canAccessPlatform: active,
+      canAccessPlatform,
       canCreateWorkspace: active,
-      message: active ? null : this.buildBlockedMessage(user.subscriptionStatus as SubscriptionStatus | null)
+      message: canAccessPlatform ? null : this.buildBlockedMessage(user.subscriptionStatus as SubscriptionStatus | null)
     };
   }
 

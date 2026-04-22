@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { buildWorkspaceBoardPath, routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth";
+import { billingStore, useBilling } from "@/modules/billing";
 import { workspaceService, type WorkspaceTemplateOption } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { Button, Card, FormField, Select, TextInput } from "@/shared/ui";
@@ -32,6 +33,7 @@ function toWorkspaceKey(value: string): string {
 export function NoWorkspacePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const billing = useBilling();
   const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -42,8 +44,21 @@ export function NoWorkspacePage() {
   const [workspaceName, setWorkspaceName] = useState("Meu Workspace");
   const [organizationName, setOrganizationName] = useState("");
   const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"]>("software_delivery");
+  const canCreateWorkspace = billing.status?.canCreateWorkspace ?? false;
 
   useEffect(() => {
+    if (billing.loadState === "idle") {
+      void billingStore.load();
+    }
+  }, [billing.loadState]);
+
+  useEffect(() => {
+    if (!canCreateWorkspace) {
+      setTemplates([]);
+      setIsLoadingTemplates(false);
+      return;
+    }
+
     let active = true;
 
     workspaceService
@@ -74,7 +89,7 @@ export function NoWorkspacePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [canCreateWorkspace]);
 
   const resolvedOrganizationName = useMemo(() => {
     if (kind !== "CORPORATE") {
@@ -143,70 +158,85 @@ export function NoWorkspacePage() {
         <Card className="no-workspace-page__card">
           <div className="no-workspace-page__header">
             <p className="no-workspace-page__eyebrow">Novo ambiente Dask</p>
-            <h1 className="no-workspace-page__title">Crie seu workspace</h1>
+            <h1 className="no-workspace-page__title">{canCreateWorkspace ? "Crie seu workspace" : "Aguardando convite"}</h1>
             <p className="no-workspace-page__description">
-              {user?.email
-                ? `A conta ${user.email} ainda nao possui workspace. Configure um pessoal ou corporativo para comecar.`
-                : "Configure um workspace pessoal ou corporativo para comecar."}
+              {!canCreateWorkspace
+                ? user?.email
+                  ? `A conta ${user.email} ainda nao possui um workspace convidado. Assim que um convite for aceito, ele vai aparecer aqui.`
+                  : "Assim que voce receber um convite para um workspace, ele vai aparecer aqui."
+                : user?.email
+                  ? `A conta ${user.email} ainda nao possui workspace. Configure um pessoal ou corporativo para comecar.`
+                  : "Configure um workspace pessoal ou corporativo para comecar."}
             </p>
           </div>
 
-          <div className="no-workspace-page__form-grid">
-            <FormField label="Tipo de workspace" className="no-workspace-page__field">
-              <Select value={kind} onChange={(event) => setKind(event.target.value as WorkspaceKind)}>
-                <option value="PERSONAL">Pessoal</option>
-                <option value="CORPORATE">Corporativo</option>
-              </Select>
-            </FormField>
+          {canCreateWorkspace ? (
+            <>
+              <div className="no-workspace-page__form-grid">
+                <FormField label="Tipo de workspace" className="no-workspace-page__field">
+                  <Select value={kind} onChange={(event) => setKind(event.target.value as WorkspaceKind)}>
+                    <option value="PERSONAL">Pessoal</option>
+                    <option value="CORPORATE">Corporativo</option>
+                  </Select>
+                </FormField>
 
-            <FormField label="Template padrao" className="no-workspace-page__field">
-              <Select
-                value={templateKey}
-                onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
-                disabled={isLoadingTemplates}
-              >
-                {isLoadingTemplates ? <option>Carregando templates...</option> : null}
-                {!isLoadingTemplates && templates.length === 0 ? <option value={templateKey}>Software Delivery</option> : null}
-                {templates.map((template) => (
-                  <option key={template.key} value={template.key}>
-                    {template.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+                <FormField label="Template padrao" className="no-workspace-page__field">
+                  <Select
+                    value={templateKey}
+                    onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
+                    disabled={isLoadingTemplates}
+                  >
+                    {isLoadingTemplates ? <option>Carregando templates...</option> : null}
+                    {!isLoadingTemplates && templates.length === 0 ? <option value={templateKey}>Software Delivery</option> : null}
+                    {templates.map((template) => (
+                      <option key={template.key} value={template.key}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
 
-            <FormField label="Nome do workspace" className="no-workspace-page__field no-workspace-page__field--wide">
-              <TextInput value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} />
-            </FormField>
+                <FormField label="Nome do workspace" className="no-workspace-page__field no-workspace-page__field--wide">
+                  <TextInput value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} />
+                </FormField>
 
-            {kind === "CORPORATE" ? (
-              <FormField label="Nome da organizacao" className="no-workspace-page__field no-workspace-page__field--wide">
-                <TextInput
-                  value={organizationName}
-                  onChange={(event) => setOrganizationName(event.target.value)}
-                  placeholder="Ex.: Acme Inc"
-                />
-              </FormField>
-            ) : null}
-          </div>
+                {kind === "CORPORATE" ? (
+                  <FormField label="Nome da organizacao" className="no-workspace-page__field no-workspace-page__field--wide">
+                    <TextInput
+                      value={organizationName}
+                      onChange={(event) => setOrganizationName(event.target.value)}
+                      placeholder="Ex.: Acme Inc"
+                    />
+                  </FormField>
+                ) : null}
+              </div>
 
-          {selectedTemplateDescription ? (
-            <p className="no-workspace-page__support-text">{selectedTemplateDescription}</p>
-          ) : null}
+              {selectedTemplateDescription ? (
+                <p className="no-workspace-page__support-text">{selectedTemplateDescription}</p>
+              ) : null}
 
-          {templateNotice ? <p className="no-workspace-page__support-text">{templateNotice}</p> : null}
+              {templateNotice ? <p className="no-workspace-page__support-text">{templateNotice}</p> : null}
+            </>
+          ) : (
+            <p className="no-workspace-page__support-text">
+              Esta conta pode entrar apenas em workspaces para os quais foi convidada. A criacao de workspace proprio
+              requer assinatura ativa.
+            </p>
+          )}
           {errorMessage ? <p className="no-workspace-page__error">{errorMessage}</p> : null}
 
           <div className="no-workspace-page__actions">
-            <Button
-              className="no-workspace-page__submit"
-              type="button"
-              variant="primary"
-              onClick={handleCreateWorkspace}
-              disabled={isCreating}
-            >
-              {isCreating ? "Provisionando workspace..." : "Criar workspace"}
-            </Button>
+            {canCreateWorkspace ? (
+              <Button
+                className="no-workspace-page__submit"
+                type="button"
+                variant="primary"
+                onClick={handleCreateWorkspace}
+                disabled={isCreating}
+              >
+                {isCreating ? "Provisionando workspace..." : "Criar workspace"}
+              </Button>
+            ) : null}
             <Link className="no-workspace-page__home-link" to={routePaths.home}>
               <Button className="no-workspace-page__secondary" type="button">
                 Voltar para home

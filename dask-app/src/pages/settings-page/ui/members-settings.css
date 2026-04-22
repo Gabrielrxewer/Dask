@@ -1125,3 +1125,50 @@
     max-height: 92vh;
   }
 }
+
+.app-theme[data-theme="dark"] .members-settings__feedback {
+  color: var(--success);
+}
+
+.app-theme[data-theme="dark"] .members-settings__error {
+  color: var(--danger);
+}
+
+.app-theme[data-theme="dark"] .members-settings__hint,
+.app-theme[data-theme="dark"] .members-settings__row-content span,
+.app-theme[data-theme="dark"] .members-settings__checkbox,
+.app-theme[data-theme="dark"] .members-settings__permissions-row span:first-child,
+.app-theme[data-theme="dark"] .members-settings__permission-card p,
+.app-theme[data-theme="dark"] .members-settings__permission-card span {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .members-settings__row,
+.app-theme[data-theme="dark"] .members-settings__member-card,
+.app-theme[data-theme="dark"] .members-settings__permissions-table,
+.app-theme[data-theme="dark"] .members-settings__permission-card {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .members-settings__row-content strong,
+.app-theme[data-theme="dark"] .members-settings__permissions-header span,
+.app-theme[data-theme="dark"] .members-settings__permissions-row span,
+.app-theme[data-theme="dark"] .members-settings__permission-card h3 {
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .members-settings__permissions-header {
+  background: color-mix(in oklab, var(--selected-bg) 72%, var(--surface-muted)) !important;
+}
+
+.app-theme[data-theme="dark"] .members-settings__permissions-row:nth-child(even) {
+  background: color-mix(in oklab, var(--surface-muted) 82%, var(--surface-raised)) !important;
+}
+
+.app-theme[data-theme="dark"] .members-settings__permissions-header span,
+.app-theme[data-theme="dark"] .members-settings__permissions-row span,
+.app-theme[data-theme="dark"] .members-settings__permissions-row + .members-settings__permissions-row {
+  border-color: color-mix(in oklab, var(--line) 86%, transparent) !important;
+}

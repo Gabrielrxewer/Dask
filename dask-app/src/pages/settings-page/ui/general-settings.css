@@ -933,3 +933,147 @@
     flex-direction: column;
   }
 }
+
+.app-theme[data-theme="dark"] .general-settings {
+  --builder-text: var(--text-strong);
+  --builder-text-soft: var(--text-soft);
+  --builder-text-muted: var(--text-muted);
+  --builder-line: var(--line);
+  --builder-line-strong: color-mix(in oklab, var(--accent) 34%, var(--line));
+  --builder-surface: var(--surface-raised);
+  --builder-surface-soft: var(--surface-muted);
+  --builder-accent: var(--accent);
+  --builder-accent-strong: color-mix(in oklab, var(--accent) 78%, white 6%);
+}
+
+.app-theme[data-theme="dark"] .general-settings__builder-hero {
+  border-color: var(--line);
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent-soft) 18%, transparent), transparent 34%),
+    linear-gradient(135deg, color-mix(in oklab, var(--panel-soft) 84%, var(--panel)) 0%, var(--surface-raised) 52%, var(--surface-section-content) 100%);
+  box-shadow: var(--shadow-2);
+}
+
+.app-theme[data-theme="dark"] .general-settings__progress,
+.app-theme[data-theme="dark"] .general-settings__step-card,
+.app-theme[data-theme="dark"] .general-settings__step-card em,
+.app-theme[data-theme="dark"] .general-settings__active-panel,
+.app-theme[data-theme="dark"] .general-settings__preference-card,
+.app-theme[data-theme="dark"] .general-settings__summary-card,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile,
+.app-theme[data-theme="dark"] .general-settings__billing-connect,
+.app-theme[data-theme="dark"] .general-settings__templates,
+.app-theme[data-theme="dark"] .general-settings__editable-row,
+.app-theme[data-theme="dark"] .general-settings__empty-row,
+.app-theme[data-theme="dark"] .general-settings__summary-grid span,
+.app-theme[data-theme="dark"] .general-settings__members-cta,
+.app-theme[data-theme="dark"] .general-settings__billing-status p,
+.app-theme[data-theme="dark"] .general-settings__billing-grid span,
+.app-theme[data-theme="dark"] .general-settings__billing-checklist li,
+.app-theme[data-theme="dark"] .general-settings__template-card,
+.app-theme[data-theme="dark"] .general-settings__template-modal {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .general-settings__step-card:hover,
+.app-theme[data-theme="dark"] .general-settings__step-card.is-active,
+.app-theme[data-theme="dark"] .general-settings__active-panel header a,
+.app-theme[data-theme="dark"] .general-settings__template-card.is-selected {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised)) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .general-settings__preview-column,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile-actions,
+.app-theme[data-theme="dark"] .general-settings__template-preview span,
+.app-theme[data-theme="dark"] .general-settings__modal-preview span {
+  border-color: var(--line) !important;
+  background: var(--surface-muted) !important;
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__preview-card,
+.app-theme[data-theme="dark"] .general-settings__inline-action,
+.app-theme[data-theme="dark"] .general-settings__billing-next-step {
+  border-color: var(--line) !important;
+  background: var(--surface-section-content) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .general-settings__progress > span {
+  background: color-mix(in oklab, var(--line) 78%, var(--panel)) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__step-status--done,
+.app-theme[data-theme="dark"] .general-settings__billing-success,
+.app-theme[data-theme="dark"] .general-settings__billing-checklist li.is-done {
+  border-color: color-mix(in oklab, var(--success) 30%, var(--line)) !important;
+  background: color-mix(in oklab, var(--success-soft) 22%, var(--panel)) !important;
+  color: var(--success) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__step-status--partial,
+.app-theme[data-theme="dark"] .general-settings__billing-warning {
+  border-color: color-mix(in oklab, var(--warn) 30%, var(--line)) !important;
+  background: color-mix(in oklab, var(--warn-soft) 22%, var(--panel)) !important;
+  color: var(--warn) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__step-status--empty {
+  background: color-mix(in oklab, var(--selected-bg) 74%, var(--surface-muted)) !important;
+  color: var(--accent) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__builder-copy > span,
+.app-theme[data-theme="dark"] .general-settings__templates header span,
+.app-theme[data-theme="dark"] .general-settings__active-panel header span,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile header span,
+.app-theme[data-theme="dark"] .general-settings__modal-copy span,
+.app-theme[data-theme="dark"] .general-settings__feedback {
+  color: var(--accent) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__builder-copy h1,
+.app-theme[data-theme="dark"] .general-settings__progress strong,
+.app-theme[data-theme="dark"] .general-settings__preview-column > span,
+.app-theme[data-theme="dark"] .general-settings__preview-card strong,
+.app-theme[data-theme="dark"] .general-settings__step-card strong,
+.app-theme[data-theme="dark"] .general-settings__active-panel h2,
+.app-theme[data-theme="dark"] .general-settings__preference-card h2,
+.app-theme[data-theme="dark"] .general-settings__summary-card h2,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile h2,
+.app-theme[data-theme="dark"] .general-settings__billing-connect h2,
+.app-theme[data-theme="dark"] .general-settings__templates h2,
+.app-theme[data-theme="dark"] .general-settings__summary-grid strong,
+.app-theme[data-theme="dark"] .general-settings__billing-grid strong,
+.app-theme[data-theme="dark"] .general-settings__modal-copy h2 {
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__builder-copy p,
+.app-theme[data-theme="dark"] .general-settings__progress small,
+.app-theme[data-theme="dark"] .general-settings__preview-card small,
+.app-theme[data-theme="dark"] .general-settings__step-card small,
+.app-theme[data-theme="dark"] .general-settings__step-card em,
+.app-theme[data-theme="dark"] .general-settings__active-panel header p,
+.app-theme[data-theme="dark"] .general-settings__editable-row span,
+.app-theme[data-theme="dark"] .general-settings__empty-row,
+.app-theme[data-theme="dark"] .general-settings__members-cta p,
+.app-theme[data-theme="dark"] .general-settings__billing-connect header p,
+.app-theme[data-theme="dark"] .general-settings__billing-requirements,
+.app-theme[data-theme="dark"] .general-settings__billing-next-step,
+.app-theme[data-theme="dark"] .general-settings__billing-checklist li p,
+.app-theme[data-theme="dark"] .general-settings__billing-checklist li small,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile header p,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile-actions small,
+.app-theme[data-theme="dark"] .general-settings__template-card p,
+.app-theme[data-theme="dark"] .general-settings__modal-copy p {
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .general-settings__error {
+  color: var(--danger) !important;
+}

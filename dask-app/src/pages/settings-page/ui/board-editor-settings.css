@@ -1004,6 +1004,89 @@
   color: #5aadee;
 }
 
+.app-theme[data-theme="dark"] .board-editor {
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .board-editor__topbar,
+.app-theme[data-theme="dark"] .board-editor__canvas-wrap,
+.app-theme[data-theme="dark"] .board-editor__tab,
+.app-theme[data-theme="dark"] .board-editor__tab-create,
+.app-theme[data-theme="dark"] .board-editor__column,
+.app-theme[data-theme="dark"] .board-editor__column-head,
+.app-theme[data-theme="dark"] .board-editor__column-meta,
+.app-theme[data-theme="dark"] .board-editor__mock-card,
+.app-theme[data-theme="dark"] .board-editor__picker-head,
+.app-theme[data-theme="dark"] .board-editor__picker-item,
+.app-theme[data-theme="dark"] .board-editor__btn-discard,
+.app-theme[data-theme="dark"] .board-editor__btn-cancel,
+.app-theme[data-theme="dark"] .board-editor__edit-input,
+.app-theme[data-theme="dark"] .board-editor__edit-select {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  color: var(--text-strong) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .board-editor__canvas-wrap,
+.app-theme[data-theme="dark"] .board-editor__column--picker,
+.app-theme[data-theme="dark"] .board-editor__mock-cards {
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent-soft) 12%, transparent), transparent 34%),
+    color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__column--new,
+.app-theme[data-theme="dark"] .board-editor__column--hidden,
+.app-theme[data-theme="dark"] .board-editor__add-column {
+  border-color: var(--line) !important;
+  background: var(--surface-muted) !important;
+  color: var(--text-soft) !important;
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .board-editor__tab.is-active,
+.app-theme[data-theme="dark"] .board-editor__add-perspective:hover,
+.app-theme[data-theme="dark"] .board-editor__picker-item:hover,
+.app-theme[data-theme="dark"] .board-editor__add-column:hover,
+.app-theme[data-theme="dark"] .board-editor__action-btn--edit:hover,
+.app-theme[data-theme="dark"] .board-editor__action-btn--visibility:hover {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised)) !important;
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__tab-btn,
+.app-theme[data-theme="dark"] .board-editor__column-name,
+.app-theme[data-theme="dark"] .board-editor__picker-head > span,
+.app-theme[data-theme="dark"] .board-editor__picker-col-name {
+  color: var(--text-strong) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__state-name,
+.app-theme[data-theme="dark"] .board-editor__col-slug,
+.app-theme[data-theme="dark"] .board-editor__picker-section-label,
+.app-theme[data-theme="dark"] .board-editor__picker-col-slug,
+.app-theme[data-theme="dark"] .board-editor__picker-empty,
+.app-theme[data-theme="dark"] .board-editor__unsaved-label,
+.app-theme[data-theme="dark"] .board-editor__drag-handle,
+.app-theme[data-theme="dark"] .board-editor__hidden-badge {
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__picker-divider {
+  background: var(--line) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__confirm-overlay {
+  background: color-mix(in oklab, var(--danger-soft) 18%, var(--panel)) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__confirm-overlay p,
+.app-theme[data-theme="dark"] .board-editor__confirm-overlay strong {
+  color: var(--danger) !important;
+}
+
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {

@@ -1,4 +1,11 @@
 .settings-page {
+  --settings-text: var(--text-strong);
+  --settings-text-soft: var(--text-soft);
+  --settings-line: var(--line);
+  --settings-surface: var(--surface-overlay);
+  --settings-surface-soft: var(--surface-section-content);
+  --settings-field-surface: var(--control-surface);
+  --settings-accent: var(--accent);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -15,6 +22,33 @@
 
 .settings-view__card {
   align-self: start;
+}
+
+.settings-view__card.shared-section {
+  border-color: var(--settings-line);
+  background: var(--settings-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.settings-view__card.shared-section::before {
+  content: none;
+}
+
+.settings-view__card .shared-section__header {
+  border-bottom-color: var(--settings-line);
+  background: var(--surface-section-header);
+}
+
+.settings-view__card .shared-section__title {
+  color: var(--settings-text);
+}
+
+.settings-view__card .shared-section__subtitle {
+  color: var(--settings-text-soft);
+}
+
+.settings-view__card .shared-section__content {
+  background: var(--settings-surface-soft);
 }
 
 .settings-view__card--scroll {
@@ -34,9 +68,9 @@
   border: 1px solid color-mix(in oklab, var(--line) 74%, transparent);
   border-radius: 16px;
   padding: 11px 12px;
-  color: var(--text-soft);
+  color: var(--settings-text-soft);
   font-size: var(--font-size-xs);
-  background: var(--surface-overlay);
+  background: var(--settings-surface);
   box-shadow: var(--shadow-soft), 0 1px 0 rgba(255, 255, 255, 0.82) inset;
 }
 
@@ -47,6 +81,34 @@
 .settings-view__form-grid {
   display: grid;
   gap: 12px;
+}
+
+.settings-page .shared-form-field {
+  gap: 6px;
+}
+
+.settings-page .shared-form-field__label {
+  color: var(--settings-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.settings-page .shared-input,
+.settings-page .shared-textarea,
+.settings-page .shared-select__control,
+.settings-page select.shared-input {
+  border-color: color-mix(in oklab, var(--settings-line) 82%, transparent);
+  background: var(--settings-field-surface);
+  color: var(--settings-text);
+  box-shadow: var(--shadow-soft);
+}
+
+.settings-page .shared-input:focus,
+.settings-page .shared-textarea:focus,
+.settings-page .shared-select__control:focus-within,
+.settings-page select.shared-input:focus {
+  border-color: color-mix(in oklab, var(--settings-accent) 42%, var(--settings-line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--settings-accent) 12%, transparent);
 }
 
 @media (min-width: 1141px) {

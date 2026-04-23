@@ -12,7 +12,7 @@ type ResponsesApiTool =
       strict?: boolean;
     }
   | {
-      type: 'web_search';
+      type: 'web_search_preview';
     };
 
 type ResponsesApiOutput = {
@@ -39,6 +39,10 @@ export class OpenAIAIProvider implements AIProvider {
   private readonly endpoint = `${env.OPENAI_BASE_URL}/responses`;
   private readonly aiLogger = getLogger('ai.openai.responses');
   private readonly aiDebug = createDebugLogger('ai.openai.responses');
+
+  private isGpt5ResponsesModel(model: string): boolean {
+    return /^gpt-5([.-]|$)/i.test(model.trim());
+  }
 
   public async generateText(input: {
     systemPrompt: string;
@@ -76,8 +80,10 @@ export class OpenAIAIProvider implements AIProvider {
     }
 
     if (webSearchEnabled) {
-      tools.push({ type: 'web_search' });
+      tools.push({ type: 'web_search_preview' });
     }
+
+    const shouldSendTemperature = !this.isGpt5ResponsesModel(selectedModel);
 
     this.aiDebug.log(
       {
@@ -98,7 +104,7 @@ export class OpenAIAIProvider implements AIProvider {
       },
       body: JSON.stringify({
         model: selectedModel,
-        temperature: input.temperature ?? 0.2,
+        temperature: shouldSendTemperature ? (input.temperature ?? 0.2) : undefined,
         text: input.requireJsonOutput ? { format: { type: 'json_object' } } : undefined,
         tools: tools.length > 0 ? tools : undefined,
         input: [
@@ -113,7 +119,8 @@ export class OpenAIAIProvider implements AIProvider {
       this.aiLogger.error(
         {
           model: selectedModel,
-          status: response.status
+          status: response.status,
+          errorText: errorText.slice(0, 800)
         },
         'OpenAI responses request failed'
       );

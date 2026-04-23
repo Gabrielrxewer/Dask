@@ -141,7 +141,7 @@ function getHomeScrollTarget(sectionId: string): HTMLElement | null {
     return null;
   }
 
-  if (sectionId === "top") {
+  if (sectionId === "top" || sectionId === "precos") {
     return target.closest(".home-page__view") ?? target;
   }
 
@@ -153,6 +153,12 @@ function getHomeSectionScrollTop(scrollContainer: HTMLElement, target: HTMLEleme
   const targetRect = target.getBoundingClientRect();
   if (targetId === "top") {
     return 0;
+  }
+
+  if (targetId === "precos") {
+    const alignedTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+    const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+    return Math.min(maxScrollTop, Math.max(0, alignedTop));
   }
 
   const centeredTop =

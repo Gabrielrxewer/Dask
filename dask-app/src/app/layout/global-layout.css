@@ -1936,6 +1936,10 @@ body.shared-modal-open .global-footer {
   min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
 }
 
+.global-layout__main--public:has(.home-page) {
+  flex: 0 0 calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+}
+
 .global-layout__main--admin {
   padding: 0;
 }

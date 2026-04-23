@@ -43,7 +43,7 @@
   margin: 0 auto;
   display: grid;
   gap: clamp(40px, 5vw, 76px);
-  padding-bottom: calc(var(--global-footer-height) + 20px);
+  padding-bottom: 20px;
   position: relative;
   z-index: 1;
 }
@@ -66,9 +66,11 @@
 }
 
 .home-page__view--pricing {
-  min-height: auto;
-  align-items: start;
-  padding-bottom: 8px;
+  min-height: calc(
+    100dvh - var(--global-header-height) - var(--global-footer-height)
+  );
+  align-items: center;
+  padding: 12px 0 8px;
 }
 
 .home-page__tab-section {
@@ -2675,6 +2677,7 @@
 .home-page__pricing-card--featured {
   display: grid;
   align-content: start;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto auto 1fr auto;
   gap: 8px;
   min-height: 0;
@@ -2688,15 +2691,17 @@
     0 1px 0 rgba(255, 255, 255, 0.84) inset;
   position: relative;
   overflow: hidden;
+  justify-items: start;
 }
 
 .home-page__pricing-card--featured {
-  border-color: rgba(177, 204, 227, 0.82);
+  border-color: rgba(115, 164, 226, 0.92);
   background:
-    linear-gradient(145deg, rgba(252, 254, 255, 0.98) 0%, rgba(246, 251, 255, 0.9) 44%, rgba(239, 247, 255, 0.82) 100%);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 251, 255, 0.94) 44%, rgba(235, 245, 255, 0.9) 100%);
   box-shadow:
-    0 14px 28px rgba(12, 42, 71, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.86) inset;
+    0 14px 30px rgba(49, 76, 132, 0.1),
+    0 0 0 1px rgba(125, 97, 238, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.88) inset;
 }
 
 .home-page__pricing-card:hover,
@@ -2709,7 +2714,11 @@
 }
 
 .home-page__pricing-card--featured:hover {
-  border-color: rgba(135, 167, 234, 0.88);
+  border-color: rgba(104, 147, 224, 0.96);
+  box-shadow:
+    0 16px 32px rgba(49, 76, 132, 0.13),
+    0 0 0 2px rgba(125, 97, 238, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
 .home-page__pricing-card::before,
@@ -2735,16 +2744,33 @@
 }
 
 .home-page__pricing-badge {
-  top: 14px;
-  right: 14px;
-  padding: 3px 8px;
-  border: 1px solid rgba(179, 207, 229, 0.84);
-  background: rgba(255, 255, 255, 0.82);
-  color: #2a628f;
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  width: fit-content;
+  max-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  justify-self: end;
+  margin-left: auto;
+  padding: 2px 7px;
+  border: 1px solid rgba(106, 154, 220, 0.38);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(51, 122, 226, 0.94), rgba(79, 151, 235, 0.94));
+  color: #f8fbff;
   box-shadow:
-    0 6px 12px rgba(12, 42, 71, 0.04),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
-  font-size: 0.68rem;
+    0 8px 14px rgba(42, 90, 158, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .home-page__pricing-card > *,
@@ -2755,12 +2781,23 @@
 
 .home-page__pricing-plan-name {
   color: #2e6392;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  margin: 0;
 }
 
 .home-page__pricing-price strong {
   color: #10233f;
   font-size: clamp(1.95rem, 1.78rem + 0.7vw, 2.45rem);
   letter-spacing: -0.055em;
+}
+
+.home-page__pricing-price,
+.home-page__pricing-description,
+.home-page__pricing-features,
+.home-page__pricing-btn {
+  grid-column: 1 / -1;
 }
 
 .home-page__pricing-card--featured .home-page__pricing-price strong {
@@ -2816,11 +2853,11 @@
 
 .home-page__pricing-card--featured .home-page__pricing-btn {
   border-color: rgba(182, 209, 231, 0.9);
-  color: #214d78;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
+  color: #f8fbff;
+  background: linear-gradient(135deg, rgba(51, 122, 226, 0.94), rgba(79, 151, 235, 0.94));
   box-shadow:
-    0 8px 18px rgba(12, 42, 71, 0.055),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 10px 18px rgba(42, 90, 158, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 .home-page__pricing-legal {
@@ -2829,10 +2866,17 @@
   color: #54708a;
   font-size: 0.9rem;
   line-height: 1.52;
+  justify-self: center;
+  text-align: center;
+}
+
+.home-page__pricing-legal a {
+  color: #2a67a3;
+  font-weight: 700;
 }
 
 .home-page__pricing-card--featured .home-page__pricing-btn:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(236, 245, 255, 0.92) 100%);
+  background: linear-gradient(135deg, rgba(43, 113, 216, 0.98), rgba(70, 144, 231, 0.98));
 }
 
 @media (max-width: 1120px) {

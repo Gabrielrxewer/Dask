@@ -1932,6 +1932,8 @@ body.shared-modal-open .global-footer {
 
 .global-layout__main--public {
   padding: 0;
+  height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
 }
 
 .global-layout__main--admin {

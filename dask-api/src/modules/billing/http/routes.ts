@@ -12,6 +12,7 @@ import {
   createConnectOnboardingLinkDto,
   listConnectCatalogItemsQueryDto,
   listConnectPaymentOrdersQueryDto,
+  requestConnectPaymentCapabilityDto,
   syncConnectPaymentOrderQueryDto
 } from './dto';
 
@@ -170,6 +171,25 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
         query.data.limit
       );
       res.status(200).json({ items: orders });
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/payment-capability',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const body = requestConnectPaymentCapabilityDto.safeParse(req.body ?? {});
+      if (!params.success || !body.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const status = await billingService.requestConnectLocalPaymentMethod(
+        params.data.workspaceId,
+        req.auth!.userId,
+        body.data.paymentMethod
+      );
+      res.status(200).json(status);
     })
   );
 

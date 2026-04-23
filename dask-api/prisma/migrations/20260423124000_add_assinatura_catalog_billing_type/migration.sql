@@ -1,0 +1,1 @@
+ALTER TYPE "ConnectCatalogBillingType" ADD VALUE IF NOT EXISTS 'ASSINATURA';

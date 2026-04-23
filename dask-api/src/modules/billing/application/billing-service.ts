@@ -22,6 +22,14 @@ import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
 // Stripe v22 exports as `export = StripeConstructor` — use InstanceType to get the instance type
 type StripeInstance = InstanceType<typeof Stripe>;
 type StripeRetrieveSubscription = (subscriptionId: string) => Promise<StripeSubscriptionObject>;
+type StripeCheckoutPaymentMethodType = 'card' | 'pix' | 'boleto';
+type StripePaymentMethodConfigurationUpdateParams = Record<string, {
+  display_preference: { preference: 'on' | 'off' };
+}>;
+
+const BRL_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'pix', 'boleto'];
+const BRL_SUBSCRIPTION_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'boleto'];
+const CARD_ONLY_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card'];
 
 // Minimal local interfaces for Stripe event payloads (avoids namespace type conflicts)
 interface StripeCheckoutSession {
@@ -86,6 +94,19 @@ interface StripeChargeObject {
   metadata?: Record<string, string>;
 }
 
+interface StripePaymentMethodConfigurationObject {
+  id: string;
+  is_default: boolean;
+  pix?: {
+    available: boolean;
+    display_preference?: { preference?: string | null; value?: string | null };
+  };
+  boleto?: {
+    available: boolean;
+    display_preference?: { preference?: string | null; value?: string | null };
+  };
+}
+
 interface BillingServiceDeps {
   repo: BillingRepository;
   stripe: StripeInstance;
@@ -102,9 +123,14 @@ export interface ConnectAccountStatus {
   detailsSubmitted: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
+  cardPaymentsStatus: string | null;
+  pixPaymentsStatus: string | null;
+  boletoPaymentsStatus: string | null;
   onboardingComplete: boolean;
   requirementsDue: string[];
 }
+
+export type ConnectLocalPaymentMethod = 'pix' | 'boleto';
 
 export interface CreateConnectCheckoutSessionInput {
   amount?: number;
@@ -238,6 +264,7 @@ export class BillingService {
     const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
+      payment_method_types: CARD_ONLY_PAYMENT_METHODS,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${this.appPublicUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.appPublicUrl}/billing/cancel`,
@@ -356,7 +383,6 @@ export class BillingService {
       accountId = account.id;
       await this.repo.upsertWorkspaceConnectAccountId(workspaceId, accountId);
     }
-
     const accountLink = await this.stripe.accountLinks.create({
       account: accountId,
       type: 'account_onboarding',
@@ -379,17 +405,76 @@ export class BillingService {
 
     const account = await this.stripe.accounts.retrieve(workspace.connectAccountId);
     const requirementsDue = account.requirements?.currently_due ?? [];
+    const paymentMethodConfiguration = await this.getDefaultPaymentMethodConfiguration(workspace.connectAccountId, workspaceId);
     return {
       workspaceId,
       stripeAccountId: account.id,
       detailsSubmitted: Boolean(account.details_submitted),
       chargesEnabled: Boolean(account.charges_enabled),
       payoutsEnabled: Boolean(account.payouts_enabled),
+      cardPaymentsStatus: account.capabilities?.card_payments ?? null,
+      pixPaymentsStatus: this.resolvePaymentMethodConfigurationStatus(paymentMethodConfiguration?.pix, account.capabilities?.pix_payments),
+      boletoPaymentsStatus: this.resolvePaymentMethodConfigurationStatus(paymentMethodConfiguration?.boleto, account.capabilities?.boleto_payments),
       onboardingComplete:
         Boolean(account.details_submitted) &&
         Boolean(account.charges_enabled) &&
         requirementsDue.length === 0,
       requirementsDue
+    };
+  }
+
+  async requestConnectLocalPaymentMethod(
+    workspaceId: string,
+    userId: string,
+    paymentMethod: ConnectLocalPaymentMethod
+  ): Promise<ConnectAccountStatus> {
+    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+    if (!workspace.connectAccountId) {
+      throw new AppError('Workspace has no Stripe Connect account configured', 409);
+    }
+
+    const configuration = await this.getDefaultPaymentMethodConfiguration(workspace.connectAccountId, workspaceId);
+    if (!configuration) {
+      throw new AppError('Connected account has no payment method configuration available', 409);
+    }
+
+    try {
+      await this.stripe.paymentMethodConfigurations.update(
+        configuration.id,
+        this.buildPaymentMethodConfigurationPreference(paymentMethod, 'on'),
+        { stripeAccount: workspace.connectAccountId }
+      );
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.warn({
+        event: 'billing.connect.payment_method_preference_failed',
+        workspaceId,
+        userId,
+        accountId: workspace.connectAccountId,
+        paymentMethod,
+        configurationId: configuration.id,
+        error: reason
+      });
+      throw new AppError('Failed to update connected account payment method preference', 409, { reason });
+    }
+    logger.info({
+      event: 'billing.connect.payment_method_preference_updated',
+      workspaceId,
+      userId,
+      accountId: workspace.connectAccountId,
+      paymentMethod,
+      configurationId: configuration.id
+    });
+
+    const status = await this.getConnectAccountStatus(workspaceId, userId);
+    return {
+      ...status,
+      pixPaymentsStatus: paymentMethod === 'pix'
+        ? this.resolveRequestedPaymentMethodStatus(status.pixPaymentsStatus)
+        : status.pixPaymentsStatus,
+      boletoPaymentsStatus: paymentMethod === 'boleto'
+        ? this.resolveRequestedPaymentMethodStatus(status.boletoPaymentsStatus)
+        : status.boletoPaymentsStatus
     };
   }
 
@@ -403,7 +488,6 @@ export class BillingService {
     if (!accountId) {
       throw new AppError('Workspace has no Stripe Connect account configured', 409);
     }
-
     const catalogItem = input.catalogItemId
       ? await this.repo.findConnectCatalogItemById(input.catalogItemId)
       : null;
@@ -428,7 +512,9 @@ export class BillingService {
     }
 
     const applicationFeeAmount = this.resolveApplicationFeeAmount(amount, input.applicationFeeAmount);
-    const checkoutMode = catalogItem?.billingType === 'SUBSCRIPTION' ? 'subscription' : 'payment';
+    const checkoutMode = this.isRecurringCatalogBillingType(catalogItem?.billingType)
+      ? 'subscription'
+      : 'payment';
     const order = await this.repo.createConnectPaymentOrder({
       workspaceId,
       createdByUserId: userId,
@@ -457,27 +543,34 @@ export class BillingService {
 
     const sessionPayload: Record<string, unknown> = {
       mode: checkoutMode,
+      payment_method_types: this.resolveConnectPaymentMethodTypes(catalogItem?.billingType ?? 'ONE_TIME', currency),
       client_reference_id: order.id,
       line_items: [
-        catalogItem?.stripePriceId
-          ? {
-              quantity: 1,
-              price: catalogItem.stripePriceId
-            }
-          : {
-              quantity: 1,
-              price_data: {
-                currency,
-                unit_amount: amount,
-                product_data: {
-                  name: description
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: amount,
+            product_data: {
+              name: description
+            },
+            ...(checkoutMode === 'subscription'
+              ? {
+                  recurring: {
+                    interval: this.mapRecurringInterval(catalogItem?.recurringInterval ?? 'MONTH'),
+                    interval_count: catalogItem?.recurringIntervalCount ?? 1
+                  }
                 }
-              }
-            }
+              : {})
+          }
+        }
       ],
       customer_email: input.customerEmail,
       success_url: input.successUrl ?? `${this.appPublicUrl}/billing/success`,
       cancel_url: input.cancelUrl ?? `${this.appPublicUrl}/billing/cancel`,
+      billing_address_collection: 'required',
+      tax_id_collection: { enabled: true },
+      locale: 'pt-BR',
       metadata: {
         connectOrderId: order.id,
         workspaceId,
@@ -489,6 +582,9 @@ export class BillingService {
     if (checkoutMode === 'payment') {
       sessionPayload.payment_intent_data = {
         application_fee_amount: applicationFeeAmount,
+        transfer_data: {
+          destination: accountId
+        },
         metadata: {
           connectOrderId: order.id,
           workspaceId,
@@ -500,6 +596,9 @@ export class BillingService {
     } else {
       sessionPayload.subscription_data = {
         application_fee_percent: this.resolveApplicationFeePercent(input.applicationFeeAmount, amount),
+        transfer_data: {
+          destination: accountId
+        },
         metadata: {
           connectOrderId: order.id,
           workspaceId,
@@ -512,12 +611,7 @@ export class BillingService {
 
     let session: Awaited<ReturnType<StripeInstance['checkout']['sessions']['create']>>;
     try {
-      session = await this.stripe.checkout.sessions.create(
-        sessionPayload,
-        {
-          stripeAccount: accountId
-        }
-      );
+      session = await this.stripe.checkout.sessions.create(sessionPayload);
     } catch (error) {
       const statusReason = error instanceof Error ? error.message.slice(0, 500) : 'Stripe checkout creation failed';
 
@@ -538,7 +632,7 @@ export class BillingService {
         error: String(error)
       });
 
-      throw new AppError('Failed to create connected checkout session', 500);
+      throw new AppError('Failed to create connected checkout session', 500, { reason: statusReason });
     }
 
     if (!session.url) {
@@ -751,8 +845,8 @@ export class BillingService {
     if (name.length < 2) {
       throw new AppError('name must have at least 2 characters', 422);
     }
-    if (input.billingType === 'SUBSCRIPTION' && !input.recurringInterval) {
-      throw new AppError('recurringInterval is required for subscription items', 422);
+    if (this.isRecurringCatalogBillingType(input.billingType) && !input.recurringInterval) {
+      throw new AppError('recurringInterval is required for recurring items', 422);
     }
 
     const product = await this.stripe.products.create(
@@ -767,7 +861,7 @@ export class BillingService {
       },
       { stripeAccount: accountId }
     );
-    const recurring = input.billingType === 'SUBSCRIPTION'
+    const recurring = this.isRecurringCatalogBillingType(input.billingType)
       ? {
           interval: this.mapRecurringInterval(input.recurringInterval ?? 'MONTH'),
           interval_count: input.recurringIntervalCount ?? 1
@@ -812,7 +906,7 @@ export class BillingService {
     const source = input.metadata ?? {};
     const catalogTypeHint = input.catalogItem?.kind === 'SERVICE' ? 'nfse' : 'nfe';
     const saleOriginHint =
-      input.catalogItem?.billingType === 'SUBSCRIPTION' ? 'stripe_subscription' : 'stripe_payment';
+      this.isRecurringCatalogBillingType(input.catalogItem?.billingType) ? 'stripe_subscription' : 'stripe_payment';
 
     const merged: Record<string, string> = {
       ...source,
@@ -844,6 +938,87 @@ export class BillingService {
     if (status === 'INCOMPLETE' || status === 'INCOMPLETE_EXPIRED')
       return 'Pagamento incompleto. Inicie uma nova assinatura.';
     return 'Assinatura inativa. Assine um plano para continuar.';
+  }
+
+  private resolveConnectPaymentMethodTypes(
+    billingType: ConnectCatalogBillingType,
+    currency: string
+  ): StripeCheckoutPaymentMethodType[] {
+    if (currency !== 'brl') {
+      return CARD_ONLY_PAYMENT_METHODS;
+    }
+
+    if (billingType === 'ASSINATURA') {
+      return CARD_ONLY_PAYMENT_METHODS;
+    }
+
+    if (billingType === 'SUBSCRIPTION') {
+      return BRL_SUBSCRIPTION_PAYMENT_METHODS;
+    }
+
+    return BRL_PAYMENT_METHODS;
+  }
+
+  private isRecurringCatalogBillingType(
+    billingType: ConnectCatalogBillingType | null | undefined
+  ): boolean {
+    return billingType === 'ASSINATURA' || billingType === 'SUBSCRIPTION';
+  }
+
+  private async getDefaultPaymentMethodConfiguration(
+    accountId: string,
+    workspaceId: string
+  ): Promise<StripePaymentMethodConfigurationObject | null> {
+    try {
+      const configurations = await this.stripe.paymentMethodConfigurations.list(
+        { limit: 10 },
+        { stripeAccount: accountId }
+      );
+      return configurations.data.find((configuration) => configuration.is_default) ?? configurations.data[0] ?? null;
+    } catch (err) {
+      logger.warn({
+        event: 'billing.connect.payment_method_configuration_read_failed',
+        workspaceId,
+        accountId,
+        error: String(err)
+      });
+      return null;
+    }
+  }
+
+  private resolvePaymentMethodConfigurationStatus(
+    paymentMethod:
+      | { available: boolean; display_preference?: { preference?: string | null; value?: string | null } }
+      | null
+      | undefined,
+    capabilityStatus: string | null | undefined
+  ): string | null {
+    if (paymentMethod?.available || capabilityStatus === 'active') {
+      return 'active';
+    }
+    if (paymentMethod?.display_preference?.preference === 'on' || paymentMethod?.display_preference?.value === 'on') {
+      return capabilityStatus === 'pending' ? 'pending' : 'enabled';
+    }
+    if (paymentMethod?.display_preference?.preference === 'off' || paymentMethod?.display_preference?.value === 'off') {
+      return 'inactive';
+    }
+    return capabilityStatus ?? null;
+  }
+
+  private resolveRequestedPaymentMethodStatus(status: string | null): string {
+    if (status === 'active') return 'active';
+    return 'enabled';
+  }
+
+  private buildPaymentMethodConfigurationPreference(
+    paymentMethod: ConnectLocalPaymentMethod,
+    preference: 'on' | 'off'
+  ): StripePaymentMethodConfigurationUpdateParams {
+    if (paymentMethod === 'pix') {
+      return { pix: { display_preference: { preference } } };
+    }
+
+    return { boleto: { display_preference: { preference } } };
   }
 
   // ---------------------------------------------------------------------------

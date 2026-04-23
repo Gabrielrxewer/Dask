@@ -53,6 +53,17 @@ export const billingService = {
     );
   },
 
+  requestConnectPaymentCapability(
+    workspaceId: string,
+    capability: "pix_payments" | "boleto_payments"
+  ): Promise<ConnectAccountStatus> {
+    return apiClient.post<ConnectAccountStatus>(
+      `/billing/connect/workspaces/${workspaceId}/payment-capability`,
+      { paymentMethod: capability === "pix_payments" ? "pix" : "boleto" },
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
   listConnectCatalogItems(workspaceId: string, includeInactive = true): Promise<{ items: ConnectCatalogItem[] }> {
     return apiClient.get<{ items: ConnectCatalogItem[] }>(
       `/billing/connect/workspaces/${workspaceId}/catalog-items?includeInactive=${String(includeInactive)}`,

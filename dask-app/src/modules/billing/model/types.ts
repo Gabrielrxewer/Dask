@@ -26,6 +26,9 @@ export interface ConnectAccountStatus {
   detailsSubmitted: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
+  cardPaymentsStatus: string | null;
+  pixPaymentsStatus: string | null;
+  boletoPaymentsStatus: string | null;
   onboardingComplete: boolean;
   requirementsDue: string[];
 }
@@ -45,7 +48,7 @@ export interface CreateConnectCheckoutSessionInput {
 }
 
 export type ConnectCatalogItemKind = "PRODUCT" | "SERVICE";
-export type ConnectCatalogBillingType = "ONE_TIME" | "SUBSCRIPTION";
+export type ConnectCatalogBillingType = "ONE_TIME" | "ASSINATURA" | "SUBSCRIPTION";
 export type ConnectCatalogRecurringInterval = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
 export interface ConnectCatalogItem {

@@ -25,7 +25,15 @@ type MockStripeInstance = {
   checkout: { sessions: { create: ReturnType<typeof vi.fn> } };
   subscriptions: { retrieve: ReturnType<typeof vi.fn> };
   webhooks: { constructEvent: ReturnType<typeof vi.fn> };
-  accounts: { create: ReturnType<typeof vi.fn>; retrieve: ReturnType<typeof vi.fn> };
+  accounts: {
+    create: ReturnType<typeof vi.fn>;
+    retrieve: ReturnType<typeof vi.fn>;
+    updateCapability: ReturnType<typeof vi.fn>;
+  };
+  paymentMethodConfigurations: {
+    list: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
   accountLinks: { create: ReturnType<typeof vi.fn> };
 };
 
@@ -120,7 +128,11 @@ function makeStripe(): MockStripeInstance {
     checkout: { sessions: { create: vi.fn() } },
     subscriptions: { retrieve: vi.fn() },
     webhooks: { constructEvent: vi.fn() },
-    accounts: { create: vi.fn(), retrieve: vi.fn() },
+    accounts: { create: vi.fn(), retrieve: vi.fn(), updateCapability: vi.fn().mockResolvedValue({}) },
+    paymentMethodConfigurations: {
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      update: vi.fn().mockResolvedValue({})
+    },
     accountLinks: { create: vi.fn() }
   };
 }
@@ -378,11 +390,11 @@ describe('BillingService', () => {
         expect.objectContaining({
           mode: 'payment',
           payment_intent_data: expect.objectContaining({
-            application_fee_amount: 500
+            application_fee_amount: 500,
+            transfer_data: {
+              destination: 'acct_existing'
+            }
           })
-        }),
-        expect.objectContaining({
-          stripeAccount: 'acct_existing'
         })
       );
       expect(response.sessionId).toBe('cs_connect_1');

@@ -34,6 +34,21 @@ export const createConnectOnboardingLinkDto = z.object({
   returnUrl: z.string().url().optional()
 });
 
+export const requestConnectPaymentCapabilityDto = z.object({
+  paymentMethod: z.enum(['pix', 'boleto']).optional(),
+  capability: z.enum(['pix_payments', 'boleto_payments']).optional()
+}).transform((payload) => ({
+  paymentMethod:
+    payload.paymentMethod ??
+    (payload.capability === 'pix_payments'
+      ? 'pix'
+      : payload.capability === 'boleto_payments'
+        ? 'boleto'
+        : undefined)
+})).refine((payload): payload is { paymentMethod: 'pix' | 'boleto' } => Boolean(payload.paymentMethod), {
+  message: 'paymentMethod is required'
+});
+
 export const createConnectCheckoutSessionDto = z.object({
   amount: z.number().int().positive().optional(),
   currency: currencySchema.default('brl'),
@@ -69,7 +84,7 @@ export const createConnectCheckoutSessionDto = z.object({
 
 export const createConnectCatalogItemDto = z.object({
   kind: z.enum(['PRODUCT', 'SERVICE']),
-  billingType: z.enum(['ONE_TIME', 'SUBSCRIPTION']).default('ONE_TIME'),
+  billingType: z.enum(['ONE_TIME', 'ASSINATURA', 'SUBSCRIPTION']).default('ONE_TIME'),
   recurringInterval: z.enum(['DAY', 'WEEK', 'MONTH', 'YEAR']).optional(),
   recurringIntervalCount: z.number().int().min(1).max(36).optional(),
   name: z.string().trim().min(2).max(120),
@@ -78,12 +93,12 @@ export const createConnectCatalogItemDto = z.object({
   currency: currencySchema.default('brl'),
   metadata: z.record(z.string(), z.string().max(500)).default({})
 }).superRefine((payload, ctx) => {
-  if (payload.billingType === 'SUBSCRIPTION') {
+  if (payload.billingType === 'ASSINATURA' || payload.billingType === 'SUBSCRIPTION') {
     if (!payload.recurringInterval) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['recurringInterval'],
-        message: 'recurringInterval is required for subscription items'
+        message: 'recurringInterval is required for recurring items'
       });
     }
     return;
@@ -93,7 +108,7 @@ export const createConnectCatalogItemDto = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['billingType'],
-      message: 'recurring fields are only allowed for subscription items'
+      message: 'recurring fields are only allowed for recurring items'
     });
   }
 });
@@ -110,6 +125,7 @@ export type ConnectPaymentOrderParamsInput = z.infer<typeof connectPaymentOrderP
 export type ListConnectPaymentOrdersQueryInput = z.infer<typeof listConnectPaymentOrdersQueryDto>;
 export type SyncConnectPaymentOrderQueryInput = z.infer<typeof syncConnectPaymentOrderQueryDto>;
 export type CreateConnectOnboardingLinkInput = z.infer<typeof createConnectOnboardingLinkDto>;
+export type RequestConnectPaymentCapabilityInput = z.infer<typeof requestConnectPaymentCapabilityDto>;
 export type CreateConnectCheckoutSessionInput = z.infer<typeof createConnectCheckoutSessionDto>;
 export type CreateConnectCatalogItemInput = z.infer<typeof createConnectCatalogItemDto>;
 export type ListConnectCatalogItemsQueryInput = z.infer<typeof listConnectCatalogItemsQueryDto>;

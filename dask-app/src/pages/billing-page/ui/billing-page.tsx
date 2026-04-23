@@ -20,6 +20,7 @@ import {
   DataTableCell,
   DataTableHeader,
   DataTableRow,
+  EmptyState,
   FormField,
   LoadingState,
   Section,
@@ -39,6 +40,7 @@ type ChargeSource = "catalog" | "manual";
 type ReviewStep = "closed" | "preparing" | "ready";
 type ActiveTab = "conta" | "catalogo" | "cobrar" | "historico";
 type HistoryAction = "copy" | "resend" | "cancel";
+type PaymentCapability = "pix_payments" | "boleto_payments";
 
 const HISTORY_PAGE_SIZE = 5;
 
@@ -60,8 +62,13 @@ const CATALOG_KIND_LABEL: Record<ConnectCatalogItemKind, string> = {
 
 const CATALOG_BILLING_LABEL: Record<ConnectCatalogBillingType, string> = {
   ONE_TIME: "Avulso",
-  SUBSCRIPTION: "Assinatura"
+  ASSINATURA: "Assinatura",
+  SUBSCRIPTION: "Subscription"
 };
+
+function isRecurringCatalogBillingType(billingType: ConnectCatalogBillingType): boolean {
+  return billingType === "ASSINATURA" || billingType === "SUBSCRIPTION";
+}
 
 const BADGE_TONE_BY_STATUS: Record<StatusTone, "default" | "success" | "warning"> = {
   active: "success",
@@ -98,6 +105,49 @@ function canResendOrder(order: ConnectPaymentOrder): boolean {
 
 function canCancelOrder(order: ConnectPaymentOrder): boolean {
   return !isTerminalOrderStatus(order.status);
+}
+
+function BillingLoader({ visible }: { visible: boolean }) {
+  return (
+    <div className={`billing-loader${visible ? "" : " billing-loader--out"}`} aria-hidden="true">
+      <div className="billing-loader__stage">
+        <span className="billing-loader__particle billing-loader__particle--1">R$</span>
+        <span className="billing-loader__particle billing-loader__particle--2">$</span>
+        <span className="billing-loader__particle billing-loader__particle--3">€</span>
+        <span className="billing-loader__particle billing-loader__particle--4">R$</span>
+        <span className="billing-loader__particle billing-loader__particle--5">$</span>
+        <span className="billing-loader__particle billing-loader__particle--6">€</span>
+
+        <div className="billing-loader__card">
+          <div className="billing-loader__card-face">
+            <div className="billing-loader__card-top">
+              <div className="billing-loader__card-chip" />
+              <div className="billing-loader__card-wifi" />
+            </div>
+            <div className="billing-loader__card-number">•••• •••• •••• ••••</div>
+            <div className="billing-loader__card-meta">
+              <div className="billing-loader__card-meta-group">
+                <span className="billing-loader__card-label">Titular</span>
+                <span className="billing-loader__card-value">DASK USER</span>
+              </div>
+              <div className="billing-loader__card-meta-group">
+                <span className="billing-loader__card-label">Validade</span>
+                <span className="billing-loader__card-value">••/••</span>
+              </div>
+            </div>
+          </div>
+          <div className="billing-loader__card-shimmer" />
+        </div>
+
+        <div className="billing-loader__bar-wrap">
+          <div className="billing-loader__bar" />
+        </div>
+        <p className="billing-loader__label">
+          Carregando cobrança<span className="billing-loader__dots" />
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function IconCard() {
@@ -160,6 +210,18 @@ const KPI_ICONS: Record<string, () => JSX.Element> = {
   requirements: IconAlertCircle
 };
 
+function formatCapabilityStatus(status: string | null | undefined): string {
+  if (status === "active") return "Ativo";
+  if (status === "enabled") return "Habilitado";
+  if (status === "pending") return "Pendente";
+  if (status === "inactive") return "Inativo";
+  return "Nao solicitado";
+}
+
+function isLocalPaymentMethodEnabled(status: string | null | undefined): boolean {
+  return status === "active" || status === "enabled" || status === "pending";
+}
+
 export function BillingPage() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const [searchParams] = useSearchParams();
@@ -172,6 +234,7 @@ export function BillingPage() {
   const [connectStatus, setConnectStatus] = useState<ConnectAccountStatus | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isOpeningOnboarding, setIsOpeningOnboarding] = useState(false);
+  const [requestingCapability, setRequestingCapability] = useState<PaymentCapability | null>(null);
   const [paymentOrdersLoadState, setPaymentOrdersLoadState] = useState<PaymentOrdersLoadState>("idle");
   const [paymentOrders, setPaymentOrders] = useState<ConnectPaymentOrder[]>([]);
   const [paymentOrdersError, setPaymentOrdersError] = useState<string | null>(null);
@@ -187,6 +250,7 @@ export function BillingPage() {
   const [catalogItemBillingType, setCatalogItemBillingType] = useState<ConnectCatalogBillingType>("ONE_TIME");
   const [catalogItemRecurringInterval, setCatalogItemRecurringInterval] =
     useState<ConnectCatalogRecurringInterval>("MONTH");
+  const [catalogItemRecurringIntervalCount, setCatalogItemRecurringIntervalCount] = useState(1);
   const [catalogItemName, setCatalogItemName] = useState("");
   const [catalogItemDescription, setCatalogItemDescription] = useState("");
   const [catalogItemAmount, setCatalogItemAmount] = useState("");
@@ -446,6 +510,30 @@ export function BillingPage() {
     }
   }
 
+  async function handleRequestPaymentCapability(capability: PaymentCapability) {
+    if (!workspaceId || requestingCapability) return;
+
+    setRequestingCapability(capability);
+    setConnectError(null);
+    try {
+      const status = await billingService.requestConnectPaymentCapability(workspaceId, capability);
+      setConnectStatus(status);
+      setConnectState("ready");
+    } catch (error) {
+      const reason =
+        isApiError(error) &&
+        error.details &&
+        typeof error.details === "object" &&
+        "reason" in error.details &&
+        typeof error.details.reason === "string"
+          ? ` Motivo: ${error.details.reason}`
+          : "";
+      setConnectError(`Nao foi possivel solicitar essa forma de pagamento agora.${reason}`);
+    } finally {
+      setRequestingCapability(null);
+    }
+  }
+
   async function handlePrepareCheckout() {
     if (!workspaceId) return;
     if (chargeSource === "catalog" && !selectedCatalogItem) return;
@@ -474,8 +562,16 @@ export function BillingPage() {
       setCheckoutUrl(response.url);
       setEmailSentNotice(shouldSendEmail);
       setReviewStep("ready");
-    } catch {
-      setCheckoutError("Não foi possível gerar o link de cobrança. Revise os dados e tente novamente.");
+    } catch (error) {
+      const reason =
+        isApiError(error) &&
+        error.details &&
+        typeof error.details === "object" &&
+        "reason" in error.details &&
+        typeof error.details.reason === "string"
+          ? ` Motivo: ${error.details.reason}`
+          : "";
+      setCheckoutError(`Não foi possível gerar o link de cobrança. Revise os dados e tente novamente.${reason}`);
       setReviewStep("closed");
     }
   }
@@ -523,8 +619,10 @@ export function BillingPage() {
       const created = await billingService.createConnectCatalogItem(workspaceId, {
         kind: catalogItemKind,
         billingType: catalogItemBillingType,
-        recurringInterval: catalogItemBillingType === "SUBSCRIPTION" ? catalogItemRecurringInterval : undefined,
-        recurringIntervalCount: catalogItemBillingType === "SUBSCRIPTION" ? 1 : undefined,
+        recurringInterval: isRecurringCatalogBillingType(catalogItemBillingType) ? catalogItemRecurringInterval : undefined,
+        recurringIntervalCount: isRecurringCatalogBillingType(catalogItemBillingType)
+          ? catalogItemRecurringIntervalCount
+          : undefined,
         name: catalogItemDisplayName,
         description: catalogItemDescription.trim() || undefined,
         amount: catalogItemAmountInCents,
@@ -632,6 +730,7 @@ export function BillingPage() {
 
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageTitle="Cobrança" pageLabel="Financeiro">
+      <BillingLoader visible={connectState === "loading"} />
       <div className="billing-view workspace-view">
         <BoardMetrics metrics={metrics} cards={metricCards} className="billing-view__metrics workspace-view__metrics" />
 
@@ -652,9 +751,11 @@ export function BillingPage() {
           actions={
             <div className="billing-view__toolbar workspace-view__actions">
               <StatusBadge>{canCreateCheckout ? "Checkout liberado" : "Cadastro pendente"}</StatusBadge>
-              <Button type="button" onClick={() => void handleOpenOnboarding()} disabled={isOpeningOnboarding}>
-                {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
-              </Button>
+              {!canCreateCheckout ? (
+                <Button type="button" onClick={() => void handleOpenOnboarding()} disabled={isOpeningOnboarding}>
+                  {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
+                </Button>
+              ) : null}
             </div>
           }
           className="billing-view__section workspace-view__section"
@@ -768,6 +869,47 @@ export function BillingPage() {
                   </p>
                 </div>
 
+                <div className="billing-view__card">
+                  <div className="billing-view__card-head">
+                    <h3>Formas de pagamento locais</h3>
+                    <StatusBadge>Brasil</StatusBadge>
+                  </div>
+                  <div className="billing-view__capability-grid">
+                    <div className="billing-view__capability-row">
+                      <div>
+                        <strong>Pix</strong>
+                        <p>Status: {formatCapabilityStatus(connectStatus?.pixPaymentsStatus)}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void handleRequestPaymentCapability("pix_payments")}
+                        disabled={!connectStatus || isLocalPaymentMethodEnabled(connectStatus.pixPaymentsStatus) || requestingCapability !== null}
+                      >
+                        {requestingCapability === "pix_payments" ? "Solicitando..." : "Habilitar Pix"}
+                      </Button>
+                    </div>
+                    <div className="billing-view__capability-row">
+                      <div>
+                        <strong>Boleto</strong>
+                        <p>Status: {formatCapabilityStatus(connectStatus?.boletoPaymentsStatus)}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void handleRequestPaymentCapability("boleto_payments")}
+                        disabled={!connectStatus || isLocalPaymentMethodEnabled(connectStatus.boletoPaymentsStatus) || requestingCapability !== null}
+                      >
+                        {requestingCapability === "boleto_payments" ? "Solicitando..." : "Habilitar boleto"}
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="billing-view__capability-hint">
+                    Depois de solicitar, a Stripe pode pedir dados extras no cadastro da conta conectada antes de liberar a forma de pagamento.
+                  </p>
+                  {connectError ? <p className="billing-view__error">{connectError}</p> : null}
+                </div>
+
                 {/* Pendências */}
                 {pendingItems.length > 0 ? (
                   <div className="billing-view__card">
@@ -846,7 +988,8 @@ export function BillingPage() {
                           onChange={(e) => setCatalogItemBillingType(e.target.value as ConnectCatalogBillingType)}
                         >
                           <option value="ONE_TIME">Cobrança avulsa</option>
-                          <option value="SUBSCRIPTION">Assinatura recorrente</option>
+                          <option value="ASSINATURA">Assinatura</option>
+                          <option value="SUBSCRIPTION">Subscription</option>
                         </Select>
                       </FormField>
                     </div>
@@ -860,18 +1003,21 @@ export function BillingPage() {
                         />
                       </FormField>
 
-                      {catalogItemBillingType === "SUBSCRIPTION" ? (
+                      {isRecurringCatalogBillingType(catalogItemBillingType) ? (
                         <FormField label="Recorrência" className="billing-view__field">
                           <Select
-                            value={catalogItemRecurringInterval}
-                            onChange={(e) =>
-                              setCatalogItemRecurringInterval(e.target.value as ConnectCatalogRecurringInterval)
-                            }
+                            value={`${catalogItemRecurringInterval}:${catalogItemRecurringIntervalCount}`}
+                            onChange={(e) => {
+                              const [interval, intervalCount] = e.target.value.split(":");
+                              setCatalogItemRecurringInterval(interval as ConnectCatalogRecurringInterval);
+                              setCatalogItemRecurringIntervalCount(Number(intervalCount));
+                            }}
                           >
-                            <option value="MONTH">Mensal</option>
-                            <option value="YEAR">Anual</option>
-                            <option value="WEEK">Semanal</option>
-                            <option value="DAY">Diária</option>
+                            <option value="MONTH:1">Mensal</option>
+                            <option value="MONTH:6">Semestral</option>
+                            <option value="YEAR:1">Anual</option>
+                            <option value="WEEK:1">Semanal</option>
+                            <option value="DAY:1">Diária</option>
                           </Select>
                         </FormField>
                       ) : (
@@ -1139,7 +1285,7 @@ export function BillingPage() {
                                 </button>
                               </div>
                               <span className="billing-view__checkout-link-hint">
-                                Clique no bloco para copiar. Em cobranças avulsas em BRL, o checkout aceita cartão, Pix e boleto.
+                                Clique no bloco para copiar. Avulsa aceita cartão, Pix e boleto; Assinatura aceita cartão; Subscription aceita cartão e boleto.
                               </span>
                             </div>
 

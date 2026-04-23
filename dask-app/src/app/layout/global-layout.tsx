@@ -18,7 +18,20 @@ const homeNavigationItems = [
   { id: "precos", label: "Planos" }
 ];
 
+const termsNavigationItems = [
+  { id: "legal-overview", label: "Visao geral" },
+  { id: "legal-clauses", label: "Clausulas" },
+  { id: "legal-guide", label: "Leitura rapida" }
+];
+
+const privacyNavigationItems = [
+  { id: "legal-overview", label: "Visao geral" },
+  { id: "legal-clauses", label: "Dados" },
+  { id: "legal-guide", label: "Leitura rapida" }
+];
+
 const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
+const legalNavigationIds = new Set([...termsNavigationItems, ...privacyNavigationItems].map(item => item.id));
 const userProfileStorageKey = "dask:user-profile-preferences";
 const globalThemeStorageKey = "dask:theme-preference";
 const maxProfileAvatarBytes = 2 * 1024 * 1024;
@@ -127,6 +140,11 @@ function getHomeSectionFromHash(hash: string): string {
   return homeNavigationIds.has(sectionId) ? sectionId : "top";
 }
 
+function getLegalSectionFromHash(hash: string): string {
+  const sectionId = hash.replace("#", "");
+  return legalNavigationIds.has(sectionId) ? sectionId : "legal-overview";
+}
+
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
@@ -169,6 +187,36 @@ function getHomeSectionScrollTop(scrollContainer: HTMLElement, target: HTMLEleme
 
   const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
   return Math.min(maxScrollTop, Math.max(0, centeredTop));
+}
+
+function getLegalScrollTarget(sectionId: string): HTMLElement | null {
+  const target = document.getElementById(sectionId);
+  if (!target) {
+    return null;
+  }
+
+  return target.closest(".home-page__view") ?? target;
+}
+
+function getLegalSectionScrollTop(
+  scrollContainer: HTMLElement,
+  target: HTMLElement,
+  targetId: string,
+  options?: { alignToPageEnd?: boolean }
+): number {
+  if (targetId === "legal-overview") {
+    return 0;
+  }
+
+  const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+  if (options?.alignToPageEnd) {
+    return maxScrollTop;
+  }
+
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const alignedTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+  return Math.min(maxScrollTop, Math.max(0, alignedTop));
 }
 
 function isCompactViewport(): boolean {
@@ -244,7 +292,11 @@ export function GlobalLayout() {
   const shouldDisableMainScroll = isAppRoute && !isAdminRoute;
   const isAuthenticated = status === "authenticated";
   const isLegalRoute = isTermsRoute || isPrivacyRoute;
-  const isAuthenticatedArea = isAuthenticated && (!isPublicRoute || isLegalRoute);
+  const isAuthenticatedArea = isAuthenticated && !isPublicRoute;
+  const hasPublicHeaderNavigation = isHomeRoute || isLegalRoute;
+  const legalNavigationItems = isPrivacyRoute ? privacyNavigationItems : termsNavigationItems;
+  const legalNavigationLabel = isPrivacyRoute ? "Navegacao da Politica de Privacidade" : "Navegacao dos Termos de Uso";
+  const legalRoutePath = isPrivacyRoute ? routePaths.privacyPolicy : routePaths.termsOfUse;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isCompactViewport());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -255,6 +307,7 @@ export function GlobalLayout() {
   const [isUpgradingToBusiness, setIsUpgradingToBusiness] = useState(false);
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
+  const [activeLegalSection, setActiveLegalSection] = useState(() => getLegalSectionFromHash(location.hash));
   const [profileTheme, setProfileTheme] = useState<UserProfileTheme>(defaultUserProfilePreferences.theme);
   const [profileLanguage, setProfileLanguage] = useState(defaultUserProfilePreferences.language);
   const [profileDensity, setProfileDensity] = useState(defaultUserProfilePreferences.density);
@@ -444,6 +497,77 @@ export function GlobalLayout() {
   }, [isHomeRoute, location.hash]);
 
   useEffect(() => {
+    if (!isLegalRoute) {
+      setActiveLegalSection("legal-overview");
+      return;
+    }
+
+    const scrollContainer = document.querySelector(".global-layout__main");
+    if (!(scrollContainer instanceof HTMLElement)) {
+      return;
+    }
+
+    const updateActiveSection = () => {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const viewportCenter = containerRect.top + containerRect.height / 2;
+      const currentSection = legalNavigationItems.reduce((closestId, item) => {
+        const target = getLegalScrollTarget(item.id);
+        if (!target) {
+          return closestId;
+        }
+
+        const targetRect = target.getBoundingClientRect();
+        const targetCenter = targetRect.top + targetRect.height / 2;
+        const currentDistance = Math.abs(targetCenter - viewportCenter);
+        const closestTarget = getLegalScrollTarget(closestId);
+
+        if (!closestTarget) {
+          return item.id;
+        }
+
+        const closestRect = closestTarget.getBoundingClientRect();
+        const closestCenter = closestRect.top + closestRect.height / 2;
+        const closestDistance = Math.abs(closestCenter - viewportCenter);
+        return currentDistance < closestDistance ? item.id : closestId;
+      }, "legal-overview");
+
+      setActiveLegalSection(currentSection);
+    };
+
+    updateActiveSection();
+    scrollContainer.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
+  }, [isLegalRoute, legalNavigationItems]);
+
+  useEffect(() => {
+    if (!isLegalRoute) {
+      return;
+    }
+
+    const targetId = getLegalSectionFromHash(location.hash);
+    const scrollContainer = document.querySelector(".global-layout__main");
+    const target = getLegalScrollTarget(targetId);
+    if (!(scrollContainer instanceof HTMLElement) || !target) {
+      return;
+    }
+    const nextTop = getLegalSectionScrollTop(scrollContainer, target, targetId, {
+      alignToPageEnd: isPrivacyRoute && targetId === "legal-guide"
+    });
+
+    window.requestAnimationFrame(() => {
+      scrollContainer.scrollTo({
+        top: nextTop,
+        behavior: prefersReducedMotion() ? "auto" : "smooth"
+      });
+    });
+  }, [isLegalRoute, location.hash, location.pathname]);
+
+  useEffect(() => {
     const handleResize = () => {
       if (!isCompactViewport()) {
         setIsSidebarOpen(true);
@@ -549,6 +673,29 @@ export function GlobalLayout() {
       if (container instanceof HTMLElement && target) {
         container.scrollTo({
           top: getHomeSectionScrollTop(container, target, targetId),
+          behavior: prefersReducedMotion() ? "auto" : "smooth"
+        });
+      }
+      return;
+    }
+
+    navigate(nextPath);
+  };
+
+  const selectLegalSection = (targetId: string) => {
+    const nextPath = targetId === "legal-overview" ? legalRoutePath : `${legalRoutePath}#${targetId}`;
+
+    setActiveLegalSection(targetId);
+    setIsHomeNavOpen(false);
+
+    if (`${location.pathname}${location.hash}` === nextPath) {
+      const container = document.querySelector(".global-layout__main");
+      const target = getLegalScrollTarget(targetId);
+      if (container instanceof HTMLElement && target) {
+        container.scrollTo({
+          top: getLegalSectionScrollTop(container, target, targetId, {
+            alignToPageEnd: isPrivacyRoute && targetId === "legal-guide"
+          }),
           behavior: prefersReducedMotion() ? "auto" : "smooth"
         });
       }
@@ -665,15 +812,23 @@ export function GlobalLayout() {
         style={isAuthenticatedArea ? { colorScheme: resolvedProfileTheme } : undefined}
       >
         <div className="global-layout__surface">
-          <header className={cn("global-header", isHomeRoute && "global-header--home")}>
+          <header className={cn("global-header", hasPublicHeaderNavigation && "global-header--home")}>
             <div className="global-header__left">
               <button
                 type="button"
                 className="global-header__menu"
-                aria-label={isHomeRoute ? "Alternar menu da Home" : "Alternar menu de navegacao"}
-                aria-expanded={isHomeRoute ? isHomeNavOpen : isSidebarOpen}
-                onClick={isHomeRoute ? () => setIsHomeNavOpen(prev => !prev) : isPublicRoute ? undefined : toggleNavigation}
-                disabled={isPublicRoute && !isHomeRoute}
+                aria-label={
+                  isHomeRoute
+                    ? "Alternar menu da Home"
+                    : isLegalRoute
+                      ? isPrivacyRoute
+                        ? "Alternar menu de Privacidade"
+                        : "Alternar menu dos Termos"
+                      : "Alternar menu de navegacao"
+                }
+                aria-expanded={hasPublicHeaderNavigation ? isHomeNavOpen : isSidebarOpen}
+                onClick={hasPublicHeaderNavigation ? () => setIsHomeNavOpen(prev => !prev) : isPublicRoute ? undefined : toggleNavigation}
+                disabled={isPublicRoute && !hasPublicHeaderNavigation}
               >
                 <span className="global-header__menu-grid">
                   <i />
@@ -703,6 +858,22 @@ export function GlobalLayout() {
                       activeHomeSection === item.id && "global-header__home-link--active"
                     )}
                     onClick={() => selectHomeSection(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            ) : isLegalRoute ? (
+              <nav className="global-header__home-nav" aria-label={legalNavigationLabel}>
+                {legalNavigationItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(
+                      "global-header__home-link",
+                      activeLegalSection === item.id && "global-header__home-link--active"
+                    )}
+                    onClick={() => selectLegalSection(item.id)}
                   >
                     {item.label}
                   </button>
@@ -850,17 +1021,18 @@ export function GlobalLayout() {
               </div>
             )}
 
-            {isHomeRoute && isHomeNavOpen ? (
-              <nav className="global-header__home-menu" aria-label="Navegacao da Home">
-                {homeNavigationItems.map(item => (
+            {hasPublicHeaderNavigation && isHomeNavOpen ? (
+              <nav className="global-header__home-menu" aria-label={isHomeRoute ? "Navegacao da Home" : legalNavigationLabel}>
+                {(isHomeRoute ? homeNavigationItems : legalNavigationItems).map(item => (
                   <button
                     key={item.id}
                     type="button"
                     className={cn(
                       "global-header__home-menu-link",
-                      activeHomeSection === item.id && "global-header__home-menu-link--active"
+                      (isHomeRoute ? activeHomeSection : activeLegalSection) === item.id &&
+                        "global-header__home-menu-link--active"
                     )}
-                    onClick={() => selectHomeSection(item.id)}
+                    onClick={() => (isHomeRoute ? selectHomeSection(item.id) : selectLegalSection(item.id))}
                   >
                     {item.label}
                   </button>

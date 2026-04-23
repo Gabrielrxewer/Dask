@@ -471,6 +471,7 @@ export interface UpdateCustomFieldInput {
 export interface WorkspaceService {
   listWorkspaces: () => Promise<WorkspaceSummary[]>;
   listWorkspaceTemplates: () => Promise<WorkspaceTemplateOption[]>;
+  deleteWorkspace: (workspaceSlug: string) => Promise<void>;
   provisionWorkspace: (input: {
     kind: "PERSONAL" | "CORPORATE";
     workspaceName: string;

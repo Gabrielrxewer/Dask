@@ -86,6 +86,9 @@ export interface WorkspacesRepository {
     key?: string;
     config?: Record<string, unknown>;
   }, db?: Prisma.TransactionClient): Promise<Workspace>;
+  deleteWorkspace(input: {
+    workspaceId: string;
+  }, db?: Prisma.TransactionClient): Promise<void>;
   createWorkspace(input: {
     organizationId?: string;
     kind: WorkspaceKind;

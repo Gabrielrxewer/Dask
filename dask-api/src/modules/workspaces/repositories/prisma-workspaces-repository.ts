@@ -63,6 +63,31 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
     return this.prisma.$transaction(execute);
   }
 
+  public deleteWorkspace(input: {
+    workspaceId: string;
+  }, db?: Prisma.TransactionClient): Promise<void> {
+    const execute = async (tx: Prisma.TransactionClient): Promise<void> => {
+      const workspace = await tx.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { id: true }
+      });
+
+      if (!workspace) {
+        throw new AppError('Workspace not found', 404);
+      }
+
+      await tx.workspace.delete({
+        where: { id: input.workspaceId }
+      });
+    };
+
+    if (db) {
+      return execute(db);
+    }
+
+    return this.prisma.$transaction(execute);
+  }
+
   public createWorkspace(input: {
     organizationId?: string;
     kind: WorkspaceKind;

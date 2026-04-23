@@ -924,7 +924,8 @@ export const workspaceService: WorkspaceService = {
       },
       {
         authMode: "required",
-        retryOnUnauthorized: true
+        retryOnUnauthorized: true,
+        globalLoading: false
       }
     );
   },

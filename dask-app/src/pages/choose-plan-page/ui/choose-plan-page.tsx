@@ -10,17 +10,17 @@ const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
     "1 workspace pessoal",
     "Boards, listas e timeline",
     "IA para melhorias",
-    "Automacoes basicas",
-    "Busca semantica"
+    "Automações básicas",
+    "Busca semântica"
   ],
   BUSINESS: [
-    "Multiplos workspaces",
+    "Múltiplos workspaces",
     "Suporte a equipes",
     "Boards, listas e timeline",
-    "IA avancada e automacoes",
+    "IA avançada e automações",
     "Campos personalizados",
-    "Auditoria e integracoes",
-    "Suporte prioritario"
+    "Auditoria e integrações",
+    "Suporte prioritário"
   ]
 };
 
@@ -56,10 +56,10 @@ export function ChoosePlanPage() {
 
     const labels: Record<string, string> = {
       ACTIVE: "Ativa",
-      TRIALING: "Em periodo de teste",
+      TRIALING: "Em período de teste",
       PAST_DUE: "Pagamento pendente",
       CANCELED: "Cancelada",
-      UNPAID: "Nao paga",
+      UNPAID: "Não paga",
       INCOMPLETE: "Incompleta",
       INCOMPLETE_EXPIRED: "Expirada",
       PAUSED: "Pausada"
@@ -76,7 +76,7 @@ export function ChoosePlanPage() {
       const { url } = await billingService.createCheckoutSession(plan);
       window.location.href = url;
     } catch {
-      setError("Nao foi possivel iniciar o pagamento. Tente novamente.");
+      setError("Não foi possível iniciar o pagamento. Tente novamente.");
       setLoadingPlan(null);
     }
   }
@@ -92,7 +92,7 @@ export function ChoosePlanPage() {
       const { url } = await billingService.createPortalSession();
       window.location.href = url;
     } catch {
-      setError("Nao foi possivel abrir a gestao da assinatura. Tente novamente.");
+      setError("Não foi possível abrir a gestão da assinatura. Tente novamente.");
       setIsOpeningPortal(false);
     }
   }
@@ -108,7 +108,7 @@ export function ChoosePlanPage() {
           <h1 className="choose-plan__title">Escolha o plano ideal para voce</h1>
           <p className="choose-plan__description choose-plan__description--legal">
             Antes de pagar, revise os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
-            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. Ao clicar em "Assinar", voce concorda
+            <Link to={routePaths.privacyPolicy}>Política de Privacidade</Link>. Ao clicar em "Assinar", você concorda
             com ambos.
           </p>
         </header>
@@ -120,11 +120,11 @@ export function ChoosePlanPage() {
             <p className="choose-plan__current-subscription-eyebrow">Assinatura atual</p>
             <h2>{currentPlan ? `${currentPlan.name} (${currentPlan.price}/mes)` : "Sem plano ativo"}</h2>
             <p>
-              Status: <strong>{statusLabel}</strong> · Proxima renovacao: <strong>{periodEndLabel}</strong>
+              Status: <strong>{statusLabel}</strong> · Próxima renovação: <strong>{periodEndLabel}</strong>
             </p>
             {status.cancelAtPeriodEnd ? (
               <p className="choose-plan__cancel-note">
-                Cancelamento ja agendado para o fim do ciclo atual. Voce pode reativar pela area de gestao da
+                Cancelamento já agendado para o fim do ciclo atual. Você pode reativar pela área de gestão da
                 assinatura.
               </p>
             ) : null}
@@ -135,7 +135,7 @@ export function ChoosePlanPage() {
             onClick={() => void handleOpenPortal()}
             disabled={isOpeningPortal}
           >
-            {isOpeningPortal ? "Abrindo gestao..." : "Gerenciar assinatura / cancelar"}
+            {isOpeningPortal ? "Abrindo gestão..." : "Gerenciar assinatura / cancelar"}
           </button>
         </section>
       ) : null}
@@ -195,12 +195,12 @@ export function ChoosePlanPage() {
         {error && <p className="choose-plan__error">{error}</p>}
 
         <p className="choose-plan__notice choose-plan__notice--summary">
-          Acesso completo a plataforma apos a confirmacao do pagamento. Cobranca mensal recorrente, cancele quando
+          Acesso completo à plataforma após a confirmação do pagamento. Cobrança mensal recorrente, cancele quando
           quiser.
         </p>
 
         <p className="choose-plan__notice">
-          Pagamento processado com seguranca via Stripe. Nenhum dado de cartao e armazenado pelo Dask.
+          Pagamento processado com segurança via Stripe. Nenhum dado de cartão é armazenado pelo Dask.
         </p>
       </div>
     </main>

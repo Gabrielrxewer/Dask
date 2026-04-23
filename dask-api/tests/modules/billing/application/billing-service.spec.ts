@@ -93,6 +93,7 @@ function makeRepo(): Mocked<BillingRepository> {
     findSubscriptionByStripeId: vi.fn(),
     findActiveSubscriptionByUserId: vi.fn(),
     findLatestSubscriptionByUserId: vi.fn(),
+    hasGuestWorkspaceMembership: vi.fn().mockResolvedValue(false),
     findWorkspaceMembership: vi.fn(),
     findWorkspaceBillingConnectInfo: vi.fn(),
     findConnectCatalogItemById: vi.fn(),

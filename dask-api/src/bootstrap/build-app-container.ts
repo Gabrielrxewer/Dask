@@ -119,6 +119,7 @@ export function buildAppContainer(): AppContainer {
         stripe: stripeClient,
         appPublicUrl: env.APP_PUBLIC_URL,
         webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        emailService,
         priceIds: {
           PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
           BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''

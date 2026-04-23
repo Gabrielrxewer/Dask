@@ -37,6 +37,7 @@ export interface CreateConnectCheckoutSessionInput {
   catalogItemId?: string;
   customerEmail?: string;
   customerName?: string;
+  sendEmail?: boolean;
   applicationFeeAmount?: number;
   successUrl?: string;
   cancelUrl?: string;

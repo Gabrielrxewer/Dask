@@ -10,27 +10,33 @@
 }
 
 .subscription-blocked__icon {
-  width: 64px;
-  height: 64px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  background: rgba(59, 130, 246, 0.12);
-  border: 2px solid rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid rgba(59, 130, 246, 0.22);
+  color: #2563eb;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.16);
+}
+
+.subscription-blocked__icon svg {
+  width: 28px;
+  height: 28px;
 }
 
 .subscription-blocked__title {
   font-size: clamp(20px, 2.6vw, 28px);
   font-weight: 700;
-  color: var(--color-text-primary, #f1f5f9);
+  color: var(--text-strong, #0a1e31);
   margin: 0;
 }
 
 .subscription-blocked__description {
   font-size: 14px;
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--text-soft, #586f88);
   max-width: 400px;
   line-height: 1.6;
   margin: 0;

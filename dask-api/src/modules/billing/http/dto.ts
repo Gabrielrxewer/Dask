@@ -16,8 +16,17 @@ export const connectWorkspaceParamsDto = z.object({
   workspaceId: z.string().uuid()
 });
 
+export const connectPaymentOrderParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  orderId: z.string().uuid()
+});
+
 export const listConnectPaymentOrdersQueryDto = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50)
+});
+
+export const syncConnectPaymentOrderQueryDto = z.object({
+  sessionId: z.string().trim().min(1)
 });
 
 export const createConnectOnboardingLinkDto = z.object({
@@ -32,6 +41,7 @@ export const createConnectCheckoutSessionDto = z.object({
   catalogItemId: z.string().uuid().optional(),
   customerEmail: z.string().email().optional(),
   customerName: z.string().trim().min(2).max(120).optional(),
+  sendEmail: z.boolean().optional(),
   applicationFeeAmount: z.number().int().nonnegative().optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
@@ -96,7 +106,9 @@ export const listConnectCatalogItemsQueryDto = z.object({
 });
 
 export type ConnectWorkspaceParamsInput = z.infer<typeof connectWorkspaceParamsDto>;
+export type ConnectPaymentOrderParamsInput = z.infer<typeof connectPaymentOrderParamsDto>;
 export type ListConnectPaymentOrdersQueryInput = z.infer<typeof listConnectPaymentOrdersQueryDto>;
+export type SyncConnectPaymentOrderQueryInput = z.infer<typeof syncConnectPaymentOrderQueryDto>;
 export type CreateConnectOnboardingLinkInput = z.infer<typeof createConnectOnboardingLinkDto>;
 export type CreateConnectCheckoutSessionInput = z.infer<typeof createConnectCheckoutSessionDto>;
 export type CreateConnectCatalogItemInput = z.infer<typeof createConnectCatalogItemDto>;

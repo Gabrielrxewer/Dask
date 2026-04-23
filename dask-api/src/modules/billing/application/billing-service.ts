@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { logger } from '@/core/logging/logger';
 import { AppError } from '@/core/errors/app-error';
+import type { EmailService } from '@/infra/email/email-service';
 import type { BillingRepository } from '../repositories/billing-repository';
 import type {
   ConnectCatalogBillingType,
@@ -25,6 +26,7 @@ type StripeRetrieveSubscription = (subscriptionId: string) => Promise<StripeSubs
 // Minimal local interfaces for Stripe event payloads (avoids namespace type conflicts)
 interface StripeCheckoutSession {
   id: string;
+  status?: string | null;
   mode: string | null;
   subscription: string | { id: string } | null;
   payment_intent?: string | { id: string } | null;
@@ -89,6 +91,7 @@ interface BillingServiceDeps {
   stripe: StripeInstance;
   appPublicUrl: string;
   webhookSecret: string;
+  emailService?: EmailService;
   priceIds?: Partial<Record<SubscriptionPlan, string>>;
   connectApplicationFeeBps?: number;
 }
@@ -110,6 +113,7 @@ export interface CreateConnectCheckoutSessionInput {
   catalogItemId?: string;
   customerEmail?: string;
   customerName?: string;
+  sendEmail?: boolean;
   applicationFeeAmount?: number;
   successUrl?: string;
   cancelUrl?: string;
@@ -184,6 +188,7 @@ export class BillingService {
   private readonly stripe: StripeInstance;
   private readonly appPublicUrl: string;
   private readonly webhookSecret: string;
+  private readonly emailService?: EmailService;
   private readonly priceIds: Partial<Record<SubscriptionPlan, string>>;
   private readonly connectApplicationFeeBps: number;
 
@@ -192,6 +197,7 @@ export class BillingService {
     this.stripe = deps.stripe;
     this.appPublicUrl = deps.appPublicUrl;
     this.webhookSecret = deps.webhookSecret;
+    this.emailService = deps.emailService;
     this.priceIds = deps.priceIds ?? PLAN_PRICE_IDS;
     this.connectApplicationFeeBps = deps.connectApplicationFeeBps ?? 500;
   }
@@ -504,12 +510,36 @@ export class BillingService {
       };
     }
 
-    const session = await this.stripe.checkout.sessions.create(
-      sessionPayload,
-      {
-        stripeAccount: accountId
-      }
-    );
+    let session: Awaited<ReturnType<StripeInstance['checkout']['sessions']['create']>>;
+    try {
+      session = await this.stripe.checkout.sessions.create(
+        sessionPayload,
+        {
+          stripeAccount: accountId
+        }
+      );
+    } catch (error) {
+      const statusReason = error instanceof Error ? error.message.slice(0, 500) : 'Stripe checkout creation failed';
+
+      await this.repo.updateConnectPaymentOrder(order.id, {
+        status: 'FAILED',
+        failedAt: new Date(),
+        statusReason
+      });
+
+      logger.error({
+        event: 'billing.connect.checkout.create_failed',
+        workspaceId,
+        userId,
+        accountId,
+        orderId: order.id,
+        currency,
+        checkoutMode,
+        error: String(error)
+      });
+
+      throw new AppError('Failed to create connected checkout session', 500);
+    }
 
     if (!session.url) {
       throw new AppError('Failed to create connected checkout session', 500);
@@ -537,11 +567,107 @@ export class BillingService {
       applicationFeeAmount
     });
 
+    if (input.sendEmail && input.customerEmail && this.emailService) {
+      const formattedAmount = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: currency.toUpperCase()
+      }).format(amount / 100);
+
+      void this.emailService
+        .sendCheckoutLinkEmail(input.customerEmail, {
+          workspaceName: workspace.name,
+          description,
+          amount: formattedAmount,
+          checkoutUrl: session.url
+        })
+        .catch((err: unknown) => {
+          logger.error({ event: 'billing.connect.checkout.email_failed', orderId: order.id, error: err });
+        });
+    }
+
     return {
       url: session.url,
       sessionId: session.id,
       orderId: order.id
     };
+  }
+
+  async resendConnectPaymentOrderEmail(
+    workspaceId: string,
+    userId: string,
+    orderId: string
+  ): Promise<void> {
+    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+
+    const order = await this.repo.findConnectPaymentOrderById(orderId);
+    if (!order || order.workspaceId !== workspaceId) {
+      throw new AppError('Payment order not found', 404);
+    }
+    if (!order.checkoutUrl) {
+      throw new AppError('This order has no checkout URL to resend', 409);
+    }
+    if (!order.customerEmail) {
+      throw new AppError('This order has no customer email on record', 409);
+    }
+    if (['PAID', 'REFUNDED'].includes(order.status)) {
+      throw new AppError('Cannot resend reminder for a completed order', 409);
+    }
+    if (!this.emailService) {
+      throw new AppError('Email service is not configured', 503);
+    }
+
+    const formattedAmount = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: order.currency.toUpperCase()
+    }).format(order.amount / 100);
+
+    await this.emailService.sendPaymentReminderEmail(order.customerEmail, {
+      workspaceName: workspace.name,
+      description: order.description,
+      amount: formattedAmount,
+      checkoutUrl: order.checkoutUrl
+    });
+
+    logger.info({ event: 'billing.connect.reminder.sent', orderId, workspaceId });
+  }
+
+  async cancelConnectPaymentOrder(
+    workspaceId: string,
+    userId: string,
+    orderId: string
+  ): Promise<void> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+
+    const order = await this.repo.findConnectPaymentOrderById(orderId);
+    if (!order || order.workspaceId !== workspaceId) {
+      throw new AppError('Payment order not found', 404);
+    }
+    if (['PAID', 'REFUNDED', 'CANCELED'].includes(order.status)) {
+      throw new AppError('Order is already in a terminal state', 409);
+    }
+
+    if (order.stripeCheckoutSessionId) {
+      const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
+      if (workspace?.connectAccountId) {
+        try {
+          await this.stripe.checkout.sessions.expire(
+            order.stripeCheckoutSessionId,
+            undefined,
+            { stripeAccount: workspace.connectAccountId }
+          );
+        } catch (err) {
+          logger.warn({ event: 'billing.connect.cancel.expire_failed', orderId, error: String(err) });
+        }
+      }
+    }
+
+    await this.repo.updateConnectPaymentOrder(orderId, {
+      status: 'CANCELED',
+      canceledAt: new Date(),
+      statusReason: 'Canceled by workspace manager'
+    });
+
+    logger.info({ event: 'billing.connect.order.canceled', orderId, workspaceId });
   }
 
   async listConnectPaymentOrders(
@@ -553,6 +679,50 @@ export class BillingService {
     const safeLimit = Math.max(1, Math.min(limit, 200));
     const orders = await this.repo.listConnectPaymentOrdersByWorkspace(workspaceId, safeLimit);
     return orders.map((order) => this.mapConnectPaymentOrder(order));
+  }
+
+  async syncConnectPaymentOrderStatusBySessionId(
+    workspaceId: string,
+    userId: string,
+    sessionId: string
+  ): Promise<ConnectPaymentOrderListItem> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+
+    const order = await this.repo.findConnectPaymentOrderByCheckoutSessionId(sessionId);
+    if (!order || order.workspaceId !== workspaceId) {
+      throw new AppError('Payment order not found for this checkout session', 404);
+    }
+
+    const session = await this.stripe.checkout.sessions.retrieve(
+      sessionId,
+      undefined,
+      { stripeAccount: order.stripeConnectAccountId }
+    ) as unknown as StripeCheckoutSession;
+
+    const nextStatus: ConnectPaymentOrderStatus =
+      session.payment_status === 'paid'
+        ? 'PAID'
+        : session.payment_status === 'unpaid'
+          ? (session.status === 'complete' ? 'PENDING' : 'CHECKOUT_OPEN')
+          : session.status === 'expired'
+            ? 'CANCELED'
+            : session.status === 'complete'
+              ? 'CHECKOUT_COMPLETED'
+              : 'CHECKOUT_OPEN';
+
+    const updated = await this.repo.updateConnectPaymentOrder(order.id, {
+      status: nextStatus,
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id,
+      paidAt: nextStatus === 'PAID' ? order.paidAt ?? new Date() : order.paidAt,
+      canceledAt: nextStatus === 'CANCELED' ? order.canceledAt ?? new Date() : order.canceledAt,
+      lastWebhookEvent: 'checkout.session.sync'
+    });
+
+    return this.mapConnectPaymentOrder(updated);
   }
 
   async listConnectCatalogItems(

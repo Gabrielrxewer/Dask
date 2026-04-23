@@ -65,13 +65,13 @@ export function passwordChangedAlertTemplate(name: string): { html: string; text
 
   const html = baseLayout(
     'Senha alterada — Dask',
-    `<p class="greeting">Ola, ${firstName}.</p>
+    `<p class="greeting">Olá, ${firstName}.</p>
     <p class="text">Sua senha no Dask foi alterada com sucesso em <strong>${now}</strong>.</p>
-    <p class="text">Se foi voce, pode ignorar este aviso. Se nao reconhece esta alteracao, redefina sua senha imediatamente ou entre em contato com o suporte.</p>
+    <p class="text">Se foi você, pode ignorar este aviso. Se não reconhece esta alteração, redefina sua senha imediatamente ou entre em contato com o suporte.</p>
     <hr class="divider" />`
   );
 
-  const text = `Ola, ${firstName}.\n\nSua senha no Dask foi alterada em ${now}.\n\nSe nao foi voce, redefina sua senha imediatamente.`;
+  const text = `Olá, ${firstName}.\n\nSua senha no Dask foi alterada em ${now}.\n\nSe não foi você, redefina sua senha imediatamente.`;
 
   return { html, text };
 }
@@ -96,6 +96,83 @@ export function emailVerificationTemplate(name: string, verifyUrl: string): { ht
   return { html, text };
 }
 
+export function checkoutLinkTemplate(input: {
+  workspaceName: string;
+  description: string;
+  amount: string;
+  checkoutUrl: string;
+}): { html: string; text: string } {
+  const html = baseLayout(
+    `Cobrança de ${input.workspaceName} — Dask`,
+    `<p class="greeting">Você recebeu uma cobrança.</p>
+    <p class="text"><strong>${input.workspaceName}</strong> enviou um link de pagamento para você via Dask.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;border-radius:8px;overflow:hidden;border:1px solid #e4e4e7;">
+      <tr style="background:#f4f4f5;">
+        <td style="padding:10px 16px;font-size:13px;color:#71717a;font-weight:600;">Descrição</td>
+        <td style="padding:10px 16px;font-size:13px;color:#18181b;">${input.description}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;color:#71717a;font-weight:600;">Valor</td>
+        <td style="padding:10px 16px;font-size:15px;color:#18181b;font-weight:700;">${input.amount}</td>
+      </tr>
+    </table>
+    <p class="text">Clique no botão abaixo para realizar o pagamento com segurança via Stripe.</p>
+    <div class="btn-wrap">
+      <a href="${input.checkoutUrl}" class="btn">Pagar agora</a>
+    </div>
+    <p class="text" style="font-size:13px;color:#71717a;">O link de pagamento é de uso único e expira em 24 horas.</p>
+    <hr class="divider" />
+    <p class="fallback">Se o botão não funcionar, copie e cole este link no navegador:<br /><a href="${input.checkoutUrl}">${input.checkoutUrl}</a></p>`
+  );
+
+  const text =
+    `Você recebeu uma cobrança de ${input.workspaceName}.\n\n` +
+    `Descrição: ${input.description}\n` +
+    `Valor: ${input.amount}\n\n` +
+    `Acesse o link abaixo para pagar:\n${input.checkoutUrl}\n\n` +
+    `O link expira em 24 horas.`;
+
+  return { html, text };
+}
+
+export function paymentReminderTemplate(input: {
+  workspaceName: string;
+  description: string;
+  amount: string;
+  checkoutUrl: string;
+}): { html: string; text: string } {
+  const html = baseLayout(
+    `Lembre-se de pagar — ${input.workspaceName}`,
+    `<p class="greeting">Lembre-se de pagar.</p>
+    <p class="text"><strong>${input.workspaceName}</strong> está aguardando a conclusão do seu pagamento.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;border-radius:8px;overflow:hidden;border:1px solid #e4e4e7;">
+      <tr style="background:#f4f4f5;">
+        <td style="padding:10px 16px;font-size:13px;color:#71717a;font-weight:600;">Descrição</td>
+        <td style="padding:10px 16px;font-size:13px;color:#18181b;">${input.description}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;color:#71717a;font-weight:600;">Valor</td>
+        <td style="padding:10px 16px;font-size:15px;color:#18181b;font-weight:700;">${input.amount}</td>
+      </tr>
+    </table>
+    <p class="text">Seu link de pagamento ainda está ativo. Clique abaixo para finalizar com segurança via Stripe.</p>
+    <div class="btn-wrap">
+      <a href="${input.checkoutUrl}" class="btn">Finalizar pagamento</a>
+    </div>
+    <hr class="divider" />
+    <p class="fallback">Se o botão não funcionar, copie e cole este link no navegador:<br /><a href="${input.checkoutUrl}">${input.checkoutUrl}</a></p>`
+  );
+
+  const text =
+    `Lembre-se de pagar — ${input.workspaceName}\n\n` +
+    `Você tem um pagamento pendente:\n` +
+    `Descrição: ${input.description}\n` +
+    `Valor: ${input.amount}\n\n` +
+    `Acesse o link abaixo para finalizar o pagamento:\n${input.checkoutUrl}`;
+
+  return { html, text };
+}
+
 export function workspaceInviteTemplate(input: {
   workspaceName: string;
   inviterName: string;
@@ -105,22 +182,22 @@ export function workspaceInviteTemplate(input: {
   const inviterFirstName = input.inviterName.split(' ')[0];
 
   const html = baseLayout(
-    'Convite para workspace â€” Dask',
-    `<p class="greeting">Voce recebeu um convite no Dask.</p>
-    <p class="text"><strong>${input.inviterName}</strong> convidou voce para entrar no workspace <strong>${input.workspaceName}</strong> com role inicial <strong>${input.role}</strong>.</p>
+    'Convite para workspace — Dask',
+    `<p class="greeting">Você recebeu um convite no Dask.</p>
+    <p class="text"><strong>${input.inviterName}</strong> convidou você para entrar no workspace <strong>${input.workspaceName}</strong> com role inicial <strong>${input.role}</strong>.</p>
     <div class="btn-wrap">
       <a href="${input.inviteUrl}" class="btn">Aceitar convite</a>
     </div>
-    <p class="text">Ao abrir o link, voce pode criar conta ou entrar. Se o e-mail da conta for este e-mail convidado, o acesso ao workspace sera liberado automaticamente.</p>
+    <p class="text">Ao abrir o link, você pode criar conta ou entrar. Se o e-mail da conta for este e-mail convidado, o acesso ao workspace será liberado automaticamente.</p>
     <hr class="divider" />
-    <p class="fallback">Se o botao nao funcionar, copie e cole este link no navegador:<br /><a href="${input.inviteUrl}">${input.inviteUrl}</a></p>`
+    <p class="fallback">Se o botão não funcionar, copie e cole este link no navegador:<br /><a href="${input.inviteUrl}">${input.inviteUrl}</a></p>`
   );
 
   const text =
-    `Voce recebeu um convite no Dask.\n\n` +
-    `${inviterFirstName} convidou voce para entrar no workspace ${input.workspaceName} com role inicial ${input.role}.\n\n` +
+    `Você recebeu um convite no Dask.\n\n` +
+    `${inviterFirstName} convidou você para entrar no workspace ${input.workspaceName} com role inicial ${input.role}.\n\n` +
     `Abra este link para aceitar:\n${input.inviteUrl}\n\n` +
-    `Ao entrar ou criar conta com este e-mail convidado, o acesso ao workspace sera liberado automaticamente.`;
+    `Ao entrar ou criar conta com este e-mail convidado, o acesso ao workspace será liberado automaticamente.`;
 
   return { html, text };
 }

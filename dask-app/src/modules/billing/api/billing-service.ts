@@ -97,5 +97,29 @@ export const billingService = {
       `/billing/connect/workspaces/${workspaceId}/payment-orders?limit=${limit}`,
       { authMode: "required", retryOnUnauthorized: true }
     );
+  },
+
+  syncConnectPaymentOrderStatus(workspaceId: string, sessionId: string): Promise<ConnectPaymentOrder> {
+    return apiClient.post<ConnectPaymentOrder>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders/sync?sessionId=${encodeURIComponent(sessionId)}`,
+      {},
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  resendConnectPaymentOrderEmail(workspaceId: string, orderId: string): Promise<{ ok: true }> {
+    return apiClient.post<{ ok: true }>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/resend-email`,
+      {},
+      { authMode: "required", retryOnUnauthorized: true }
+    );
+  },
+
+  cancelConnectPaymentOrder(workspaceId: string, orderId: string): Promise<{ ok: true }> {
+    return apiClient.post<{ ok: true }>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/cancel`,
+      {},
+      { authMode: "required", retryOnUnauthorized: true }
+    );
   }
 };

@@ -5,12 +5,14 @@ import { AppError } from '@/core/errors/app-error';
 import type { BillingService } from '../application/billing-service';
 import {
   connectWorkspaceParamsDto,
+  connectPaymentOrderParamsDto,
   createConnectCatalogItemDto,
   createCheckoutSessionDto,
   createConnectCheckoutSessionDto,
   createConnectOnboardingLinkDto,
   listConnectCatalogItemsQueryDto,
-  listConnectPaymentOrdersQueryDto
+  listConnectPaymentOrdersQueryDto,
+  syncConnectPaymentOrderQueryDto
 } from './dto';
 
 interface BillingRouteDeps {
@@ -168,6 +170,61 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
         query.data.limit
       );
       res.status(200).json({ items: orders });
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/payment-orders/sync',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectWorkspaceParamsDto.safeParse(req.params);
+      const query = syncConnectPaymentOrderQueryDto.safeParse(req.query);
+      if (!params.success || !query.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const order = await billingService.syncConnectPaymentOrderStatusBySessionId(
+        params.data.workspaceId,
+        req.auth!.userId,
+        query.data.sessionId
+      );
+      res.status(200).json(order);
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/payment-orders/:orderId/resend-email',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectPaymentOrderParamsDto.safeParse(req.params);
+      if (!params.success) {
+        throw new AppError('Invalid request params', 400);
+      }
+
+      await billingService.resendConnectPaymentOrderEmail(
+        params.data.workspaceId,
+        req.auth!.userId,
+        params.data.orderId
+      );
+      res.status(200).json({ ok: true });
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/payment-orders/:orderId/cancel',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectPaymentOrderParamsDto.safeParse(req.params);
+      if (!params.success) {
+        throw new AppError('Invalid request params', 400);
+      }
+
+      await billingService.cancelConnectPaymentOrder(
+        params.data.workspaceId,
+        req.auth!.userId,
+        params.data.orderId
+      );
+      res.status(200).json({ ok: true });
     })
   );
 

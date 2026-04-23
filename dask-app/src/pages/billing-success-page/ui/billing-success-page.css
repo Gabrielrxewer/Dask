@@ -9,6 +9,46 @@
   gap: 24px;
 }
 
+.billing-success__check-wrap {
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 8px 20px rgba(22, 163, 74, 0.28));
+}
+
+.billing-success__check-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.billing-success__check-circle {
+  stroke: #16a34a;
+  stroke-width: 2.4;
+  fill: rgba(22, 163, 74, 0.1);
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: check-circle-draw 0.5s cubic-bezier(0.65, 0, 0.45, 1) 0.1s forwards;
+}
+
+.billing-success__check-mark {
+  stroke: #16a34a;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: check-mark-draw 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.55s forwards;
+}
+
+@keyframes check-circle-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes check-mark-draw {
+  to { stroke-dashoffset: 0; }
+}
+
 .billing-success__icon {
   width: 64px;
   height: 64px;
@@ -16,13 +56,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  background: rgba(34, 197, 94, 0.15);
-  border: 2px solid rgba(34, 197, 94, 0.3);
+  background: rgba(234, 179, 8, 0.12);
+  border: 2px solid rgba(234, 179, 8, 0.3);
+}
+
+.billing-success__icon svg {
+  width: 28px;
+  height: 28px;
+  color: #b45309;
 }
 
 .billing-success__icon--pending {
-  background: rgba(234, 179, 8, 0.15);
+  background: rgba(234, 179, 8, 0.12);
   border-color: rgba(234, 179, 8, 0.3);
 }
 

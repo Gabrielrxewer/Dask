@@ -11,4 +11,22 @@ export interface EmailService {
       role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
     }
   ): Promise<void>;
+  sendCheckoutLinkEmail(
+    to: string,
+    input: {
+      workspaceName: string;
+      description: string;
+      amount: string;
+      checkoutUrl: string;
+    }
+  ): Promise<void>;
+  sendPaymentReminderEmail(
+    to: string,
+    input: {
+      workspaceName: string;
+      description: string;
+      amount: string;
+      checkoutUrl: string;
+    }
+  ): Promise<void>;
 }

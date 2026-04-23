@@ -4,7 +4,7 @@ import { buildWorkspaceBoardPath } from "@/app/router";
 import { billingStore, useBilling } from "@/modules/billing";
 import { workspaceService, type WorkspaceSummary, type WorkspaceTemplateOption } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
-import { Button, Card, FormField, Select, TextInput } from "@/shared/ui";
+import { Button, Card, FormField, ModalShell, Select, TextInput } from "@/shared/ui";
 import "../../no-workspace-page/ui/no-workspace-page.css";
 import "./workspace-selector-page.css";
 
@@ -33,6 +33,11 @@ export function WorkspaceSelectorPage() {
   const [error, setError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createFeedback, setCreateFeedback] = useState<string | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [workspacePendingDelete, setWorkspacePendingDelete] = useState<WorkspaceSummary | null>(null);
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
   const canCreateWorkspace = billing.status?.canCreateWorkspace ?? false;
 
   useEffect(() => {
@@ -123,10 +128,30 @@ export function WorkspaceSelectorPage() {
   }, [query, workspaces]);
 
   const availableTemplates = templates.length > 0 ? templates : FALLBACK_TEMPLATES;
+  const deleteConfirmationMatches = workspacePendingDelete
+    ? deleteConfirmation.trim() === workspacePendingDelete.name
+    : false;
 
   const reloadWorkspaces = async () => {
     const refreshed = await workspaceService.listWorkspaces();
     setWorkspaces(refreshed);
+  };
+
+  const handleOpenDeleteWorkspace = (workspace: WorkspaceSummary) => {
+    setWorkspacePendingDelete(workspace);
+    setDeleteConfirmation("");
+    setDeleteError(null);
+    setDeleteFeedback(null);
+  };
+
+  const handleCloseDeleteWorkspace = () => {
+    if (isDeletingWorkspace) {
+      return;
+    }
+
+    setWorkspacePendingDelete(null);
+    setDeleteConfirmation("");
+    setDeleteError(null);
   };
 
   const handleCreateWorkspace = async () => {
@@ -147,6 +172,7 @@ export function WorkspaceSelectorPage() {
     setIsCreating(true);
     setCreateError(null);
     setCreateFeedback(null);
+    setDeleteFeedback(null);
 
     try {
       const created = await workspaceService.provisionWorkspace({
@@ -171,6 +197,38 @@ export function WorkspaceSelectorPage() {
       setCreateFeedback(null);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspacePendingDelete) {
+      return;
+    }
+
+    if (!deleteConfirmationMatches) {
+      setDeleteError("Digite o nome do workspace exatamente como exibido para confirmar a exclusao.");
+      return;
+    }
+
+    setIsDeletingWorkspace(true);
+    setDeleteError(null);
+    setCreateFeedback(null);
+
+    try {
+      const deletedWorkspaceName = workspacePendingDelete.name;
+      await workspaceService.deleteWorkspace(workspacePendingDelete.slug);
+      await reloadWorkspaces();
+      setDeleteFeedback(`Workspace ${deletedWorkspaceName} excluido com sucesso.`);
+      setWorkspacePendingDelete(null);
+      setDeleteConfirmation("");
+    } catch (deletionError) {
+      if (isApiError(deletionError)) {
+        setDeleteError(deletionError.message);
+      } else {
+        setDeleteError("Nao foi possivel excluir o workspace agora.");
+      }
+    } finally {
+      setIsDeletingWorkspace(false);
     }
   };
 
@@ -207,7 +265,7 @@ export function WorkspaceSelectorPage() {
                 {!canCreateWorkspace ? "Criacao indisponivel" : isCreateOpen ? "Fechar criacao" : "Criar novo workspace"}
               </Button>
               {isCreateOpen ? (
-                <Button type="button" onClick={() => void handleCreateWorkspace()} disabled={isCreating}>
+                <Button type="button" variant="primary" onClick={() => void handleCreateWorkspace()} disabled={isCreating}>
                   {isCreating ? "Criando..." : "Criar workspace"}
                 </Button>
               ) : null}
@@ -268,6 +326,9 @@ export function WorkspaceSelectorPage() {
 
           {isLoading ? <p className="workspace-selector-page__state">Carregando workspaces...</p> : null}
           {error ? <p className="workspace-selector-page__error">{error}</p> : null}
+          {deleteFeedback ? (
+            <p className="workspace-selector-page__feedback workspace-selector-page__feedback--banner">{deleteFeedback}</p>
+          ) : null}
 
           {!isLoading && !error && filtered.length === 0 ? (
             <p className="workspace-selector-page__state">Nenhum workspace encontrado.</p>
@@ -279,22 +340,97 @@ export function WorkspaceSelectorPage() {
                 <article key={workspace.id} className="workspace-selector-page__workspace">
                   <div className="workspace-selector-page__workspace-copy">
                     <strong>{workspace.name}</strong>
-                    <span>{workspace.kind === "CORPORATE" ? "Corporativo" : "Pessoal"} · {workspace.role}</span>
+                    <span>{workspace.kind === "CORPORATE" ? "Corporativo" : "Pessoal"} - {workspace.role}</span>
                     <small>{workspace.slug}</small>
                   </div>
-                  <Button
-                    className="no-workspace-page__secondary"
-                    type="button"
-                    onClick={() => navigate(buildWorkspaceBoardPath(workspace.slug))}
-                  >
-                    Entrar
-                  </Button>
+                  <div className="workspace-selector-page__workspace-actions">
+                    <Button
+                      className="workspace-selector-page__enter-button"
+                      variant="primary"
+                      type="button"
+                      onClick={() => navigate(buildWorkspaceBoardPath(workspace.slug))}
+                    >
+                      Entrar
+                    </Button>
+                    {workspace.role === "OWNER" ? (
+                      <Button
+                        className="workspace-selector-page__delete-trigger"
+                        type="button"
+                        onClick={() => handleOpenDeleteWorkspace(workspace)}
+                      >
+                        Excluir
+                      </Button>
+                    ) : null}
+                  </div>
                 </article>
               ))}
             </div>
           ) : null}
         </Card>
       </section>
+
+      {workspacePendingDelete ? (
+        <ModalShell
+          titleId="workspace-delete-title"
+          className="workspace-selector-page__delete-modal"
+          onClose={handleCloseDeleteWorkspace}
+        >
+          <div className="workspace-selector-page__delete-dialog">
+            <header className="workspace-selector-page__delete-header">
+              <p className="workspace-selector-page__delete-eyebrow">Excluir workspace</p>
+              <h2 id="workspace-delete-title" className="workspace-selector-page__delete-title">
+                Confirmar exclusao permanente
+              </h2>
+              <p className="workspace-selector-page__delete-description">
+                Essa acao remove o workspace, boards, documentos, automacoes e configuracoes vinculadas. Nao existe
+                restauracao automatica depois da exclusao.
+              </p>
+            </header>
+
+            <div className="workspace-selector-page__delete-target">
+              <strong>{workspacePendingDelete.name}</strong>
+              <span>
+                {workspacePendingDelete.kind === "CORPORATE" ? "Corporativo" : "Pessoal"} - {workspacePendingDelete.role}
+              </span>
+              <small>{workspacePendingDelete.slug}</small>
+            </div>
+
+            <FormField label="Digite o nome do workspace para confirmar">
+              <TextInput
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                placeholder={workspacePendingDelete.name}
+                autoFocus
+              />
+            </FormField>
+
+            <p className="workspace-selector-page__delete-hint">
+              Confirmacao necessaria: <strong>{workspacePendingDelete.name}</strong>
+            </p>
+
+            {deleteError ? <p className="workspace-selector-page__error">{deleteError}</p> : null}
+
+            <div className="workspace-selector-page__delete-actions">
+              <Button
+                className="no-workspace-page__secondary"
+                type="button"
+                onClick={handleCloseDeleteWorkspace}
+                disabled={isDeletingWorkspace}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="workspace-selector-page__delete-confirm"
+                type="button"
+                onClick={() => void handleDeleteWorkspace()}
+                disabled={isDeletingWorkspace || !deleteConfirmationMatches}
+              >
+                {isDeletingWorkspace ? "Excluindo..." : "Excluir workspace"}
+              </Button>
+            </div>
+          </div>
+        </ModalShell>
+      ) : null}
     </main>
   );
 }

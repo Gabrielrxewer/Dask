@@ -11,6 +11,7 @@ function makeRepository(): Mocked<WorkspacesRepository> {
   return {
     findWorkspaceById: vi.fn(),
     updateWorkspace: vi.fn(),
+    deleteWorkspace: vi.fn(),
     createWorkspace: vi.fn(),
     createBoard: vi.fn(),
     createTemplate: vi.fn(),
@@ -23,10 +24,19 @@ function makeRepository(): Mocked<WorkspacesRepository> {
   };
 }
 
-function makeEventPublisher(): Pick<EventPublisher, 'publish'> {
+function makeEventPublisher(): EventPublisher {
   return {
-    publish: vi.fn().mockResolvedValue(undefined)
-  };
+    publish: vi.fn().mockResolvedValue(undefined),
+    runInTransaction: vi.fn(async (fn: any) =>
+      fn(
+        {} as any,
+        {
+          publishInTransaction: vi.fn().mockResolvedValue(undefined),
+          publishManyInTransaction: vi.fn().mockResolvedValue(undefined)
+        }
+      )
+    )
+  } as unknown as EventPublisher;
 }
 
 function makeSnapshot(overrides: Partial<BoardSnapshot> = {}): BoardSnapshot {
@@ -63,7 +73,7 @@ describe('WorkspacesService - read module', () => {
       }
     ]);
 
-    const service = new WorkspacesService(repo, makeEventPublisher() as EventPublisher);
+    const service = new WorkspacesService(repo, makeEventPublisher());
     const result = await service.listUserWorkspaces('user-1');
 
     expect(result).toHaveLength(1);
@@ -73,7 +83,7 @@ describe('WorkspacesService - read module', () => {
   it('denies board listing when user has no workspace membership', async () => {
     const repo = makeRepository();
     repo.getWorkspaceRoleForUser.mockResolvedValue(null);
-    const service = new WorkspacesService(repo, makeEventPublisher() as EventPublisher);
+    const service = new WorkspacesService(repo, makeEventPublisher());
 
     await expect(
       service.listWorkspaceBoards({ workspaceId: 'workspace-1', userId: 'user-1' })
@@ -100,7 +110,7 @@ describe('WorkspacesService - read module', () => {
       }
     ]);
 
-    const service = new WorkspacesService(repo, makeEventPublisher() as EventPublisher);
+    const service = new WorkspacesService(repo, makeEventPublisher());
     const result = await service.listWorkspaceBoards({
       workspaceId: 'workspace-1',
       userId: 'user-1'
@@ -115,7 +125,7 @@ describe('WorkspacesService - read module', () => {
     repo.getWorkspaceRoleForUser.mockResolvedValue(MembershipRole.ADMIN);
     repo.findBoardSnapshot.mockResolvedValue(makeSnapshot());
 
-    const service = new WorkspacesService(repo, makeEventPublisher() as EventPublisher);
+    const service = new WorkspacesService(repo, makeEventPublisher());
     const result = await service.getBoardSnapshot({
       workspaceId: 'workspace-1',
       boardId: 'board-1',
@@ -136,7 +146,7 @@ describe('WorkspacesService - read module', () => {
     repo.getWorkspaceRoleForUser.mockResolvedValue(MembershipRole.MEMBER);
     repo.findBoardSnapshot.mockResolvedValue(null);
 
-    const service = new WorkspacesService(repo, makeEventPublisher() as EventPublisher);
+    const service = new WorkspacesService(repo, makeEventPublisher());
 
     await expect(
       service.getBoardSnapshot({
@@ -148,5 +158,48 @@ describe('WorkspacesService - read module', () => {
       message: 'Board not found',
       statusCode: 404
     });
+  });
+
+  it('deletes workspace when requester is owner', async () => {
+    const repo = makeRepository();
+    repo.getWorkspaceRoleForUser.mockResolvedValue(MembershipRole.OWNER);
+    repo.findWorkspaceById.mockResolvedValue({
+      id: 'workspace-1',
+      organizationId: 'org-1',
+      kind: WorkspaceKind.CORPORATE
+    } as any);
+    repo.deleteWorkspace.mockResolvedValue(undefined);
+
+    const service = new WorkspacesService(repo, makeEventPublisher());
+    await service.deleteWorkspace({
+      workspaceId: 'workspace-1',
+      userId: 'user-1'
+    });
+
+    expect(repo.deleteWorkspace).toHaveBeenCalledWith(
+      {
+        workspaceId: 'workspace-1'
+      },
+      expect.any(Object)
+    );
+  });
+
+  it('denies workspace deletion for non-owner members', async () => {
+    const repo = makeRepository();
+    repo.getWorkspaceRoleForUser.mockResolvedValue(MembershipRole.ADMIN);
+
+    const service = new WorkspacesService(repo, makeEventPublisher());
+
+    await expect(
+      service.deleteWorkspace({
+        workspaceId: 'workspace-1',
+        userId: 'user-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Forbidden',
+      statusCode: 403
+    });
+
+    expect(repo.deleteWorkspace).not.toHaveBeenCalled();
   });
 });

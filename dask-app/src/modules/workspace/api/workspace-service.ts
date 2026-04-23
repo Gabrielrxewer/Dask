@@ -194,6 +194,22 @@ export const workspaceService: WorkspaceService = {
     });
   },
 
+  async deleteWorkspace(workspaceSlug: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+
+    workspaceCache = workspaceCache.filter((workspace) => workspace.id !== workspaceId);
+
+    for (const [slug, snapshot] of snapshotByWorkspaceSlug.entries()) {
+      if (snapshot.id === workspaceId || slug === workspaceSlug) {
+        snapshotByWorkspaceSlug.delete(slug);
+      }
+    }
+  },
+
   async provisionWorkspace(input) {
     try {
       await apiClient.post("/workspaces/provision", input, {

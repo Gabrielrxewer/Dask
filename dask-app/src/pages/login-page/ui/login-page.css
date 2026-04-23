@@ -1,12 +1,21 @@
+.global-layout__main--public:has(.login-page) {
+  height: calc(100dvh - var(--global-footer-height));
+  min-height: calc(100dvh - var(--global-footer-height));
+  flex: 0 0 calc(100dvh - var(--global-footer-height));
+}
+
 .login-page {
   --login-page-body-size: clamp(0.9rem, 0.86rem + 0.18vw, 0.98rem);
   --login-page-panel-height: clamp(720px, 76vh, 800px);
-  height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  height: calc(100dvh - var(--global-footer-height));
   min-height: 0;
   box-sizing: border-box;
   display: grid;
   align-items: center;
-  padding: clamp(18px, 2.4vw, 30px) clamp(22px, 3vw, 40px);
+  padding:
+    calc(var(--global-header-height) + clamp(18px, 2.4vw, 30px))
+    clamp(22px, 3vw, 40px)
+    clamp(18px, 2.4vw, 30px);
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -24,25 +33,31 @@
 .login-page__backdrop {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.12) 20%, transparent 40%),
-    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 18%, transparent 36%),
-    radial-gradient(circle at 56% 92%, rgba(255, 255, 255, 0.16) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-  filter: blur(1px);
   pointer-events: none;
   z-index: -2;
 }
 
-.login-page::after {
+.login-page__backdrop::before,
+.login-page__backdrop::after {
   content: "";
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 32%, rgba(221, 231, 241, 0.04) 100%);
-  opacity: 1;
   pointer-events: none;
-  z-index: -1;
+  border-radius: 999px;
+  filter: blur(18px);
+}
+
+.login-page__backdrop::before {
+  inset: 140px auto auto -90px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(127, 195, 255, 0.22) 0%, rgba(127, 195, 255, 0.04) 56%, transparent 74%);
+}
+
+.login-page__backdrop::after {
+  inset: auto -86px 180px auto;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(73, 204, 198, 0.2) 0%, rgba(145, 106, 237, 0.06) 58%, transparent 76%);
 }
 
 .login-page__shell {
@@ -61,7 +76,7 @@
 .login-page:has(.auth-login-panel--register) {
   --auth-register-edge-gap: 24px;
   box-sizing: border-box;
-  padding-top: var(--auth-register-edge-gap);
+  padding-top: calc(var(--global-header-height) + var(--auth-register-edge-gap));
   padding-bottom: var(--auth-register-edge-gap);
 }
 
@@ -286,17 +301,98 @@
   }
 }
 
-@keyframes login-brand-enter {
+@media (prefers-reduced-motion: no-preference) {
+  .login-page__shell {
+    animation: login-page-shell-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+
+  .login-page__brand-motion {
+    animation: login-page-shell-enter 0.46s 0.02s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+
+  .login-page__logo {
+    animation: login-brand-enter 0.54s 0.04s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-page__title {
+    animation: login-brand-enter 0.56s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-page__subtitle {
+    animation: login-brand-enter 0.58s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-page__feature-list {
+    animation: login-brand-enter 0.6s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-page__meta-strip {
+    animation: login-brand-enter 0.62s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-page__form-column {
+    animation: login-brand-enter 0.58s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+
+  .login-page__orb--one {
+    animation:
+      login-brand-enter 0.5s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both,
+      login-float-a 13.5s 1s infinite alternate;
+  }
+
+  .login-page__orb--two {
+    animation:
+      login-brand-enter 0.54s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both,
+      login-float-b 12.8s 1.2s infinite alternate;
+  }
+
+  .login-page__orb--three {
+    animation:
+      login-brand-enter 0.58s 0.14s cubic-bezier(0.22, 1, 0.36, 1) both,
+      login-float-c 12.2s 1.4s infinite alternate;
+  }
+
+  .login-page__signal--one {
+    animation:
+      login-brand-enter 0.54s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both,
+      login-pulse 15s 1.8s infinite;
+  }
+
+  .login-page__signal--two {
+    animation:
+      login-brand-enter 0.58s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both,
+      login-pulse 16.5s 2s infinite reverse;
+  }
+}
+
+@keyframes login-page-shell-enter {
   from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.985);
-    filter: blur(6px);
+    opacity: 0.01;
+    transform: translateY(6px) scale(0.9985);
   }
 
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
+  }
+}
+
+@keyframes login-brand-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.997);
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -306,7 +402,7 @@
   }
 
   to {
-    transform: translate3d(10px, -8px, 0) scale(1.04);
+    transform: translate3d(6px, -4px, 0) scale(1.016);
   }
 }
 
@@ -316,7 +412,7 @@
   }
 
   to {
-    transform: translate3d(-8px, 10px, 0) scale(0.98);
+    transform: translate3d(-5px, 6px, 0) scale(0.996);
   }
 }
 
@@ -326,28 +422,28 @@
   }
 
   to {
-    transform: translate3d(6px, -6px, 0) scale(1.06);
+    transform: translate3d(4px, -4px, 0) scale(1.018);
   }
 }
 
 @keyframes login-pulse {
   0%,
   100% {
-    opacity: 0.32;
-    transform: scale(0.98);
+    opacity: 0.2;
+    transform: scale(0.996);
   }
 
   50% {
-    opacity: 0.52;
-    transform: scale(1.02);
+    opacity: 0.3;
+    transform: scale(1.006);
   }
 }
 
 @media (max-width: 760px) {
   .login-page {
-    height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+    height: calc(100dvh - var(--global-footer-height));
     min-height: 0;
-    padding: 16px;
+    padding: calc(var(--global-header-height) + 16px) 16px 16px;
   }
 
   .login-page__shell {
@@ -430,7 +526,7 @@
 
 @media (max-height: 820px) {
   .login-page {
-    padding-top: 14px;
+    padding-top: calc(var(--global-header-height) + 14px);
     padding-bottom: 14px;
   }
 
@@ -470,9 +566,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .login-page__shell,
   .login-page__orb,
   .login-page__signal,
   .login-page__logo,
+  .login-page__form-column,
   .login-page__title,
   .login-page__subtitle,
   .login-page__feature-list,

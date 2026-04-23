@@ -277,6 +277,49 @@ export class WorkspacesService {
     };
   }
 
+  public async deleteWorkspace(input: { workspaceId: string; userId: string }) {
+    const role = await this.workspacesRepository.getWorkspaceRoleForUser(input.workspaceId, input.userId);
+
+    if (!role) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    if (role !== MembershipRole.OWNER) {
+      throw new AppError('Forbidden', 403);
+    }
+
+    const workspace = await this.workspacesRepository.findWorkspaceById(input.workspaceId);
+    if (!workspace) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    await this.eventPublisher.runInTransaction(async (db, publisher) => {
+      await this.workspacesRepository.deleteWorkspace(
+        {
+          workspaceId: input.workspaceId
+        },
+        db
+      );
+
+      await publisher.publishInTransaction(
+        {
+          id: uuid(),
+          name: 'workspace.deleted',
+          aggregateType: 'workspace',
+          aggregateId: workspace.id,
+          occurredAt: new Date(),
+          payload: {
+            workspaceId: workspace.id,
+            organizationId: workspace.organizationId ?? null,
+            kind: workspace.kind,
+            deletedByUserId: input.userId
+          }
+        },
+        db
+      );
+    });
+  }
+
   public async listWorkspaceBoards(input: { workspaceId: string; userId: string }) {
     await this.ensureWorkspaceReadableByUser(input.workspaceId, input.userId);
     return this.workspacesRepository.listBoardsByWorkspace(input.workspaceId);

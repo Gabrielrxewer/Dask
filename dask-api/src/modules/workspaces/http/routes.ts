@@ -34,6 +34,7 @@ export const buildWorkspacesRoutes = (deps: {
   const router = Router();
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
   const requireWorkspaceRead = requireWorkspacePermission(deps.authorizationService, 'workspace.read');
+  const requireWorkspaceDelete = requireWorkspacePermission(deps.authorizationService, 'workspace.delete');
   const requireBoardRead = requireWorkspacePermission(deps.authorizationService, 'board.read');
   const requireBoardWrite = requireWorkspacePermission(deps.authorizationService, 'board.write');
   const requireBoardModule = requireWorkspaceModule('board');
@@ -246,6 +247,20 @@ export const buildWorkspacesRoutes = (deps: {
         patch: payload
       });
       res.status(200).json(profile);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId',
+    resolveWorkspaceScope,
+    requireWorkspaceDelete,
+    requireWorkspaceRole(MembershipRole.OWNER),
+    asyncHandler(async (req, res) => {
+      await deps.workspacesService.deleteWorkspace({
+        workspaceId: req.workspace!.id,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
     })
   );
 

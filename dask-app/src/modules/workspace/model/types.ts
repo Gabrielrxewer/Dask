@@ -512,6 +512,7 @@ export interface WorkspaceService {
       rules?: Record<string, unknown>;
     }
   ) => Promise<BoardTemplateSummary>;
+  deleteWorkspace: (workspaceSlug: string) => Promise<void>;
   provisionWorkspace: (input: {
     kind: "PERSONAL" | "CORPORATE";
     workspaceName: string;

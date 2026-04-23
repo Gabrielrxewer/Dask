@@ -463,7 +463,61 @@
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .login-page .auth-login {
+    animation: login-page-shell-enter 0.46s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+
+  .login-page .auth-login__header {
+    animation: login-brand-enter 0.56s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+
+  .login-page .auth-login__form > * {
+    animation: login-brand-enter 0.58s var(--auth-login-enter-delay, 0.18s) cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+
+  .login-page .auth-login__form > *:nth-child(1) {
+    --auth-login-enter-delay: 0.18s;
+  }
+
+  .login-page .auth-login__form > *:nth-child(2) {
+    --auth-login-enter-delay: 0.23s;
+  }
+
+  .login-page .auth-login__form > *:nth-child(3) {
+    --auth-login-enter-delay: 0.28s;
+  }
+
+  .login-page .auth-login__form > *:nth-child(4) {
+    --auth-login-enter-delay: 0.33s;
+  }
+
+  .login-page .auth-login__form > *:nth-child(5) {
+    --auth-login-enter-delay: 0.38s;
+  }
+
+  .login-page .auth-login__form > *:nth-child(6) {
+    --auth-login-enter-delay: 0.43s;
+  }
+
+  .login-page .auth-login__form > *:nth-child(7) {
+    --auth-login-enter-delay: 0.48s;
+  }
+
+  .login-page .auth-login__external-consent {
+    animation: login-brand-enter 0.6s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .login-page .auth-login,
+  .login-page .auth-login__header,
+  .login-page .auth-login__form > *,
+  .login-page .auth-login__external-consent,
   .auth-login__message-trigger--error,
   .auth-login__message-trigger--error::before,
   .auth-login__message-trigger--error::after,

@@ -166,6 +166,20 @@ export const buildWorkspacesRoutes = (deps: {
   );
 
   router.get(
+    '/workspaces/:workspaceId/templates',
+    resolveWorkspaceScope,
+    requireSettingsModule,
+    requireWorkspaceRead,
+    asyncHandler(async (req, res) => {
+      const templates = await deps.workspacesService.listWorkspaceTemplates({
+        workspaceId: req.workspace!.id,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(templates);
+    })
+  );
+
+  router.get(
     '/workspaces/:workspaceId/boards/:boardId/snapshot',
     resolveWorkspaceScope,
     requireWorkspaceRead,

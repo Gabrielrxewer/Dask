@@ -17,6 +17,7 @@ import {
 import type {
   BoardSnapshot,
   UserWorkspaceSummary,
+  WorkspaceBoardTemplateSummary,
   WorkspaceBoardSummary,
   WorkspacesRepository
 } from '@/modules/workspaces/repositories/workspaces-repository';
@@ -338,6 +339,13 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
       itemCount: board._count.items,
       columnCount: board._count.columns
     }));
+  }
+
+  public async listTemplatesByWorkspace(workspaceId: string): Promise<WorkspaceBoardTemplateSummary[]> {
+    return this.prisma.boardTemplate.findMany({
+      where: { workspaceId },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   public async findBoardSnapshot(input: {

@@ -29,6 +29,16 @@ export type WorkspaceBoardSummary = {
   columnCount: number;
 };
 
+export type WorkspaceBoardTemplateSummary = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string | null;
+  schema: unknown;
+  rules: unknown;
+  createdAt: Date;
+};
+
 export type BoardColumnSnapshot = {
   id: string;
   boardId: string;
@@ -114,6 +124,7 @@ export interface WorkspacesRepository {
   getOrganizationRoleForUser(organizationId: string, userId: string): Promise<MembershipRole | null>;
   getWorkspaceRoleForUser(workspaceId: string, userId: string): Promise<MembershipRole | null>;
   listBoardsByWorkspace(workspaceId: string): Promise<WorkspaceBoardSummary[]>;
+  listTemplatesByWorkspace(workspaceId: string): Promise<WorkspaceBoardTemplateSummary[]>;
   findBoardSnapshot(input: {
     workspaceId: string;
     boardId: string;

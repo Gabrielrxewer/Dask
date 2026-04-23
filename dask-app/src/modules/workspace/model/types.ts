@@ -148,6 +148,37 @@ export interface WorkspaceTemplateOption {
   description?: string;
 }
 
+export interface BoardTemplatePerspective {
+  key: string;
+  name: string;
+  caption?: string;
+  statuses?: Array<{
+    id: string;
+    label: string;
+    dot: string;
+  }>;
+  statusSource?:
+    | { kind: "workflow_state" }
+    | { kind: "custom_field"; fieldId: string; fallbackByStatus?: Record<string, string> };
+  compactCards?: boolean;
+  visibleBoardColumnSlugs?: string[];
+  visibleBoardColumnIds?: string[];
+  allowedTaskTypes?: string[];
+}
+
+export interface BoardTemplateSummary {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string | null;
+  schema?: {
+    perspectives?: BoardTemplatePerspective[];
+    [key: string]: unknown;
+  } | null;
+  rules?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface WorkspaceProfile {
   id: string;
   name: string;
@@ -471,6 +502,16 @@ export interface UpdateCustomFieldInput {
 export interface WorkspaceService {
   listWorkspaces: () => Promise<WorkspaceSummary[]>;
   listWorkspaceTemplates: () => Promise<WorkspaceTemplateOption[]>;
+  listBoardTemplates: (workspaceSlug: string) => Promise<BoardTemplateSummary[]>;
+  createBoardTemplate: (
+    workspaceSlug: string,
+    input: {
+      name: string;
+      description?: string;
+      schema: Record<string, unknown>;
+      rules?: Record<string, unknown>;
+    }
+  ) => Promise<BoardTemplateSummary>;
   provisionWorkspace: (input: {
     kind: "PERSONAL" | "CORPORATE";
     workspaceName: string;

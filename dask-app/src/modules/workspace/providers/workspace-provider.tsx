@@ -11,6 +11,7 @@ import type {
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,
+  BoardTemplateSummary,
   AutomationView,
   AutomationExecution,
   AutomationRule,
@@ -53,6 +54,13 @@ interface WorkspaceContextValue {
   setAutomationStatus: (automationId: string, status: WorkspaceAutomation["status"]) => Promise<void>;
   updatePreferences: (patch: Partial<WorkspacePreferences>) => Promise<void>;
   resetWorkspaceTemplate: (templateKey?: WorkspaceTemplateKey) => Promise<void>;
+  listBoardTemplates: () => Promise<BoardTemplateSummary[]>;
+  createBoardTemplate: (input: {
+    name: string;
+    description?: string;
+    schema: Record<string, unknown>;
+    rules?: Record<string, unknown>;
+  }) => Promise<BoardTemplateSummary>;
   setCardFieldVisibility: (fieldId: string, visible: boolean) => Promise<void>;
   setTypeFieldVisibility: (typeId: string, fieldId: string, visible: boolean) => Promise<void>;
   setTypeDetailFieldVisibility: (typeId: string, fieldId: string, visible: boolean) => Promise<void>;
@@ -301,6 +309,30 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     const nextSnapshot = await workspaceService.resetWorkspaceTemplate(workspaceSlug, templateKey);
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
+
+  const listBoardTemplates = useCallback(async (): Promise<BoardTemplateSummary[]> => {
+    if (!workspaceSlug) {
+      return [];
+    }
+
+    return workspaceService.listBoardTemplates(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const createBoardTemplate = useCallback(
+    async (input: {
+      name: string;
+      description?: string;
+      schema: Record<string, unknown>;
+      rules?: Record<string, unknown>;
+    }): Promise<BoardTemplateSummary> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+
+      return workspaceService.createBoardTemplate(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
 
   const setCardFieldVisibility = useCallback(async (fieldId: string, visible: boolean) => {
     if (!workspaceSlug) {
@@ -640,6 +672,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setAutomationStatus,
       updatePreferences,
       resetWorkspaceTemplate,
+      listBoardTemplates,
+      createBoardTemplate,
       setCardFieldVisibility,
       setTypeFieldVisibility,
       setTypeDetailFieldVisibility,
@@ -697,6 +731,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setAutomationStatus,
       updatePreferences,
       resetWorkspaceTemplate,
+      listBoardTemplates,
+      createBoardTemplate,
       setCardFieldVisibility,
       setTypeFieldVisibility,
       setTypeDetailFieldVisibility,

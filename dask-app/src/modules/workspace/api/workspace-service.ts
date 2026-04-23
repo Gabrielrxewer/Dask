@@ -29,6 +29,7 @@ import type {
   WorkItemLinkedDocument,
   WorkspacePreferences,
   WorkspaceProfile,
+  BoardTemplateSummary,
   WorkspaceInvite,
   PublicWorkspaceInvite,
   WorkspaceModuleKey,
@@ -167,6 +168,30 @@ export const workspaceService: WorkspaceService = {
 
       throw error;
     }
+  },
+
+  async listBoardTemplates(workspaceSlug: string): Promise<BoardTemplateSummary[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<BoardTemplateSummary[]>(`/workspaces/${workspaceId}/templates`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createBoardTemplate(
+    workspaceSlug: string,
+    input: {
+      name: string;
+      description?: string;
+      schema: Record<string, unknown>;
+      rules?: Record<string, unknown>;
+    }
+  ): Promise<BoardTemplateSummary> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<BoardTemplateSummary>(`/workspaces/${workspaceId}/templates`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
   },
 
   async provisionWorkspace(input) {

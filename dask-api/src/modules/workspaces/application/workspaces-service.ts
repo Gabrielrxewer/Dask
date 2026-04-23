@@ -282,6 +282,11 @@ export class WorkspacesService {
     return this.workspacesRepository.listBoardsByWorkspace(input.workspaceId);
   }
 
+  public async listWorkspaceTemplates(input: { workspaceId: string; userId: string }) {
+    await this.ensureWorkspaceReadableByUser(input.workspaceId, input.userId);
+    return this.workspacesRepository.listTemplatesByWorkspace(input.workspaceId);
+  }
+
   public async getBoardSnapshot(input: {
     workspaceId: string;
     boardId: string;

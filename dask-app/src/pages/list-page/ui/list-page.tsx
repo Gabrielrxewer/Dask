@@ -158,6 +158,7 @@ export function ListPage() {
                 statuses={boardConfig.statuses}
                 boardConfig={boardConfig}
                 membersById={activeMembers}
+                taskTypes={boardConfig.taskTypes}
               />
             </div>
           }

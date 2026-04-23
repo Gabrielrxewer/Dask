@@ -12,6 +12,8 @@ export type {
   AiAgentRagSource,
   DocumentationAssistantMode,
   DocumentationAssistantAction,
+  BoardTemplateSummary,
+  BoardTemplatePerspective,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
   CalendarFeedSnapshot,

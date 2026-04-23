@@ -57,6 +57,8 @@ export type {
   WorkspaceSummary,
   WorkspaceTemplateKey,
   WorkspaceTemplateOption,
+  BoardTemplatePerspective,
+  BoardTemplateSummary,
   WorkspaceTag,
   WorkspaceSnapshot,
   WorkspaceAccessControlMember,

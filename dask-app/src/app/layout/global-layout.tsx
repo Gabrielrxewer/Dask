@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { buildWorkspaceSelectorPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
 import { billingService, PLAN_DISPLAY, type BillingStatus } from "@/modules/billing";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
-import { ModalShell, Select, TextInput, UserAvatar } from "@/shared/ui";
+import { ModalShell, TextInput, UserAvatar } from "@/shared/ui";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
@@ -34,23 +34,14 @@ const homeNavigationIds = new Set(homeNavigationItems.map(item => item.id));
 const legalNavigationIds = new Set([...termsNavigationItems, ...privacyNavigationItems].map(item => item.id));
 const userProfileStorageKey = "dask:user-profile-preferences";
 const globalThemeStorageKey = "dask:theme-preference";
-const maxProfileAvatarBytes = 2 * 1024 * 1024;
 const userProfileThemes = new Set<UserProfileTheme>(["light", "dark", "system"]);
 const defaultUserProfilePreferences: UserProfilePreferences = {
-  autoSave: true,
-  density: "comfortable",
-  language: "pt-BR",
-  notifications: true,
   theme: "system"
 };
 
 type UserProfileTheme = "light" | "dark" | "system";
 
 interface UserProfilePreferences {
-  autoSave: boolean;
-  density: string;
-  language: string;
-  notifications: boolean;
   theme: UserProfileTheme;
 }
 
@@ -94,10 +85,6 @@ function getStoredUserProfilePreferences(userId: string | null | undefined): Use
     }
 
     return {
-      autoSave: parsed.autoSave ?? defaultUserProfilePreferences.autoSave,
-      density: parsed.density ?? defaultUserProfilePreferences.density,
-      language: parsed.language ?? defaultUserProfilePreferences.language,
-      notifications: parsed.notifications ?? defaultUserProfilePreferences.notifications,
       theme: normalizeUserProfileTheme(parsed.theme)
     };
   } catch {
@@ -143,14 +130,6 @@ function getHomeSectionFromHash(hash: string): string {
 function getLegalSectionFromHash(hash: string): string {
   const sectionId = hash.replace("#", "");
   return legalNavigationIds.has(sectionId) ? sectionId : "legal-overview";
-}
-
-function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function getHomeScrollTarget(sectionId: string): HTMLElement | null {
@@ -240,28 +219,12 @@ function getUserInitials(nameOrEmail?: string): string {
   return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-
-      reject(new Error("Nao foi possivel ler a imagem."));
-    };
-    reader.onerror = () => reject(new Error("Nao foi possivel ler a imagem."));
-    reader.readAsDataURL(file);
-  });
-}
-
 function extractWorkspaceSlug(pathname: string): string | null {
   const matched = pathname.match(/^\/w\/([^/]+)/i);
   return matched?.[1] ?? null;
 }
 
-function formatBillingDate(value: string | null): string {
+function formatDateLabel(value: string | null | undefined): string {
   if (!value) {
     return "Nao disponivel";
   }
@@ -274,10 +237,22 @@ function formatBillingDate(value: string | null): string {
   return date.toLocaleDateString("pt-BR");
 }
 
+function scrollPublicMainTo(top: number): void {
+  const scrollContainer = document.querySelector(".global-layout__main");
+  if (!(scrollContainer instanceof HTMLElement)) {
+    return;
+  }
+
+  scrollContainer.scrollTo({
+    top,
+    behavior: "auto"
+  });
+}
+
 export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, status, updateUserAvatar, updateUserProfile } = useAuth();
+  const { user, status, updateUserProfile } = useAuth();
   const { logout, isSubmitting } = useLogout();
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
@@ -309,17 +284,10 @@ export function GlobalLayout() {
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
   const [activeLegalSection, setActiveLegalSection] = useState(() => getLegalSectionFromHash(location.hash));
   const [profileTheme, setProfileTheme] = useState<UserProfileTheme>(defaultUserProfilePreferences.theme);
-  const [profileLanguage, setProfileLanguage] = useState(defaultUserProfilePreferences.language);
-  const [profileDensity, setProfileDensity] = useState(defaultUserProfilePreferences.density);
-  const [profileNotifications, setProfileNotifications] = useState(defaultUserProfilePreferences.notifications);
-  const [profileAutoSave, setProfileAutoSave] = useState(defaultUserProfilePreferences.autoSave);
-  const [profilePreferencesOwnerId, setProfilePreferencesOwnerId] = useState<string | null>(null);
   const [profileNameDraft, setProfileNameDraft] = useState("");
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => getSystemResolvedTheme());
   const [profileSaveState, setProfileSaveState] = useState<"idle" | "saving" | "error">("idle");
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
-  const [profileAvatarState, setProfileAvatarState] = useState<"idle" | "saving" | "error">("idle");
-  const [profileAvatarError, setProfileAvatarError] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const normalizedProfileTheme = normalizeUserProfileTheme(profileTheme);
@@ -353,22 +321,13 @@ export function GlobalLayout() {
   useEffect(() => {
     if (!user?.id) {
       setProfileTheme(defaultUserProfilePreferences.theme);
-      setProfileLanguage(defaultUserProfilePreferences.language);
-      setProfileDensity(defaultUserProfilePreferences.density);
-      setProfileNotifications(defaultUserProfilePreferences.notifications);
-      setProfileAutoSave(defaultUserProfilePreferences.autoSave);
-      setProfilePreferencesOwnerId(null);
+      setProfileNameDraft("");
       return;
     }
 
     const storedPreferences = getStoredUserProfilePreferences(user.id) ?? defaultUserProfilePreferences;
     setProfileNameDraft(user.name);
     setProfileTheme(normalizeUserProfileTheme(storedPreferences.theme));
-    setProfileLanguage(storedPreferences.language);
-    setProfileDensity(storedPreferences.density);
-    setProfileNotifications(storedPreferences.notifications);
-    setProfileAutoSave(storedPreferences.autoSave);
-    setProfilePreferencesOwnerId(user.id);
     storeGlobalThemePreference(storedPreferences.theme);
   }, [user?.id]);
 
@@ -475,7 +434,15 @@ export function GlobalLayout() {
     };
   }, [isHomeRoute]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!isPublicRoute) {
+      return;
+    }
+
+    scrollPublicMainTo(0);
+  }, [isPublicRoute, location.pathname]);
+
+  useLayoutEffect(() => {
     if (!isHomeRoute) {
       return;
     }
@@ -488,12 +455,7 @@ export function GlobalLayout() {
     }
     const nextTop = getHomeSectionScrollTop(scrollContainer, target, targetId);
 
-    window.requestAnimationFrame(() => {
-      scrollContainer.scrollTo({
-        top: nextTop,
-        behavior: prefersReducedMotion() ? "auto" : "smooth"
-      });
-    });
+    scrollPublicMainTo(nextTop);
   }, [isHomeRoute, location.hash]);
 
   useEffect(() => {
@@ -544,7 +506,7 @@ export function GlobalLayout() {
     };
   }, [isLegalRoute, legalNavigationItems]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isLegalRoute) {
       return;
     }
@@ -559,12 +521,7 @@ export function GlobalLayout() {
       alignToPageEnd: isPrivacyRoute && targetId === "legal-guide"
     });
 
-    window.requestAnimationFrame(() => {
-      scrollContainer.scrollTo({
-        top: nextTop,
-        behavior: prefersReducedMotion() ? "auto" : "smooth"
-      });
-    });
+    scrollPublicMainTo(nextTop);
   }, [isLegalRoute, location.hash, location.pathname]);
 
   useEffect(() => {
@@ -633,21 +590,6 @@ export function GlobalLayout() {
       });
   }, [isAuthenticated, isUserMenuOpen]);
 
-  useEffect(() => {
-    if (!profileAutoSave || !user?.id || profilePreferencesOwnerId !== user.id) {
-      return;
-    }
-
-    storeUserProfilePreferences(user.id, {
-      autoSave: profileAutoSave,
-      density: profileDensity,
-      language: profileLanguage,
-      notifications: profileNotifications,
-      theme: profileTheme
-    });
-    storeGlobalThemePreference(profileTheme);
-  }, [profileAutoSave, profileDensity, profileLanguage, profileNotifications, profileTheme, profilePreferencesOwnerId, user?.id]);
-
   const toggleNavigation = () => {
     if (isCompactViewport()) {
       setIsSidebarOpen(prev => !prev);
@@ -673,7 +615,7 @@ export function GlobalLayout() {
       if (container instanceof HTMLElement && target) {
         container.scrollTo({
           top: getHomeSectionScrollTop(container, target, targetId),
-          behavior: prefersReducedMotion() ? "auto" : "smooth"
+          behavior: "auto"
         });
       }
       return;
@@ -696,7 +638,7 @@ export function GlobalLayout() {
           top: getLegalSectionScrollTop(container, target, targetId, {
             alignToPageEnd: isPrivacyRoute && targetId === "legal-guide"
           }),
-          behavior: prefersReducedMotion() ? "auto" : "smooth"
+          behavior: "auto"
         });
       }
       return;
@@ -710,17 +652,18 @@ export function GlobalLayout() {
   const profileEmail = user?.email ?? "Sem e-mail";
   const profileInitials = getUserInitials(profileLabel);
   const profileAvatarUrl = user?.avatarUrl ?? null;
-  const hasManualProfileAvatar = user?.avatarSource === "manual";
-  const hasProfileAvatar = Boolean(profileAvatarUrl);
   const isAuthBusy = isSubmitting || status === "logout_in_progress";
   const activeWorkspaceSlug = extractWorkspaceSlug(location.pathname);
   const currentWorkspaceLabel = activeWorkspaceSlug ? activeWorkspaceSlug.replace(/-/g, " ") : "Nenhum workspace ativo";
   const currentPlanLabel = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].name : "Sem plano";
   const currentPlanPrice = billingStatus?.plan ? PLAN_DISPLAY[billingStatus.plan].price : "--";
-  const nextBillingDate = formatBillingDate(billingStatus?.currentPeriodEnd ?? null);
+  const nextBillingDate = formatDateLabel(billingStatus?.currentPeriodEnd ?? null);
   const canUpgradeToBusiness = billingStatus?.plan !== "BUSINESS";
   const normalizedProfileName = profileNameDraft.trim();
   const isProfileSaveBusy = profileSaveState === "saving";
+  const profileAccountBadge = user?.emailVerified ? "Email verificado" : "Email pendente";
+  const profileAccountStatus = user?.emailVerified ? "Verificada" : "Pendente";
+  const profileCreatedAt = formatDateLabel(user?.createdAt);
   const chromeValue = {
     isSidebarOpen,
     toggleNavigation,
@@ -742,6 +685,18 @@ export function GlobalLayout() {
     }
   };
 
+  const closeUserProfileModal = (preserveCurrentState = false) => {
+    if (!preserveCurrentState) {
+      const storedPreferences = getStoredUserProfilePreferences(user?.id) ?? defaultUserProfilePreferences;
+      setProfileTheme(normalizeUserProfileTheme(storedPreferences.theme));
+      setProfileNameDraft(user?.name ?? "");
+    }
+
+    setProfileSaveState("idle");
+    setProfileSaveError(null);
+    setIsUserProfileOpen(false);
+  };
+
   const saveUserProfilePreferences = async () => {
     if (!user?.id || normalizedProfileName.length < 2) {
       setProfileSaveState("error");
@@ -758,48 +713,14 @@ export function GlobalLayout() {
       }
 
       storeUserProfilePreferences(user.id, {
-        autoSave: profileAutoSave,
-        density: profileDensity,
-        language: profileLanguage,
-        notifications: profileNotifications,
         theme: profileTheme
       });
       storeGlobalThemePreference(profileTheme);
       setProfileSaveState("idle");
-      setIsUserProfileOpen(false);
+      closeUserProfileModal(true);
     } catch (error) {
       setProfileSaveState("error");
       setProfileSaveError(error instanceof Error ? error.message : "Nao foi possivel salvar seu perfil.");
-    }
-  };
-
-  const handleProfileAvatarUpload = async (file: File) => {
-    setProfileAvatarState("saving");
-    setProfileAvatarError(null);
-
-    try {
-      const manualAvatarDataUrl = await readFileAsDataUrl(file);
-      await updateUserAvatar({ manualAvatarDataUrl });
-      setProfileAvatarState("idle");
-    } catch (error) {
-      setProfileAvatarState("error");
-      setProfileAvatarError(error instanceof Error ? error.message : "Nao foi possivel salvar a foto.");
-    }
-  };
-
-  const handleProfileAvatarRemove = async () => {
-    setProfileAvatarState("saving");
-    setProfileAvatarError(null);
-
-    try {
-      await updateUserAvatar({
-        manualAvatarDataUrl: null,
-        removeProviderAvatar: user?.avatarSource === "provider"
-      });
-      setProfileAvatarState("idle");
-    } catch (error) {
-      setProfileAvatarState("error");
-      setProfileAvatarError(error instanceof Error ? error.message : "Nao foi possivel remover a foto.");
     }
   };
 
@@ -1068,7 +989,7 @@ export function GlobalLayout() {
             <ModalShell
               titleId="user-profile-title"
               className={cn("user-profile-modal", `user-profile-modal--${resolvedProfileTheme}`)}
-              onClose={() => setIsUserProfileOpen(false)}
+              onClose={() => closeUserProfileModal()}
             >
               <header className="user-profile-modal__header">
                 <div className="user-profile-modal__identity">
@@ -1077,13 +998,6 @@ export function GlobalLayout() {
                     imageUrl={profileAvatarUrl}
                     initials={profileInitials}
                     size="lg"
-                    editable
-                    canRemove={hasProfileAvatar || hasManualProfileAvatar}
-                    isLoading={profileAvatarState === "saving"}
-                    error={profileAvatarError}
-                    maxSizeBytes={maxProfileAvatarBytes}
-                    onUpload={handleProfileAvatarUpload}
-                    onRemove={handleProfileAvatarRemove}
                     className="user-profile-modal__avatar"
                   />
                   <div className="user-profile-modal__identity-copy">
@@ -1092,7 +1006,7 @@ export function GlobalLayout() {
                     <p>{profileEmail}</p>
                     <div className="user-profile-modal__identity-badges">
                       <span className="user-profile-modal__plan-badge">{currentPlanLabel}</span>
-                      <span className="user-profile-modal__meta-badge">{profileSubLabel}</span>
+                      <span className="user-profile-modal__meta-badge">{profileAccountBadge}</span>
                     </div>
                   </div>
                 </div>
@@ -1100,7 +1014,7 @@ export function GlobalLayout() {
                   type="button"
                   className="user-profile-modal__close"
                   aria-label="Fechar perfil do usuario"
-                  onClick={() => setIsUserProfileOpen(false)}
+                  onClick={() => closeUserProfileModal()}
                 >
                   x
                 </button>
@@ -1113,8 +1027,8 @@ export function GlobalLayout() {
                       ME
                     </span>
                     <div>
-                      <span className="user-profile-modal__section-label">Seus dados</span>
-                      <p>Edite apenas as informacoes basicas da sua conta sem alterar o restante do fluxo.</p>
+                      <span className="user-profile-modal__section-label">Dados basicos</span>
+                      <p>Mostre apenas o essencial da conta e ajuste como seu nome aparece no Dask.</p>
                     </div>
                   </div>
                   <div className="user-profile-modal__identity-grid">
@@ -1138,46 +1052,34 @@ export function GlobalLayout() {
                       <TextInput value={profileEmail} readOnly aria-readonly="true" />
                     </label>
                   </div>
-                </section>
-
-                <section className="user-profile-modal__panel user-profile-modal__panel--summary">
-                  <div className="user-profile-modal__section-head">
-                    <span className="user-profile-modal__section-icon" aria-hidden="true">
-                      ID
-                    </span>
-                    <div>
-                      <span className="user-profile-modal__section-label">Conta</span>
-                      <p>Resumo de acesso, plano e workspace atual.</p>
-                    </div>
-                  </div>
-                  <div className="user-profile-modal__summary-grid">
-                    <div>
-                      <small>Plano</small>
-                      <strong>{currentPlanLabel}</strong>
-                    </div>
-                    <div>
-                      <small>Workspace atual</small>
+                  <div className="user-profile-modal__basic-grid" aria-label="Resumo da conta">
+                    <article className="user-profile-modal__basic-card">
+                      <small>Plano atual</small>
+                      <strong>{billingLoadState === "loading" ? "Carregando..." : currentPlanLabel}</strong>
+                    </article>
+                    <article className="user-profile-modal__basic-card">
+                      <small>Workspace ativo</small>
                       <strong>{currentWorkspaceLabel}</strong>
-                    </div>
-                    <div>
-                      <small>Status</small>
-                      <strong>{profileSubLabel}</strong>
-                    </div>
-                    <div>
-                      <small>Proxima cobranca</small>
-                      <strong>{nextBillingDate}</strong>
-                    </div>
+                    </article>
+                    <article className="user-profile-modal__basic-card">
+                      <small>Conta</small>
+                      <strong>{profileAccountStatus}</strong>
+                    </article>
+                    <article className="user-profile-modal__basic-card">
+                      <small>Membro desde</small>
+                      <strong>{profileCreatedAt}</strong>
+                    </article>
                   </div>
                 </section>
 
-                <section className="user-profile-modal__panel">
+                <section className="user-profile-modal__panel user-profile-modal__panel--theme">
                   <div className="user-profile-modal__section-head">
                     <span className="user-profile-modal__section-icon" aria-hidden="true">
                       UI
                     </span>
                     <div>
                       <span className="user-profile-modal__section-label">Aparencia</span>
-                      <p>Preferencias visuais aplicadas somente ao seu usuario.</p>
+                      <p>Escolha somente o tema que deve ser aplicado ao seu perfil.</p>
                     </div>
                   </div>
                   <div className="user-profile-modal__option-grid" role="radiogroup" aria-label="Tema">
@@ -1210,61 +1112,11 @@ export function GlobalLayout() {
                     ))}
                   </div>
                 </section>
-
-                <section className="user-profile-modal__panel">
-                  <div className="user-profile-modal__section-head">
-                    <span className="user-profile-modal__section-icon" aria-hidden="true">
-                      PX
-                    </span>
-                    <div>
-                      <span className="user-profile-modal__section-label">Preferencias gerais</span>
-                      <p>Idioma, densidade e comportamento padrao do sistema.</p>
-                    </div>
-                  </div>
-                  <label className="user-profile-modal__field">
-                    <span>Idioma</span>
-                    <Select value={profileLanguage} onChange={event => setProfileLanguage(event.target.value)}>
-                      <option value="pt-BR">Portugues (Brasil)</option>
-                      <option value="en-US">English (US)</option>
-                      <option value="es-ES">Espanol</option>
-                    </Select>
-                  </label>
-                  <label className="user-profile-modal__field">
-                    <span>Densidade da interface</span>
-                    <Select value={profileDensity} onChange={event => setProfileDensity(event.target.value)}>
-                      <option value="comfortable">Confortavel</option>
-                      <option value="compact">Compacta</option>
-                      <option value="spacious">Espacosa</option>
-                    </Select>
-                  </label>
-                  <label className="user-profile-modal__toggle">
-                    <span>
-                      <strong>Notificacoes do sistema</strong>
-                      <small>Receber avisos importantes do Dask.</small>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={profileNotifications}
-                      onChange={event => setProfileNotifications(event.target.checked)}
-                    />
-                  </label>
-                  <label className="user-profile-modal__toggle">
-                    <span>
-                      <strong>Salvar preferencias automaticamente</strong>
-                      <small>Manter ajustes pessoais sincronizados quando disponivel.</small>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={profileAutoSave}
-                      onChange={event => setProfileAutoSave(event.target.checked)}
-                    />
-                  </label>
-                </section>
               </div>
 
               <footer className="user-profile-modal__footer">
                 {profileSaveError ? <p className="user-profile-modal__feedback">{profileSaveError}</p> : null}
-                <button type="button" className="user-profile-modal__secondary" onClick={() => setIsUserProfileOpen(false)}>
+                <button type="button" className="user-profile-modal__secondary" onClick={() => closeUserProfileModal()}>
                   Cancelar
                 </button>
                 <button

@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { routePaths } from "@/app/router";
+import { cn } from "@/shared/lib/cn";
 import "./legal-document-page.css";
 
 type LegalDocumentBadgeTone = "default" | "success" | "warning";
@@ -56,6 +57,14 @@ type LegalDocumentPageProps = {
   complementaryDescription: string;
   complementaryLink: LegalDocumentLink;
 };
+
+type LegalSectionId = "legal-overview" | "legal-clauses" | "legal-guide";
+const legalSectionIds = new Set<LegalSectionId>(["legal-overview", "legal-clauses", "legal-guide"]);
+
+function getLegalSectionFromHash(hash: string): LegalSectionId {
+  const sectionId = hash.replace("#", "") as LegalSectionId;
+  return legalSectionIds.has(sectionId) ? sectionId : "legal-overview";
+}
 
 function Badge({ label, tone = "default" }: LegalDocumentBadge) {
   return <span className={`home-page__badge home-page__badge--${tone}`}>{label}</span>;
@@ -128,6 +137,8 @@ export function LegalDocumentPage({
   complementaryDescription,
   complementaryLink
 }: LegalDocumentPageProps) {
+  const location = useLocation();
+  const activeSection = getLegalSectionFromHash(location.hash);
   const mainClassName = ["home-page legal-page", pageClassName].filter(Boolean).join(" ");
   const hasPillarGuide = guideVariant === "pillars";
   const clausesSectionClassName = [
@@ -156,7 +167,10 @@ export function LegalDocumentPage({
 
   const clausesView = (
     <div className="home-page__view home-page__view--stacked legal-page__stack legal-page__stack--clauses">
-      <section id="legal-clauses" className={clausesSectionClassName}>
+      <section
+        id="legal-clauses"
+        className={cn(clausesSectionClassName, activeSection === "legal-clauses" && "home-page__section--active")}
+      >
         <header className="home-page__section-intro">
           <p className="home-page__section-eyebrow">{sectionsEyebrow}</p>
           <h2 className="home-page__section-title">{sectionsTitle}</h2>
@@ -216,7 +230,10 @@ export function LegalDocumentPage({
   );
 
   const guideSection = (
-    <section id="legal-guide" className={guideSectionClassName}>
+    <section
+      id="legal-guide"
+      className={cn(guideSectionClassName, activeSection === "legal-guide" && "home-page__section--active")}
+    >
       <header className="home-page__section-intro">
         <p className="home-page__section-eyebrow">{guideEyebrow}</p>
         <h2 className="home-page__section-title">{guideTitle}</h2>
@@ -231,7 +248,11 @@ export function LegalDocumentPage({
     <main className={mainClassName}>
       <div className="home-page__container legal-page__container">
         <div className="home-page__view legal-page__viewport">
-          <section id="legal-overview" className="home-page__hero legal-page__hero" aria-label={title}>
+          <section
+            id="legal-overview"
+            className={cn("home-page__hero legal-page__hero", activeSection === "legal-overview" && "home-page__hero--active")}
+            aria-label={title}
+          >
             <div className="home-page__hero-copy legal-page__hero-copy">
               <p className="home-page__eyebrow">{eyebrow}</p>
               <h1 className="home-page__title legal-page__title">{title}</h1>
@@ -276,7 +297,10 @@ export function LegalDocumentPage({
           </>
         ) : (
           <div className="home-page__view home-page__view--stacked legal-page__stack">
-            <section id="legal-clauses" className={clausesSectionClassName}>
+            <section
+              id="legal-clauses"
+              className={cn(clausesSectionClassName, activeSection === "legal-clauses" && "home-page__section--active")}
+            >
               <header className="home-page__section-intro">
                 <p className="home-page__section-eyebrow">{sectionsEyebrow}</p>
                 <h2 className="home-page__section-title">{sectionsTitle}</h2>

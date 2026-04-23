@@ -1,9 +1,18 @@
 .global-layout__main:has(.workspace-selector-page) {
+  --workspace-selector-surface:
+    linear-gradient(
+      135deg,
+      rgba(255, 144, 132, 0.1) 0%,
+      rgba(214, 156, 242, 0.06) 28%,
+      rgba(123, 146, 242, 0.05) 58%,
+      rgba(56, 132, 238, 0.08) 100%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(245, 249, 255, 0.04) 100%);
   padding:
-    calc(var(--global-header-height) + var(--global-content-gap))
+    var(--global-header-height)
     0
-    calc(var(--global-footer-height) + var(--global-content-gap));
-  background: transparent;
+    var(--global-footer-height);
+  background: var(--workspace-selector-surface);
   overflow-x: hidden;
 }
 
@@ -13,26 +22,16 @@
 }
 
 .workspace-selector-page.no-workspace-page {
-  min-height: calc(
-    100dvh - var(--global-header-height) - var(--global-footer-height) - (var(--global-content-gap) * 2)
-  );
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
   height: auto;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   place-items: center;
-  padding: clamp(18px, 3.6vw, 40px);
+  padding: clamp(14px, 2.4vw, 28px);
   overflow-x: hidden;
   overflow-y: visible;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 144, 132, 0.1) 0%,
-      rgba(214, 156, 242, 0.06) 28%,
-      rgba(123, 146, 242, 0.05) 58%,
-      rgba(56, 132, 238, 0.08) 100%
-    ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(245, 249, 255, 0.04) 100%);
+  background: var(--workspace-selector-surface);
 }
 
 .workspace-selector-page.no-workspace-page::before,
@@ -84,8 +83,8 @@
   position: relative;
   width: 100%;
   display: grid;
-  gap: clamp(18px, 2.2vw, 28px);
-  padding: clamp(24px, 3.2vw, 40px);
+  gap: clamp(14px, 1.6vw, 20px);
+  padding: clamp(22px, 2.4vw, 32px);
   border: 1px solid rgba(165, 201, 228, 0.8);
   border-radius: 36px;
   background:
@@ -139,8 +138,8 @@
 
 .workspace-selector-page .no-workspace-page__header {
   display: grid;
-  gap: 12px;
-  max-width: 780px;
+  gap: 10px;
+  max-width: 680px;
 }
 
 .workspace-selector-page .no-workspace-page__eyebrow {
@@ -160,28 +159,28 @@
 
 .workspace-selector-page .no-workspace-page__title {
   margin: 0;
-  max-width: 15ch;
+  max-width: 14ch;
   color: #10233f;
   font-family: var(--font-family-heading);
-  font-size: clamp(2.3rem, 1.68rem + 1.72vw, 4.15rem);
-  line-height: 0.94;
+  font-size: clamp(2.05rem, 1.58rem + 1.18vw, 3rem);
+  line-height: 0.96;
   letter-spacing: -0.058em;
   text-wrap: balance;
 }
 
 .workspace-selector-page .no-workspace-page__description {
   margin: 0;
-  max-width: 64ch;
+  max-width: 58ch;
   color: #47617b;
-  font-size: clamp(0.98rem, 0.92rem + 0.22vw, 1.08rem);
-  line-height: 1.62;
+  font-size: clamp(0.94rem, 0.9rem + 0.18vw, 1rem);
+  line-height: 1.56;
 }
 
 .workspace-selector-page__toolbar.no-workspace-page__actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding-top: 0;
 }
 
@@ -194,7 +193,7 @@
 .workspace-selector-page__create-card .shared-select__control,
 .workspace-selector-page__delete-dialog .shared-input {
   width: 100%;
-  min-height: 50px;
+  min-height: 48px;
   border-radius: 16px;
   border-color: rgba(177, 205, 230, 0.9);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
@@ -253,9 +252,9 @@
 }
 
 .workspace-selector-page .shared-button {
-  min-height: 48px;
+  min-height: 46px;
   border-radius: 14px;
-  padding: 0 18px;
+  padding: 0 16px;
   font-size: 0.88rem;
   font-weight: 700;
 }
@@ -302,8 +301,8 @@
 
 .workspace-selector-page__create-card {
   display: grid;
-  gap: 18px;
-  padding: clamp(18px, 2vw, 24px);
+  gap: 14px;
+  padding: clamp(16px, 1.5vw, 20px);
   border: 1px solid rgba(177, 204, 227, 0.7);
   border-radius: 26px;
   background:
@@ -346,7 +345,7 @@
 .workspace-selector-page__create-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 16px;
+  gap: 14px 14px;
   align-items: end;
 }
 
@@ -400,7 +399,7 @@
 
 .workspace-selector-page__list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .workspace-selector-page__workspace {
@@ -408,8 +407,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 18px 18px 22px;
+  gap: 14px;
+  padding: 15px 16px 15px 20px;
   border: 1px solid rgba(177, 204, 227, 0.7);
   border-radius: 24px;
   background:
@@ -437,15 +436,15 @@
 
 .workspace-selector-page__workspace-copy {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 
 .workspace-selector-page__workspace-copy strong {
   color: #16304d;
   font-family: var(--font-family-heading);
-  font-size: clamp(1rem, 0.93rem + 0.18vw, 1.12rem);
-  line-height: 1.08;
+  font-size: clamp(0.98rem, 0.92rem + 0.16vw, 1.08rem);
+  line-height: 1.04;
   letter-spacing: -0.035em;
 }
 
@@ -459,14 +458,14 @@
 
 .workspace-selector-page__workspace-copy small {
   color: #58718c;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
 }
 
 .workspace-selector-page__workspace-actions {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -699,39 +698,79 @@
     0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
 
+.app-theme[data-theme="dark"] {
+  --workspace-selector-dark-border: color-mix(in oklab, var(--selected-border) 52%, var(--border-default));
+  --workspace-selector-dark-border-strong: color-mix(in oklab, var(--primary) 44%, var(--border-default));
+  --workspace-selector-dark-surface:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--surface-overlay-strong) 86%, #08111b) 0%,
+      color-mix(in oklab, var(--surface-raised) 90%, #06111a) 100%
+    );
+  --workspace-selector-dark-surface-alt:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--surface-overlay-strong) 90%, #0a1620) 0%,
+      color-mix(in oklab, var(--surface-raised) 94%, #08131d) 100%
+    );
+  --workspace-selector-dark-control:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--control-surface) 92%, #0a1520) 0%,
+      color-mix(in oklab, var(--surface-overlay) 92%, #09131d) 100%
+    );
+  --workspace-selector-dark-control-hover:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--control-surface-hover) 94%, #0c1722) 0%,
+      color-mix(in oklab, var(--surface-overlay-strong) 94%, #09131d) 100%
+    );
+  --workspace-selector-dark-shadow:
+    0 28px 72px rgba(0, 0, 0, 0.34),
+    0 16px 34px rgba(2, 12, 20, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  --workspace-selector-dark-shadow-soft:
+    0 18px 36px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --workspace-selector-dark-accent: color-mix(in oklab, var(--accent-strong) 86%, #d7ebff);
+  --workspace-selector-dark-muted: color-mix(in oklab, var(--text-muted) 72%, #bfd0e0);
+}
+
+.app-theme[data-theme="dark"] .global-layout__main:has(.workspace-selector-page) {
+  --workspace-selector-surface:
+    radial-gradient(circle at 14% 16%, rgba(47, 128, 237, 0.15) 0%, transparent 24%),
+    radial-gradient(circle at 84% 20%, rgba(40, 207, 199, 0.1) 0%, transparent 22%),
+    radial-gradient(circle at 54% 100%, rgba(11, 76, 121, 0.12) 0%, transparent 34%),
+    linear-gradient(180deg, #07111a 0%, #08111b 48%, #09141d 100%);
+  background: var(--workspace-selector-surface);
+}
+
 .app-theme[data-theme="dark"] .workspace-selector-page.no-workspace-page {
-  background:
-    radial-gradient(circle at 12% 14%, rgba(90, 183, 255, 0.16) 0%, transparent 26%),
-    radial-gradient(circle at 84% 18%, rgba(125, 97, 238, 0.14) 0%, transparent 24%),
-    radial-gradient(circle at 68% 82%, rgba(48, 213, 205, 0.14) 0%, transparent 28%),
-    linear-gradient(135deg, rgba(7, 19, 33, 0.98) 0%, rgba(8, 23, 38, 0.98) 24%, rgba(9, 28, 45, 0.96) 56%, rgba(6, 18, 30, 0.98) 100%);
+  background: var(--workspace-selector-surface);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__backdrop {
   background:
-    linear-gradient(90deg, rgba(119, 155, 188, 0.09) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(119, 155, 188, 0.08) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% 50%, rgba(15, 43, 70, 0.46) 0%, rgba(12, 31, 50, 0.16) 42%, transparent 72%);
-  opacity: 0.48;
+    linear-gradient(90deg, rgba(112, 147, 178, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(112, 147, 178, 0.06) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% 40%, rgba(17, 45, 69, 0.36) 0%, rgba(8, 18, 29, 0.16) 42%, transparent 74%);
+  opacity: 0.34;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__card.no-workspace-page__card.shared-card {
-  border-color: rgba(79, 120, 150, 0.66);
+  border-color: var(--workspace-selector-dark-border);
   background:
-    radial-gradient(circle at top left, rgba(90, 183, 255, 0.09) 0%, transparent 28%),
-    radial-gradient(circle at top right, rgba(125, 97, 238, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(11, 27, 41, 0.96) 0%, rgba(9, 24, 38, 0.97) 52%, rgba(7, 20, 31, 0.98) 100%);
-  box-shadow:
-    0 34px 90px rgba(0, 0, 0, 0.38),
-    0 18px 44px rgba(6, 18, 30, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
-    0 0 0 1px rgba(90, 183, 255, 0.05);
+    radial-gradient(circle at 12% 0%, rgba(47, 128, 237, 0.1) 0%, transparent 24%),
+    radial-gradient(circle at 88% 18%, rgba(40, 207, 199, 0.06) 0%, transparent 20%),
+    var(--workspace-selector-dark-surface);
+  box-shadow: var(--workspace-selector-dark-shadow);
+  backdrop-filter: blur(20px) saturate(118%);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__eyebrow,
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace-copy span,
 .app-theme[data-theme="dark"] .workspace-selector-page .shared-form-field__label {
-  color: #8bc4ff;
+  color: var(--workspace-selector-dark-accent);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__title,
@@ -742,19 +781,54 @@
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__description,
 .app-theme[data-theme="dark"] .workspace-selector-page__state,
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace-copy small {
-  color: rgba(192, 212, 231, 0.84);
+  color: var(--workspace-selector-dark-muted);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__card.no-workspace-page__card::before {
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.12) 48%, transparent 100%) 0 0 / 100% 1px no-repeat,
+    linear-gradient(145deg, rgba(79, 149, 210, 0.08), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.06) 0%, transparent 28%);
+  opacity: 0.74;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__card.no-workspace-page__card::after {
+  background: radial-gradient(circle, rgba(47, 128, 237, 0.14) 0%, rgba(47, 128, 237, 0) 72%);
+  opacity: 0.72;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input {
-  border-color: rgba(70, 108, 136, 0.86);
-  background: linear-gradient(180deg, rgba(12, 31, 48, 0.94) 0%, rgba(10, 27, 42, 0.96) 100%);
+  border-color: color-mix(in oklab, var(--workspace-selector-dark-border) 88%, transparent);
+  background: var(--workspace-selector-dark-control);
   color: #f0f7ff;
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    0 12px 24px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input:hover,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input:hover,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control:hover,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input:hover {
+  border-color: var(--workspace-selector-dark-border-strong);
+  background: var(--workspace-selector-dark-control-hover);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input:focus,
+.app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input:focus-visible,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input:focus,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control:focus,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control:focus-visible,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input:focus,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input:focus-visible {
+  border-color: var(--selected-border);
+  background: var(--workspace-selector-dark-control-hover);
+  box-shadow:
+    var(--focus-strong),
+    0 16px 30px rgba(0, 0, 0, 0.22);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input::placeholder,
@@ -765,43 +839,74 @@
 
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__secondary.shared-button,
 .app-theme[data-theme="dark"] .workspace-selector-page .shared-button--default {
-  color: #d9ecff;
-  border-color: rgba(80, 121, 151, 0.84);
-  background: linear-gradient(180deg, rgba(17, 41, 61, 0.96) 0%, rgba(12, 33, 49, 0.98) 100%);
+  color: #e6f0fa;
+  border-color: var(--workspace-selector-dark-border);
+  background: var(--workspace-selector-dark-control);
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+    0 12px 24px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__secondary.shared-button:hover,
+.app-theme[data-theme="dark"] .workspace-selector-page .shared-button--default:hover {
+  border-color: var(--workspace-selector-dark-border-strong);
+  background: var(--workspace-selector-dark-control-hover);
+  color: #f1f7fd;
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .shared-button--primary {
-  border-color: rgba(98, 178, 233, 0.34);
-  background: linear-gradient(135deg, #0a6fc1 0%, #1293d8 46%, #18b8bd 100%);
+  border-color: color-mix(in oklab, var(--primary) 42%, #12314b);
+  background: linear-gradient(135deg, #0d5f9d 0%, #1d79bb 58%, #27b2bc 100%);
   color: #f6fbff;
   box-shadow:
-    0 18px 36px rgba(5, 22, 39, 0.32),
-    0 8px 18px rgba(24, 184, 189, 0.18),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    0 18px 34px rgba(0, 0, 0, 0.26),
+    0 12px 22px rgba(10, 66, 107, 0.26),
+    0 1px 0 rgba(233, 244, 252, 0.16) inset;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page .shared-button--primary:hover {
+  border-color: color-mix(in oklab, var(--primary) 52%, #153653);
+  background: linear-gradient(135deg, #1169ab 0%, #2485c3 58%, #2cbec3 100%);
+  box-shadow:
+    0 22px 38px rgba(0, 0, 0, 0.3),
+    0 14px 24px rgba(12, 76, 121, 0.3),
+    0 1px 0 rgba(233, 244, 252, 0.18) inset;
+  filter: none;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card,
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace {
-  border-color: rgba(69, 106, 133, 0.76);
+  border-color: color-mix(in oklab, var(--workspace-selector-dark-border) 92%, transparent);
   background:
-    radial-gradient(circle at 0% 0%, rgba(90, 183, 255, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(12, 31, 47, 0.96) 0%, rgba(9, 24, 38, 0.98) 100%);
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.05) 0%, transparent 22%),
+    var(--workspace-selector-dark-surface-alt);
+  box-shadow: var(--workspace-selector-dark-shadow-soft);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card::before,
+.app-theme[data-theme="dark"] .workspace-selector-page__workspace::before {
+  background: linear-gradient(180deg, rgba(83, 152, 214, 0.9) 0%, rgba(60, 143, 222, 0.74) 52%, rgba(40, 207, 199, 0.72) 100%);
+  box-shadow: 0 0 14px rgba(47, 128, 237, 0.16);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card::after,
+.app-theme[data-theme="dark"] .workspace-selector-page__workspace::after {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.06) 0%, transparent 32%);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace:hover {
-  border-color: rgba(100, 150, 186, 0.94);
+  border-color: var(--workspace-selector-dark-border-strong);
   background:
-    radial-gradient(circle at 0% 0%, rgba(90, 183, 255, 0.11) 0%, transparent 28%),
-    linear-gradient(180deg, rgba(15, 36, 55, 0.98) 0%, rgba(10, 28, 43, 0.99) 100%);
+    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.08) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(17, 31, 45, 0.98) 0%, rgba(12, 24, 35, 0.99) 100%);
   box-shadow:
-    0 26px 48px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(90, 183, 255, 0.06) inset;
+    0 24px 44px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__feedback {
@@ -818,31 +923,37 @@
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-trigger.shared-button,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-confirm.shared-button {
-  border-color: rgba(146, 83, 106, 0.86);
-  background: linear-gradient(180deg, rgba(59, 17, 31, 0.96) 0%, rgba(43, 12, 23, 0.98) 100%);
-  color: #ffc6d4;
+  border-color: color-mix(in oklab, var(--danger) 54%, var(--border-default));
+  background: linear-gradient(180deg, rgba(54, 21, 30, 0.96) 0%, rgba(40, 16, 23, 0.98) 100%);
+  color: color-mix(in oklab, var(--danger) 34%, #ffd6df);
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.24),
+    0 12px 24px rgba(0, 0, 0, 0.22),
     0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
-.app-theme[data-theme="dark"] .workspace-selector-page__delete-modal.shared-modal-shell {
-  border-color: rgba(79, 120, 150, 0.66);
-  background:
-    radial-gradient(circle at top left, rgba(90, 183, 255, 0.09) 0%, transparent 28%),
-    radial-gradient(circle at top right, rgba(125, 97, 238, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(11, 27, 41, 0.96) 0%, rgba(9, 24, 38, 0.97) 52%, rgba(7, 20, 31, 0.98) 100%);
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-trigger.shared-button:hover,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-confirm.shared-button:hover {
+  border-color: color-mix(in oklab, var(--danger) 64%, var(--border-default));
+  background: linear-gradient(180deg, rgba(63, 24, 34, 0.98) 0%, rgba(45, 16, 25, 1) 100%);
+  color: #ffdce4;
   box-shadow:
-    0 34px 90px rgba(0, 0, 0, 0.38),
-    0 18px 44px rgba(6, 18, 30, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
-    0 0 0 1px rgba(90, 183, 255, 0.05);
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-modal.shared-modal-shell {
+  border-color: var(--workspace-selector-dark-border);
+  background:
+    radial-gradient(circle at top left, rgba(47, 128, 237, 0.08) 0%, transparent 28%),
+    radial-gradient(circle at top right, rgba(222, 123, 123, 0.08) 0%, transparent 24%),
+    var(--workspace-selector-dark-surface);
+  box-shadow: var(--workspace-selector-dark-shadow);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-eyebrow,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target span,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-hint strong {
-  color: #ffb3c6;
+  color: color-mix(in oklab, var(--danger) 42%, #ffc7d4);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-title,
@@ -851,43 +962,71 @@
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-form-field__label {
-  color: #8bc4ff;
+  color: var(--workspace-selector-dark-accent);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-description,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-hint,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target small {
-  color: rgba(192, 212, 231, 0.84);
+  color: var(--workspace-selector-dark-muted);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target {
-  border-color: rgba(69, 106, 133, 0.76);
+  border-color: color-mix(in oklab, var(--danger) 22%, var(--workspace-selector-dark-border));
   background:
-    radial-gradient(circle at 0% 0%, rgba(90, 183, 255, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(12, 31, 47, 0.96) 0%, rgba(9, 24, 38, 0.98) 100%);
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    radial-gradient(circle at 100% 0%, rgba(222, 123, 123, 0.08) 0%, transparent 22%),
+    var(--workspace-selector-dark-surface-alt);
+  box-shadow: var(--workspace-selector-dark-shadow-soft);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .no-workspace-page__secondary.shared-button {
-  color: #d9ecff;
-  border-color: rgba(80, 121, 151, 0.84);
-  background: linear-gradient(180deg, rgba(17, 41, 61, 0.96) 0%, rgba(12, 33, 49, 0.98) 100%);
+  color: #e6f0fa;
+  border-color: var(--workspace-selector-dark-border);
+  background: var(--workspace-selector-dark-control);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .no-workspace-page__secondary.shared-button:hover {
+  border-color: var(--workspace-selector-dark-border-strong);
+  background: var(--workspace-selector-dark-control-hover);
+  color: #f1f7fd;
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-modal::before {
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.12) 48%, transparent 100%) 0 0 / 100% 1px no-repeat,
+    linear-gradient(145deg, rgba(79, 149, 210, 0.08), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(222, 123, 123, 0.06) 0%, transparent 28%);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-target::before {
+  background: linear-gradient(180deg, rgba(201, 111, 140, 0.84) 0%, rgba(117, 138, 223, 0.48) 52%, rgba(40, 207, 199, 0.42) 100%);
+  box-shadow: 0 0 14px rgba(201, 111, 140, 0.14);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-target::after {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(222, 123, 123, 0.07) 0%, transparent 30%);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__error {
+  border-color: color-mix(in oklab, var(--danger) 44%, var(--border-default));
+  background: linear-gradient(135deg, rgba(52, 19, 26, 0.94), rgba(35, 15, 20, 0.88));
+  color: color-mix(in oklab, var(--danger) 32%, #ffd2db);
 }
 
 @media (max-width: 760px) {
   .workspace-selector-page.no-workspace-page {
     align-items: start;
-    padding: 16px;
+    padding: 12px;
   }
 
   .workspace-selector-page__card.no-workspace-page__card.shared-card {
     border-radius: 28px;
-    padding: 24px;
+    padding: 20px;
   }
 
   .workspace-selector-page__toolbar.no-workspace-page__actions,
@@ -930,10 +1069,10 @@
 
 @media (max-width: 420px) {
   .workspace-selector-page__card.no-workspace-page__card.shared-card {
-    padding: 20px;
+    padding: 18px;
   }
 
   .workspace-selector-page .no-workspace-page__title {
-    font-size: 2rem;
+    font-size: 1.84rem;
   }
 }

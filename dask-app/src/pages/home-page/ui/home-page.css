@@ -1534,59 +1534,142 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .home-page__view {
-    animation: home-tab-enter 0.32s ease both;
+  .home-page__hero--active,
+  .home-page__section--active {
+    animation: public-section-shell-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .home-page__hero,
-  .home-page__feature-card,
-  .home-page__focus-card,
-  .home-page__search-card,
-  .home-page__use-case-card {
-    animation: home-fade-up 0.9s both;
+  .home-page__hero--active > .home-page__hero-copy,
+  .home-page__section--active > .home-page__section-intro {
+    animation: public-section-content-enter 0.54s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 0.02s;
+    will-change: opacity, transform;
   }
 
-  .home-page__feature-card:nth-child(2),
-  .home-page__search-card:nth-child(2),
-  .home-page__use-case-card:nth-child(2) {
+  .home-page__hero--active > .home-page__hero-side {
+    animation: public-section-content-enter 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: 0.08s;
+    will-change: opacity, transform;
   }
 
-  .home-page__feature-card:nth-child(3),
-  .home-page__search-card:nth-child(3),
-  .home-page__use-case-card:nth-child(3) {
-    animation-delay: 0.14s;
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__architecture-preview,
+    .home-page__pricing-card,
+    .legal-page__guide-card,
+    .legal-page__preview
+  ) {
+    animation: public-section-content-enter 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--public-section-delay, 0.1s);
+    will-change: opacity, transform;
   }
 
-  .home-page__feature-card:nth-child(4),
-  .home-page__use-case-card:nth-child(4) {
-    animation-delay: 0.2s;
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__pricing-card,
+    .legal-page__guide-card
+  ):nth-child(1) {
+    --public-section-delay: 0.08s;
+  }
+
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__pricing-card,
+    .legal-page__guide-card
+  ):nth-child(2) {
+    --public-section-delay: 0.13s;
+  }
+
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__pricing-card,
+    .legal-page__guide-card
+  ):nth-child(3) {
+    --public-section-delay: 0.18s;
+  }
+
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__pricing-card,
+    .legal-page__guide-card
+  ):nth-child(4) {
+    --public-section-delay: 0.23s;
+  }
+
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__pricing-card,
+    .legal-page__guide-card
+  ):nth-child(5) {
+    --public-section-delay: 0.28s;
+  }
+
+  .home-page__section--active :is(
+    .home-page__pillar,
+    .home-page__workflow-step,
+    .home-page__use-case-item,
+    .home-page__adaptability-note,
+    .home-page__architecture-item,
+    .home-page__pricing-card,
+    .legal-page__guide-card
+  ):nth-child(6) {
+    --public-section-delay: 0.33s;
+  }
+
+  .home-page__section--active :is(.home-page__architecture-preview, .legal-page__preview) {
+    --public-section-delay: 0.18s;
   }
 }
 
-@keyframes home-tab-enter {
+@keyframes public-section-shell-enter {
   from {
-    opacity: 0;
-    transform: translateY(10px);
+    opacity: 0.01;
+    transform: translateY(6px) scale(0.9985);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-@keyframes home-fade-up {
+@keyframes public-section-content-enter {
   from {
     opacity: 0;
-    transform: translateY(18px);
-    filter: blur(8px);
+    transform: translateY(12px) scale(0.997);
+  }
+
+  55% {
+    opacity: 1;
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
+    transform: translateY(0) scale(1);
   }
 }
 

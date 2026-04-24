@@ -21,6 +21,11 @@ export const connectPaymentOrderParamsDto = z.object({
   orderId: z.string().uuid()
 });
 
+export const connectCatalogItemParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  itemId: z.string().uuid()
+});
+
 export const listConnectPaymentOrdersQueryDto = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50)
 });
@@ -122,6 +127,7 @@ export const listConnectCatalogItemsQueryDto = z.object({
 
 export type ConnectWorkspaceParamsInput = z.infer<typeof connectWorkspaceParamsDto>;
 export type ConnectPaymentOrderParamsInput = z.infer<typeof connectPaymentOrderParamsDto>;
+export type ConnectCatalogItemParamsInput = z.infer<typeof connectCatalogItemParamsDto>;
 export type ListConnectPaymentOrdersQueryInput = z.infer<typeof listConnectPaymentOrdersQueryDto>;
 export type SyncConnectPaymentOrderQueryInput = z.infer<typeof syncConnectPaymentOrderQueryDto>;
 export type CreateConnectOnboardingLinkInput = z.infer<typeof createConnectOnboardingLinkDto>;

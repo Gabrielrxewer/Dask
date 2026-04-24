@@ -67,6 +67,10 @@ export interface CreateConnectCatalogItemInput {
   metadata?: Record<string, string>;
 }
 
+export interface UpdateConnectCatalogItemInput {
+  isActive?: boolean;
+}
+
 export type ConnectPaymentOrderStatus =
   | 'DRAFT'
   | 'CHECKOUT_OPEN'
@@ -192,6 +196,7 @@ export interface BillingRepository {
   createSubscription(input: CreateSubscriptionInput): Promise<Subscription>;
   updateSubscription(stripeSubscriptionId: string, input: UpdateSubscriptionInput): Promise<Subscription>;
   createConnectCatalogItem(input: CreateConnectCatalogItemInput): Promise<ConnectCatalogItem>;
+  updateConnectCatalogItem(itemId: string, input: UpdateConnectCatalogItemInput): Promise<ConnectCatalogItem>;
   createConnectPaymentOrder(input: CreateConnectPaymentOrderInput): Promise<ConnectPaymentOrder>;
   updateConnectPaymentOrder(orderId: string, input: UpdateConnectPaymentOrderInput): Promise<ConnectPaymentOrder>;
 

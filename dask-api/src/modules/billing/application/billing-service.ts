@@ -22,13 +22,12 @@ import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
 // Stripe v22 exports as `export = StripeConstructor` — use InstanceType to get the instance type
 type StripeInstance = InstanceType<typeof Stripe>;
 type StripeRetrieveSubscription = (subscriptionId: string) => Promise<StripeSubscriptionObject>;
-type StripeCheckoutPaymentMethodType = 'card' | 'pix' | 'boleto';
+type StripeCheckoutPaymentMethodType = 'card' | 'boleto';
 type StripePaymentMethodConfigurationUpdateParams = Record<string, {
   display_preference: { preference: 'on' | 'off' };
 }>;
 
-const BRL_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'pix', 'boleto'];
-const BRL_SUBSCRIPTION_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'boleto'];
+const BRL_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'boleto'];
 const CARD_ONLY_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card'];
 
 // Minimal local interfaces for Stripe event payloads (avoids namespace type conflicts)
@@ -881,7 +880,7 @@ export class BillingService {
       workspaceId,
       createdByUserId: userId,
       kind: input.kind,
-      billingType: input.billingType,
+      billingType: this.normalizeCatalogBillingTypeForPersistence(input.billingType),
       recurringInterval: input.recurringInterval,
       recurringIntervalCount: input.recurringIntervalCount,
       name,
@@ -895,6 +894,24 @@ export class BillingService {
     });
 
     return this.mapConnectCatalogItem(item);
+  }
+
+  async deactivateConnectCatalogItem(
+    workspaceId: string,
+    userId: string,
+    itemId: string
+  ): Promise<ConnectCatalogItemListItem> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const item = await this.repo.findConnectCatalogItemById(itemId);
+    if (!item || item.workspaceId !== workspaceId) {
+      throw new AppError('Catalog item not found for this workspace', 404);
+    }
+    if (!item.isActive) {
+      return this.mapConnectCatalogItem(item);
+    }
+
+    const updated = await this.repo.updateConnectCatalogItem(itemId, { isActive: false });
+    return this.mapConnectCatalogItem(updated);
   }
 
   private buildFiscalCheckoutMetadata(input: {
@@ -948,12 +965,8 @@ export class BillingService {
       return CARD_ONLY_PAYMENT_METHODS;
     }
 
-    if (billingType === 'ASSINATURA') {
+    if (this.isRecurringCatalogBillingType(billingType)) {
       return CARD_ONLY_PAYMENT_METHODS;
-    }
-
-    if (billingType === 'SUBSCRIPTION') {
-      return BRL_SUBSCRIPTION_PAYMENT_METHODS;
     }
 
     return BRL_PAYMENT_METHODS;
@@ -1459,7 +1472,7 @@ export class BillingService {
     return {
       id: item.id,
       kind: item.kind,
-      billingType: item.billingType,
+      billingType: this.normalizeCatalogBillingTypeForApi(item.billingType),
       recurringInterval: item.recurringInterval,
       recurringIntervalCount: item.recurringIntervalCount,
       name: item.name,
@@ -1473,5 +1486,20 @@ export class BillingService {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt
     };
+  }
+
+  private normalizeCatalogBillingTypeForPersistence(
+    billingType: ConnectCatalogBillingType
+  ): ConnectCatalogBillingType {
+    // `ASSINATURA` is the product-facing label, but some local databases may still
+    // have the older enum shape applied. Persist the legacy recurring value so
+    // creation works even before the enum migration is run.
+    return billingType === 'ASSINATURA' ? 'SUBSCRIPTION' : billingType;
+  }
+
+  private normalizeCatalogBillingTypeForApi(
+    billingType: ConnectCatalogBillingType
+  ): ConnectCatalogBillingType {
+    return billingType === 'SUBSCRIPTION' ? 'ASSINATURA' : billingType;
   }
 }

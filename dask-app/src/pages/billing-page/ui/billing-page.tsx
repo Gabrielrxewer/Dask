@@ -23,6 +23,7 @@ import {
   EmptyState,
   FormField,
   LoadingState,
+  ModalShell,
   Section,
   Select,
   StatusBadge,
@@ -40,7 +41,7 @@ type ChargeSource = "catalog" | "manual";
 type ReviewStep = "closed" | "preparing" | "ready";
 type ActiveTab = "conta" | "catalogo" | "cobrar" | "historico";
 type HistoryAction = "copy" | "resend" | "cancel";
-type PaymentCapability = "pix_payments" | "boleto_payments";
+type PaymentCapability = "boleto_payments";
 
 const HISTORY_PAGE_SIZE = 5;
 
@@ -62,8 +63,8 @@ const CATALOG_KIND_LABEL: Record<ConnectCatalogItemKind, string> = {
 
 const CATALOG_BILLING_LABEL: Record<ConnectCatalogBillingType, string> = {
   ONE_TIME: "Avulso",
-  ASSINATURA: "Assinatura",
-  SUBSCRIPTION: "Subscription"
+  ASSINATURA: "Assinatura (cartão)",
+  SUBSCRIPTION: "Assinatura (cartão)"
 };
 
 function isRecurringCatalogBillingType(billingType: ConnectCatalogBillingType): boolean {
@@ -242,6 +243,8 @@ export function BillingPage() {
   const [catalogItems, setCatalogItems] = useState<ConnectCatalogItem[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isCreatingCatalogItem, setIsCreatingCatalogItem] = useState(false);
+  const [deletingCatalogItemId, setDeletingCatalogItemId] = useState<string | null>(null);
+  const [catalogItemPendingDelete, setCatalogItemPendingDelete] = useState<ConnectCatalogItem | null>(null);
   const [isCatalogFormOpen, setIsCatalogFormOpen] = useState(false);
   const [catalogCreatedNotice, setCatalogCreatedNotice] = useState(false);
   const [chargeSource, setChargeSource] = useState<ChargeSource>("catalog");
@@ -651,6 +654,33 @@ export function BillingPage() {
     setDescription(item.name);
   }
 
+  function handleRequestDeleteCatalogItem(item: ConnectCatalogItem) {
+    if (!item.isActive || deletingCatalogItemId) return;
+    setCatalogItemPendingDelete(item);
+  }
+
+  async function handleDeleteCatalogItem(item: ConnectCatalogItem) {
+    if (!workspaceId || deletingCatalogItemId) return;
+    setDeletingCatalogItemId(item.id);
+    setCatalogError(null);
+    try {
+      await billingService.deleteConnectCatalogItem(workspaceId, item.id);
+      setCatalogItems((current) => current.filter((entry) => entry.id !== item.id));
+      setCatalogItemPendingDelete((current) => (current?.id === item.id ? null : current));
+      if (selectedCatalogItemId === item.id) {
+        setSelectedCatalogItemId("");
+        if (chargeSource === "catalog") {
+          setChargeSource("manual");
+        }
+      }
+    } catch {
+      setCatalogError("NÃ£o foi possÃ­vel excluir este item do catÃ¡logo agora.");
+    } finally {
+      setDeletingCatalogItemId(null);
+    }
+    return;
+  }
+
   async function handleCopyHistoryLink(order: ConnectPaymentOrder) {
     if (!order.checkoutUrl) return;
     const copied = await copyText(order.checkoutUrl);
@@ -877,20 +907,6 @@ export function BillingPage() {
                   <div className="billing-view__capability-grid">
                     <div className="billing-view__capability-row">
                       <div>
-                        <strong>Pix</strong>
-                        <p>Status: {formatCapabilityStatus(connectStatus?.pixPaymentsStatus)}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void handleRequestPaymentCapability("pix_payments")}
-                        disabled={!connectStatus || isLocalPaymentMethodEnabled(connectStatus.pixPaymentsStatus) || requestingCapability !== null}
-                      >
-                        {requestingCapability === "pix_payments" ? "Solicitando..." : "Habilitar Pix"}
-                      </Button>
-                    </div>
-                    <div className="billing-view__capability-row">
-                      <div>
                         <strong>Boleto</strong>
                         <p>Status: {formatCapabilityStatus(connectStatus?.boletoPaymentsStatus)}</p>
                       </div>
@@ -988,8 +1004,7 @@ export function BillingPage() {
                           onChange={(e) => setCatalogItemBillingType(e.target.value as ConnectCatalogBillingType)}
                         >
                           <option value="ONE_TIME">Cobrança avulsa</option>
-                          <option value="ASSINATURA">Assinatura</option>
-                          <option value="SUBSCRIPTION">Subscription</option>
+                          <option value="ASSINATURA">Assinatura (cartão)</option>
                         </Select>
                       </FormField>
                     </div>
@@ -1085,18 +1100,68 @@ export function BillingPage() {
                         {item.description ? (
                           <p className="billing-view__catalog-card-desc">{item.description}</p>
                         ) : null}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => { handleUseCatalogItem(item); setActiveTab("cobrar"); }}
-                        >
+                        <div className="billing-view__catalog-card-actions">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => { handleUseCatalogItem(item); setActiveTab("cobrar"); }}
+                            disabled={!item.isActive}
+                          >
                           Cobrar este item →
                         </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleRequestDeleteCatalogItem(item)}
+                            disabled={!item.isActive || deletingCatalogItemId !== null}
+                          >
+                            {deletingCatalogItemId === item.id ? "Excluindo..." : "Excluir"}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : null}
               </div>
+            ) : null}
+
+            {catalogItemPendingDelete ? (
+              <ModalShell
+                titleId="billing-delete-catalog-item-title"
+                className="billing-view__delete-modal"
+                onClose={() => {
+                  if (deletingCatalogItemId) return;
+                  setCatalogItemPendingDelete(null);
+                }}
+              >
+                <>
+                  <div className="billing-view__delete-modal-copy">
+                    <span className="billing-view__delete-modal-eyebrow">Excluir item</span>
+                    <h2 id="billing-delete-catalog-item-title">Remover "{catalogItemPendingDelete.name}"?</h2>
+                    <p>
+                      Esse item ficará inativo e não poderá mais ser usado em novas cobranças. O histórico anterior
+                      continua preservado.
+                    </p>
+                  </div>
+                  <div className="billing-view__delete-modal-actions">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setCatalogItemPendingDelete(null)}
+                      disabled={deletingCatalogItemId !== null}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => void handleDeleteCatalogItem(catalogItemPendingDelete)}
+                      disabled={deletingCatalogItemId !== null}
+                    >
+                      {deletingCatalogItemId === catalogItemPendingDelete.id ? "Excluindo..." : "Excluir item"}
+                    </Button>
+                  </div>
+                </>
+              </ModalShell>
             ) : null}
 
             {/* Tab: Cobrar */}
@@ -1285,7 +1350,7 @@ export function BillingPage() {
                                 </button>
                               </div>
                               <span className="billing-view__checkout-link-hint">
-                                Clique no bloco para copiar. Avulsa aceita cartão, Pix e boleto; Assinatura aceita cartão; Subscription aceita cartão e boleto.
+                                Clique no bloco para copiar. Avulsa aceita cartão e boleto; assinatura aceita só cartão.
                               </span>
                             </div>
 
@@ -1451,3 +1516,4 @@ export function BillingPage() {
     </AppShell>
   );
 }
+

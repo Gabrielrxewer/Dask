@@ -14,6 +14,7 @@ import type {
   CreateConnectPaymentOrderInput,
   CreateSubscriptionInput,
   Subscription,
+  UpdateConnectCatalogItemInput,
   UpdateConnectPaymentOrderInput,
   UpdateSubscriptionInput,
   WorkspaceBillingConnectInfo,
@@ -239,6 +240,15 @@ export class PrismaBillingRepository implements BillingRepository {
         stripeProductId: input.stripeProductId,
         stripePriceId: input.stripePriceId,
         metadata: input.metadata as any
+      }
+    });
+  }
+
+  updateConnectCatalogItem(itemId: string, input: UpdateConnectCatalogItemInput): Promise<ConnectCatalogItem> {
+    return (this.prisma as any).connectCatalogItem.update({
+      where: { id: itemId },
+      data: {
+        ...(typeof input.isActive === 'boolean' ? { isActive: input.isActive } : {})
       }
     });
   }

@@ -4,6 +4,7 @@ import { authMiddleware } from '@/core/http/auth-middleware';
 import { AppError } from '@/core/errors/app-error';
 import type { BillingService } from '../application/billing-service';
 import {
+  connectCatalogItemParamsDto,
   connectWorkspaceParamsDto,
   connectPaymentOrderParamsDto,
   createConnectCatalogItemDto,
@@ -133,6 +134,24 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
         query.data.includeInactive
       );
       res.status(200).json({ items });
+    })
+  );
+
+  router.delete(
+    '/billing/connect/workspaces/:workspaceId/catalog-items/:itemId',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectCatalogItemParamsDto.safeParse(req.params);
+      if (!params.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const item = await billingService.deactivateConnectCatalogItem(
+        params.data.workspaceId,
+        req.auth!.userId,
+        params.data.itemId
+      );
+      res.status(200).json(item);
     })
   );
 

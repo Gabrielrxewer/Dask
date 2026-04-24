@@ -23,22 +23,33 @@ export function DashboardFilter({
   return (
     <FilterBar className="dashboard-filter">
       <div className="dashboard-filter__search">
+        <svg
+          className="dashboard-filter__search-icon"
+          width="13"
+          height="13"
+          viewBox="0 0 13 13"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M8.5 8.5L11 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
         <TextInput
           type="search"
           value={query}
           onChange={handleChange}
-          placeholder="Buscar tarefa, tag ou responsavel..."
+          placeholder="Buscar tarefa ou responsavel"
           aria-label="Buscar tarefa"
         />
       </div>
 
       <Button
-        variant="primary"
+        variant="outline"
         className={mineOnly ? "dashboard-filter__mine-button active" : "dashboard-filter__mine-button"}
         onClick={onMineToggle}
         aria-pressed={mineOnly}
       >
-        Somente minhas
+        Minhas
       </Button>
     </FilterBar>
   );

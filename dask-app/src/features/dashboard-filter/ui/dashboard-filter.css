@@ -1,55 +1,38 @@
 .dashboard-filter {
-  width: min(560px, 100%);
+  width: min(520px, 100%);
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(240px, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: nowrap;
 }
 
 .dashboard-filter__search {
   position: relative;
   min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
-.dashboard-filter__search::before,
-.dashboard-filter__search::after {
-  content: "";
+.dashboard-filter__search-icon {
   position: absolute;
+  left: 12px;
+  color: #6f8aa4;
   pointer-events: none;
-  z-index: 1;
-}
-
-.dashboard-filter__search::before {
-  left: 13px;
-  top: 50%;
-  width: 11px;
-  height: 11px;
-  border: 2px solid #6f8aa4;
-  border-radius: 999px;
-  transform: translateY(-58%);
-}
-
-.dashboard-filter__search::after {
-  left: 25px;
-  top: 50%;
-  width: 7px;
-  height: 2px;
-  border-radius: 999px;
-  background: #6f8aa4;
-  transform: translateY(4px) rotate(45deg);
-  transform-origin: left center;
+  flex-shrink: 0;
 }
 
 .dashboard-filter .shared-input {
   width: 100%;
   min-width: 0;
-  min-height: 38px;
+  min-height: 34px;
   padding-left: 42px;
-  border-color: rgba(151, 184, 213, 0.9);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 18px rgba(12, 42, 71, 0.05);
-  font-size: var(--font-size-xs);
+  border-color: rgba(192, 210, 228, 0.96);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 255, 0.94) 100%);
+  box-shadow: none;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .dashboard-filter .shared-button {
@@ -57,22 +40,29 @@
 }
 
 .dashboard-filter__mine-button {
-  min-height: 38px !important;
-  height: 38px;
-  padding: 0 16px;
+  min-height: 34px !important;
+  height: 34px;
+  padding: 0 14px;
   border-radius: 12px;
-  font-size: var(--font-size-xs);
+  border-color: rgba(192, 210, 228, 0.96) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 255, 0.92) 100%) !important;
+  color: #395c80 !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .dashboard-filter__mine-button,
 .dashboard-filter__mine-button:hover,
 .dashboard-filter__mine-button:focus-visible {
-  color: #ffffff !important;
+  color: #395c80 !important;
 }
 
 .dashboard-filter__mine-button.active,
 .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: var(--button-gradient-main-hover) !important;
+  border-color: transparent !important;
+  background: linear-gradient(180deg, #466f9e 0%, #3b618d 100%) !important;
+  color: #ffffff !important;
   box-shadow: none !important;
 }
 

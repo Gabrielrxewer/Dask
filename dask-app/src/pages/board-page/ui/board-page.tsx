@@ -22,7 +22,8 @@ import {
 import { useAuth } from "@/features/auth";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
-import { LoadingState, Section, StatusBadge, Tabs } from "@/shared/ui";
+import { LoadingState } from "@/shared/ui";
+import { BoardPerspectiveTabs } from "./board-perspective-tabs";
 import "./board-page.css";
 
 export function BoardPage() {
@@ -275,19 +276,21 @@ export function BoardPage() {
     return updateTask(taskId, { checklist });
   };
 
-  const boardSubtitle =
-    activeBoardTasks.length === 0 && filter.query.trim().length > 0
-      ? "Nenhum item encontrado para essa busca."
-      : "Controle das atividades com uma visao clara da fila de atendimento.";
-
   const topNavigation = (
     <section className="board-top-nav" aria-label="Navegacao de perspectivas">
-      <Tabs
+      <BoardPerspectiveTabs
+        perspectives={boardPerspectives.map(p => ({ id: p.id, label: p.label }))}
         value={mode}
-        items={boardPerspectives.map(option => ({ id: option.id, label: option.label }))}
         onChange={setMode}
-        className="board-top-nav__tabs"
       />
+      <div className="board-top-nav__filter">
+        <DashboardFilter
+          query={filter.query}
+          mineOnly={filter.mineOnly}
+          onQueryChange={setQuery}
+          onMineToggle={toggleMineOnly}
+        />
+      </div>
     </section>
   );
 
@@ -308,22 +311,7 @@ export function BoardPage() {
       topNavigation={topNavigation}
     >
       <div className="board-view workspace-view">
-        <Section
-          title="Board"
-          subtitle={boardSubtitle}
-          actions={
-            <div className="board-view__section-actions workspace-view__actions">
-              <DashboardFilter
-                query={filter.query}
-                mineOnly={filter.mineOnly}
-                onQueryChange={setQuery}
-                onMineToggle={toggleMineOnly}
-              />
-              <StatusBadge>{`${activeBoardTasks.length} itens visiveis`}</StatusBadge>
-            </div>
-          }
-          className="board-view__canvas workspace-view__section"
-        >
+        <div className="board-view__canvas workspace-view__section">
           {isLoading && !snapshot ? (
             <LoadingState text="Carregando workspace..." />
           ) : (
@@ -353,7 +341,7 @@ export function BoardPage() {
               unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
             />
           )}
-        </Section>
+        </div>
       </div>
     </AppShell>
   );

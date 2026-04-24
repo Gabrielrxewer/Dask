@@ -146,7 +146,7 @@
 
 .workspace:has(.board-view) .workspace__content {
   gap: 0;
-  padding-top: 8px;
+  padding-top: 0;
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav {

@@ -13,7 +13,6 @@ import type {
 import {
   Button,
   FormField,
-  MetricCard,
   ModalShell,
   Section,
   StatusBadge,
@@ -1204,12 +1203,18 @@ export function MembersSettings() {
 
   return (
     <div className="ms">
-      {/* Overview metrics */}
-      <div className="ms-overview">
-        <MetricCard label="Membros" value={members.length} />
-        <MetricCard label="Convites pendentes" value={pendingInvites.length} />
-        <MetricCard label="Módulos ativos" value={activeModulesCount} />
-        <MetricCard label="Grupos de acesso" value={groups.length} />
+      <div className="ms-summary">
+        <div className="ms-summary__copy">
+          <span>Pessoas e acesso</span>
+          <h2>Resumo do workspace</h2>
+          <p>Controle membros, convites, modulos e grupos de acesso em um unico lugar.</p>
+        </div>
+        <div className="ms-summary__grid">
+          <span><strong>{members.length}</strong> membros</span>
+          <span><strong>{pendingInvites.length}</strong> convites pendentes</span>
+          <span><strong>{activeModulesCount}</strong> modulos ativos</span>
+          <span><strong>{groups.length}</strong> grupos de acesso</span>
+        </div>
       </div>
 
       {/* Feedback bar */}
@@ -1221,7 +1226,7 @@ export function MembersSettings() {
       )}
 
       {/* Tab navigation */}
-      <Tabs value={activeTab} items={TAB_ITEMS} onChange={setActiveTab} />
+      <Tabs value={activeTab} items={TAB_ITEMS} onChange={setActiveTab} className="ms-tabs" />
 
       {/* ── Membros ── */}
       {activeTab === "members" && (

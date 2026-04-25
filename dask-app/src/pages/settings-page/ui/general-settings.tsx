@@ -369,36 +369,41 @@ export function GeneralSettings() {
         </div>
       </section>
 
-      <section className="general-settings__preferences-row">
-        <div className="general-settings__preference-card">
-          <h2>Preferencias iniciais</h2>
-          <div className="general-settings__form-grid">
-            <FormField label="Perspectiva inicial">
-              <Select
-                value={defaultMode}
-                onChange={event => void updatePreferences({ defaultBoardMode: event.target.value })}
-              >
-                {perspectives.map(perspective => (
-                  <option key={perspective.id} value={perspective.id}>{perspective.label}</option>
+      <section className="general-settings__templates">
+        <header>
+          <span>Templates</span>
+          <h2>Comece com uma base pronta</h2>
+        </header>
+        <div className="general-settings__template-grid">
+          {availableTemplates.map(template => (
+            <article
+              key={template.key}
+              className={`general-settings__template-card${selectedTemplate === template.key ? " is-selected" : ""}`}
+              style={{ "--template-accent": TEMPLATE_ACCENTS[template.key] } as CSSProperties}
+            >
+              <div className="general-settings__template-preview">
+                {getTemplatePreview(template.key).map(label => (
+                  <span key={`${template.key}-${label}`}>{label}</span>
                 ))}
-              </Select>
-            </FormField>
-            <FormField label="Formato de data">
-              <Select
-                value={dateFormat}
-                onChange={event =>
-                  void updatePreferences({
-                    dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
-                  })
-                }
+              </div>
+              <div>
+                <h3>{template.name}</h3>
+                <p>{template.description}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setTemplateToConfirm(template)}
+                disabled={isLoadingTemplates || isResettingTemplate}
               >
-                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
-                <option value="mm/dd/yyyy">MM/DD/YYYY</option>
-              </Select>
-            </FormField>
-          </div>
+                Usar
+              </Button>
+            </article>
+          ))}
         </div>
+      </section>
 
+      <section className="general-settings__preferences-row">
         <div className="general-settings__summary-card">
           <h2>Resumo do workspace</h2>
           <div className="general-settings__summary-grid">
@@ -425,6 +430,35 @@ export function GeneralSettings() {
             ) : (
               <p>Workspace pessoal: controle de membros disponivel apenas em workspaces corporativos.</p>
             )}
+          </div>
+        </div>
+
+        <div className="general-settings__preference-card">
+          <h2>Preferencias iniciais</h2>
+          <div className="general-settings__form-grid">
+            <FormField label="Perspectiva inicial">
+              <Select
+                value={defaultMode}
+                onChange={event => void updatePreferences({ defaultBoardMode: event.target.value })}
+              >
+                {perspectives.map(perspective => (
+                  <option key={perspective.id} value={perspective.id}>{perspective.label}</option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Formato de data">
+              <Select
+                value={dateFormat}
+                onChange={event =>
+                  void updatePreferences({
+                    dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
+                  })
+                }
+              >
+                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+              </Select>
+            </FormField>
           </div>
         </div>
       </section>
@@ -557,40 +591,6 @@ export function GeneralSettings() {
 
       {feedback ? <p className="general-settings__feedback">{feedback}</p> : null}
       {error ? <p className="general-settings__error">{error}</p> : null}
-
-      <section className="general-settings__templates">
-        <header>
-          <span>Templates</span>
-          <h2>Comece com uma base pronta</h2>
-        </header>
-        <div className="general-settings__template-grid">
-          {availableTemplates.map(template => (
-            <article
-              key={template.key}
-              className={`general-settings__template-card${selectedTemplate === template.key ? " is-selected" : ""}`}
-              style={{ "--template-accent": TEMPLATE_ACCENTS[template.key] } as CSSProperties}
-            >
-              <div className="general-settings__template-preview">
-                {getTemplatePreview(template.key).map(label => (
-                  <span key={`${template.key}-${label}`}>{label}</span>
-                ))}
-              </div>
-              <div>
-                <h3>{template.name}</h3>
-                <p>{template.description}</p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setTemplateToConfirm(template)}
-                disabled={isLoadingTemplates || isResettingTemplate}
-              >
-                Usar
-              </Button>
-            </article>
-          ))}
-        </div>
-      </section>
 
       {templateToConfirm ? (
         <ModalShell

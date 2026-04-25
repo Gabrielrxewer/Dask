@@ -109,7 +109,7 @@ function canCancelOrder(order: ConnectPaymentOrder): boolean {
   return !isTerminalOrderStatus(order.status);
 }
 
-function BillingLoader({ visible }: { visible: boolean }) {
+function BillingLoader({ visible, label }: { visible: boolean; label?: string }) {
   return (
     <div className={`billing-loader${visible ? "" : " billing-loader--out"}`} aria-hidden="true">
       <div className="billing-loader__stage">
@@ -462,6 +462,7 @@ export function BillingPage() {
   );
 
   const pendingItems = onboardingChecklist.filter((item) => !item.done);
+  const completedItems = onboardingChecklist.filter((item) => item.done);
   const activeCatalogItems = useMemo(() => catalogItems.filter((item) => item.isActive), [catalogItems]);
   const selectedCatalogItem = useMemo(
     () => activeCatalogItems.find((item) => item.id === selectedCatalogItemId) ?? null,
@@ -483,6 +484,13 @@ export function BillingPage() {
       progress
     };
   }, [canCreateCheckout, connectStatus, onboardingChecklist]);
+
+  const currentOnboardingStage = useMemo(() => {
+    if (!connectStatus || !connectStatus.detailsSubmitted) return "Cadastro";
+    if (!connectStatus.chargesEnabled) return "Cobrança";
+    if (!connectStatus.payoutsEnabled) return "Repasse";
+    return "Concluído";
+  }, [connectStatus]);
 
   useEffect(() => {
     if (activeCatalogItems.length === 0 && chargeSource === "catalog") {
@@ -507,7 +515,10 @@ export function BillingPage() {
     setCheckoutError(null);
     try {
       const response = await billingService.createConnectOnboardingLink(workspaceId);
-      window.location.href = response.url;
+      if (!response.url) {
+        throw new Error("missing_onboarding_url");
+      }
+      window.location.assign(response.url);
     } catch {
       setCheckoutError("Não foi possível abrir o fluxo de cadastro do Stripe Connect.");
       setIsOpeningOnboarding(false);
@@ -759,10 +770,64 @@ export function BillingPage() {
     { label: "Pendências", value: pendingItems.length }
   ];
 
+  const topNavigation = (
+    <section className="billing-top-nav" aria-label="Navegacao de cobranca">
+      <nav className="shared-tabs billing-top-nav__tabs" role="tablist">
+        <button
+          role="tab"
+          type="button"
+          aria-selected={activeTab === "conta"}
+          className={`shared-tabs__item${activeTab === "conta" ? " shared-tabs__item--active" : ""}`}
+          onClick={() => setActiveTab("conta")}
+        >
+          <span className="billing-top-nav__tab-copy">Conta</span>
+          {pendingItems.length > 0 ? (
+            <span className="billing-top-nav__badge">{pendingItems.length}</span>
+          ) : null}
+        </button>
+        <button
+          role="tab"
+          type="button"
+          aria-selected={activeTab === "catalogo"}
+          className={`shared-tabs__item${activeTab === "catalogo" ? " shared-tabs__item--active" : ""}`}
+          onClick={() => setActiveTab("catalogo")}
+        >
+          <span className="billing-top-nav__tab-copy">{"Cat\u00e1logo"}</span>
+          {catalogItems.length > 0 ? (
+            <span className="billing-top-nav__count">{catalogItems.length}</span>
+          ) : null}
+        </button>
+        <button
+          role="tab"
+          type="button"
+          aria-selected={activeTab === "cobrar"}
+          className={`shared-tabs__item${activeTab === "cobrar" ? " shared-tabs__item--active" : ""}${!canCreateCheckout ? " billing-top-nav__tab--locked" : ""}`}
+          onClick={() => setActiveTab("cobrar")}
+        >
+          <span className="billing-top-nav__tab-copy">Cobrar</span>
+        </button>
+        <button
+          role="tab"
+          type="button"
+          aria-selected={activeTab === "historico"}
+          className={`shared-tabs__item${activeTab === "historico" ? " shared-tabs__item--active" : ""}`}
+          onClick={() => setActiveTab("historico")}
+        >
+          <span className="billing-top-nav__tab-copy">{"Hist\u00f3rico"}</span>
+          {paymentOrders.length > 0 ? (
+            <span className="billing-top-nav__count">{paymentOrders.length}</span>
+          ) : null}
+        </button>
+      </nav>
+
+    </section>
+  );
+
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageTitle="Cobrança" pageLabel="Financeiro">
-      <BillingLoader visible={connectState === "loading"} />
-      <WorkspaceFrame className="billing-view">
+      <BillingLoader visible={connectState === "loading" || isOpeningOnboarding} />
+      <WorkspaceFrame className="billing-view workspace-view">
+        {topNavigation}
         <BoardMetrics metrics={metrics} cards={metricCards} className="billing-view__metrics workspace-view__metrics" />
 
         {checkoutResult === "success" ? (
@@ -779,16 +844,6 @@ export function BillingPage() {
         <Section
           title="Cobrança Connect"
           subtitle="Gerencie cadastro, cobrança e repasses com o mesmo estilo visual da timeline."
-          actions={
-            <div className="billing-view__toolbar workspace-view__actions">
-              <StatusBadge>{canCreateCheckout ? "Checkout liberado" : "Cadastro pendente"}</StatusBadge>
-              {!canCreateCheckout ? (
-                <Button type="button" onClick={() => void handleOpenOnboarding()} disabled={isOpeningOnboarding}>
-                  {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
-                </Button>
-              ) : null}
-            </div>
-          }
           className="billing-view__section workspace-view__section"
         >
           <div className="billing-view__stack">
@@ -843,7 +898,7 @@ export function BillingPage() {
 
             {/* Tab: Conta */}
             {activeTab === "conta" ? (
-              <div className="billing-view__panel" role="tabpanel">
+              <div className="billing-view__panel billing-view__panel--account" role="tabpanel">
                 {/* KPI cards */}
                 <div className="billing-view__kpi-row">
                   {statusCards.map((card) => {
@@ -865,55 +920,102 @@ export function BillingPage() {
 
                 {/* Onboarding progress */}
                 <div className="billing-view__onboarding-card">
-                  <div className="billing-view__onboarding-copy">
-                    <div className={`billing-view__onboarding-status-dot billing-view__onboarding-status-dot--${canCreateCheckout ? "active" : "pending"}`} />
-                    <div>
-                      <h2 className="billing-view__onboarding-title">{onboardingSummary.title}</h2>
-                      <p className="billing-view__onboarding-subtitle">{onboardingSummary.subtitle}</p>
+                  <div className="billing-view__onboarding-header">
+                    <div className="billing-view__onboarding-copy">
+                      <div className={`billing-view__onboarding-status-dot billing-view__onboarding-status-dot--${canCreateCheckout ? "active" : "pending"}`} />
+                      <div>
+                        <h2 className="billing-view__onboarding-title">{onboardingSummary.title}</h2>
+                        {onboardingSummary.subtitle === "Conecte e complete o cadastro para liberar cobranças e repasses." ? null : (
+                          <p className="billing-view__onboarding-subtitle">{onboardingSummary.subtitle}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="billing-view__onboarding-actions">
+                      <StatusBadge tone={canCreateCheckout ? "success" : "warning"}>
+                        {canCreateCheckout ? "Checkout liberado" : "Cadastro pendente"}
+                      </StatusBadge>
+                      {!canCreateCheckout ? (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="billing-view__onboarding-cta"
+                          onClick={() => void handleOpenOnboarding()}
+                          disabled={isOpeningOnboarding}
+                        >
+                          {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
 
                   <div className="billing-view__progress-wrap">
+                    <div className="billing-view__progress-meta">
+                      <span className="billing-view__progress-label">{onboardingSummary.progress}%</span>
+                    </div>
                     <div className="billing-view__progress">
                       <span style={{ width: `${onboardingSummary.progress}%` }} />
                     </div>
-                    <span className="billing-view__progress-label">{onboardingSummary.progress}%</span>
                   </div>
 
                   <div className="billing-view__steps">
-                    <div className={`billing-view__step ${connectStatus?.detailsSubmitted ? "is-done" : "is-pending"}`}>
+                    <div
+                      className={`billing-view__step ${
+                        connectStatus?.detailsSubmitted
+                          ? "is-done"
+                          : currentOnboardingStage === "Cadastro"
+                            ? "is-current"
+                            : "is-pending"
+                      }`}
+                    >
                       <span className="billing-view__step-check"><IconCheck /></span>
                       <span>Cadastro</span>
                     </div>
-                    <div className={`billing-view__step ${connectStatus?.chargesEnabled ? "is-done" : "is-blocked"}`}>
+                    <div
+                      className={`billing-view__step ${
+                        connectStatus?.chargesEnabled
+                          ? "is-done"
+                          : currentOnboardingStage === "Cobrança"
+                            ? "is-current"
+                            : "is-blocked"
+                      }`}
+                    >
                       <span className="billing-view__step-check"><IconCheck /></span>
                       <span>Cobrança</span>
                     </div>
-                    <div className={`billing-view__step ${connectStatus?.payoutsEnabled ? "is-done" : "is-blocked"}`}>
+                    <div
+                      className={`billing-view__step ${
+                        connectStatus?.payoutsEnabled
+                          ? "is-done"
+                          : currentOnboardingStage === "Repasse"
+                            ? "is-current"
+                            : "is-blocked"
+                      }`}
+                    >
                       <span className="billing-view__step-check"><IconCheck /></span>
                       <span>Repasse</span>
                     </div>
                   </div>
 
-                  <p className="billing-view__next-step">
-                    <strong>Próximo passo:</strong> {nextOnboardingAction}
-                  </p>
                 </div>
 
-                <div className="billing-view__card">
+                <div className="billing-view__card billing-view__card--capabilities">
                   <div className="billing-view__card-head">
                     <h3>Formas de pagamento locais</h3>
                     <StatusBadge>Brasil</StatusBadge>
                   </div>
                   <div className="billing-view__capability-grid">
                     <div className="billing-view__capability-row">
-                      <div>
+                      <div className="billing-view__capability-copy billing-view__capability-copy--name">
                         <strong>Boleto</strong>
-                        <p>Status: {formatCapabilityStatus(connectStatus?.boletoPaymentsStatus)}</p>
+                      </div>
+                      <div className="billing-view__capability-copy billing-view__capability-copy--status">
+                        <span className="billing-view__capability-status-chip">{formatCapabilityStatus(connectStatus?.boletoPaymentsStatus)}</span>
                       </div>
                       <Button
                         type="button"
                         variant="outline"
+                        className="billing-view__capability-action"
                         onClick={() => void handleRequestPaymentCapability("boleto_payments")}
                         disabled={!connectStatus || isLocalPaymentMethodEnabled(connectStatus.boletoPaymentsStatus) || requestingCapability !== null}
                       >
@@ -921,27 +1023,60 @@ export function BillingPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="billing-view__capability-hint">
-                    Depois de solicitar, a Stripe pode pedir dados extras no cadastro da conta conectada antes de liberar a forma de pagamento.
-                  </p>
                   {connectError ? <p className="billing-view__error">{connectError}</p> : null}
                 </div>
 
                 {/* Pendências */}
                 {pendingItems.length > 0 ? (
-                  <div className="billing-view__card">
+                  <div className="billing-view__card billing-view__card--pending">
                     <div className="billing-view__card-head">
                       <h3>Pendências de cadastro</h3>
                       <StatusBadge tone="warning">{pendingItems.length} itens</StatusBadge>
                     </div>
-                    <ul className="billing-view__pending-list">
-                      {pendingItems.map((item) => (
-                        <li key={item.key}>
-                          <strong>{item.title}</strong>
-                          <p>{item.description}</p>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="billing-view__pending-sections">
+                      <div className="billing-view__pending-group">
+                        <div className="billing-view__pending-table-head" aria-hidden="true">
+                          <span>Item</span>
+                          <span>Detalhe</span>
+                          <span>Status</span>
+                        </div>
+                        <ul className="billing-view__pending-list billing-view__pending-list--compact">
+                          {pendingItems.map((item) => (
+                            <li key={item.key}>
+                              <span className="billing-view__pending-item-icon" aria-hidden="true">
+                                <IconAlertCircle />
+                              </span>
+                              <strong className="billing-view__pending-item-title">{item.title}</strong>
+                              <p className="billing-view__pending-item-description">{item.description}</p>
+                              <span className="billing-view__pending-item-status">Pendente</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {completedItems.length > 0 ? (
+                        <div className="billing-view__pending-group billing-view__pending-group--secondary">
+                          <p className="billing-view__pending-group-title">ConcluÃ­das</p>
+                          <div className="billing-view__pending-table-head" aria-hidden="true">
+                            <span>Item</span>
+                            <span>Detalhe</span>
+                            <span>Status</span>
+                          </div>
+                          <ul className="billing-view__pending-list billing-view__pending-list--compact billing-view__pending-list--resolved">
+                            {completedItems.map((item) => (
+                              <li key={item.key}>
+                                <span className="billing-view__pending-item-icon billing-view__pending-item-icon--resolved" aria-hidden="true">
+                                  <IconCheck />
+                                </span>
+                                <strong className="billing-view__pending-item-title">{item.title}</strong>
+                                <p className="billing-view__pending-item-description">Etapa concluÃƒÂ­da no cadastro da conta.</p>
+                                <span className="billing-view__pending-item-status billing-view__pending-item-status--resolved">ConcluÃ­do</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ) : (
                   canCreateCheckout ? (
@@ -1412,7 +1547,8 @@ export function BillingPage() {
                     <DataTable
                     className="billing-view__table"
                     columns="0.8fr 0.9fr 1.1fr 1fr 0.95fr 1.35fr"
-                    responsiveMinWidth="1080px"
+                    responsiveMinWidth="100%"
+                    responsiveMinWidthMobile="100%"
                   >
                     <DataTableHeader>
                       <DataTableCell>Status</DataTableCell>

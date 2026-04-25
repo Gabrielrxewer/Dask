@@ -11,19 +11,22 @@ import type {
   SubscriptionPlan
 } from "../model/types";
 
+const billingRequestConfig = {
+  authMode: "required" as const,
+  retryOnUnauthorized: true,
+  globalLoading: false
+};
+
 export const billingService = {
   getStatus(): Promise<BillingStatus> {
-    return apiClient.get<BillingStatus>("/billing/status", {
-      authMode: "required",
-      retryOnUnauthorized: true
-    });
+    return apiClient.get<BillingStatus>("/billing/status", billingRequestConfig);
   },
 
   createCheckoutSession(planCode: SubscriptionPlan): Promise<{ url: string }> {
     return apiClient.post<{ url: string }>(
       "/billing/checkout-session",
       { planCode },
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -31,7 +34,7 @@ export const billingService = {
     return apiClient.post<{ url: string }>(
       "/billing/portal-session",
       {},
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -42,14 +45,14 @@ export const billingService = {
     return apiClient.post<{ url: string; accountId: string }>(
       `/billing/connect/workspaces/${workspaceId}/onboarding-link`,
       input,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
   getConnectAccountStatus(workspaceId: string): Promise<ConnectAccountStatus> {
     return apiClient.get<ConnectAccountStatus>(
       `/billing/connect/workspaces/${workspaceId}/account`,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -60,14 +63,14 @@ export const billingService = {
     return apiClient.post<ConnectAccountStatus>(
       `/billing/connect/workspaces/${workspaceId}/payment-capability`,
       { paymentMethod: "boleto" },
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
   listConnectCatalogItems(workspaceId: string, includeInactive = true): Promise<{ items: ConnectCatalogItem[] }> {
     return apiClient.get<{ items: ConnectCatalogItem[] }>(
       `/billing/connect/workspaces/${workspaceId}/catalog-items?includeInactive=${String(includeInactive)}`,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -88,14 +91,14 @@ export const billingService = {
     return apiClient.post<ConnectCatalogItem>(
       `/billing/connect/workspaces/${workspaceId}/catalog-items`,
       input,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
   deleteConnectCatalogItem(workspaceId: string, itemId: string): Promise<ConnectCatalogItem> {
     return apiClient.delete<ConnectCatalogItem>(
       `/billing/connect/workspaces/${workspaceId}/catalog-items/${itemId}`,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -106,14 +109,14 @@ export const billingService = {
     return apiClient.post<{ url: string; sessionId: string; orderId: string }>(
       `/billing/connect/workspaces/${workspaceId}/checkout-session`,
       input,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
   listConnectPaymentOrders(workspaceId: string, limit = 50): Promise<{ items: ConnectPaymentOrder[] }> {
     return apiClient.get<{ items: ConnectPaymentOrder[] }>(
       `/billing/connect/workspaces/${workspaceId}/payment-orders?limit=${limit}`,
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -121,7 +124,7 @@ export const billingService = {
     return apiClient.post<ConnectPaymentOrder>(
       `/billing/connect/workspaces/${workspaceId}/payment-orders/sync?sessionId=${encodeURIComponent(sessionId)}`,
       {},
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -129,7 +132,7 @@ export const billingService = {
     return apiClient.post<{ ok: true }>(
       `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/resend-email`,
       {},
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   },
 
@@ -137,7 +140,7 @@ export const billingService = {
     return apiClient.post<{ ok: true }>(
       `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/cancel`,
       {},
-      { authMode: "required", retryOnUnauthorized: true }
+      billingRequestConfig
     );
   }
 };

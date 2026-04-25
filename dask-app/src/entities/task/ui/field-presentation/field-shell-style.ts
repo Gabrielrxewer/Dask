@@ -41,13 +41,6 @@ export function resolveFieldShellStyle(input: {
 }): ResolvedFieldShellStyle {
   const kind = resolveFieldShellKind(input);
 
-  if (kind === "complex") {
-    return {
-      kind,
-      helpMode: "inline"
-    };
-  }
-
   return {
     kind,
     helpMode: "tooltip"

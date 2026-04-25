@@ -62,7 +62,19 @@ export function FieldShell({
           </div>
           {inlineHint ? <p className="task-field-shell__hint">{inlineHint}</p> : null}
         </div>
-        {readonly ? <span className="task-field-shell__meta-state">Somente leitura</span> : null}
+        {readonly ? (
+          <span className="task-field-shell__meta-state" aria-label="Somente leitura" title="Somente leitura">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" width="14" height="14">
+              <path
+                d="M5 7V5.5a3 3 0 0 1 6 0V7M4.5 7h7A1.5 1.5 0 0 1 13 8.5v4A1.5 1.5 0 0 1 11.5 14h-7A1.5 1.5 0 0 1 3 12.5v-4A1.5 1.5 0 0 1 4.5 7Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        ) : null}
       </div>
       <div className={cn("task-field-shell__body", bodyClassName)}>{children}</div>
       {error ? <p className="task-field-shell__error">{error}</p> : null}

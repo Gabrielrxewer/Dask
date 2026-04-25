@@ -33,6 +33,7 @@ import {
   resolveFieldShellStyle,
   validateTaskFieldPresentationValue
 } from "@/entities/task/ui/field-presentation";
+import { cn } from "@/shared/lib/cn";
 import { Button, ModalShell } from "@/shared/ui";
 import "./task-details-modal.css";
 
@@ -90,6 +91,18 @@ function toJsonComparable(value: unknown) {
 
 function isReadonlyField(field: TaskFieldDefinition) {
   return field.isEditable === false || matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" });
+}
+
+function resolveFieldLayoutClass(field: TaskFieldDefinition, zone: DetailZone) {
+  const shouldSpan =
+    zone === "main" &&
+    (field.type === "long_text" ||
+      field.type === "checklist" ||
+      field.type === "schedule" ||
+      matchesTaskFieldStorage(field, { kind: "item_property", property: "title" }) ||
+      matchesTaskFieldStorage(field, { kind: "item_property", property: "description" }));
+
+  return shouldSpan ? "task-details__field-frame--wide" : "task-details__field-frame--compact";
 }
 
 export function TaskDetailsModal(props: TaskDetailsModalProps) {
@@ -261,7 +274,14 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     return (
       <section
         key={field.id}
-        className={`${zone === "main" ? "task-details__section" : "task-details__panel"} task-details__field-frame task-details__field-frame--${shellStyle.kind}${readOnly ? " task-details__field-frame--readonly" : ""}`}
+        className={cn(
+          zone === "main" ? "task-details__section" : "task-details__panel",
+          "task-details__field-frame",
+          `task-details__field-frame--${shellStyle.kind}`,
+          resolveFieldLayoutClass(field, zone),
+          readOnly && "task-details__field-frame--readonly"
+        )}
+        data-field-type={field.type}
       >
         <FieldShell
           label={field.label}

@@ -824,11 +824,20 @@ function FreeTextTagEditor(props: FieldPresentationComponentProps) {
               addEntry();
             }
           }}
-          placeholder="Digite e pressione Enter para adicionar..."
+          placeholder="Adicionar tag"
           disabled={props.controller.disabled || props.controller.readonly}
         />
-        <Button type="button" size="sm" variant="outline" onClick={addEntry} disabled={!draftValue.trim()}>
-          Adicionar
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="task-field-presentation__add-button"
+          onClick={addEntry}
+          disabled={!draftValue.trim()}
+          aria-label="Adicionar tag"
+          title="Adicionar tag"
+        >
+          +
         </Button>
       </div>
     </div>
@@ -1132,11 +1141,20 @@ function ChecklistFieldEdit(props: FieldPresentationComponentProps) {
               addItem();
             }
           }}
-          placeholder="Adicionar item ao checklist..."
+          placeholder="Novo item"
           disabled={props.controller.disabled || props.controller.readonly}
         />
-        <Button type="button" size="sm" variant="outline" onClick={addItem} disabled={!draftItemLabel.trim()}>
-          Adicionar
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="task-field-presentation__add-button"
+          onClick={addItem}
+          disabled={!draftItemLabel.trim()}
+          aria-label="Adicionar item"
+          title="Adicionar item"
+        >
+          +
         </Button>
       </div>
     </div>

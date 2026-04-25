@@ -19,7 +19,8 @@ import {
   StatusBadge,
   Tabs,
   TextInput,
-  Textarea
+  Textarea,
+  WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
@@ -221,7 +222,7 @@ export function LeadsPage() {
 
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Leads" pageTitle="Modulo de Leads">
-      <div className="leads-page workspace-view">
+      <WorkspaceFrame className="leads-page">
         <BoardMetrics metrics={metrics} cards={dashboardMetricCards} className="leads-page__metrics workspace-view__metrics" />
 
         {message ? <div className="leads-page__feedback leads-page__feedback--ok">{message}</div> : null}
@@ -414,7 +415,7 @@ export function LeadsPage() {
             ) : null}
           </div>
         </Section>
-      </div>
+      </WorkspaceFrame>
 
       {detailsId ? (
         <ModalShell

@@ -7,7 +7,7 @@ import type {
   AutomationView,
   CreateAutomationRuleInput
 } from "@/modules/workspace/model";
-import { Button, LoadingState, ModalShell, Select, StatusBadge, TextInput } from "@/shared/ui";
+import { Button, LoadingState, ModalShell, Select, StatusBadge, TextInput, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { buildBoardMetrics } from "@/entities/task";
 import "./automations-page.css";
@@ -1030,7 +1030,7 @@ export function AutomationsPage() {
       pageTitle="Automações"
       pageLabel="Flow Editor"
     >
-      <div className="flow-editor">
+      <WorkspaceFrame className="flow-editor">
         {/* ── Sidebar ── */}
         <aside className="flow-sidebar">
           <div className="flow-sidebar__header">
@@ -1284,7 +1284,7 @@ export function AutomationsPage() {
             </div>
           </div>
         )}
-      </div>
+      </WorkspaceFrame>
 
       {/* ── Delete confirmation dialog ── */}
       {showDeleteConfirm && draft && (

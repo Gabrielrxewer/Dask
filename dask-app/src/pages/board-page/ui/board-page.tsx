@@ -22,7 +22,7 @@ import {
 import { useAuth } from "@/features/auth";
 import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
 import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
-import { LoadingState } from "@/shared/ui";
+import { LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { BoardPerspectiveTabs } from "./board-perspective-tabs";
 import "./board-page.css";
 
@@ -310,7 +310,7 @@ export function BoardPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <div className="board-view workspace-view">
+      <WorkspaceFrame className="board-view">
         <div className="board-view__canvas workspace-view__section">
           {isLoading && !snapshot ? (
             <LoadingState text="Carregando workspace..." />
@@ -342,7 +342,7 @@ export function BoardPage() {
             />
           )}
         </div>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

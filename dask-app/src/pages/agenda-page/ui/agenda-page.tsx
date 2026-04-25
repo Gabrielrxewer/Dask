@@ -7,9 +7,9 @@ import {
   type AiAgentSummary,
   type CalendarFeedSnapshot
 } from "@/modules/workspace";
-import { EmptyState, LoadingState, ModalShell, Section, StatusBadge } from "@/shared/ui";
+import { DashboardFilter } from "@/features/dashboard-filter";
+import { EmptyState, LoadingState, ModalShell, Section, StatusBadge, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "@/pages/timeline-page/ui/timeline-page.css";
 import "./agenda-page.css";
@@ -586,109 +586,33 @@ export function AgendaPage() {
     [weekPlannedTasks]
   );
 
-  const weeklyConflictCount = useMemo(() => {
-    let conflicts = 0;
-
-    availabilityRows.forEach((row) => {
-      weekDays.forEach((dayStart) => {
-        hourSlots.forEach((slot) => {
-          const slotStart = dayStart + slot.startOffset;
-          const slotEnd = dayStart + slot.endOffset;
-          const overlappingTasks = row.tasks.filter((entry) =>
-            overlaps(entry.window.start, entry.window.end, slotStart, slotEnd)
-          );
-
-          if (overlappingTasks.length > 1) {
-            conflicts += 1;
-          }
-        });
-      });
-    });
-
-    return conflicts;
-  }, [availabilityRows, hourSlots, weekDays]);
-
-  const selectedDayConflictCount = useMemo(
-    () => availabilitySnapshots.reduce((total, row) => total + row.slots.filter((slot) => slot.state === "conflict").length, 0),
-    [availabilitySnapshots]
-  );
-
-  const agendaMetricCards = useMemo(
-    () => [
-      {
-        label: "Total de cards",
-        value: metrics.total,
-        description: "É o contexto geral. Não faz parte do fluxo em si, mas ajuda a entender o volume."
-      },
-      {
-        label: "Planejadas",
-        value: weekPlannedTasks.length,
-        description: "Aqui começa o percurso de verdade: o que já está previsto, mas ainda não entrou em execução."
-      },
-      {
-        label: "Sem horario",
-        value: unscheduledTasks.length,
-        description: "São itens que ainda não foram devidamente encaixados. Faz sentido vir logo depois de “Planejadas”, porque mostram o que ainda precisa de definição."
-      },
-      {
-        label: selectedDetailTarget ? "Fora da janela" : "Conflitos",
-        value: selectedDetailTarget ? tasksOutsideAgenda.length : weeklyConflictCount,
-        description: "Antes de executar, o ideal é resolver impedimentos ou choques de agenda. Por isso ele deve aparecer antes da etapa operacional."
-      },
-      {
-        label: selectedDetailTarget ? "Calendario" : "Dia em foco",
-        value: selectedDetailTarget ? (calendarFeed?.events?.length ?? 0) : selectedDayConflictCount,
-        description: "Depois de planejar e limpar conflitos, entra o que realmente merece atenção agora."
-      },
-      {
-        label: "Em progresso",
-        value: metrics.doing,
-        description: "É a execução ativa."
-      },
-      {
-        label: "Entrega esta semana",
-        value: metrics.dueThisWeek,
-        description: "Esse card é mais de urgência/prazo do que de etapa. Ele não representa um estado do fluxo, então não deveria ficar no começo. Perto do final faz mais sentido, como pressão de entrega sobre o que está andando."
-      },
-      {
-        label: "Concluido",
-        value: `${metrics.donePercent}%`,
-        description: "Sempre no fim, porque é a saída natural do percurso."
-      }
-    ],
-    [
-      calendarFeed?.events?.length,
-      metrics.doing,
-      metrics.donePercent,
-      metrics.dueThisWeek,
-      metrics.total,
-      selectedDayConflictCount,
-      selectedDetailTarget,
-      tasksOutsideAgenda.length,
-      unscheduledTasks.length,
-      weekPlannedTasks.length,
-      weeklyConflictCount
-    ]
-  );
-
   const sectionTitle = "Agenda";
   const sectionSubtitle = selectedDetailTarget
     ? `${toWeekRangeLabel(weekStart)} • ${selectedDetailTarget.kind === "person" ? "Detalhe semanal" : "Uso do recurso"}`
     : "";
+  const topNavigation = (
+    <section className="agenda-top-nav" aria-label="Filtro da agenda">
+      <strong>Agenda</strong>
+      <div className="agenda-top-nav__filter">
+        <DashboardFilter
+          query={filter.query}
+          mineOnly={filter.mineOnly}
+          onQueryChange={setFilterQuery}
+          onMineToggle={toggleMineFilter}
+        />
+      </div>
+    </section>
+  );
 
   return (
     <AppShell
       metrics={metrics}
       noPageScroll
+      hidePageHeader
       hideSidebarBrandMark
-      pageTitle="Agenda"
-      filter={filter}
-      onFilterQueryChange={setFilterQuery}
-      onMineToggle={toggleMineFilter}
+      topNavigation={topNavigation}
     >
-      <div className="agenda-view timeline-view">
-        <BoardMetrics metrics={metrics} cards={agendaMetricCards} className="agenda-view__metrics timeline-view__metrics" />
-
+      <WorkspaceFrame className="agenda-view timeline-view">
         <Section
           title={sectionTitle}
           subtitle={sectionSubtitle}
@@ -1041,7 +965,7 @@ export function AgendaPage() {
             </div>
           )}
         </Section>
-      </div>
+      </WorkspaceFrame>
 
       {selectedSlotInspection ? (
         <ModalShell titleId="agenda-slot-title" className="agenda-slot-modal" onClose={() => setSelectedSlotInspection(null)}>

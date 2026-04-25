@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import type { AiAgentConfig, AiAgentRagSource, AiAgentSummary, CreateAiAgentInput } from "@/modules/workspace/model";
-import { Button, FormField, LoadingState, Section, Select, StatusBadge, TextInput, Textarea } from "@/shared/ui";
+import { Button, FormField, LoadingState, Section, Select, StatusBadge, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import "@/features/create-task/ui/create-task-button.css";
@@ -455,7 +455,7 @@ export function AiAgentsPage() {
       pageTitle="Agentes de IA"
       pageLabel="AI Studio"
     >
-      <div className="ai-agents-page workspace-view">
+      <WorkspaceFrame className="ai-agents-page">
         <BoardMetrics
           metrics={metrics}
           className="ai-agents-page__metrics workspace-view__metrics"
@@ -800,7 +800,7 @@ export function AiAgentsPage() {
             </form>
           </Section>
         </div>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

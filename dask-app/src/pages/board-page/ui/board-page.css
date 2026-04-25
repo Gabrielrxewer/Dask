@@ -140,15 +140,6 @@
   z-index: 1;
 }
 
-.workspace:has(.board-view) {
-  padding: 6px 6px 8px;
-}
-
-.workspace:has(.board-view) .workspace__content {
-  gap: 0;
-  padding-top: 0;
-}
-
 .app-theme:not([data-theme="dark"]) .board-top-nav {
   padding: 5px 2px;
   border-bottom: 1px solid rgba(206, 220, 233, 0.72);
@@ -538,16 +529,6 @@
 }
 
 @media (min-width: 1141px) {
-  .app-shell:has(.board-view) {
-    padding-left: calc(var(--sidebar-width) + 1px);
-  }
-
-  .workspace:has(.board-view) {
-    width: 100%;
-    margin-left: 0;
-    padding: 4px 6px 8px;
-  }
-
   .app-shell--no-scroll .board-view {
     min-height: 0;
     height: 100%;

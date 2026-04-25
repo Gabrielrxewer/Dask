@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { buildBoardMetrics, factoryBoardConfig, mergeCardFieldDefinitions } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import type { AiAgentSummary, AiObservability, AiRunSummary } from "@/modules/workspace/model";
-import { Button, FormField, Section, Select, TextInput, Textarea } from "@/shared/ui";
+import { Button, FormField, Section, Select, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import "./settings-page.css";
@@ -109,7 +109,7 @@ export function SettingsPage() {
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes do workspace" pageLabel="Admin">
-      <div className="settings-page">
+      <WorkspaceFrame className="settings-page">
         <BoardMetrics
           metrics={metrics}
           cards={[
@@ -242,7 +242,7 @@ export function SettingsPage() {
             </div>
           </Section>
         </section>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

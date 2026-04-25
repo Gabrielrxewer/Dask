@@ -27,7 +27,8 @@ import {
   Section,
   Select,
   StatusBadge,
-  TextInput
+  TextInput,
+  WorkspaceFrame
 } from "@/shared/ui";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { AppShell } from "@/widgets/app-shell";
@@ -761,7 +762,7 @@ export function BillingPage() {
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageTitle="Cobrança" pageLabel="Financeiro">
       <BillingLoader visible={connectState === "loading"} />
-      <div className="billing-view workspace-view">
+      <WorkspaceFrame className="billing-view">
         <BoardMetrics metrics={metrics} cards={metricCards} className="billing-view__metrics workspace-view__metrics" />
 
         {checkoutResult === "success" ? (
@@ -1512,7 +1513,7 @@ export function BillingPage() {
             ) : null}
           </div>
         </Section>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

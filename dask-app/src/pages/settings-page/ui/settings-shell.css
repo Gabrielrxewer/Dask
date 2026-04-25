@@ -1,14 +1,15 @@
 .settings-shell {
   display: flex;
+  flex-direction: row;
   gap: 0;
   height: 100%;
   min-height: 0;
   overflow: hidden;
   color: var(--text-strong);
   background: var(--surface-section-content);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
-  box-shadow: var(--shadow-card);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .settings-shell__nav {

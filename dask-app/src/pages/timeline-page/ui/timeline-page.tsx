@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  buildTaskChecklistSummary,
   buildTaskTypeMetaMap,
   getTaskTypeDisplayMeta,
   matchesTaskFieldStorage,
@@ -8,6 +7,7 @@ import {
   type Task
 } from "@/entities/task";
 import { WorkItemFieldRenderer } from "@/entities/task/ui/field-presentation";
+import { DashboardFilter } from "@/features/dashboard-filter";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import type { AiAgentSummary } from "@/modules/workspace/model";
 import {
@@ -19,10 +19,9 @@ import {
   EmptyState,
   LoadingState,
   Section,
-  StatusBadge
+  WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import { cn } from "@/shared/lib/cn";
 import "./timeline-page.css";
@@ -144,11 +143,6 @@ export function TimelinePage() {
     [boardConfig.fieldDefinitions]
   );
 
-  const checklistField = useMemo(
-    () => boardConfig.fieldDefinitions.find(field => matchesTaskFieldStorage(field, { kind: "item_property", property: "checklist" })),
-    [boardConfig.fieldDefinitions]
-  );
-
   const tasksWithWindow = useMemo(
     () =>
       filteredTasks
@@ -182,20 +176,31 @@ export function TimelinePage() {
 
   const range = Math.max(dateRange.max - dateRange.min, 1000 * 60 * 60);
   const rangeLabel = `${toDateTimeLabel(dateRange.min)} - ${toDateTimeLabel(dateRange.max)}`;
+  const topNavigation = (
+    <section className="timeline-top-nav" aria-label="Filtro da timeline">
+      <strong>Timeline</strong>
+      <div className="timeline-top-nav__filter">
+        <DashboardFilter
+          query={filter.query}
+          mineOnly={filter.mineOnly}
+          onQueryChange={setFilterQuery}
+          onMineToggle={toggleMineFilter}
+        />
+      </div>
+    </section>
+  );
 
   return (
     <AppShell
       metrics={metrics}
       noPageScroll
+      hidePageHeader
       hideSidebarBrandMark
-      pageTitle="Linha do tempo"
+      topNavigation={topNavigation}
     >
-      <div className="timeline-view workspace-view">
-        <BoardMetrics metrics={metrics} className="timeline-view__metrics workspace-view__metrics" />
-
+      <WorkspaceFrame className="timeline-view">
         <Section
-          title="Timeline operacional"
-          subtitle="Alterne entre coluna e agenda e acompanhe somente suas atividades."
+          title={rangeLabel}
           actions={
             <div className="timeline-view__actions workspace-view__actions">
               <div className="timeline-view__toggle documentation-page__modes" role="tablist" aria-label="Modo da timeline">
@@ -220,7 +225,6 @@ export function TimelinePage() {
                   Agenda
                 </button>
               </div>
-              <StatusBadge>{rangeLabel}</StatusBadge>
             </div>
           }
           className="timeline-view__section workspace-view__section"
@@ -244,7 +248,6 @@ export function TimelinePage() {
                   <EmptyState>Nenhum item encontrado com os filtros atuais.</EmptyState>
                 ) : (
                   tasksWithWindow.map(({ task, window }) => {
-                    const checklist = buildTaskChecklistSummary(task);
                     const type = getTaskTypeDisplayMeta(typeMap, task.type);
                     const statusLabel = statusLabelById[task.status] ?? task.status;
 
@@ -286,21 +289,6 @@ export function TimelinePage() {
                                   />
                                 ) : (
                                   statusLabel
-                                )}
-                              </span>
-                              <span>
-                                {checklistField ? (
-                                  <WorkItemFieldRenderer
-                                    field={checklistField}
-                                    value={resolveTaskFieldValue(task, checklistField)}
-                                    mode="display"
-                                    context="table"
-                                    boardConfig={boardConfig}
-                                    statuses={boardConfig.statuses}
-                                    task={task}
-                                  />
-                                ) : (
-                                  `${checklist.done}/${checklist.total} checklist`
                                 )}
                               </span>
                             </div>
@@ -367,7 +355,7 @@ export function TimelinePage() {
 
           </div>
         </Section>
-      </div>
+      </WorkspaceFrame>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal

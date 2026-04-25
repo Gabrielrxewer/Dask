@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace, type DocumentationAssistantMode, type WorkspaceDocument } from "@/modules/workspace";
-import { Button, StatusBadge, TextInput, Textarea } from "@/shared/ui";
+import { Button, StatusBadge, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./documentation-page.css";
 
@@ -604,7 +604,7 @@ export function DocumentationPage() {
       pageTitle="Documentacao"
       pageLabel="Docs Hub"
     >
-      <div className="documentation-page">
+      <WorkspaceFrame className="documentation-page">
         <aside className="documentation-page__files-pane">
           <header className="documentation-page__files-header">
             <div>
@@ -1091,7 +1091,7 @@ export function DocumentationPage() {
             <p>Se voce pedir para reescrever ou editar, a IA atualiza a doc automaticamente.</p>
           </div>
         </aside>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

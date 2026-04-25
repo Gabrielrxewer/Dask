@@ -275,13 +275,13 @@
   --workspace-view-surface-soft: var(--billing-surface-soft);
   --workspace-view-accent: var(--billing-accent);
   --workspace-view-accent-strong: var(--billing-accent-strong);
-  flex: 0 0 auto;
-  min-height: max-content;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .workspace__content > .billing-view {
-  flex: 0 0 auto;
-  min-height: max-content;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .billing-view__stack {

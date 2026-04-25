@@ -28,7 +28,8 @@ import {
   StatusBadge,
   Tabs,
   TextInput,
-  Textarea
+  Textarea,
+  WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
@@ -330,7 +331,7 @@ export function FiscalPage() {
 
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Fiscal" pageTitle="Fiscal">
-      <div className="fiscal-view workspace-view">
+      <WorkspaceFrame className="fiscal-view">
         <BoardMetrics metrics={metrics} cards={fiscalMetricCards} className="fiscal-view__metrics workspace-view__metrics" />
 
         {message ? <div className="fiscal-view__feedback fiscal-view__feedback--ok">{message}</div> : null}
@@ -652,7 +653,7 @@ export function FiscalPage() {
             ) : null}
           </div>
         </Section>
-      </div>
+      </WorkspaceFrame>
 
       {detailDocumentId ? (
         <ModalShell

@@ -13,10 +13,9 @@ import {
   LoadingState,
   Section,
   Select,
-  StatusBadge
+  WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import { CreateTaskButton } from "@/features/create-task";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
@@ -129,28 +128,33 @@ export function ListPage() {
     });
   };
 
+  const topNavigation = (
+    <section className="list-top-nav" aria-label="Filtro da lista">
+      <strong>List</strong>
+      <div className="list-top-nav__filter">
+        <DashboardFilter
+          query={filter.query}
+          mineOnly={filter.mineOnly}
+          onQueryChange={setFilterQuery}
+          onMineToggle={toggleMineFilter}
+        />
+      </div>
+    </section>
+  );
+
   return (
     <AppShell
       metrics={metrics}
       noPageScroll
+      hidePageHeader
       hideSidebarBrandMark
-      pageTitle="Lista de itens"
+      topNavigation={topNavigation}
     >
-      <div className="list-view workspace-view">
-        <BoardMetrics metrics={metrics} className="list-view__metrics workspace-view__metrics" />
-
+      <WorkspaceFrame className="list-view">
         <Section
-          title="Itens do workspace"
-          subtitle="Acompanhe tarefas, altere status e acesse os detalhes sem sair da lista."
+          title={`${filteredTasks.length} ${filteredTasks.length === 1 ? "item" : "itens"}`}
           actions={
             <div className="list-view__actions workspace-view__actions">
-              <DashboardFilter
-                query={filter.query}
-                mineOnly={filter.mineOnly}
-                onQueryChange={setFilterQuery}
-                onMineToggle={toggleMineFilter}
-              />
-              <StatusBadge>{`${filteredTasks.length} itens`}</StatusBadge>
               <CreateTaskButton
                 className="list-view__create-task"
                 onCreate={input => void createTask(input)}
@@ -235,7 +239,7 @@ export function ListPage() {
             </DataTableBody>
           </DataTable>
         </Section>
-      </div>
+      </WorkspaceFrame>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal

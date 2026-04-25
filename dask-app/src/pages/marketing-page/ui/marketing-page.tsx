@@ -26,7 +26,8 @@ import {
   StatusBadge,
   Tabs,
   TextInput,
-  Textarea
+  Textarea,
+  WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
@@ -601,7 +602,7 @@ export function MarketingPage() {
 
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Marketing" pageTitle="Marketing Operations">
-      <div className="marketing-page workspace-view">
+      <WorkspaceFrame className="marketing-page">
         <BoardMetrics metrics={metrics} cards={dashboardMetricCards} className="marketing-page__metrics workspace-view__metrics" />
 
         <Section
@@ -1270,7 +1271,7 @@ export function MarketingPage() {
             ) : null}
           </div>
         </Section>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

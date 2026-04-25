@@ -17,13 +17,13 @@
   --workspace-view-surface-soft: var(--fiscal-surface-soft);
   --workspace-view-accent: var(--fiscal-accent);
   --workspace-view-accent-strong: var(--fiscal-accent-strong);
-  flex: 0 0 auto;
-  min-height: max-content;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .workspace__content > .fiscal-view {
-  flex: 0 0 auto;
-  min-height: max-content;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .fiscal-view__stack {

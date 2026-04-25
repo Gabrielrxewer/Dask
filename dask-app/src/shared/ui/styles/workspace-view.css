@@ -7,6 +7,12 @@
   color: var(--workspace-view-text);
 }
 
+.workspace-frame {
+  flex: 1 1 auto;
+  height: 100%;
+  gap: 0;
+}
+
 .workspace:has(.workspace-view) {
   background:
     radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 7%, transparent) 0%, transparent 34%),
@@ -15,6 +21,18 @@
   border-radius: var(--radius-xs);
   box-shadow: var(--shadow-card);
   backdrop-filter: none;
+}
+
+.workspace:has(.workspace-frame) {
+  width: 100%;
+  margin-left: 0;
+  padding: 4px 6px 8px;
+}
+
+.workspace:has(.workspace-frame) .workspace__content {
+  gap: 0;
+  padding-top: 0;
+  overflow: hidden;
 }
 
 .workspace:has(.workspace-view)::before {
@@ -166,5 +184,11 @@
 
   .workspace-view__actions .dashboard-filter {
     width: 100%;
+  }
+}
+
+@media (min-width: 1141px) {
+  .app-shell:has(.workspace-frame) {
+    padding-left: calc(var(--sidebar-width) + 1px);
   }
 }

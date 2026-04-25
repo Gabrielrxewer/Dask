@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams } from "react-router-dom";
 import { buildBoardMetrics, factoryBoardConfig } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { workspaceService } from "@/modules/workspace/api";
+import { WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import {
   buildWorkspaceSettingsItemTypesPath,
@@ -90,7 +91,7 @@ export function SettingsShell() {
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes" pageLabel="Admin">
-      <div className="settings-shell">
+      <WorkspaceFrame className="settings-shell">
         <nav className="settings-shell__nav" aria-label="Configuracoes do workspace">
           <div className="settings-shell__nav-header">
             <span className="settings-shell__eyebrow">Workspace</span>
@@ -139,7 +140,7 @@ export function SettingsShell() {
         <main className="settings-shell__content">
           <Outlet />
         </main>
-      </div>
+      </WorkspaceFrame>
     </AppShell>
   );
 }

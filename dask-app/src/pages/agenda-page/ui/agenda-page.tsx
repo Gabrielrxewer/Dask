@@ -259,7 +259,6 @@ export function AgendaPage() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => getInitialSelectedDayIndex());
   const [selectedDetailTarget, setSelectedDetailTarget] = useState<DetailTarget | null>(null);
   const [selectedSlotInspection, setSelectedSlotInspection] = useState<SlotInspection | null>(null);
-  const [selectedUnscheduledGroup, setSelectedUnscheduledGroup] = useState<UnscheduledGroup | null>(null);
 
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
 
@@ -625,58 +624,64 @@ export function AgendaPage() {
           ) : (
             <div className="agenda-view__surface">
               <div className="agenda-view__topbar">
-                <div className="agenda-view__topbar-copy">
-                  <strong>{selectedDetailTarget ? "Detalhe da semana" : "Painel da semana"}</strong>
-                  <span>{toWeekRangeLabel(weekStart)}</span>
+                <div className="agenda-view__week-nav">
+                  <button
+                    type="button"
+                    className="agenda-view__nav-btn"
+                    aria-label="Semana anterior"
+                    onClick={() => setWeekAnchor(current => addDays(current, -7))}
+                  >
+                    ‹
+                  </button>
+                  <span className="agenda-view__week-label">{toWeekRangeLabel(weekStart)}</span>
+                  <button
+                    type="button"
+                    className="agenda-view__nav-btn"
+                    aria-label="Proxima semana"
+                    onClick={() => setWeekAnchor(current => addDays(current, 7))}
+                  >
+                    ›
+                  </button>
+                  {weekViewDirection !== "current" && (
+                    <button type="button" className="agenda-view__today-btn" onClick={() => setWeekAnchor(Date.now())}>
+                      Hoje
+                    </button>
+                  )}
                 </div>
-                <div className="agenda-view__period-toolbar">
-                  <div className="agenda-view__period-controls agenda-view__switch agenda-view__switch--triple">
-                    <button
-                      type="button"
-                      className={
-                        weekViewDirection === "previous"
-                          ? "timeline-view__toggle-btn documentation-page__mode-chip agenda-view__period-chip is-active documentation-page__mode-chip--active"
-                          : "timeline-view__toggle-btn documentation-page__mode-chip agenda-view__period-chip"
-                      }
-                      onClick={() => setWeekAnchor(current => addDays(current, -7))}
-                    >
-                      Semana anterior
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        weekViewDirection === "current"
-                          ? "timeline-view__toggle-btn documentation-page__mode-chip agenda-view__period-chip is-active documentation-page__mode-chip--active"
-                          : "timeline-view__toggle-btn documentation-page__mode-chip agenda-view__period-chip"
-                      }
-                      onClick={() => setWeekAnchor(Date.now())}
-                    >
-                      Semana atual
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        weekViewDirection === "next"
-                          ? "timeline-view__toggle-btn documentation-page__mode-chip agenda-view__period-chip is-active documentation-page__mode-chip--active"
-                          : "timeline-view__toggle-btn documentation-page__mode-chip agenda-view__period-chip"
-                      }
-                      onClick={() => setWeekAnchor(current => addDays(current, 7))}
-                    >
-                      Proxima semana
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              <div className="agenda-view__legend-strip">
-                <div className="agenda-view__legend" aria-label="Legenda da agenda">
-                  <span><i className="agenda-view__legend-dot agenda-view__legend-dot--free" />Livre</span>
-                  <span><i className="agenda-view__legend-dot agenda-view__legend-dot--partial" />Parcial</span>
-                  <span><i className="agenda-view__legend-dot agenda-view__legend-dot--busy" />Ocupado</span>
-                  <span><i className="agenda-view__legend-dot agenda-view__legend-dot--conflict" />Conflito</span>
-                </div>
-                <div className="agenda-view__action-hints">
-                  <StatusBadge>{selectedDetailTarget ? "Clique no bloco para abrir atividade" : "Clique na linha para abrir detalhe semanal"}</StatusBadge>
+                <div className="agenda-view__topbar-end">
+                  <div className="agenda-view__legend" aria-label="Legenda da agenda">
+                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--free" />Livre</span>
+                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--partial" />Parcial</span>
+                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--busy" />Ocupado</span>
+                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--conflict" />Conflito</span>
+                  </div>
+                  {!selectedDetailTarget && (
+                    <div className="agenda-view__switch">
+                      <button
+                        type="button"
+                        className={
+                          availabilityMode === "people"
+                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
+                            : "timeline-view__toggle-btn documentation-page__mode-chip"
+                        }
+                        onClick={() => setAvailabilityMode("people")}
+                      >
+                        Pessoas
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          availabilityMode === "resources"
+                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
+                            : "timeline-view__toggle-btn documentation-page__mode-chip"
+                        }
+                        onClick={() => setAvailabilityMode("resources")}
+                      >
+                        Recursos
+                      </button>
+                    </div>
+                  )}
                   {tasksOutsideAgenda.length > 0 ? <StatusBadge tone="warning">{`${tasksOutsideAgenda.length} fora da janela`}</StatusBadge> : null}
                 </div>
               </div>
@@ -684,22 +689,20 @@ export function AgendaPage() {
               {selectedDetailTarget ? (
                 <div className="agenda-view__person-shell">
                   <div className="agenda-view__person-toolbar">
+                    <button
+                      type="button"
+                      className="agenda-view__ghost-button"
+                      onClick={() => setSelectedDetailTarget(null)}
+                    >
+                      ‹ Voltar
+                    </button>
                     <div className="agenda-view__detail-heading">
-                      <button
-                        type="button"
-                        className="agenda-view__ghost-button"
-                        onClick={() => setSelectedDetailTarget(null)}
-                      >
-                        Voltar para disponibilidade
-                      </button>
-                      <div>
-                        <strong>{selectedDetailTarget.label}</strong>
-                        <span>
-                          {selectedDetailTarget.kind === "person"
-                            ? `${selectedDetailTasks.length} atividades planejadas e ${calendarFeed?.events?.length ?? 0} eventos externos`
-                            : `${selectedDetailTasks.length} atividades usando este recurso`}
-                        </span>
-                      </div>
+                      <strong>{selectedDetailTarget.label}</strong>
+                      <span>
+                        {selectedDetailTarget.kind === "person"
+                          ? `${selectedDetailTasks.length} atividades • ${calendarFeed?.events?.length ?? 0} externos`
+                          : `${selectedDetailTasks.length} atividades`}
+                      </span>
                     </div>
                     <StatusBadge>{`${AGENDA_START_HOUR}:00 - ${AGENDA_END_HOUR}:00`}</StatusBadge>
                   </div>
@@ -766,62 +769,42 @@ export function AgendaPage() {
                 </div>
               ) : (
                 <div className="agenda-view__availability">
-                  <div className="agenda-view__availability-toolbar">
-                    <div className="agenda-view__control-group">
-                      <span>Ver por</span>
-                      <div className="agenda-view__switch timeline-view__toggle documentation-page__modes">
-                        <button
-                          type="button"
-                          className={
-                            availabilityMode === "people"
-                              ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
-                              : "timeline-view__toggle-btn documentation-page__mode-chip"
-                          }
-                          onClick={() => setAvailabilityMode("people")}
-                        >
-                          Pessoas
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            availabilityMode === "resources"
-                              ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
-                              : "timeline-view__toggle-btn documentation-page__mode-chip"
-                          }
-                          onClick={() => setAvailabilityMode("resources")}
-                        >
-                          Recursos
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="agenda-view__control-group agenda-view__control-group--days">
-                      <span>Dia da semana</span>
-                      <div className="agenda-view__day-tabs">
-                        {weekDays.map((day, dayIndex) => (
-                          <button
-                            key={`tab-${day}`}
-                            type="button"
-                            className={
-                              selectedDayIndex === dayIndex
-                                ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
-                                : "timeline-view__toggle-btn documentation-page__mode-chip"
-                            }
-                            onClick={() => setSelectedDayIndex(dayIndex)}
-                          >
-                            {toAgendaDayLabel(day)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="agenda-view__day-strip">
+                    {weekDays.map((day, dayIndex) => (
+                      <button
+                        key={`tab-${day}`}
+                        type="button"
+                        className={
+                          selectedDayIndex === dayIndex
+                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
+                            : "timeline-view__toggle-btn documentation-page__mode-chip"
+                        }
+                        onClick={() => setSelectedDayIndex(dayIndex)}
+                      >
+                        {toAgendaDayLabel(day)}
+                      </button>
+                    ))}
                   </div>
 
                   {availabilitySnapshots.length === 0 ? (
-                    <EmptyState>
-                      {availabilityMode === "people"
-                        ? "Nenhuma pessoa com atividade planejada na semana selecionada."
-                        : "Nenhum recurso identificado nas atividades planejadas da semana selecionada."}
-                    </EmptyState>
+                    <div className="agenda-view__empty-availability">
+                      <div className="agenda-view__empty-week">
+                        {weekDays.map((day, i) => (
+                          <div key={day} className={`agenda-view__empty-day${i === selectedDayIndex ? " is-selected" : ""}`}>
+                            <span>{new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(new Date(day))}</span>
+                            <strong>{new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(new Date(day))}</strong>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="agenda-view__empty-msg">
+                        {availabilityMode === "people"
+                          ? "Nenhuma atividade com horario definido esta semana."
+                          : "Nenhum recurso identificado nas atividades desta semana."}
+                      </p>
+                      <span className="agenda-view__empty-hint">
+                        Abra uma atividade e defina inicio e fim para que ela aparea aqui.
+                      </span>
+                    </div>
                   ) : (
                     <>
                       <div className="agenda-view__mobile-list">
@@ -940,28 +923,6 @@ export function AgendaPage() {
                 </div>
               )}
 
-              {unscheduledTasks.length > 0 ? (
-                <div className="agenda-view__unscheduled-strip">
-                  <div className="agenda-view__unscheduled-copy">
-                    <strong>Atividades sem horario planejado</strong>
-                    <span>Resolva aqui o que ainda nao entrou na grade semanal.</span>
-                  </div>
-                  <div className="agenda-view__unscheduled-list">
-                    {unscheduledGroups.map((group) => (
-                      <button
-                        key={group.assigneeId}
-                        type="button"
-                        className="agenda-view__unscheduled-item"
-                        onClick={() => setSelectedUnscheduledGroup(group)}
-                      >
-                        <strong>{group.label}</strong>
-                        <span>{`${group.totalCount} ${group.totalCount === 1 ? "atividade" : "atividades"} no total`}</span>
-                        <small>{`${group.plannedCount} planejadas • ${group.doneCount} concluidas • ${group.unscheduledCount} sem horario`}</small>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </div>
           )}
         </Section>
@@ -1015,56 +976,8 @@ export function AgendaPage() {
         </ModalShell>
       ) : null}
 
-      {selectedUnscheduledGroup ? (
-        <ModalShell
-          titleId="agenda-unscheduled-title"
-          className="agenda-slot-modal"
-          onClose={() => setSelectedUnscheduledGroup(null)}
-        >
-          <div className="agenda-slot-modal__content">
-            <div className="agenda-slot-modal__header">
-              <div>
-                <h2 id="agenda-unscheduled-title">{selectedUnscheduledGroup.label}</h2>
-                <p>
-                  {`${selectedUnscheduledGroup.totalCount} atividades • ${selectedUnscheduledGroup.plannedCount} planejadas • ${selectedUnscheduledGroup.doneCount} concluidas • ${selectedUnscheduledGroup.unscheduledCount} sem horario`}
-                </p>
-              </div>
-              <StatusBadge tone="warning">Sem horario</StatusBadge>
-            </div>
 
-            <div className="agenda-slot-modal__list">
-              {selectedUnscheduledGroup.tasks.map((task) => {
-                const typeMeta = getTaskTypeDisplayMeta(typeMap, task.type);
-
-                return (
-                  <button
-                    key={task.id}
-                    type="button"
-                    className="agenda-slot-modal__item"
-                    style={
-                      {
-                        "--agenda-slot-item-accent": typeMeta.text,
-                        "--agenda-slot-item-accent-soft": typeMeta.background,
-                        "--agenda-slot-item-border": typeMeta.border
-                      } as CSSProperties
-                    }
-                    onClick={() => {
-                      setSelectedUnscheduledGroup(null);
-                      selectTask(task.id);
-                    }}
-                  >
-                    <strong>{task.title}</strong>
-                    <span>{activeMembers[task.assignee]?.name ?? "Sem responsavel"}</span>
-                    <small>{typeMeta.label}</small>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </ModalShell>
-      ) : null}
-
-      {selectedTask && selectedStatus ? (
+{selectedTask && selectedStatus ? (
         <TaskDetailsModal
           mode="edit"
           task={selectedTask}

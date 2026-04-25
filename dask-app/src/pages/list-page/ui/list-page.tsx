@@ -130,7 +130,15 @@ export function ListPage() {
 
   const topNavigation = (
     <section className="list-top-nav" aria-label="Filtro da lista">
-      <strong>List</strong>
+      <CreateTaskButton
+        className="list-top-nav__create-task"
+        onCreate={input => void createTask(input)}
+        initialStatusId={boardConfig.statuses[0]?.id ?? "backlog"}
+        statuses={boardConfig.statuses}
+        boardConfig={boardConfig}
+        membersById={activeMembers}
+        taskTypes={boardConfig.taskTypes}
+      />
       <div className="list-top-nav__filter">
         <DashboardFilter
           query={filter.query}
@@ -153,19 +161,6 @@ export function ListPage() {
       <WorkspaceFrame className="list-view">
         <Section
           title={`${filteredTasks.length} ${filteredTasks.length === 1 ? "item" : "itens"}`}
-          actions={
-            <div className="list-view__actions workspace-view__actions">
-              <CreateTaskButton
-                className="list-view__create-task"
-                onCreate={input => void createTask(input)}
-                initialStatusId={boardConfig.statuses[0]?.id ?? "backlog"}
-                statuses={boardConfig.statuses}
-                boardConfig={boardConfig}
-                membersById={activeMembers}
-                taskTypes={boardConfig.taskTypes}
-              />
-            </div>
-          }
           className="list-view__section workspace-view__section"
         >
           <DataTable

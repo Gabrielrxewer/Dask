@@ -63,38 +63,50 @@
   margin-bottom: 0;
 }
 
-.timeline-view__toggle.documentation-page__modes {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: fit-content;
-  gap: 7px;
+.timeline-top-nav__tabs {
+  display: flex;
   align-items: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
+  gap: 2px;
+  flex: 1 1 auto;
 }
 
-.timeline-view__toggle .documentation-page__mode-chip {
+.timeline-top-nav__tab {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
   border-radius: 10px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.69rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.timeline-top-nav__tab:hover {
+  background: rgba(44, 120, 230, 0.06);
+  border-color: rgba(202, 219, 235, 0.72);
+  color: var(--timeline-text);
+}
+
+.timeline-top-nav__tab--active {
+  color: var(--text-primary);
+  font-weight: 860;
   border-color: transparent;
   background: transparent;
-  color: var(--timeline-text-soft);
-  font-weight: 700;
-  box-shadow: none;
 }
 
-.timeline-view__toggle .documentation-page__mode-chip:hover {
-  border-color: color-mix(in oklab, var(--timeline-line) 48%, transparent);
-  background: var(--timeline-surface);
-  color: var(--timeline-text);
-}
-
-.timeline-view__toggle .documentation-page__mode-chip--active {
-  border-color: color-mix(in oklab, var(--timeline-line) 48%, transparent);
-  background: var(--surface-chip-active);
-  color: var(--timeline-text);
-  box-shadow: 0 1px 2px rgba(12, 35, 63, 0.08);
+.timeline-top-nav__tab--active::before {
+  content: "";
+  position: absolute;
+  inset: auto 8px 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, rgba(44, 120, 230, 0.9) 0%, rgba(46, 213, 205, 0.72) 100%);
 }
 
 .timeline-view__table {
@@ -164,8 +176,8 @@
 
 .timeline-view__table .shared-data-table__header {
   min-height: 40px;
-  border-bottom-color: color-mix(in oklab, var(--timeline-line) 82%, transparent);
-  background: var(--surface-table-header);
+  border-bottom-color: color-mix(in oklab, var(--timeline-line) 36%, transparent);
+  background: transparent;
   color: var(--timeline-text-soft);
   font-size: var(--font-size-xs);
   font-weight: 900;
@@ -174,13 +186,13 @@
 
 .timeline-view__table .shared-data-table__row {
   min-height: 62px;
-  border-bottom-color: color-mix(in oklab, var(--timeline-line) 82%, transparent);
+  border-bottom-color: color-mix(in oklab, var(--timeline-line) 24%, transparent);
   color: var(--timeline-text);
-  background: var(--timeline-surface);
+  background: transparent;
 }
 
 .timeline-view__table .shared-data-table__row:hover {
-  background: var(--surface-table-row-hover);
+  background: color-mix(in oklab, var(--timeline-accent) 4%, transparent);
 }
 
 .timeline-view__table .shared-data-table__row:hover .shared-data-table__cell {
@@ -376,6 +388,40 @@
   box-shadow: none;
 }
 
+.app-theme:not([data-theme="dark"]) .timeline-view {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-theme:not([data-theme="dark"]) .timeline-view::before,
+.app-theme:not([data-theme="dark"]) .timeline-view::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(20px);
+  z-index: 0;
+}
+
+.app-theme:not([data-theme="dark"]) .timeline-view::before {
+  inset: 60px auto auto -42px;
+  width: 132px;
+  height: 132px;
+  background: radial-gradient(circle, rgba(127, 195, 255, 0.14) 0%, rgba(127, 195, 255, 0.03) 58%, transparent 76%);
+}
+
+.app-theme:not([data-theme="dark"]) .timeline-view::after {
+  inset: auto -40px 15% auto;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(73, 204, 198, 0.12) 0%, rgba(145, 106, 237, 0.03) 56%, transparent 76%);
+}
+
+.app-theme:not([data-theme="dark"]) .timeline-view > * {
+  position: relative;
+  z-index: 1;
+}
+
 .app-theme:not([data-theme="dark"]) .timeline-top-nav {
   padding: 5px 2px;
   border-bottom: 1px solid rgba(206, 220, 233, 0.72);
@@ -450,23 +496,23 @@
 }
 
 .app-theme:not([data-theme="dark"]) .timeline-view__table .shared-data-table {
-  background: rgba(206, 220, 234, 0.72);
+  background: transparent;
 }
 
 .app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__header {
-  border-bottom-color: var(--line) !important;
-  background: var(--surface-muted) !important;
+  border-bottom-color: color-mix(in oklab, var(--line) 44%, transparent) !important;
+  background: transparent !important;
   color: var(--text-soft) !important;
 }
 
 .app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row {
-  border-bottom-color: var(--line) !important;
-  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
+  border-bottom-color: color-mix(in oklab, var(--line) 28%, transparent) !important;
+  background: transparent !important;
   color: var(--text) !important;
 }
 
 .app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--accent) 6%, transparent) !important;
 }
 
 .app-theme[data-theme="dark"] .timeline-view__table .shared-data-table__row:hover .shared-data-table__cell,
@@ -497,6 +543,67 @@
   border-color: transparent !important;
   color: inherit !important;
   background: transparent !important;
+}
+
+.app-theme:not([data-theme="dark"]) .timeline-top-nav__tab {
+  color: #637d96;
+}
+
+.app-theme:not([data-theme="dark"]) .timeline-top-nav__tab--active {
+  color: #163c5e;
+}
+
+.app-theme[data-theme="dark"] .timeline-view {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-theme[data-theme="dark"] .timeline-view::before,
+.app-theme[data-theme="dark"] .timeline-view::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(20px);
+  z-index: 0;
+}
+
+.app-theme[data-theme="dark"] .timeline-view::before {
+  inset: 60px auto auto -42px;
+  width: 132px;
+  height: 132px;
+  background: radial-gradient(circle, rgba(57, 119, 199, 0.16) 0%, rgba(57, 119, 199, 0.04) 58%, transparent 76%);
+}
+
+.app-theme[data-theme="dark"] .timeline-view::after {
+  inset: auto -40px 15% auto;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(46, 184, 178, 0.12) 0%, rgba(77, 123, 212, 0.04) 56%, transparent 76%);
+}
+
+.app-theme[data-theme="dark"] .timeline-view > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app-theme[data-theme="dark"] .timeline-top-nav__tab {
+  color: #7e96ae;
+}
+
+.app-theme[data-theme="dark"] .timeline-top-nav__tab:hover {
+  background: rgba(72, 148, 255, 0.08);
+  border-color: rgba(72, 101, 131, 0.72);
+  color: #c3d8ee;
+}
+
+.app-theme[data-theme="dark"] .timeline-top-nav__tab--active {
+  color: #e4f0fc;
+  background: transparent;
+}
+
+.app-theme[data-theme="dark"] .timeline-top-nav__tab--active::before {
+  background: linear-gradient(90deg, rgba(72, 148, 255, 0.96) 0%, rgba(62, 219, 211, 0.76) 100%);
 }
 
 .app-theme[data-theme="dark"] .timeline-top-nav {

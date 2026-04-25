@@ -178,7 +178,26 @@ export function TimelinePage() {
   const rangeLabel = `${toDateTimeLabel(dateRange.min)} - ${toDateTimeLabel(dateRange.max)}`;
   const topNavigation = (
     <section className="timeline-top-nav" aria-label="Filtro da timeline">
-      <strong>Timeline</strong>
+      <div className="timeline-top-nav__tabs" role="tablist" aria-label="Modo da timeline">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "agenda"}
+          className={cn("timeline-top-nav__tab", mode === "agenda" && "timeline-top-nav__tab--active")}
+          onClick={() => setMode("agenda")}
+        >
+          Agenda
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "coluna"}
+          className={cn("timeline-top-nav__tab", mode === "coluna" && "timeline-top-nav__tab--active")}
+          onClick={() => setMode("coluna")}
+        >
+          Coluna
+        </button>
+      </div>
       <div className="timeline-top-nav__filter">
         <DashboardFilter
           query={filter.query}
@@ -201,32 +220,6 @@ export function TimelinePage() {
       <WorkspaceFrame className="timeline-view">
         <Section
           title={rangeLabel}
-          actions={
-            <div className="timeline-view__actions workspace-view__actions">
-              <div className="timeline-view__toggle documentation-page__modes" role="tablist" aria-label="Modo da timeline">
-                <button
-                  type="button"
-                  className={cn(
-                    "timeline-view__toggle-btn documentation-page__mode-chip",
-                    mode === "coluna" && "is-active documentation-page__mode-chip--active"
-                  )}
-                  onClick={() => setMode("coluna")}
-                >
-                  Coluna
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "timeline-view__toggle-btn documentation-page__mode-chip",
-                    mode === "agenda" && "is-active documentation-page__mode-chip--active"
-                  )}
-                  onClick={() => setMode("agenda")}
-                >
-                  Agenda
-                </button>
-              </div>
-            </div>
-          }
           className="timeline-view__section workspace-view__section"
         >
           <div className="timeline-view__stack">

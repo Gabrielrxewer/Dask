@@ -590,8 +590,27 @@ export function AgendaPage() {
     ? `${toWeekRangeLabel(weekStart)} • ${selectedDetailTarget.kind === "person" ? "Detalhe semanal" : "Uso do recurso"}`
     : "";
   const topNavigation = (
-    <section className="agenda-top-nav" aria-label="Filtro da agenda">
-      <strong>Agenda</strong>
+    <section className="agenda-top-nav" aria-label="Navegacao da agenda">
+      <div className="agenda-top-nav__tabs" role="tablist" aria-label="Modo da agenda">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={availabilityMode === "people"}
+          className={availabilityMode === "people" ? "agenda-top-nav__tab agenda-top-nav__tab--active" : "agenda-top-nav__tab"}
+          onClick={() => { setAvailabilityMode("people"); setSelectedDetailTarget(null); }}
+        >
+          Pessoas
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={availabilityMode === "resources"}
+          className={availabilityMode === "resources" ? "agenda-top-nav__tab agenda-top-nav__tab--active" : "agenda-top-nav__tab"}
+          onClick={() => { setAvailabilityMode("resources"); setSelectedDetailTarget(null); }}
+        >
+          Recursos
+        </button>
+      </div>
       <div className="agenda-top-nav__filter">
         <DashboardFilter
           query={filter.query}
@@ -656,32 +675,6 @@ export function AgendaPage() {
                     <span><i className="agenda-view__legend-dot agenda-view__legend-dot--busy" />Ocupado</span>
                     <span><i className="agenda-view__legend-dot agenda-view__legend-dot--conflict" />Conflito</span>
                   </div>
-                  {!selectedDetailTarget && (
-                    <div className="agenda-view__switch">
-                      <button
-                        type="button"
-                        className={
-                          availabilityMode === "people"
-                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
-                            : "timeline-view__toggle-btn documentation-page__mode-chip"
-                        }
-                        onClick={() => setAvailabilityMode("people")}
-                      >
-                        Pessoas
-                      </button>
-                      <button
-                        type="button"
-                        className={
-                          availabilityMode === "resources"
-                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
-                            : "timeline-view__toggle-btn documentation-page__mode-chip"
-                        }
-                        onClick={() => setAvailabilityMode("resources")}
-                      >
-                        Recursos
-                      </button>
-                    </div>
-                  )}
                   {tasksOutsideAgenda.length > 0 ? <StatusBadge tone="warning">{`${tasksOutsideAgenda.length} fora da janela`}</StatusBadge> : null}
                 </div>
               </div>
@@ -774,11 +767,7 @@ export function AgendaPage() {
                       <button
                         key={`tab-${day}`}
                         type="button"
-                        className={
-                          selectedDayIndex === dayIndex
-                            ? "timeline-view__toggle-btn documentation-page__mode-chip is-active documentation-page__mode-chip--active"
-                            : "timeline-view__toggle-btn documentation-page__mode-chip"
-                        }
+                        className={selectedDayIndex === dayIndex ? "agenda-view__mode-btn agenda-view__mode-btn--active" : "agenda-view__mode-btn"}
                         onClick={() => setSelectedDayIndex(dayIndex)}
                       >
                         {toAgendaDayLabel(day)}

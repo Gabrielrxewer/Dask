@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace, type DocumentationAssistantMode, type WorkspaceDocument } from "@/modules/workspace";
-import { Button, StatusBadge, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
+import { StatusBadge, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./documentation-page.css";
 
@@ -596,46 +596,70 @@ export function DocumentationPage() {
     }
   }
 
+  const topNavigation = (
+    <section className="docs-top-nav" aria-label="Acoes de documentacao">
+      <button
+        type="button"
+        className="docs-top-nav__btn docs-top-nav__btn--create"
+        aria-label="Nova doc"
+        title="Nova doc"
+        disabled={isDocsLoading || isLoading}
+        onClick={() => void createNewDoc()}
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+          <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          <line x1="12" y1="12" x2="12" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </button>
+      <div className="docs-top-nav__actions">
+        <button
+          type="button"
+          className="docs-top-nav__btn"
+          aria-label="Duplicar doc"
+          title="Duplicar doc"
+          disabled={!activeDoc || isDocsLoading || isLoading}
+          onClick={() => void duplicateActiveDoc()}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.7" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="docs-top-nav__btn docs-top-nav__btn--danger"
+          aria-label="Excluir doc"
+          title="Excluir doc"
+          disabled={!activeDoc || !canDeleteDoc || isDocsLoading || isLoading}
+          onClick={() => void removeActiveDoc()}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 3h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M4 6h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M7 6v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+    </section>
+  );
+
   return (
     <AppShell
       metrics={metrics}
       noPageScroll
+      hidePageHeader
       hideSidebarBrandMark
-      pageTitle="Documentacao"
-      pageLabel="Docs Hub"
+      topNavigation={topNavigation}
     >
       <WorkspaceFrame className="documentation-page">
         <aside className="documentation-page__files-pane">
           <header className="documentation-page__files-header">
-            <div>
-              <p>Documentos</p>
-              <h2>{docs.length} docs</h2>
-            </div>
-            <Button type="button" size="sm" onClick={() => void createNewDoc()} disabled={isDocsLoading || isLoading}>
-              Nova doc
-            </Button>
+            <p>Documentos</p>
+            <span>{docs.length} docs</span>
           </header>
-
-          <div className="documentation-page__files-actions">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void duplicateActiveDoc()}
-              disabled={!activeDoc || isDocsLoading || isLoading}
-            >
-              Duplicar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void removeActiveDoc()}
-              disabled={!activeDoc || !canDeleteDoc || isDocsLoading || isLoading}
-            >
-              Excluir
-            </Button>
-          </div>
 
           <nav className="documentation-page__files-list">
             {docs.map((doc) => (
@@ -670,17 +694,17 @@ export function DocumentationPage() {
           {activeDoc ? (
             <>
               <header className="documentation-page__editor-header">
-                <div className="documentation-page__editor-title">
-                  <TextInput
-                    value={activeDoc.title}
-                    onChange={(event) => updateDocDraft(activeDoc.id, { title: event.target.value })}
-                    placeholder="Titulo da doc"
-                  />
+                <TextInput
+                  value={activeDoc.title}
+                  onChange={(event) => updateDocDraft(activeDoc.id, { title: event.target.value })}
+                  placeholder="Titulo da doc"
+                />
+                <div className="documentation-page__editor-meta">
                   <p>{`Ultima edicao: ${formatRelativeDate(activeDoc.updatedAt)}`}</p>
-                </div>
-                <div className="documentation-page__editor-badges">
-                  <StatusBadge>{`${wordCount} palavras`}</StatusBadge>
-                  {selectedSnippet ? <StatusBadge tone="warning">Trecho selecionado</StatusBadge> : null}
+                  <div className="documentation-page__editor-meta-right">
+                    {selectedSnippet ? <span className="documentation-page__snippet-hint">Trecho selecionado</span> : null}
+                    <span className="documentation-page__editor-wordcount">{`${wordCount} palavras`}</span>
+                  </div>
                 </div>
               </header>
 

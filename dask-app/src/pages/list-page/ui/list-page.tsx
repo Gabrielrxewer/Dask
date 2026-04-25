@@ -138,6 +138,7 @@ export function ListPage() {
         boardConfig={boardConfig}
         membersById={activeMembers}
         taskTypes={boardConfig.taskTypes}
+        iconOnly
       />
       <div className="list-top-nav__filter">
         <DashboardFilter
@@ -159,6 +160,12 @@ export function ListPage() {
       topNavigation={topNavigation}
     >
       <WorkspaceFrame className="list-view">
+        <LoadingState
+          text="Carregando lista..."
+          animation="list"
+          variant="frame"
+          visible={isLoading && filteredTasks.length === 0}
+        />
         <Section
           title={`${filteredTasks.length} ${filteredTasks.length === 1 ? "item" : "itens"}`}
           className="list-view__section workspace-view__section"
@@ -178,9 +185,7 @@ export function ListPage() {
             </DataTableHeader>
 
             <DataTableBody>
-              {isLoading && filteredTasks.length === 0 ? (
-                <LoadingState text="Carregando workspace..." />
-              ) : filteredTasks.length === 0 ? (
+              {filteredTasks.length === 0 ? (
                 <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>
               ) : (
                 orderedTasks.map(task => {

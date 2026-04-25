@@ -1,0 +1,88 @@
+.workspace-action-button {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid rgba(206, 220, 233, 0.9);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #637d96;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(12, 35, 63, 0.06);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.workspace-action-button__icon {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.workspace-action-button__icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.workspace-action-button--accent .workspace-action-button__icon {
+  font-size: 18px;
+  font-weight: 300;
+}
+
+.workspace-action-button:hover:not(:disabled) {
+  border-color: rgba(44, 120, 230, 0.3);
+  background: rgba(44, 120, 230, 0.05);
+  color: #163c5e;
+  box-shadow: 0 2px 6px rgba(12, 35, 63, 0.1);
+  transform: translateY(-1px);
+}
+
+.workspace-action-button--danger:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--danger) 42%, rgba(206, 220, 233, 0.9));
+  background: color-mix(in oklab, var(--danger-soft) 56%, rgba(255, 255, 255, 0.92));
+  color: var(--danger);
+}
+
+.workspace-action-button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 30%, transparent);
+  outline-offset: 2px;
+}
+
+.workspace-action-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 1px 3px rgba(12, 35, 63, 0.04);
+}
+
+.app-theme[data-theme="dark"] .workspace-action-button {
+  border: 1px solid rgba(72, 101, 131, 0.6);
+  background: rgba(25, 40, 56, 0.72);
+  color: #9cb2c8;
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .workspace-action-button:hover:not(:disabled) {
+  border-color: rgba(72, 101, 131, 0.9);
+  background: rgba(72, 148, 255, 0.1);
+  color: #c3d8ee;
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .workspace-action-button--danger:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--danger) 46%, rgba(72, 101, 131, 0.9));
+  background: color-mix(in oklab, var(--danger-soft) 40%, rgba(25, 40, 56, 0.72));
+  color: var(--danger);
+}

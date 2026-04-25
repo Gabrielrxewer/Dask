@@ -2,10 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import type { AiAgentConfig, AiAgentRagSource, AiAgentSummary, CreateAiAgentInput } from "@/modules/workspace/model";
-import { Button, FormField, LoadingState, Section, Select, StatusBadge, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
+import { FormField, LoadingState, Section, Select, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
-import "@/features/create-task/ui/create-task-button.css";
 import "./ai-agents-page.css";
 
 interface AgentFormState {
@@ -233,22 +231,6 @@ export function AiAgentsPage() {
   const [form, setForm] = useState<AgentFormState>(() => createDefaultForm());
   const [useCustomModelInput, setUseCustomModelInput] = useState(false);
 
-  const activeAgentsCount = agents.filter((agent) => agent.isActive).length;
-  const ragEnabledCount = agents.filter((agent) => {
-    const config = asAgentConfig(agent.config);
-    const rag = config.rag ?? {};
-    return rag.enabled !== false && resolveSource(rag.source) !== "none";
-  }).length;
-  const docAwareCount = agents.filter((agent) => {
-    const config = asAgentConfig(agent.config);
-    const rag = config.rag ?? {};
-    if (rag.enabled === false) {
-      return false;
-    }
-    const source = resolveSource(rag.source);
-    return source === "documentation" || source === "card_and_documentation";
-  }).length;
-
   useEffect(() => {
     let mounted = true;
     setIsLoadingAgents(true);
@@ -447,47 +429,65 @@ export function AiAgentsPage() {
     }
   }
 
+  const topNavigation = (
+    <section className="ai-agents-top-nav" aria-label="Ações de agentes">
+      <WorkspaceActionButton
+        className="ai-agents-top-nav__btn"
+        tone="accent"
+        label="Novo agente"
+        onClick={handleCreateNew}
+        disabled={isSaving}
+        icon="+"
+      />
+      <div className="ai-agents-top-nav__actions">
+        <WorkspaceActionButton
+          className="ai-agents-top-nav__btn"
+          label="Limpar"
+          onClick={handleCreateNew}
+          disabled={isSaving}
+          icon={(
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 15l7-7 5 5-7 7H4v-5z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+              <path d="M13 6l2-2a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8l-2 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M3 21h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          )}
+        />
+        <WorkspaceActionButton
+          className="ai-agents-top-nav__btn"
+          label={isCreateMode ? "Criar agente" : "Salvar alteracoes"}
+          aria-label={isCreateMode ? "Criar agente" : "Salvar alterações"}
+          title={isCreateMode ? "Criar agente" : "Salvar alterações"}
+          onClick={() => void handleSubmit()}
+          disabled={!canSave}
+          icon={(
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 4h12l2 2v14H5V4z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+              <path d="M8 4v6h8V4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+              <path d="M8 20v-6h8v6" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+            </svg>
+          )}
+        />
+      </div>
+    </section>
+  );
+
   return (
     <AppShell
       metrics={metrics}
       noPageScroll
+      hidePageHeader
       hideSidebarBrandMark
-      pageTitle="Agentes de IA"
-      pageLabel="AI Studio"
+      topNavigation={topNavigation}
     >
       <WorkspaceFrame className="ai-agents-page">
-        <BoardMetrics
-          metrics={metrics}
-          className="ai-agents-page__metrics workspace-view__metrics"
-          cards={[
-            { label: "Agentes cadastrados", value: agents.length },
-            { label: "Agentes ativos", value: activeAgentsCount },
-            { label: "RAG habilitada", value: ragEnabledCount },
-            { label: "Consultam doc", value: docAwareCount }
-          ]}
-        />
-
+        <LoadingState text="Carregando agentes..." animation="ai" variant="frame" visible={isLoadingAgents} />
         <div className="ai-agents-page__layout">
           <Section
-            title="Catalogo de agentes"
-            subtitle="Selecione um agente para editar prompt e politica de RAG."
+            title={agents.length > 0 ? `Agentes · ${agents.length}` : "Agentes"}
             className="ai-agents-page__catalog workspace-view__panel"
-            actions={
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                className="create-task-button ai-agents-page__primary-action"
-                onClick={handleCreateNew}
-                disabled={isSaving}
-              >
-                Novo agente
-              </Button>
-            }
           >
-            {isLoadingAgents ? (
-              <LoadingState text="Carregando agentes..." />
-            ) : agents.length === 0 ? (
+            {agents.length === 0 ? (
               <div className="ai-agents-page__empty">
                 <h3>Nenhum agente ainda</h3>
                 <p>Crie o primeiro agente para configurar prompt e contexto RAG.</p>
@@ -528,21 +528,8 @@ export function AiAgentsPage() {
           </Section>
 
           <Section
-            title={isCreateMode ? "Novo agente customizado" : "Editar agente"}
-            subtitle="Defina prompt, modelo e como a IA consulta documentacao e cards."
+            title={isCreateMode ? "Novo agente" : (form.name || "Editar agente")}
             className="ai-agents-page__editor workspace-view__panel"
-            actions={
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                className="create-task-button ai-agents-page__primary-action"
-                onClick={() => void handleSubmit()}
-                disabled={!canSave}
-              >
-                {isSaving ? "Salvando..." : "Salvar agente"}
-              </Button>
-            }
           >
             <form
               className="ai-agents-page__form"
@@ -776,27 +763,6 @@ export function AiAgentsPage() {
 
               {error ? <p className="ai-agents-page__error">{error}</p> : null}
 
-              <footer className="ai-agents-page__actions">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="ai-agents-page__primary-action"
-                  onClick={handleCreateNew}
-                  disabled={isSaving}
-                >
-                  Limpar
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  className="create-task-button ai-agents-page__primary-action"
-                  disabled={!canSave}
-                >
-                  {isSaving ? "Salvando..." : isCreateMode ? "Criar agente" : "Salvar alteracoes"}
-                </Button>
-              </footer>
             </form>
           </Section>
         </div>

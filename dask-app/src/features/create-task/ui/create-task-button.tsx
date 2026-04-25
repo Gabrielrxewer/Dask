@@ -4,7 +4,7 @@ import type { MembersById } from "@/entities/member";
 import type { CreateTaskInput } from "@/modules/workspace";
 import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
 import { cn } from "@/shared/lib/cn";
-import { Button, ModalShell } from "@/shared/ui";
+import { Button, ModalShell, WorkspaceActionButton } from "@/shared/ui";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./create-task-button.css";
 
@@ -25,6 +25,7 @@ interface CreateTaskButtonProps {
   taskTypes: TaskTypeOption[];
   availableTags?: Array<{ id: string; name: string; color: string }>;
   className?: string;
+  iconOnly?: boolean;
 }
 
 interface TaskTypePickerDialogProps {
@@ -157,7 +158,8 @@ export function CreateTaskButton({
   membersById,
   taskTypes,
   availableTags = [],
-  className
+  className,
+  iconOnly = false
 }: CreateTaskButtonProps) {
   const [isTypePickerOpen, setIsTypePickerOpen] = useState(false);
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
@@ -173,9 +175,19 @@ export function CreateTaskButton({
 
   return (
     <>
-      <Button className={cn("create-task-button", className)} variant="primary" onClick={handleRequestCreate}>
-        + Nova tarefa
-      </Button>
+      {iconOnly ? (
+        <WorkspaceActionButton
+          className={cn("create-task-button", className)}
+          tone="accent"
+          label="Nova tarefa"
+          icon="+"
+          onClick={handleRequestCreate}
+        />
+      ) : (
+        <Button className={cn("create-task-button", className)} variant="primary" onClick={handleRequestCreate}>
+          + Nova tarefa
+        </Button>
+      )}
       {isTypePickerOpen ? (
         <TaskTypePickerDialog
           taskTypes={taskTypes}

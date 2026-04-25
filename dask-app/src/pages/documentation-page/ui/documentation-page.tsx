@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace, type DocumentationAssistantMode, type WorkspaceDocument } from "@/modules/workspace";
-import { StatusBadge, TextInput, Textarea, WorkspaceFrame } from "@/shared/ui";
+import { LoadingState, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./documentation-page.css";
 
@@ -598,50 +598,42 @@ export function DocumentationPage() {
 
   const topNavigation = (
     <section className="docs-top-nav" aria-label="Acoes de documentacao">
-      <button
-        type="button"
-        className="docs-top-nav__btn docs-top-nav__btn--create"
-        aria-label="Nova doc"
-        title="Nova doc"
+      <WorkspaceActionButton
+        className="docs-top-nav__btn"
+        tone="accent"
+        label="Nova doc"
         disabled={isDocsLoading || isLoading}
         onClick={() => void createNewDoc()}
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-          <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          <line x1="12" y1="12" x2="12" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      </button>
+        icon="+"
+      />
       <div className="docs-top-nav__actions">
-        <button
-          type="button"
+        <WorkspaceActionButton
           className="docs-top-nav__btn"
-          aria-label="Duplicar doc"
-          title="Duplicar doc"
+          label="Duplicar doc"
           disabled={!activeDoc || isDocsLoading || isLoading}
           onClick={() => void duplicateActiveDoc()}
-        >
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.7" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="docs-top-nav__btn docs-top-nav__btn--danger"
-          aria-label="Excluir doc"
-          title="Excluir doc"
+          icon={(
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.7" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          )}
+        />
+        <WorkspaceActionButton
+          className="docs-top-nav__btn"
+          tone="danger"
+          label="Excluir doc"
           disabled={!activeDoc || !canDeleteDoc || isDocsLoading || isLoading}
           onClick={() => void removeActiveDoc()}
-        >
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M9 3h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M4 6h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M7 6v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+          icon={(
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M9 3h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M4 6h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M7 6v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          )}
+        />
       </div>
     </section>
   );
@@ -655,6 +647,12 @@ export function DocumentationPage() {
       topNavigation={topNavigation}
     >
       <WorkspaceFrame className="documentation-page">
+        <LoadingState
+          text="Carregando documentação..."
+          animation="documentation"
+          variant="frame"
+          visible={isLoading || isDocsLoading}
+        />
         <aside className="documentation-page__files-pane">
           <header className="documentation-page__files-header">
             <p>Documentos</p>

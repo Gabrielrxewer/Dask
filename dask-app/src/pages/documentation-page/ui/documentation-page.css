@@ -78,12 +78,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  margin-bottom: 0;
 }
 
 .docs-top-nav__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   margin-left: auto;
 }
 
@@ -94,67 +96,14 @@
   margin-bottom: 0;
 }
 
-.docs-top-nav__btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in oklab, var(--line) 88%, transparent);
-  background: color-mix(in oklab, var(--surface-elevated) 88%, var(--surface-1));
-  color: var(--text-muted);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 0 8px 18px color-mix(in oklab, var(--text-strong) 7%, transparent);
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease,
-    box-shadow 160ms ease;
+.app-theme:not([data-theme="dark"]) .docs-top-nav {
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
 }
 
-.docs-top-nav__btn svg {
-  width: 15px;
-  height: 15px;
-}
-
-.docs-top-nav__btn:hover:not(:disabled) {
-  color: var(--text-strong);
-  border-color: color-mix(in oklab, var(--accent) 44%, var(--line));
-  background: color-mix(in oklab, var(--selected-bg) 72%, var(--surface-elevated));
-  box-shadow: 0 10px 22px color-mix(in oklab, var(--accent) 10%, transparent);
-  transform: translateY(-1px);
-}
-
-.docs-top-nav__btn--create {
-  color: color-mix(in oklab, var(--accent) 80%, var(--text-muted));
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
-  background: color-mix(in oklab, var(--accent-soft) 48%, var(--surface-elevated));
-}
-
-.docs-top-nav__btn--create:hover:not(:disabled) {
-  color: var(--accent-strong);
-  border-color: color-mix(in oklab, var(--accent) 60%, var(--line));
-  background: color-mix(in oklab, var(--accent-soft) 72%, var(--surface-elevated));
-  box-shadow: 0 10px 22px color-mix(in oklab, var(--accent) 14%, transparent);
-}
-
-.docs-top-nav__btn--danger {
-  color: color-mix(in oklab, var(--danger) 72%, var(--text-muted));
-  border-color: color-mix(in oklab, var(--danger) 28%, var(--line));
-}
-
-.docs-top-nav__btn--danger:hover:not(:disabled) {
-  color: var(--danger);
-  border-color: color-mix(in oklab, var(--danger) 55%, var(--line));
-  background: color-mix(in oklab, var(--danger-soft) 72%, var(--surface-elevated));
-  box-shadow: 0 10px 22px color-mix(in oklab, var(--danger) 14%, transparent);
-}
-
-.docs-top-nav__btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.app-theme[data-theme="dark"] .docs-top-nav {
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(64, 90, 116, 0.82);
 }
 
 .documentation-page__files-pane {

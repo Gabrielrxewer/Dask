@@ -17,6 +17,7 @@ export { PageHeader } from "@/shared/ui/page-header";
 export { FilterBar } from "@/shared/ui/filter-bar";
 export { UserAvatar } from "@/shared/ui/user-avatar";
 export { WorkspaceFrame } from "@/shared/ui/workspace-frame";
+export { WorkspaceActionButton } from "@/shared/ui/workspace-action-button";
 export {
   DataTable,
   DataTableHeader,

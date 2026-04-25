@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
-import { beginGlobalLoading } from "@/shared/lib/loading/global-loading";
 import { workspaceService } from "@/modules/workspace/api";
 import type {
   AiAgentSummary,
@@ -143,11 +142,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
 
     let mounted = true;
-    const stopGlobalLoading = beginGlobalLoading({
-      source: "workspace",
-      label: "Montando o contexto do workspace"
-    });
-
     setIsLoading(true);
     workspaceService
       .getSnapshot(workspaceSlug)
@@ -161,14 +155,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         if (mounted) {
           setIsLoading(false);
         }
-      })
-      .finally(() => {
-        stopGlobalLoading();
       });
 
     return () => {
       mounted = false;
-      stopGlobalLoading();
     };
   }, [workspaceSlug]);
 

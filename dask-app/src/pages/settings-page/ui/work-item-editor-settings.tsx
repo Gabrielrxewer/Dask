@@ -13,7 +13,10 @@ import {
   resolveTaskFieldDetailZone,
   resolveWorkItemFieldBindings,
   readTaskFieldStorage,
-  TaskCard
+  TaskCard,
+  FieldShell,
+  WorkItemFieldRenderer,
+  resolveFieldShellStyle
 } from "@/entities/task";
 import type {
   BoardConfig,
@@ -519,6 +522,18 @@ function getDefaultDetailZone(field: TaskFieldDefinition | undefined): DetailZon
   return field ? resolveTaskFieldDetailZone(field) : "side";
 }
 
+function resolveDetailPreviewLayoutClass(field: TaskFieldDefinition, zone: DetailZone) {
+  const storage = readTaskFieldStorage(field);
+  const shouldSpan =
+    zone === "main" &&
+    (field.type === "long_text" ||
+      field.type === "checklist" ||
+      field.type === "schedule" ||
+      (storage?.kind === "item_property" && (storage.property === "title" || storage.property === "description")));
+
+  return shouldSpan ? "is-wide" : "is-compact";
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkItemEditorSettings() {
@@ -874,6 +889,16 @@ export function WorkItemEditorSettings() {
     event.dataTransfer.setData("text/plain", fieldId);
   };
 
+  const beginDetailMouseDrag = useCallback((event: MouseEvent<HTMLElement>, fieldId: string) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    setSelectedFieldId(fieldId);
+    setFieldDraft(null);
+    setPendingFieldSetup(null);
+    setTypeComposer(null);
+    setDragPayload({ kind: "field", fieldId, origin: "detail" });
+  }, []);
+
   const handleDragStartType = (event: DragEvent<HTMLElement>, type: CustomFieldType) => {
     setDragPayload({ kind: "type", type });
     event.dataTransfer.effectAllowed = "copy";
@@ -908,6 +933,7 @@ export function WorkItemEditorSettings() {
           checklistColor: "#0a86e8"
         });
         updateDropTarget(null);
+        setDragPayload(null);
         return;
       }
 
@@ -932,6 +958,7 @@ export function WorkItemEditorSettings() {
 
       setSelectedFieldId(dragPayload.fieldId);
       updateDropTarget(null);
+      setDragPayload(null);
     },
     [
       activeDetailZones,
@@ -964,6 +991,45 @@ export function WorkItemEditorSettings() {
     },
     [dragPayload]
   );
+
+  const handleDetailZoneDragOver = useCallback(
+    (event: DragEvent<HTMLElement>, zone: DetailZone, index: number) => {
+      event.preventDefault();
+      if (!dragPayload) return;
+      event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
+      if (event.target === event.currentTarget) {
+        updateDropTarget({ surface: "detail", kind: "insert", zone, index });
+      }
+    },
+    [dragPayload, updateDropTarget]
+  );
+
+  const handleDetailZoneMouseMove = useCallback(
+    (event: MouseEvent<HTMLElement>, zone: DetailZone, index: number) => {
+      if (!dragPayload) return;
+      event.preventDefault();
+      if (event.target === event.currentTarget) {
+        updateDropTarget({ surface: "detail", kind: "insert", zone, index });
+      }
+    },
+    [dragPayload, updateDropTarget]
+  );
+
+  useEffect(() => {
+    if (!dragPayload || dragPayload.kind !== "field" || dragPayload.origin !== "detail") return;
+
+    const handleMouseUp = () => {
+      if (dropTarget?.surface === "detail") {
+        applyResolvedDropTarget(dropTarget);
+      } else {
+        updateDropTarget(null);
+        setDragPayload(null);
+      }
+    };
+
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, [applyResolvedDropTarget, dragPayload, dropTarget, updateDropTarget]);
 
   const makeSurfaceDragLeaveHandler = useCallback(
     (surface: LayoutScope) => (event: DragEvent<HTMLElement>) => {
@@ -1681,6 +1747,12 @@ export function WorkItemEditorSettings() {
           event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
           updateDropTarget(target);
         }}
+        onMouseMove={(event) => {
+          if (!dragPayload) return;
+          event.preventDefault();
+          event.stopPropagation();
+          updateDropTarget(target);
+        }}
         onDrop={(event) => handleDropOnTarget(event, target)}
       >
         <span>Solte aqui</span>
@@ -1689,24 +1761,28 @@ export function WorkItemEditorSettings() {
   };
 
   const renderDetailFieldCard = (field: FieldLibraryItem, zone: DetailZone, index: number) => {
-    const isReplaceTarget =
-      dropTarget?.surface === "detail" &&
-      dropTarget.kind === "replace-field" &&
-      dropTarget.targetFieldId === field.id &&
-      dropTarget.zone === zone;
     const isSelected = selectedFieldId === field.id;
     const isSelfDrag = dragPayload?.kind === "field" && dragPayload.fieldId === field.id;
+    const previewValue = resolveTaskFieldValue(previewTask, field);
+    const beforeTarget: EditorDropTarget = { surface: "detail", kind: "insert", zone, index };
+    const afterTarget: EditorDropTarget = { surface: "detail", kind: "insert", zone, index: index + 1 };
+    const shellStyle = resolveFieldShellStyle({
+      field,
+      mode: "edit",
+      context: "detail",
+      readonly: false
+    });
+    const layoutClass = resolveDetailPreviewLayoutClass(field, zone);
 
     return (
-      <div key={`detail-${zone}-${field.id}`} className="wie__detail-slot-wrap">
+      <div key={`detail-${zone}-${field.id}`} className={`wie__detail-slot-wrap ${layoutClass}`}>
         {isDragging ? renderDetailInsertTarget(zone, index) : null}
-        <div
-          className={`wie__detail-field-card${zone === "side" ? " is-side" : ""}${isSelected ? " is-selected" : ""}${isReplaceTarget ? " is-replace-target" : ""}`}
+        <section
+          className={`wie__detail-field-card wie__detail-field-card--${shellStyle.kind} ${layoutClass}${zone === "side" ? " is-side" : ""}${isSelected ? " is-selected" : ""}`}
           data-workitem-slot="detail"
           data-detail-zone={zone}
+          data-field-type={field.type}
           data-field-id={field.id}
-          data-drop-intent={isReplaceTarget ? "replace" : undefined}
-          data-drop-label={isReplaceTarget ? "Mover aqui" : undefined}
           draggable
           onClick={(e) => {
             e.stopPropagation();
@@ -1715,6 +1791,7 @@ export function WorkItemEditorSettings() {
             setPendingFieldSetup(null);
             setTypeComposer(null);
           }}
+          onMouseDown={(e) => beginDetailMouseDrag(e, field.id)}
           onDragStart={(e) => {
             e.stopPropagation();
             handleDragStartField(e, field.id, "detail");
@@ -1724,33 +1801,77 @@ export function WorkItemEditorSettings() {
             event.preventDefault();
             event.stopPropagation();
             event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
-            updateDropTarget({
-              surface: "detail",
-              kind: "replace-field",
-              targetFieldId: field.id,
-              zone
-            });
+            const rect = event.currentTarget.getBoundingClientRect();
+            updateDropTarget(event.clientY < rect.top + rect.height / 2 ? beforeTarget : afterTarget);
+          }}
+          onMouseMove={(event) => {
+            if (!dragPayload || isSelfDrag) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const rect = event.currentTarget.getBoundingClientRect();
+            updateDropTarget(event.clientY < rect.top + rect.height / 2 ? beforeTarget : afterTarget);
           }}
           onDrop={(event) => {
             if (isSelfDrag) return;
-            handleDropOnTarget(event, {
-              surface: "detail",
-              kind: "replace-field",
-              targetFieldId: field.id,
-              zone
-            });
+            const rect = event.currentTarget.getBoundingClientRect();
+            handleDropOnTarget(event, event.clientY < rect.top + rect.height / 2 ? beforeTarget : afterTarget);
           }}
           onDragEnd={handleDragEnd}
         >
-          <div className="wie__detail-field-card-head">
-            <div className="wie__detail-field-card-meta">
-              <span className="wie__detail-field-card-label">{field.label}</span>
-              <span className="wie__detail-field-card-type">{getTaskFieldTypeLabel(field)}</span>
-            </div>
-            <div className="wie__detail-field-card-handle" draggable={false}>⠿</div>
+          <div
+            className="wie__detail-field-card-dragbar"
+            draggable
+            onDragStart={(e) => {
+              e.stopPropagation();
+              handleDragStartField(e, field.id, "detail");
+            }}
+            onMouseDown={(e) => beginDetailMouseDrag(e, field.id)}
+            onDragEnd={handleDragEnd}
+          >
+            <span className="wie__detail-field-card-type">{getTaskFieldTypeLabel(field)}</span>
+            <span className="wie__detail-field-card-handle">Arrastar</span>
           </div>
-          <div className="wie__detail-field-card-body">{renderPreviewFieldValue(field)}</div>
-        </div>
+          <FieldShell
+            label={field.label}
+            hint={field.description}
+            required={field.required}
+            kind={shellStyle.kind}
+            helpMode={shellStyle.helpMode}
+          >
+            <div className="wie__detail-field-card-body">
+              <WorkItemFieldRenderer
+                field={field}
+                value={previewValue}
+                mode="edit"
+                context="detail"
+                boardConfig={previewBoardConfig}
+                statuses={previewRuntimeStatuses}
+                membersById={previewMembersById}
+                task={previewTask}
+                disabled
+                onChange={() => undefined}
+              />
+            </div>
+          </FieldShell>
+          <div
+            className="wie__detail-field-card-drag-surface"
+            aria-label={`Mover campo ${field.label}`}
+            draggable
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedFieldId(field.id);
+              setFieldDraft(null);
+              setPendingFieldSetup(null);
+              setTypeComposer(null);
+            }}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              handleDragStartField(e, field.id, "detail");
+            }}
+            onMouseDown={(e) => beginDetailMouseDrag(e, field.id)}
+            onDragEnd={handleDragEnd}
+          />
+        </section>
       </div>
     );
   };
@@ -2498,6 +2619,12 @@ export function WorkItemEditorSettings() {
                         <div
                           key={opt.value}
                           className="wie__type-tile"
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            handleDragStartType(e, opt.value);
+                          }}
+                          onDragEnd={handleDragEnd}
                           onClick={() => openNewFieldPanel(opt.value)}
                         >
                           <strong>{opt.label}</strong>
@@ -2602,7 +2729,8 @@ export function WorkItemEditorSettings() {
                     </div>
                     <div
                       className={`wie__form-zone${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                      onDragOver={handlePreviewSurfaceDragOver}
+                      onDragOver={(event) => handleDetailZoneDragOver(event, "main", detailMainFields.length)}
+                      onMouseMove={(event) => handleDetailZoneMouseMove(event, "main", detailMainFields.length)}
                       onDragLeave={makeSurfaceDragLeaveHandler("detail")}
                       onDrop={(event) => {
                         event.preventDefault();
@@ -2638,7 +2766,8 @@ export function WorkItemEditorSettings() {
                     </div>
                     <div
                       className={`wie__form-zone is-side${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-                      onDragOver={handlePreviewSurfaceDragOver}
+                      onDragOver={(event) => handleDetailZoneDragOver(event, "side", detailSideFields.length)}
+                      onMouseMove={(event) => handleDetailZoneMouseMove(event, "side", detailSideFields.length)}
                       onDragLeave={makeSurfaceDragLeaveHandler("detail")}
                       onDrop={(event) => {
                         event.preventDefault();

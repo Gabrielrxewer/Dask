@@ -242,7 +242,7 @@ function toInternalConfig(path: string, config: RequestConfig): InternalRequestC
     authMode: config.authMode ?? "optional",
     retryOnUnauthorized: config.retryOnUnauthorized ?? true,
     isRetryAttempt: false,
-    globalLoading: config.globalLoading ?? isMutatingMethod(method)
+    globalLoading: config.globalLoading ?? false
   };
 }
 

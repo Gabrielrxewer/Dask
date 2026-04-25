@@ -22,7 +22,6 @@ import {
   DataTableRow,
   EmptyState,
   FormField,
-  LoadingState,
   ModalShell,
   Section,
   Select,
@@ -769,6 +768,8 @@ export function BillingPage() {
     { label: "Catálogo", value: catalogItems.length },
     { label: "Pendências", value: pendingItems.length }
   ];
+  const isBillingFrameLoading =
+    connectState === "loading" || catalogLoadState === "loading" || paymentOrdersLoadState === "loading";
 
   const topNavigation = (
     <section className="billing-top-nav" aria-label="Navegacao de cobranca">
@@ -825,7 +826,7 @@ export function BillingPage() {
 
   return (
     <AppShell metrics={metrics} hideSidebarBrandMark pageTitle="Cobrança" pageLabel="Financeiro">
-      <BillingLoader visible={connectState === "loading" || isOpeningOnboarding} />
+      <BillingLoader visible={isBillingFrameLoading || isOpeningOnboarding} />
       <WorkspaceFrame className="billing-view workspace-view">
         {topNavigation}
         <BoardMetrics metrics={metrics} cards={metricCards} className="billing-view__metrics workspace-view__metrics" />
@@ -1211,8 +1212,6 @@ export function BillingPage() {
                   </div>
                 ) : null}
 
-                {catalogLoadState === "loading" ? <LoadingState text="Carregando catálogo..." /> : null}
-
                 {catalogLoadState === "loaded" && catalogItems.length === 0 ? (
                   <EmptyState>
                     Nenhum item cadastrado. Crie produtos ou serviços para cobrar em um clique.
@@ -1530,7 +1529,6 @@ export function BillingPage() {
                   <StatusBadge>{paymentOrders.length} itens</StatusBadge>
                 </div>
 
-                {paymentOrdersLoadState === "loading" ? <LoadingState text="Carregando histórico..." /> : null}
                 {paymentOrdersLoadState === "error" ? (
                   <p className="billing-view__error">{paymentOrdersError}</p>
                 ) : null}

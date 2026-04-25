@@ -117,7 +117,7 @@ function WorkspaceEntryRedirect() {
   }, []);
 
   if (!redirectTo) {
-    return <LoadingState text="Carregando workspaces..." />;
+    return <LoadingState text="Carregando workspaces..." animation="workspace" />;
   }
 
   return <Navigate replace to={redirectTo} />;

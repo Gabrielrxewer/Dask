@@ -14,16 +14,15 @@ import {
   FormField,
   LoadingState,
   ModalShell,
-  Section,
   Select,
   StatusBadge,
   Tabs,
   TextInput,
   Textarea,
+  WorkspaceActionButton,
   WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import "./leads-page.css";
 
 type LeadsTab = "dashboard" | "pipeline" | "capture" | "automations";
@@ -44,6 +43,13 @@ const STATUS_LABELS: Record<string, string> = {
   CONVERTED: "Convertido",
   LOST: "Perdido"
 };
+
+const REFRESH_ICON = (
+  <svg viewBox="0 0 24 24" fill="none">
+    <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M20 4v5h-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 function statusTone(status: string): "default" | "success" | "warning" {
   if (status === "CONVERTED") {
@@ -107,20 +113,6 @@ export function LeadsPage() {
     notes: "",
     score: 50
   });
-
-  const dashboardMetricCards = useMemo(
-    () => [
-      { label: "Capturados", value: dashboard?.captured ?? 0 },
-      { label: "Qualificados", value: dashboard?.qualified ?? 0 },
-      { label: "Distribuidos", value: dashboard?.distributed ?? 0 },
-      { label: "Acompanhamento", value: dashboard?.followUp ?? 0 },
-      { label: "Nutricao", value: dashboard?.nurturing ?? 0 },
-      { label: "Convertidos", value: dashboard?.converted ?? 0 },
-      { label: "Perdidos", value: dashboard?.lost ?? 0 },
-      { label: "Taxa de conversao", value: `${Math.round((dashboard?.conversionRate ?? 0) * 100)}%` }
-    ],
-    [dashboard]
-  );
 
   const loadLeadsData = useCallback(async () => {
     if (!workspaceId) {
@@ -220,31 +212,43 @@ export function LeadsPage() {
     );
   };
 
+  const topNavigation = (
+    <section className="leads-top-nav" aria-label="Navegacao de leads">
+      <Tabs<LeadsTab> value={tab} items={TABS} onChange={setTab} className="leads-page__tabs" />
+      <div className="leads-top-nav__actions">
+        <WorkspaceActionButton
+          className="leads-top-nav__btn"
+          label="Atualizar leads"
+          icon={REFRESH_ICON}
+          onClick={() => void loadLeadsData()}
+          disabled={isLoading || isSubmitting}
+        />
+        <WorkspaceActionButton
+          className="leads-top-nav__btn"
+          tone="accent"
+          label="Novo lead"
+          icon="+"
+          onClick={() => setTab("capture")}
+        />
+      </div>
+    </section>
+  );
+
   return (
-    <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Leads" pageTitle="Modulo de Leads">
+    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
       <WorkspaceFrame className="leads-page">
-        <BoardMetrics metrics={metrics} cards={dashboardMetricCards} className="leads-page__metrics workspace-view__metrics" />
+        <LoadingState
+          text="Carregando leads..."
+          animation="leads"
+          variant="frame"
+          visible={isLoading && leads.length === 0}
+        />
 
         {message ? <div className="leads-page__feedback leads-page__feedback--ok">{message}</div> : null}
         {error ? <div className="leads-page__feedback leads-page__feedback--error">{error}</div> : null}
 
-        <Section
-          title="Operacao de leads"
-          subtitle="Acompanhe captacao, qualificacao e proximos contatos com a mesma linguagem visual da timeline."
-          actions={
-            <div className="leads-page__section-actions workspace-view__actions">
-              <StatusBadge>{`${leads.length} lead${leads.length === 1 ? "" : "s"}`}</StatusBadge>
-              <Button variant="outline" onClick={() => void loadLeadsData()} disabled={isLoading || isSubmitting}>
-                Atualizar
-              </Button>
-              <Button onClick={() => setTab("capture")}>Novo lead</Button>
-            </div>
-          }
-          className="leads-page__section workspace-view__section"
-        >
+        <div className="leads-page__content">
           <div className="leads-page__stack">
-            <Tabs<LeadsTab> value={tab} items={TABS} onChange={setTab} className="leads-page__tabs" />
-
             {tab === "dashboard" ? (
               <div className="leads-page__dashboard">
                 <div className="leads-page__summary-card">
@@ -293,9 +297,7 @@ export function LeadsPage() {
                     <DataTableCell>Acoes</DataTableCell>
                   </DataTableHeader>
                   <DataTableBody>
-                    {isLoading && leads.length === 0 ? (
-                      <LoadingState text="Carregando leads..." />
-                    ) : leads.length === 0 ? (
+                    {leads.length === 0 ? (
                       <EmptyState>Nenhum lead encontrado.</EmptyState>
                     ) : (
                       leads.map((lead) => (
@@ -414,7 +416,7 @@ export function LeadsPage() {
               </div>
             ) : null}
           </div>
-        </Section>
+        </div>
       </WorkspaceFrame>
 
       {detailsId ? (

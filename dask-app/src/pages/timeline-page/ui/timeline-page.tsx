@@ -218,6 +218,12 @@ export function TimelinePage() {
       topNavigation={topNavigation}
     >
       <WorkspaceFrame className="timeline-view">
+        <LoadingState
+          text="Carregando timeline..."
+          animation="timeline"
+          variant="frame"
+          visible={isLoading && tasksWithWindow.length === 0}
+        />
         <Section
           title={rangeLabel}
           className="timeline-view__section workspace-view__section"
@@ -235,9 +241,7 @@ export function TimelinePage() {
               </DataTableHeader>
 
               <DataTableBody>
-                {isLoading && tasksWithWindow.length === 0 ? (
-                  <LoadingState text="Carregando workspace..." />
-                ) : tasksWithWindow.length === 0 ? (
+                {tasksWithWindow.length === 0 ? (
                   <EmptyState>Nenhum item encontrado com os filtros atuais.</EmptyState>
                 ) : (
                   tasksWithWindow.map(({ task, window }) => {

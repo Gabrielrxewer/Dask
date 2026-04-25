@@ -311,9 +311,10 @@ export function BoardPage() {
       topNavigation={topNavigation}
     >
       <WorkspaceFrame className="board-view">
+        <LoadingState text="Carregando quadro..." animation="board" variant="frame" visible={isLoading && !snapshot} />
         <div className="board-view__canvas workspace-view__section">
           {isLoading && !snapshot ? (
-            <LoadingState text="Carregando workspace..." />
+            null
           ) : (
             <BoardColumns
               statuses={activeStatuses}

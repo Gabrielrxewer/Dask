@@ -201,11 +201,22 @@ export function applyFieldDrop(input: {
       const insertIndex = nextCard.indexOf(target.targetFieldId);
       nextCard.splice(insertIndex >= 0 ? insertIndex : nextCard.length, 0, payload.fieldId);
     } else {
+      const originalArea = cardAreasByFieldId[payload.fieldId];
+      const originalAreaIndex = draft.card
+        .filter((fieldId) => cardAreasByFieldId[fieldId] === target.area)
+        .indexOf(payload.fieldId);
+      const positionInArea =
+        payload.origin === "card" &&
+        originalArea === target.area &&
+        originalAreaIndex >= 0 &&
+        originalAreaIndex < target.index
+          ? target.index - 1
+          : target.index;
       const insertIndex = resolveCardInsertIndex({
         orderedFieldIds: nextCard,
         cardAreasByFieldId,
         targetArea: target.area,
-        positionInArea: target.index
+        positionInArea
       });
       nextCard.splice(insertIndex, 0, payload.fieldId);
     }
@@ -228,7 +239,18 @@ export function applyFieldDrop(input: {
     const insertIndex = nextDetail.indexOf(target.targetFieldId);
     nextDetail.splice(insertIndex >= 0 ? insertIndex : nextDetail.length, 0, payload.fieldId);
   } else {
-    const insertIndex = resolveDetailInsertIndex(nextDetail, detailZonesByFieldId, target.zone, target.index);
+    const originalZone = detailZonesByFieldId[payload.fieldId] ?? "side";
+    const originalZoneIndex = draft.detail
+      .filter((fieldId) => (detailZonesByFieldId[fieldId] ?? "side") === target.zone)
+      .indexOf(payload.fieldId);
+    const zoneIndex =
+      payload.origin === "detail" &&
+      originalZone === target.zone &&
+      originalZoneIndex >= 0 &&
+      originalZoneIndex < target.index
+        ? target.index - 1
+        : target.index;
+    const insertIndex = resolveDetailInsertIndex(nextDetail, detailZonesByFieldId, target.zone, zoneIndex);
     nextDetail.splice(insertIndex, 0, payload.fieldId);
   }
 

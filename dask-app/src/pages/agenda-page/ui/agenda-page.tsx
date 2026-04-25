@@ -631,14 +631,18 @@ export function AgendaPage() {
       topNavigation={topNavigation}
     >
       <WorkspaceFrame className="agenda-view timeline-view">
+        <LoadingState
+          text="Carregando agenda..."
+          animation="agenda"
+          variant="frame"
+          visible={isLoading || isCalendarFeedLoading}
+        />
         <Section
           title={sectionTitle}
           subtitle={sectionSubtitle}
           className="agenda-view__section timeline-view__section"
         >
-          {isLoading || isCalendarFeedLoading ? (
-            <LoadingState text="Carregando agenda..." />
-          ) : filteredTasks.length === 0 ? (
+          {filteredTasks.length === 0 ? (
             <EmptyState>Nao ha atividades para exibir com os filtros atuais.</EmptyState>
           ) : (
             <div className="agenda-view__surface">

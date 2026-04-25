@@ -21,16 +21,16 @@ import {
   DataTableHeader,
   DataTableRow,
   FormField,
-  Section,
+  LoadingState,
   Select,
   StatusBadge,
   Tabs,
   TextInput,
   Textarea,
+  WorkspaceActionButton,
   WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import "./marketing-page.css";
 
 type MarketingTab = "overview" | "campaign-builder" | "ai-studio" | "audience" | "automations" | "templates" | "calendar";
@@ -69,6 +69,13 @@ const STATUS_OPTIONS: Array<MarketingCampaignStatus | "ALL"> = [
   "ARCHIVED"
 ];
 
+const REFRESH_ICON = (
+  <svg viewBox="0 0 24 24" fill="none">
+    <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M20 4v5h-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const INITIAL_SEGMENT_FILTERS = JSON.stringify(
   {
     logic: "AND",
@@ -99,10 +106,6 @@ function toLocalDate(value: string | null | undefined): string {
   }
 
   return date.toLocaleString("pt-BR");
-}
-
-function toRate(value: number): string {
-  return `${Math.round(value * 100)}%`;
 }
 
 function statusTone(
@@ -583,49 +586,42 @@ export function MarketingPage() {
     [campaigns]
   );
 
-  const dashboardMetricCards = useMemo(
-    () => [
-      { label: "Campanhas ativas", value: dashboard?.activeCampaigns ?? 0 },
-      { label: "Campanhas agendadas", value: dashboard?.scheduledCampaigns ?? 0 },
-      { label: "Open rate", value: toRate(dashboard?.openRate ?? 0) },
-      { label: "Click rate", value: toRate(dashboard?.clickRate ?? 0) },
-      { label: "Conversao influenciada", value: toRate(dashboard?.conversionRate ?? 0) },
-      { label: "Receita influenciada", value: `R$ ${(dashboard?.influencedRevenue ?? 0).toFixed(2)}` }
-    ],
-    [dashboard]
-  );
-
-  const activeTabLabel = useMemo(
-    () => MARKETING_TABS.find((item) => item.id === tab)?.label ?? "Overview",
-    [tab]
+  const topNavigation = (
+    <section className="marketing-top-nav" aria-label="Navegacao de marketing">
+      <Tabs<MarketingTab> value={tab} items={MARKETING_TABS} onChange={setTab} className="marketing-page__tabs" />
+      <div className="marketing-top-nav__actions">
+        <WorkspaceActionButton
+          className="marketing-top-nav__btn"
+          label="Atualizar marketing"
+          icon={REFRESH_ICON}
+          onClick={() => void loadData()}
+          disabled={isLoading || isSubmitting}
+        />
+        <WorkspaceActionButton
+          className="marketing-top-nav__btn"
+          tone="accent"
+          label="Nova campanha"
+          icon="+"
+          onClick={() => setTab("campaign-builder")}
+        />
+      </div>
+    </section>
   );
 
   return (
-    <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Marketing" pageTitle="Marketing Operations">
+    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
       <WorkspaceFrame className="marketing-page">
-        <BoardMetrics metrics={metrics} cards={dashboardMetricCards} className="marketing-page__metrics workspace-view__metrics" />
+        <LoadingState
+          text="Carregando marketing..."
+          animation="marketing"
+          variant="frame"
+          visible={isLoading && !dashboard}
+        />
 
-        <Section
-          title="Marketing operations"
-          subtitle="Do lead ao faturamento no mesmo contexto operacional, no mesmo visual da timeline."
-          actions={
-            <div className="marketing-page__section-actions workspace-view__actions">
-              <Button variant="outline" onClick={() => void loadData()} disabled={isLoading || isSubmitting}>
-                Atualizar
-              </Button>
-              <Button onClick={() => setTab("campaign-builder")}>Nova campanha</Button>
-              <StatusBadge>{activeTabLabel}</StatusBadge>
-            </div>
-          }
-          className="marketing-page__section workspace-view__section"
-        >
+        <div className="marketing-page__content">
           <div className="marketing-page__stack">
             {message ? <div className="marketing-page__feedback marketing-page__feedback--ok">{message}</div> : null}
             {error ? <div className="marketing-page__feedback marketing-page__feedback--error">{error}</div> : null}
-
-            <div className="marketing-page__tabs-shell">
-              <Tabs<MarketingTab> value={tab} items={MARKETING_TABS} onChange={setTab} className="marketing-page__tabs" />
-            </div>
 
             {tab === "overview" ? (
               <div className="marketing-page__panel marketing-page__panel--overview">
@@ -1270,7 +1266,7 @@ export function MarketingPage() {
               </div>
             ) : null}
           </div>
-        </Section>
+        </div>
       </WorkspaceFrame>
     </AppShell>
   );

@@ -129,6 +129,54 @@ describe("work-item layout editor drop model", () => {
     expect(result.cardAreasByFieldId.summary).toBe("meta");
   });
 
+  it("reordena para baixo dentro da mesma area do card sem pular o alvo", () => {
+    const result = applyFieldDrop({
+      draft: {
+        card: ["sys:title", "summary", "reviewer", "due"],
+        detail: []
+      },
+      payload: {
+        fieldId: "summary",
+        origin: "card"
+      },
+      target: {
+        surface: "card",
+        kind: "empty-slot",
+        area: "summary",
+        index: 2
+      },
+      allowedFieldIds,
+      cardAreasByFieldId: { ...cardAreasByFieldId },
+      detailZonesByFieldId: { ...detailZonesByFieldId }
+    });
+
+    expect(result.layout.card).toEqual(["sys:title", "reviewer", "summary", "due"]);
+  });
+
+  it("reordena para baixo dentro da mesma zona do formulario sem pular campos", () => {
+    const result = applyFieldDrop({
+      draft: {
+        card: [],
+        detail: ["sys:title", "summary", "reviewer", "due"]
+      },
+      payload: {
+        fieldId: "reviewer",
+        origin: "detail"
+      },
+      target: {
+        surface: "detail",
+        kind: "insert",
+        zone: "side",
+        index: 2
+      },
+      allowedFieldIds,
+      cardAreasByFieldId: { ...cardAreasByFieldId },
+      detailZonesByFieldId: { ...detailZonesByFieldId }
+    });
+
+    expect(result.layout.detail).toEqual(["sys:title", "summary", "due", "reviewer"]);
+  });
+
   it("persiste o layout final com a mesma ordem e area mostradas na preview", () => {
     const finalLayout = applyFieldDrop({
       draft: {

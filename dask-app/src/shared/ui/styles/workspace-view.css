@@ -8,9 +8,11 @@
 }
 
 .workspace-frame {
+  position: relative;
   flex: 1 1 auto;
   height: 100%;
   gap: 0;
+  overflow: hidden;
 }
 
 .workspace:has(.workspace-view) {

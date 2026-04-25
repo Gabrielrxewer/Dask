@@ -23,16 +23,15 @@ import {
   FormField,
   LoadingState,
   ModalShell,
-  Section,
   Select,
   StatusBadge,
   Tabs,
   TextInput,
   Textarea,
+  WorkspaceActionButton,
   WorkspaceFrame
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { BoardMetrics } from "@/widgets/board-metrics";
 import "./fiscal-page.css";
 
 type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "wizard" | "settings";
@@ -77,32 +76,12 @@ const STATUS_LABELS: Record<string, string> = {
   ISSUED: "Emitida"
 };
 
-const SECTION_COPY: Record<FiscalTab, { title: string; subtitle: string }> = {
-  dashboard: {
-    title: "Painel fiscal",
-    subtitle: "Acompanhe emissao, recebimento e pendencias com a mesma leitura visual da timeline."
-  },
-  issued: {
-    title: "Documentos emitidos",
-    subtitle: "Consulte referencias, status e acoes operacionais da fila de emissao."
-  },
-  received: {
-    title: "Documentos recebidos",
-    subtitle: "Sincronize entradas e acompanhe XMLs, PDFs e manifestacoes."
-  },
-  stripe: {
-    title: "Fila Stripe",
-    subtitle: "Gerencie drafts gerados a partir de eventos financeiros aguardando emissao."
-  },
-  wizard: {
-    title: "Wizard de emissao",
-    subtitle: "Monte uma emissao manual com empresa, cliente e item em um fluxo unico."
-  },
-  settings: {
-    title: "Configuracao fiscal",
-    subtitle: "Cadastre empresas, tokens e valide o ambiente de emissao."
-  }
-};
+const REFRESH_ICON = (
+  <svg viewBox="0 0 24 24" fill="none">
+    <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M20 4v5h-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 function mapTone(status: string): "default" | "success" | "warning" {
   if (["AUTHORIZED", "ISSUED", "SYNCED", "MANIFESTED"].includes(status)) {
@@ -318,48 +297,46 @@ export function FiscalPage() {
     }, "Documento criado e enviado para emissao.");
   };
 
-  const authorizedToday = documents.filter((item) => item.status === "AUTHORIZED").length;
-  const activeSection = SECTION_COPY[tab];
-  const fiscalMetricCards = [
-    { label: "Emitidas hoje", value: dashboard?.counters.issuedToday ?? 0 },
-    { label: "Pendentes", value: dashboard?.counters.pending ?? 0 },
-    { label: "Recebidas", value: dashboard?.counters.received ?? 0 },
-    { label: "Rejeitadas", value: dashboard?.counters.rejected ?? 0 },
-    { label: "Empresas fiscais", value: companies.length },
-    { label: "Autorizadas", value: authorizedToday }
-  ];
+  const topNavigation = (
+    <section className="fiscal-top-nav" aria-label="Navegacao fiscal">
+      <Tabs<FiscalTab> value={tab} items={TAB_ITEMS} onChange={setTab} className="fiscal-view__tabs" />
+      <div className="fiscal-top-nav__actions">
+        <WorkspaceActionButton
+          className="fiscal-top-nav__btn"
+          label="Atualizar fiscal"
+          icon={REFRESH_ICON}
+          onClick={() => void loadAll()}
+          disabled={isLoading || isSubmitting}
+        />
+        <WorkspaceActionButton
+          className="fiscal-top-nav__btn"
+          tone="accent"
+          label="Nova emissao"
+          icon="+"
+          onClick={() => setTab("wizard")}
+          disabled={isSubmitting}
+        />
+      </div>
+    </section>
+  );
 
   return (
-    <AppShell metrics={metrics} hideSidebarBrandMark pageLabel="Fiscal" pageTitle="Fiscal">
+    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
       <WorkspaceFrame className="fiscal-view">
-        <BoardMetrics metrics={metrics} cards={fiscalMetricCards} className="fiscal-view__metrics workspace-view__metrics" />
+        <LoadingState
+          text="Carregando painel fiscal..."
+          animation="fiscal"
+          variant="frame"
+          visible={isLoading && !dashboard}
+        />
 
         {message ? <div className="fiscal-view__feedback fiscal-view__feedback--ok">{message}</div> : null}
         {error ? <div className="fiscal-view__feedback fiscal-view__feedback--error">{error}</div> : null}
 
-        <Section
-          title={activeSection.title}
-          subtitle={activeSection.subtitle}
-          actions={
-            <div className="fiscal-view__header-actions workspace-view__actions">
-              <StatusBadge>{TAB_ITEMS.find((item) => item.id === tab)?.label ?? "Fiscal"}</StatusBadge>
-              <Button variant="outline" onClick={() => void loadAll()} disabled={isLoading || isSubmitting}>
-                Atualizar
-              </Button>
-              <Button onClick={() => setTab("wizard")} disabled={isSubmitting}>
-                Nova emissao
-              </Button>
-            </div>
-          }
-          className="fiscal-view__section workspace-view__section"
-        >
+        <div className="fiscal-view__content">
           <div className="fiscal-view__stack">
-            <Tabs<FiscalTab> value={tab} items={TAB_ITEMS} onChange={setTab} className="fiscal-view__tabs" />
-
             {tab === "dashboard" ? (
-              isLoading && !dashboard ? (
-                <LoadingState text="Carregando painel fiscal..." />
-              ) : (
+              dashboard ? (
                 <div className="fiscal-view__summary-grid">
                   <article className="fiscal-view__summary-card">
                     <span className="fiscal-view__summary-label">Em revisao</span>
@@ -377,7 +354,7 @@ export function FiscalPage() {
                     <p>Configuracoes fiscais disponiveis para emissao e sincronizacao.</p>
                   </article>
                 </div>
-              )
+              ) : null
             ) : null}
 
             {tab === "issued" ? (
@@ -395,9 +372,7 @@ export function FiscalPage() {
                 <DataTableCell>Acoes</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {isLoading && documents.length === 0 ? (
-                  <LoadingState text="Carregando documentos emitidos..." />
-                ) : documents.length === 0 ? (
+                {documents.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhum documento encontrado.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -468,9 +443,7 @@ export function FiscalPage() {
                 <DataTableCell>Arquivos</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {isLoading && received.length === 0 ? (
-                  <LoadingState text="Carregando recebidas..." />
-                ) : received.length === 0 ? (
+                {received.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhuma nota recebida encontrada.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -511,9 +484,7 @@ export function FiscalPage() {
                 <DataTableCell>Acoes</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {isLoading && drafts.length === 0 ? (
-                  <LoadingState text="Carregando drafts Stripe..." />
-                ) : drafts.length === 0 ? (
+                {drafts.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhum draft Stripe pendente.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -620,9 +591,7 @@ export function FiscalPage() {
                 <DataTableCell>Validar</DataTableCell>
               </DataTableHeader>
               <DataTableBody>
-                {isLoading && companies.length === 0 ? (
-                  <LoadingState text="Carregando empresas fiscais..." />
-                ) : companies.length === 0 ? (
+                {companies.length === 0 ? (
                   <DataTableRow>
                     <DataTableCell>Nenhuma empresa fiscal cadastrada.</DataTableCell>
                     <DataTableCell>-</DataTableCell>
@@ -652,7 +621,7 @@ export function FiscalPage() {
               <EmptyState>Selecione um workspace para acessar o modulo fiscal.</EmptyState>
             ) : null}
           </div>
-        </Section>
+        </div>
       </WorkspaceFrame>
 
       {detailDocumentId ? (

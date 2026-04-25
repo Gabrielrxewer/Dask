@@ -1027,10 +1027,15 @@ export function AutomationsPage() {
       metrics={metrics}
       noPageScroll
       hideSidebarBrandMark
-      pageTitle="Automações"
-      pageLabel="Flow Editor"
+      hidePageHeader
     >
       <WorkspaceFrame className="flow-editor">
+        <LoadingState
+          text="Carregando automações..."
+          animation="automation"
+          variant="frame"
+          visible={pageLoading}
+        />
         {/* ── Sidebar ── */}
         <aside className="flow-sidebar">
           <div className="flow-sidebar__header">
@@ -1055,11 +1060,7 @@ export function AutomationsPage() {
           </button>
 
           <div className="flow-sidebar__list">
-            {pageLoading ? (
-              <div className="flow-sidebar__loading">
-                <LoadingState text="Carregando..." />
-              </div>
-            ) : rules.length === 0 ? (
+            {rules.length === 0 ? (
               <div className="flow-sidebar__empty">
                 Nenhuma automação. Crie a primeira!
               </div>

@@ -1,13 +1,28 @@
 .fiscal-view {
-  --fiscal-text: #071f35;
-  --fiscal-text-soft: #1f405e;
-  --fiscal-text-muted: #365b7a;
-  --fiscal-line: #b8cada;
-  --fiscal-line-strong: #83afd5;
-  --fiscal-surface: #ffffff;
-  --fiscal-surface-soft: #f8fafc;
-  --fiscal-accent: #075f9d;
-  --fiscal-accent-strong: #064f85;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  gap: 0;
+  --fiscal-text: var(--text-strong);
+  --fiscal-text-soft: var(--text-soft);
+  --fiscal-text-muted: var(--text-muted);
+  --fiscal-line: color-mix(in oklab, var(--line) 90%, var(--accent));
+  --fiscal-line-strong: color-mix(in oklab, var(--line-contrast) 76%, var(--accent));
+  --fiscal-surface: var(--surface-overlay);
+  --fiscal-surface-soft: var(--surface-section-content);
+  --fiscal-field: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 92%, white) 0%,
+    color-mix(in oklab, var(--surface-section-content) 96%, var(--surface-1)) 100%
+  );
+  --fiscal-accent: color-mix(in oklab, var(--accent) 84%, #30d5cd);
+  --fiscal-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, var(--text-strong));
+  --fiscal-shadow: 0 12px 28px color-mix(in oklab, var(--text-strong) 6%, transparent);
+  --fiscal-shadow-hover: 0 16px 34px color-mix(in oklab, var(--text-strong) 9%, transparent);
   --workspace-view-text: var(--fiscal-text);
   --workspace-view-text-soft: var(--fiscal-text-soft);
   --workspace-view-text-muted: var(--fiscal-text-muted);
@@ -17,8 +32,10 @@
   --workspace-view-surface-soft: var(--fiscal-surface-soft);
   --workspace-view-accent: var(--fiscal-accent);
   --workspace-view-accent-strong: var(--fiscal-accent-strong);
-  flex: 1 1 auto;
-  min-height: 0;
+  --workspace-view-frame-border: transparent;
+  --workspace-view-panel-border: transparent;
+  --workspace-view-card-border: transparent;
+  color: var(--fiscal-text);
 }
 
 .workspace__content > .fiscal-view {
@@ -26,51 +43,127 @@
   min-height: 0;
 }
 
+.fiscal-view__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
 .fiscal-view__stack {
   display: grid;
   gap: 12px;
 }
 
-.fiscal-view__metrics {
-  --workspace-view-text: var(--text-strong);
-  --workspace-view-text-soft: var(--text-soft);
-  --workspace-view-text-muted: var(--text-muted);
-  --workspace-view-line: var(--line);
-  --workspace-view-line-strong: var(--line-contrast);
-  --workspace-view-surface: var(--surface-overlay);
-  --workspace-view-surface-soft: var(--surface-section-content);
-  --workspace-view-accent: var(--accent);
-  --workspace-view-accent-strong: var(--accent-strong);
-  --workspace-view-card-border: var(--line);
+.fiscal-top-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 0;
 }
 
-.fiscal-view__header-actions {
+.fiscal-top-nav__actions {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.workspace__top-nav:has(.fiscal-top-nav) {
+  position: relative;
+  z-index: 2;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.app-theme:not([data-theme="dark"]) .fiscal-top-nav {
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
+}
+
+.app-theme[data-theme="dark"] .fiscal-top-nav {
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(64, 90, 116, 0.82);
+}
+
+.fiscal-view__tabs.shared-tabs {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fiscal-view__tabs.shared-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.fiscal-view__tabs .shared-tabs__item {
+  flex: 1 0 max-content;
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--fiscal-text-muted);
+  font-size: 0.69rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: none;
+  position: relative;
+}
+
+.fiscal-view__tabs .shared-tabs__item:hover {
+  border-color: color-mix(in oklab, var(--fiscal-line) 72%, transparent);
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+  color: var(--fiscal-text-soft);
+  box-shadow: none;
+  transform: none;
+}
+
+.fiscal-view__tabs .shared-tabs__item--active {
+  border-color: transparent;
+  background: transparent;
+  color: var(--fiscal-text);
+  box-shadow: none;
+  font-weight: 860;
+}
+
+.fiscal-view__tabs .shared-tabs__item--active::before {
+  content: "";
+  position: absolute;
+  inset: auto 8px 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, var(--accent) 0%, #30d5cd 100%);
 }
 
 .fiscal-view__feedback {
-  border: 1px solid #d8e4ee;
+  margin: 10px 10px 0;
+  border: 1px solid var(--fiscal-line);
   border-radius: var(--radius-xs);
   padding: 10px 12px;
   font-size: var(--font-size-sm);
-  font-weight: 700;
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  font-weight: 760;
+  background: var(--fiscal-surface);
+  box-shadow: var(--fiscal-shadow);
 }
 
 .fiscal-view__feedback--ok {
-  border-color: color-mix(in oklab, var(--success) 32%, #d8e4ee);
-  background: color-mix(in oklab, var(--success-soft) 88%, #ffffff);
-  color: var(--success);
+  border-color: color-mix(in oklab, var(--success) 30%, var(--fiscal-line));
+  background: color-mix(in oklab, var(--success-soft) 76%, var(--surface-1));
+  color: color-mix(in oklab, var(--success) 84%, var(--text-strong));
 }
 
 .fiscal-view__feedback--error {
-  border-color: color-mix(in oklab, var(--danger) 32%, #d8e4ee);
-  background: color-mix(in oklab, var(--danger-soft) 88%, #ffffff);
-  color: var(--danger);
-}
-
-.fiscal-view__tabs {
-  padding: 2px;
+  border-color: color-mix(in oklab, var(--danger) 32%, var(--fiscal-line));
+  background: color-mix(in oklab, var(--danger-soft) 78%, var(--surface-1));
+  color: color-mix(in oklab, var(--danger) 86%, var(--text-strong));
 }
 
 .fiscal-view__summary-grid,
@@ -81,26 +174,36 @@
 }
 
 .fiscal-view__summary-card {
-  border: 1px solid #d8e4ee;
+  border: 1px solid color-mix(in oklab, var(--fiscal-line) 86%, transparent);
   border-radius: var(--radius-xs);
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 18%, transparent) 0%, transparent 42%),
+    var(--fiscal-field);
+  box-shadow: var(--fiscal-shadow);
   padding: 14px;
   display: grid;
-  gap: 6px;
+  gap: 7px;
+  align-content: start;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.fiscal-view__summary-card:hover {
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--fiscal-line));
+  box-shadow: var(--fiscal-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .fiscal-view__summary-label {
-  color: var(--fiscal-text-soft);
-  font-size: var(--font-size-xs);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  color: var(--fiscal-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 860;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .fiscal-view__summary-card strong {
   color: var(--fiscal-text);
-  font-size: 1.5rem;
+  font-size: 1.42rem;
   font-weight: 900;
   line-height: 1;
 }
@@ -109,7 +212,7 @@
   margin: 0;
   color: var(--fiscal-text-soft);
   font-size: var(--font-size-sm);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .fiscal-view__field {
@@ -120,24 +223,30 @@
   color: var(--fiscal-text-soft);
   font-size: var(--font-size-xs);
   font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .fiscal-view__field .shared-input,
 .fiscal-view__field .shared-select,
 .fiscal-view__field .shared-textarea {
-  border-color: #c8d9e7;
-  background: #ffffff;
+  border-color: color-mix(in oklab, var(--fiscal-line) 82%, transparent);
+  background: var(--fiscal-field);
   color: var(--fiscal-text);
-  box-shadow: 0 6px 16px rgba(12, 35, 63, 0.035);
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--text-strong) 5%, transparent);
+}
+
+.fiscal-view__field .shared-input:focus,
+.fiscal-view__field .shared-select:focus,
+.fiscal-view__field .shared-textarea:focus {
+  border-color: color-mix(in oklab, var(--accent) 38%, var(--fiscal-line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
 .fiscal-view__field .shared-textarea {
   min-height: 120px;
 }
 
-.fiscal-view__row-actions {
+.fiscal-view__row-actions,
+.fiscal-page__row-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -145,10 +254,10 @@
 }
 
 .fiscal-view__table {
-  border: 1px solid #d8e4ee;
+  border: 1px solid color-mix(in oklab, var(--fiscal-line) 86%, transparent);
   border-radius: var(--radius-xs);
   background: var(--fiscal-surface);
-  box-shadow: 0 8px 18px rgba(12, 35, 63, 0.035);
+  box-shadow: var(--fiscal-shadow);
   overflow: hidden;
 }
 
@@ -159,23 +268,24 @@
 
 .fiscal-view__table .shared-data-table__header {
   min-height: 40px;
-  border-bottom-color: #d8e4ee;
-  background: #eef4fb;
-  color: var(--fiscal-text-soft);
+  border-bottom-color: color-mix(in oklab, var(--fiscal-line) 88%, transparent);
+  background: var(--surface-table-header);
+  color: var(--fiscal-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-weight: 860;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .fiscal-view__table .shared-data-table__row {
   min-height: 62px;
-  border-bottom-color: #d8e4ee;
+  border-bottom-color: color-mix(in oklab, var(--fiscal-line) 76%, transparent);
   color: var(--fiscal-text);
-  background: var(--fiscal-surface);
+  background: color-mix(in oklab, var(--surface-1) 86%, transparent);
 }
 
 .fiscal-view__table .shared-data-table__row:hover {
-  background: #eef7ff;
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-1));
 }
 
 .fiscal-view__table .shared-data-table__row:hover .shared-data-table__cell {
@@ -183,14 +293,14 @@
 }
 
 .fiscal-view__table .shared-status-badge {
-  border-color: #d3e0eb;
-  background: #f7fbff;
+  border-color: color-mix(in oklab, var(--fiscal-line) 78%, transparent);
+  background: var(--surface-chip);
   color: var(--fiscal-text-muted);
 }
 
 .fiscal-view__table a {
   color: var(--fiscal-accent-strong);
-  font-weight: 700;
+  font-weight: 760;
   text-decoration: none;
 }
 
@@ -218,12 +328,12 @@
 }
 
 .fiscal-view__modal-header button {
-  border: 1px solid #d8e4ee;
-  background: #f3f8fd;
+  border: 1px solid color-mix(in oklab, var(--fiscal-line) 76%, transparent);
+  background: var(--control-surface);
   color: var(--fiscal-text-soft);
-  border-radius: 999px;
-  width: 28px;
-  height: 28px;
+  border-radius: 10px;
+  width: 30px;
+  height: 30px;
   cursor: pointer;
 }
 
@@ -237,7 +347,7 @@
   margin: 10px 0 0;
   color: var(--fiscal-text);
   font-size: var(--font-size-sm);
-  font-weight: 800;
+  font-weight: 860;
 }
 
 .fiscal-view__modal-content p,
@@ -248,21 +358,56 @@
   font-weight: 600;
 }
 
+.app-theme[data-theme="dark"] .fiscal-view {
+  --fiscal-line: color-mix(in oklab, var(--line) 88%, transparent);
+  --fiscal-line-strong: color-mix(in oklab, var(--line-strong) 72%, var(--accent));
+  --fiscal-field: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-elevated) 92%, var(--panel)) 0%,
+    color-mix(in oklab, var(--control-surface) 84%, var(--panel)) 100%
+  );
+  --fiscal-shadow: var(--shadow-1);
+  --fiscal-shadow-hover: 0 18px 34px color-mix(in oklab, black 32%, transparent);
+}
+
+.app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+}
+
+.app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item:hover {
+  border-color: rgba(72, 101, 131, 0.72) !important;
+  background: rgba(72, 148, 255, 0.08) !important;
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item--active {
+  color: var(--text-strong) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
 .app-theme[data-theme="dark"] .fiscal-view__feedback,
 .app-theme[data-theme="dark"] .fiscal-view__summary-card,
-.app-theme[data-theme="dark"] .fiscal-view__table {
+.app-theme[data-theme="dark"] .fiscal-view__table,
+.app-theme[data-theme="dark"] .fiscal-view__modal-header button,
+.app-theme[data-theme="dark"] .fiscal-view__field .shared-input,
+.app-theme[data-theme="dark"] .fiscal-view__field .shared-select,
+.app-theme[data-theme="dark"] .fiscal-view__field .shared-textarea {
   border-color: var(--line) !important;
   background: var(--surface-raised) !important;
+  color: var(--text-strong) !important;
   box-shadow: var(--shadow-1);
 }
 
-.app-theme[data-theme="dark"] .fiscal-view__field .shared-input,
-.app-theme[data-theme="dark"] .fiscal-view__field .shared-select,
-.app-theme[data-theme="dark"] .fiscal-view__field .shared-textarea,
-.app-theme[data-theme="dark"] .fiscal-view__modal-header button {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-strong) !important;
+.app-theme[data-theme="dark"] .fiscal-view__feedback--ok {
+  background: color-mix(in oklab, var(--success) 16%, var(--panel)) !important;
+  color: color-mix(in oklab, var(--success) 72%, var(--text-strong)) !important;
+}
+
+.app-theme[data-theme="dark"] .fiscal-view__feedback--error {
+  background: color-mix(in oklab, var(--danger) 16%, var(--panel)) !important;
+  color: color-mix(in oklab, var(--danger) 72%, var(--text-strong)) !important;
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__header {
@@ -300,8 +445,16 @@
     grid-template-columns: 1fr;
   }
 
-  .fiscal-view__header-actions {
-    width: 100%;
-    justify-content: space-between;
+  .fiscal-top-nav {
+    flex-wrap: wrap;
+  }
+
+  .fiscal-top-nav__actions {
+    margin-left: 0;
+  }
+
+  .fiscal-view__tabs .shared-tabs__item {
+    flex: 0 0 auto;
+    padding-inline: 12px;
   }
 }

@@ -120,8 +120,12 @@ export interface WorkspaceDocumentMetadata {
   proposalDate?: string;
   proposalValidity?: string;
   ownerName?: string;
+  status?: string;
+  publicToken?: string;
   [key: string]: unknown;
 }
+
+export type DocumentLinkedEntityType = "work_item" | "customer" | "proposal" | "contract";
 
 export interface WorkspaceDocument {
   id: string;
@@ -129,6 +133,8 @@ export interface WorkspaceDocument {
   title: string;
   content: string;
   kind: DocumentKind;
+  linkedEntityType?: DocumentLinkedEntityType;
+  linkedEntityId?: string;
   tags: string[];
   metadata: WorkspaceDocumentMetadata;
   position: number;
@@ -141,8 +147,57 @@ export interface WorkspaceDocument {
 export interface WorkItemLinkedDocument {
   id: string;
   title: string;
+  kind?: DocumentKind;
+  status?: string;
+  createdAt?: string;
   updatedAt: string;
   linkedAt?: string;
+}
+
+export type CustomerStatus = "prospect" | "active" | "inactive" | "archived";
+
+export interface CustomerAddress {
+  street?: string;
+  number?: string;
+  complement?: string;
+  district?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+}
+
+export interface Customer {
+  id: string;
+  workspaceId: string;
+  name: string;
+  tradeName?: string;
+  legalName?: string;
+  document?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  logoUrl?: string;
+  address?: CustomerAddress;
+  status: CustomerStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCustomerInput {
+  name: string;
+  tradeName?: string | null;
+  legalName?: string | null;
+  document?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  logoUrl?: string | null;
+  address?: CustomerAddress | null;
+  status?: CustomerStatus;
+  notes?: string | null;
+  sourceWorkItemId?: string | null;
 }
 
 export interface WorkspaceSummary {
@@ -155,7 +210,7 @@ export interface WorkspaceSummary {
   role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 }
 
-export type WorkspaceTemplateKey = "software_delivery" | "product_discovery" | "operations_kanban";
+export type WorkspaceTemplateKey = "software_delivery" | "product_discovery" | "operations_kanban" | "commercial_crm";
 
 export interface WorkspaceTemplateOption {
   key: WorkspaceTemplateKey;
@@ -178,6 +233,8 @@ export interface BoardTemplatePerspective {
   compactCards?: boolean;
   visibleBoardColumnSlugs?: string[];
   visibleBoardColumnIds?: string[];
+  createTaskColumnSlugs?: string[];
+  createTaskColumnIds?: string[];
   allowedTaskTypes?: string[];
 }
 
@@ -380,6 +437,9 @@ export interface ApiCustomField {
   slug: string;
   type: string;
   description?: string | null;
+  variableKey?: string | null;
+  variableLabel?: string | null;
+  variableDescription?: string | null;
   source?: "system" | "template" | "custom";
   required: boolean;
   isSystem?: boolean;
@@ -491,6 +551,9 @@ export interface CreateCustomFieldInput {
   name: string;
   type: CustomFieldType;
   description?: string;
+  variableKey?: string | null;
+  variableLabel?: string | null;
+  variableDescription?: string | null;
   required?: boolean;
   isEditable?: boolean;
   isRemovable?: boolean;
@@ -504,6 +567,9 @@ export interface UpdateCustomFieldInput {
   name?: string;
   type?: CustomFieldType;
   description?: string;
+  variableKey?: string | null;
+  variableLabel?: string | null;
+  variableDescription?: string | null;
   required?: boolean;
   isEditable?: boolean;
   isRemovable?: boolean;
@@ -651,14 +717,35 @@ export interface WorkspaceService {
   ) => Promise<AutomationRule>;
   deleteAutomationRule: (workspaceSlug: string, ruleId: string) => Promise<void>;
   listWorkspaceDocuments: (workspaceSlug: string) => Promise<WorkspaceDocument[]>;
+  listCustomers: (workspaceSlug: string, input?: { search?: string; status?: CustomerStatus }) => Promise<Customer[]>;
+  createCustomer: (workspaceSlug: string, input: CreateCustomerInput) => Promise<Customer>;
+  updateCustomer: (workspaceSlug: string, customerId: string, input: Partial<CreateCustomerInput>) => Promise<Customer>;
   createWorkspaceDocument: (
     workspaceSlug: string,
-    input: { title: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }
+    input: {
+      title: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType;
+      linkedEntityId?: string;
+      tags?: string[];
+      metadata?: WorkspaceDocumentMetadata;
+      position?: number;
+    }
   ) => Promise<WorkspaceDocument>;
   updateWorkspaceDocument: (
     workspaceSlug: string,
     documentId: string,
-    input: { title?: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }
+    input: {
+      title?: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType | null;
+      linkedEntityId?: string | null;
+      tags?: string[];
+      metadata?: WorkspaceDocumentMetadata;
+      position?: number;
+    }
   ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (workspaceSlug: string, documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (workspaceSlug: string, itemId: string) => Promise<WorkItemLinkedDocument[]>;

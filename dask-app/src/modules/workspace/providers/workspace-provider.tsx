@@ -17,7 +17,11 @@ import type {
   CreateAiAgentInput,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
+  DocumentLinkedEntityType,
   DocumentKind,
+  Customer,
+  CustomerStatus,
+  CreateCustomerInput,
   CreateAutomationRuleInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
@@ -114,10 +118,31 @@ interface WorkspaceContextValue {
     input: RunDocumentationAssistantInput
   ) => Promise<RunDocumentationAssistantResult>;
   listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
-  createWorkspaceDocument: (input: { title: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }) => Promise<WorkspaceDocument>;
+  listCustomers: (input?: { search?: string; status?: CustomerStatus }) => Promise<Customer[]>;
+  createCustomer: (input: CreateCustomerInput) => Promise<Customer>;
+  updateCustomer: (customerId: string, input: Partial<CreateCustomerInput>) => Promise<Customer>;
+  createWorkspaceDocument: (input: {
+    title: string;
+    content?: string;
+    kind?: DocumentKind;
+    linkedEntityType?: DocumentLinkedEntityType;
+    linkedEntityId?: string;
+    tags?: string[];
+    metadata?: WorkspaceDocumentMetadata;
+    position?: number;
+  }) => Promise<WorkspaceDocument>;
   updateWorkspaceDocument: (
     documentId: string,
-    input: { title?: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }
+    input: {
+      title?: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType | null;
+      linkedEntityId?: string | null;
+      tags?: string[];
+      metadata?: WorkspaceDocumentMetadata;
+      position?: number;
+    }
   ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
@@ -586,8 +611,47 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     return workspaceService.listWorkspaceDocuments(workspaceSlug);
   }, [workspaceSlug]);
 
+  const listCustomers = useCallback(
+    async (input?: { search?: string; status?: CustomerStatus }): Promise<Customer[]> => {
+      if (!workspaceSlug) {
+        return [];
+      }
+      return workspaceService.listCustomers(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const createCustomer = useCallback(
+    async (input: CreateCustomerInput): Promise<Customer> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.createCustomer(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const updateCustomer = useCallback(
+    async (customerId: string, input: Partial<CreateCustomerInput>): Promise<Customer> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.updateCustomer(workspaceSlug, customerId, input);
+    },
+    [workspaceSlug]
+  );
+
   const createWorkspaceDocument = useCallback(
-    async (input: { title: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }): Promise<WorkspaceDocument> => {
+    async (input: {
+      title: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType;
+      linkedEntityId?: string;
+      tags?: string[];
+      metadata?: WorkspaceDocumentMetadata;
+      position?: number;
+    }): Promise<WorkspaceDocument> => {
       if (!workspaceSlug) {
         throw new Error("No workspace");
       }
@@ -597,7 +661,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 
   const updateWorkspaceDocument = useCallback(
-    async (documentId: string, input: { title?: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }): Promise<WorkspaceDocument> => {
+    async (documentId: string, input: {
+      title?: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType | null;
+      linkedEntityId?: string | null;
+      tags?: string[];
+      metadata?: WorkspaceDocumentMetadata;
+      position?: number;
+    }): Promise<WorkspaceDocument> => {
       if (!workspaceSlug) {
         throw new Error("No workspace");
       }
@@ -699,6 +772,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       runAiRiskAnalysis,
       runDocumentationAssistant,
       listWorkspaceDocuments,
+      listCustomers,
+      createCustomer,
+      updateCustomer,
       createWorkspaceDocument,
       updateWorkspaceDocument,
       deleteWorkspaceDocument,
@@ -758,6 +834,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       runAiRiskAnalysis,
       runDocumentationAssistant,
       listWorkspaceDocuments,
+      listCustomers,
+      createCustomer,
+      updateCustomer,
       createWorkspaceDocument,
       updateWorkspaceDocument,
       deleteWorkspaceDocument,

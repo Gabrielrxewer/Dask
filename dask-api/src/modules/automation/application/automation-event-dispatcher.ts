@@ -6,7 +6,14 @@ const automationTriggerEvents = [
   DomainEventNames.ItemCreated,
   DomainEventNames.ItemUpdated,
   DomainEventNames.ItemMoved,
-  'item.state.changed'
+  DomainEventNames.ItemStateChanged,
+  DomainEventNames.ProposalCreated,
+  DomainEventNames.ProposalSent,
+  DomainEventNames.ProposalApproved,
+  DomainEventNames.ContractCreated,
+  DomainEventNames.ContractAccepted,
+  DomainEventNames.BillingRequested,
+  DomainEventNames.BillingPaymentConfirmed
 ] as const;
 
 function extractWorkspaceId(payload: unknown): string | null {

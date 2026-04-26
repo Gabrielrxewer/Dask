@@ -6,6 +6,13 @@ export const automationTriggerTypeSchema = z.enum([
   'item.updated',
   'item.moved',
   'item.state.changed',
+  'proposal.created',
+  'proposal.sent',
+  'proposal.approved',
+  'contract.created',
+  'contract.accepted',
+  'billing.requested',
+  'billing.payment.confirmed',
   'manual'
 ]);
 
@@ -88,10 +95,39 @@ export const setWorkItemStateActionSchema = z
     }
   });
 
+export const createDocumentActionSchema = z.object({
+  type: z.literal('create_document'),
+  kind: z.enum(['wiki', 'proposal', 'contract']),
+  binding: z.string().min(1).optional(),
+  title: z.string().min(1).optional(),
+  status: z.string().min(1).optional(),
+  targetFieldSlug: z.string().min(1).optional(),
+  validations: z.array(z.string().min(1)).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+
+export const updateDocumentStatusActionSchema = z.object({
+  type: z.literal('update_document_status'),
+  kind: z.enum(['wiki', 'proposal', 'contract']),
+  status: z.string().min(1),
+  validations: z.array(z.string().min(1)).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+
+export const createBillingOrderActionSchema = z.object({
+  type: z.literal('create_billing_order'),
+  targetFieldSlug: z.string().min(1).optional(),
+  validations: z.array(z.string().min(1)).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+
 export const automationActionSchema = z.union([
   setViewColumnActionSchema,
   removeFromViewActionSchema,
-  setWorkItemStateActionSchema
+  setWorkItemStateActionSchema,
+  createDocumentActionSchema,
+  updateDocumentStatusActionSchema,
+  createBillingOrderActionSchema
 ]);
 
 export type AutomationAction = z.infer<typeof automationActionSchema>;

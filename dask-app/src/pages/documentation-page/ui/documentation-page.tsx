@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
+import { interpolateDocumentTemplate } from "@/modules/workspace/model/document-variables";
 import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentMetadata } from "@/modules/workspace";
 import { LoadingState, ModalShell, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
@@ -64,19 +65,13 @@ function normalizeDocumentKind(kind: WorkspaceDocument["kind"] | undefined): Doc
 }
 
 function renderMarkdownWithMetadata(content: string, metadata: WorkspaceDocumentMetadata): string {
-  const interpolated = content.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
-    const value = metadata[key];
-
-    if (typeof value === "string") {
-      return value;
+  const variables = Object.entries(metadata).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      acc[key] = String(value);
     }
-
-    if (typeof value === "number" || typeof value === "boolean") {
-      return String(value);
-    }
-
-    return match;
-  });
+    return acc;
+  }, {});
+  const interpolated = interpolateDocumentTemplate(content, variables);
 
   return interpolated.replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "");
 }

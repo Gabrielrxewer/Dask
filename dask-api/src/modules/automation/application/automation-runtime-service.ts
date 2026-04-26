@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { AppError } from '@/core/errors/app-error';
 import {
   automationRuleSpecSchema,
@@ -7,6 +8,7 @@ import {
   type AutomationEventContext,
   type AutomationRuleSpec
 } from '@/modules/automation/application/rule-schema';
+import { getCommercialDocumentTemplate } from '@/modules/automation/application/commercial-document-templates';
 
 export type QueuedAutomationEvent = {
   eventId?: string;
@@ -14,6 +16,62 @@ export type QueuedAutomationEvent = {
   workspaceId: string;
   payload: Record<string, unknown>;
 };
+
+type AutomationDocumentKind = 'wiki' | 'proposal' | 'contract';
+
+type AutomationItemSnapshot = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description: string | null;
+  fields: Prisma.JsonValue | null;
+  metadata: Prisma.JsonValue | null;
+  createdBy: string;
+  updatedBy: string | null;
+  assigneeId: string | null;
+  assignee: { name: string } | null;
+  creator: { name: string } | null;
+  customFieldValues: Array<{
+    value: Prisma.JsonValue;
+    field: {
+      slug: string;
+      variableKey: string | null;
+      name: string;
+    };
+  }>;
+};
+
+type AutomationCustomerSnapshot = {
+  id: string;
+  name: string;
+  tradeName: string | null;
+  legalName: string | null;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  address: Prisma.JsonValue | null;
+};
+
+function interpolateDocumentContent(content: string, variables: Record<string, string>): string {
+  return content.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const resolved = variables[key];
+    return typeof resolved === 'string' && resolved.length > 0 ? resolved : '';
+  });
+}
+
+function normalizeDocumentValidations(
+  kind: AutomationDocumentKind,
+  validations: string[] | undefined
+): string[] | undefined {
+  if (kind !== 'proposal' || !validations) {
+    return validations;
+  }
+
+  const filtered = validations.filter((validation) => validation !== 'commercial.proposal.required_fields');
+  return filtered.length > 0 ? filtered : undefined;
+}
 
 function toSlug(value: unknown): string {
   if (typeof value !== 'string') {
@@ -32,6 +90,78 @@ function toSlug(value: unknown): string {
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+function formatDate(value: Date | string | null | undefined): string {
+  if (!value) {
+    return new Date().toLocaleDateString('pt-BR');
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toLocaleDateString('pt-BR');
+  }
+
+  return date.toLocaleDateString('pt-BR');
+}
+
+function formatMoney(value: unknown): string {
+  const amount = readNumber(value);
+  if (amount === undefined) {
+    return '';
+  }
+
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(amount);
+}
+
+function formatAddress(value: unknown): string {
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  return [
+    [value.street, value.number].map(readString).filter(Boolean).join(', '),
+    readString(value.complement),
+    readString(value.district),
+    [value.city, value.state].map(readString).filter(Boolean).join(' / '),
+    readString(value.zipCode),
+    readString(value.country)
+  ]
+    .filter(Boolean)
+    .join(' - ');
 }
 
 function parseRuleSpecOrThrow(rule: {
@@ -72,7 +202,9 @@ function toContext(
 
   return {
     workspaceId,
-    itemId: readString('itemId'),
+    itemId:
+      readString('itemId') ??
+      (payload.linkedEntityType === 'work_item' ? readString('linkedEntityId') : undefined),
     sourceViewId: readString('sourceViewId'),
     sourceViewKey: readString('sourceViewKey'),
     fromColumnId: readString('fromColumnId'),
@@ -321,7 +453,7 @@ export class AutomationRuntimeService {
           const state = await this.prisma.workflowState.findFirst({
             where: {
               workspaceId: context.workspaceId,
-              slug: toSlug(action.stateSlug)
+              slug: action.stateSlug.trim().toLowerCase()
             },
             select: {
               id: true,
@@ -376,9 +508,541 @@ export class AutomationRuntimeService {
         return;
       }
 
+      case 'create_document': {
+        await this.createLinkedDocumentFromWorkItem(action, context, rawPayload);
+        return;
+      }
+
+      case 'update_document_status': {
+        await this.updateLinkedDocumentStatus(action, context, rawPayload);
+        return;
+      }
+
+      case 'create_billing_order': {
+        await this.prepareBillingOrder(action, context, rawPayload);
+        return;
+      }
+
       default:
         throw new AppError('Unsupported automation action type.', 422);
     }
+  }
+
+  private async createLinkedDocumentFromWorkItem(
+    action: Extract<AutomationAction, { type: 'create_document' }>,
+    context: AutomationEventContext,
+    rawPayload: Record<string, unknown>
+  ): Promise<void> {
+    const itemId = context.itemId;
+    const workspaceId = context.workspaceId;
+    if (!itemId || !workspaceId) {
+      throw new AppError('Automation event does not include work item context.', 422);
+    }
+
+    const item = await this.loadItemForAutomation(workspaceId, itemId);
+    const customer = await this.loadCustomerForItem(workspaceId, item);
+
+    await this.validateCommercialRequirements({
+      validations: normalizeDocumentValidations(action.kind, action.validations),
+      item,
+      customer
+    });
+
+    const kind = action.kind;
+    const existing = await this.findLinkedDocument(workspaceId, itemId, kind);
+    const targetFieldSlug = action.targetFieldSlug ?? (kind === 'proposal' ? 'proposalId' : kind === 'contract' ? 'contractId' : undefined);
+
+    if (existing) {
+      if (targetFieldSlug) {
+        await this.writeWorkItemField({
+          workspaceId,
+          itemId,
+          fieldSlug: targetFieldSlug,
+          value: existing.id,
+          updatedBy: readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy
+        });
+      }
+      return;
+    }
+
+    const template = getCommercialDocumentTemplate(kind);
+    const position = await this.prisma.workspaceDocument.count({
+      where: { workspaceId }
+    });
+    const variables = await this.buildDocumentVariables({
+      workspaceId,
+      item,
+      customer,
+      kind,
+      documentCount: position + 1
+    });
+    const createdBy = readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy;
+    const title = action.title ?? `${template.title} - ${variables.clientName || item.title}`;
+    const metadata = {
+      ...(template.metadata ?? {}),
+      ...variables,
+      ...(action.metadata ?? {}),
+      status: action.status ?? readString(action.metadata?.status) ?? readString(template.metadata?.status) ?? 'draft',
+      automationBinding: action.binding,
+      automationGenerated: true,
+      generatedFromWorkItemId: itemId,
+      ...(kind === 'proposal' ? { publicToken: randomUUID() } : {})
+    };
+
+    const document = await this.prisma.workspaceDocument.create({
+      data: {
+        workspaceId,
+        title,
+        content: interpolateDocumentContent(template.content, variables),
+        kind,
+        linkedEntityType: 'work_item',
+        linkedEntityId: itemId,
+        tags: [kind === 'proposal' ? 'Proposta' : kind === 'contract' ? 'Contrato' : 'Wiki'],
+        metadata: toJsonValue(metadata),
+        position,
+        createdBy,
+        updatedBy: createdBy
+      }
+    });
+
+    await this.prisma.workItemDocumentLink.upsert({
+      where: {
+        itemId_documentId: {
+          itemId,
+          documentId: document.id
+        }
+      },
+      create: {
+        workspaceId,
+        itemId,
+        documentId: document.id,
+        linkedBy: createdBy
+      },
+      update: {
+        linkedBy: createdBy
+      }
+    });
+
+    if (targetFieldSlug) {
+      await this.writeWorkItemField({
+        workspaceId,
+        itemId,
+        fieldSlug: targetFieldSlug,
+        value: document.id,
+        updatedBy: createdBy
+      });
+    }
+  }
+
+  private async updateLinkedDocumentStatus(
+    action: Extract<AutomationAction, { type: 'update_document_status' }>,
+    context: AutomationEventContext,
+    rawPayload: Record<string, unknown>
+  ): Promise<void> {
+    const itemId = context.itemId;
+    const workspaceId = context.workspaceId;
+    if (!itemId || !workspaceId) {
+      throw new AppError('Automation event does not include work item context.', 422);
+    }
+
+    const item = await this.loadItemForAutomation(workspaceId, itemId);
+    const customer = await this.loadCustomerForItem(workspaceId, item);
+    await this.validateCommercialRequirements({
+      validations: action.validations,
+      item,
+      customer
+    });
+
+    const document = await this.findLinkedDocument(workspaceId, itemId, action.kind);
+    if (!document) {
+      throw new AppError('Linked document not found for automation.', 404);
+    }
+
+    await this.prisma.workspaceDocument.update({
+      where: { id: document.id },
+      data: {
+        metadata: toJsonValue({
+          ...(isRecord(document.metadata) ? document.metadata : {}),
+          ...(action.metadata ?? {}),
+          status: action.status,
+          statusUpdatedByAutomation: true,
+          statusUpdatedAt: new Date().toISOString()
+        }),
+        updatedBy: readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy
+      }
+    });
+  }
+
+  private async prepareBillingOrder(
+    action: Extract<AutomationAction, { type: 'create_billing_order' }>,
+    context: AutomationEventContext,
+    rawPayload: Record<string, unknown>
+  ): Promise<void> {
+    const itemId = context.itemId;
+    const workspaceId = context.workspaceId;
+    if (!itemId || !workspaceId) {
+      throw new AppError('Automation event does not include work item context.', 422);
+    }
+
+    const item = await this.loadItemForAutomation(workspaceId, itemId);
+    const customer = await this.loadCustomerForItem(workspaceId, item);
+    await this.validateCommercialRequirements({
+      validations: action.validations,
+      item,
+      customer
+    });
+
+    const billingOrderId = `BILL-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+    const updatedBy = readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy;
+
+    await this.writeWorkItemField({
+      workspaceId,
+      itemId,
+      fieldSlug: action.targetFieldSlug ?? 'billingOrderId',
+      value: billingOrderId,
+      updatedBy
+    });
+
+    const currentMetadata = isRecord(item.metadata) ? item.metadata : {};
+    await this.prisma.item.update({
+      where: { id: itemId },
+      data: {
+        metadata: toJsonValue({
+          ...currentMetadata,
+          commercialBilling: {
+            ...(isRecord(currentMetadata.commercialBilling) ? currentMetadata.commercialBilling : {}),
+            billingOrderId,
+            requestedAt: new Date().toISOString(),
+            requestedBy: updatedBy,
+            ...(action.metadata ?? {})
+          }
+        }),
+        updatedBy
+      }
+    });
+  }
+
+  private async loadItemForAutomation(workspaceId: string, itemId: string): Promise<AutomationItemSnapshot> {
+    const item = await this.prisma.item.findFirst({
+      where: {
+        id: itemId,
+        workspaceId
+      },
+      select: {
+        id: true,
+        workspaceId: true,
+        title: true,
+        description: true,
+        fields: true,
+        metadata: true,
+        createdBy: true,
+        updatedBy: true,
+        assigneeId: true,
+        assignee: {
+          select: {
+            name: true
+          }
+        },
+        creator: {
+          select: {
+            name: true
+          }
+        },
+        customFieldValues: {
+          select: {
+            value: true,
+            field: {
+              select: {
+                slug: true,
+                variableKey: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!item) {
+      throw new AppError('Work item not found for automation.', 404);
+    }
+
+    return item;
+  }
+
+  private async loadCustomerForItem(
+    workspaceId: string,
+    item: AutomationItemSnapshot
+  ): Promise<AutomationCustomerSnapshot | null> {
+    const customerId = this.readItemField(item, ['customerId']);
+    if (!customerId) {
+      return null;
+    }
+
+    return this.prisma.customer.findFirst({
+      where: {
+        id: customerId,
+        workspaceId
+      },
+      select: {
+        id: true,
+        name: true,
+        tradeName: true,
+        legalName: true,
+        document: true,
+        email: true,
+        phone: true,
+        website: true,
+        logoUrl: true,
+        address: true
+      }
+    });
+  }
+
+  private async findLinkedDocument(
+    workspaceId: string,
+    itemId: string,
+    kind: AutomationDocumentKind
+  ) {
+    return this.prisma.workspaceDocument.findFirst({
+      where: {
+        workspaceId,
+        kind,
+        OR: [
+          {
+            linkedEntityType: 'work_item',
+            linkedEntityId: itemId
+          },
+          {
+            itemLinks: {
+              some: {
+                workspaceId,
+                itemId
+              }
+            }
+          }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        metadata: true
+      }
+    });
+  }
+
+  private readItemField(item: AutomationItemSnapshot, keys: string[]): string {
+    const fields = isRecord(item.fields) ? item.fields : {};
+
+    for (const key of keys) {
+      const direct = readString(fields[key]);
+      if (direct) {
+        return direct;
+      }
+    }
+
+    for (const value of item.customFieldValues) {
+      if (keys.includes(value.field.slug) || (value.field.variableKey && keys.includes(value.field.variableKey))) {
+        const resolved = readString(value.value);
+        if (resolved) {
+          return resolved;
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private readItemNumberField(item: AutomationItemSnapshot, keys: string[]): number | undefined {
+    const fields = isRecord(item.fields) ? item.fields : {};
+
+    for (const key of keys) {
+      const direct = readNumber(fields[key]);
+      if (direct !== undefined) {
+        return direct;
+      }
+    }
+
+    for (const value of item.customFieldValues) {
+      if (keys.includes(value.field.slug) || (value.field.variableKey && keys.includes(value.field.variableKey))) {
+        const resolved = readNumber(value.value);
+        if (resolved !== undefined) {
+          return resolved;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private async buildDocumentVariables(input: {
+    workspaceId: string;
+    item: AutomationItemSnapshot;
+    customer: AutomationCustomerSnapshot | null;
+    kind: AutomationDocumentKind;
+    documentCount: number;
+  }): Promise<Record<string, string>> {
+    const fieldVariables = input.item.customFieldValues.reduce<Record<string, string>>((acc, entry) => {
+      const raw = readString(entry.value);
+      if (!raw) {
+        return acc;
+      }
+
+      if (entry.field.variableKey) {
+        acc[entry.field.variableKey] = raw;
+      }
+
+      acc[entry.field.slug] = raw;
+      return acc;
+    }, {});
+    const dealValueRaw = this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']);
+    const clientName =
+      input.customer?.tradeName ??
+      input.customer?.legalName ??
+      input.customer?.name ??
+      this.readItemField(input.item, ['clientName', 'companyName', 'contactName']);
+    const proposalPrefix = input.kind === 'proposal' ? 'PROP' : 'CTR';
+    const companyAddress = formatAddress(input.customer?.address);
+
+    return {
+      ...fieldVariables,
+      clientLogoUrl: input.customer?.logoUrl ?? this.readItemField(input.item, ['clientLogoUrl']) ?? '',
+      clientName,
+      clientDocument: input.customer?.document ?? '',
+      clientAddress: companyAddress,
+      ownerName: input.item.assignee?.name ?? input.item.creator?.name ?? '',
+      proposalDate: formatDate(new Date()),
+      proposalValidity: this.readItemField(input.item, ['proposalValidity']) || '',
+      proposalCode: `${proposalPrefix}-${new Date().getFullYear()}-${String(input.documentCount).padStart(5, '0')}`,
+      dealTitle: input.item.title,
+      dealDescription: input.item.description ?? this.readItemField(input.item, ['interest', 'implementationScope']) ?? '',
+      dealValue: formatMoney(dealValueRaw),
+      contactName: this.readItemField(input.item, ['contactName']),
+      contactEmail: this.readItemField(input.item, ['contactEmail']),
+      contactPhone: this.readItemField(input.item, ['contactPhone']),
+      companyName: 'Dask',
+      companyDocument: '',
+      companyAddress: '',
+      paymentTerms: this.readItemField(input.item, ['paymentTerms']) || '- Forma de pagamento: a definir',
+      expectedCloseDate: this.readItemField(input.item, ['expectedCloseDate']),
+      implementationScope: this.readItemField(input.item, ['implementationScope', 'interest']) || input.item.description || '',
+      startDate: '',
+      endDate: '',
+      city: '',
+      state: ''
+    };
+  }
+
+  private async validateCommercialRequirements(input: {
+    validations?: string[];
+    item: AutomationItemSnapshot;
+    customer: AutomationCustomerSnapshot | null;
+  }): Promise<void> {
+    const validations = input.validations ?? [];
+    if (validations.length === 0) {
+      return;
+    }
+
+    const missing = new Set<string>();
+    if (validations.includes('commercial.proposal.required_fields')) {
+      if (!input.customer && !this.readItemField(input.item, ['companyName', 'clientName'])) missing.add('Cliente');
+      if (!this.readItemField(input.item, ['contactName', 'contactEmail'])) missing.add('Contato principal');
+      if (!input.item.assigneeId) missing.add('Responsavel');
+      if (!this.readItemField(input.item, ['interest', 'implementationScope']) && !input.item.description) {
+        missing.add('Escopo/interesse');
+      }
+      if (this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) === undefined) {
+        missing.add('Valor estimado');
+      }
+      if (!this.readItemField(input.item, ['proposalValidity'])) missing.add('Validade da proposta');
+    }
+
+    if (validations.includes('commercial.contract.required_fields')) {
+      const proposal = await this.findLinkedDocument(input.item.workspaceId, input.item.id, 'proposal');
+      const proposalStatus = isRecord(proposal?.metadata) ? readString(proposal.metadata.status) : undefined;
+      if (proposalStatus !== 'approved') missing.add('Proposta aprovada');
+      if (!input.customer) missing.add('Cliente');
+      if (!input.customer?.document) missing.add('Documento fiscal do cliente');
+      if (!formatAddress(input.customer?.address)) missing.add('Endereco do cliente');
+      if (this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) === undefined) {
+        missing.add('Valor');
+      }
+      if (!this.readItemField(input.item, ['paymentTerms'])) missing.add('Condicoes comerciais');
+    }
+
+    if (validations.includes('commercial.billing.required_fields')) {
+      if (!input.customer) missing.add('Cliente');
+      if (!this.readItemField(input.item, ['financialEmail', 'contactEmail']) && !input.customer?.email) {
+        missing.add('E-mail financeiro');
+      }
+      if (this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) === undefined) {
+        missing.add('Valor');
+      }
+      if (!this.readItemField(input.item, ['billingType'])) missing.add('Tipo de cobranca');
+      if (!this.readItemField(input.item, ['dueDate', 'billingDueDate'])) missing.add('Vencimento');
+    }
+
+    if (missing.size > 0) {
+      throw new AppError(`Nao foi possivel executar a automacao. Preencha: ${Array.from(missing).join(', ')}.`, 422);
+    }
+  }
+
+  private async writeWorkItemField(input: {
+    workspaceId: string;
+    itemId: string;
+    fieldSlug: string;
+    value: string;
+    updatedBy: string;
+  }): Promise<void> {
+    const field = await this.prisma.customFieldDefinition.findFirst({
+      where: {
+        workspaceId: input.workspaceId,
+        slug: input.fieldSlug
+      },
+      select: { id: true }
+    });
+    const item = await this.prisma.item.findFirst({
+      where: {
+        id: input.itemId,
+        workspaceId: input.workspaceId
+      },
+      select: { fields: true }
+    });
+
+    const fields = isRecord(item?.fields) ? item.fields : {};
+    await this.prisma.item.update({
+      where: { id: input.itemId },
+      data: {
+        fields: toJsonValue({
+          ...fields,
+          [input.fieldSlug]: input.value
+        }),
+        updatedBy: input.updatedBy
+      }
+    });
+
+    if (!field) {
+      return;
+    }
+
+    await this.prisma.customFieldValue.upsert({
+      where: {
+        fieldId_itemId: {
+          fieldId: field.id,
+          itemId: input.itemId
+        }
+      },
+      create: {
+        fieldId: field.id,
+        itemId: input.itemId,
+        value: toJsonValue(input.value),
+        updatedBy: input.updatedBy
+      },
+      update: {
+        value: toJsonValue(input.value),
+        updatedBy: input.updatedBy
+      }
+    });
   }
 
   private async resolveView(input: {

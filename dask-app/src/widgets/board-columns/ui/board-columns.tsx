@@ -11,7 +11,7 @@ import type {
   TaskStatus,
   TaskStatusId
 } from "@/entities/task";
-import type { AiAgentSummary, WorkItemLinkedDocument, WorkspaceDocument } from "@/modules/workspace/model";
+import type { AiAgentSummary, DocumentKind, WorkItemLinkedDocument, WorkspaceDocument } from "@/modules/workspace/model";
 import type { CreateTaskInput, TaskScheduleInput, UpdateTaskInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { CreateTaskButton } from "@/features/create-task";
@@ -39,6 +39,7 @@ interface BoardColumnsProps {
   onUpdateTaskChecklist: (taskId: string, checklist: Task["checklist"]) => Promise<void> | void;
   onSaveTask: (taskId: string, input: UpdateTaskInput) => Promise<void> | void;
   onCreateTask?: (statusId: TaskStatusId, input: CreateTaskInput) => void | Promise<void>;
+  createTaskStatusIds?: string[];
   aiAgents: AiAgentSummary[];
   availableTags?: Array<{ id: string; name: string; color: string }>;
   onRunAiAgentOnItem: (
@@ -51,9 +52,20 @@ interface BoardColumnsProps {
     input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
   ) => Promise<{ runId: string; content: string }>;
   listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+  createWorkspaceDocument?: (input: {
+    title: string;
+    content?: string;
+    kind?: DocumentKind;
+    linkedEntityType?: "work_item" | "customer" | "proposal" | "contract";
+    linkedEntityId?: string;
+    tags?: string[];
+    metadata?: WorkspaceDocument["metadata"];
+    position?: number;
+  }) => Promise<WorkspaceDocument>;
   listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
   linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
   unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
+  onOpenDocument?: (documentId: string) => void;
 }
 
 type DropTarget = {
@@ -178,14 +190,17 @@ export function BoardColumns({
   onUpdateTaskChecklist,
   onSaveTask,
   onCreateTask,
+  createTaskStatusIds,
   aiAgents,
   availableTags = [],
   onRunAiAgentOnItem,
   onRunAiRiskAnalysis,
   listWorkspaceDocuments,
+  createWorkspaceDocument,
   listWorkItemLinkedDocuments,
   linkDocumentToWorkItem,
-  unlinkDocumentFromWorkItem
+  unlinkDocumentFromWorkItem,
+  onOpenDocument
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
@@ -299,7 +314,11 @@ export function BoardColumns({
         {statuses.map(status => {
           const statusTasks = columns[status.id] ?? [];
           const isTarget = dropTarget?.statusId === status.id;
-          const isFirstColumn = statuses[0]?.id === status.id;
+          const canCreateInColumn = onCreateTask
+            ? Array.isArray(createTaskStatusIds)
+              ? createTaskStatusIds.includes(status.id)
+              : statuses[0]?.id === status.id
+            : false;
 
           return (
             <section
@@ -331,10 +350,10 @@ export function BoardColumns({
                 }}
                 onDrop={event => void handleDrop(event, status.id)}
               >
-                {onCreateTask && isFirstColumn ? (
+                {canCreateInColumn ? (
                   <CreateTaskButton
                     className="board-column__create-task"
-                    onCreate={input => onCreateTask(status.id, input)}
+                    onCreate={input => onCreateTask?.(status.id, input)}
                     initialStatusId={status.id}
                     statuses={statuses}
                     boardConfig={boardConfig}
@@ -406,9 +425,11 @@ export function BoardColumns({
           onRunAiAgentOnItem={onRunAiAgentOnItem}
           onRunAiRiskAnalysis={onRunAiRiskAnalysis}
           listWorkspaceDocuments={listWorkspaceDocuments}
+          createWorkspaceDocument={createWorkspaceDocument}
           listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
+          onOpenDocument={onOpenDocument}
           onClose={() => setSelectedTaskId("")}
         />
       ) : null}

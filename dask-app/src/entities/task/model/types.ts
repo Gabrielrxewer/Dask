@@ -80,6 +80,9 @@ export interface TaskChecklist {
 export interface LinkedTaskDocument {
   id: string;
   title: string;
+  kind?: "wiki" | "proposal" | "contract";
+  status?: string;
+  createdAt?: string;
   updatedAt: string;
   linkedAt?: string;
 }
@@ -100,6 +103,7 @@ export interface Task {
   plannedStartAt?: string | null;
   plannedEndAt?: string | null;
   linkedDocuments?: LinkedTaskDocument[];
+  customFieldValuesById?: TaskCustomFields;
   customFields: TaskCustomFields;
 }
 
@@ -131,6 +135,9 @@ export interface TaskFieldDefinition {
   name?: string;
   slug?: string;
   description?: string | null;
+  variableKey?: string;
+  variableLabel?: string;
+  variableDescription?: string;
   type: TaskFieldType;
   options?: TaskFieldOption[];
   required?: boolean;
@@ -170,6 +177,7 @@ export interface BoardViewConfig {
   allowedTaskTypes?: string[];
   compactCards?: boolean;
   visibleBoardColumnIds?: string[];
+  createTaskColumnIds?: string[];
 }
 
 export interface BoardConfig {

@@ -54,6 +54,39 @@ describe('AutomationEventDispatcher', () => {
     expect(jobQueue.enqueue).not.toHaveBeenCalled();
   });
 
+  it('enqueues document lifecycle events for commercial automations', async () => {
+    const jobQueue = {
+      enqueue: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const dispatcher = new AutomationEventDispatcher(jobQueue as any);
+    await dispatcher.dispatch({
+      id: 'evt-proposal-approved',
+      name: DomainEventNames.ProposalApproved,
+      aggregateType: 'proposal',
+      aggregateId: 'doc-1',
+      occurredAt: new Date(),
+      payload: {
+        workspaceId: 'ws-1',
+        documentId: 'doc-1',
+        linkedEntityType: 'work_item',
+        linkedEntityId: 'item-1'
+      }
+    });
+
+    expect(jobQueue.enqueue).toHaveBeenCalledWith(
+      'automation.process-event',
+      expect.objectContaining({
+        eventName: DomainEventNames.ProposalApproved,
+        workspaceId: 'ws-1',
+        payload: expect.objectContaining({
+          linkedEntityId: 'item-1'
+        })
+      }),
+      expect.any(Object)
+    );
+  });
+
   it('ignores unsupported events', async () => {
     const jobQueue = {
       enqueue: vi.fn().mockResolvedValue(undefined)

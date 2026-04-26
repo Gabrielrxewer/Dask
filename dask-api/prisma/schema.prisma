@@ -645,6 +645,7 @@ model Workspace {
   fiscalIntegrationLogs  FiscalIntegrationLog[]
   fiscalCatalogProfiles  FiscalCatalogProfile[]
   fiscalOperationTemplates FiscalOperationTemplate[]
+  customers              Customer[]
   leads                  Lead[]
   leadActivities         LeadActivity[]
   leadAssignments        LeadAssignment[]
@@ -668,6 +669,33 @@ model Workspace {
   marketingCampaignSends MarketingCampaignSend[]
 
   @@unique([organizationId, key])
+}
+
+model Customer {
+  id          String    @id @default(uuid())
+  workspaceId String
+  name        String
+  tradeName   String?
+  legalName   String?
+  document    String?
+  email       String?
+  phone       String?
+  website     String?
+  logoUrl     String?
+  address     Json?
+  status      String    @default("prospect")
+  notes       String?
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status, updatedAt])
+  @@index([workspaceId, name])
+  @@index([workspaceId, email])
+  @@index([workspaceId, phone])
+  @@index([workspaceId, document])
 }
 
 model Lead {
@@ -1253,6 +1281,8 @@ model WorkspaceDocument {
   title       String
   content     String
   kind        String    @default("wiki")
+  linkedEntityType String?
+  linkedEntityId   String?
   tags        String[]  @default([])
   metadata    Json?
   position    Int       @default(0)
@@ -1267,6 +1297,7 @@ model WorkspaceDocument {
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])
   @@index([workspaceId, kind, updatedAt])
+  @@index([workspaceId, linkedEntityType, linkedEntityId])
 }
 
 model ConnectPaymentOrder {
@@ -1860,6 +1891,9 @@ model CustomFieldDefinition {
   name          String
   slug          String
   description   String?
+  variableKey   String?
+  variableLabel String?
+  variableDescription String?
   type          CustomFieldType
   isSystem      Boolean             @default(false)
   required      Boolean             @default(false)
@@ -1878,6 +1912,7 @@ model CustomFieldDefinition {
   bindings      WorkItemFieldBinding[]
 
   @@unique([workspaceId, slug])
+  @@unique([workspaceId, variableKey])
   @@index([workspaceId, isActive])
 }
 

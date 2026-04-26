@@ -3,6 +3,8 @@ export {
   cloneWorkspaceSnapshot,
   createInitialWorkspaceSnapshot,
   createTaskFromInput,
+  interpolateDocumentTemplate,
+  resolveDocumentVariables,
   useWorkspaceTaskPage
 } from "@/modules/workspace/model";
 export type {
@@ -14,12 +16,19 @@ export type {
   DocumentationAssistantAction,
   BoardTemplateSummary,
   BoardTemplatePerspective,
+  DocumentVariableContext,
+  DocumentVariables,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
   CalendarFeedSnapshot,
   CalendarIntegrationProvider,
   CalendarIntegrationStatus,
+  DocumentLinkedEntityType,
   DocumentKind,
+  Customer,
+  CustomerAddress,
+  CustomerStatus,
+  CreateCustomerInput,
   CreateTaskInput,
   UpdateTaskInput,
   ExternalCalendarEvent,

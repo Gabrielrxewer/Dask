@@ -21,6 +21,7 @@ import type { Member, MembersById } from "@/entities/member";
 import type {
   AiAgentSummary,
   CreateTaskInput,
+  DocumentKind,
   TaskScheduleInput,
   UpdateTaskInput,
   WorkItemLinkedDocument,
@@ -79,9 +80,20 @@ type TaskDetailsModalProps =
         input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
       ) => Promise<{ runId: string; content: string }>;
       listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+      createWorkspaceDocument?: (input: {
+        title: string;
+        content?: string;
+        kind?: DocumentKind;
+        linkedEntityType?: "work_item" | "customer" | "proposal" | "contract";
+        linkedEntityId?: string;
+        tags?: string[];
+        metadata?: WorkspaceDocument["metadata"];
+        position?: number;
+      }) => Promise<WorkspaceDocument>;
       listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
       linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
       unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
+      onOpenDocument?: (documentId: string) => void;
       onClose: () => void;
     };
 
@@ -91,6 +103,37 @@ function toJsonComparable(value: unknown) {
 
 function isReadonlyField(field: TaskFieldDefinition) {
   return field.isEditable === false || matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" });
+}
+
+const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
+  wiki: "Wiki",
+  proposal: "Proposta",
+  contract: "Contrato"
+};
+
+const DOCUMENT_STATUS_LABELS: Record<string, string> = {
+  draft: "Rascunho",
+  sent: "Enviado",
+  viewed: "Visualizado",
+  approved: "Aprovado",
+  rejected: "Recusado",
+  expired: "Expirado",
+  accepted: "Aceito",
+  signed: "Assinado",
+  cancelled: "Cancelado"
+};
+
+function formatDocumentDate(value: string | Date | null | undefined) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 function resolveFieldLayoutClass(field: TaskFieldDefinition, zone: DetailZone) {
@@ -111,6 +154,10 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const statuses = props.statuses;
   const boardConfig = props.boardConfig;
   const availableTags = props.availableTags ?? [];
+  const listWorkspaceDocuments = props.mode === "edit" ? props.listWorkspaceDocuments : null;
+  const listWorkItemLinkedDocuments = props.mode === "edit" ? props.listWorkItemLinkedDocuments : null;
+  const unlinkDocumentFromWorkItem = props.mode === "edit" ? props.unlinkDocumentFromWorkItem : null;
+  const openDocument = props.mode === "edit" ? props.onOpenDocument : undefined;
 
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
   const initialTypeId = task?.type ?? (props.mode === "create" ? props.initialTypeId : boardConfig.taskTypes[0]?.id ?? "task");
@@ -118,6 +165,10 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const [fieldDrafts, setFieldDrafts] = useState<Record<string, TaskCustomFieldValue>>({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [workspaceDocuments, setWorkspaceDocuments] = useState<WorkspaceDocument[]>([]);
+  const [linkedDocuments, setLinkedDocuments] = useState<WorkItemLinkedDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsError, setDocumentsError] = useState("");
 
   const detailBindings = useMemo(
     () =>
@@ -168,6 +219,45 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     setError("");
   }, [selectedTypeId, task?.id]);
 
+  useEffect(() => {
+    if (!task || !listWorkspaceDocuments || !listWorkItemLinkedDocuments) {
+      setWorkspaceDocuments([]);
+      setLinkedDocuments([]);
+      return;
+    }
+
+    let cancelled = false;
+    setDocumentsLoading(true);
+    setDocumentsError("");
+
+    void Promise.all([
+      listWorkspaceDocuments(),
+      listWorkItemLinkedDocuments(task.id)
+    ])
+      .then(([nextWorkspaceDocuments, nextLinkedDocuments]) => {
+        if (cancelled) {
+          return;
+        }
+
+        setWorkspaceDocuments(nextWorkspaceDocuments);
+        setLinkedDocuments(nextLinkedDocuments);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDocumentsError("Nao foi possivel carregar documentos vinculados.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDocumentsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listWorkspaceDocuments, listWorkItemLinkedDocuments, task]);
+
   const mainColumnFields = useMemo(
     () =>
       detailBindings
@@ -185,6 +275,25 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         .filter(field => orderedVisibleFields.some(visibleField => visibleField.id === field.id)),
     [detailBindings, orderedVisibleFields]
   );
+
+  const workspaceDocumentsById = useMemo(
+    () => new Map(workspaceDocuments.map((document) => [document.id, document])),
+    [workspaceDocuments]
+  );
+
+  const documentRows = useMemo(() => {
+    const source = linkedDocuments.length > 0 ? linkedDocuments : task?.linkedDocuments ?? [];
+    return source.map((link) => {
+      const document = workspaceDocumentsById.get(link.id);
+      return {
+        ...link,
+        kind: link.kind ?? document?.kind,
+        status: link.status ?? (typeof document?.metadata.status === "string" ? document.metadata.status : undefined),
+        createdAt: link.createdAt ?? document?.createdAt,
+        updatedAt: link.updatedAt ?? document?.updatedAt
+      };
+    });
+  }, [linkedDocuments, task?.linkedDocuments, workspaceDocumentsById]);
 
   const activeTypeMeta = getTaskTypeDisplayMeta(typeMap, selectedTypeId);
   const accentVars = {
@@ -311,6 +420,24 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         </FieldShell>
       </section>
     );
+  };
+
+  const handleUnlinkDocument = async (documentId: string) => {
+    if (!task || !unlinkDocumentFromWorkItem) {
+      return;
+    }
+
+    setDocumentsLoading(true);
+    setDocumentsError("");
+
+    try {
+      await unlinkDocumentFromWorkItem(task.id, documentId);
+      setLinkedDocuments((current) => current.filter((document) => document.id !== documentId));
+    } catch {
+      setDocumentsError("Nao foi possivel remover o vinculo do documento.");
+    } finally {
+      setDocumentsLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -440,6 +567,55 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                 <p className="task-details__muted">Associe campos a este tipo de item para montar o formulario.</p>
               </section>
             )}
+            {!isCreateMode ? (
+              <section className="task-details__section task-details__documents">
+                <div className="task-details__section-head task-details__documents-head">
+                  <div>
+                    <h3 className="task-details__summary-style-title">Documentos</h3>
+                    <p className="task-details__muted">Propostas, contratos e anotacoes vinculadas a este WorkItem.</p>
+                  </div>
+                </div>
+
+                {documentsError ? <p className="task-details__documents-error">{documentsError}</p> : null}
+                {documentsLoading && documentRows.length === 0 ? <p className="task-details__muted">Carregando documentos...</p> : null}
+                {!documentsLoading && documentRows.length === 0 ? <p className="task-details__muted">Nenhum documento vinculado.</p> : null}
+                {documentRows.length > 0 ? (
+                  <div className="task-details__documents-list">
+                    {documentRows.map((document) => {
+                      const kindLabel = document.kind ? DOCUMENT_KIND_LABELS[document.kind] : "Documento";
+                      const statusLabel =
+                        typeof document.status === "string" && document.status.trim()
+                          ? DOCUMENT_STATUS_LABELS[document.status] ?? document.status
+                          : "-";
+
+                      return (
+                        <article className="task-details__document-row" key={document.id}>
+                          <div className="task-details__document-main">
+                            <span>{kindLabel}</span>
+                            <strong>{document.title}</strong>
+                          </div>
+                          <div className="task-details__document-meta">
+                            <span>Status: {statusLabel}</span>
+                            <span>Criado: {formatDocumentDate(document.createdAt)}</span>
+                            <span>Atualizado: {formatDocumentDate(document.updatedAt)}</span>
+                          </div>
+                          <div className="task-details__document-actions">
+                            {openDocument ? (
+                              <Button type="button" size="sm" variant="outline" onClick={() => openDocument(document.id)}>
+                                Abrir
+                              </Button>
+                            ) : null}
+                            <Button type="button" size="sm" variant="outline" onClick={() => void handleUnlinkDocument(document.id)} disabled={documentsLoading}>
+                              Remover
+                            </Button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
           </section>
 
           <aside className="task-details__side">

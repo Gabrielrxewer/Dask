@@ -176,6 +176,7 @@ export const createApp = (): Express => {
     integrationService,
     auditService,
     workspaceConfigService,
+    workspaceCustomersService,
     workspaceDocumentsService,
     workspaceWorkItemsService,
     workspaceInvitesService,
@@ -326,6 +327,7 @@ export const createApp = (): Express => {
       prisma,
       authorizationService: roleAuthorizationService,
       workspaceConfigService,
+      workspaceCustomersService,
       workspaceDocumentsService,
       workspaceWorkItemsService,
       workspaceInvitesService

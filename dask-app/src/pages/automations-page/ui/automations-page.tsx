@@ -19,21 +19,38 @@ const TRIGGER_LABELS: Record<string, string> = {
   "item.updated": "Ao atualizar item",
   "item.moved": "Ao mover item",
   "item.state.changed": "Ao mudar estado",
+  "proposal.created": "Ao criar proposta",
+  "proposal.sent": "Ao enviar proposta",
+  "proposal.approved": "Ao aprovar proposta",
+  "contract.created": "Ao criar contrato",
+  "contract.accepted": "Ao aceitar contrato",
+  "billing.requested": "Ao solicitar cobranca",
+  "billing.payment.confirmed": "Ao confirmar pagamento",
   "manual": "Execução manual"
 };
 
 const TRIGGER_DESCRIPTIONS: Record<string, string> = {
-  "item.created": "Dispara sempre que um novo item é criado no workspace",
-  "item.updated": "Dispara quando qualquer campo de um item é alterado",
-  "item.moved": "Dispara quando um item é movido para uma coluna específica",
+  "item.created": "Dispara sempre que um novo item e criado no workspace",
+  "item.updated": "Dispara quando qualquer campo de um item e alterado",
+  "item.moved": "Dispara quando um item e movido para uma coluna especifica",
   "item.state.changed": "Dispara quando o estado de um item muda",
+  "proposal.created": "Dispara quando uma proposta vinculada e criada",
+  "proposal.sent": "Dispara quando uma proposta vinculada e marcada como enviada",
+  "proposal.approved": "Dispara quando uma proposta vinculada e aprovada",
+  "contract.created": "Dispara quando um contrato vinculado e criado",
+  "contract.accepted": "Dispara quando um contrato vinculado e aceito ou assinado",
+  "billing.requested": "Dispara quando uma cobranca e solicitada",
+  "billing.payment.confirmed": "Dispara quando o pagamento e confirmado",
   "manual": "Executado apenas via chamada manual de API"
 };
 
 const ACTION_LABELS: Record<string, string> = {
   "set_work_item_state": "Alterar estado do item",
   "set_view_column": "Mover para coluna em perspectiva",
-  "remove_from_view": "Remover da perspectiva"
+  "remove_from_view": "Remover da perspectiva",
+  "create_document": "Criar documento vinculado",
+  "update_document_status": "Atualizar status do documento",
+  "create_billing_order": "Preparar cobranca"
 };
 
 const EXECUTION_STATUS_TONE: Record<string, "success" | "warning" | "default"> = {
@@ -56,6 +73,13 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function firstString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "";
+  const found = value.find((entry) => typeof entry === "string" && entry.trim().length > 0);
+  return typeof found === "string" ? found : "";
+}
+
 function normalizeKey(value: string): string {
   return value
     .trim()
@@ -64,6 +88,11 @@ function normalizeKey(value: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function normalizeColumnKeyFromSlug(slug: string | null | undefined, name: string): string {
+  const rawSlug = typeof slug === "string" ? slug.trim() : "";
+  return rawSlug || normalizeKey(name);
 }
 
 function formatDatePt(iso: string) {
@@ -90,7 +119,7 @@ function buildFallbackColumnsFromPerspectiveStatus(
       const entry = status as Record<string, unknown>;
       const id = typeof entry.id === "string" ? entry.id : "";
       const label = typeof entry.label === "string" ? entry.label : id;
-      const key = normalizeKey(id);
+      const key = id.trim() || normalizeKey(label);
       if (!key || !label) return null;
       return { id: `fallback-${perspectiveId}-${key}-${index}`, key, name: label };
     })
@@ -199,11 +228,23 @@ type SelectedNode = { kind: "trigger" } | { kind: "action"; index: number };
 
 function ruleToFlowDraft(rule: AutomationRule): FlowDraft {
   const trigger = asRecord(rule.trigger);
+  const triggerSettings = asRecord(trigger.settings);
+  const templateTrigger = asRecord(triggerSettings.templateTrigger);
+  const conditions = asRecord(rule.conditions);
   return {
     name: rule.name,
     triggerType: rule.triggerType || asString(trigger.type) || "item.moved",
-    triggerConfig: trigger,
-    conditions: asRecord(rule.conditions),
+    triggerConfig: {
+      ...trigger,
+      ...triggerSettings,
+      toViewKey: asString(trigger.toViewKey) || asString(triggerSettings.toViewKey),
+      toColumnKey:
+        asString(trigger.toColumnKey) ||
+        asString(triggerSettings.toColumnKey) ||
+        asString(templateTrigger.column) ||
+        firstString(conditions.toColumnKeys)
+    },
+    conditions,
     actions: Array.isArray(rule.actions)
       ? (rule.actions as Array<{ type: string; [key: string]: unknown }>)
       : [{ type: "set_view_column" }],
@@ -229,15 +270,18 @@ function draftToRuleInput(draft: FlowDraft): CreateAutomationRuleInput {
     draft.triggerType === "item.moved"
       ? {
           type: draft.triggerType,
-          toViewKey: asString(draft.triggerConfig.toViewKey),
-          toColumnKey: asString(draft.triggerConfig.toColumnKey)
+          settings: {
+            toViewKey: asString(draft.triggerConfig.toViewKey),
+            toColumnKey: asString(draft.triggerConfig.toColumnKey)
+          }
         }
       : { type: draft.triggerType };
 
-  const conditions =
+  const nextConditions =
     draft.triggerType === "item.moved" && draft.triggerConfig.toColumnKey
-      ? { toColumnKeys: [asString(draft.triggerConfig.toColumnKey)] }
-      : undefined;
+      ? { ...draft.conditions, toColumnKeys: [asString(draft.triggerConfig.toColumnKey)] }
+      : draft.conditions;
+  const conditions = Object.keys(nextConditions).length > 0 ? nextConditions : undefined;
 
   return {
     name: draft.name.trim(),
@@ -281,6 +325,21 @@ function summarizeAction(action: { type: string; [key: string]: unknown }, views
     const viewKey = asString(action.targetViewKey);
     const view = views.find((v) => v.key === viewKey);
     return `Remover de ${view?.name ?? viewKey ?? "perspectiva"}`;
+  }
+  if (type === "create_document") {
+    const kind = asString(action.kind);
+    if (kind === "proposal") return "Criar proposta vinculada";
+    if (kind === "contract") return "Criar contrato vinculado";
+    if (kind === "wiki") return "Criar wiki vinculada";
+    return "Criar documento vinculado";
+  }
+  if (type === "update_document_status") {
+    const kind = asString(action.kind) || "documento";
+    const status = asString(action.status) || "status";
+    return `Atualizar ${kind} -> ${status}`;
+  }
+  if (type === "create_billing_order") {
+    return "Preparar cobranca";
   }
   return ACTION_LABELS[type] ?? type;
 }
@@ -527,6 +586,17 @@ function ActionConfig({ action, views, stateOptions, onChange }: ActionConfigPro
     if (newType === "set_work_item_state" && stateOptions[0]) {
       base.stateSlug = stateOptions[0].value;
     }
+    if (newType === "create_document") {
+      base.kind = "proposal";
+      base.status = "draft";
+    }
+    if (newType === "update_document_status") {
+      base.kind = "proposal";
+      base.status = "sent";
+    }
+    if (newType === "create_billing_order") {
+      base.targetFieldSlug = "billingOrderId";
+    }
     onChange(base);
   }
 
@@ -599,6 +669,51 @@ function ActionConfig({ action, views, stateOptions, onChange }: ActionConfigPro
               <option key={col.id} value={col.key}>{col.name}</option>
             ))}
           </Select>
+        </div>
+      )}
+
+      {(type === "create_document" || type === "update_document_status") && (
+        <div className="config-panel__field">
+          <FieldLabel
+            label="Tipo de documento"
+            hint="Documento comercial vinculado ao WorkItem que sera criado ou atualizado pela automacao."
+          />
+          <Select
+            value={asString(action.kind) || "proposal"}
+            onChange={(e) => onChange({ ...action, type, kind: e.target.value })}
+          >
+            <option value="proposal">Proposta</option>
+            <option value="contract">Contrato</option>
+            <option value="wiki">Wiki</option>
+          </Select>
+        </div>
+      )}
+
+      {(type === "create_document" || type === "update_document_status") && (
+        <div className="config-panel__field">
+          <FieldLabel
+            label="Status"
+            hint="Status comercial gravado nos metadados do documento ao executar a automacao."
+          />
+          <TextInput
+            value={asString(action.status) || (type === "create_document" ? "draft" : "")}
+            onChange={(e) => onChange({ ...action, type, status: e.target.value })}
+            placeholder="draft, sent, approved, accepted"
+          />
+        </div>
+      )}
+
+      {type === "create_billing_order" && (
+        <div className="config-panel__field">
+          <FieldLabel
+            label="Campo de cobranca"
+            hint="Campo configuravel do WorkItem que recebera a referencia da cobranca preparada."
+          />
+          <TextInput
+            value={asString(action.targetFieldSlug) || "billingOrderId"}
+            onChange={(e) => onChange({ ...action, type, targetFieldSlug: e.target.value })}
+            placeholder="billingOrderId"
+          />
         </div>
       )}
     </div>
@@ -759,7 +874,7 @@ export function AutomationsPage() {
       const visibleCols = visibleIds
         .map((id) => boardColumnById.get(id))
         .filter((c): c is ApiBoardColumn => Boolean(c))
-        .map((c) => ({ id: c.id, key: normalizeKey(c.slug || c.name), name: c.name }))
+        .map((c) => ({ id: c.id, key: normalizeColumnKeyFromSlug(c.slug, c.name), name: c.name }))
         .filter((c) => c.key.length > 0);
 
       if (visibleCols.length > 0) boardColsByPerspKey.set(normalized, visibleCols);
@@ -815,10 +930,15 @@ export function AutomationsPage() {
   function doOpenRule(rule: AutomationRule) {
     const d = ruleToFlowDraft(rule);
     if (d.triggerType === "item.moved" && !d.triggerConfig.toViewKey && availableViews[0]) {
+      const currentColumnKey = asString(d.triggerConfig.toColumnKey);
+      const matchingView = availableViews.find((view) =>
+        view.columns.some((column) => column.key === currentColumnKey)
+      );
+      const fallbackView = matchingView ?? availableViews[0];
       d.triggerConfig = {
         ...d.triggerConfig,
-        toViewKey: availableViews[0].key,
-        toColumnKey: availableViews[0].columns[0]?.key ?? ""
+        toViewKey: fallbackView.key,
+        toColumnKey: currentColumnKey || (fallbackView.columns[0]?.key ?? "")
       };
     }
     setDraft(d);
@@ -1017,6 +1137,9 @@ export function AutomationsPage() {
     if (type === "set_work_item_state") return !!(asString(action.stateSlug) || asString(action.status));
     if (type === "set_view_column") return !!(asString(action.targetViewKey) && asString(action.targetColumnKey));
     if (type === "remove_from_view") return !!asString(action.targetViewKey);
+    if (type === "create_document") return !!asString(action.kind);
+    if (type === "update_document_status") return !!(asString(action.kind) && asString(action.status));
+    if (type === "create_billing_order") return true;
     return false;
   };
 

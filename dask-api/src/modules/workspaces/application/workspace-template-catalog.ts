@@ -1,6 +1,6 @@
 import type { CustomFieldInputType } from '@/modules/workspace-platform/application/shared';
 
-export type WorkspaceTemplateKey = 'software_delivery' | 'product_discovery' | 'operations_kanban';
+export type WorkspaceTemplateKey = 'software_delivery' | 'product_discovery' | 'operations_kanban' | 'commercial_crm';
 
 export type WorkspaceTemplateFieldOption = {
   label: string;
@@ -13,6 +13,9 @@ export type WorkspaceTemplateFieldDefinition = {
   label: string;
   slug: string;
   description?: string;
+  variableKey?: string;
+  variableLabel?: string;
+  variableDescription?: string;
   type: CustomFieldInputType;
   required?: boolean;
   options?: WorkspaceTemplateFieldOption[];
@@ -37,6 +40,7 @@ export type WorkspaceTemplatePerspective = {
   statusSource: { kind: 'workflow_state' } | { kind: 'custom_field'; fieldId: string; fallbackByStatus?: Record<string, string> };
   compactCards?: boolean;
   visibleBoardColumnSlugs?: string[];
+  createTaskColumnSlugs?: string[];
   allowedTaskTypes?: string[];
 };
 
@@ -46,6 +50,8 @@ export type WorkspaceTemplateSchema = {
   perspectives: WorkspaceTemplatePerspective[];
   fieldDefinitions?: WorkspaceTemplateFieldDefinition[];
   fieldBindings?: WorkspaceTemplateFieldBinding[];
+  automations?: Array<Record<string, unknown>>;
+  documentBindings?: Array<Record<string, unknown>>;
 };
 
 export type WorkspaceTemplateDefinition = {
@@ -246,6 +252,209 @@ const operationsFieldBindings = buildTemplateFieldBindings({
   extraDetailFieldIds: ['severity', 'sla-hours']
 });
 
+const commercialIssueTypes = ['commercial'];
+
+const commercialStatuses = [
+  { id: 'lead_new', label: 'Novo lead', dot: '#0d8df7' },
+  { id: 'lead_qualification', label: 'Qualificacao', dot: '#4f46e5' },
+  { id: 'opportunity_open', label: 'Oportunidade aberta', dot: '#0891b2' },
+  { id: 'proposal_preparing', label: 'Proposta em preparacao', dot: '#f59e0b' },
+  { id: 'proposal_sent', label: 'Proposta enviada', dot: '#d97706' },
+  { id: 'proposal_approved', label: 'Proposta aprovada', dot: '#16a34a' },
+  { id: 'contract_preparing', label: 'Contrato em preparacao', dot: '#7c3aed' },
+  { id: 'contract_sent', label: 'Contrato enviado', dot: '#6d28d9' },
+  { id: 'contract_accepted', label: 'Contrato aceito / assinado', dot: '#22c55e' },
+  { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
+  { id: 'payment_waiting', label: 'Aguardando pagamento', dot: '#0f766e' },
+  { id: 'paid_active', label: 'Pago / Ativo', dot: '#15803d' },
+  { id: 'lost', label: 'Perdido', dot: '#dc2626' },
+  { id: 'closed', label: 'Encerrado', dot: '#64748b' }
+];
+
+const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
+  {
+    id: 'customerId',
+    label: 'Cliente vinculado',
+    slug: 'customerId',
+    description: 'Customer mestre vinculado ao work item comercial.',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contactId',
+    label: 'Contato vinculado',
+    slug: 'contactId',
+    description: 'Contato mestre vinculado, quando existir.',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contactName',
+    label: 'Nome do contato',
+    slug: 'contactName',
+    variableKey: 'contactName',
+    variableLabel: 'Nome do contato',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contactEmail',
+    label: 'Email do contato',
+    slug: 'contactEmail',
+    variableKey: 'contactEmail',
+    variableLabel: 'Email do contato',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contactPhone',
+    label: 'Telefone do contato',
+    slug: 'contactPhone',
+    variableKey: 'contactPhone',
+    variableLabel: 'Telefone do contato',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'companyName',
+    label: 'Empresa',
+    slug: 'companyName',
+    variableKey: 'companyName',
+    variableLabel: 'Empresa',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'clientName',
+    label: 'Nome do cliente',
+    slug: 'clientName',
+    variableKey: 'clientName',
+    variableLabel: 'Nome do cliente',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'clientLogoUrl',
+    label: 'Logo do cliente',
+    slug: 'clientLogoUrl',
+    variableKey: 'clientLogoUrl',
+    variableLabel: 'Logo do cliente',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'source',
+    label: 'Origem',
+    slug: 'source',
+    variableKey: 'leadSource',
+    variableLabel: 'Origem do lead',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'interest',
+    label: 'Interesse / escopo',
+    slug: 'interest',
+    variableKey: 'implementationScope',
+    variableLabel: 'Escopo de implementacao',
+    type: 'long_text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'estimatedValue',
+    label: 'Valor estimado',
+    slug: 'estimatedValue',
+    variableKey: 'dealValue',
+    variableLabel: 'Valor da proposta',
+    type: 'number',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'probability',
+    label: 'Probabilidade',
+    slug: 'probability',
+    type: 'number',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'expectedCloseDate',
+    label: 'Previsao de fechamento',
+    slug: 'expectedCloseDate',
+    variableKey: 'expectedCloseDate',
+    variableLabel: 'Previsao de fechamento',
+    type: 'date',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'proposalValidity',
+    label: 'Validade da proposta',
+    slug: 'proposalValidity',
+    variableKey: 'proposalValidity',
+    variableLabel: 'Validade da proposta',
+    type: 'date',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'paymentTerms',
+    label: 'Condicoes comerciais',
+    slug: 'paymentTerms',
+    variableKey: 'paymentTerms',
+    variableLabel: 'Condicoes comerciais',
+    type: 'long_text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'proposalId',
+    label: 'Proposta',
+    slug: 'proposalId',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contractId',
+    label: 'Contrato',
+    slug: 'contractId',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'billingOrderId',
+    label: 'Ordem de cobranca',
+    slug: 'billingOrderId',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  }
+];
+
+const commercialFieldBindings = buildTemplateFieldBindings({
+  typeIds: commercialIssueTypes,
+  extraCardFieldIds: ['customerId', 'clientName', 'companyName', 'contactName', 'estimatedValue', 'proposalId', 'contractId'],
+  extraDetailFieldIds: [
+    'customerId',
+    'contactId',
+    'contactName',
+    'contactEmail',
+    'contactPhone',
+    'companyName',
+    'clientName',
+    'clientLogoUrl',
+    'source',
+    'interest',
+    'estimatedValue',
+    'probability',
+    'expectedCloseDate',
+    'proposalValidity',
+    'paymentTerms',
+    'proposalId',
+    'contractId',
+    'billingOrderId'
+  ],
+  detailSectionByFieldId: {
+    interest: 'main',
+    paymentTerms: 'main'
+  }
+});
+
 export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
   {
     key: 'software_delivery',
@@ -360,6 +569,171 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
     rules: {
       doneState: 'resolved',
       slaTracking: true
+    }
+  },
+  {
+    key: 'commercial_crm',
+    name: 'Comercial / CRM Operacional',
+    description: 'Entrada comercial, proposta, contrato, cobranca e ativacao com WorkItems como registro operacional.',
+    boardName: 'Comercial',
+    boardDescription: 'Fluxo comercial configuravel integrado ao board, documentos e futuras automacoes financeiras.',
+    schema: {
+      lanes: commercialStatuses.map((status) => status.id),
+      issueTypes: commercialIssueTypes,
+      perspectives: [
+        {
+          key: 'entrada',
+          name: 'Entrada',
+          caption: 'Captura e qualificacao comercial',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['lead_new', 'lead_qualification'],
+          createTaskColumnSlugs: ['lead_new'],
+          allowedTaskTypes: commercialIssueTypes
+        },
+        {
+          key: 'venda',
+          name: 'Venda',
+          caption: 'Oportunidade e proposta comercial',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved'],
+          createTaskColumnSlugs: [],
+          allowedTaskTypes: commercialIssueTypes
+        },
+        {
+          key: 'formalizacao',
+          name: 'Formalizacao',
+          caption: 'Contrato e aceite',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['contract_preparing', 'contract_sent', 'contract_accepted'],
+          createTaskColumnSlugs: [],
+          allowedTaskTypes: commercialIssueTypes
+        },
+        {
+          key: 'financeiro',
+          name: 'Financeiro',
+          caption: 'Cobranca e pagamento',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'paid_active'],
+          createTaskColumnSlugs: [],
+          allowedTaskTypes: commercialIssueTypes
+        },
+        {
+          key: 'finalizacao',
+          name: 'Finalizacao',
+          caption: 'Perdas e encerramentos',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['lost', 'closed'],
+          createTaskColumnSlugs: [],
+          allowedTaskTypes: commercialIssueTypes
+        }
+      ],
+      fieldDefinitions: commercialFieldDefinitions,
+      fieldBindings: commercialFieldBindings,
+      automations: [
+        {
+          id: 'move_to_opportunity_on_qualification',
+          name: 'Mover para Oportunidade aberta apos qualificacao',
+          description: 'Quando o WorkItem comercial entra em Qualificacao, avanca automaticamente para Oportunidade aberta na perspectiva Venda.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'lead_qualification' },
+          actions: [
+            { type: 'set_work_item_state', stateSlug: 'opportunity_open' }
+          ]
+        },
+        {
+          id: 'generate_proposal_on_proposal_preparing',
+          name: 'Gerar proposta ao mover para Proposta em preparacao',
+          description: 'Quando um WorkItem comercial entra na coluna Proposta em preparacao, cria a proposta vinculada ao WorkItem.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'proposal_preparing' },
+          actions: [
+            {
+              type: 'create_document',
+              kind: 'proposal',
+              binding: 'commercial_proposal',
+              status: 'draft',
+              targetFieldSlug: 'proposalId'
+            }
+          ]
+        },
+        {
+          id: 'mark_proposal_sent',
+          name: 'Marcar proposta como enviada',
+          description: 'Quando o WorkItem comercial entra em Proposta enviada, atualiza o status da proposta vinculada.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'proposal_sent' },
+          actions: [{ type: 'update_document_status', kind: 'proposal', status: 'sent' }]
+        },
+        {
+          id: 'generate_contract_on_proposal_approved',
+          name: 'Gerar contrato apos aprovacao da proposta',
+          description: 'Quando a proposta vinculada for aprovada, move o WorkItem para Contrato em preparacao e cria o contrato.',
+          enabled: true,
+          trigger: { type: 'proposal_status_changed', status: 'approved' },
+          actions: [
+            { type: 'set_work_item_state', stateSlug: 'contract_preparing' },
+            {
+              type: 'create_document',
+              kind: 'contract',
+              binding: 'commercial_contract',
+              status: 'draft',
+              targetFieldSlug: 'contractId'
+            }
+          ],
+          validations: ['commercial.contract.required_fields']
+        },
+        {
+          id: 'mark_contract_sent',
+          name: 'Marcar contrato como enviado',
+          description: 'Quando o WorkItem comercial entra em Contrato enviado, atualiza o status do contrato vinculado.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'contract_sent' },
+          actions: [{ type: 'update_document_status', kind: 'contract', status: 'sent' }]
+        },
+        {
+          id: 'prepare_billing_on_contract_accepted',
+          name: 'Preparar cobranca apos aceite do contrato',
+          description: 'Quando o contrato for aceito, move o WorkItem para Cobranca gerada e prepara a ordem de cobranca.',
+          enabled: false,
+          trigger: { type: 'contract_status_changed', status: 'accepted' },
+          actions: [
+            { type: 'set_work_item_state', stateSlug: 'billing_created' },
+            { type: 'create_billing_order', targetFieldSlug: 'billingOrderId' }
+          ],
+          validations: ['commercial.billing.required_fields']
+        },
+        {
+          id: 'move_to_paid_active_on_payment_confirmed',
+          name: 'Mover para Pago / Ativo apos pagamento confirmado',
+          description: 'Ponto de extensao para confirmacao de pagamento mover o WorkItem comercial para Pago / Ativo.',
+          enabled: false,
+          trigger: { type: 'billing_payment_confirmed', status: 'paid' },
+          actions: [{ type: 'set_work_item_state', stateSlug: 'paid_active' }]
+        }
+      ],
+      documentBindings: [
+        { id: 'commercial_proposal', kind: 'proposal', linkedEntityType: 'work_item' },
+        { id: 'commercial_contract', kind: 'contract', linkedEntityType: 'work_item' },
+        { id: 'commercial_wiki', kind: 'wiki', linkedEntityType: 'work_item' }
+      ]
+    },
+    rules: {
+      defaultState: 'lead_new',
+      doneState: 'paid_active',
+      lostState: 'lost',
+      documentBindings: {
+        proposal: 'commercial_proposal',
+        contract: 'commercial_contract'
+      },
+      billingExtension: {
+        createBillingOrderAction: 'create_billing_order',
+        billingOrderFieldId: 'billingOrderId'
+      }
     }
   }
 ];

@@ -1,8 +1,12 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { AppError } from '@/core/errors/app-error';
+import { DomainEventNames } from '@/core/events/event-names';
+import type { EventPublisher } from '@/core/events/event-publisher';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 
 type DocumentKind = 'wiki' | 'proposal' | 'contract';
+type DocumentLinkedEntityType = 'work_item' | 'customer' | 'proposal' | 'contract';
 type DocumentMetadata = Record<string, unknown>;
 
 const documentKinds = new Set<DocumentKind>(['wiki', 'proposal', 'contract']);
@@ -15,10 +19,20 @@ function toInputJson(value: DocumentMetadata | undefined): Prisma.InputJsonValue
   return value === undefined ? undefined : (value as Prisma.InputJsonObject);
 }
 
+function readMetadataStatus(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const status = (metadata as Record<string, unknown>).status;
+  return typeof status === 'string' && status.trim().length > 0 ? status.trim() : null;
+}
+
 export class WorkspaceDocumentsService {
   public constructor(
     private readonly prisma: PrismaClient,
-    private readonly configService: WorkspaceConfigService
+    private readonly configService: WorkspaceConfigService,
+    private readonly eventPublisher: EventPublisher
   ) {}
 
   public async listDocuments(input: { workspaceId: string; userId: string }) {
@@ -39,6 +53,8 @@ export class WorkspaceDocumentsService {
       title: string;
       content?: string;
       kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType;
+      linkedEntityId?: string;
       tags?: string[];
       metadata?: DocumentMetadata;
       position?: number;
@@ -56,12 +72,20 @@ export class WorkspaceDocumentsService {
         title: input.payload.title.trim(),
         content: input.payload.content ?? '',
         kind: input.payload.kind ?? 'wiki',
+        linkedEntityType: input.payload.linkedEntityType,
+        linkedEntityId: input.payload.linkedEntityId,
         tags: input.payload.tags ?? [],
         metadata: toInputJson(input.payload.metadata),
         position: input.payload.position ?? defaultPosition,
         createdBy: input.userId,
         updatedBy: input.userId
       }
+    });
+
+    await this.publishDocumentCreatedEvent({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      document
     });
 
     return this.serialize(document);
@@ -75,6 +99,8 @@ export class WorkspaceDocumentsService {
       title?: string;
       content?: string;
       kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType | null;
+      linkedEntityId?: string | null;
       tags?: string[];
       metadata?: DocumentMetadata;
       position?: number;
@@ -93,12 +119,15 @@ export class WorkspaceDocumentsService {
       throw new AppError('Workspace document not found', 404);
     }
 
+    const previousStatus = readMetadataStatus(current.metadata);
     const document = await this.prisma.workspaceDocument.update({
       where: { id: current.id },
       data: {
         title: input.payload.title,
         content: input.payload.content,
         kind: input.payload.kind,
+        linkedEntityType: input.payload.linkedEntityType,
+        linkedEntityId: input.payload.linkedEntityId,
         tags: input.payload.tags,
         metadata: toInputJson(input.payload.metadata),
         position: input.payload.position,
@@ -106,7 +135,90 @@ export class WorkspaceDocumentsService {
       }
     });
 
+    await this.publishDocumentStatusEvent({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      document,
+      previousStatus,
+      nextStatus: readMetadataStatus(document.metadata)
+    });
+
     return this.serialize(document);
+  }
+
+  private async publishDocumentCreatedEvent(input: {
+    workspaceId: string;
+    userId: string;
+    document: { id: string; kind?: string | null; linkedEntityType?: string | null; linkedEntityId?: string | null };
+  }) {
+    const kind = normalizeDocumentKind(input.document.kind);
+    const eventName =
+      kind === 'proposal'
+        ? DomainEventNames.ProposalCreated
+        : kind === 'contract'
+          ? DomainEventNames.ContractCreated
+          : null;
+
+    if (!eventName) {
+      return;
+    }
+
+    await this.eventPublisher.publish({
+      id: randomUUID(),
+      name: eventName,
+      aggregateType: kind,
+      aggregateId: input.document.id,
+      occurredAt: new Date(),
+      payload: {
+        workspaceId: input.workspaceId,
+        documentId: input.document.id,
+        linkedEntityType: input.document.linkedEntityType ?? null,
+        linkedEntityId: input.document.linkedEntityId ?? null,
+        requestedBy: input.userId
+      }
+    });
+  }
+
+  private async publishDocumentStatusEvent(input: {
+    workspaceId: string;
+    userId: string;
+    document: { id: string; kind?: string | null; linkedEntityType?: string | null; linkedEntityId?: string | null };
+    previousStatus: string | null;
+    nextStatus: string | null;
+  }) {
+    if (!input.nextStatus || input.previousStatus === input.nextStatus) {
+      return;
+    }
+
+    const kind = normalizeDocumentKind(input.document.kind);
+    const eventName =
+      kind === 'proposal' && input.nextStatus === 'sent'
+        ? DomainEventNames.ProposalSent
+        : kind === 'proposal' && input.nextStatus === 'approved'
+          ? DomainEventNames.ProposalApproved
+          : kind === 'contract' && (input.nextStatus === 'accepted' || input.nextStatus === 'signed')
+            ? DomainEventNames.ContractAccepted
+            : null;
+
+    if (!eventName) {
+      return;
+    }
+
+    await this.eventPublisher.publish({
+      id: randomUUID(),
+      name: eventName,
+      aggregateType: kind,
+      aggregateId: input.document.id,
+      occurredAt: new Date(),
+      payload: {
+        workspaceId: input.workspaceId,
+        documentId: input.document.id,
+        status: input.nextStatus,
+        linkedEntityType: input.document.linkedEntityType ?? null,
+        linkedEntityId: input.document.linkedEntityId ?? null,
+        requestedBy: input.userId
+      }
+    });
   }
 
   public async deleteDocument(input: { workspaceId: string; documentId: string; userId: string }) {
@@ -135,6 +247,8 @@ export class WorkspaceDocumentsService {
     title: string;
     content: string;
     kind?: string | null;
+    linkedEntityType?: string | null;
+    linkedEntityId?: string | null;
     tags?: string[];
     metadata?: Prisma.JsonValue | null;
     position: number;
@@ -149,6 +263,8 @@ export class WorkspaceDocumentsService {
       title: document.title,
       content: document.content,
       kind: normalizeDocumentKind(document.kind),
+      linkedEntityType: document.linkedEntityType ?? undefined,
+      linkedEntityId: document.linkedEntityId ?? undefined,
       tags: document.tags ?? [],
       metadata: document.metadata ?? {},
       position: document.position,

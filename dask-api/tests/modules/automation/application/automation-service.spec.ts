@@ -3,6 +3,10 @@ import { Prisma } from '@prisma/client';
 import { AutomationService } from '@/modules/automation/application/automation-service';
 import { DomainEventNames } from '@/core/events/event-names';
 
+vi.mock('@/modules/workspaces/application/default-workspace-seed', () => ({
+  ensureWorkspaceDefaultConfiguration: vi.fn().mockResolvedValue({ defaultBoardId: 'board-1' })
+}));
+
 function makeDeps() {
   const prisma = {
     $transaction: vi.fn(async (fn: (db: any) => Promise<unknown>) => fn(prisma as any)),
@@ -152,6 +156,73 @@ describe('AutomationService', () => {
       expect.objectContaining({ name: DomainEventNames.AutomationRuleCreated })
       ,
       expect.anything()
+    );
+  });
+
+  it('derives movement conditions from item.moved trigger settings', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.create.mockResolvedValue({
+      id: 'rule-move-proposal',
+      workspaceId: 'ws-1',
+      name: 'Gerar proposta',
+      description: null,
+      triggerType: 'item.moved',
+      trigger: {
+        type: 'item.moved',
+        settings: {
+          toViewKey: 'venda',
+          toColumnKey: 'proposal_preparing'
+        }
+      },
+      conditions: { toColumnKeys: ['proposal_preparing'] },
+      actions: [
+        {
+          type: 'create_document',
+          kind: 'proposal',
+          binding: 'commercial_proposal',
+          targetFieldSlug: 'proposalId'
+        }
+      ],
+      enabled: true,
+      priority: 100,
+      version: 1,
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-02')
+    });
+
+    await service.createRule({
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      name: 'Gerar proposta',
+      trigger: {
+        type: 'item.moved',
+        settings: {
+          toViewKey: 'venda',
+          toColumnKey: 'proposal_preparing'
+        }
+      },
+      actions: [
+        {
+          type: 'create_document',
+          kind: 'proposal',
+          binding: 'commercial_proposal',
+          targetFieldSlug: 'proposalId'
+        }
+      ]
+    });
+
+    expect(prisma.automationRule.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          triggerType: 'item.moved',
+          trigger: expect.objectContaining({
+            type: 'item.moved',
+            settings: expect.objectContaining({ toColumnKey: 'proposal_preparing' })
+          }),
+          conditions: { toColumnKeys: ['proposal_preparing'] }
+        })
+      })
     );
   });
 

@@ -631,6 +631,41 @@
   letter-spacing: 0.04em;
 }
 
+.board-editor__create-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid #d8e5f0;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #6f8aa4;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.board-editor__create-toggle svg {
+  width: 11px;
+  height: 11px;
+}
+
+.board-editor__create-toggle:hover {
+  border-color: #9bc8ef;
+  color: #0a86e8;
+  background: #f2f8ff;
+}
+
+.board-editor__create-toggle.is-enabled {
+  border-color: #2f6b9f;
+  background: #2f6b9f;
+  color: #ffffff;
+}
+
 /* Mock cards */
 .board-editor__mock-cards {
   display: flex;
@@ -1027,6 +1062,18 @@
   color: #4a7a9b;
 }
 
+[data-theme="dark"] .board-editor__create-toggle {
+  border-color: #1e3a52;
+  background: #0f1e30;
+  color: #7aadcf;
+}
+
+[data-theme="dark"] .board-editor__create-toggle.is-enabled {
+  border-color: #3b82c4;
+  background: #1f5e94;
+  color: #e4f0fb;
+}
+
 [data-theme="dark"] .board-editor__drag-handle { color: #2a5070; }
 [data-theme="dark"] .board-editor__drag-handle:hover { color: #5aadee; background: rgba(10, 134, 232, 0.1); }
 
@@ -1262,8 +1309,13 @@
 .app-theme[data-theme="dark"] .board-editor__unsaved-label,
 .app-theme[data-theme="dark"] .board-editor__drag-handle,
 .app-theme[data-theme="dark"] .board-editor__hidden-badge,
+.app-theme[data-theme="dark"] .board-editor__create-toggle,
 .app-theme[data-theme="dark"] .board-editor__template-group-copy span {
   color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .board-editor__create-toggle.is-enabled {
+  color: var(--text-strong) !important;
 }
 
 .app-theme[data-theme="dark"] .board-editor__picker-divider {

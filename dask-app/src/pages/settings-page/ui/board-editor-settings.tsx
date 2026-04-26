@@ -32,6 +32,7 @@ type BoardPerspective = {
   allowedTaskTypes?: string[];
   compactCards?: boolean;
   visibleBoardColumnIds?: string[];
+  createTaskColumnIds?: string[];
   template?: PerspectiveTemplateMeta;
 };
 
@@ -49,6 +50,8 @@ type PerspectiveTemplateSeed = {
   compactCards?: boolean;
   visibleBoardColumnSlugs?: string[];
   visibleBoardColumnIds?: string[];
+  createTaskColumnSlugs?: string[];
+  createTaskColumnIds?: string[];
 };
 
 function toSlug(value: string): string {
@@ -98,6 +101,7 @@ function serializePerspective(perspective: BoardPerspective, position: number) {
     position,
     allowedTaskTypes: perspective.allowedTaskTypes ?? [],
     visibleBoardColumnIds: perspective.visibleBoardColumnIds ?? [],
+    createTaskColumnIds: perspective.createTaskColumnIds ?? [],
     statusSource: perspective.statusSource,
     statuses: perspective.statuses,
     template: perspective.template
@@ -168,6 +172,12 @@ function extractTemplateSeeds(templates: BoardTemplateSummary[]): PerspectiveTem
             : undefined,
           visibleBoardColumnIds: Array.isArray(perspective.visibleBoardColumnIds)
             ? perspective.visibleBoardColumnIds.filter((value): value is string => typeof value === "string")
+            : undefined,
+          createTaskColumnSlugs: Array.isArray(perspective.createTaskColumnSlugs)
+            ? perspective.createTaskColumnSlugs.filter((value): value is string => typeof value === "string")
+            : undefined,
+          createTaskColumnIds: Array.isArray(perspective.createTaskColumnIds)
+            ? perspective.createTaskColumnIds.filter((value): value is string => typeof value === "string")
             : undefined
         };
       });
@@ -196,6 +206,26 @@ function resolveVisibleColumnIdsFromSeed(seed: PerspectiveTemplateSeed, activeCo
   return activeColumns.map((column) => column.id);
 }
 
+function resolveCreateTaskColumnIdsFromSeed(seed: PerspectiveTemplateSeed, activeColumns: ApiBoardColumn[]): string[] {
+  const columnIdBySlug = new Map(activeColumns.map((column) => [column.slug, column.id]));
+
+  const fromSlugs = Array.isArray(seed.createTaskColumnSlugs)
+    ? seed.createTaskColumnSlugs
+        .map((slug) => columnIdBySlug.get(slug))
+        .filter((columnId): columnId is string => Boolean(columnId))
+    : [];
+
+  if (fromSlugs.length > 0) {
+    return Array.from(new Set(fromSlugs));
+  }
+
+  if (Array.isArray(seed.createTaskColumnIds)) {
+    return Array.from(new Set(seed.createTaskColumnIds));
+  }
+
+  return [];
+}
+
 function buildPerspectiveFromTemplateSeed(input: {
   seed: PerspectiveTemplateSeed;
   id: string;
@@ -212,6 +242,7 @@ function buildPerspectiveFromTemplateSeed(input: {
     allowedTaskTypes: input.seed.allowedTaskTypes ? [...input.seed.allowedTaskTypes] : undefined,
     compactCards: Boolean(input.seed.compactCards),
     visibleBoardColumnIds: resolveVisibleColumnIdsFromSeed(input.seed, input.activeColumns),
+    createTaskColumnIds: resolveCreateTaskColumnIdsFromSeed(input.seed, input.activeColumns),
     template: {
       templateId: input.seed.templateId,
       templateName: input.seed.templateName,
@@ -596,6 +627,9 @@ export function BoardEditorSettings() {
               compactCards: Boolean(activePerspective.compactCards),
               allowedTaskTypes: activePerspective.allowedTaskTypes ?? [],
               visibleBoardColumnSlugs,
+              createTaskColumnSlugs: (activePerspective.createTaskColumnIds ?? [])
+                .map((columnId) => columnSlugById.get(columnId))
+                .filter((slug): slug is string => Boolean(slug)),
               statusSource: activePerspective.statusSource,
               statuses: activePerspective.statuses
             }
@@ -631,7 +665,11 @@ export function BoardEditorSettings() {
             ? new Set(perspective.visibleBoardColumnIds)
             : new Set(activeColumns.map((column) => column.id));
         currentVisible.delete(columnId);
-        return { ...perspective, visibleBoardColumnIds: Array.from(currentVisible) };
+        return {
+          ...perspective,
+          visibleBoardColumnIds: Array.from(currentVisible),
+          createTaskColumnIds: (perspective.createTaskColumnIds ?? []).filter((id) => id !== columnId)
+        };
       })
     );
 
@@ -679,6 +717,25 @@ export function BoardEditorSettings() {
       })
     );
     setAddColumnMode(null);
+  };
+
+  const handleToggleCreateTaskColumn = (columnId: string) => {
+    updateDraft((previous) =>
+      previous.map((perspective) => {
+        if (perspective.id !== activePerspectiveId) {
+          return perspective;
+        }
+
+        const current = new Set(perspective.createTaskColumnIds ?? []);
+        if (current.has(columnId)) {
+          current.delete(columnId);
+        } else {
+          current.add(columnId);
+        }
+
+        return { ...perspective, createTaskColumnIds: Array.from(current) };
+      })
+    );
   };
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, columnId: string) => {
@@ -1071,6 +1128,7 @@ export function BoardEditorSettings() {
             <>
               {columnsToShow.map((column) => {
                 const isHidden = activePendingHidden.has(column.id);
+                const hasCreateTaskButton = Boolean(activePerspective?.createTaskColumnIds?.includes(column.id));
                 const stateForColumn = activeStates.find((state) => state.id === column.stateIds[0]);
                 const isEditing = editingColumnId === column.id;
                 const isConfirmingDelete = deletingColumnId === column.id;
@@ -1187,6 +1245,20 @@ export function BoardEditorSettings() {
                           <span className="board-editor__state-dot" style={{ background: stateForColumn?.color ?? "#c0ccd8" }} />
                           <span className="board-editor__state-name">{stateForColumn?.name ?? "Sem estado"}</span>
                           <span className="board-editor__col-slug">/{column.slug}</span>
+                          {!isHidden && (
+                            <button
+                              type="button"
+                              className={`board-editor__create-toggle${hasCreateTaskButton ? " is-enabled" : ""}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleToggleCreateTaskColumn(column.id);
+                              }}
+                              title={hasCreateTaskButton ? "Remover botao de criar tarefa desta coluna" : "Mostrar botao de criar tarefa nesta coluna"}
+                            >
+                              <IconPlus />
+                              Criar aqui
+                            </button>
+                          )}
                           {isHidden && (
                             <span className="board-editor__hidden-badge">
                               <IconEyeOff />

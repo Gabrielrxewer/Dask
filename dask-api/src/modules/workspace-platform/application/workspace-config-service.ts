@@ -39,6 +39,32 @@ export type WorkspaceAccess = {
   allowedBoardViewKeys: string[] | null;
 };
 
+function normalizeNullableText(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeVariableKey(value: string | null | undefined): string | null | undefined {
+  const normalized = normalizeNullableText(value);
+  if (!normalized) {
+    return normalized;
+  }
+
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,79}$/.test(normalized)) {
+    throw new AppError('Field variable key must start with a letter and contain only letters, numbers or underscores', 422);
+  }
+
+  return normalized;
+}
+
 export class WorkspaceConfigService {
   public constructor(private readonly prisma: PrismaClient) {}
 
@@ -545,6 +571,9 @@ export class WorkspaceConfigService {
       name: string;
       slug?: string;
       description?: string;
+      variableKey?: string | null;
+      variableLabel?: string | null;
+      variableDescription?: string | null;
       type: CustomFieldInputType;
       required?: boolean;
       isEditable?: boolean;
@@ -569,6 +598,9 @@ export class WorkspaceConfigService {
         name: input.payload.name,
         slug: toSlug(input.payload.slug ?? input.payload.name),
         description: input.payload.description,
+        variableKey: normalizeVariableKey(input.payload.variableKey),
+        variableLabel: normalizeNullableText(input.payload.variableLabel),
+        variableDescription: normalizeNullableText(input.payload.variableDescription),
         type: mapInputTypeToPrisma(input.payload.type),
         isSystem: false,
         required: input.payload.required ?? false,
@@ -606,6 +638,9 @@ export class WorkspaceConfigService {
       name?: string;
       slug?: string;
       description?: string | null;
+      variableKey?: string | null;
+      variableLabel?: string | null;
+      variableDescription?: string | null;
       type?: CustomFieldInputType;
       required?: boolean;
       isEditable?: boolean;
@@ -635,6 +670,9 @@ export class WorkspaceConfigService {
         input.payload.name !== undefined ||
         input.payload.slug !== undefined ||
         input.payload.description !== undefined ||
+        input.payload.variableKey !== undefined ||
+        input.payload.variableLabel !== undefined ||
+        input.payload.variableDescription !== undefined ||
         input.payload.required !== undefined ||
         input.payload.settings !== undefined ||
         input.payload.defaultValue !== undefined ||
@@ -654,6 +692,13 @@ export class WorkspaceConfigService {
         name: input.payload.name,
         slug: input.payload.slug ? toSlug(input.payload.slug) : undefined,
         description: input.payload.description,
+        variableKey: input.payload.variableKey !== undefined ? normalizeVariableKey(input.payload.variableKey) : undefined,
+        variableLabel:
+          input.payload.variableLabel !== undefined ? normalizeNullableText(input.payload.variableLabel) : undefined,
+        variableDescription:
+          input.payload.variableDescription !== undefined
+            ? normalizeNullableText(input.payload.variableDescription)
+            : undefined,
         type: input.payload.type ? mapInputTypeToPrisma(input.payload.type) : undefined,
         required: input.payload.required,
         isEditable: input.payload.isEditable,
@@ -1440,6 +1485,9 @@ export class WorkspaceConfigService {
     name: string;
     slug: string;
     description: string | null;
+    variableKey: string | null;
+    variableLabel: string | null;
+    variableDescription: string | null;
     type: CustomFieldType;
     isSystem: boolean;
     required: boolean;
@@ -1479,6 +1527,9 @@ export class WorkspaceConfigService {
       slug: field.slug,
       name: field.name,
       description: field.description,
+      variableKey: field.variableKey,
+      variableLabel: field.variableLabel,
+      variableDescription: field.variableDescription,
       type: mapCustomFieldTypeToInput(field.type),
       required: field.required,
       isSystem: field.isSystem,

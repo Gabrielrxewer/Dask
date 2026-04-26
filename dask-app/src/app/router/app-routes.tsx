@@ -27,6 +27,7 @@ import {
   MembersSettingsPage,
   NoWorkspacePage,
   PlatformAdminPage,
+  ProposalPublicPage,
   ResetPasswordPage,
   SettingsShellPage,
   WorkItemEditorSettingsPage,
@@ -147,6 +148,7 @@ export function AppRoutes() {
         */}
         <Route path={routePaths.resetPassword} element={<ResetPasswordPage />} />
         <Route path={routePaths.verifyEmail} element={<VerifyEmailPage />} />
+        <Route path={routePaths.proposalPublic} element={<ProposalPublicPage />} />
         <Route path={routePaths.termsOfUse} element={<TermsOfUsePage />} />
         <Route path={routePaths.privacyPolicy} element={<PrivacyPolicyPage />} />
 

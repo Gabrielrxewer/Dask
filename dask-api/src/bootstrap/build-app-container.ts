@@ -24,6 +24,7 @@ import { AutomationViewService } from '@/modules/automation/application/automati
 import { IntegrationService } from '@/modules/integration/application/integration-service';
 import { AuditService } from '@/modules/audit/application/audit-service';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import { WorkspaceCustomersService } from '@/modules/workspace-platform/application/workspace-customers-service';
 import { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
 import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
@@ -55,6 +56,7 @@ export type AppContainer = {
   integrationService: IntegrationService;
   auditService: AuditService;
   workspaceConfigService: WorkspaceConfigService;
+  workspaceCustomersService: WorkspaceCustomersService;
   workspaceDocumentsService: WorkspaceDocumentsService;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
   workspaceInvitesService: WorkspaceInvitesService;
@@ -82,7 +84,7 @@ export function buildAppContainer(): AppContainer {
   const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
   const itemsService = new ItemsService(itemsRepository, eventPublisher, prisma);
   const workspaceConfigService = new WorkspaceConfigService(prisma);
-  const workspaceDocumentsService = new WorkspaceDocumentsService(prisma, workspaceConfigService);
+  const workspaceDocumentsService = new WorkspaceDocumentsService(prisma, workspaceConfigService, eventPublisher);
   const { aiProvider, embeddingProvider } = buildAIProviderStack();
   const workspaceWorkItemsService = new WorkspaceWorkItemsService(
     prisma,
@@ -139,6 +141,7 @@ export function buildAppContainer(): AppContainer {
     focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
   });
   const leadsRepo = new PrismaLeadsRepository(prisma);
+  const workspaceCustomersService = new WorkspaceCustomersService(prisma, workspaceConfigService, eventPublisher);
   const leadsService = new LeadsService({
     repo: leadsRepo,
     eventPublisher,
@@ -171,6 +174,7 @@ export function buildAppContainer(): AppContainer {
     integrationService,
     auditService,
     workspaceConfigService,
+    workspaceCustomersService,
     workspaceDocumentsService,
     workspaceWorkItemsService,
     workspaceInvitesService,

@@ -94,6 +94,71 @@ describe('rule-schema', () => {
     ).toThrowError(AppError);
   });
 
+  it('parses commercial document automation actions and triggers', () => {
+    const spec = parseRuleSpec({
+      trigger: { type: 'proposal.approved' },
+      actions: [
+        { type: 'set_work_item_state', stateSlug: 'contract_preparing' },
+        {
+          type: 'create_document',
+          kind: 'contract',
+          binding: 'commercial_contract',
+          targetFieldSlug: 'contractId',
+          validations: ['commercial.contract.required_fields']
+        }
+      ]
+    });
+
+    expect(spec.trigger.type).toBe('proposal.approved');
+    expect(spec.actions[1]?.type).toBe('create_document');
+  });
+
+  it('matches commercial underscore column keys and statuses correctly', () => {
+    const matches = matchesConditions(
+      {
+        itemTypeSlugs: ['commercial'],
+        toColumnKeys: ['lead_qualification'],
+        statuses: ['lead_qualification']
+      },
+      {
+        itemTypeSlug: 'commercial',
+        toColumnKey: 'lead_qualification',
+        status: 'lead_qualification'
+      }
+    );
+
+    expect(matches).toBe(true);
+  });
+
+  it('does not match when commercial status uses dashes instead of underscores', () => {
+    const matches = matchesConditions(
+      {
+        toColumnKeys: ['lead_qualification'],
+        statuses: ['lead_qualification']
+      },
+      {
+        toColumnKey: 'lead-qualification',
+        status: 'lead-qualification'
+      }
+    );
+
+    expect(matches).toBe(false);
+  });
+
+  it('parses set_work_item_state with underscore slug for commercial workflow', () => {
+    const spec = parseRuleSpec({
+      trigger: { type: 'item.moved' },
+      conditions: {
+        itemTypeSlugs: ['commercial'],
+        toColumnKeys: ['lead_qualification'],
+        statuses: ['lead_qualification']
+      },
+      actions: [{ type: 'set_work_item_state', stateSlug: 'opportunity_open' }]
+    });
+
+    expect(spec.actions[0]).toMatchObject({ type: 'set_work_item_state', stateSlug: 'opportunity_open' });
+  });
+
   it('fails when expected string/number filters receive empty or invalid actual values', () => {
     expect(
       matchesConditions(

@@ -8,6 +8,7 @@ export {
   buildWorkspaceFiscalPath,
   buildWorkspaceLeadsPath,
   buildWorkspaceMarketingPath,
+  buildProposalPublicPath,
   buildWorkspaceSelectorPath,
   buildWorkspaceListPath,
   buildWorkspacePath,

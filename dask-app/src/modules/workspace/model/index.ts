@@ -3,6 +3,14 @@ export {
   createInitialWorkspaceSnapshot,
   createTaskFromInput
 } from "@/modules/workspace/model/mock-workspace";
+export {
+  interpolateDocumentTemplate,
+  resolveDocumentVariables
+} from "@/modules/workspace/model/document-variables";
+export type {
+  DocumentVariableContext,
+  DocumentVariables
+} from "@/modules/workspace/model/document-variables";
 export { useWorkspaceTaskPage } from "@/modules/workspace/model/use-workspace-task-page";
 export type {
   AiAgentSummary,
@@ -19,6 +27,11 @@ export type {
   CalendarFeedSnapshot,
   CalendarIntegrationProvider,
   CalendarIntegrationStatus,
+  DocumentLinkedEntityType,
+  Customer,
+  CustomerAddress,
+  CustomerStatus,
+  CreateCustomerInput,
   ApiCustomField,
   ApiItemType,
   ApiWorkflowState,

@@ -365,6 +365,71 @@
   font-weight: 600;
 }
 
+.task-details__documents {
+  display: grid;
+  gap: 10px;
+}
+
+.task-details__documents-head {
+  align-items: flex-start;
+}
+
+.task-details__documents-actions,
+.task-details__document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.task-details__documents-list {
+  display: grid;
+  gap: 8px;
+}
+
+.task-details__document-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(210, 226, 244, 0.84);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.74);
+  padding: 10px;
+}
+
+.task-details__document-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.task-details__document-main span,
+.task-details__document-meta span {
+  color: #6b89ab;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.task-details__document-main strong {
+  color: #173e63;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.task-details__document-meta {
+  display: grid;
+  gap: 3px;
+}
+
+.task-details__documents-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .task-details__textarea {
   min-height: 126px;
 }
@@ -2138,5 +2203,35 @@
   .task-details__main,
   .task-details__side {
     padding: 12px;
+  }
+}
+
+.app-theme[data-theme="dark"] .task-details__document-row {
+  background: color-mix(in oklab, var(--panel-muted) 58%, transparent);
+  border-color: color-mix(in oklab, var(--line) 82%, transparent);
+}
+
+.app-theme[data-theme="dark"] .task-details__document-main strong {
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .task-details__document-main span,
+.app-theme[data-theme="dark"] .task-details__document-meta span {
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .task-details__document-row {
+    grid-template-columns: 1fr;
+  }
+
+  .task-details__documents-actions,
+  .task-details__document-actions {
+    justify-content: stretch;
+  }
+
+  .task-details__documents-actions .shared-button,
+  .task-details__document-actions .shared-button {
+    flex: 1 1 140px;
   }
 }

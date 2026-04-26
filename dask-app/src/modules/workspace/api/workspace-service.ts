@@ -12,6 +12,7 @@ import type {
   AutomationView,
   AutomationExecution,
   AutomationRule,
+  CreateCustomerInput,
   CreateAiAgentInput,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
@@ -26,6 +27,8 @@ import type {
   TaskScheduleInput,
   UpdateTaskInput,
   WorkspaceDocument,
+  Customer,
+  CustomerStatus,
   WorkItemLinkedDocument,
   WorkspacePreferences,
   WorkspaceProfile,
@@ -84,7 +87,8 @@ const snapshotByWorkspaceSlug = new Map<string, WorkspaceSnapshot>();
 const fallbackTemplates: WorkspaceTemplateOption[] = [
   { key: "software_delivery", name: "Software Delivery", description: "Template padrao" },
   { key: "product_discovery", name: "Product Discovery", description: "Template de descoberta" },
-  { key: "operations_kanban", name: "Operations Kanban", description: "Template operacional" }
+  { key: "operations_kanban", name: "Operations Kanban", description: "Template operacional" },
+  { key: "commercial_crm", name: "Comercial / CRM Operacional", description: "Template comercial integrado ao board" }
 ];
 
 async function listWorkspaces(): Promise<WorkspaceSummary[]> {
@@ -754,6 +758,45 @@ export const workspaceService: WorkspaceService = {
   async listWorkspaceDocuments(workspaceSlug: string): Promise<WorkspaceDocument[]> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.get<WorkspaceDocument[]>(`/workspaces/${workspaceId}/documents`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listCustomers(
+    workspaceSlug: string,
+    input?: { search?: string; status?: CustomerStatus }
+  ): Promise<Customer[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (input?.search) {
+      query.set("search", input.search);
+    }
+    if (input?.status) {
+      query.set("status", input.status);
+    }
+    const qs = query.toString();
+    return apiClient.get<Customer[]>(`/workspaces/${workspaceId}/customers${qs ? `?${qs}` : ""}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createCustomer(workspaceSlug: string, input: CreateCustomerInput): Promise<Customer> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<Customer>(`/workspaces/${workspaceId}/customers`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateCustomer(
+    workspaceSlug: string,
+    customerId: string,
+    input: Partial<CreateCustomerInput>
+  ): Promise<Customer> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<Customer>(`/workspaces/${workspaceId}/customers/${customerId}`, input, {
       authMode: "required",
       retryOnUnauthorized: true
     });

@@ -33,19 +33,26 @@ const FALLBACK_TEMPLATES: WorkspaceTemplateOption[] = [
     key: "operations_kanban",
     name: "Operacoes",
     description: "Fila, triagem, execucao e resolucao."
+  },
+  {
+    key: "commercial_crm",
+    name: "Comercial / CRM Operacional",
+    description: "Entrada comercial, proposta, contrato, cobranca e ativacao."
   }
 ];
 
 const TEMPLATE_PREVIEWS: Record<WorkspaceTemplateOption["key"], string[]> = {
   software_delivery: ["Backlog", "Execucao", "Review", "Done"],
   product_discovery: ["Ideias", "Hipoteses", "Experimentos", "Validados"],
-  operations_kanban: ["Fila", "Triagem", "Execucao", "Resolvido"]
+  operations_kanban: ["Fila", "Triagem", "Execucao", "Resolvido"],
+  commercial_crm: ["Novo lead", "Proposta", "Contrato", "Pago"]
 };
 
 const TEMPLATE_ACCENTS: Record<WorkspaceTemplateOption["key"], string> = {
   software_delivery: "#0a86e8",
   product_discovery: "#7d61ee",
-  operations_kanban: "#0f9f98"
+  operations_kanban: "#0f9f98",
+  commercial_crm: "#0f766e"
 };
 
 function resolvePerspectives(rawBoardConfig: unknown): BoardPerspective[] {

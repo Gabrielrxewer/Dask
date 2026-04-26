@@ -1,5 +1,4 @@
-import type { Prisma } from '@prisma/client';
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { SYSTEM_FIELD_SEEDS } from '@/modules/workspace-platform/application/field-platform';
 import { isRecord, mapInputTypeToPrisma } from '@/modules/workspace-platform/application/shared';
 import {
@@ -43,6 +42,9 @@ type DefaultCustomFieldSeed = {
   name: string;
   slug: string;
   description?: string;
+  variableKey?: string;
+  variableLabel?: string;
+  variableDescription?: string;
   type:
     | 'TEXT'
     | 'LONG_TEXT'
@@ -72,10 +74,33 @@ type DefaultBoardViewSeed = {
   compactCards?: boolean;
   allowedTaskTypes?: string[];
   visibleBoardColumnSlugs?: string[];
+  createTaskColumnSlugs?: string[];
   statusSource:
     | { kind: 'workflow_state' }
     | { kind: 'custom_field'; fieldId: string; fallbackByStatus?: Record<string, string> };
   statuses: Array<{ id: string; label: string; dot: string }>;
+};
+
+type TemplateAutomationSeed = {
+  id: string;
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+  trigger?: Record<string, unknown>;
+  action?: Record<string, unknown>;
+  actions?: Array<Record<string, unknown>>;
+  validations?: string[];
+};
+
+type SeededAutomationRuleSpec = {
+  automationId: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  trigger: Record<string, unknown>;
+  conditions?: Record<string, unknown>;
+  actions: Array<Record<string, unknown>>;
+  priority: number;
 };
 
 type TemplateSeedPreset = {
@@ -91,6 +116,7 @@ type TemplateSeedPreset = {
 };
 
 const CARD_FIELDS_SCHEMA_VERSION = 2;
+const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 4;
 
 const defaultSystemCardFieldIds = [
   'sys:type',
@@ -515,6 +541,140 @@ const operationsKanbanBoardViews: DefaultBoardViewSeed[] = [
   }
 ];
 
+const commercialItemTypes: DefaultTypeSeed[] = [
+  {
+    name: 'Comercial',
+    slug: 'commercial',
+    description: 'Lead, oportunidade, proposta, contrato, cobranca e pagamento no mesmo work item.',
+    color: '#0f766e',
+    icon: 'briefcase-business',
+    acceptsParent: true,
+    acceptsChecklist: true,
+    acceptsDueDate: true,
+    acceptsAssignee: true,
+    acceptsTags: true,
+    acceptsCustomFields: true
+  }
+];
+
+const commercialStates: DefaultStateSeed[] = [
+  { name: 'Novo lead', slug: 'lead_new', category: 'entrada', color: '#0d8df7' },
+  { name: 'Qualificacao', slug: 'lead_qualification', category: 'entrada', color: '#4f46e5' },
+  { name: 'Oportunidade aberta', slug: 'opportunity_open', category: 'venda', color: '#0891b2' },
+  { name: 'Proposta em preparacao', slug: 'proposal_preparing', category: 'venda', color: '#f59e0b' },
+  { name: 'Proposta enviada', slug: 'proposal_sent', category: 'venda', color: '#d97706' },
+  { name: 'Proposta aprovada', slug: 'proposal_approved', category: 'venda', color: '#16a34a' },
+  { name: 'Contrato em preparacao', slug: 'contract_preparing', category: 'formalizacao', color: '#7c3aed' },
+  { name: 'Contrato enviado', slug: 'contract_sent', category: 'formalizacao', color: '#6d28d9' },
+  { name: 'Contrato aceito / assinado', slug: 'contract_accepted', category: 'formalizacao', color: '#22c55e' },
+  { name: 'Cobranca gerada', slug: 'billing_created', category: 'financeiro', color: '#0369a1' },
+  { name: 'Aguardando pagamento', slug: 'payment_waiting', category: 'financeiro', color: '#0f766e' },
+  { name: 'Pago / Ativo', slug: 'paid_active', category: 'financeiro', color: '#15803d', isTerminal: true },
+  { name: 'Perdido', slug: 'lost', category: 'finalizacao', color: '#dc2626', isTerminal: true },
+  { name: 'Encerrado', slug: 'closed', category: 'finalizacao', color: '#64748b', isTerminal: true }
+];
+
+const commercialColumns: DefaultColumnSeed[] = commercialStates.map((state) => ({
+  name: state.name,
+  slug: state.slug,
+  stateSlugs: [state.slug]
+}));
+
+const commercialTypeSlugs = commercialItemTypes.map((itemType) => itemType.slug);
+
+const commercialCustomFields: DefaultCustomFieldSeed[] = [
+  { name: 'Cliente vinculado', slug: 'customerId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Contato vinculado', slug: 'contactId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Nome do contato', slug: 'contactName', variableKey: 'contactName', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Email do contato', slug: 'contactEmail', variableKey: 'contactEmail', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Telefone do contato', slug: 'contactPhone', variableKey: 'contactPhone', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Empresa', slug: 'companyName', variableKey: 'companyName', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Nome do cliente', slug: 'clientName', variableKey: 'clientName', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Logo do cliente', slug: 'clientLogoUrl', variableKey: 'clientLogoUrl', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Origem', slug: 'source', variableKey: 'leadSource', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Interesse / escopo', slug: 'interest', variableKey: 'implementationScope', type: 'LONG_TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Valor estimado', slug: 'estimatedValue', variableKey: 'dealValue', type: 'NUMBER', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Probabilidade', slug: 'probability', type: 'NUMBER', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Previsao de fechamento', slug: 'expectedCloseDate', variableKey: 'expectedCloseDate', type: 'DATE', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Validade da proposta', slug: 'proposalValidity', variableKey: 'proposalValidity', type: 'DATE', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Condicoes comerciais', slug: 'paymentTerms', variableKey: 'paymentTerms', type: 'LONG_TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Proposta', slug: 'proposalId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Contrato', slug: 'contractId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Ordem de cobranca', slug: 'billingOrderId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs }
+];
+
+const commercialBoardViews: DefaultBoardViewSeed[] = [
+  {
+    key: 'entrada',
+    name: 'Entrada',
+    caption: 'Captura e qualificacao comercial',
+    visibleBoardColumnSlugs: ['lead_new', 'lead_qualification'],
+    createTaskColumnSlugs: ['lead_new'],
+    allowedTaskTypes: commercialTypeSlugs,
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'lead_new', label: 'Novo lead', dot: '#0d8df7' },
+      { id: 'lead_qualification', label: 'Qualificacao', dot: '#4f46e5' }
+    ]
+  },
+  {
+    key: 'venda',
+    name: 'Venda',
+    caption: 'Oportunidade e proposta comercial',
+    visibleBoardColumnSlugs: ['opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved'],
+    createTaskColumnSlugs: [],
+    allowedTaskTypes: commercialTypeSlugs,
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'opportunity_open', label: 'Oportunidade aberta', dot: '#0891b2' },
+      { id: 'proposal_preparing', label: 'Proposta em preparacao', dot: '#f59e0b' },
+      { id: 'proposal_sent', label: 'Proposta enviada', dot: '#d97706' },
+      { id: 'proposal_approved', label: 'Proposta aprovada', dot: '#16a34a' }
+    ]
+  },
+  {
+    key: 'formalizacao',
+    name: 'Formalizacao',
+    caption: 'Contrato e aceite',
+    visibleBoardColumnSlugs: ['contract_preparing', 'contract_sent', 'contract_accepted'],
+    createTaskColumnSlugs: [],
+    allowedTaskTypes: commercialTypeSlugs,
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'contract_preparing', label: 'Contrato em preparacao', dot: '#7c3aed' },
+      { id: 'contract_sent', label: 'Contrato enviado', dot: '#6d28d9' },
+      { id: 'contract_accepted', label: 'Contrato aceito / assinado', dot: '#22c55e' }
+    ]
+  },
+  {
+    key: 'financeiro',
+    name: 'Financeiro',
+    caption: 'Cobranca e pagamento',
+    visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'paid_active'],
+    createTaskColumnSlugs: [],
+    allowedTaskTypes: commercialTypeSlugs,
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
+      { id: 'payment_waiting', label: 'Aguardando pagamento', dot: '#0f766e' },
+      { id: 'paid_active', label: 'Pago / Ativo', dot: '#15803d' }
+    ]
+  },
+  {
+    key: 'finalizacao',
+    name: 'Finalizacao',
+    caption: 'Perdas e encerramentos',
+    visibleBoardColumnSlugs: ['lost', 'closed'],
+    createTaskColumnSlugs: [],
+    allowedTaskTypes: commercialTypeSlugs,
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'lost', label: 'Perdido', dot: '#dc2626' },
+      { id: 'closed', label: 'Encerrado', dot: '#64748b' }
+    ]
+  }
+];
+
 const templateSeedPresets: Record<WorkspaceTemplateKey, TemplateSeedPreset> = {
   software_delivery: {
     templateKey: 'software_delivery',
@@ -548,6 +708,46 @@ const templateSeedPresets: Record<WorkspaceTemplateKey, TemplateSeedPreset> = {
     defaultVisibleCardFields: [...defaultSystemCardFieldIds, 'severity'],
     defaultVisibleDetailFields: [...defaultSystemDetailFieldIds, 'severity', 'sla-hours'],
     defaultBoardViews: operationsKanbanBoardViews
+  },
+  commercial_crm: {
+    templateKey: 'commercial_crm',
+    itemTypes: commercialItemTypes,
+    workflowStates: commercialStates,
+    columns: commercialColumns,
+    customFields: commercialCustomFields,
+    defaultBoardMode: 'entrada',
+    defaultVisibleCardFields: [
+      ...defaultSystemCardFieldIds,
+      'customerId',
+      'clientName',
+      'companyName',
+      'contactName',
+      'estimatedValue',
+      'proposalId',
+      'contractId'
+    ],
+    defaultVisibleDetailFields: [
+      ...defaultSystemDetailFieldIds,
+      'customerId',
+      'contactId',
+      'contactName',
+      'contactEmail',
+      'contactPhone',
+      'companyName',
+      'clientName',
+      'clientLogoUrl',
+      'source',
+      'interest',
+      'estimatedValue',
+      'probability',
+      'expectedCloseDate',
+      'proposalValidity',
+      'paymentTerms',
+      'proposalId',
+      'contractId',
+      'billingOrderId'
+    ],
+    defaultBoardViews: commercialBoardViews
   }
 };
 
@@ -563,7 +763,11 @@ const legacyTypeMap: Record<string, string> = {
   opportunity: 'opportunity',
   hypothesis: 'hypothesis',
   experiment: 'experiment',
-  insight: 'insight'
+  insight: 'insight',
+  lead: 'commercial',
+  deal: 'commercial',
+  negocio: 'commercial',
+  commercial: 'commercial'
 };
 
 const legacyStatusMap: Record<string, string> = {
@@ -582,7 +786,21 @@ const legacyStatusMap: Record<string, string> = {
   triage: 'triage',
   resolved: 'resolved',
   discovery: 'discovery',
-  validated: 'validated'
+  validated: 'validated',
+  lead_new: 'lead_new',
+  lead_qualification: 'lead_qualification',
+  opportunity_open: 'opportunity_open',
+  proposal_preparing: 'proposal_preparing',
+  proposal_sent: 'proposal_sent',
+  proposal_approved: 'proposal_approved',
+  contract_preparing: 'contract_preparing',
+  contract_sent: 'contract_sent',
+  contract_accepted: 'contract_accepted',
+  billing_created: 'billing_created',
+  payment_waiting: 'payment_waiting',
+  paid_active: 'paid_active',
+  lost: 'lost',
+  closed: 'closed'
 };
 
 function normalizeKey(value: string | null | undefined): string {
@@ -594,7 +812,12 @@ function toPrismaJson(value: unknown): Prisma.InputJsonValue {
 }
 
 function isWorkspaceTemplateKey(value: unknown): value is WorkspaceTemplateKey {
-  return value === 'software_delivery' || value === 'product_discovery' || value === 'operations_kanban';
+  return (
+    value === 'software_delivery' ||
+    value === 'product_discovery' ||
+    value === 'operations_kanban' ||
+    value === 'commercial_crm'
+  );
 }
 
 async function resolveStoredTemplateKey(
@@ -722,6 +945,18 @@ function resolveTemplateFieldDefinitions(
           : undefined,
       type: mapTemplateFieldTypeToSeed(rawDefinition.type),
       required: rawDefinition.required === true,
+      variableKey:
+        typeof rawDefinition.variableKey === 'string' && rawDefinition.variableKey.trim().length > 0
+          ? rawDefinition.variableKey.trim()
+          : undefined,
+      variableLabel:
+        typeof rawDefinition.variableLabel === 'string' && rawDefinition.variableLabel.trim().length > 0
+          ? rawDefinition.variableLabel.trim()
+          : undefined,
+      variableDescription:
+        typeof rawDefinition.variableDescription === 'string' && rawDefinition.variableDescription.trim().length > 0
+          ? rawDefinition.variableDescription.trim()
+          : undefined,
       options: Array.isArray(rawDefinition.options)
         ? rawDefinition.options.reduce<Array<{ label: string; value: string; color?: string }>>((optionsAcc, rawOption) => {
             if (!isRecord(rawOption)) {
@@ -1027,6 +1262,230 @@ function getSeededBoardViews(
   return fallbackBoardViews;
 }
 
+function getTemplateAutomations(templateKey: WorkspaceTemplateKey | undefined): TemplateAutomationSeed[] {
+  const selectedTemplate = getWorkspaceTemplateByKey(templateKey);
+  const schema = selectedTemplate?.schema;
+
+  if (!isRecord(schema) || !Array.isArray(schema.automations)) {
+    return [];
+  }
+
+  return schema.automations.reduce<TemplateAutomationSeed[]>((acc, rawAutomation) => {
+    if (!isRecord(rawAutomation) || typeof rawAutomation.id !== 'string' || rawAutomation.id.trim().length === 0) {
+      return acc;
+    }
+
+    const actions = Array.isArray(rawAutomation.actions)
+      ? rawAutomation.actions.filter((action): action is Record<string, unknown> => isRecord(action))
+      : undefined;
+
+    acc.push({
+      id: rawAutomation.id.trim(),
+      name: typeof rawAutomation.name === 'string' ? rawAutomation.name : undefined,
+      description: typeof rawAutomation.description === 'string' ? rawAutomation.description : undefined,
+      enabled: typeof rawAutomation.enabled === 'boolean' ? rawAutomation.enabled : false,
+      trigger: isRecord(rawAutomation.trigger) ? rawAutomation.trigger : undefined,
+      action: isRecord(rawAutomation.action) ? rawAutomation.action : undefined,
+      actions,
+      validations: Array.isArray(rawAutomation.validations)
+        ? rawAutomation.validations.filter((validation): validation is string => typeof validation === 'string')
+        : undefined
+    });
+    return acc;
+  }, []);
+}
+
+function readAutomationString(source: Record<string, unknown> | undefined, keys: string[]): string | undefined {
+  if (!source) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function getAutomationName(automationId: string): string {
+  switch (automationId) {
+    case 'move_to_opportunity_on_qualification':
+      return 'Mover para Oportunidade aberta apos qualificacao';
+    case 'generate_proposal_on_proposal_preparing':
+      return 'Gerar proposta ao mover para Proposta em preparacao';
+    case 'mark_proposal_sent':
+      return 'Marcar proposta como enviada';
+    case 'generate_contract_on_proposal_approved':
+      return 'Gerar contrato apos aprovacao da proposta';
+    case 'mark_contract_sent':
+      return 'Marcar contrato como enviado';
+    case 'prepare_billing_on_contract_accepted':
+      return 'Preparar cobranca apos aceite do contrato';
+    case 'move_to_paid_active_on_payment_confirmed':
+      return 'Mover para Pago / Ativo apos pagamento confirmado';
+    default:
+      return automationId.replace(/[_-]+/g, ' ');
+  }
+}
+
+function normalizeTemplateAutomationActions(automation: TemplateAutomationSeed): Array<Record<string, unknown>> {
+  const rawActions = automation.actions ?? (automation.action ? [automation.action] : []);
+
+  return rawActions
+    .filter((action) => typeof action.type === 'string')
+    .map((action) => {
+      const actionType = String(action.type);
+      const nextAction: Record<string, unknown> = { ...action };
+      if (
+        automation.validations &&
+        automation.validations.length > 0 &&
+        (actionType === 'create_document' || actionType === 'update_document_status' || actionType === 'create_billing_order') &&
+        !Array.isArray(nextAction.validations)
+      ) {
+        nextAction.validations = automation.validations;
+      }
+      return nextAction;
+    });
+}
+
+function buildSeededAutomationRuleSpec(
+  automation: TemplateAutomationSeed,
+  index: number
+): SeededAutomationRuleSpec | null {
+  const trigger = automation.trigger;
+  if (!trigger) {
+    return null;
+  }
+
+  const rawTriggerType = readAutomationString(trigger, ['type']);
+  const triggerSettings = {
+    templateAutomationId: automation.id,
+    templateAutomationVersion: TEMPLATE_AUTOMATION_SCHEMA_VERSION,
+    templateTrigger: trigger
+  };
+  let normalizedTriggerType: string | null = null;
+  let conditions: Record<string, unknown> | undefined;
+
+  if (rawTriggerType === 'work_item_moved_to_column' || rawTriggerType === 'work_item_moved') {
+    const column = readAutomationString(trigger, ['column', 'toColumn', 'toState']);
+    normalizedTriggerType = 'item.moved';
+    conditions = {
+      itemTypeSlugs: ['commercial'],
+      ...(column ? { toColumnKeys: [column], statuses: [column] } : {})
+    };
+  } else if (rawTriggerType === 'proposal_status_changed') {
+    const status = readAutomationString(trigger, ['status']);
+    normalizedTriggerType = status === 'sent' ? 'proposal.sent' : status === 'approved' ? 'proposal.approved' : null;
+  } else if (rawTriggerType === 'contract_status_changed') {
+    const status = readAutomationString(trigger, ['status']);
+    normalizedTriggerType = status === 'accepted' || status === 'signed' ? 'contract.accepted' : null;
+  } else if (rawTriggerType === 'billing_payment_confirmed') {
+    normalizedTriggerType = 'billing.payment.confirmed';
+  }
+
+  const actions = normalizeTemplateAutomationActions(automation);
+  if (!normalizedTriggerType || actions.length === 0) {
+    return null;
+  }
+
+  return {
+    automationId: automation.id,
+    name: automation.name ?? getAutomationName(automation.id),
+    description: automation.description,
+    enabled: Boolean(automation.enabled),
+    trigger: {
+      type: normalizedTriggerType,
+      settings: triggerSettings
+    },
+    conditions,
+    actions,
+    priority: 500 + index
+  };
+}
+
+function extractTemplateAutomationId(trigger: Prisma.JsonValue): string | null {
+  if (!isRecord(trigger) || !isRecord(trigger.settings)) {
+    return null;
+  }
+
+  const automationId = trigger.settings.templateAutomationId;
+  return typeof automationId === 'string' && automationId.length > 0 ? automationId : null;
+}
+
+function extractTemplateAutomationVersion(trigger: Prisma.JsonValue): number {
+  if (!isRecord(trigger) || !isRecord(trigger.settings)) {
+    return 0;
+  }
+
+  const version = trigger.settings.templateAutomationVersion;
+  return typeof version === 'number' && Number.isFinite(version) ? version : 0;
+}
+
+async function seedTemplateAutomationRules(input: {
+  prisma: PrismaExecutor;
+  workspaceId: string;
+  templateKey: WorkspaceTemplateKey;
+}): Promise<void> {
+  const automations = getTemplateAutomations(input.templateKey);
+  if (automations.length === 0) {
+    return;
+  }
+
+  const ruleSpecs = automations
+    .map((automation, index) => buildSeededAutomationRuleSpec(automation, index))
+    .filter((spec): spec is SeededAutomationRuleSpec => spec !== null);
+
+  if (ruleSpecs.length === 0) {
+    return;
+  }
+
+  const existingRules = await input.prisma.automationRule.findMany({
+    where: { workspaceId: input.workspaceId },
+    select: {
+      id: true,
+      name: true,
+      trigger: true
+    }
+  });
+
+  for (const spec of ruleSpecs) {
+    const existing = existingRules.find((rule) => extractTemplateAutomationId(rule.trigger) === spec.automationId);
+    const data = {
+      name: spec.name,
+      description: spec.description,
+      triggerType: String(spec.trigger.type),
+      trigger: toPrismaJson(spec.trigger),
+      conditions: spec.conditions ? toPrismaJson(spec.conditions) : Prisma.JsonNull,
+      actions: toPrismaJson(spec.actions),
+      priority: spec.priority,
+      version: 1
+    };
+
+    if (existing) {
+      if (extractTemplateAutomationVersion(existing.trigger) >= TEMPLATE_AUTOMATION_SCHEMA_VERSION) {
+        continue;
+      }
+
+      await input.prisma.automationRule.update({
+        where: { id: existing.id },
+        data
+      });
+      continue;
+    }
+
+    await input.prisma.automationRule.create({
+      data: {
+        workspaceId: input.workspaceId,
+        ...data,
+        enabled: spec.enabled
+      }
+    });
+  }
+}
+
 export async function ensureWorkspaceDefaultConfiguration(
   prisma: PrismaExecutor,
   input: {
@@ -1237,6 +1696,9 @@ export async function seedWorkspaceConfigurationDefaults(
           visibleBoardColumnIds: (view.visibleBoardColumnSlugs ?? preset.columns.map((column) => column.slug))
             .map((slug) => columnBySlug.get(slug))
             .filter((value): value is string => Boolean(value)),
+          createTaskColumnIds: (view.createTaskColumnSlugs ?? [])
+            .map((slug) => columnBySlug.get(slug))
+            .filter((value): value is string => Boolean(value)),
           statusSource: view.statusSource,
           statuses: view.statuses,
           automations: {
@@ -1304,6 +1766,9 @@ export async function seedWorkspaceConfigurationDefaults(
         name: customFieldSeed.name,
         slug: customFieldSeed.slug,
         description: customFieldSeed.description,
+        variableKey: customFieldSeed.variableKey,
+        variableLabel: customFieldSeed.variableLabel,
+        variableDescription: customFieldSeed.variableDescription,
         type: customFieldSeed.type,
         isSystem: false,
         required: Boolean(customFieldSeed.required),
@@ -1316,6 +1781,9 @@ export async function seedWorkspaceConfigurationDefaults(
         position: SYSTEM_FIELD_SEEDS.length + index,
         isSystem: false,
         isActive: true,
+        variableKey: customFieldSeed.variableKey,
+        variableLabel: customFieldSeed.variableLabel,
+        variableDescription: customFieldSeed.variableDescription,
         settings: toPrismaJson(templateFieldSettings)
       }
     });
@@ -1378,6 +1846,12 @@ export async function seedWorkspaceConfigurationDefaults(
       visibleCardFieldIds: preferences.visibleCardFieldIds,
       settings: preferences.settings
     }
+  });
+
+  await seedTemplateAutomationRules({
+    prisma,
+    workspaceId,
+    templateKey: preset.templateKey
   });
 
   return {

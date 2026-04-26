@@ -23,10 +23,31 @@ const customFieldTypeEnum = z.enum([
 const workspaceTemplateKeyEnum = z.enum([
   'software_delivery',
   'product_discovery',
-  'operations_kanban'
+  'operations_kanban',
+  'commercial_crm'
 ]);
 
 const workspaceDocumentKindEnum = z.enum(['wiki', 'proposal', 'contract']);
+const documentLinkedEntityTypeEnum = z.enum(['work_item', 'customer', 'proposal', 'contract']);
+const customerStatusEnum = z.enum(['prospect', 'active', 'inactive', 'archived']);
+
+const customerAddressDto = z.object({
+  street: z.string().trim().max(120).optional(),
+  number: z.string().trim().max(40).optional(),
+  complement: z.string().trim().max(120).optional(),
+  district: z.string().trim().max(120).optional(),
+  city: z.string().trim().max(120).optional(),
+  state: z.string().trim().max(60).optional(),
+  zipCode: z.string().trim().max(24).optional(),
+  country: z.string().trim().max(80).optional()
+});
+
+const fieldVariableKeyDto = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z][A-Za-z0-9_]{0,79}$/)
+  .nullable()
+  .optional();
 
 export const workspaceIdParamsDto = z.object({
   workspaceId: z.string().uuid()
@@ -45,6 +66,8 @@ export const createWorkspaceDocumentDto = z.object({
   title: z.string().trim().min(1).max(180),
   content: z.string().max(200_000).optional(),
   kind: workspaceDocumentKindEnum.optional(),
+  linkedEntityType: documentLinkedEntityTypeEnum.optional(),
+  linkedEntityId: z.string().uuid().optional(),
   tags: z.array(z.string().trim().min(1).max(80)).max(24).optional(),
   metadata: z.record(z.unknown()).optional(),
   position: z.number().int().nonnegative().optional()
@@ -55,6 +78,8 @@ export const patchWorkspaceDocumentDto = z
     title: z.string().trim().min(1).max(180).optional(),
     content: z.string().max(200_000).optional(),
     kind: workspaceDocumentKindEnum.optional(),
+    linkedEntityType: documentLinkedEntityTypeEnum.nullable().optional(),
+    linkedEntityId: z.string().uuid().nullable().optional(),
     tags: z.array(z.string().trim().min(1).max(80)).max(24).optional(),
     metadata: z.record(z.unknown()).optional(),
     position: z.number().int().nonnegative().optional()
@@ -66,6 +91,35 @@ export const patchWorkspaceDocumentDto = z
 export const itemTypeParamsDto = z.object({
   workspaceId: z.string().uuid(),
   typeId: z.string().uuid()
+});
+
+export const customerParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  customerId: z.string().uuid()
+});
+
+export const customerListQueryDto = z.object({
+  search: z.string().trim().max(160).optional(),
+  status: customerStatusEnum.optional()
+});
+
+export const createCustomerDto = z.object({
+  name: z.string().trim().min(2).max(180),
+  tradeName: z.string().trim().max(180).nullable().optional(),
+  legalName: z.string().trim().max(180).nullable().optional(),
+  document: z.string().trim().max(40).nullable().optional(),
+  email: z.string().trim().email().nullable().optional(),
+  phone: z.string().trim().max(40).nullable().optional(),
+  website: z.string().trim().max(180).nullable().optional(),
+  logoUrl: z.string().trim().max(600).nullable().optional(),
+  address: customerAddressDto.nullable().optional(),
+  status: customerStatusEnum.optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+  sourceWorkItemId: z.string().uuid().nullable().optional()
+});
+
+export const patchCustomerDto = createCustomerDto.partial().refine((obj) => Object.keys(obj).length > 0, {
+  message: 'At least one field is required'
 });
 
 export const createItemTypeDto = z.object({
@@ -161,6 +215,9 @@ export const createCustomFieldDto = z.object({
   name: z.string().min(2),
   slug: z.string().min(1).optional(),
   description: z.string().optional(),
+  variableKey: fieldVariableKeyDto,
+  variableLabel: z.string().trim().max(120).nullable().optional(),
+  variableDescription: z.string().trim().max(500).nullable().optional(),
   type: customFieldTypeEnum,
   required: z.boolean().optional(),
   isEditable: z.boolean().optional(),

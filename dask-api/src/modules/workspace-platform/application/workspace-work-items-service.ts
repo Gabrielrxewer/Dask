@@ -167,6 +167,9 @@ export class WorkspaceWorkItemsService {
           name: field.name,
           slug: field.slug,
           description: field.description,
+          variableKey: field.variableKey,
+          variableLabel: field.variableLabel,
+          variableDescription: field.variableDescription,
           type: field.type,
           source: field.source,
           required: field.required,
@@ -824,6 +827,9 @@ export class WorkspaceWorkItemsService {
           select: {
             id: true,
             title: true,
+            kind: true,
+            metadata: true,
+            createdAt: true,
             updatedAt: true
           }
         }
@@ -894,6 +900,9 @@ export class WorkspaceWorkItemsService {
             select: {
               id: true,
               title: true,
+              kind: true,
+              metadata: true,
+              createdAt: true,
               updatedAt: true
             }
           }
@@ -1374,6 +1383,9 @@ export class WorkspaceWorkItemsService {
       document: {
         id: string;
         title: string;
+        kind?: string | null;
+        metadata?: Prisma.JsonValue | null;
+        createdAt?: Date;
         updatedAt: Date;
       };
       createdAt: Date;
@@ -1382,6 +1394,11 @@ export class WorkspaceWorkItemsService {
     return links.map((entry) => ({
       id: entry.document.id,
       title: entry.document.title,
+      kind: entry.document.kind ?? undefined,
+      status: isRecord(entry.document.metadata) && typeof entry.document.metadata.status === 'string'
+        ? entry.document.metadata.status
+        : undefined,
+      createdAt: entry.document.createdAt,
       updatedAt: entry.document.updatedAt,
       linkedAt: entry.createdAt
     }));
@@ -1500,6 +1517,7 @@ export class WorkspaceWorkItemsService {
       plannedStartAt,
       plannedEndAt,
       linkedDocuments: workItem.linkedDocuments,
+      customFieldValuesById: workItem.customFieldValuesById,
       customFields: workItem.customFields
     };
   }
@@ -1510,6 +1528,11 @@ export class WorkspaceWorkItemsService {
     requestedBy: string;
     db?: Prisma.TransactionClient;
   }): Promise<void> {
+    const payload = {
+      ...this.toAutomationEventPayload(input.workspaceId, input.item),
+      requestedBy: input.requestedBy
+    };
+
     await this.publishEvent(
       {
       id: uuid(),
@@ -1517,13 +1540,24 @@ export class WorkspaceWorkItemsService {
       aggregateType: 'item',
       aggregateId: input.item.id,
       occurredAt: new Date(),
-      payload: {
-        ...this.toAutomationEventPayload(input.workspaceId, input.item),
-        requestedBy: input.requestedBy
-      }
+      payload
       },
       input.db
     );
+
+    if (input.item.type.slug === 'commercial') {
+      await this.publishEvent(
+        {
+          id: uuid(),
+          name: DomainEventNames.CommercialWorkItemCreated,
+          aggregateType: 'item',
+          aggregateId: input.item.id,
+          occurredAt: new Date(),
+          payload
+        },
+        input.db
+      );
+    }
   }
 
   private async publishItemUpdatedEvent(input: {
@@ -1533,6 +1567,12 @@ export class WorkspaceWorkItemsService {
     requestedBy: string;
     db?: Prisma.TransactionClient;
   }): Promise<void> {
+    const payload = {
+      ...this.toAutomationEventPayload(input.workspaceId, input.item),
+      patch: input.patch,
+      requestedBy: input.requestedBy
+    };
+
     await this.publishEvent(
       {
       id: uuid(),
@@ -1540,14 +1580,28 @@ export class WorkspaceWorkItemsService {
       aggregateType: 'item',
       aggregateId: input.item.id,
       occurredAt: new Date(),
-      payload: {
-        ...this.toAutomationEventPayload(input.workspaceId, input.item),
-        patch: input.patch,
-        requestedBy: input.requestedBy
-      }
+      payload
       },
       input.db
     );
+
+    const customerId = this.resolveCustomerIdFromCommercialItem(input.item);
+    if (input.item.type.slug === 'commercial' && customerId && this.patchTouchesCustomerLink(input.patch)) {
+      await this.publishEvent(
+        {
+          id: uuid(),
+          name: DomainEventNames.CommercialWorkItemLinkedToCustomer,
+          aggregateType: 'item',
+          aggregateId: input.item.id,
+          occurredAt: new Date(),
+          payload: {
+            ...payload,
+            customerId
+          }
+        },
+        input.db
+      );
+    }
   }
 
   private async publishItemMovedEvent(input: {
@@ -1647,6 +1701,23 @@ export class WorkspaceWorkItemsService {
     };
   }
 
+  private resolveCustomerIdFromCommercialItem(item: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>) {
+    const value = item.customFields.customerId;
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+  }
+
+  private patchTouchesCustomerLink(patch: Record<string, unknown>) {
+    if (isRecord(patch.fields) && typeof patch.fields.customerId === 'string') {
+      return true;
+    }
+
+    if (isRecord(patch.customFieldValues) && typeof patch.customFieldValues.customerId === 'string') {
+      return true;
+    }
+
+    return false;
+  }
+
   private resolveBoardPerspectivesFromSettings(
     settings: unknown,
     defaultStatuses: Array<{ id: string; label: string; dot: string }>
@@ -1696,6 +1767,16 @@ export class WorkspaceWorkItemsService {
         const visibleBoardColumnIds = Array.isArray(rawView.visibleBoardColumnIds)
           ? rawView.visibleBoardColumnIds.filter((value): value is string => typeof value === 'string')
           : undefined;
+        const configuredCreateTaskColumnIds = Array.isArray(rawView.createTaskColumnIds)
+          ? rawView.createTaskColumnIds.filter((value): value is string => typeof value === 'string')
+          : undefined;
+        const createTaskColumnIds =
+          configuredCreateTaskColumnIds ??
+          (settings.templateKey === 'commercial_crm'
+            ? id === 'entrada'
+              ? visibleBoardColumnIds?.slice(0, 1)
+              : []
+            : undefined);
 
         const statuses = Array.isArray(rawView.statuses)
           ? rawView.statuses
@@ -1766,6 +1847,7 @@ export class WorkspaceWorkItemsService {
           compactCards,
           allowedTaskTypes,
           visibleBoardColumnIds,
+          createTaskColumnIds,
           position: typeof rawView.position === 'number' ? rawView.position : index
         };
       })

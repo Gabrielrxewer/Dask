@@ -10,12 +10,14 @@ import {
 } from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import type { WorkspaceCustomersService } from '@/modules/workspace-platform/application/workspace-customers-service';
 import type { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
 import type { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
 import type { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import {
   boardColumnParamsDto,
   createWorkspaceInviteDto,
+  createCustomerDto,
   createBoardColumnDto,
   createCustomFieldDto,
   createItemTypeDto,
@@ -23,10 +25,13 @@ import {
   createWorkflowStateDto,
   createWorkItemDto,
   customFieldParamsDto,
+  customerListQueryDto,
+  customerParamsDto,
   fieldValueParamsDto,
   itemTypeParamsDto,
   moveWorkItemDto,
   patchBoardColumnDto,
+  patchCustomerDto,
   patchCustomFieldDto,
   createWorkspaceAccessGroupDto,
   patchItemTypeDto,
@@ -70,6 +75,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   prisma: PrismaClient;
   authorizationService: AuthorizationService;
   workspaceConfigService: WorkspaceConfigService;
+  workspaceCustomersService: WorkspaceCustomersService;
   workspaceDocumentsService: WorkspaceDocumentsService;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
   workspaceInvitesService: WorkspaceInvitesService;
@@ -537,6 +543,56 @@ export const buildWorkspacePlatformRoutes = (deps: {
       const { workspaceId, inviteId } = workspaceInviteParamsDto.parse(req.params);
       await deps.workspaceInvitesService.revokeInvite({ workspaceId, inviteId });
       res.status(204).send();
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/customers',
+    requireWorkspaceModule('leads'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const query = customerListQueryDto.parse(req.query ?? {});
+      const customers = await deps.workspaceCustomersService.listCustomers({
+        workspaceId,
+        userId: req.auth!.userId,
+        search: query.search,
+        status: query.status
+      });
+      res.status(200).json(customers);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/customers',
+    requireWorkspaceModule('leads'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = createCustomerDto.parse(req.body ?? {});
+      const customer = await deps.workspaceCustomersService.createCustomer({
+        workspaceId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(201).json(customer);
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/customers/:customerId',
+    requireWorkspaceModule('leads'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, customerId } = customerParamsDto.parse(req.params);
+      const payload = patchCustomerDto.parse(req.body ?? {});
+      const customer = await deps.workspaceCustomersService.updateCustomer({
+        workspaceId,
+        customerId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(customer);
     })
   );
 

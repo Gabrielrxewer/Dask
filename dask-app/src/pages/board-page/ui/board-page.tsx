@@ -1,4 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { buildWorkspaceDocumentationPath } from "@/app/router/route-paths";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardColumns } from "@/widgets/board-columns";
 import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
@@ -47,10 +49,13 @@ export function BoardPage() {
     runAiAgentOnItem,
     runAiRiskAnalysis,
     listWorkspaceDocuments,
+    createWorkspaceDocument,
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem
   } = useWorkspace();
+  const navigate = useNavigate();
+  const { workspaceSlug = "" } = useParams();
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
@@ -210,6 +215,14 @@ export function BoardPage() {
 
   const activeStatuses = boardColumnsPerspective?.statuses ?? activePerspective?.statuses ?? boardConfig.statuses;
   const activeBoardTasks = boardColumnsPerspective?.tasks ?? mapTasksForPerspective(filteredTasks);
+  const createTaskStatusIds = useMemo(() => {
+    if (!activePerspective || !Array.isArray(activePerspective.createTaskColumnIds)) {
+      return undefined;
+    }
+
+    return activePerspective.createTaskColumnIds;
+  }, [activePerspective]);
+
   const handleMoveTask = (taskId: string, statusId: TaskStatusId, position?: number) => {
     if (useBoardColumnsProjection && apiBoardCols.length > 0) {
       const col = apiBoardCols.find(c => c.id === statusId);
@@ -276,6 +289,12 @@ export function BoardPage() {
     return updateTask(taskId, { checklist });
   };
 
+  const handleOpenDocument = () => {
+    if (workspaceSlug) {
+      navigate(buildWorkspaceDocumentationPath(workspaceSlug));
+    }
+  };
+
   const topNavigation = (
     <section className="board-top-nav" aria-label="Navegacao de perspectivas">
       <BoardPerspectiveTabs
@@ -323,6 +342,7 @@ export function BoardPage() {
               membersById={activeMembers}
               compactCards={Boolean(activePerspective?.compactCards)}
               onCreateTask={(statusId, input) => void handleCreateTask(statusId, input)}
+              createTaskStatusIds={createTaskStatusIds}
               onMoveTask={handleMoveTask}
               onDeleteTask={handleDeleteTask}
               onUpdatePriority={handleUpdatePriority}
@@ -337,9 +357,11 @@ export function BoardPage() {
               onRunAiAgentOnItem={runAiAgentOnItem}
               onRunAiRiskAnalysis={runAiRiskAnalysis}
               listWorkspaceDocuments={listWorkspaceDocuments}
+              createWorkspaceDocument={createWorkspaceDocument}
               listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
               linkDocumentToWorkItem={linkDocumentToWorkItem}
               unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
+              onOpenDocument={handleOpenDocument}
             />
           )}
         </div>

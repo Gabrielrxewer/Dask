@@ -5,6 +5,7 @@ import type { JobQueue } from '@/core/jobs/job-queue';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import { parseRuleSpec } from '@/modules/automation/application/rule-schema';
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
@@ -17,6 +18,55 @@ function normalizeExecutionLimit(limit: number | undefined): number {
   }
 
   return Math.min(Math.max(Math.trunc(limit), 1), 500);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const values = value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+  return values.length > 0 ? values : undefined;
+}
+
+function normalizeRuleSpecInput(input: {
+  trigger: unknown;
+  conditions?: unknown;
+  actions: unknown;
+}) {
+  if (!isRecord(input.trigger) || input.trigger.type !== 'item.moved') {
+    return input;
+  }
+
+  const settings = isRecord(input.trigger.settings) ? input.trigger.settings : {};
+  const toColumnKey = readString(input.trigger.toColumnKey) ?? readString(settings.toColumnKey);
+  const toViewKey = readString(input.trigger.toViewKey) ?? readString(settings.toViewKey);
+  const conditions = isRecord(input.conditions) ? { ...input.conditions } : {};
+
+  if (toColumnKey && !readStringArray(conditions.toColumnKeys)) {
+    conditions.toColumnKeys = [toColumnKey];
+  }
+
+  return {
+    trigger: {
+      type: input.trigger.type,
+      settings: {
+        ...settings,
+        ...(toViewKey ? { toViewKey } : {}),
+        ...(toColumnKey ? { toColumnKey } : {})
+      }
+    },
+    conditions: Object.keys(conditions).length > 0 ? conditions : input.conditions,
+    actions: input.actions
+  };
 }
 
 export class AutomationService {
@@ -33,6 +83,10 @@ export class AutomationService {
     includeDisabled?: boolean;
   }) {
     await this.workspaceConfigService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    await ensureWorkspaceDefaultConfiguration(this.prisma, {
+      workspaceId: input.workspaceId,
+      ownerUserId: input.userId
+    });
 
     const where = input.includeDisabled
       ? { workspaceId: input.workspaceId }
@@ -62,11 +116,11 @@ export class AutomationService {
   }) {
     await this.workspaceConfigService.ensureConfigWritableWorkspace(input.workspaceId, input.userId);
 
-    const spec = parseRuleSpec({
+    const spec = parseRuleSpec(normalizeRuleSpecInput({
       trigger: input.trigger,
       conditions: input.conditions,
       actions: input.actions
-    });
+    }));
 
     const rule = await this.eventPublisher.runInTransaction(async (db, publisher) => {
       const created = await db.automationRule.create({
@@ -148,11 +202,11 @@ export class AutomationService {
       input.payload.actions !== undefined;
 
     if (isSpecPatch) {
-      const mergedSpec = parseRuleSpec({
+      const mergedSpec = parseRuleSpec(normalizeRuleSpecInput({
         trigger: input.payload.trigger ?? current.trigger,
         conditions: input.payload.conditions ?? current.conditions ?? undefined,
         actions: input.payload.actions ?? current.actions
-      });
+      }));
 
       trigger = toJsonValue(mergedSpec.trigger);
       conditions = mergedSpec.conditions ? toJsonValue(mergedSpec.conditions) : Prisma.JsonNull;

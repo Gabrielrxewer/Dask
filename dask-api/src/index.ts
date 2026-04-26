@@ -26,9 +26,18 @@ const server = app.listen(env.PORT, () => {
 let shutdownPromise: Promise<void> | null = null;
 
 function closeServer(): Promise<void> {
+  if (!server.listening) {
+    return Promise.resolve();
+  }
+
   return new Promise((resolve, reject) => {
     server.close((error) => {
       if (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING') {
+          resolve();
+          return;
+        }
+
         reject(error);
         return;
       }

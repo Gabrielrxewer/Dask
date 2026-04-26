@@ -21,6 +21,9 @@ export type FieldDefinitionRecord = {
   slug: string;
   name: string;
   description: string | null;
+  variableKey?: string | null;
+  variableLabel?: string | null;
+  variableDescription?: string | null;
   type: CustomFieldInputType;
   required: boolean;
   isSystem: boolean;
@@ -263,6 +266,9 @@ export function serializeFieldDefinition(field: FieldDefinitionRecord) {
     name: field.name,
     slug: field.slug,
     description: field.description,
+    variableKey: field.variableKey ?? undefined,
+    variableLabel: field.variableLabel ?? undefined,
+    variableDescription: field.variableDescription ?? undefined,
     type: field.type,
     required: field.required,
     source: buildFieldSourceTag({ isSystem: field.isSystem, settings: field.settings }),

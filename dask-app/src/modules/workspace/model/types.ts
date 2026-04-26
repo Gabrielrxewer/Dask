@@ -111,11 +111,26 @@ export interface WorkspaceTag {
   isActive?: boolean;
 }
 
+export type DocumentKind = "wiki" | "proposal" | "contract";
+
+export interface WorkspaceDocumentMetadata {
+  clientLogoUrl?: string;
+  clientName?: string;
+  proposalCode?: string;
+  proposalDate?: string;
+  proposalValidity?: string;
+  ownerName?: string;
+  [key: string]: unknown;
+}
+
 export interface WorkspaceDocument {
   id: string;
   workspaceId: string;
   title: string;
   content: string;
+  kind: DocumentKind;
+  tags: string[];
+  metadata: WorkspaceDocumentMetadata;
   position: number;
   createdBy: string;
   updatedBy: string | null;
@@ -638,12 +653,12 @@ export interface WorkspaceService {
   listWorkspaceDocuments: (workspaceSlug: string) => Promise<WorkspaceDocument[]>;
   createWorkspaceDocument: (
     workspaceSlug: string,
-    input: { title: string; content?: string; position?: number }
+    input: { title: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }
   ) => Promise<WorkspaceDocument>;
   updateWorkspaceDocument: (
     workspaceSlug: string,
     documentId: string,
-    input: { title?: string; content?: string; position?: number }
+    input: { title?: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }
   ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (workspaceSlug: string, documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (workspaceSlug: string, itemId: string) => Promise<WorkItemLinkedDocument[]>;

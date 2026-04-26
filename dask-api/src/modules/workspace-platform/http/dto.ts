@@ -26,6 +26,8 @@ const workspaceTemplateKeyEnum = z.enum([
   'operations_kanban'
 ]);
 
+const workspaceDocumentKindEnum = z.enum(['wiki', 'proposal', 'contract']);
+
 export const workspaceIdParamsDto = z.object({
   workspaceId: z.string().uuid()
 });
@@ -42,6 +44,9 @@ export const workspaceDocumentParamsDto = z.object({
 export const createWorkspaceDocumentDto = z.object({
   title: z.string().trim().min(1).max(180),
   content: z.string().max(200_000).optional(),
+  kind: workspaceDocumentKindEnum.optional(),
+  tags: z.array(z.string().trim().min(1).max(80)).max(24).optional(),
+  metadata: z.record(z.unknown()).optional(),
   position: z.number().int().nonnegative().optional()
 });
 
@@ -49,6 +54,9 @@ export const patchWorkspaceDocumentDto = z
   .object({
     title: z.string().trim().min(1).max(180).optional(),
     content: z.string().max(200_000).optional(),
+    kind: workspaceDocumentKindEnum.optional(),
+    tags: z.array(z.string().trim().min(1).max(80)).max(24).optional(),
+    metadata: z.record(z.unknown()).optional(),
     position: z.number().int().nonnegative().optional()
   })
   .refine((obj) => Object.keys(obj).length > 0, {

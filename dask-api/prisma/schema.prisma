@@ -1252,6 +1252,9 @@ model WorkspaceDocument {
   workspaceId String
   title       String
   content     String
+  kind        String    @default("wiki")
+  tags        String[]  @default([])
+  metadata    Json?
   position    Int       @default(0)
   createdBy   String
   updatedBy   String?
@@ -1263,6 +1266,7 @@ model WorkspaceDocument {
 
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])
+  @@index([workspaceId, kind, updatedAt])
 }
 
 model ConnectPaymentOrder {

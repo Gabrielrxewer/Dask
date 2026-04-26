@@ -17,6 +17,7 @@ import type {
   CreateAiAgentInput,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
+  DocumentKind,
   CreateAutomationRuleInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
@@ -30,6 +31,7 @@ import type {
   WorkItemFieldBindingInput,
   WorkspaceAutomation,
   WorkspaceDocument,
+  WorkspaceDocumentMetadata,
   WorkItemLinkedDocument,
   WorkspacePreferences,
   WorkspaceSnapshot,
@@ -112,10 +114,10 @@ interface WorkspaceContextValue {
     input: RunDocumentationAssistantInput
   ) => Promise<RunDocumentationAssistantResult>;
   listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
-  createWorkspaceDocument: (input: { title: string; content?: string; position?: number }) => Promise<WorkspaceDocument>;
+  createWorkspaceDocument: (input: { title: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }) => Promise<WorkspaceDocument>;
   updateWorkspaceDocument: (
     documentId: string,
-    input: { title?: string; content?: string; position?: number }
+    input: { title?: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }
   ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
@@ -585,7 +587,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   }, [workspaceSlug]);
 
   const createWorkspaceDocument = useCallback(
-    async (input: { title: string; content?: string; position?: number }): Promise<WorkspaceDocument> => {
+    async (input: { title: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }): Promise<WorkspaceDocument> => {
       if (!workspaceSlug) {
         throw new Error("No workspace");
       }
@@ -595,7 +597,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 
   const updateWorkspaceDocument = useCallback(
-    async (documentId: string, input: { title?: string; content?: string; position?: number }): Promise<WorkspaceDocument> => {
+    async (documentId: string, input: { title?: string; content?: string; kind?: DocumentKind; tags?: string[]; metadata?: WorkspaceDocumentMetadata; position?: number }): Promise<WorkspaceDocument> => {
       if (!workspaceSlug) {
         throw new Error("No workspace");
       }

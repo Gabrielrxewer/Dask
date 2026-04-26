@@ -52,10 +52,12 @@
   );
   --doc-chat-shadow: 0 18px 36px color-mix(in oklab, var(--text-strong) 8%, transparent);
   display: grid;
-  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.5fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(240px, 0.42fr) minmax(0, 1.8fr);
   gap: 12px;
   height: 100%;
   min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .documentation-page__files-pane,
@@ -74,6 +76,136 @@
   display: none;
 }
 
+.documentation-create-modal {
+  width: min(720px, calc(100vw - 28px));
+  padding: 18px;
+  border: 1px solid color-mix(in oklab, var(--line) 78%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 250, 254, 0.99) 100%);
+  color: var(--text);
+  box-shadow:
+    0 28px 70px rgba(10, 42, 71, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.74) inset;
+  backdrop-filter: none;
+}
+
+.documentation-create-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.documentation-create-modal__header h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.26rem;
+  font-weight: 820;
+}
+
+.documentation-create-modal__header p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.documentation-create-modal__close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--line) 82%, transparent);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.documentation-create-modal__close svg {
+  width: 15px;
+  height: 15px;
+}
+
+.documentation-create-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 14px;
+}
+
+.documentation-create-modal__option {
+  border: 1px solid color-mix(in oklab, var(--line) 78%, transparent);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-elevated) 96%, white), var(--surface-section-content));
+  color: var(--text);
+  min-height: 182px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 14px 30px color-mix(in oklab, var(--text-strong) 6%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 54%, transparent);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.documentation-create-modal__option:hover {
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 58%, var(--surface-elevated)), var(--surface-section-content));
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 34px color-mix(in oklab, var(--accent) 10%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 60%, transparent);
+}
+
+.documentation-create-modal__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--line) 76%, transparent);
+  display: grid;
+  place-items: center;
+  color: color-mix(in oklab, var(--accent-strong) 76%, var(--text-strong));
+  background: color-mix(in oklab, var(--accent-soft) 64%, var(--surface-elevated));
+}
+
+.documentation-create-modal__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.documentation-create-modal__option strong {
+  color: var(--text-strong);
+  font-size: 0.98rem;
+  font-weight: 820;
+}
+
+.documentation-create-modal__option span:not(.documentation-create-modal__icon) {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.documentation-create-modal__option em {
+  margin-top: auto;
+  color: color-mix(in oklab, var(--accent-strong) 72%, var(--text-strong));
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .docs-top-nav {
   display: flex;
   align-items: center;
@@ -87,6 +219,10 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+.docs-top-nav__btn--active {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 .workspace__top-nav:has(.docs-top-nav) {
@@ -108,7 +244,7 @@
 
 .documentation-page__files-pane {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 10px;
   padding: 12px;
 }
@@ -119,6 +255,12 @@
   gap: 6px;
   padding: 2px 0 4px;
   border-bottom: 1px solid var(--doc-line);
+}
+
+.documentation-page__files-header > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .documentation-page__files-header p {
@@ -134,6 +276,36 @@
   color: var(--doc-muted);
   font-size: 0.68rem;
   font-weight: 600;
+}
+
+.documentation-page__kind-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.documentation-page__kind-filters button {
+  min-height: 30px;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface-section-content) 92%, var(--surface-1));
+  color: var(--doc-muted);
+  font-size: 0.7rem;
+  font-weight: 760;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.documentation-page__kind-filters button:hover,
+.documentation-page__kind-filters button.is-active {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--doc-line));
+  background: color-mix(in oklab, var(--selected-bg) 90%, var(--surface-section-content));
+  color: color-mix(in oklab, var(--accent-strong) 76%, var(--doc-ink));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 42%, transparent);
 }
 
 .documentation-page__files-list {
@@ -175,12 +347,32 @@
   margin-top: 2px;
 }
 
+.documentation-page__file-item-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.documentation-page__file-item-icon--proposal {
+  color: color-mix(in oklab, var(--success) 62%, var(--doc-muted));
+}
+
+.documentation-page__file-item-icon--contract {
+  color: color-mix(in oklab, var(--warning, #c07a00) 70%, var(--doc-muted));
+}
+
 .documentation-page__file-item-content {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.documentation-page__file-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .documentation-page__file-item strong {
@@ -192,10 +384,40 @@
   text-overflow: ellipsis;
 }
 
+.documentation-page__file-title-row strong {
+  flex: 1 1 auto;
+}
+
 .documentation-page__file-item span {
   color: var(--doc-muted);
   font-size: 0.68rem;
   word-break: break-all;
+}
+
+.documentation-page__kind-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 20px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 76%, transparent);
+  padding: 2px 7px;
+  color: color-mix(in oklab, var(--accent-strong) 72%, var(--doc-ink));
+  background: color-mix(in oklab, var(--accent-soft) 58%, var(--surface-section-content));
+  font-size: 0.65rem;
+  font-weight: 820;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.documentation-page__kind-badge--proposal {
+  color: color-mix(in oklab, var(--success) 68%, var(--doc-ink));
+  background: color-mix(in oklab, var(--success-soft) 62%, var(--surface-section-content));
+}
+
+.documentation-page__kind-badge--contract {
+  color: color-mix(in oklab, var(--warning, #c07a00) 72%, var(--doc-ink));
+  background: color-mix(in oklab, var(--warn-soft, #fff3d7) 66%, var(--surface-section-content));
 }
 
 .documentation-page__file-item--active {
@@ -223,11 +445,109 @@
   gap: 6px;
 }
 
+.documentation-page__editor-kind-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.documentation-page__editor-kind-row p {
+  margin: 0;
+  color: var(--doc-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
 .documentation-page__editor-header .shared-input {
   font-weight: 760;
   border-color: var(--doc-field-border);
   background: var(--doc-field-surface-strong);
   box-shadow: var(--doc-field-shadow);
+}
+
+.documentation-page__proposal-logo {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 78%, transparent);
+  border-radius: 12px;
+  padding: 10px;
+  background: color-mix(in oklab, var(--surface-elevated) 86%, var(--surface-section-content));
+}
+
+.documentation-page__proposal-logo-preview {
+  width: 96px;
+  height: 64px;
+  border: 1px dashed color-mix(in oklab, var(--doc-line) 88%, var(--accent));
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: color-mix(in oklab, white 62%, var(--surface-section-content));
+}
+
+.documentation-page__proposal-logo-preview img {
+  max-width: 86px;
+  max-height: 54px;
+  object-fit: contain;
+}
+
+.documentation-page__proposal-logo-preview span {
+  padding: 0 8px;
+  text-align: center;
+  color: var(--doc-muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.documentation-page__proposal-logo-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.documentation-page__proposal-logo-controls label {
+  color: var(--doc-muted);
+  font-size: 0.7rem;
+  font-weight: 820;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.documentation-page__proposal-logo-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+}
+
+.documentation-page__proposal-logo-row .shared-input {
+  min-width: 0;
+  font-size: 0.78rem;
+}
+
+.documentation-page__proposal-logo-row button {
+  border: 1px solid color-mix(in oklab, var(--doc-line) 82%, transparent);
+  border-radius: 8px;
+  background: var(--doc-surface);
+  color: var(--doc-ink);
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 760;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.documentation-page__proposal-logo-row button:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--doc-line));
+  background: color-mix(in oklab, var(--accent-soft) 66%, var(--doc-surface));
+}
+
+.documentation-page__proposal-logo-row button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 .documentation-page__editor-meta {
@@ -480,6 +800,24 @@
   text-decoration: underline;
 }
 
+.documentation-page__editor-preview img {
+  max-width: 100%;
+  height: auto;
+}
+
+.documentation-page__editor-preview--proposal > p:first-child {
+  margin: 8px 0 22px;
+  text-align: center;
+}
+
+.documentation-page__editor-preview--proposal > p:first-child img {
+  display: inline-block;
+  width: auto;
+  max-width: min(180px, 42%);
+  max-height: 96px;
+  object-fit: contain;
+}
+
 .documentation-page__editor-preview pre {
   margin: 14px 0;
   border: 1px solid color-mix(in oklab, var(--doc-line) 78%, transparent);
@@ -545,14 +883,41 @@
   gap: 12px;
   padding: 14px;
   background:
-    radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--accent) 8%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--selected-bg) 26%, transparent), transparent 24%),
-    var(--doc-chat-surface);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.995) 0%, rgba(246, 250, 254, 0.995) 100%);
   box-shadow:
-    var(--doc-chat-shadow),
-    inset 0 1px 0 color-mix(in oklab, var(--glass-highlight) 72%, transparent);
+    0 28px 70px rgba(10, 42, 71, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
   overflow: hidden;
-  position: relative;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  width: min(420px, calc(100% - 36px));
+  transform: translateX(calc(100% + 18px));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 220ms ease,
+    opacity 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.documentation-page--assistant-open .documentation-page__assistant-pane {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.documentation-page__assistant-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: 0;
+  background: color-mix(in oklab, var(--bg-deep) 14%, transparent);
+  backdrop-filter: blur(1px);
+  cursor: default;
+  padding: 0;
 }
 
 .documentation-page__assistant-pane::before {
@@ -604,7 +969,8 @@
   gap: 8px;
 }
 
-.documentation-page__clear-chat-button {
+.documentation-page__clear-chat-button,
+.documentation-page__close-chat-button {
   width: 32px;
   height: 32px;
   border-radius: 10px;
@@ -620,16 +986,18 @@
     background 160ms ease,
     border-color 160ms ease,
     color 160ms ease,
-    transform 160ms ease,
+  transform 160ms ease,
     box-shadow 160ms ease;
 }
 
-.documentation-page__clear-chat-button svg {
+.documentation-page__clear-chat-button svg,
+.documentation-page__close-chat-button svg {
   width: 14px;
   height: 14px;
 }
 
-.documentation-page__clear-chat-button:hover:not(:disabled) {
+.documentation-page__clear-chat-button:hover:not(:disabled),
+.documentation-page__close-chat-button:hover:not(:disabled) {
   color: var(--danger);
   border-color: color-mix(in oklab, var(--danger) 44%, var(--doc-line));
   background: color-mix(in oklab, var(--danger-soft) 72%, var(--doc-surface-soft));
@@ -637,7 +1005,8 @@
   transform: translateY(-1px);
 }
 
-.documentation-page__clear-chat-button:disabled {
+.documentation-page__clear-chat-button:disabled,
+.documentation-page__close-chat-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -1277,10 +1646,52 @@
   background: var(--doc-surface-soft);
 }
 
+.app-theme[data-theme="dark"] .documentation-create-modal__option,
+.app-theme[data-theme="dark"] .documentation-create-modal__close,
+.app-theme[data-theme="dark"] .documentation-create-modal__icon,
+.app-theme[data-theme="dark"] .documentation-page__kind-filters button,
+.app-theme[data-theme="dark"] .documentation-page__proposal-logo,
+.app-theme[data-theme="dark"] .documentation-page__proposal-logo-preview,
+.app-theme[data-theme="dark"] .documentation-page__proposal-logo-row button {
+  border-color: color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-section-content) 88%, var(--bg-deep));
+}
+
+.app-theme[data-theme="dark"] .documentation-create-modal {
+  border-color: color-mix(in oklab, var(--line) 82%, transparent);
+  background:
+    linear-gradient(180deg, rgba(16, 27, 39, 0.995) 0%, rgba(9, 17, 27, 0.995) 100%);
+  color: var(--text);
+  box-shadow:
+    0 32px 76px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.app-theme[data-theme="dark"] .documentation-create-modal__option:hover,
+.app-theme[data-theme="dark"] .documentation-page__kind-filters button:hover,
+.app-theme[data-theme="dark"] .documentation-page__kind-filters button.is-active {
+  border-color: color-mix(in oklab, var(--accent-strong) 36%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 56%, var(--surface-section-content));
+}
+
+.app-theme[data-theme="dark"] .documentation-page__kind-badge {
+  border-color: color-mix(in oklab, var(--line) 66%, transparent);
+  background: color-mix(in oklab, var(--selected-bg) 42%, var(--surface-section-content));
+  color: var(--text-strong);
+}
+
 .app-theme[data-theme="dark"] .documentation-page__file-item strong,
 .app-theme[data-theme="dark"] .documentation-page__messages-empty-state h3,
 .app-theme[data-theme="dark"] .documentation-page__message-bubble header strong {
   color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .documentation-page__assistant-pane {
+  background:
+    linear-gradient(180deg, rgba(16, 27, 39, 0.995) 0%, rgba(9, 17, 27, 0.995) 100%);
+  box-shadow:
+    0 32px 76px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .app-theme[data-theme="dark"] .documentation-page__file-item span,
@@ -1579,6 +1990,16 @@
 }
 
 @media (max-width: 760px) {
+  .documentation-create-modal__grid,
+  .documentation-page__proposal-logo,
+  .documentation-page__proposal-logo-row {
+    grid-template-columns: 1fr;
+  }
+
+  .documentation-page__proposal-logo-preview {
+    width: 100%;
+  }
+
   .documentation-page__files-actions {
     grid-template-columns: 1fr;
   }

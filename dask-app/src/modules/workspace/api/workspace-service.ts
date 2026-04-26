@@ -761,7 +761,7 @@ export const workspaceService: WorkspaceService = {
 
   async createWorkspaceDocument(
     workspaceSlug: string,
-    input: { title: string; content?: string; position?: number }
+    input: Parameters<WorkspaceService["createWorkspaceDocument"]>[1]
   ): Promise<WorkspaceDocument> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.post<WorkspaceDocument>(`/workspaces/${workspaceId}/documents`, input, {
@@ -773,7 +773,7 @@ export const workspaceService: WorkspaceService = {
   async updateWorkspaceDocument(
     workspaceSlug: string,
     documentId: string,
-    input: { title?: string; content?: string; position?: number }
+    input: Parameters<WorkspaceService["updateWorkspaceDocument"]>[2]
   ): Promise<WorkspaceDocument> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.patch<WorkspaceDocument>(`/workspaces/${workspaceId}/documents/${documentId}`, input, {

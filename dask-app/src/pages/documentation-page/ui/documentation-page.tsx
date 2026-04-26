@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
-import { useWorkspace, type DocumentationAssistantMode, type WorkspaceDocument } from "@/modules/workspace";
-import { LoadingState, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
+import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
+import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentMetadata } from "@/modules/workspace";
+import { LoadingState, ModalShell, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./documentation-page.css";
 
@@ -18,6 +19,7 @@ interface AssistantMessage {
 }
 
 type EditorViewMode = "write" | "split" | "preview";
+type DocumentKindFilter = DocumentKind | "all";
 
 const DEFAULT_INSTRUCTIONS: Record<DocumentationAssistantMode, string> = {
   chat: "Converse comigo sobre esta doc e responda objetivamente.",
@@ -36,6 +38,100 @@ const EDITOR_VIEW_LABELS: Record<EditorViewMode, string> = {
   split: "Dividido",
   preview: "Preview"
 };
+
+const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
+  wiki: "Wiki",
+  proposal: "Proposta",
+  contract: "Contrato"
+};
+
+const DOCUMENT_KIND_DESCRIPTIONS: Record<DocumentKind, string> = {
+  wiki: "Documente processos, regras internas e conhecimento para IA.",
+  proposal: "Crie uma proposta comercial com escopo, valores, prazos e aceite.",
+  contract: "Crie um contrato com clausulas basicas, partes, objeto e condicoes."
+};
+
+const DOCUMENT_KIND_OPTIONS: DocumentKind[] = ["wiki", "proposal", "contract"];
+const DOCUMENT_KIND_FILTERS: Array<{ value: DocumentKindFilter; label: string }> = [
+  { value: "all", label: "Todos" },
+  { value: "wiki", label: "Wiki" },
+  { value: "proposal", label: "Propostas" },
+  { value: "contract", label: "Contratos" }
+];
+
+function normalizeDocumentKind(kind: WorkspaceDocument["kind"] | undefined): DocumentKind {
+  return kind ?? "wiki";
+}
+
+function renderMarkdownWithMetadata(content: string, metadata: WorkspaceDocumentMetadata): string {
+  const interpolated = content.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
+    const value = metadata[key];
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+
+    return match;
+  });
+
+  return interpolated.replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "");
+}
+
+function markdownUrlTransform(url: string): string {
+  const trimmedUrl = url.trim();
+  const normalizedUrl = trimmedUrl.toLowerCase();
+
+  if (
+    normalizedUrl.startsWith("data:image/") ||
+    trimmedUrl.startsWith("#") ||
+    trimmedUrl.startsWith("/") ||
+    trimmedUrl.startsWith("./") ||
+    trimmedUrl.startsWith("../")
+  ) {
+    return trimmedUrl;
+  }
+
+  try {
+    const protocol = new URL(trimmedUrl).protocol;
+    return ["http:", "https:", "mailto:", "tel:"].includes(protocol) ? trimmedUrl : "";
+  } catch {
+    return trimmedUrl;
+  }
+}
+
+function renderDocumentKindIcon(kind: DocumentKind) {
+  if (kind === "proposal") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M8 8h8M8 12h8M8 16h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M15 16.5h2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (kind === "contract") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 3h9l3 3v15H6V3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M15 3v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M9 11h6M9 14h6M9 17h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M15.5 18.5 18 21l3-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M8 6h7M8 10h8M8 14h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -89,12 +185,16 @@ export function DocumentationPage() {
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
   const dirtyDocIdsRef = useRef<Set<string>>(new Set());
   const saveSeqByDocRef = useRef<Record<string, number>>({});
 
   const [docs, setDocs] = useState<WorkspaceDocument[]>([]);
   const [isDocsLoading, setIsDocsLoading] = useState(true);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  const [documentKindFilter, setDocumentKindFilter] = useState<DocumentKindFilter>("all");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
   const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("split");
@@ -110,8 +210,18 @@ export function DocumentationPage() {
   const [runError, setRunError] = useState<string | null>(null);
 
   const activeDoc = useMemo(() => {
-    return docs.find((doc) => doc.id === activeDocId) ?? docs[0] ?? null;
+    return docs.find((doc) => doc.id === activeDocId) ?? null;
   }, [docs, activeDocId]);
+
+  const activeDocKind = normalizeDocumentKind(activeDoc?.kind);
+
+  const filteredDocs = useMemo(() => {
+    if (documentKindFilter === "all") {
+      return docs;
+    }
+
+    return docs.filter((doc) => normalizeDocumentKind(doc.kind) === documentKindFilter);
+  }, [docs, documentKindFilter]);
 
   const activeMessages = useMemo(() => {
     if (!activeDoc) {
@@ -126,6 +236,14 @@ export function DocumentationPage() {
     return trimmed ? trimmed.split(/\s+/).length : 0;
   }, [activeDoc?.content]);
 
+  const renderedMarkdown = useMemo(() => {
+    if (!activeDoc) {
+      return "";
+    }
+
+    return renderMarkdownWithMetadata(activeDoc.content, activeDoc.metadata ?? {});
+  }, [activeDoc?.content, activeDoc?.metadata]);
+
   const pushMessage = useCallback((docId: string, message: AssistantMessage) => {
     setChatsByDoc((previous) => ({
       ...previous,
@@ -133,7 +251,7 @@ export function DocumentationPage() {
     }));
   }, []);
 
-  const updateDocDraft = useCallback((docId: string, patch: Partial<Pick<WorkspaceDocument, "title" | "content">>) => {
+  const updateDocDraft = useCallback((docId: string, patch: Partial<Pick<WorkspaceDocument, "title" | "content" | "kind" | "tags" | "metadata">>) => {
     setDocs((previous) =>
       previous.map((doc) =>
         doc.id === docId
@@ -222,6 +340,23 @@ export function DocumentationPage() {
   }, [activeDoc?.id]);
 
   useEffect(() => {
+    if (documentKindFilter === "all" && !activeDocId && docs.length > 0) {
+      setActiveDocId(docs[0].id);
+      return;
+    }
+
+    if (documentKindFilter === "all") {
+      return;
+    }
+
+    if (activeDocId && filteredDocs.some((doc) => doc.id === activeDocId)) {
+      return;
+    }
+
+    setActiveDocId(filteredDocs[0]?.id ?? null);
+  }, [activeDocId, docs, documentKindFilter, filteredDocs]);
+
+  useEffect(() => {
     if (!messagesRef.current) {
       return;
     }
@@ -248,7 +383,10 @@ export function DocumentationPage() {
       try {
         const updated = await updateWorkspaceDocument(document.id, {
           title: document.title,
-          content: document.content
+          content: document.content,
+          kind: normalizeDocumentKind(document.kind),
+          tags: document.tags ?? [],
+          metadata: document.metadata ?? {}
         });
 
         if (saveSeqByDocRef.current[document.id] !== sequence) {
@@ -294,19 +432,25 @@ export function DocumentationPage() {
     };
   }, [activeDoc, persistDocDraft]);
 
-  async function createNewDoc() {
+  async function createNewDoc(kind: DocumentKind) {
     setRunError(null);
     setSaveError(null);
 
     try {
+      const template = getDocumentTemplate(kind);
       const created = await createWorkspaceDocument({
-        title: `Nova doc ${docs.length + 1}`,
-        content: "",
+        title: template.title,
+        content: template.content,
+        kind,
+        tags: [DOCUMENT_KIND_LABELS[kind]],
+        metadata: template.metadata ?? {},
         position: docs.length
       });
       setDocs((previous) => [...previous, created]);
       setActiveDocId(created.id);
       setSelectedSnippet("");
+      setDocumentKindFilter("all");
+      setIsCreateModalOpen(false);
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "Falha ao criar doc.");
     }
@@ -324,6 +468,9 @@ export function DocumentationPage() {
       const duplicated = await createWorkspaceDocument({
         title: `${activeDoc.title} (copia)`,
         content: activeDoc.content,
+        kind: activeDocKind,
+        tags: activeDoc.tags ?? [],
+        metadata: activeDoc.metadata ?? {},
         position: docs.length
       });
       setDocs((previous) => [...previous, duplicated]);
@@ -596,6 +743,52 @@ export function DocumentationPage() {
     }
   }
 
+  function updateActiveProposalMetadata(patch: WorkspaceDocumentMetadata) {
+    if (!activeDoc) {
+      return;
+    }
+
+    updateDocDraft(activeDoc.id, {
+      metadata: {
+        ...(activeDoc.metadata ?? {}),
+        ...patch
+      }
+    });
+  }
+
+  function removeClientLogo() {
+    if (!activeDoc) {
+      return;
+    }
+
+    const nextMetadata = { ...(activeDoc.metadata ?? {}) };
+    delete nextMetadata.clientLogoUrl;
+    updateDocDraft(activeDoc.id, { metadata: nextMetadata });
+  }
+
+  function handleClientLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
+    if (!activeDoc) {
+      return;
+    }
+
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateDocDraft(activeDoc.id, {
+        metadata: {
+          ...(activeDoc.metadata ?? {}),
+          clientLogoUrl: typeof reader.result === "string" ? reader.result : ""
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
   const topNavigation = (
     <section className="docs-top-nav" aria-label="Acoes de documentacao">
       <WorkspaceActionButton
@@ -603,10 +796,22 @@ export function DocumentationPage() {
         tone="accent"
         label="Nova doc"
         disabled={isDocsLoading || isLoading}
-        onClick={() => void createNewDoc()}
+        onClick={() => setIsCreateModalOpen(true)}
         icon="+"
       />
       <div className="docs-top-nav__actions">
+        <WorkspaceActionButton
+          className={`docs-top-nav__btn${isAssistantOpen ? " docs-top-nav__btn--active" : ""}`}
+          label={isAssistantOpen ? "Ocultar chat" : "Chat IA"}
+          disabled={isDocsLoading || isLoading}
+          onClick={() => setIsAssistantOpen((previous) => !previous)}
+          icon={(
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              <path d="M8 8h8M8 12h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          )}
+        />
         <WorkspaceActionButton
           className="docs-top-nav__btn"
           label="Duplicar doc"
@@ -646,7 +851,46 @@ export function DocumentationPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="documentation-page">
+      {isCreateModalOpen ? (
+        <ModalShell
+          titleId="documentation-create-modal-title"
+          className="documentation-create-modal"
+          onClose={() => setIsCreateModalOpen(false)}
+        >
+          <header className="documentation-create-modal__header">
+            <div>
+              <h2 id="documentation-create-modal-title">Novo documento</h2>
+              <p>Escolha o tipo de documento que deseja criar.</p>
+            </div>
+            <button
+              type="button"
+              className="documentation-create-modal__close"
+              aria-label="Fechar"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
+            </button>
+          </header>
+          <div className="documentation-create-modal__grid">
+            {DOCUMENT_KIND_OPTIONS.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className={`documentation-create-modal__option documentation-create-modal__option--${kind}`}
+                onClick={() => void createNewDoc(kind)}
+              >
+                <span className="documentation-create-modal__icon">{renderDocumentKindIcon(kind)}</span>
+                <strong>{DOCUMENT_KIND_LABELS[kind]}</strong>
+                <span>{DOCUMENT_KIND_DESCRIPTIONS[kind]}</span>
+                <em>Template inicial incluido</em>
+              </button>
+            ))}
+          </div>
+        </ModalShell>
+      ) : null}
+      <WorkspaceFrame className={`documentation-page${isAssistantOpen ? " documentation-page--assistant-open" : ""}`}>
         <LoadingState
           text="Carregando documentação..."
           animation="documentation"
@@ -655,33 +899,54 @@ export function DocumentationPage() {
         />
         <aside className="documentation-page__files-pane">
           <header className="documentation-page__files-header">
-            <p>Documentos</p>
-            <span>{docs.length} docs</span>
+            <div>
+              <p>Documentos</p>
+              <span>{docs.length} docs</span>
+            </div>
           </header>
 
+          <div className="documentation-page__kind-filters" aria-label="Filtrar documentos por tipo">
+            {DOCUMENT_KIND_FILTERS.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                className={documentKindFilter === filter.value ? "is-active" : ""}
+                onClick={() => setDocumentKindFilter(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
           <nav className="documentation-page__files-list">
-            {docs.map((doc) => (
+            {filteredDocs.map((doc) => {
+              const docKind = normalizeDocumentKind(doc.kind);
+
+              return (
               <button
                 key={doc.id}
                 type="button"
                 className={`documentation-page__file-item${activeDoc?.id === doc.id ? " documentation-page__file-item--active" : ""}`}
                 onClick={() => setActiveDocId(doc.id)}
               >
-                <svg className="documentation-page__file-item-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-                  <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                  <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.55" />
-                  <line x1="8" y1="17" x2="12" y2="17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.55" />
-                </svg>
+                <span className={`documentation-page__file-item-icon documentation-page__file-item-icon--${docKind}`}>
+                  {renderDocumentKindIcon(docKind)}
+                </span>
                 <div className="documentation-page__file-item-content">
-                  <strong>{doc.title}</strong>
+                  <div className="documentation-page__file-title-row">
+                    <strong>{doc.title}</strong>
+                    <span className={`documentation-page__kind-badge documentation-page__kind-badge--${docKind}`}>
+                      {DOCUMENT_KIND_LABELS[docKind]}
+                    </span>
+                  </div>
                   <span>{`Atualizado em ${formatRelativeDate(doc.updatedAt)}`}</span>
                 </div>
               </button>
-            ))}
-            {!isDocsLoading && docs.length === 0 ? (
+              );
+            })}
+            {!isDocsLoading && filteredDocs.length === 0 ? (
               <div className="documentation-page__panel-empty documentation-page__panel-empty--compact">
-                <h3>Nenhuma doc criada</h3>
+                <h3>Nenhuma doc encontrada</h3>
                 <p>Clique em "Nova doc" para começar.</p>
               </div>
             ) : null}
@@ -692,11 +957,52 @@ export function DocumentationPage() {
           {activeDoc ? (
             <>
               <header className="documentation-page__editor-header">
+                <div className="documentation-page__editor-kind-row">
+                  <span className={`documentation-page__kind-badge documentation-page__kind-badge--${activeDocKind}`}>
+                    {DOCUMENT_KIND_LABELS[activeDocKind]}
+                  </span>
+                  <p>{DOCUMENT_KIND_DESCRIPTIONS[activeDocKind]}</p>
+                </div>
                 <TextInput
                   value={activeDoc.title}
                   onChange={(event) => updateDocDraft(activeDoc.id, { title: event.target.value })}
                   placeholder="Titulo da doc"
                 />
+                {activeDocKind === "proposal" ? (
+                  <section className="documentation-page__proposal-logo">
+                    <input
+                      ref={logoFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="documentation-page__hidden-input"
+                      onChange={handleClientLogoFileChange}
+                    />
+                    <div className="documentation-page__proposal-logo-preview">
+                      {activeDoc.metadata?.clientLogoUrl ? (
+                        <img src={activeDoc.metadata.clientLogoUrl} alt="Logo do cliente" />
+                      ) : (
+                        <span>Logo do cliente</span>
+                      )}
+                    </div>
+                    <div className="documentation-page__proposal-logo-controls">
+                      <label htmlFor="client-logo-url">Logo do cliente</label>
+                      <div className="documentation-page__proposal-logo-row">
+                        <TextInput
+                          id="client-logo-url"
+                          value={activeDoc.metadata?.clientLogoUrl ?? ""}
+                          onChange={(event) => updateActiveProposalMetadata({ clientLogoUrl: event.target.value })}
+                          placeholder="Cole a URL da imagem ou envie um arquivo"
+                        />
+                        <button type="button" onClick={() => logoFileInputRef.current?.click()}>
+                          Adicionar/Substituir
+                        </button>
+                        <button type="button" onClick={removeClientLogo} disabled={!activeDoc.metadata?.clientLogoUrl}>
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
                 <div className="documentation-page__editor-meta">
                   <p>{`Ultima edicao: ${formatRelativeDate(activeDoc.updatedAt)}`}</p>
                   <div className="documentation-page__editor-meta-right">
@@ -896,9 +1202,9 @@ export function DocumentationPage() {
                 ) : null}
 
                 {editorViewMode !== "write" ? (
-                  <article className="documentation-page__editor-preview markdown-body">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {activeDoc.content.trim().length > 0 ? activeDoc.content : "_Sem conteudo ainda._"}
+                  <article className={`documentation-page__editor-preview markdown-body documentation-page__editor-preview--${activeDocKind}`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={markdownUrlTransform}>
+                      {renderedMarkdown.trim().length > 0 ? renderedMarkdown : "_Sem conteudo ainda._"}
                     </ReactMarkdown>
                   </article>
                 ) : null}
@@ -920,7 +1226,16 @@ export function DocumentationPage() {
           )}
         </section>
 
-        <aside className="documentation-page__assistant-pane">
+        {isAssistantOpen ? (
+          <button
+            type="button"
+            className="documentation-page__assistant-backdrop"
+            aria-label="Fechar Chat IA"
+            onClick={() => setIsAssistantOpen(false)}
+          />
+        ) : null}
+
+        <aside className="documentation-page__assistant-pane" aria-hidden={!isAssistantOpen}>
           <header className="documentation-page__assistant-header">
             <div>
               <h2>Chat IA</h2>
@@ -943,6 +1258,17 @@ export function DocumentationPage() {
                 </svg>
               </button>
               <StatusBadge tone={assistantTone}>{assistantStatus}</StatusBadge>
+              <button
+                type="button"
+                className="documentation-page__close-chat-button"
+                aria-label="Fechar Chat IA"
+                title="Fechar Chat IA"
+                onClick={() => setIsAssistantOpen(false)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
           </header>
 

@@ -1,6 +1,19 @@
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+
+type DocumentKind = 'wiki' | 'proposal' | 'contract';
+type DocumentMetadata = Record<string, unknown>;
+
+const documentKinds = new Set<DocumentKind>(['wiki', 'proposal', 'contract']);
+
+function normalizeDocumentKind(kind: string | null | undefined): DocumentKind {
+  return kind && documentKinds.has(kind as DocumentKind) ? (kind as DocumentKind) : 'wiki';
+}
+
+function toInputJson(value: DocumentMetadata | undefined): Prisma.InputJsonValue | undefined {
+  return value === undefined ? undefined : (value as Prisma.InputJsonObject);
+}
 
 export class WorkspaceDocumentsService {
   public constructor(
@@ -25,6 +38,9 @@ export class WorkspaceDocumentsService {
     payload: {
       title: string;
       content?: string;
+      kind?: DocumentKind;
+      tags?: string[];
+      metadata?: DocumentMetadata;
       position?: number;
     };
   }) {
@@ -39,6 +55,9 @@ export class WorkspaceDocumentsService {
         workspaceId: input.workspaceId,
         title: input.payload.title.trim(),
         content: input.payload.content ?? '',
+        kind: input.payload.kind ?? 'wiki',
+        tags: input.payload.tags ?? [],
+        metadata: toInputJson(input.payload.metadata),
         position: input.payload.position ?? defaultPosition,
         createdBy: input.userId,
         updatedBy: input.userId
@@ -55,6 +74,9 @@ export class WorkspaceDocumentsService {
     payload: {
       title?: string;
       content?: string;
+      kind?: DocumentKind;
+      tags?: string[];
+      metadata?: DocumentMetadata;
       position?: number;
     };
   }) {
@@ -76,6 +98,9 @@ export class WorkspaceDocumentsService {
       data: {
         title: input.payload.title,
         content: input.payload.content,
+        kind: input.payload.kind,
+        tags: input.payload.tags,
+        metadata: toInputJson(input.payload.metadata),
         position: input.payload.position,
         updatedBy: input.userId
       }
@@ -109,6 +134,9 @@ export class WorkspaceDocumentsService {
     workspaceId: string;
     title: string;
     content: string;
+    kind?: string | null;
+    tags?: string[];
+    metadata?: Prisma.JsonValue | null;
     position: number;
     createdBy: string;
     updatedBy: string | null;
@@ -120,6 +148,9 @@ export class WorkspaceDocumentsService {
       workspaceId: document.workspaceId,
       title: document.title,
       content: document.content,
+      kind: normalizeDocumentKind(document.kind),
+      tags: document.tags ?? [],
+      metadata: document.metadata ?? {},
       position: document.position,
       createdBy: document.createdBy,
       updatedBy: document.updatedBy,

@@ -32,10 +32,15 @@ Apresentamos esta proposta com o objetivo de formalizar a solucao, escopo, condi
 | Campo | Informacao |
 |---|---|
 | Cliente | {{clientName}} |
+| Razao social / nome legal | {{clientLegalName}} |
+| Contato principal | {{contactName}} |
+| E-mail do contato | {{contactEmail}} |
+| Telefone do contato | {{contactPhone}} |
 | Responsavel comercial | {{ownerName}} |
 | Data da proposta | {{proposalDate}} |
 | Validade da proposta | {{proposalValidity}} |
 | Codigo da proposta | {{proposalCode}} |
+| Origem do lead | {{leadSource}} |
 
 ## 3. Objetivo
 
@@ -44,6 +49,8 @@ Apresentamos esta proposta com o objetivo de formalizar a solucao, escopo, condi
 ## 4. Escopo da solucao
 
 {{implementationScope}}
+
+{{catalogItemDescription}}
 
 ## 5. Entregaveis
 
@@ -74,7 +81,7 @@ Apresentamos esta proposta com o objetivo de formalizar a solucao, escopo, condi
 
 ## 10. Fora do escopo
 
-{{contractNotes}}
+{{outOfScope}}
 
 ## 11. Aceite da proposta
 
@@ -98,9 +105,9 @@ const contractTemplate: CommercialDocumentTemplate = {
 
 ## 1. Partes
 
-**Contratante:** {{clientName}}, inscrito(a) no CPF/CNPJ sob no {{clientDocument}}, com endereco em {{clientAddress}}.
+**Contratante:** {{clientLegalName}}, inscrito(a) no CPF/CNPJ sob no {{clientDocument}}, com endereco em {{clientAddress}}.
 
-**Contratada:** {{companyName}}, inscrita no CPF/CNPJ sob no {{companyDocument}}, com endereco em {{companyAddress}}.
+**Contratada:** {{providerName}}, inscrita no CPF/CNPJ sob no {{providerDocument}}, com endereco em {{providerAddress}}.
 
 As partes acima identificadas resolvem celebrar o presente contrato, conforme as clausulas e condicoes abaixo.
 
@@ -145,6 +152,8 @@ Criterios de aceite:
 ## 8. Cancelamento e rescisao
 
 {{cancellationTerms}}
+
+Aviso previo minimo para rescisao: {{noticePeriod}}.
 
 ## 9. Confidencialidade
 

@@ -7,6 +7,48 @@ import { AppShell } from "@/widgets/app-shell";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import "./settings-page.css";
 
+type CompanyProfileForm = {
+  name: string;
+  legalName: string;
+  document: string;
+  address: string;
+  jurisdictionCity: string;
+  jurisdictionState: string;
+  noticePeriod: string;
+};
+
+const emptyCompanyProfile: CompanyProfileForm = {
+  name: "",
+  legalName: "",
+  document: "",
+  address: "",
+  jurisdictionCity: "",
+  jurisdictionState: "",
+  noticePeriod: ""
+};
+
+function readString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function readCompanyProfile(settings: Record<string, unknown> | undefined): CompanyProfileForm {
+  const profile = settings?.companyProfile;
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    return emptyCompanyProfile;
+  }
+
+  const source = profile as Record<string, unknown>;
+  return {
+    name: readString(source.name),
+    legalName: readString(source.legalName),
+    document: readString(source.document),
+    address: readString(source.address),
+    jurisdictionCity: readString(source.jurisdictionCity),
+    jurisdictionState: readString(source.jurisdictionState),
+    noticePeriod: readString(source.noticePeriod)
+  };
+}
+
 export function SettingsPage() {
   const { snapshot, updatePreferences, listAiAgents, listAiRuns, getAiObservability, createAiAgent } = useWorkspace();
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
@@ -26,6 +68,13 @@ export function SettingsPage() {
   const [agentKey, setAgentKey] = useState("");
   const [agentPrompt, setAgentPrompt] = useState("");
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
+  const settings = (snapshot?.preferences.settings as Record<string, unknown> | undefined) ?? {};
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfileForm>(() => readCompanyProfile(settings));
+  const [isSavingCompanyProfile, setIsSavingCompanyProfile] = useState(false);
+
+  useEffect(() => {
+    setCompanyProfile(readCompanyProfile(settings));
+  }, [snapshot?.preferences.settings]);
 
   useEffect(() => {
     let mounted = true;
@@ -107,6 +156,28 @@ export function SettingsPage() {
     }
   };
 
+  const handleSaveCompanyProfile = async () => {
+    setIsSavingCompanyProfile(true);
+    try {
+      await updatePreferences({
+        settings: {
+          ...settings,
+          companyProfile: {
+            name: companyProfile.name.trim(),
+            legalName: companyProfile.legalName.trim(),
+            document: companyProfile.document.trim(),
+            address: companyProfile.address.trim(),
+            jurisdictionCity: companyProfile.jurisdictionCity.trim(),
+            jurisdictionState: companyProfile.jurisdictionState.trim(),
+            noticePeriod: companyProfile.noticePeriod.trim()
+          }
+        }
+      });
+    } finally {
+      setIsSavingCompanyProfile(false);
+    }
+  };
+
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark pageTitle="Configuracoes do workspace" pageLabel="Admin">
       <WorkspaceFrame className="settings-page">
@@ -169,6 +240,74 @@ export function SettingsPage() {
                   <option value="mm/dd/yyyy">MM/DD/YYYY</option>
                 </Select>
               </FormField>
+            </div>
+          </Section>
+
+          <Section
+            title="Empresa contratada"
+            subtitle="Dados usados automaticamente em propostas e contratos gerados pelo workspace."
+            className="settings-view__card"
+          >
+            <div className="settings-view__form-grid">
+              <FormField label="Nome fantasia">
+                <TextInput
+                  value={companyProfile.name}
+                  onChange={event => setCompanyProfile(current => ({ ...current, name: event.target.value }))}
+                  placeholder="Ex: Minha Empresa"
+                />
+              </FormField>
+              <FormField label="Razao social / nome legal">
+                <TextInput
+                  value={companyProfile.legalName}
+                  onChange={event => setCompanyProfile(current => ({ ...current, legalName: event.target.value }))}
+                  placeholder="Ex: Minha Empresa Ltda"
+                />
+              </FormField>
+            </div>
+            <div className="settings-view__form-grid">
+              <FormField label="CPF / CNPJ">
+                <TextInput
+                  value={companyProfile.document}
+                  onChange={event => setCompanyProfile(current => ({ ...current, document: event.target.value }))}
+                  placeholder="Ex: 00.000.000/0001-00"
+                />
+              </FormField>
+              <FormField label="Aviso previo padrao">
+                <TextInput
+                  value={companyProfile.noticePeriod}
+                  onChange={event => setCompanyProfile(current => ({ ...current, noticePeriod: event.target.value }))}
+                  placeholder="Ex: 30"
+                />
+              </FormField>
+            </div>
+            <FormField label="Endereco">
+              <Textarea
+                rows={3}
+                value={companyProfile.address}
+                onChange={event => setCompanyProfile(current => ({ ...current, address: event.target.value }))}
+                placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
+              />
+            </FormField>
+            <div className="settings-view__form-grid">
+              <FormField label="Cidade do foro">
+                <TextInput
+                  value={companyProfile.jurisdictionCity}
+                  onChange={event => setCompanyProfile(current => ({ ...current, jurisdictionCity: event.target.value }))}
+                  placeholder="Ex: Sao Paulo"
+                />
+              </FormField>
+              <FormField label="Estado do foro">
+                <TextInput
+                  value={companyProfile.jurisdictionState}
+                  onChange={event => setCompanyProfile(current => ({ ...current, jurisdictionState: event.target.value }))}
+                  placeholder="Ex: SP"
+                />
+              </FormField>
+            </div>
+            <div className="settings-view__form-grid">
+              <Button type="button" onClick={() => void handleSaveCompanyProfile()} disabled={isSavingCompanyProfile}>
+                {isSavingCompanyProfile ? "Salvando..." : "Salvar empresa"}
+              </Button>
             </div>
           </Section>
 

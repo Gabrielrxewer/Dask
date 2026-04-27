@@ -145,7 +145,7 @@ Pelo presente instrumento particular, de um lado:
 
 E, de outro lado:
 
-**Contratada:** {{companyName}}, inscrita no CPF/CNPJ sob no {{companyDocument}}, com endereco em {{companyAddress}}.
+**Contratada:** {{providerName}}, inscrita no CPF/CNPJ sob no {{providerDocument}}, com endereco em {{providerAddress}}.
 
 As partes acima identificadas resolvem celebrar o presente contrato, conforme as clausulas e condicoes abaixo.
 

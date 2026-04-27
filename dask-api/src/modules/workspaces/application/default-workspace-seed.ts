@@ -115,7 +115,7 @@ type TemplateSeedPreset = {
   defaultBoardViews: DefaultBoardViewSeed[];
 };
 
-const CARD_FIELDS_SCHEMA_VERSION = 3;
+const CARD_FIELDS_SCHEMA_VERSION = 4;
 const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 6;
 
 const defaultSystemCardFieldIds = [
@@ -592,7 +592,14 @@ const commercialCustomFields: DefaultCustomFieldSeed[] = [
   { name: 'Nome do cliente', slug: 'clientName', variableKey: 'clientName', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Logo do cliente', slug: 'clientLogoUrl', variableKey: 'clientLogoUrl', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Origem', slug: 'source', variableKey: 'leadSource', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
-  { name: 'Interesse / escopo', slug: 'interest', variableKey: 'implementationScope', type: 'LONG_TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  {
+    name: 'Interesse / escopo',
+    slug: 'interest',
+    variableKey: 'implementationScope',
+    type: 'SELECT',
+    scopeTypeSlugs: commercialTypeSlugs,
+    settings: { entityType: 'billing_catalog_item' }
+  },
   { name: 'Valor estimado', slug: 'estimatedValue', variableKey: 'dealValue', type: 'NUMBER', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Probabilidade', slug: 'probability', type: 'NUMBER', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Previsao de fechamento', slug: 'expectedCloseDate', variableKey: 'expectedCloseDate', type: 'DATE', scopeTypeSlugs: commercialTypeSlugs },
@@ -886,6 +893,7 @@ function mapTemplateFieldTypeToSeed(type: unknown): DefaultCustomFieldSeed['type
     case 'boolean':
       return 'BOOLEAN';
     case 'select':
+    case 'catalog_select':
       return 'SELECT';
     case 'multi_select':
       return 'MULTI_SELECT';
@@ -1106,6 +1114,39 @@ function readStoredFieldMap(settings: unknown, key: 'visibleFieldsByType' | 'det
   }, {});
 }
 
+function readCardFieldSchemaVersion(settings: unknown): number {
+  if (!isRecord(settings)) {
+    return 0;
+  }
+
+  const version = settings.cardFieldSchemaVersion;
+  return typeof version === 'number' && Number.isFinite(version) ? version : 0;
+}
+
+function mergeFieldSlugLists(existing: string[], seeded: string[]): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+
+  for (const fieldSlug of [...existing, ...seeded]) {
+    if (seen.has(fieldSlug)) {
+      continue;
+    }
+
+    seen.add(fieldSlug);
+    merged.push(fieldSlug);
+  }
+
+  return merged;
+}
+
+function mergeFieldMaps(existing: Record<string, string[]>, seeded: Record<string, string[]>): Record<string, string[]> {
+  const typeSlugs = new Set([...Object.keys(seeded), ...Object.keys(existing)]);
+  return Array.from(typeSlugs).reduce<Record<string, string[]>>((acc, typeSlug) => {
+    acc[typeSlug] = mergeFieldSlugLists(existing[typeSlug] ?? [], seeded[typeSlug] ?? []);
+    return acc;
+  }, {});
+}
+
 function readStoredDetailZoneMap(settings: unknown): Record<string, Record<string, 'main' | 'side'>> {
   if (!isRecord(settings) || !isRecord(settings.detailFieldZoneByType)) {
     return {};
@@ -1131,6 +1172,20 @@ function readStoredDetailZoneMap(settings: unknown): Record<string, Record<strin
     },
     {}
   );
+}
+
+function mergeDetailZoneMaps(
+  existing: Record<string, Record<string, 'main' | 'side'>>,
+  seeded: Record<string, Record<string, 'main' | 'side'>>
+): Record<string, Record<string, 'main' | 'side'>> {
+  const typeSlugs = new Set([...Object.keys(seeded), ...Object.keys(existing)]);
+  return Array.from(typeSlugs).reduce<Record<string, Record<string, 'main' | 'side'>>>((acc, typeSlug) => {
+    acc[typeSlug] = {
+      ...(seeded[typeSlug] ?? {}),
+      ...(existing[typeSlug] ?? {})
+    };
+    return acc;
+  }, {});
 }
 
 function resolveSystemFieldDetailSection(fieldSlug: string): 'main' | 'side' {
@@ -1673,7 +1728,7 @@ export async function seedWorkspaceConfigurationDefaults(
   });
   const defaultBoardMode = seededBoardViews[0]?.key ?? preset.defaultBoardMode;
 
-  const preferences = await prisma.workspacePreferences.upsert({
+  let preferences = await prisma.workspacePreferences.upsert({
     where: { workspaceId },
     create: {
       workspaceId,
@@ -1709,6 +1764,43 @@ export async function seedWorkspaceConfigurationDefaults(
     },
     update: {}
   });
+
+  const currentCardFieldSchemaVersion = readCardFieldSchemaVersion(preferences.settings);
+  if (currentCardFieldSchemaVersion < CARD_FIELDS_SCHEMA_VERSION) {
+    const existingSettings = isRecord(preferences.settings) ? preferences.settings : {};
+    const nextSettings = {
+      ...existingSettings,
+      templateKey: preset.templateKey,
+      cardFieldSchemaVersion: CARD_FIELDS_SCHEMA_VERSION,
+      visibleFieldsByType: mergeFieldMaps(
+        readStoredFieldMap(existingSettings, 'visibleFieldsByType'),
+        seededTemplateFieldLayouts.visibleFieldsByType
+      ),
+      detailVisibleFieldsByType: mergeFieldMaps(
+        readStoredFieldMap(existingSettings, 'detailVisibleFieldsByType'),
+        seededTemplateFieldLayouts.detailVisibleFieldsByType
+      ),
+      detailFieldZoneByType: mergeDetailZoneMaps(
+        readStoredDetailZoneMap(existingSettings),
+        seededTemplateFieldLayouts.detailFieldZoneByType
+      )
+    };
+
+    preferences = await prisma.workspacePreferences.update({
+      where: { workspaceId },
+      data: {
+        visibleCardFieldIds: toPrismaJson(
+          mergeFieldSlugLists(
+            Array.isArray(preferences.visibleCardFieldIds)
+              ? preferences.visibleCardFieldIds.filter((fieldId): fieldId is string => typeof fieldId === 'string')
+              : [],
+            seededTemplateFieldLayouts.visibleCardFieldIds
+          )
+        ),
+        settings: toPrismaJson(nextSettings)
+      }
+    });
+  }
 
   const fieldIdBySlug = new Map<string, string>();
 
@@ -1781,6 +1873,7 @@ export async function seedWorkspaceConfigurationDefaults(
         position: SYSTEM_FIELD_SEEDS.length + index,
         isSystem: false,
         isActive: true,
+        type: customFieldSeed.type,
         variableKey: customFieldSeed.variableKey,
         variableLabel: customFieldSeed.variableLabel,
         variableDescription: customFieldSeed.variableDescription,

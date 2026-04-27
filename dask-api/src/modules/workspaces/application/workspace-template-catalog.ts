@@ -396,40 +396,6 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     }
   },
   {
-    id: 'catalogItemPrice',
-    label: 'Preco do item',
-    slug: 'catalogItemPrice',
-    variableKey: 'catalogItemPrice',
-    variableLabel: 'Preco unitario do item de catalogo',
-    variableDescription: 'Preco base do item de cobranca selecionado; preenchido automaticamente.',
-    type: 'number',
-    scopeTypeIds: commercialIssueTypes,
-    config: {
-      semantic: 'currency',
-      currency: 'BRL',
-      min: 0,
-      step: 1,
-      formVisible: false,
-      derivedFrom: 'interest',
-      derivedAttribute: 'price'
-    }
-  },
-  {
-    id: 'catalogItemDescription',
-    label: 'Descricao do item',
-    slug: 'catalogItemDescription',
-    variableKey: 'catalogItemDescription',
-    variableLabel: 'Descricao completa do item de catalogo',
-    variableDescription: 'Descricao detalhada do servico ou produto selecionado; usada no corpo da proposta e contrato.',
-    type: 'long_text',
-    scopeTypeIds: commercialIssueTypes,
-    config: {
-      formVisible: false,
-      derivedFrom: 'interest',
-      derivedAttribute: 'description'
-    }
-  },
-  {
     id: 'estimatedValue',
     label: 'Valor estimado',
     slug: 'estimatedValue',
@@ -481,6 +447,15 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     slug: 'paymentTerms',
     variableKey: 'paymentTerms',
     variableLabel: 'Condicoes comerciais',
+    type: 'long_text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'outOfScope',
+    label: 'Fora do escopo',
+    slug: 'outOfScope',
+    variableKey: 'outOfScope',
+    variableLabel: 'Itens fora do escopo',
     type: 'long_text',
     scopeTypeIds: commercialIssueTypes
   },
@@ -607,7 +582,8 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     'proposalValidity',
     'contractStartDate',
     'contractDuration',
-    'paymentTerms'
+    'paymentTerms',
+    'outOfScope'
   ],
   detailSectionByFieldId: {
     customerId: 'side',
@@ -623,6 +599,7 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     source: 'main',
     interest: 'main',
     paymentTerms: 'main',
+    outOfScope: 'main',
     estimatedValue: 'side',
     probability: 'side',
     expectedCloseDate: 'side',

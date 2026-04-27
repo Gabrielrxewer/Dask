@@ -5,7 +5,7 @@ export interface DocumentVariableContext {
   document: WorkspaceDocument;
   workItem?: Task | null;
   customer?: Customer | null;
-  workspace?: Pick<WorkspaceSnapshot, "id" | "name" | "membersById" | "currentUserId"> | null;
+  workspace?: Pick<WorkspaceSnapshot, "id" | "name" | "membersById" | "currentUserId" | "preferences"> | null;
   owner?: { name?: string | null } | null;
   fieldDefinitions?: TaskFieldDefinition[];
   fieldValues?: Record<string, unknown>;
@@ -50,6 +50,10 @@ function firstValue(...values: unknown[]): unknown {
   }
 
   return undefined;
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function formatDate(value: unknown, fallbackToToday = false): string {
@@ -203,6 +207,7 @@ export function resolveDocumentVariables({
     fields.contactName
   );
   const dealValue = firstText(dynamicVariables.dealValue, formatCurrency(firstText(fields.estimatedValue, fields.value)));
+  const companyProfile = readRecord(readRecord(workspace?.preferences?.settings).companyProfile);
 
   return {
     ...dynamicVariables,
@@ -220,9 +225,12 @@ export function resolveDocumentVariables({
     contactPhone: sanitizeVariableValue(firstText(dynamicVariables.contactPhone, fields.contactPhone)),
     clientDocument: sanitizeVariableValue(firstText(customer?.document)),
     clientAddress: sanitizeVariableValue(formatAddress(customer)),
-    companyDocument: sanitizeVariableValue(firstText(customer?.document)),
-    companyAddress: sanitizeVariableValue(formatAddress(customer)),
-    companyName: sanitizeVariableValue(firstText(workspace?.name)),
+    providerName: sanitizeVariableValue(firstText(companyProfile.legalName, companyProfile.name, workspace?.name, "a definir")),
+    providerDocument: sanitizeVariableValue(firstText(companyProfile.document, "a definir")),
+    providerAddress: sanitizeVariableValue(firstText(companyProfile.address, "a definir")),
+    companyDocument: sanitizeVariableValue(firstText(companyProfile.document, "a definir")),
+    companyAddress: sanitizeVariableValue(firstText(companyProfile.address, "a definir")),
+    companyName: sanitizeVariableValue(firstText(companyProfile.legalName, companyProfile.name, workspace?.name)),
     paymentTerms: sanitizeVariableValue(firstText(metadata.paymentTerms, dynamicVariables.paymentTerms, fields.paymentTerms)),
     expectedCloseDate: sanitizeVariableValue(firstText(dynamicVariables.expectedCloseDate, formatDate(fields.expectedCloseDate)))
   };

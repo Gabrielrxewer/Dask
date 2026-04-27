@@ -9,6 +9,7 @@ import {
   type CreateCustomerInput,
   type WorkspaceDocument
 } from "@/modules/workspace";
+import { billingService, type ConnectCatalogItem } from "@/modules/billing";
 import {
   Button,
   DataTable,
@@ -229,6 +230,7 @@ export function LeadsPage() {
   const [tab, setTab] = useState<LeadsTab>("overview");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [documents, setDocuments] = useState<WorkspaceDocument[]>([]);
+  const [catalogItems, setCatalogItems] = useState<ConnectCatalogItem[]>([]);
   const [isAuxLoading, setIsAuxLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
@@ -266,6 +268,12 @@ export function LeadsPage() {
 
   const customersById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
   const documentsById = useMemo(() => new Map(documents.map((d) => [d.id, d])), [documents]);
+  const catalogItemsById = useMemo(() => new Map(catalogItems.map((item) => [item.id, item])), [catalogItems]);
+  const selectedCatalogItem = leadForm.interest ? catalogItemsById.get(leadForm.interest) ?? null : null;
+  const resolveCatalogLabel = useCallback(
+    (value: string) => catalogItemsById.get(value)?.name ?? value,
+    [catalogItemsById]
+  );
 
   const selectedTask = useMemo(
     () => commercialTasks.find((t) => t.id === selectedTaskId) ?? null,
@@ -285,11 +293,11 @@ export function LeadsPage() {
         task.title, task.text,
         getTextField(task, "companyName"), getTextField(task, "clientName"),
         getTextField(task, "contactName"), getTextField(task, "contactEmail"),
-        getTextField(task, "source"), getTextField(task, "interest"),
+        getTextField(task, "source"), resolveCatalogLabel(getTextField(task, "interest")),
         customer?.name
       ].filter(Boolean).some((v) => String(v).toLowerCase().includes(query));
     });
-  }, [commercialTasks, customersById, search]);
+  }, [commercialTasks, customersById, resolveCatalogLabel, search]);
 
   const filteredCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -426,15 +434,21 @@ export function LeadsPage() {
     setIsAuxLoading(true);
     setError("");
     try {
-      const [nextCustomers, nextDocuments] = await Promise.all([listCustomers(), listWorkspaceDocuments()]);
+      const workspaceId = snapshot?.id;
+      const [nextCustomers, nextDocuments, catalogResponse] = await Promise.all([
+        listCustomers(),
+        listWorkspaceDocuments(),
+        workspaceId ? billingService.listConnectCatalogItems(workspaceId, false) : Promise.resolve({ items: [] })
+      ]);
       setCustomers(nextCustomers);
       setDocuments(nextDocuments);
+      setCatalogItems(catalogResponse.items.filter((item) => item.isActive));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao carregar dados comerciais.");
     } finally {
       setIsAuxLoading(false);
     }
-  }, [listCustomers, listWorkspaceDocuments]);
+  }, [listCustomers, listWorkspaceDocuments, snapshot?.id]);
 
   useEffect(() => { void loadAuxData(); }, [loadAuxData]);
 
@@ -469,9 +483,12 @@ export function LeadsPage() {
     const customer = leadForm.customerId ? customersById.get(leadForm.customerId) : null;
     const companyName = leadForm.companyName.trim() || getCustomerDisplayName(customer);
     const contactName = leadForm.contactName.trim();
-    const titleBase = companyName || contactName || leadForm.interest.trim();
+    const catalogItem = selectedCatalogItem;
+    const catalogMetadata = catalogItem?.metadata ?? {};
+    const titleBase = companyName || contactName || catalogItem?.name;
     if (!titleBase) throw new Error("Informe empresa, contato ou interesse para criar o lead.");
     const estimatedValue = Number(leadForm.estimatedValue.replace(",", "."));
+    const catalogAmount = catalogItem ? catalogItem.amount / 100 : undefined;
     const fields = {
       customerId: leadForm.customerId || undefined,
       clientName: getCustomerDisplayName(customer) || companyName || contactName,
@@ -481,11 +498,20 @@ export function LeadsPage() {
       contactEmail: leadForm.contactEmail.trim() || customer?.email || undefined,
       contactPhone: leadForm.contactPhone.trim() || customer?.phone || undefined,
       source: leadForm.source.trim() || undefined,
-      interest: leadForm.interest.trim() || undefined,
-      estimatedValue: Number.isFinite(estimatedValue) ? estimatedValue : undefined,
-      proposalValidity: leadForm.proposalValidity || undefined
+      interest: catalogItem?.id || undefined,
+      estimatedValue: Number.isFinite(estimatedValue) ? estimatedValue : catalogAmount,
+      proposalValidity: leadForm.proposalValidity || catalogMetadata.proposalValidity || undefined,
+      paymentTerms: catalogMetadata.paymentTerms || undefined
     };
-    await createTask({ type: commercialTypeId, title: titleBase, description: leadForm.notes.trim() || leadForm.interest.trim(), priority: 2, statusId: initialStatusId, fields, customFieldValues: buildCommercialCustomFieldValues(fields) });
+    await createTask({
+      type: commercialTypeId,
+      title: titleBase,
+      description: leadForm.notes.trim() || catalogMetadata.scope || catalogItem?.description || catalogItem?.name || "",
+      priority: 2,
+      statusId: initialStatusId,
+      fields,
+      customFieldValues: buildCommercialCustomFieldValues(fields)
+    });
   };
 
   const createCustomerFromForm = async () => {
@@ -819,7 +845,7 @@ export function LeadsPage() {
                         const proposal = documentsById.get(getTextField(task, "proposalId"));
                         const contract = documentsById.get(getTextField(task, "contractId"));
                         const stageColor = boardStatuses.find((s) => s.id === task.status)?.dot;
-                        const leadSubtitle = getTextField(task, "interest") || task.text || "Sem escopo informado";
+                        const leadSubtitle = resolveCatalogLabel(getTextField(task, "interest")) || task.text || "Sem escopo informado";
                         return (
                           <DataTableRow key={task.id} className="leads-page__lead-row">
                             <DataTableCell>
@@ -1003,7 +1029,23 @@ export function LeadsPage() {
               </FormField>
             </div>
             <FormField label="Interesse / escopo">
-              <Textarea rows={4} value={leadForm.interest} onChange={(e) => setLeadForm((c) => ({ ...c, interest: e.target.value }))} placeholder="Descreva o interesse ou escopo do projeto…" />
+              <Select
+                value={leadForm.interest}
+                onChange={(e) => {
+                  const catalogItem = catalogItemsById.get(e.target.value);
+                  setLeadForm((current) => ({
+                    ...current,
+                    interest: e.target.value,
+                    estimatedValue: current.estimatedValue || (catalogItem ? String(catalogItem.amount / 100) : ""),
+                    proposalValidity: current.proposalValidity || catalogItem?.metadata?.proposalValidity || ""
+                  }));
+                }}
+              >
+                <option value="">Selecione um item do catalogo</option>
+                {catalogItems.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </Select>
             </FormField>
             <FormField label="Observações">
               <Textarea rows={3} value={leadForm.notes} onChange={(e) => setLeadForm((c) => ({ ...c, notes: e.target.value }))} />
@@ -1094,7 +1136,7 @@ export function LeadsPage() {
                           <span>{statusLabelById.get(task.status) ?? task.status}</span>
                           {value !== null && <span>{formatMoney(value)}</span>}
                         </div>
-                        {getTextField(task, "interest") || task.text ? <p>{getTextField(task, "interest") || task.text}</p> : null}
+                        {getTextField(task, "interest") || task.text ? <p>{resolveCatalogLabel(getTextField(task, "interest")) || task.text}</p> : null}
                       </li>
                     );
                   })}

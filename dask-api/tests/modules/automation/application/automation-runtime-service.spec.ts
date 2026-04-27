@@ -23,6 +23,9 @@ function makeDeps() {
     automationViewColumn: {
       findFirst: vi.fn()
     },
+    workspacePreferences: {
+      findUnique: vi.fn().mockResolvedValue({ settings: {} })
+    },
     workflowState: {
       findFirst: vi.fn()
     },
@@ -521,7 +524,7 @@ describe('AutomationRuntimeService', () => {
         fields: {
           customerId: 'customer-1',
           contactName: 'Ana Cliente',
-          interest: 'Dask Core'
+          interest: '11111111-1111-4111-8111-111111111111'
         },
         customFieldValues: []
       }))
@@ -529,17 +532,59 @@ describe('AutomationRuntimeService', () => {
     prisma.customer.findFirst.mockResolvedValue({
       id: 'customer-1',
       name: 'Cliente Dask',
-      tradeName: null,
-      legalName: null,
-      document: null,
+      tradeName: 'Cliente Dask',
+      legalName: 'Cliente Dask S.A.',
+      document: '98.765.432/0001-10',
       email: 'cliente@example.com',
       phone: null,
       website: null,
       logoUrl: null,
-      address: null,
+      address: {
+        street: 'Rua Cliente',
+        number: '10',
+        city: 'Rio de Janeiro',
+        state: 'RJ',
+        country: 'Brasil'
+      },
       status: 'prospect'
     });
-    prisma.connectCatalogItem.findFirst.mockResolvedValue(null);
+    prisma.connectCatalogItem.findFirst.mockResolvedValue({
+      id: '11111111-1111-4111-8111-111111111111',
+      kind: 'SERVICE',
+      billingType: 'ONE_TIME',
+      recurringInterval: null,
+      recurringIntervalCount: null,
+      name: 'Implantacao Dask Core',
+      description: 'Implantacao assistida da plataforma Dask.',
+      amount: 250000,
+      currency: 'brl',
+      metadata: {
+        unit: 'projeto',
+        defaultQuantity: '1',
+        scope: 'Implantacao completa com configuracao do CRM.',
+        deliverables: 'Ambiente configurado, treinamento e handoff.',
+        deliveryTerms: '30 dias corridos',
+        paymentTerms: '50% na contratacao e 50% na entrega.',
+        proposalValidity: '2026-05-30',
+        contractTerm: '12',
+        cancellationTerms: 'Cancelamento mediante aviso previo.',
+        clientResponsibilities: 'Disponibilizar acessos e responsaveis internos.',
+        acceptanceCriteria: 'Validacao final em reuniao de aceite.'
+      }
+    });
+    prisma.workspacePreferences.findUnique.mockResolvedValue({
+      settings: {
+        companyProfile: {
+          name: 'Dask',
+          legalName: 'Dask Tecnologia Ltda',
+          document: '12.345.678/0001-90',
+          address: 'Rua Produto, 100 - Sao Paulo/SP',
+          jurisdictionCity: 'Sao Paulo',
+          jurisdictionState: 'SP',
+          noticePeriod: '30'
+        }
+      }
+    });
     prisma.workspaceDocument.findFirst.mockResolvedValue(null);
     prisma.workspaceDocument.count.mockResolvedValue(0);
     prisma.workspaceDocument.create.mockResolvedValue({ id: 'contract-1' });
@@ -571,6 +616,12 @@ describe('AutomationRuntimeService', () => {
         })
       })
     );
+    const createCall = prisma.workspaceDocument.create.mock.calls[0]?.[0];
+    expect(createCall.data.content).toContain('Implantacao Dask Core');
+    expect(createCall.data.content).toContain('Ambiente configurado, treinamento e handoff.');
+    expect(createCall.data.content).toContain('Dask Tecnologia Ltda');
+    expect(createCall.data.content).toContain('12 meses');
+    expect(createCall.data.content).toContain('30 dias');
     expect(prisma.customFieldValue.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({

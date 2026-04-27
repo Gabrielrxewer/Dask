@@ -116,7 +116,7 @@ type TemplateSeedPreset = {
 };
 
 const CARD_FIELDS_SCHEMA_VERSION = 3;
-const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 5;
+const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 6;
 
 const defaultSystemCardFieldIds = [
   'sys:type',

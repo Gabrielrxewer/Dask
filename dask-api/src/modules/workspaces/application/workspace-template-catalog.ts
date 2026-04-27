@@ -881,8 +881,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
               status: 'draft',
               targetFieldSlug: 'contractId'
             }
-          ],
-          validations: ['commercial.contract.required_fields']
+          ]
         },
         {
           id: 'generate_contract_on_contract_preparing',
@@ -899,8 +898,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
               targetFieldSlug: 'contractId',
               skipIfExists: true
             }
-          ],
-          validations: ['commercial.contract.required_fields']
+          ]
         },
         {
           id: 'mark_contract_sent',

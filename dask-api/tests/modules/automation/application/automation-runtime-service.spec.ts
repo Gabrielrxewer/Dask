@@ -488,6 +488,100 @@ describe('AutomationRuntimeService', () => {
     );
   });
 
+  it('creates a linked contract document when the card moves to contract preparation', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-1',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.moved' },
+        conditions: {
+          itemTypeSlugs: ['commercial'],
+          toColumnKeys: ['contract_preparing'],
+          statuses: ['contract_preparing']
+        },
+        actions: [
+          {
+            type: 'create_document',
+            kind: 'contract',
+            binding: 'commercial_contract',
+            targetFieldSlug: 'contractId',
+            status: 'draft'
+          }
+        ]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+    prisma.item.findFirst
+      .mockResolvedValueOnce(makeCommercialItem({
+        fields: {
+          customerId: 'customer-1',
+          contactName: 'Ana Cliente',
+          interest: 'Dask Core'
+        },
+        customFieldValues: []
+      }))
+      .mockResolvedValueOnce({ fields: {} });
+    prisma.customer.findFirst.mockResolvedValue({
+      id: 'customer-1',
+      name: 'Cliente Dask',
+      tradeName: null,
+      legalName: null,
+      document: null,
+      email: 'cliente@example.com',
+      phone: null,
+      website: null,
+      logoUrl: null,
+      address: null,
+      status: 'prospect'
+    });
+    prisma.connectCatalogItem.findFirst.mockResolvedValue(null);
+    prisma.workspaceDocument.findFirst.mockResolvedValue(null);
+    prisma.workspaceDocument.count.mockResolvedValue(0);
+    prisma.workspaceDocument.create.mockResolvedValue({ id: 'contract-1' });
+    prisma.workItemDocumentLink.upsert.mockResolvedValue(undefined);
+    prisma.customFieldDefinition.findFirst.mockResolvedValue({ id: 'field-contract' });
+    prisma.item.update.mockResolvedValue(undefined);
+    prisma.customFieldValue.upsert.mockResolvedValue(undefined);
+
+    await service.processEvent({
+      eventName: 'item.moved',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        itemTypeSlug: 'commercial',
+        status: 'contract_preparing',
+        toColumnKey: 'contract_preparing',
+        requestedBy: 'user-1'
+      }
+    });
+
+    expect(prisma.workspaceDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: 'contract',
+          linkedEntityType: 'work_item',
+          linkedEntityId: 'item-1',
+          tags: ['Contrato']
+        })
+      })
+    );
+    expect(prisma.customFieldValue.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          fieldId: 'field-contract',
+          itemId: 'item-1',
+          value: 'contract-1'
+        })
+      })
+    );
+  });
+
   it('updates the linked proposal status when the card moves to sent', async () => {
     const { prisma, service } = makeDeps();
 

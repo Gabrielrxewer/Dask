@@ -826,6 +826,21 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           actions: [{ type: 'update_document_status', kind: 'proposal', status: 'sent' }]
         },
         {
+          id: 'sync_draft_proposal_on_work_item_update',
+          name: 'Sincronizar proposta em rascunho ao atualizar card',
+          description: 'Quando dados do WorkItem comercial mudam, re-renderiza a proposta vinculada enquanto ela ainda estiver em rascunho.',
+          enabled: true,
+          trigger: { type: 'work_item_updated' },
+          actions: [
+            {
+              type: 'sync_document',
+              kind: 'proposal',
+              binding: 'commercial_proposal',
+              syncStatuses: ['draft']
+            }
+          ]
+        },
+        {
           id: 'move_to_contract_on_proposal_approved',
           name: 'Mover para Contrato em preparacao ao aprovar proposta',
           description: 'Quando o WorkItem comercial entra em Proposta aprovada, avanca automaticamente para Contrato em preparacao na perspectiva Formalizacao.',
@@ -884,6 +899,21 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           enabled: true,
           trigger: { type: 'work_item_moved_to_column', column: 'contract_sent' },
           actions: [{ type: 'update_document_status', kind: 'contract', status: 'sent' }]
+        },
+        {
+          id: 'sync_draft_contract_on_work_item_update',
+          name: 'Sincronizar contrato em rascunho ao atualizar card',
+          description: 'Quando dados do WorkItem comercial mudam, re-renderiza o contrato vinculado enquanto ele ainda estiver em rascunho.',
+          enabled: true,
+          trigger: { type: 'work_item_updated' },
+          actions: [
+            {
+              type: 'sync_document',
+              kind: 'contract',
+              binding: 'commercial_contract',
+              syncStatuses: ['draft']
+            }
+          ]
         },
         {
           id: 'create_customer_on_contract_accepted',

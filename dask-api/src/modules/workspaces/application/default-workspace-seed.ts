@@ -116,7 +116,7 @@ type TemplateSeedPreset = {
 };
 
 const CARD_FIELDS_SCHEMA_VERSION = 4;
-const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 6;
+const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 7;
 
 const defaultSystemCardFieldIds = [
   'sys:type',
@@ -1397,7 +1397,7 @@ function normalizeTemplateAutomationActions(automation: TemplateAutomationSeed):
       if (
         automation.validations &&
         automation.validations.length > 0 &&
-        (actionType === 'create_document' || actionType === 'update_document_status' || actionType === 'create_billing_order') &&
+        (actionType === 'create_document' || actionType === 'update_document_status' || actionType === 'sync_document' || actionType === 'create_billing_order') &&
         !Array.isArray(nextAction.validations)
       ) {
         nextAction.validations = automation.validations;
@@ -1430,6 +1430,11 @@ function buildSeededAutomationRuleSpec(
     conditions = {
       itemTypeSlugs: ['commercial'],
       ...(column ? { toColumnKeys: [column], statuses: [column] } : {})
+    };
+  } else if (rawTriggerType === 'work_item_updated') {
+    normalizedTriggerType = 'item.updated';
+    conditions = {
+      itemTypeSlugs: ['commercial']
     };
   } else if (rawTriggerType === 'proposal_status_changed') {
     const status = readAutomationString(trigger, ['status']);

@@ -613,6 +613,11 @@ export class AutomationRuntimeService {
         return;
       }
 
+      case 'sync_document': {
+        await this.syncLinkedDocumentFromWorkItem(action, context, rawPayload);
+        return;
+      }
+
       case 'create_billing_order': {
         await this.prepareBillingOrder(action, context, rawPayload);
         return;
@@ -776,6 +781,73 @@ export class AutomationRuntimeService {
           statusUpdatedAt: new Date().toISOString()
         }),
         updatedBy: readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy
+      }
+    });
+  }
+
+  private async syncLinkedDocumentFromWorkItem(
+    action: Extract<AutomationAction, { type: 'sync_document' }>,
+    context: AutomationEventContext,
+    rawPayload: Record<string, unknown>
+  ): Promise<void> {
+    const itemId = context.itemId;
+    const workspaceId = context.workspaceId;
+    if (!itemId || !workspaceId) {
+      throw new AppError('Automation event does not include work item context.', 422);
+    }
+
+    const item = await this.loadItemForAutomation(workspaceId, itemId);
+    const customer = await this.loadCustomerForItem(workspaceId, item);
+    const catalogItem = await this.loadCatalogItemForItem(workspaceId, item);
+    const companyProfile = await this.loadWorkspaceCompanyProfile(workspaceId);
+
+    await this.validateCommercialRequirements({
+      validations: normalizeDocumentValidations(action.kind, action.validations),
+      item,
+      customer,
+      catalogItem
+    });
+
+    const document = await this.findLinkedDocument(workspaceId, itemId, action.kind);
+    if (!document) {
+      return;
+    }
+
+    const currentMetadata = isRecord(document.metadata) ? document.metadata : {};
+    const currentStatus = readString(currentMetadata.status) || 'draft';
+    const syncStatuses = action.syncStatuses ?? ['draft'];
+    if (!syncStatuses.includes(currentStatus)) {
+      return;
+    }
+
+    const template = getCommercialDocumentTemplate(action.kind);
+    const variables = await this.buildDocumentVariables({
+      workspaceId,
+      item,
+      customer,
+      catalogItem,
+      companyProfile,
+      kind: action.kind,
+      documentCount: 1
+    });
+    const updatedBy = readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy;
+
+    await this.prisma.workspaceDocument.update({
+      where: { id: document.id },
+      data: {
+        content: interpolateDocumentContent(template.content, variables),
+        metadata: toJsonValue({
+          ...(template.metadata ?? {}),
+          ...currentMetadata,
+          ...variables,
+          ...(action.metadata ?? {}),
+          status: action.status ?? currentStatus,
+          automationBinding: action.binding ?? currentMetadata.automationBinding,
+          automationGenerated: true,
+          generatedFromWorkItemId: itemId,
+          syncedFromWorkItemAt: new Date().toISOString()
+        }),
+        updatedBy
       }
     });
   }

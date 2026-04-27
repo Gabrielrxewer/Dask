@@ -114,6 +114,16 @@ export const updateDocumentStatusActionSchema = z.object({
   metadata: z.record(z.unknown()).optional()
 });
 
+export const syncDocumentActionSchema = z.object({
+  type: z.literal('sync_document'),
+  kind: z.enum(['wiki', 'proposal', 'contract']),
+  binding: z.string().min(1).optional(),
+  status: z.string().min(1).optional(),
+  syncStatuses: z.array(z.string().min(1)).optional(),
+  validations: z.array(z.string().min(1)).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+
 export const createBillingOrderActionSchema = z.object({
   type: z.literal('create_billing_order'),
   targetFieldSlug: z.string().min(1).optional(),
@@ -134,6 +144,7 @@ export const automationActionSchema = z.union([
   setWorkItemStateActionSchema,
   createDocumentActionSchema,
   updateDocumentStatusActionSchema,
+  syncDocumentActionSchema,
   createBillingOrderActionSchema,
   ensureCustomerFromWorkItemActionSchema
 ]);

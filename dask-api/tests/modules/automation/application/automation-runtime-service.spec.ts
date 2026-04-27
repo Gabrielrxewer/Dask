@@ -643,6 +643,151 @@ describe('AutomationRuntimeService', () => {
     );
   });
 
+  it('syncs draft linked commercial documents when the card is updated', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-1',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.updated' },
+        conditions: { itemTypeSlugs: ['commercial'] },
+        actions: [
+          {
+            type: 'sync_document',
+            kind: 'contract',
+            binding: 'commercial_contract',
+            syncStatuses: ['draft']
+          }
+        ]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+    prisma.item.findFirst.mockResolvedValue(makeCommercialItem({
+      fields: {
+        customerId: 'customer-1',
+        contactName: 'Ana Cliente',
+        interest: '22222222-2222-4222-8222-222222222222',
+        estimatedValue: 4999,
+        paymentTerms: 'Parcelado em 2 vezes'
+      }
+    }));
+    prisma.customer.findFirst.mockResolvedValue({
+      id: 'customer-1',
+      name: 'Cliente Dask',
+      tradeName: 'Cliente Dask',
+      legalName: 'Cliente Dask S.A.',
+      document: '98.765.432/0001-10',
+      email: 'cliente@example.com',
+      phone: null,
+      website: null,
+      logoUrl: null,
+      address: null,
+      status: 'prospect'
+    });
+    prisma.connectCatalogItem.findFirst.mockResolvedValue({
+      id: '22222222-2222-4222-8222-222222222222',
+      kind: 'SERVICE',
+      billingType: 'ONE_TIME',
+      recurringInterval: null,
+      recurringIntervalCount: null,
+      name: 'Projeto Atualizado',
+      description: 'Escopo atualizado pelo catalogo.',
+      amount: 499900,
+      currency: 'brl',
+      metadata: {
+        unit: 'projeto',
+        defaultQuantity: '1',
+        scope: 'Escopo atualizado pelo card e catalogo.',
+        deliverables: 'Entregavel revisado.',
+        deliveryTerms: '45 dias'
+      }
+    });
+    prisma.workspacePreferences.findUnique.mockResolvedValue({
+      settings: {
+        companyProfile: {
+          legalName: 'Dask Tecnologia Ltda',
+          document: '12.345.678/0001-90',
+          address: 'Rua Produto, 100',
+          jurisdictionCity: 'Sao Paulo',
+          jurisdictionState: 'SP',
+          noticePeriod: '30'
+        }
+      }
+    });
+    prisma.workspaceDocument.findFirst.mockResolvedValue({
+      id: 'contract-1',
+      metadata: {
+        status: 'draft',
+        publicToken: 'keep-me'
+      }
+    });
+    prisma.workspaceDocument.update.mockResolvedValue({ id: 'contract-1' });
+
+    await service.processEvent({
+      eventName: 'item.updated',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        itemTypeSlug: 'commercial',
+        requestedBy: 'user-1'
+      }
+    });
+
+    const updateCall = prisma.workspaceDocument.update.mock.calls[0]?.[0];
+    expect(updateCall.data.content).toContain('Escopo atualizado pelo card e catalogo.');
+    expect(updateCall.data.content).toContain('Entregavel revisado.');
+    expect(updateCall.data.content).toContain('Dask Tecnologia Ltda');
+    expect(updateCall.data.metadata).toMatchObject({
+      status: 'draft',
+      publicToken: 'keep-me',
+      automationGenerated: true,
+      generatedFromWorkItemId: 'item-1'
+    });
+  });
+
+  it('does not sync linked commercial documents after they leave draft', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-1',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.updated' },
+        conditions: { itemTypeSlugs: ['commercial'] },
+        actions: [{ type: 'sync_document', kind: 'proposal', syncStatuses: ['draft'] }]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+    prisma.item.findFirst.mockResolvedValue(makeCommercialItem());
+    prisma.customer.findFirst.mockResolvedValue(null);
+    prisma.connectCatalogItem.findFirst.mockResolvedValue(null);
+    prisma.workspaceDocument.findFirst.mockResolvedValue({
+      id: 'proposal-1',
+      metadata: { status: 'sent' }
+    });
+
+    await service.processEvent({
+      eventName: 'item.updated',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        itemTypeSlug: 'commercial',
+        requestedBy: 'user-1'
+      }
+    });
+
+    expect(prisma.workspaceDocument.update).not.toHaveBeenCalled();
+  });
+
   it('updates the linked proposal status when the card moves to sent', async () => {
     const { prisma, service } = makeDeps();
 

@@ -113,6 +113,30 @@ describe('rule-schema', () => {
     expect(spec.actions[1]?.type).toBe('create_document');
   });
 
+  it('parses commercial document sync action', () => {
+    const spec = parseRuleSpec({
+      trigger: { type: 'item.updated' },
+      conditions: {
+        itemTypeSlugs: ['commercial']
+      },
+      actions: [
+        {
+          type: 'sync_document',
+          kind: 'contract',
+          binding: 'commercial_contract',
+          syncStatuses: ['draft']
+        }
+      ]
+    });
+
+    expect(spec.trigger.type).toBe('item.updated');
+    expect(spec.actions[0]).toMatchObject({
+      type: 'sync_document',
+      kind: 'contract',
+      syncStatuses: ['draft']
+    });
+  });
+
   it('parses commercial customer creation automation action', () => {
     const spec = parseRuleSpec({
       trigger: { type: 'item.moved' },

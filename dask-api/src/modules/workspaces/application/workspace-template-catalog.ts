@@ -109,12 +109,14 @@ function uniqueFieldIds(fieldIds: string[]): string[] {
 
 function buildTemplateFieldBindings(input: {
   typeIds: string[];
+  baseCardFieldIds?: string[];
+  baseDetailFieldIds?: string[];
   extraCardFieldIds?: string[];
   extraDetailFieldIds?: string[];
   detailSectionByFieldId?: Record<string, 'main' | 'side'>;
 }): WorkspaceTemplateFieldBinding[] {
-  const cardFieldIds = uniqueFieldIds([...defaultSystemCardFieldIds, ...(input.extraCardFieldIds ?? [])]);
-  const detailFieldIds = uniqueFieldIds([...defaultSystemDetailFieldIds, ...(input.extraDetailFieldIds ?? [])]);
+  const cardFieldIds = uniqueFieldIds([...(input.baseCardFieldIds ?? defaultSystemCardFieldIds), ...(input.extraCardFieldIds ?? [])]);
+  const detailFieldIds = uniqueFieldIds([...(input.baseDetailFieldIds ?? defaultSystemDetailFieldIds), ...(input.extraDetailFieldIds ?? [])]);
 
   return input.typeIds.flatMap((typeId) => [
     ...cardFieldIds.map((fieldId, order) => ({
@@ -278,7 +280,13 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     slug: 'customerId',
     description: 'Customer mestre vinculado ao work item comercial.',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'entity_reference',
+      entityType: 'customer',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
   },
   {
     id: 'contactId',
@@ -286,7 +294,13 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     slug: 'contactId',
     description: 'Contato mestre vinculado, quando existir.',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'entity_reference',
+      entityType: 'contact',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
   },
   {
     id: 'contactName',
@@ -304,7 +318,10 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     variableKey: 'contactEmail',
     variableLabel: 'Email do contato',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'email'
+    }
   },
   {
     id: 'contactPhone',
@@ -313,7 +330,10 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     variableKey: 'contactPhone',
     variableLabel: 'Telefone do contato',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'phone'
+    }
   },
   {
     id: 'companyName',
@@ -340,7 +360,10 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     variableKey: 'clientLogoUrl',
     variableLabel: 'Logo do cliente',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'url'
+    }
   },
   {
     id: 'source',
@@ -348,8 +371,18 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     slug: 'source',
     variableKey: 'leadSource',
     variableLabel: 'Origem do lead',
-    type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    type: 'select',
+    scopeTypeIds: commercialIssueTypes,
+    options: [
+      { label: 'Indicacao', value: 'referral', color: '#0d9488' },
+      { label: 'Site', value: 'website', color: '#2563eb' },
+      { label: 'WhatsApp', value: 'whatsapp', color: '#16a34a' },
+      { label: 'Instagram', value: 'instagram', color: '#db2777' },
+      { label: 'Outbound', value: 'outbound', color: '#7c3aed' },
+      { label: 'Evento', value: 'event', color: '#f59e0b' },
+      { label: 'Parceiro', value: 'partner', color: '#0891b2' },
+      { label: 'Outro', value: 'other', color: '#64748b' }
+    ]
   },
   {
     id: 'interest',
@@ -367,14 +400,26 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     variableKey: 'dealValue',
     variableLabel: 'Valor da proposta',
     type: 'number',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'currency',
+      currency: 'BRL',
+      min: 0,
+      step: 100
+    }
   },
   {
     id: 'probability',
     label: 'Probabilidade',
     slug: 'probability',
     type: 'number',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'percentage',
+      min: 0,
+      max: 100,
+      step: 5
+    }
   },
   {
     id: 'expectedCloseDate',
@@ -408,30 +453,48 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     label: 'Proposta',
     slug: 'proposalId',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'entity_reference',
+      entityType: 'proposal',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
   },
   {
     id: 'contractId',
     label: 'Contrato',
     slug: 'contractId',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'entity_reference',
+      entityType: 'contract',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
   },
   {
     id: 'billingOrderId',
     label: 'Ordem de cobranca',
     slug: 'billingOrderId',
     type: 'text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'entity_reference',
+      entityType: 'billing_order',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
   }
 ];
 
 const commercialFieldBindings = buildTemplateFieldBindings({
   typeIds: commercialIssueTypes,
-  extraCardFieldIds: ['customerId', 'clientName', 'companyName', 'contactName', 'estimatedValue', 'proposalId', 'contractId'],
+  baseCardFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
+  baseDetailFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
+  extraCardFieldIds: ['clientName', 'companyName', 'contactName', 'estimatedValue', 'source'],
   extraDetailFieldIds: [
-    'customerId',
-    'contactId',
     'contactName',
     'contactEmail',
     'contactPhone',
@@ -444,14 +507,24 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     'probability',
     'expectedCloseDate',
     'proposalValidity',
-    'paymentTerms',
-    'proposalId',
-    'contractId',
-    'billingOrderId'
+    'paymentTerms'
   ],
   detailSectionByFieldId: {
+    contactName: 'main',
+    contactEmail: 'main',
+    contactPhone: 'main',
+    companyName: 'main',
+    clientName: 'main',
+    clientLogoUrl: 'main',
+    source: 'main',
     interest: 'main',
-    paymentTerms: 'main'
+    paymentTerms: 'main',
+    estimatedValue: 'side',
+    probability: 'side',
+    expectedCloseDate: 'side',
+    proposalValidity: 'side',
+    'sys:status': 'side',
+    'sys:assignee': 'side'
   }
 });
 
@@ -696,12 +769,23 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           actions: [{ type: 'update_document_status', kind: 'contract', status: 'sent' }]
         },
         {
+          id: 'create_customer_on_contract_accepted',
+          name: 'Criar cliente ao aceitar contrato',
+          description: 'Quando o WorkItem comercial entra em Contrato aceito / assinado, cria ou vincula automaticamente o cliente mestre a partir dos dados comerciais.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'contract_accepted' },
+          actions: [
+            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' }
+          ]
+        },
+        {
           id: 'prepare_billing_on_contract_accepted',
           name: 'Preparar cobranca apos aceite do contrato',
           description: 'Quando o contrato for aceito, move o WorkItem para Cobranca gerada e prepara a ordem de cobranca.',
           enabled: false,
           trigger: { type: 'contract_status_changed', status: 'accepted' },
           actions: [
+            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
             { type: 'set_work_item_state', stateSlug: 'billing_created' },
             { type: 'create_billing_order', targetFieldSlug: 'billingOrderId' }
           ],

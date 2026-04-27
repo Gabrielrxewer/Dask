@@ -52,6 +52,19 @@ type AutomationCustomerSnapshot = {
   website: string | null;
   logoUrl: string | null;
   address: Prisma.JsonValue | null;
+  status: string;
+};
+
+type AutomationCustomerPayload = {
+  name: string;
+  tradeName: string | null;
+  legalName: string | null;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  status: 'prospect' | 'active' | 'inactive' | 'archived';
 };
 
 function interpolateDocumentContent(content: string, variables: Record<string, string>): string {
@@ -523,6 +536,11 @@ export class AutomationRuntimeService {
         return;
       }
 
+      case 'ensure_customer_from_work_item': {
+        await this.ensureCustomerFromWorkItem(action, context, rawPayload);
+        return;
+      }
+
       default:
         throw new AppError('Unsupported automation action type.', 422);
     }
@@ -722,6 +740,191 @@ export class AutomationRuntimeService {
     });
   }
 
+  private async ensureCustomerFromWorkItem(
+    action: Extract<AutomationAction, { type: 'ensure_customer_from_work_item' }>,
+    context: AutomationEventContext,
+    rawPayload: Record<string, unknown>
+  ): Promise<void> {
+    const itemId = context.itemId;
+    const workspaceId = context.workspaceId;
+    if (!itemId || !workspaceId) {
+      throw new AppError('Automation event does not include work item context.', 422);
+    }
+
+    const item = await this.loadItemForAutomation(workspaceId, itemId);
+    const updatedBy = readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy;
+    const targetFieldSlug = action.targetFieldSlug ?? 'customerId';
+
+    const linkedCustomer = await this.loadCustomerForItem(workspaceId, item);
+    if (linkedCustomer) {
+      if (linkedCustomer.status !== action.status) {
+        await this.prisma.customer.update({
+          where: { id: linkedCustomer.id },
+          data: {
+            status: action.status,
+            updatedBy
+          }
+        });
+      }
+
+      await this.writeWorkItemField({
+        workspaceId,
+        itemId,
+        fieldSlug: targetFieldSlug,
+        value: linkedCustomer.id,
+        updatedBy
+      });
+      return;
+    }
+
+    const customerPayload = this.buildCustomerPayloadFromItem(item, action.status);
+    const matchedCustomer = await this.findMatchingCustomerForWorkItem(workspaceId, customerPayload);
+
+    const customer = matchedCustomer
+      ? await this.updateMatchedCustomerFromWorkItem(matchedCustomer, customerPayload, updatedBy)
+      : await this.prisma.customer.create({
+          data: {
+            workspaceId,
+            name: customerPayload.name,
+            tradeName: customerPayload.tradeName,
+            legalName: customerPayload.legalName,
+            document: customerPayload.document,
+            email: customerPayload.email,
+            phone: customerPayload.phone,
+            website: customerPayload.website,
+            logoUrl: customerPayload.logoUrl,
+            status: customerPayload.status,
+            notes: `Criado automaticamente a partir do work item ${item.title}.`,
+            createdBy: updatedBy,
+            updatedBy
+          },
+          select: { id: true }
+        });
+
+    await this.writeWorkItemField({
+      workspaceId,
+      itemId,
+      fieldSlug: targetFieldSlug,
+      value: customer.id,
+      updatedBy
+    });
+  }
+
+  private buildCustomerPayloadFromItem(
+    item: AutomationItemSnapshot,
+    status: 'prospect' | 'active' | 'inactive' | 'archived'
+  ): AutomationCustomerPayload {
+    const clientName = this.readItemField(item, ['clientName']);
+    const companyName = this.readItemField(item, ['companyName']);
+    const contactName = this.readItemField(item, ['contactName']);
+    const name = clientName || companyName || contactName || item.title;
+
+    if (name.trim().length < 2) {
+      throw new AppError('Nao foi possivel criar o cliente automaticamente. Preencha Nome do cliente, Empresa ou Nome do contato.', 422);
+    }
+
+    const email = this.readItemField(item, ['contactEmail', 'email']).toLowerCase() || null;
+    const document = this.readItemField(item, ['clientDocument', 'customerDocument', 'document', 'cnpj', 'cpf']) || null;
+    const phone = this.readItemField(item, ['contactPhone', 'phone']) || null;
+    const website = this.readItemField(item, ['clientWebsite', 'website']) || null;
+    const logoUrl = this.readItemField(item, ['clientLogoUrl', 'logoUrl']) || null;
+
+    return {
+      name: name.trim(),
+      tradeName: companyName || null,
+      legalName: clientName && clientName !== companyName ? clientName : null,
+      document,
+      email,
+      phone,
+      website,
+      logoUrl,
+      status
+    };
+  }
+
+  private async findMatchingCustomerForWorkItem(
+    workspaceId: string,
+    payload: AutomationCustomerPayload
+  ) {
+    const or: Prisma.CustomerWhereInput[] = [];
+
+    if (payload.document) {
+      or.push({ document: payload.document });
+    }
+
+    if (payload.email) {
+      or.push({ email: payload.email });
+    }
+
+    if (payload.name) {
+      or.push(
+        { name: { equals: payload.name, mode: 'insensitive' } },
+        { tradeName: { equals: payload.name, mode: 'insensitive' } },
+        { legalName: { equals: payload.name, mode: 'insensitive' } }
+      );
+    }
+
+    if (or.length === 0) {
+      return null;
+    }
+
+    return this.prisma.customer.findFirst({
+      where: {
+        workspaceId,
+        OR: or
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        tradeName: true,
+        legalName: true,
+        document: true,
+        email: true,
+        phone: true,
+        website: true,
+        logoUrl: true,
+        status: true
+      }
+    });
+  }
+
+  private async updateMatchedCustomerFromWorkItem(
+    customer: {
+      id: string;
+      name: string;
+      tradeName: string | null;
+      legalName: string | null;
+      document: string | null;
+      email: string | null;
+      phone: string | null;
+      website: string | null;
+      logoUrl: string | null;
+      status: string;
+    },
+    payload: AutomationCustomerPayload,
+    updatedBy: string
+  ): Promise<{ id: string }> {
+    const data: Prisma.CustomerUpdateInput = {
+      status: payload.status,
+      updatedBy
+    };
+
+    if (!customer.tradeName && payload.tradeName) data.tradeName = payload.tradeName;
+    if (!customer.legalName && payload.legalName) data.legalName = payload.legalName;
+    if (!customer.document && payload.document) data.document = payload.document;
+    if (!customer.email && payload.email) data.email = payload.email;
+    if (!customer.phone && payload.phone) data.phone = payload.phone;
+    if (!customer.website && payload.website) data.website = payload.website;
+    if (!customer.logoUrl && payload.logoUrl) data.logoUrl = payload.logoUrl;
+
+    return this.prisma.customer.update({
+      where: { id: customer.id },
+      data,
+      select: { id: true }
+    });
+  }
+
   private async loadItemForAutomation(workspaceId: string, itemId: string): Promise<AutomationItemSnapshot> {
     const item = await this.prisma.item.findFirst({
       where: {
@@ -794,7 +997,8 @@ export class AutomationRuntimeService {
         phone: true,
         website: true,
         logoUrl: true,
-        address: true
+        address: true,
+        status: true
       }
     });
   }

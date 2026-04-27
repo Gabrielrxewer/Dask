@@ -49,6 +49,70 @@ function parseDateTime(value: string | null | undefined): number | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
 }
 
+function getFieldSemantic(field: TaskFieldDefinition): string | null {
+  if (typeof field.config?.semantic === "string") {
+    return field.config.semantic;
+  }
+
+  const fieldKey = field.slug ?? field.id;
+  if (fieldKey === "contactEmail") return "email";
+  if (fieldKey === "contactPhone") return "phone";
+  if (fieldKey === "clientLogoUrl") return "url";
+  if (fieldKey === "estimatedValue") return "currency";
+  if (fieldKey === "probability") return "percentage";
+  if (fieldKey === "customerId" || fieldKey === "contactId" || fieldKey === "proposalId" || fieldKey === "contractId" || fieldKey === "billingOrderId") {
+    return "entity_reference";
+  }
+
+  return null;
+}
+
+function getNumberConfig(field: TaskFieldDefinition, key: "min" | "max" | "step"): number | undefined {
+  const value = field.config?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const fieldKey = field.slug ?? field.id;
+  if (fieldKey === "estimatedValue") {
+    if (key === "min") return 0;
+    if (key === "step") return 100;
+  }
+
+  if (fieldKey === "probability") {
+    if (key === "min") return 0;
+    if (key === "max") return 100;
+    if (key === "step") return 5;
+  }
+
+  return undefined;
+}
+
+function getTextInputType(field: TaskFieldDefinition): "email" | "tel" | "url" | "text" {
+  const semantic = getFieldSemantic(field);
+  if (semantic === "email") return "email";
+  if (semantic === "phone") return "tel";
+  if (semantic === "url") return "url";
+  return "text";
+}
+
+function getTextInputMode(field: TaskFieldDefinition): "email" | "tel" | "url" | "text" {
+  const semantic = getFieldSemantic(field);
+  if (semantic === "email") return "email";
+  if (semantic === "phone") return "tel";
+  if (semantic === "url") return "url";
+  return "text";
+}
+
+function getSemanticPlaceholder(field: TaskFieldDefinition): string | null {
+  const semantic = getFieldSemantic(field);
+  if (semantic === "email") return "nome@empresa.com";
+  if (semantic === "phone") return "(11) 99999-9999";
+  if (semantic === "url") return "https://...";
+  if (semantic === "entity_reference") return "Gerado automaticamente";
+  return null;
+}
+
 function getChecklistProgress(value: TaskChecklist) {
   const total = value.items.length;
   const done = value.items.filter(item => item.done).length;
@@ -535,6 +599,10 @@ function TextFieldDisplay(props: FieldPresentationComponentProps) {
     return renderEmpty(props.field);
   }
 
+  if (getFieldSemantic(props.field) === "entity_reference") {
+    return <span className="task-field-presentation__entity-reference">{props.controller.displayValue}</span>;
+  }
+
   return <p className="task-field-presentation__text">{props.controller.displayValue}</p>;
 }
 
@@ -567,10 +635,14 @@ function TextFieldTableDisplay(props: FieldPresentationComponentProps) {
 }
 
 function TextFieldEdit(props: FieldPresentationComponentProps) {
+  const inputType = getTextInputType(props.field);
+
   return (
     <TextInput
+      type={inputType}
+      inputMode={getTextInputMode(props.field)}
       value={props.controller.stringValue}
-      placeholder={props.placeholder ?? props.field.description ?? `Ex: ${props.field.label}`}
+      placeholder={props.placeholder ?? getSemanticPlaceholder(props.field) ?? `Ex: ${props.field.label}`}
       onChange={event => props.controller.setValue(event.target.value)}
       onBlur={props.onBlur}
       autoFocus={props.autoFocus}
@@ -619,9 +691,16 @@ function LongTextFieldEdit(props: FieldPresentationComponentProps) {
 }
 
 function NumberFieldEdit(props: FieldPresentationComponentProps) {
+  const semantic = getFieldSemantic(props.field);
+
   return (
     <TextInput
       type="number"
+      inputMode="decimal"
+      min={getNumberConfig(props.field, "min")}
+      max={getNumberConfig(props.field, "max")}
+      step={getNumberConfig(props.field, "step") ?? (semantic === "percentage" ? 1 : "any")}
+      placeholder={semantic === "currency" ? "0,00" : semantic === "percentage" ? "0 a 100" : undefined}
       value={props.controller.numberValue == null ? "" : String(props.controller.numberValue)}
       onChange={event => props.controller.setValue(event.target.value)}
       onBlur={props.onBlur}
@@ -637,8 +716,8 @@ function NumberFieldCardDisplay(props: FieldPresentationComponentProps) {
   }
 
   return renderCardSizedDisplay(props, {
-    primary: String(props.controller.numberValue),
-    secondary: resolveCardDisplaySize(props) === "mid" ? "Numero" : null
+    primary: props.controller.displayValue,
+    secondary: resolveCardDisplaySize(props) === "mid" ? props.field.label : null
   });
 }
 
@@ -1432,6 +1511,27 @@ function buildDefaultSpec(type: TaskFieldType, spec: FieldTypeSpecConfig): Field
 export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
   text: buildDefaultSpec("text", {
     parseValue: input => (input == null ? "" : String(input)),
+    validateValue: input => {
+      const semantic = getFieldSemantic(input.field);
+      if (typeof input.value !== "string" || input.value.trim().length === 0) {
+        return null;
+      }
+
+      if (semantic === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())) {
+        return "Informe um email valido.";
+      }
+
+      if (semantic === "url") {
+        try {
+          const parsed = new URL(input.value.trim());
+          return parsed.protocol === "http:" || parsed.protocol === "https:" ? null : "Informe uma URL http ou https.";
+        } catch {
+          return "Informe uma URL valida.";
+        }
+      }
+
+      return null;
+    },
     components: {
       display: TextFieldDisplay,
       edit: TextFieldEdit,
@@ -1459,6 +1559,28 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       }
 
       return input as TaskCustomFieldValue;
+    },
+    validateValue: input => {
+      if (input.value == null || input.value === "") {
+        return null;
+      }
+
+      const value = typeof input.value === "number" ? input.value : Number(input.value);
+      if (!Number.isFinite(value)) {
+        return "Informe um numero valido.";
+      }
+
+      const min = getNumberConfig(input.field, "min");
+      const max = getNumberConfig(input.field, "max");
+      if (typeof min === "number" && value < min) {
+        return `Informe um valor maior ou igual a ${min}.`;
+      }
+
+      if (typeof max === "number" && value > max) {
+        return `Informe um valor menor ou igual a ${max}.`;
+      }
+
+      return null;
     },
     components: {
       display: DefaultDisplayField,

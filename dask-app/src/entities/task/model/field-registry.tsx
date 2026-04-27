@@ -379,6 +379,43 @@ function formatDateValue(value: string): string {
   ).format(parsed);
 }
 
+function getFieldSemantic(field: TaskFieldDefinition): string | null {
+  if (typeof field.config?.semantic === "string") {
+    return field.config.semantic;
+  }
+
+  const fieldKey = field.slug ?? field.id;
+  if (fieldKey === "contactEmail") return "email";
+  if (fieldKey === "contactPhone") return "phone";
+  if (fieldKey === "clientLogoUrl") return "url";
+  if (fieldKey === "estimatedValue") return "currency";
+  if (fieldKey === "probability") return "percentage";
+  if (fieldKey === "customerId" || fieldKey === "contactId" || fieldKey === "proposalId" || fieldKey === "contractId" || fieldKey === "billingOrderId") {
+    return "entity_reference";
+  }
+
+  return null;
+}
+
+function formatNumberValue(field: TaskFieldDefinition, value: number): string {
+  const semantic = getFieldSemantic(field);
+
+  if (semantic === "currency") {
+    const currency = typeof field.config?.currency === "string" ? field.config.currency : "BRL";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
+  if (semantic === "percentage") {
+    return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value)}%`;
+  }
+
+  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value);
+}
+
 export function formatTaskFieldValue(input: {
   field: TaskFieldDefinition;
   value: TaskCustomFieldValue;
@@ -419,6 +456,11 @@ export function formatTaskFieldValue(input: {
 
   if (field.type === "date" || field.type === "datetime") {
     return formatDateValue(String(value));
+  }
+
+  if (field.type === "number") {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? formatNumberValue(field, parsed) : String(value);
   }
 
   if (field.type === "checklist" && isRecord(value) && Array.isArray(value.items)) {

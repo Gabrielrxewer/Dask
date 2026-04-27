@@ -42,7 +42,9 @@ function makeDeps() {
       upsert: vi.fn()
     },
     customer: {
-      findFirst: vi.fn()
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn()
     },
     customFieldDefinition: {
       findFirst: vi.fn()
@@ -948,6 +950,165 @@ describe('AutomationRuntimeService', () => {
     );
     expect(prisma.automationExecution.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'succeeded' }) })
+    );
+  });
+
+  it('creates and links a customer when a commercial card reaches contract_accepted', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-customer',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.moved' },
+        conditions: {
+          itemTypeSlugs: ['commercial'],
+          toColumnKeys: ['contract_accepted'],
+          statuses: ['contract_accepted']
+        },
+        actions: [
+          {
+            type: 'ensure_customer_from_work_item',
+            targetFieldSlug: 'customerId',
+            status: 'active'
+          }
+        ]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+    prisma.item.findFirst
+      .mockResolvedValueOnce(makeCommercialItem({
+        fields: {
+          clientName: 'Cliente ABC Ltda',
+          companyName: 'ABC',
+          contactName: 'Ana Cliente',
+          contactEmail: 'ANA@ABC.COM',
+          contactPhone: '+55 11 99999-0000',
+          clientLogoUrl: 'https://abc.com/logo.png'
+        }
+      }))
+      .mockResolvedValueOnce({ fields: {} });
+    prisma.customer.findFirst.mockResolvedValue(null);
+    prisma.customer.create.mockResolvedValue({ id: 'customer-new' });
+    prisma.customFieldDefinition.findFirst.mockResolvedValue({ id: 'field-customer' });
+    prisma.item.update.mockResolvedValue(undefined);
+    prisma.customFieldValue.upsert.mockResolvedValue(undefined);
+
+    await service.processEvent({
+      eventName: 'item.moved',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        itemTypeSlug: 'commercial',
+        toColumnKey: 'contract_accepted',
+        status: 'contract_accepted',
+        requestedBy: 'user-1'
+      }
+    });
+
+    expect(prisma.customer.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          workspaceId: 'ws-1',
+          name: 'Cliente ABC Ltda',
+          tradeName: 'ABC',
+          email: 'ana@abc.com',
+          phone: '+55 11 99999-0000',
+          logoUrl: 'https://abc.com/logo.png',
+          status: 'active',
+          createdBy: 'user-1',
+          updatedBy: 'user-1'
+        })
+      })
+    );
+    expect(prisma.customFieldValue.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          fieldId: 'field-customer',
+          itemId: 'item-1',
+          value: 'customer-new'
+        })
+      })
+    );
+    expect(prisma.automationExecution.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'succeeded' }) })
+    );
+  });
+
+  it('reuses an existing customer instead of creating duplicates on contract_accepted', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-customer',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.moved' },
+        conditions: { toColumnKeys: ['contract_accepted'] },
+        actions: [{ type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' }]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+    prisma.item.findFirst
+      .mockResolvedValueOnce(makeCommercialItem({
+        fields: {
+          clientName: 'Cliente ABC Ltda',
+          contactEmail: 'financeiro@abc.com',
+          contactPhone: '+55 11 99999-0000'
+        }
+      }))
+      .mockResolvedValueOnce({ fields: {} });
+    prisma.customer.findFirst.mockResolvedValue({
+      id: 'customer-existing',
+      name: 'Cliente ABC Ltda',
+      tradeName: null,
+      legalName: null,
+      document: null,
+      email: 'financeiro@abc.com',
+      phone: null,
+      website: null,
+      logoUrl: null,
+      status: 'prospect'
+    });
+    prisma.customer.update.mockResolvedValue({ id: 'customer-existing' });
+    prisma.customFieldDefinition.findFirst.mockResolvedValue({ id: 'field-customer' });
+    prisma.item.update.mockResolvedValue(undefined);
+    prisma.customFieldValue.upsert.mockResolvedValue(undefined);
+
+    await service.processEvent({
+      eventName: 'item.moved',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        toColumnKey: 'contract_accepted',
+        requestedBy: 'user-1'
+      }
+    });
+
+    expect(prisma.customer.create).not.toHaveBeenCalled();
+    expect(prisma.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'customer-existing' },
+        data: expect.objectContaining({
+          status: 'active',
+          phone: '+55 11 99999-0000',
+          updatedBy: 'user-1'
+        })
+      })
+    );
+    expect(prisma.customFieldValue.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          value: 'customer-existing'
+        })
+      })
     );
   });
 

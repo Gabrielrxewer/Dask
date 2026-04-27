@@ -113,6 +113,29 @@ describe('rule-schema', () => {
     expect(spec.actions[1]?.type).toBe('create_document');
   });
 
+  it('parses commercial customer creation automation action', () => {
+    const spec = parseRuleSpec({
+      trigger: { type: 'item.moved' },
+      conditions: {
+        itemTypeSlugs: ['commercial'],
+        toColumnKeys: ['contract_accepted']
+      },
+      actions: [
+        {
+          type: 'ensure_customer_from_work_item',
+          targetFieldSlug: 'customerId',
+          status: 'active'
+        }
+      ]
+    });
+
+    expect(spec.actions[0]).toMatchObject({
+      type: 'ensure_customer_from_work_item',
+      targetFieldSlug: 'customerId',
+      status: 'active'
+    });
+  });
+
   it('matches commercial underscore column keys and statuses correctly', () => {
     const matches = matchesConditions(
       {

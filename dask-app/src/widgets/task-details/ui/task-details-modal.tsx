@@ -102,7 +102,11 @@ function toJsonComparable(value: unknown) {
 }
 
 function isReadonlyField(field: TaskFieldDefinition) {
-  return field.isEditable === false || matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" });
+  return (
+    field.isEditable === false ||
+    field.config?.readOnlyAfterCreate === true ||
+    matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" })
+  );
 }
 
 const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
@@ -184,11 +188,17 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     () =>
       detailBindings
         .map(binding => binding.field)
-        .filter(field =>
-          isCreateMode
-            ? !(field.type === "work_item_type" || matchesTaskFieldStorage(field, { kind: "item_property", property: "typeSlug" }))
-            : true
-        ),
+        .filter(field => {
+          if (field.config?.formVisible === false) {
+            return false;
+          }
+
+          if (!isCreateMode) {
+            return true;
+          }
+
+          return !(field.type === "work_item_type" || matchesTaskFieldStorage(field, { kind: "item_property", property: "typeSlug" }));
+        }),
     [detailBindings, isCreateMode]
   );
 
@@ -567,18 +577,16 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                 <p className="task-details__muted">Associe campos a este tipo de item para montar o formulario.</p>
               </section>
             )}
-            {!isCreateMode ? (
-              <section className="task-details__section task-details__documents">
-                <div className="task-details__section-head task-details__documents-head">
-                  <div>
-                    <h3 className="task-details__summary-style-title">Documentos</h3>
-                    <p className="task-details__muted">Propostas, contratos e anotacoes vinculadas a este WorkItem.</p>
-                  </div>
-                </div>
+          </section>
 
+          <aside className="task-details__side">
+            {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
+            {!isCreateMode ? (
+              <section className="task-details__panel task-details__documents">
+                <h3 className="task-details__summary-style-title">Documentos</h3>
                 {documentsError ? <p className="task-details__documents-error">{documentsError}</p> : null}
-                {documentsLoading && documentRows.length === 0 ? <p className="task-details__muted">Carregando documentos...</p> : null}
-                {!documentsLoading && documentRows.length === 0 ? <p className="task-details__muted">Nenhum documento vinculado.</p> : null}
+                {documentsLoading && documentRows.length === 0 ? <p className="task-details__muted">Carregando...</p> : null}
+                {!documentsLoading && documentRows.length === 0 ? <p className="task-details__muted">Nenhum documento.</p> : null}
                 {documentRows.length > 0 ? (
                   <div className="task-details__documents-list">
                     {documentRows.map((document) => {
@@ -589,26 +597,32 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                           : "-";
 
                       return (
-                        <article className="task-details__document-row" key={document.id}>
-                          <div className="task-details__document-main">
-                            <span>{kindLabel}</span>
-                            <strong>{document.title}</strong>
-                          </div>
-                          <div className="task-details__document-meta">
-                            <span>Status: {statusLabel}</span>
-                            <span>Criado: {formatDocumentDate(document.createdAt)}</span>
-                            <span>Atualizado: {formatDocumentDate(document.updatedAt)}</span>
-                          </div>
-                          <div className="task-details__document-actions">
-                            {openDocument ? (
-                              <Button type="button" size="sm" variant="outline" onClick={() => openDocument(document.id)}>
-                                Abrir
-                              </Button>
+                        <article
+                          className="task-details__document-row"
+                          key={document.id}
+                          role={openDocument ? "button" : undefined}
+                          tabIndex={openDocument ? 0 : undefined}
+                          onClick={openDocument ? () => openDocument(document.id) : undefined}
+                          onKeyDown={openDocument ? (e) => { if (e.key === "Enter" || e.key === " ") openDocument(document.id); } : undefined}
+                        >
+                          <div className="task-details__document-info">
+                            <span className="task-details__document-kind">{kindLabel}</span>
+                            <strong className="task-details__document-title">{document.title}</strong>
+                            {document.status && document.status !== "draft" ? (
+                              <span className="task-details__document-status" data-status={document.status}>{statusLabel}</span>
                             ) : null}
-                            <Button type="button" size="sm" variant="outline" onClick={() => void handleUnlinkDocument(document.id)} disabled={documentsLoading}>
-                              Remover
-                            </Button>
                           </div>
+                          <button
+                            type="button"
+                            className="task-details__document-remove"
+                            onClick={(e) => { e.stopPropagation(); void handleUnlinkDocument(document.id); }}
+                            disabled={documentsLoading}
+                            aria-label="Remover documento"
+                          >
+                            <svg viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true">
+                              <path d="M2 4h12M5 4V2.5A.5.5 0 0 1 5.5 2h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l1 9.5A.5.5 0 0 0 4.5 14h7a.5.5 0 0 0 .5-.5L13 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
                         </article>
                       );
                     })}
@@ -616,10 +630,6 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                 ) : null}
               </section>
             ) : null}
-          </section>
-
-          <aside className="task-details__side">
-            {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
           </aside>
         </div>
 

@@ -148,6 +148,16 @@ function getCustomerDisplayName(customer: Customer | null | undefined): string {
   return customer?.tradeName || customer?.legalName || customer?.name || "";
 }
 
+function getInitials(value: string): string {
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const first = parts[0]?.[0] ?? "L";
+  const second = parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1];
+  return `${first}${second ?? "D"}`.toUpperCase();
+}
+
 function formatCustomerAddress(customer: Customer | null | undefined): string {
   const address = customer?.address;
   if (!address) return "";
@@ -397,6 +407,20 @@ export function LeadsPage() {
     ].slice(0, 8);
   }, [commercialTasks, documents]);
 
+  const filteredLeadMetrics = useMemo(() => {
+    const totalValue = filteredTasks.reduce((sum, task) => sum + (getNumberField(task, "estimatedValue") ?? 0), 0);
+    const activeCount = filteredTasks.filter((task) => !["lost", "closed"].includes(task.status)).length;
+    const unlinkedCount = filteredTasks.filter((task) => !getTextField(task, "customerId")).length;
+    const proposalCount = filteredTasks.filter((task) => getTextField(task, "proposalId")).length;
+    return {
+      totalValue,
+      activeCount,
+      unlinkedCount,
+      proposalCount,
+      avgValue: filteredTasks.length > 0 ? totalValue / filteredTasks.length : 0
+    };
+  }, [filteredTasks]);
+
   // ── Data loading ──────────────────────────────────────────────────────────
   const loadAuxData = useCallback(async () => {
     setIsAuxLoading(true);
@@ -481,8 +505,8 @@ export function LeadsPage() {
       <Tabs<LeadsTab> value={tab} items={TABS} onChange={setTab} className="leads-page__tabs" />
       <div className="leads-top-nav__actions">
         <WorkspaceActionButton className="leads-top-nav__btn" label="Atualizar" icon={<IconRefresh />} onClick={() => void loadAuxData()} disabled={isAuxLoading || isSubmitting} />
-        <WorkspaceActionButton className="leads-top-nav__btn" label="Novo cliente" icon="+" onClick={openCustomerModal} />
-        <WorkspaceActionButton className="leads-top-nav__btn" tone="accent" label="Novo lead" icon="+" onClick={() => openNewLeadModal()} />
+        <WorkspaceActionButton className="leads-top-nav__btn leads-top-nav__btn--customer" label="Novo cliente" icon={<IconUsers />} onClick={openCustomerModal} />
+        <WorkspaceActionButton className="leads-top-nav__btn leads-top-nav__btn--lead" tone="accent" label="Novo lead" icon={<IconTrendUp />} onClick={() => openNewLeadModal()} />
       </div>
     </section>
   );
@@ -725,22 +749,56 @@ export function LeadsPage() {
 
             {/* ═══════════════════ LEADS TABLE ═══════════════════ */}
             {tab === "leads" ? (
-              <>
-                <div className="leads-page__filters leads-page__filters--bar">
+              <section className="leads-board-shell">
+                <header className="leads-board-hero">
+                  <div className="leads-board-hero__copy">
+                    <span className="leads-page__eyebrow">Pipeline filtrado</span>
+                    <h2>Leads comerciais</h2>
+                    <p>
+                      {filteredTasks.length} lead{filteredTasks.length !== 1 ? "s" : ""}
+                      {search ? ` encontrado${filteredTasks.length !== 1 ? "s" : ""}` : " no radar"} com contexto de cliente, proposta e contrato.
+                    </p>
+                  </div>
+                  <div className="leads-board-hero__value">
+                    <span>Valor em aberto</span>
+                    <strong>{formatMoneyCompact(filteredLeadMetrics.totalValue)}</strong>
+                  </div>
+                </header>
+
+                <div className="leads-board-stats">
+                  <div className="leads-board-stat">
+                    <span>Ativos</span>
+                    <strong>{filteredLeadMetrics.activeCount}</strong>
+                  </div>
+                  <div className="leads-board-stat">
+                    <span>Sem cliente</span>
+                    <strong>{filteredLeadMetrics.unlinkedCount}</strong>
+                  </div>
+                  <div className="leads-board-stat">
+                    <span>Com proposta</span>
+                    <strong>{filteredLeadMetrics.proposalCount}</strong>
+                  </div>
+                  <div className="leads-board-stat">
+                    <span>Ticket medio</span>
+                    <strong>{formatMoneyCompact(filteredLeadMetrics.avgValue)}</strong>
+                  </div>
+                </div>
+
+                <div className="leads-page__filters leads-page__filters--bar leads-page__filters--panel">
                   <FormField label="Buscar leads">
                     <TextInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Empresa, contato, origem ou interesse…" />
                   </FormField>
-                  <div className="leads-page__filter-meta">
+                  <div className="leads-page__filter-meta leads-page__filter-meta--chips">
                     <span className="leads-filter-count">
                       {filteredTasks.length} lead{filteredTasks.length !== 1 ? "s" : ""}
                       {search ? ` encontrado${filteredTasks.length !== 1 ? "s" : ""}` : " no total"}
                     </span>
                     <span className="leads-filter-pipeline">
-                      Pipeline: {formatMoneyCompact(filteredTasks.reduce((s, t) => s + (getNumberField(t, "estimatedValue") ?? 0), 0))}
+                      Pipeline: {formatMoneyCompact(filteredLeadMetrics.totalValue)}
                     </span>
                   </div>
                 </div>
-                <DataTable columns="1.4fr 1.1fr 0.9fr 0.7fr 1fr 0.85fr 0.75fr 0.7fr 1.5fr" responsiveMinWidth="1180px" className="leads-page__table">
+                <DataTable columns="minmax(240px, 1.35fr) minmax(180px, 1fr) minmax(170px, .9fr) minmax(120px, .7fr) minmax(135px, .78fr) minmax(180px, .92fr) minmax(126px, .68fr) minmax(104px, .58fr) minmax(260px, 1.4fr)" responsiveMinWidth="1320px" className="leads-page__table leads-page__table--leads">
                   <DataTableHeader>
                     <DataTableCell>Lead / Oportunidade</DataTableCell>
                     <DataTableCell>Cliente</DataTableCell>
@@ -761,15 +819,21 @@ export function LeadsPage() {
                         const proposal = documentsById.get(getTextField(task, "proposalId"));
                         const contract = documentsById.get(getTextField(task, "contractId"));
                         const stageColor = boardStatuses.find((s) => s.id === task.status)?.dot;
+                        const leadSubtitle = getTextField(task, "interest") || task.text || "Sem escopo informado";
                         return (
-                          <DataTableRow key={task.id}>
+                          <DataTableRow key={task.id} className="leads-page__lead-row">
                             <DataTableCell>
-                              <div className="leads-page__lead-main">
-                                <div className="leads-page__lead-title-row">
-                                  <span className="leads-stage-dot" style={{ background: stageColor ?? "var(--leads-accent)" }} />
-                                  <strong>{task.title}</strong>
+                              <div className="leads-page__lead-cell">
+                                <div className="leads-lead-avatar" style={{ borderColor: stageColor ?? "var(--leads-accent)" }}>
+                                  <span>{getInitials(task.title)}</span>
                                 </div>
-                                <span>{getTextField(task, "interest") || task.text || "Sem escopo informado"}</span>
+                                <div className="leads-page__lead-main">
+                                  <div className="leads-page__lead-title-row">
+                                    <span className="leads-stage-dot" style={{ background: stageColor ?? "var(--leads-accent)" }} />
+                                    <strong>{task.title}</strong>
+                                  </div>
+                                  <span>{leadSubtitle}</span>
+                                </div>
                               </div>
                             </DataTableCell>
                             <DataTableCell>
@@ -806,7 +870,7 @@ export function LeadsPage() {
                               <Badge tone={contract ? "success" : "muted"}>{contract ? "Gerado" : "-"}</Badge>
                             </DataTableCell>
                             <DataTableCell>
-                              <div className="leads-page__row-actions">
+                              <div className="leads-page__row-actions leads-page__row-actions--lead">
                                 {customer ? (
                                   <Button size="sm" variant="outline" onClick={() => { setSelectedCustomerId(customer.id); setModalMode("customer-detail"); }}>Cliente</Button>
                                 ) : (
@@ -816,7 +880,7 @@ export function LeadsPage() {
                                 {proposal || contract ? (
                                   <Button size="sm" variant="outline" onClick={() => workspaceSlug && navigate(buildWorkspaceDocumentationPath(workspaceSlug))}>Docs</Button>
                                 ) : null}
-                                <Button size="sm" onClick={() => workspaceSlug && navigate(buildWorkspaceBoardPath(workspaceSlug))}>Board</Button>
+                                <Button size="sm" className="leads-page__board-button" onClick={() => workspaceSlug && navigate(buildWorkspaceBoardPath(workspaceSlug))}>Board</Button>
                               </div>
                             </DataTableCell>
                           </DataTableRow>
@@ -825,7 +889,7 @@ export function LeadsPage() {
                     )}
                   </DataTableBody>
                 </DataTable>
-              </>
+              </section>
             ) : null}
 
             {/* ═══════════════════ CUSTOMERS TABLE ═══════════════════ */}

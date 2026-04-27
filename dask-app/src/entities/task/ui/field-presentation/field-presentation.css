@@ -422,6 +422,24 @@
   font-weight: 700;
 }
 
+.task-field-presentation__entity-reference {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid rgba(125, 151, 178, 0.28);
+  border-radius: 999px;
+  background: rgba(241, 247, 252, 0.9);
+  color: #34526f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .task-field-presentation__type-badge {
   display: inline-flex;
   align-items: center;
@@ -1899,6 +1917,7 @@
 .app-theme[data-theme="dark"] .task-field-presentation__check-label,
 .app-theme[data-theme="dark"] .task-field-presentation__identity-label,
 .app-theme[data-theme="dark"] .task-field-presentation__type-label,
+.app-theme[data-theme="dark"] .task-field-presentation__entity-reference,
 .app-theme[data-theme="dark"] .task-field-presentation__card-small-primary,
 .app-theme[data-theme="dark"] .task-field-presentation__card-mid-primary,
 .app-theme[data-theme="dark"] .task-field-presentation__schedule-line strong {
@@ -1916,6 +1935,7 @@
 .app-theme[data-theme="dark"] .task-field-presentation__check-item,
 .app-theme[data-theme="dark"] .task-field-presentation__tag-editor,
 .app-theme[data-theme="dark"] .task-field-presentation__type-badge,
+.app-theme[data-theme="dark"] .task-field-presentation__entity-reference,
 .app-theme[data-theme="dark"] .task-field-presentation__card-small,
 .app-theme[data-theme="dark"] .task-field-presentation__card-mid,
 .app-theme[data-theme="dark"] .task-field-presentation__checklist-display-trigger,

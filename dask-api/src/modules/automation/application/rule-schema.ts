@@ -121,13 +121,21 @@ export const createBillingOrderActionSchema = z.object({
   metadata: z.record(z.unknown()).optional()
 });
 
+export const ensureCustomerFromWorkItemActionSchema = z.object({
+  type: z.literal('ensure_customer_from_work_item'),
+  targetFieldSlug: z.string().min(1).default('customerId'),
+  status: z.enum(['prospect', 'active', 'inactive', 'archived']).default('active'),
+  metadata: z.record(z.unknown()).optional()
+});
+
 export const automationActionSchema = z.union([
   setViewColumnActionSchema,
   removeFromViewActionSchema,
   setWorkItemStateActionSchema,
   createDocumentActionSchema,
   updateDocumentStatusActionSchema,
-  createBillingOrderActionSchema
+  createBillingOrderActionSchema,
+  ensureCustomerFromWorkItemActionSchema
 ]);
 
 export type AutomationAction = z.infer<typeof automationActionSchema>;

@@ -115,8 +115,8 @@ type TemplateSeedPreset = {
   defaultBoardViews: DefaultBoardViewSeed[];
 };
 
-const CARD_FIELDS_SCHEMA_VERSION = 2;
-const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 4;
+const CARD_FIELDS_SCHEMA_VERSION = 3;
+const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 5;
 
 const defaultSystemCardFieldIds = [
   'sys:type',

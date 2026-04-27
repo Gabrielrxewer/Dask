@@ -1268,9 +1268,12 @@ export class AutomationRuntimeService {
     const interestValue = this.readItemField(input.item, ['interest']);
     const legacyInterestText = input.catalogItem || looksLikeUuid(interestValue) ? '' : interestValue;
     const catalogScope = catalogMetadataText('scope') || input.catalogItem?.description || input.catalogItem?.name || '';
+    const explicitImplementationScope = this.readItemField(input.item, ['implementationScope']);
+    const safeImplementationScope =
+      explicitImplementationScope && !looksLikeUuid(explicitImplementationScope) ? explicitImplementationScope : '';
     const implementationScope =
-      this.readItemField(input.item, ['implementationScope']) ||
       catalogScope ||
+      safeImplementationScope ||
       input.item.description ||
       legacyInterestText ||
       '';

@@ -526,7 +526,15 @@ describe('AutomationRuntimeService', () => {
           contactName: 'Ana Cliente',
           interest: '11111111-1111-4111-8111-111111111111'
         },
-        customFieldValues: []
+        customFieldValues: [
+          {
+            field: {
+              slug: 'interest',
+              variableKey: 'implementationScope'
+            },
+            value: '11111111-1111-4111-8111-111111111111'
+          }
+        ]
       }))
       .mockResolvedValueOnce({ fields: {} });
     prisma.customer.findFirst.mockResolvedValue({
@@ -618,10 +626,12 @@ describe('AutomationRuntimeService', () => {
     );
     const createCall = prisma.workspaceDocument.create.mock.calls[0]?.[0];
     expect(createCall.data.content).toContain('Implantacao Dask Core');
+    expect(createCall.data.content).toContain('Implantacao completa com configuracao do CRM.');
     expect(createCall.data.content).toContain('Ambiente configurado, treinamento e handoff.');
     expect(createCall.data.content).toContain('Dask Tecnologia Ltda');
     expect(createCall.data.content).toContain('12 meses');
     expect(createCall.data.content).toContain('30 dias');
+    expect(createCall.data.content).not.toContain('11111111-1111-4111-8111-111111111111');
     expect(prisma.customFieldValue.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   buildTaskInputFromFieldDrafts,
   buildTaskTypeMetaMap,
@@ -6,6 +6,7 @@ import {
   getTaskTypeDisplayMeta,
   isTaskFieldValueEmpty,
   matchesTaskFieldStorage,
+  readTaskFieldStorage,
   resolveWorkItemFieldBindingsForContext
 } from "@/entities/task";
 import type {
@@ -21,6 +22,8 @@ import type { Member, MembersById } from "@/entities/member";
 import type {
   AiAgentSummary,
   CreateTaskInput,
+  Customer,
+  CustomerAddress,
   DocumentKind,
   TaskScheduleInput,
   UpdateTaskInput,
@@ -94,6 +97,7 @@ type TaskDetailsModalProps =
       linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
       unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
       onOpenDocument?: (documentId: string) => void;
+      listCustomers?: (input?: { search?: string }) => Promise<Customer[]>;
       onClose: () => void;
     };
 
@@ -152,9 +156,55 @@ function resolveFieldLayoutClass(field: TaskFieldDefinition, zone: DetailZone) {
   return shouldSpan ? "task-details__field-frame--wide" : "task-details__field-frame--compact";
 }
 
+function applyCreateFieldDraftDefaults(
+  drafts: Record<string, TaskCustomFieldValue>,
+  fields: TaskFieldDefinition[],
+  input: { initialStatusId: TaskStatusId; selectedTypeId: string }
+) {
+  const next = { ...drafts };
+
+  for (const field of fields) {
+    const storage = readTaskFieldStorage(field);
+    const kind = typeof storage?.kind === "string" ? storage.kind : "";
+    const property = typeof storage?.property === "string" ? storage.property : "";
+
+    if (kind !== "item_property" || !isTaskFieldValueEmpty(field, next[field.id] ?? null)) {
+      continue;
+    }
+
+    if (property === "stateSlug") {
+      next[field.id] = input.initialStatusId;
+    }
+
+    if (property === "typeSlug") {
+      next[field.id] = input.selectedTypeId;
+    }
+  }
+
+  return next;
+}
+
+function formatCustomerAddress(address: CustomerAddress | null | undefined): string {
+  if (!address) {
+    return "";
+  }
+
+  return [
+    [address.street, address.number].filter(Boolean).join(", "),
+    address.complement,
+    address.district,
+    [address.city, address.state].filter(Boolean).join(" / "),
+    address.zipCode,
+    address.country
+  ]
+    .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+    .join(" - ");
+}
+
 export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const isCreateMode = props.mode === "create";
   const task = props.mode === "edit" ? props.task : null;
+  const initialCreateStatusId = props.mode === "create" ? props.initialStatusId : "";
   const statuses = props.statuses;
   const boardConfig = props.boardConfig;
   const availableTags = props.availableTags ?? [];
@@ -162,6 +212,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const listWorkItemLinkedDocuments = props.mode === "edit" ? props.listWorkItemLinkedDocuments : null;
   const unlinkDocumentFromWorkItem = props.mode === "edit" ? props.unlinkDocumentFromWorkItem : null;
   const openDocument = props.mode === "edit" ? props.onOpenDocument : undefined;
+  const listCustomers = props.mode === "edit" ? (props.listCustomers ?? null) : null;
 
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
   const initialTypeId = task?.type ?? (props.mode === "create" ? props.initialTypeId : boardConfig.taskTypes[0]?.id ?? "task");
@@ -173,6 +224,12 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const [linkedDocuments, setLinkedDocuments] = useState<WorkItemLinkedDocument[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const customerSearchRef = useRef<HTMLInputElement>(null);
 
   const detailBindings = useMemo(
     () =>
@@ -203,8 +260,16 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   );
 
   const initialFieldDrafts = useMemo(
-    () => createTaskFieldDrafts(task, orderedVisibleFields),
-    [orderedVisibleFields, task]
+    () => {
+      const drafts = createTaskFieldDrafts(task, orderedVisibleFields);
+      return isCreateMode
+        ? applyCreateFieldDraftDefaults(drafts, orderedVisibleFields, {
+            initialStatusId: initialCreateStatusId,
+            selectedTypeId
+          })
+        : drafts;
+    },
+    [initialCreateStatusId, isCreateMode, orderedVisibleFields, selectedTypeId, task]
   );
 
   useEffect(() => {
@@ -214,16 +279,22 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   useEffect(() => {
     setFieldDrafts(current => {
       const seeded = createTaskFieldDrafts(task, orderedVisibleFields);
+      const nextSeeded = isCreateMode
+        ? applyCreateFieldDraftDefaults(seeded, orderedVisibleFields, {
+            initialStatusId: initialCreateStatusId,
+            selectedTypeId
+          })
+        : seeded;
       if (isCreateMode) {
         for (const field of orderedVisibleFields) {
           if (field.id in current) {
-            seeded[field.id] = current[field.id];
+            nextSeeded[field.id] = current[field.id];
           }
         }
       }
-      return seeded;
+      return nextSeeded;
     });
-  }, [isCreateMode, orderedVisibleFields, task]);
+  }, [initialCreateStatusId, isCreateMode, orderedVisibleFields, selectedTypeId, task]);
 
   useEffect(() => {
     setError("");
@@ -268,6 +339,78 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     };
   }, [listWorkspaceDocuments, listWorkItemLinkedDocuments, task]);
 
+  const customerSelectorField = useMemo(
+    () => boardConfig.fieldDefinitions.find(f => f.config?.entityType === "customer") ?? null,
+    [boardConfig.fieldDefinitions]
+  );
+
+  const hasCustomerSelector = !!customerSelectorField && !!listCustomers;
+
+  useEffect(() => {
+    if (!listCustomers || !customerDropdownOpen) {
+      return;
+    }
+
+    let cancelled = false;
+    setCustomerLoading(true);
+
+    void listCustomers({ search: customerSearch || undefined })
+      .then((results) => {
+        if (!cancelled) {
+          setCustomerResults(results);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCustomerResults([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCustomerLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listCustomers, customerSearch, customerDropdownOpen]);
+
+  const applyCustomer = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCustomerDropdownOpen(false);
+    setCustomerSearch(customer.name);
+
+    setFieldDrafts(current => {
+      const next = { ...current };
+      const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>(
+        (acc, f) => { acc[f.slug ?? f.id] = f; return acc; },
+        {}
+      );
+
+      const set = (slug: string, value: string) => {
+        const field = fieldMap[slug];
+        if (field) {
+          next[field.id] = value;
+        }
+      };
+
+      if (customerSelectorField) {
+        next[customerSelectorField.id] = customer.id;
+      }
+      set("clientName", customer.name);
+      set("companyName", customer.tradeName ?? customer.legalName ?? customer.name);
+      set("clientLegalName", customer.legalName ?? customer.tradeName ?? customer.name);
+      set("clientLogoUrl", customer.logoUrl ?? "");
+      set("contactEmail", customer.email ?? "");
+      set("contactPhone", customer.phone ?? "");
+      set("clientDocument", customer.document ?? "");
+      set("clientAddress", formatCustomerAddress(customer.address));
+
+      return next;
+    });
+  }, [boardConfig.fieldDefinitions, customerSelectorField]);
+
   const mainColumnFields = useMemo(
     () =>
       detailBindings
@@ -282,8 +425,9 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       detailBindings
         .filter(binding => binding.zone === "side")
         .map(binding => binding.field)
-        .filter(field => orderedVisibleFields.some(visibleField => visibleField.id === field.id)),
-    [detailBindings, orderedVisibleFields]
+        .filter(field => orderedVisibleFields.some(visibleField => visibleField.id === field.id))
+        .filter(field => hasCustomerSelector ? field.config?.entityType !== "customer" : true),
+    [detailBindings, orderedVisibleFields, hasCustomerSelector]
   );
 
   const workspaceDocumentsById = useMemo(
@@ -580,6 +724,77 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           </section>
 
           <aside className="task-details__side">
+            {hasCustomerSelector ? (
+              <section className="task-details__panel task-details__customer-selector">
+                <label className="task-details__customer-label" htmlFor="customer-selector-input">
+                  Cliente
+                </label>
+                <div className="task-details__customer-input-wrap">
+                  <input
+                    id="customer-selector-input"
+                    ref={customerSearchRef}
+                    className="task-details__customer-input"
+                    type="text"
+                    placeholder="Buscar cliente existente..."
+                    value={customerSearch}
+                    autoComplete="off"
+                    onChange={e => {
+                      setCustomerSearch(e.target.value);
+                      setSelectedCustomer(null);
+                      setCustomerDropdownOpen(true);
+                    }}
+                    onFocus={() => setCustomerDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 150)}
+                  />
+                  {selectedCustomer ? (
+                    <button
+                      type="button"
+                      className="task-details__customer-clear"
+                      aria-label="Remover cliente"
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setCustomerSearch("");
+                        setCustomerDropdownOpen(false);
+                        customerSearchRef.current?.focus();
+                      }}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                  {customerDropdownOpen ? (
+                    <ul className="task-details__customer-dropdown" role="listbox">
+                      {customerLoading ? (
+                        <li className="task-details__customer-option task-details__customer-option--loading">
+                          Buscando...
+                        </li>
+                      ) : customerResults.length === 0 ? (
+                        <li className="task-details__customer-option task-details__customer-option--empty">
+                          Nenhum cliente encontrado
+                        </li>
+                      ) : (
+                        customerResults.map(c => (
+                          <li
+                            key={c.id}
+                            role="option"
+                            aria-selected={selectedCustomer?.id === c.id}
+                            className={cn(
+                              "task-details__customer-option",
+                              selectedCustomer?.id === c.id && "task-details__customer-option--selected"
+                            )}
+                            onMouseDown={() => applyCustomer(c)}
+                          >
+                            <span className="task-details__customer-name">{c.name}</span>
+                            {c.tradeName && c.tradeName !== c.name ? (
+                              <span className="task-details__customer-trade">{c.tradeName}</span>
+                            ) : null}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
             {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
             {!isCreateMode ? (
               <section className="task-details__panel task-details__documents">

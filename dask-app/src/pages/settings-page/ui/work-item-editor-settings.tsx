@@ -176,11 +176,11 @@ function areSameOrderedIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
-function supportsAiGeneration(type: CustomFieldType): boolean {
+function supportsAiGeneration(type: TaskFieldDefinition["type"]): boolean {
   return type === "text" || type === "long_text";
 }
 
-function supportsSelectableOptions(type: CustomFieldType): boolean {
+function supportsSelectableOptions(type: TaskFieldDefinition["type"]): boolean {
   return type === "select" || type === "multi_select";
 }
 

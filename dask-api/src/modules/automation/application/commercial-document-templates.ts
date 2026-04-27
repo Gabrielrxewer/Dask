@@ -47,23 +47,19 @@ Apresentamos esta proposta com o objetivo de formalizar a solucao, escopo, condi
 
 ## 5. Entregaveis
 
-| Entregavel | Descricao | Responsavel |
-|---|---|---|
-| Entregavel 1 | Descricao do entregavel | Dask/Cliente |
-| Entregavel 2 | Descricao do entregavel | Dask/Cliente |
+{{deliverables}}
 
 ## 6. Cronograma estimado
 
-| Etapa | Descricao | Prazo estimado |
-|---|---|---|
-| Inicio | Alinhamento inicial e levantamento | X dias |
-| Execucao | Desenvolvimento/configuracao da solucao | X dias |
-| Validacao | Testes, ajustes e homologacao | X dias |
-| Entrega | Publicacao, ativacao ou entrega final | X dias |
+{{deliveryTerms}}
 
 ## 7. Investimento
 
 **Valor total da proposta:** {{dealValue}}
+
+| Item | Quantidade | Unidade | Valor |
+|---|---:|---|---:|
+| {{catalogItemName}} | {{catalogItemDefaultQuantity}} | {{catalogItemUnit}} | {{catalogItemAmount}} |
 
 ## 8. Condicoes comerciais
 
@@ -71,19 +67,20 @@ Apresentamos esta proposta com o objetivo de formalizar a solucao, escopo, condi
 
 ## 9. Premissas
 
-- O cliente fornecera as informacoes necessarias para execucao.
+{{clientResponsibilities}}
+
 - Mudancas de escopo poderao gerar reavaliacao de prazo e valor.
 - Integracoes externas dependem da disponibilidade das APIs e servicos terceiros.
 
 ## 10. Fora do escopo
 
-- Item fora do escopo 1
-- Item fora do escopo 2
-- Item fora do escopo 3
+{{contractNotes}}
 
 ## 11. Aceite da proposta
 
 Ao aprovar esta proposta, o cliente declara estar de acordo com o escopo, valores, prazos e condicoes descritas neste documento.
+
+{{acceptanceCriteria}}
 
 | Nome | Cargo | Assinatura | Data |
 |---|---|---|---|
@@ -113,10 +110,11 @@ As partes acima identificadas resolvem celebrar o presente contrato, conforme as
 
 ## 3. Escopo dos servicos
 
-| Servico | Descricao | Prazo estimado |
-|---|---|---|
-| Servico 1 | Descricao do servico | X dias |
-| Servico 2 | Descricao do servico | X dias |
+| Servico/Produto | Quantidade | Unidade | Prazo |
+|---|---:|---|---|
+| {{catalogItemName}} | {{catalogItemDefaultQuantity}} | {{catalogItemUnit}} | {{deliveryTerms}} |
+
+{{deliverables}}
 
 ## 4. Valores e forma de pagamento
 
@@ -128,21 +126,39 @@ Condicoes comerciais:
 
 ## 5. Vigencia
 
-O presente contrato tera inicio em {{startDate}} e permanecera vigente ate {{endDate}}, podendo ser renovado mediante acordo entre as partes.
+O presente contrato tera inicio em {{startDate}} e permanecera vigente por {{contractTerm}}, podendo ser renovado mediante acordo entre as partes.
 
 ## 6. Alteracoes de escopo
 
 Qualquer alteracao de escopo devera ser formalizada entre as partes e podera gerar revisao de prazo, valores e condicoes comerciais.
 
-## 7. Confidencialidade
+## 7. Responsabilidades e aceite
+
+Responsabilidades do cliente:
+
+{{clientResponsibilities}}
+
+Criterios de aceite:
+
+{{acceptanceCriteria}}
+
+## 8. Cancelamento e rescisao
+
+{{cancellationTerms}}
+
+## 9. Confidencialidade
 
 As partes se comprometem a manter sigilo sobre informacoes tecnicas, comerciais, estrategicas, financeiras ou operacionais as quais tiverem acesso em razao deste contrato.
 
-## 8. Foro
+## 10. Observacoes contratuais
+
+{{contractNotes}}
+
+## 11. Foro
 
 As partes elegem o foro da comarca de {{city}}/{{state}} para dirimir eventuais duvidas ou controversias oriundas deste contrato.
 
-## 9. Assinaturas
+## 12. Assinaturas
 
 | Parte | Nome | Assinatura | Data |
 |---|---|---|---|

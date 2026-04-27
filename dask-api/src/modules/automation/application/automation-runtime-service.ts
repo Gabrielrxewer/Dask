@@ -55,6 +55,19 @@ type AutomationCustomerSnapshot = {
   status: string;
 };
 
+type AutomationCatalogItemSnapshot = {
+  id: string;
+  kind: string;
+  billingType: string;
+  recurringInterval: string | null;
+  recurringIntervalCount: number | null;
+  name: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  metadata: Prisma.JsonValue | null;
+};
+
 type AutomationCustomerPayload = {
   name: string;
   tradeName: string | null;
@@ -68,7 +81,7 @@ type AutomationCustomerPayload = {
 };
 
 function interpolateDocumentContent(content: string, variables: Record<string, string>): string {
-  return content.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+  return content.replace(/\{\{([\w.]+)\}\}/g, (_match, key: string) => {
     const resolved = variables[key];
     return typeof resolved === 'string' && resolved.length > 0 ? resolved : '';
   });
@@ -158,6 +171,18 @@ function formatMoney(value: unknown): string {
     style: 'currency',
     currency: 'BRL'
   }).format(amount);
+}
+
+function formatMoneyFromCents(value: unknown, currency = 'BRL'): string {
+  const amount = readNumber(value);
+  if (amount === undefined) {
+    return '';
+  }
+
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: currency.toUpperCase()
+  }).format(amount / 100);
 }
 
 function formatAddress(value: unknown): string {
@@ -559,11 +584,13 @@ export class AutomationRuntimeService {
 
     const item = await this.loadItemForAutomation(workspaceId, itemId);
     const customer = await this.loadCustomerForItem(workspaceId, item);
+    const catalogItem = await this.loadCatalogItemForItem(workspaceId, item);
 
     await this.validateCommercialRequirements({
       validations: normalizeDocumentValidations(action.kind, action.validations),
       item,
-      customer
+      customer,
+      catalogItem
     });
 
     const kind = action.kind;
@@ -591,6 +618,7 @@ export class AutomationRuntimeService {
       workspaceId,
       item,
       customer,
+      catalogItem,
       kind,
       documentCount: position + 1
     });
@@ -665,10 +693,12 @@ export class AutomationRuntimeService {
 
     const item = await this.loadItemForAutomation(workspaceId, itemId);
     const customer = await this.loadCustomerForItem(workspaceId, item);
+    const catalogItem = await this.loadCatalogItemForItem(workspaceId, item);
     await this.validateCommercialRequirements({
       validations: action.validations,
       item,
-      customer
+      customer,
+      catalogItem
     });
 
     const document = await this.findLinkedDocument(workspaceId, itemId, action.kind);
@@ -704,10 +734,12 @@ export class AutomationRuntimeService {
 
     const item = await this.loadItemForAutomation(workspaceId, itemId);
     const customer = await this.loadCustomerForItem(workspaceId, item);
+    const catalogItem = await this.loadCatalogItemForItem(workspaceId, item);
     await this.validateCommercialRequirements({
       validations: action.validations,
       item,
-      customer
+      customer,
+      catalogItem
     });
 
     const billingOrderId = `BILL-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
@@ -1003,6 +1035,45 @@ export class AutomationRuntimeService {
     });
   }
 
+  private async loadCatalogItemForItem(
+    workspaceId: string,
+    item: AutomationItemSnapshot
+  ): Promise<AutomationCatalogItemSnapshot | null> {
+    const catalogItemId = this.readItemField(item, ['catalogItemId', 'interest']);
+    if (!catalogItemId) {
+      return null;
+    }
+
+    return (this.prisma as unknown as {
+      connectCatalogItem: {
+        findFirst(input: {
+          where: {
+            id: string;
+            workspaceId: string;
+          };
+          select: Record<string, boolean>;
+        }): Promise<AutomationCatalogItemSnapshot | null>;
+      };
+    }).connectCatalogItem.findFirst({
+      where: {
+        id: catalogItemId,
+        workspaceId
+      },
+      select: {
+        id: true,
+        kind: true,
+        billingType: true,
+        recurringInterval: true,
+        recurringIntervalCount: true,
+        name: true,
+        description: true,
+        amount: true,
+        currency: true,
+        metadata: true
+      }
+    });
+  }
+
   private async findLinkedDocument(
     workspaceId: string,
     itemId: string,
@@ -1083,6 +1154,7 @@ export class AutomationRuntimeService {
     workspaceId: string;
     item: AutomationItemSnapshot;
     customer: AutomationCustomerSnapshot | null;
+    catalogItem: AutomationCatalogItemSnapshot | null;
     kind: AutomationDocumentKind;
     documentCount: number;
   }): Promise<Record<string, string>> {
@@ -1099,27 +1171,77 @@ export class AutomationRuntimeService {
       acc[entry.field.slug] = raw;
       return acc;
     }, {});
-    const dealValueRaw = this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']);
+    const catalogMetadata = isRecord(input.catalogItem?.metadata) ? input.catalogItem.metadata : {};
+    const catalogMetadataText = (key: string): string => readString(catalogMetadata[key]) ?? '';
+    const catalogAmount = input.catalogItem ? input.catalogItem.amount / 100 : undefined;
+    const dealValueRaw = this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) ?? catalogAmount;
     const clientName =
       input.customer?.tradeName ??
       input.customer?.legalName ??
       input.customer?.name ??
       this.readItemField(input.item, ['clientName', 'companyName', 'contactName']);
     const proposalPrefix = input.kind === 'proposal' ? 'PROP' : 'CTR';
-    const companyAddress = formatAddress(input.customer?.address);
+    const clientAddress = formatAddress(input.customer?.address) || this.readItemField(input.item, ['clientAddress']);
+    const catalogScope = catalogMetadataText('scope') || input.catalogItem?.description || input.catalogItem?.name || '';
+    const catalogPayload = {
+      id: input.catalogItem?.id ?? '',
+      kind: input.catalogItem?.kind ?? '',
+      billingType: input.catalogItem?.billingType ?? '',
+      recurringInterval: input.catalogItem?.recurringInterval ?? '',
+      recurringIntervalCount: input.catalogItem?.recurringIntervalCount ?? '',
+      name: input.catalogItem?.name ?? '',
+      description: input.catalogItem?.description ?? '',
+      amount: input.catalogItem?.amount ?? '',
+      currency: input.catalogItem?.currency ?? '',
+      metadata: catalogMetadata
+    };
+    const catalogVariables: Record<string, string> = input.catalogItem
+      ? {
+          catalogItemId: input.catalogItem.id,
+          catalogItemName: input.catalogItem.name,
+          catalogItemKind: input.catalogItem.kind,
+          catalogItemBillingType: input.catalogItem.billingType,
+          catalogItemRecurringInterval: input.catalogItem.recurringInterval ?? '',
+          catalogItemRecurringIntervalCount: input.catalogItem.recurringIntervalCount ? String(input.catalogItem.recurringIntervalCount) : '',
+          catalogItemDescription: input.catalogItem.description ?? '',
+          catalogItemAmount: formatMoneyFromCents(input.catalogItem.amount, input.catalogItem.currency),
+          catalogItemCurrency: input.catalogItem.currency.toUpperCase(),
+          catalogItemUnit: catalogMetadataText('unit'),
+          catalogItemDefaultQuantity: catalogMetadataText('defaultQuantity'),
+          catalogItemScope: catalogMetadataText('scope'),
+          catalogItemDeliverables: catalogMetadataText('deliverables'),
+          catalogItemDeliveryTerms: catalogMetadataText('deliveryTerms'),
+          catalogItemPaymentTerms: catalogMetadataText('paymentTerms'),
+          catalogItemProposalValidity: catalogMetadataText('proposalValidity'),
+          catalogItemContractTerm: catalogMetadataText('contractTerm'),
+          catalogItemCancellationTerms: catalogMetadataText('cancellationTerms'),
+          catalogItemClientResponsibilities: catalogMetadataText('clientResponsibilities'),
+          catalogItemAcceptanceCriteria: catalogMetadataText('acceptanceCriteria'),
+          catalogItemContractNotes: catalogMetadataText('contractNotes'),
+          'workitem.catalogitem.id': input.catalogItem.id,
+          'workitem.catalogitem.name': input.catalogItem.name,
+          'workitem.catalogitem.kind': input.catalogItem.kind,
+          'workitem.catalogitem.billingType': input.catalogItem.billingType,
+          'workitem.catalogitem.amount': formatMoneyFromCents(input.catalogItem.amount, input.catalogItem.currency),
+          'workitem.catalogitem.currency': input.catalogItem.currency.toUpperCase(),
+          'workitem.catalogitem.description': input.catalogItem.description ?? '',
+          'workitem.catalogitem.catalogpop': JSON.stringify(catalogPayload)
+        }
+      : {};
 
     return {
       ...fieldVariables,
+      ...catalogVariables,
       clientLogoUrl: input.customer?.logoUrl ?? this.readItemField(input.item, ['clientLogoUrl']) ?? '',
       clientName,
-      clientDocument: input.customer?.document ?? '',
-      clientAddress: companyAddress,
+      clientDocument: input.customer?.document ?? this.readItemField(input.item, ['clientDocument', 'customerDocument', 'document', 'cnpj', 'cpf']),
+      clientAddress,
       ownerName: input.item.assignee?.name ?? input.item.creator?.name ?? '',
       proposalDate: formatDate(new Date()),
-      proposalValidity: this.readItemField(input.item, ['proposalValidity']) || '',
+      proposalValidity: this.readItemField(input.item, ['proposalValidity']) || catalogMetadataText('proposalValidity') || '',
       proposalCode: `${proposalPrefix}-${new Date().getFullYear()}-${String(input.documentCount).padStart(5, '0')}`,
       dealTitle: input.item.title,
-      dealDescription: input.item.description ?? this.readItemField(input.item, ['interest', 'implementationScope']) ?? '',
+      dealDescription: input.item.description || catalogScope || this.readItemField(input.item, ['interest', 'implementationScope']) || '',
       dealValue: formatMoney(dealValueRaw),
       contactName: this.readItemField(input.item, ['contactName']),
       contactEmail: this.readItemField(input.item, ['contactEmail']),
@@ -1127,11 +1249,18 @@ export class AutomationRuntimeService {
       companyName: 'Dask',
       companyDocument: '',
       companyAddress: '',
-      paymentTerms: this.readItemField(input.item, ['paymentTerms']) || '- Forma de pagamento: a definir',
+      paymentTerms: this.readItemField(input.item, ['paymentTerms']) || catalogMetadataText('paymentTerms') || '- Forma de pagamento: a definir',
       expectedCloseDate: this.readItemField(input.item, ['expectedCloseDate']),
-      implementationScope: this.readItemField(input.item, ['implementationScope', 'interest']) || input.item.description || '',
-      startDate: '',
-      endDate: '',
+      implementationScope: this.readItemField(input.item, ['implementationScope']) || catalogScope || input.item.description || '',
+      deliverables: catalogMetadataText('deliverables') || 'Entregaveis conforme escopo aprovado.',
+      deliveryTerms: catalogMetadataText('deliveryTerms') || 'Prazo a definir entre as partes.',
+      clientResponsibilities: catalogMetadataText('clientResponsibilities') || 'O cliente fornecera informacoes, acessos e aprovacoes necessarias.',
+      acceptanceCriteria: catalogMetadataText('acceptanceCriteria') || 'Entrega aceita conforme validacao do escopo contratado.',
+      cancellationTerms: catalogMetadataText('cancellationTerms') || 'Cancelamento conforme acordo entre as partes.',
+      contractNotes: catalogMetadataText('contractNotes'),
+      contractTerm: catalogMetadataText('contractTerm') || this.readItemField(input.item, ['contractDuration']),
+      startDate: this.readItemField(input.item, ['contractStartDate']),
+      endDate: catalogMetadataText('contractTerm') || this.readItemField(input.item, ['contractDuration']),
       city: '',
       state: ''
     };
@@ -1141,6 +1270,7 @@ export class AutomationRuntimeService {
     validations?: string[];
     item: AutomationItemSnapshot;
     customer: AutomationCustomerSnapshot | null;
+    catalogItem?: AutomationCatalogItemSnapshot | null;
   }): Promise<void> {
     const validations = input.validations ?? [];
     if (validations.length === 0) {
@@ -1148,30 +1278,48 @@ export class AutomationRuntimeService {
     }
 
     const missing = new Set<string>();
+    const catalogMetadata = isRecord(input.catalogItem?.metadata) ? input.catalogItem.metadata : {};
+    const catalogMetadataText = (key: string): string => readString(catalogMetadata[key]) ?? '';
+    const hasCatalogAmount = typeof input.catalogItem?.amount === 'number' && input.catalogItem.amount > 0;
+    const hasDealValue = this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) !== undefined || hasCatalogAmount;
+    const hasScope =
+      Boolean(this.readItemField(input.item, ['interest', 'implementationScope'])) ||
+      Boolean(input.item.description) ||
+      Boolean(input.catalogItem?.name) ||
+      Boolean(catalogMetadataText('scope'));
+    const hasPaymentTerms = Boolean(this.readItemField(input.item, ['paymentTerms'])) || Boolean(catalogMetadataText('paymentTerms'));
+    const hasProposalValidity =
+      Boolean(this.readItemField(input.item, ['proposalValidity'])) || Boolean(catalogMetadataText('proposalValidity'));
+    const clientDocument =
+      input.customer?.document ??
+      this.readItemField(input.item, ['clientDocument', 'customerDocument', 'document', 'cnpj', 'cpf']);
+    const clientAddress = formatAddress(input.customer?.address) || this.readItemField(input.item, ['clientAddress']);
+    const hasClient =
+      Boolean(input.customer) ||
+      Boolean(this.readItemField(input.item, ['companyName', 'clientName', 'contactName']));
+
     if (validations.includes('commercial.proposal.required_fields')) {
-      if (!input.customer && !this.readItemField(input.item, ['companyName', 'clientName'])) missing.add('Cliente');
+      if (!hasClient) missing.add('Cliente');
       if (!this.readItemField(input.item, ['contactName', 'contactEmail'])) missing.add('Contato principal');
       if (!input.item.assigneeId) missing.add('Responsavel');
-      if (!this.readItemField(input.item, ['interest', 'implementationScope']) && !input.item.description) {
+      if (!hasScope) {
         missing.add('Escopo/interesse');
       }
-      if (this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) === undefined) {
+      if (!hasDealValue) {
         missing.add('Valor estimado');
       }
-      if (!this.readItemField(input.item, ['proposalValidity'])) missing.add('Validade da proposta');
+      if (!hasProposalValidity) missing.add('Validade da proposta');
     }
 
     if (validations.includes('commercial.contract.required_fields')) {
-      const proposal = await this.findLinkedDocument(input.item.workspaceId, input.item.id, 'proposal');
-      const proposalStatus = isRecord(proposal?.metadata) ? readString(proposal.metadata.status) : undefined;
-      if (proposalStatus !== 'approved') missing.add('Proposta aprovada');
-      if (!input.customer) missing.add('Cliente');
-      if (!input.customer?.document) missing.add('Documento fiscal do cliente');
-      if (!formatAddress(input.customer?.address)) missing.add('Endereco do cliente');
-      if (this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) === undefined) {
+      if (!hasClient) missing.add('Cliente');
+      if (!clientDocument) missing.add('Documento fiscal do cliente');
+      if (!clientAddress) missing.add('Endereco do cliente');
+      if (!hasScope) missing.add('Escopo/interesse');
+      if (!hasDealValue) {
         missing.add('Valor');
       }
-      if (!this.readItemField(input.item, ['paymentTerms'])) missing.add('Condicoes comerciais');
+      if (!hasPaymentTerms) missing.add('Condicoes comerciais');
     }
 
     if (validations.includes('commercial.billing.required_fields')) {
@@ -1179,7 +1327,7 @@ export class AutomationRuntimeService {
       if (!this.readItemField(input.item, ['financialEmail', 'contactEmail']) && !input.customer?.email) {
         missing.add('E-mail financeiro');
       }
-      if (this.readItemNumberField(input.item, ['estimatedValue', 'dealValue', 'value']) === undefined) {
+      if (!hasDealValue) {
         missing.add('Valor');
       }
       if (!this.readItemField(input.item, ['billingType'])) missing.add('Tipo de cobranca');

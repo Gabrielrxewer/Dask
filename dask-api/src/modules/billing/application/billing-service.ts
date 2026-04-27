@@ -171,6 +171,7 @@ export interface ConnectCatalogItemListItem {
   stripeProductId: string | null;
   stripePriceId: string | null;
   isActive: boolean;
+  metadata: Record<string, string> | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -1483,6 +1484,7 @@ export class BillingService {
       stripeProductId: item.stripeProductId,
       stripePriceId: item.stripePriceId,
       isActive: item.isActive,
+      metadata: item.metadata,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt
     };

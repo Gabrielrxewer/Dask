@@ -238,6 +238,7 @@ export function AgendaPage() {
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem,
+    listCustomers,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -993,6 +994,7 @@ export function AgendaPage() {
           listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
+          listCustomers={listCustomers}
           onClose={clearSelectedTask}
         />
       ) : null}

@@ -10,6 +10,7 @@ export type CustomFieldInputType =
   | 'datetime'
   | 'boolean'
   | 'select'
+  | 'catalog_select'
   | 'multi_select'
   | 'user'
   | 'checklist'
@@ -208,6 +209,7 @@ export function mapInputTypeToPrisma(type: CustomFieldInputType): CustomFieldTyp
     case 'boolean':
       return CustomFieldType.BOOLEAN;
     case 'select':
+    case 'catalog_select':
       return CustomFieldType.SELECT;
     case 'multi_select':
       return CustomFieldType.MULTI_SELECT;
@@ -233,6 +235,7 @@ export function mapInputTypeToPrisma(type: CustomFieldInputType): CustomFieldTyp
 export function isSelectableFieldType(type: CustomFieldInputType): boolean {
   return (
     type === 'select' ||
+    type === 'catalog_select' ||
     type === 'multi_select' ||
     type === 'user' ||
     type === 'priority' ||

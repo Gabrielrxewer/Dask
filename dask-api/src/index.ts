@@ -3,23 +3,32 @@ import type { AddressInfo } from 'node:net';
 import { env } from '@/core/config/env';
 import { getLogger } from '@/core/logging/logger';
 import { prisma } from '@/infra/db/prisma';
-import { startInfraSupervisor } from '@/infra/runtime/infra-supervisor';
+import { closeQueueResources } from '@/infra/queue/bullmq-job-queue';
+import { startInfraSupervisor, type InfraSupervisorHandle } from '@/infra/runtime/infra-supervisor';
 import { createApp } from '@/app';
 import { startWorkers } from '@/workers';
 
 const appLogger = getLogger('app');
 const app = createApp();
-const infraSupervisor = startInfraSupervisor({
-  retryIntervalMs: 10_000,
-  startWorkers: () => startWorkers(),
-  stopWorkers: async (workers) => {
-    for (const worker of workers) {
-      await worker.close();
-    }
-  }
-});
+let infraSupervisor: InfraSupervisorHandle | null = null;
+const shutdownStepTimeoutMs = 5_000;
+const shutdownTimeoutMs = 8_000;
 
 const server = app.listen(env.PORT, () => {
+  infraSupervisor = startInfraSupervisor({
+    retryIntervalMs: 10_000,
+    startWorkers: () => startWorkers(),
+    stopWorkers: async (workers) => {
+      const results = await Promise.allSettled(workers.map((worker) => worker.close(true)));
+
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          appLogger.error({ err: result.reason }, 'Failed to stop worker');
+        }
+      }
+    }
+  });
+
   appLogger.info({ port: env.PORT, logLevel: env.LOG_LEVEL }, 'Dask backend listening');
 });
 
@@ -31,7 +40,15 @@ function closeServer(): Promise<void> {
   }
 
   return new Promise((resolve, reject) => {
+    const forceCloseTimer = setTimeout(() => {
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+    }, 1_000);
+    forceCloseTimer.unref?.();
+
     server.close((error) => {
+      clearTimeout(forceCloseTimer);
+
       if (error) {
         if ((error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING') {
           resolve();
@@ -44,7 +61,37 @@ function closeServer(): Promise<void> {
 
       resolve();
     });
+
+    server.closeIdleConnections?.();
   });
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    timer.unref?.();
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+async function runShutdownStep(label: string, step: () => Promise<void>): Promise<void> {
+  try {
+    await withTimeout(step(), shutdownStepTimeoutMs, label);
+  } catch (error) {
+    appLogger.error({ err: error }, `Failed to ${label}`);
+  }
 }
 
 function shutdown(signal?: NodeJS.Signals): Promise<void> {
@@ -55,26 +102,29 @@ function shutdown(signal?: NodeJS.Signals): Promise<void> {
   shutdownPromise = (async () => {
     appLogger.info({ signal: signal ?? null }, 'Shutting down backend');
 
-    try {
-      await infraSupervisor.stop();
-    } catch (error) {
-      appLogger.error({ err: error }, 'Failed to stop infrastructure supervisor');
-    }
-
-    try {
+    await runShutdownStep('close HTTP server', closeServer);
+    await runShutdownStep('stop infrastructure supervisor', async () => {
+      await infraSupervisor?.stop();
+    });
+    await runShutdownStep('close queue resources', closeQueueResources);
+    await runShutdownStep('disconnect Prisma', async () => {
       await prisma.$disconnect();
-    } catch (error) {
-      appLogger.error({ err: error }, 'Failed to disconnect Prisma');
-    }
-
-    try {
-      await closeServer();
-    } catch (error) {
-      appLogger.error({ err: error }, 'Failed to close HTTP server');
-    }
+    });
   })();
 
   return shutdownPromise;
+}
+
+function shutdownAndExit(signal: NodeJS.Signals | undefined, exitCode: number): void {
+  void withTimeout(shutdown(signal), shutdownTimeoutMs, 'shutdown').finally(() => {
+    process.exit(exitCode);
+  });
+}
+
+function shutdownAndRestart(): void {
+  void withTimeout(shutdown('SIGUSR2'), shutdownTimeoutMs, 'shutdown').finally(() => {
+    process.kill(process.pid, 'SIGUSR2');
+  });
 }
 
 server.on('error', (error: NodeJS.ErrnoException) => {
@@ -92,26 +142,18 @@ server.on('error', (error: NodeJS.ErrnoException) => {
     appLogger.error({ err: error }, 'HTTP server failed');
   }
 
-  void shutdown().finally(() => {
-    process.exit(1);
-  });
+  shutdownAndExit(undefined, 1);
 });
 
 process.on('SIGINT', () => {
-  void shutdown('SIGINT').finally(() => {
-    process.exit(0);
-  });
+  shutdownAndExit('SIGINT', 0);
 });
 
 process.on('SIGTERM', () => {
-  void shutdown('SIGTERM').finally(() => {
-    process.exit(0);
-  });
+  shutdownAndExit('SIGTERM', 0);
 });
 
 process.once('SIGUSR2', () => {
-  void shutdown('SIGUSR2').finally(() => {
-    process.kill(process.pid, 'SIGUSR2');
-  });
+  shutdownAndRestart();
 });
 

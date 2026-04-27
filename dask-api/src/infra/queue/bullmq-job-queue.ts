@@ -55,3 +55,11 @@ connection.on('error', (error) => {
 });
 
 export const queueConnection = connection;
+
+export async function closeQueueResources(): Promise<void> {
+  try {
+    await daskQueue.close();
+  } finally {
+    queueConnection.disconnect();
+  }
+}

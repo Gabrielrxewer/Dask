@@ -96,6 +96,7 @@ export function TimelinePage() {
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem,
+    listCustomers,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -377,6 +378,7 @@ export function TimelinePage() {
           listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
+          listCustomers={listCustomers}
           onClose={clearSelectedTask}
         />
       ) : null}

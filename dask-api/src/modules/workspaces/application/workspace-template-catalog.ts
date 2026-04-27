@@ -278,14 +278,12 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     id: 'customerId',
     label: 'Cliente vinculado',
     slug: 'customerId',
-    description: 'Customer mestre vinculado ao work item comercial.',
+    description: 'Selecione um cliente existente para preencher os dados automaticamente.',
     type: 'text',
     scopeTypeIds: commercialIssueTypes,
     config: {
-      semantic: 'entity_reference',
-      entityType: 'customer',
-      formVisible: false,
-      readOnlyAfterCreate: true
+      semantic: 'customer_selector',
+      entityType: 'customer'
     }
   },
   {
@@ -390,8 +388,46 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     slug: 'interest',
     variableKey: 'implementationScope',
     variableLabel: 'Escopo de implementacao',
+    variableDescription: 'Nome do item selecionado no catalogo de cobranca; usado em propostas e contratos.',
+    type: 'catalog_select',
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      entityType: 'billing_catalog_item'
+    }
+  },
+  {
+    id: 'catalogItemPrice',
+    label: 'Preco do item',
+    slug: 'catalogItemPrice',
+    variableKey: 'catalogItemPrice',
+    variableLabel: 'Preco unitario do item de catalogo',
+    variableDescription: 'Preco base do item de cobranca selecionado; preenchido automaticamente.',
+    type: 'number',
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'currency',
+      currency: 'BRL',
+      min: 0,
+      step: 1,
+      formVisible: false,
+      derivedFrom: 'interest',
+      derivedAttribute: 'price'
+    }
+  },
+  {
+    id: 'catalogItemDescription',
+    label: 'Descricao do item',
+    slug: 'catalogItemDescription',
+    variableKey: 'catalogItemDescription',
+    variableLabel: 'Descricao completa do item de catalogo',
+    variableDescription: 'Descricao detalhada do servico ou produto selecionado; usada no corpo da proposta e contrato.',
     type: 'long_text',
-    scopeTypeIds: commercialIssueTypes
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      formVisible: false,
+      derivedFrom: 'interest',
+      derivedAttribute: 'description'
+    }
   },
   {
     id: 'estimatedValue',
@@ -449,6 +485,64 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
     scopeTypeIds: commercialIssueTypes
   },
   {
+    id: 'clientLegalName',
+    label: 'Razao social / nome legal',
+    slug: 'clientLegalName',
+    variableKey: 'clientLegalName',
+    variableLabel: 'Razao social do cliente',
+    variableDescription: 'Nome legal completo para contratos.',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'clientDocument',
+    label: 'CPF / CNPJ',
+    slug: 'clientDocument',
+    variableKey: 'clientDocument',
+    variableLabel: 'Documento do cliente (CPF ou CNPJ)',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'document'
+    }
+  },
+  {
+    id: 'clientAddress',
+    label: 'Endereco completo',
+    slug: 'clientAddress',
+    variableKey: 'clientAddress',
+    variableLabel: 'Endereco completo do cliente',
+    variableDescription: 'Logradouro, numero, complemento, cidade, estado, CEP.',
+    type: 'long_text',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contractStartDate',
+    label: 'Inicio do contrato',
+    slug: 'contractStartDate',
+    variableKey: 'contractStartDate',
+    variableLabel: 'Data de inicio do contrato',
+    type: 'date',
+    scopeTypeIds: commercialIssueTypes
+  },
+  {
+    id: 'contractDuration',
+    label: 'Vigencia do contrato',
+    slug: 'contractDuration',
+    variableKey: 'contractDuration',
+    variableLabel: 'Vigencia em meses',
+    type: 'select',
+    scopeTypeIds: commercialIssueTypes,
+    options: [
+      { label: '1 mes', value: '1', color: '#64748b' },
+      { label: '3 meses', value: '3', color: '#64748b' },
+      { label: '6 meses', value: '6', color: '#0891b2' },
+      { label: '12 meses', value: '12', color: '#0d8df7' },
+      { label: '24 meses', value: '24', color: '#4f46e5' },
+      { label: 'Indeterminado', value: 'indeterminate', color: '#64748b' }
+    ]
+  },
+  {
     id: 'proposalId',
     label: 'Proposta',
     slug: 'proposalId',
@@ -495,27 +589,37 @@ const commercialFieldBindings = buildTemplateFieldBindings({
   baseDetailFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
   extraCardFieldIds: ['clientName', 'companyName', 'contactName', 'estimatedValue', 'source'],
   extraDetailFieldIds: [
+    'customerId',
     'contactName',
     'contactEmail',
     'contactPhone',
     'companyName',
     'clientName',
     'clientLogoUrl',
+    'clientLegalName',
+    'clientDocument',
+    'clientAddress',
     'source',
     'interest',
     'estimatedValue',
     'probability',
     'expectedCloseDate',
     'proposalValidity',
+    'contractStartDate',
+    'contractDuration',
     'paymentTerms'
   ],
   detailSectionByFieldId: {
+    customerId: 'side',
     contactName: 'main',
     contactEmail: 'main',
     contactPhone: 'main',
     companyName: 'main',
     clientName: 'main',
     clientLogoUrl: 'main',
+    clientLegalName: 'main',
+    clientDocument: 'main',
+    clientAddress: 'main',
     source: 'main',
     interest: 'main',
     paymentTerms: 'main',
@@ -523,6 +627,8 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     probability: 'side',
     expectedCloseDate: 'side',
     proposalValidity: 'side',
+    contractStartDate: 'side',
+    contractDuration: 'side',
     'sys:status': 'side',
     'sys:assignee': 'side'
   }
@@ -743,6 +849,24 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           actions: [{ type: 'update_document_status', kind: 'proposal', status: 'sent' }]
         },
         {
+          id: 'move_to_contract_on_proposal_approved',
+          name: 'Mover para Contrato em preparacao ao aprovar proposta',
+          description: 'Quando o WorkItem comercial entra em Proposta aprovada, avanca automaticamente para Contrato em preparacao na perspectiva Formalizacao.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'proposal_approved' },
+          actions: [
+            { type: 'set_work_item_state', stateSlug: 'contract_preparing' },
+            {
+              type: 'create_document',
+              kind: 'contract',
+              binding: 'commercial_contract',
+              status: 'draft',
+              targetFieldSlug: 'contractId',
+              skipIfExists: true
+            }
+          ]
+        },
+        {
           id: 'generate_contract_on_proposal_approved',
           name: 'Gerar contrato apos aprovacao da proposta',
           description: 'Quando a proposta vinculada for aprovada, move o WorkItem para Contrato em preparacao e cria o contrato.',
@@ -761,6 +885,24 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           validations: ['commercial.contract.required_fields']
         },
         {
+          id: 'generate_contract_on_contract_preparing',
+          name: 'Gerar contrato ao mover para Contrato em preparacao',
+          description: 'Quando um WorkItem comercial entra diretamente na coluna Contrato em preparacao, cria o documento de contrato vinculado ao card usando os dados preenchidos.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'contract_preparing' },
+          actions: [
+            {
+              type: 'create_document',
+              kind: 'contract',
+              binding: 'commercial_contract',
+              status: 'draft',
+              targetFieldSlug: 'contractId',
+              skipIfExists: true
+            }
+          ],
+          validations: ['commercial.contract.required_fields']
+        },
+        {
           id: 'mark_contract_sent',
           name: 'Marcar contrato como enviado',
           description: 'Quando o WorkItem comercial entra em Contrato enviado, atualiza o status do contrato vinculado.',
@@ -770,12 +912,13 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
         },
         {
           id: 'create_customer_on_contract_accepted',
-          name: 'Criar cliente ao aceitar contrato',
-          description: 'Quando o WorkItem comercial entra em Contrato aceito / assinado, cria ou vincula automaticamente o cliente mestre a partir dos dados comerciais.',
+          name: 'Criar cliente e gerar cobranca ao aceitar contrato',
+          description: 'Quando o WorkItem comercial entra em Contrato aceito / assinado, cria ou vincula automaticamente o cliente mestre e avanca para Cobranca gerada.',
           enabled: true,
           trigger: { type: 'work_item_moved_to_column', column: 'contract_accepted' },
           actions: [
-            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' }
+            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
+            { type: 'set_work_item_state', stateSlug: 'billing_created' }
           ]
         },
         {

@@ -11,7 +11,10 @@ import { AutomationEventDispatcher } from '@/modules/automation/application/auto
 import { SearchEventDispatcher } from '@/modules/search/application/search-event-dispatcher';
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 const relayLogger = getLogger('outbox-relay');
@@ -231,6 +234,7 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
   const timer = setInterval(() => {
     void tick();
   }, env.OUTBOX_RELAY_INTERVAL_MS);
+  timer.unref?.();
 
   void tick();
 
@@ -238,8 +242,14 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
     close: async () => {
       closing = true;
       clearInterval(timer);
-      while (running) {
+      const waitUntil = Date.now() + 3_000;
+
+      while (running && Date.now() < waitUntil) {
         await sleep(25);
+      }
+
+      if (running) {
+        relayLogger.warn('Outbox relay did not stop before shutdown timeout');
       }
     }
   };

@@ -38,6 +38,7 @@ export function ListPage() {
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem,
+    listCustomers,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -264,6 +265,7 @@ export function ListPage() {
           listWorkItemLinkedDocuments={listWorkItemLinkedDocuments}
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
+          listCustomers={listCustomers}
           onClose={clearSelectedTask}
         />
       ) : null}

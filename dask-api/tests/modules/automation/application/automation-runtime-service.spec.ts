@@ -46,6 +46,9 @@ function makeDeps() {
       create: vi.fn(),
       update: vi.fn()
     },
+    connectCatalogItem: {
+      findFirst: vi.fn()
+    },
     customFieldDefinition: {
       findFirst: vi.fn()
     },
@@ -1174,9 +1177,7 @@ describe('AutomationRuntimeService', () => {
     };
     prisma.customer.findFirst.mockResolvedValue(customerWithAddress);
 
-    prisma.workspaceDocument.findFirst
-      .mockResolvedValueOnce({ id: 'prop-1', metadata: { status: 'approved' } })
-      .mockResolvedValueOnce(null);
+    prisma.workspaceDocument.findFirst.mockResolvedValueOnce(null);
     prisma.workspaceDocument.count.mockResolvedValue(1);
     prisma.workspaceDocument.create.mockResolvedValue({ id: 'contract-doc-1' });
     prisma.workItemDocumentLink.upsert.mockResolvedValue(undefined);
@@ -1217,6 +1218,96 @@ describe('AutomationRuntimeService', () => {
     expect(prisma.automationExecution.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'succeeded' }) })
     );
+  });
+
+  it('generates a contract from contract_preparing using linked catalog metadata', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-contract-column',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.moved' },
+        conditions: { toColumnKeys: ['contract_preparing'] },
+        actions: [
+          {
+            type: 'create_document',
+            kind: 'contract',
+            binding: 'commercial_contract',
+            status: 'draft',
+            targetFieldSlug: 'contractId',
+            validations: ['commercial.contract.required_fields']
+          }
+        ]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+
+    prisma.item.findFirst
+      .mockResolvedValueOnce(makeCommercialItem({
+        fields: {
+          companyName: 'Empresa ABC',
+          clientDocument: '00.000.000/0001-00',
+          clientAddress: 'Rua A, 10 - Sao Paulo / SP',
+          interest: 'catalog-1'
+        }
+      }))
+      .mockResolvedValueOnce({ fields: {} });
+    prisma.customer.findFirst.mockResolvedValue(null);
+    prisma.connectCatalogItem.findFirst.mockResolvedValue({
+      id: 'catalog-1',
+      kind: 'SERVICE',
+      billingType: 'ONE_TIME',
+      recurringInterval: null,
+      recurringIntervalCount: null,
+      name: 'Implantacao Dask',
+      description: 'Implantacao assistida do Dask',
+      amount: 350000,
+      currency: 'brl',
+      metadata: {
+        unit: 'projeto',
+        defaultQuantity: '1',
+        scope: 'Configuracao completa do workspace comercial',
+        deliverables: 'Workspace configurado, treinamento e handoff',
+        deliveryTerms: 'Entrega em ate 15 dias uteis',
+        paymentTerms: '50% na assinatura e 50% na entrega',
+        proposalValidity: '15 dias',
+        contractTerm: '90 dias',
+        cancellationTerms: 'Cancelamento com aviso previo de 15 dias',
+        clientResponsibilities: 'Cliente fornece acessos e aprovacoes',
+        acceptanceCriteria: 'Aceite apos reuniao de validacao'
+      }
+    });
+    prisma.workspaceDocument.findFirst.mockResolvedValue(null);
+    prisma.workspaceDocument.count.mockResolvedValue(2);
+    prisma.workspaceDocument.create.mockResolvedValue({ id: 'contract-doc-2' });
+    prisma.workItemDocumentLink.upsert.mockResolvedValue(undefined);
+    prisma.customFieldDefinition.findFirst.mockResolvedValue({ id: 'field-contract' });
+    prisma.customFieldValue.upsert.mockResolvedValue(undefined);
+    prisma.item.update.mockResolvedValue(undefined);
+
+    await service.processEvent({
+      eventName: 'item.moved',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        toColumnKey: 'contract_preparing',
+        requestedBy: 'user-1'
+      }
+    });
+
+    const createCall = prisma.workspaceDocument.create.mock.calls[0]?.[0];
+    expect(createCall.data.kind).toBe('contract');
+    expect(createCall.data.content).toContain('Implantacao Dask');
+    expect(createCall.data.content).toContain('Workspace configurado, treinamento e handoff');
+    expect(createCall.data.content).toContain('50% na assinatura e 50% na entrega');
+    expect(createCall.data.content).toContain('Aceite apos reuniao de validacao');
+    expect(createCall.data.metadata['workitem.catalogitem.name']).toBe('Implantacao Dask');
+    expect(createCall.data.metadata['workitem.catalogitem.catalogpop']).toContain('Configuracao completa');
   });
 
   it('throws when target view/column references cannot be resolved', async () => {

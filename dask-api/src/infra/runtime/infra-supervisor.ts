@@ -1,16 +1,18 @@
 import { getLogger } from '@/core/logging/logger';
 import {
   checkAllInfraDependencies,
-  getInfraStates,
-  hasCriticalInfraFailure
+  getInfraStates
 } from '@/infra/runtime/infra-health';
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }
 
 export type Closeable = {
-  close(): Promise<void>;
+  close(force?: boolean): Promise<void>;
 };
 
 export type InfraSupervisorHandle = {
@@ -30,6 +32,27 @@ export function startInfraSupervisor(options: InfraSupervisorOptions): InfraSupe
   let stopped = false;
   let loopRunning = false;
   let activeWorkers: Closeable[] = [];
+  let wakeLoop: (() => void) | null = null;
+
+  const waitForNextCycle = async (): Promise<void> => {
+    if (stopped) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        wakeLoop = null;
+        resolve();
+      }, retryIntervalMs);
+      timer.unref?.();
+
+      wakeLoop = () => {
+        clearTimeout(timer);
+        wakeLoop = null;
+        resolve();
+      };
+    });
+  };
 
   const stopWorkersIfRunning = async (): Promise<void> => {
     if (activeWorkers.length === 0) {
@@ -66,6 +89,10 @@ export function startInfraSupervisor(options: InfraSupervisorOptions): InfraSupe
           const states = await checkAllInfraDependencies();
           const unhealthyDependencies = states.filter((dependency) => !dependency.healthy);
 
+          if (stopped) {
+            break;
+          }
+
           if (unhealthyDependencies.length === 0) {
             await ensureWorkersStarted();
           } else {
@@ -95,9 +122,10 @@ export function startInfraSupervisor(options: InfraSupervisorOptions): InfraSupe
           break;
         }
 
-        await sleep(hasCriticalInfraFailure() ? retryIntervalMs : retryIntervalMs);
+        await waitForNextCycle();
       }
     } finally {
+      await stopWorkersIfRunning();
       loopRunning = false;
     }
   };
@@ -107,6 +135,7 @@ export function startInfraSupervisor(options: InfraSupervisorOptions): InfraSupe
   return {
     stop: async () => {
       stopped = true;
+      wakeLoop?.();
       await stopWorkersIfRunning();
 
       while (loopRunning) {

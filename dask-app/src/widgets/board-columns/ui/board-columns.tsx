@@ -11,7 +11,7 @@ import type {
   TaskStatus,
   TaskStatusId
 } from "@/entities/task";
-import type { AiAgentSummary, DocumentKind, WorkItemLinkedDocument, WorkspaceDocument } from "@/modules/workspace/model";
+import type { AiAgentSummary, Customer, DocumentKind, WorkItemLinkedDocument, WorkspaceDocument } from "@/modules/workspace/model";
 import type { CreateTaskInput, TaskScheduleInput, UpdateTaskInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { CreateTaskButton } from "@/features/create-task";
@@ -66,6 +66,7 @@ interface BoardColumnsProps {
   linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
   unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
   onOpenDocument?: (documentId: string) => void;
+  listCustomers?: (input?: { search?: string }) => Promise<Customer[]>;
 }
 
 type DropTarget = {
@@ -200,7 +201,8 @@ export function BoardColumns({
   listWorkItemLinkedDocuments,
   linkDocumentToWorkItem,
   unlinkDocumentFromWorkItem,
-  onOpenDocument
+  onOpenDocument,
+  listCustomers
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
@@ -430,6 +432,7 @@ export function BoardColumns({
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
           onOpenDocument={onOpenDocument}
+          listCustomers={listCustomers}
           onClose={() => setSelectedTaskId("")}
         />
       ) : null}

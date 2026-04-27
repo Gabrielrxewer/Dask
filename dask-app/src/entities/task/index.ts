@@ -6,6 +6,7 @@ export {
   CARD_FIELDS_SCHEMA_VERSION,
   getTaskFieldTypeLabel,
   inferCapabilitiesByType,
+  injectCatalogOptionsIntoBoardConfig,
   mergeCardFieldDefinitions,
   resolveFieldIdsForTaskType,
   resolveVisibleCardFieldIds
@@ -65,6 +66,7 @@ export type {
   TaskFieldCardArea,
   TaskFieldDefinition,
   TaskFieldDetailZone,
+  TaskFieldOption,
   TaskPriority,
   TaskStatus,
   TaskStatusId,

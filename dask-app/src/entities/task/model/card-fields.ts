@@ -1,4 +1,4 @@
-import type { TaskFieldDefinition } from "@/entities/task/model/types";
+import type { TaskFieldDefinition, TaskFieldOption } from "@/entities/task/model/types";
 
 export const CARD_FIELDS_SCHEMA_VERSION = 3;
 
@@ -13,11 +13,22 @@ function uniqueNonEmptyIds(fieldIds: string[]): string[] {
   );
 }
 
+function resolveRuntimeFieldType(field: TaskFieldDefinition): TaskFieldDefinition["type"] {
+  if (field.config?.entityType === "billing_catalog_item") {
+    return "catalog_select";
+  }
+  return field.type;
+}
+
 export function mergeCardFieldDefinitions(fieldDefinitions: TaskFieldDefinition[]): TaskFieldDefinition[] {
-  return fieldDefinitions.map(field => ({
-    ...field,
-    capabilities: field.capabilities ?? inferCapabilitiesByType(field.type, field.config)
-  }));
+  return fieldDefinitions.map(field => {
+    const type = resolveRuntimeFieldType(field);
+    return {
+      ...field,
+      type,
+      capabilities: field.capabilities ?? inferCapabilitiesByType(type, field.config)
+    };
+  });
 }
 
 export function resolveVisibleCardFieldIds(
@@ -56,7 +67,7 @@ export function inferCapabilitiesByType(
     return canAiEnhance(config) ? { aiEnhance: true } : {};
   }
 
-  if (type === "select" || type === "user" || type === "priority" || type === "status" || type === "work_item_type") {
+  if (type === "select" || type === "catalog_select" || type === "user" || type === "priority" || type === "status" || type === "work_item_type") {
     return { selectable: true };
   }
 
@@ -184,6 +195,7 @@ export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "typ
     date: "Data",
     datetime: "Data e hora",
     select: "Selecao unica",
+    catalog_select: "Item de catalogo",
     multi_select: "Selecao multipla",
     boolean: "Sim / Nao",
     user: "Usuario",
@@ -196,4 +208,22 @@ export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "typ
   };
 
   return labels[definition.type] ?? definition.type;
+}
+
+export function injectCatalogOptionsIntoBoardConfig<T extends { fieldDefinitions: TaskFieldDefinition[] }>(
+  boardConfig: T,
+  catalogOptions: TaskFieldOption[]
+): T {
+  if (catalogOptions.length === 0) {
+    return boardConfig;
+  }
+
+  return {
+    ...boardConfig,
+    fieldDefinitions: boardConfig.fieldDefinitions.map(field =>
+      field.type === "catalog_select" || field.config?.entityType === "billing_catalog_item"
+        ? { ...field, options: catalogOptions }
+        : field
+    )
+  };
 }

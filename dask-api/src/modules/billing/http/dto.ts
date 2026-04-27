@@ -12,6 +12,20 @@ const currencySchema = z
   .toLowerCase()
   .regex(/^[a-z]{3}$/, 'Currency must be a 3-letter ISO code');
 
+const requiredCatalogCommercialMetadataFields = [
+  'unit',
+  'defaultQuantity',
+  'scope',
+  'deliverables',
+  'deliveryTerms',
+  'paymentTerms',
+  'proposalValidity',
+  'contractTerm',
+  'cancellationTerms',
+  'clientResponsibilities',
+  'acceptanceCriteria'
+] as const;
+
 export const connectWorkspaceParamsDto = z.object({
   workspaceId: z.string().uuid()
 });
@@ -65,7 +79,7 @@ export const createConnectCheckoutSessionDto = z.object({
   applicationFeeAmount: z.number().int().nonnegative().optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
-  metadata: z.record(z.string(), z.string().max(500)).default({})
+  metadata: z.record(z.string(), z.string().max(2000)).default({})
 }).superRefine((payload, ctx) => {
   if (payload.catalogItemId) {
     return;
@@ -96,8 +110,27 @@ export const createConnectCatalogItemDto = z.object({
   description: z.string().trim().min(3).max(280).optional(),
   amount: z.number().int().positive(),
   currency: currencySchema.default('brl'),
-  metadata: z.record(z.string(), z.string().max(500)).default({})
+  metadata: z.record(z.string(), z.string().trim().max(2000)).default({})
 }).superRefine((payload, ctx) => {
+  if (!payload.description) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['description'],
+      message: 'description is required for catalog items'
+    });
+  }
+
+  for (const field of requiredCatalogCommercialMetadataFields) {
+    const minimumLength = field === 'unit' || field === 'defaultQuantity' ? 1 : 3;
+    if (!payload.metadata[field] || payload.metadata[field].trim().length < minimumLength) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['metadata', field],
+        message: `${field} is required for catalog items`
+      });
+    }
+  }
+
   if (payload.billingType === 'ASSINATURA' || payload.billingType === 'SUBSCRIPTION') {
     if (!payload.recurringInterval) {
       ctx.addIssue({

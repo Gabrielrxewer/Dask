@@ -14,6 +14,7 @@ export type TaskFieldType =
   | "date"
   | "datetime"
   | "select"
+  | "catalog_select"
   | "multi_select"
   | "boolean"
   | "user"
@@ -37,6 +38,18 @@ export interface TaskFieldOption {
   color?: string | null;
   order?: number;
   isActive?: boolean;
+  catalogItem?: {
+    id: string;
+    kind: string;
+    billingType: string;
+    recurringInterval: string | null;
+    recurringIntervalCount: number | null;
+    name: string;
+    description: string | null;
+    amount: number;
+    currency: string;
+    metadata: Record<string, string> | null;
+  };
 }
 
 export type TaskFieldBindingDisplayContext = "card" | "detail";

@@ -54,16 +54,6 @@ function getFieldSemantic(field: TaskFieldDefinition): string | null {
     return field.config.semantic;
   }
 
-  const fieldKey = field.slug ?? field.id;
-  if (fieldKey === "contactEmail") return "email";
-  if (fieldKey === "contactPhone") return "phone";
-  if (fieldKey === "clientLogoUrl") return "url";
-  if (fieldKey === "estimatedValue") return "currency";
-  if (fieldKey === "probability") return "percentage";
-  if (fieldKey === "customerId" || fieldKey === "contactId" || fieldKey === "proposalId" || fieldKey === "contractId" || fieldKey === "billingOrderId") {
-    return "entity_reference";
-  }
-
   return null;
 }
 
@@ -71,18 +61,6 @@ function getNumberConfig(field: TaskFieldDefinition, key: "min" | "max" | "step"
   const value = field.config?.[key];
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
-  }
-
-  const fieldKey = field.slug ?? field.id;
-  if (fieldKey === "estimatedValue") {
-    if (key === "min") return 0;
-    if (key === "step") return 100;
-  }
-
-  if (fieldKey === "probability") {
-    if (key === "min") return 0;
-    if (key === "max") return 100;
-    if (key === "step") return 5;
   }
 
   return undefined;
@@ -818,6 +796,120 @@ function SelectFieldEdit(props: FieldPresentationComponentProps) {
         </option>
       ))}
     </Select>
+  );
+}
+
+function CatalogSelectFieldDisplay(props: FieldPresentationComponentProps) {
+  const option = props.controller.selectedOption;
+  if (!option) {
+    return renderEmpty(props.field);
+  }
+
+  return (
+    <span className="task-field-presentation__catalog-value">
+      <svg className="task-field-presentation__catalog-icon" viewBox="0 0 16 16" fill="none" width="12" height="12" aria-hidden="true">
+        <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5 0 0 1 14 4.5v7A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5v-7Z" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M5 6.5h6M5 9.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+      {option.label}
+    </span>
+  );
+}
+
+function CatalogSelectFieldCardDisplay(props: FieldPresentationComponentProps) {
+  const option = props.controller.selectedOption;
+  return renderCardSizedDisplay(props, {
+    primary: option?.label ?? props.controller.displayValue,
+    secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? props.field.label : null,
+    accent: option?.color ?? null
+  });
+}
+
+function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = props.controller.options.find(opt => opt.value === props.controller.stringValue) ?? null;
+
+  const filtered = query.trim().length === 0
+    ? props.controller.options
+    : props.controller.options.filter(opt =>
+        opt.label.toLowerCase().includes(query.toLowerCase())
+      );
+
+  const handleSelect = (value: string) => {
+    props.controller.setValue(value);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    props.controller.setValue(null);
+    setQuery("");
+  };
+
+  const inputDisplayValue = open ? query : (selectedOption?.label ?? "");
+
+  return (
+    <div ref={wrapRef} className="task-field-presentation__catalog-combobox" style={{ position: "relative" }}>
+      <div className="task-field-presentation__catalog-input-row">
+        <input
+          type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          className="task-field-presentation__catalog-input"
+          placeholder={props.controller.options.length === 0 ? "Nenhum item no catalogo" : "Buscar item..."}
+          value={inputDisplayValue}
+          disabled={props.controller.disabled || props.controller.readonly || props.controller.options.length === 0}
+          autoFocus={props.autoFocus}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-bwignore="true"
+          onChange={e => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+        />
+        {selectedOption && !props.controller.readonly ? (
+          <button
+            type="button"
+            className="task-field-presentation__catalog-clear"
+            aria-label="Remover selecao"
+            onMouseDown={e => { e.preventDefault(); handleClear(); }}
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="12" height="12" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : null}
+      </div>
+      {open && filtered.length > 0 ? (
+        <ul className="task-field-presentation__catalog-dropdown" role="listbox">
+          {filtered.map(opt => (
+            <li
+              key={opt.id}
+              role="option"
+              aria-selected={opt.value === props.controller.stringValue}
+              className={cn(
+                "task-field-presentation__catalog-option",
+                opt.value === props.controller.stringValue && "task-field-presentation__catalog-option--selected"
+              )}
+              onMouseDown={() => handleSelect(opt.value)}
+            >
+              {opt.color ? (
+                <span className="task-field-presentation__catalog-dot" style={{ background: opt.color }} />
+              ) : null}
+              <span className="task-field-presentation__catalog-option-label">{opt.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -1632,6 +1724,16 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       contexts: {
         table: { display: SelectFieldTableDisplay },
         card: { display: SelectFieldCardDisplay }
+      }
+    }
+  }),
+  catalog_select: buildDefaultSpec("catalog_select", {
+    components: {
+      display: CatalogSelectFieldDisplay,
+      edit: CatalogSelectFieldEdit,
+      contexts: {
+        table: { display: CatalogSelectFieldDisplay },
+        card: { display: CatalogSelectFieldCardDisplay }
       }
     }
   }),

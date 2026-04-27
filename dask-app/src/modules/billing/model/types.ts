@@ -65,6 +65,7 @@ export interface ConnectCatalogItem {
   stripeProductId: string | null;
   stripePriceId: string | null;
   isActive: boolean;
+  metadata: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 }

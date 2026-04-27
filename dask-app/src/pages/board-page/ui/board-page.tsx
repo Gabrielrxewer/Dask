@@ -8,13 +8,16 @@ import {
   applyFieldDefinitionOverrides,
   applyFieldCapabilityOverrides,
   factoryBoardConfig,
+  injectCatalogOptionsIntoBoardConfig,
   mergeCardFieldDefinitions,
   type BoardConfig,
   type Task,
   type TaskCustomFieldValue,
+  type TaskFieldOption,
   type TaskPriority,
   type TaskStatusId
 } from "@/entities/task";
+import { billingService } from "@/modules/billing";
 import { currentUserId, membersById } from "@/entities/member";
 import {
   applyDashboardFilter,
@@ -52,7 +55,8 @@ export function BoardPage() {
     createWorkspaceDocument,
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
-    unlinkDocumentFromWorkItem
+    unlinkDocumentFromWorkItem,
+    listCustomers
   } = useWorkspace();
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
@@ -63,6 +67,7 @@ export function BoardPage() {
   const [apiBoardCols, setApiBoardCols] = useState<ApiBoardColumn[]>([]);
   const [apiWorkflowStates, setApiWorkflowStates] = useState<ApiWorkflowState[]>([]);
   const [aiAgents, setAiAgents] = useState<AiAgentSummary[]>([]);
+  const [catalogFieldOptions, setCatalogFieldOptions] = useState<TaskFieldOption[]>([]);
 
   const loadBoardConfig = useCallback(async () => {
     const [cols, states, agents] = await Promise.all([fetchBoardColumns(), fetchWorkflowStates(), listAiAgents()]);
@@ -75,6 +80,47 @@ export function BoardPage() {
     void loadBoardConfig();
   }, [loadBoardConfig]);
 
+  useEffect(() => {
+    const workspaceId = snapshot?.id;
+    if (!workspaceId) {
+      return;
+    }
+
+    const hasCatalogField = (snapshot?.boardConfig?.fieldDefinitions ?? []).some(
+      f => f.config?.entityType === "billing_catalog_item"
+    );
+    if (!hasCatalogField) {
+      return;
+    }
+
+    void billingService.listConnectCatalogItems(workspaceId, false).then(({ items }) => {
+      setCatalogFieldOptions(
+        items
+          .filter(item => item.isActive)
+          .map(item => ({
+            id: item.id,
+            label: item.name,
+            value: item.id,
+            color: null,
+            order: 0,
+            isActive: true,
+            catalogItem: {
+              id: item.id,
+              kind: item.kind,
+              billingType: item.billingType,
+              recurringInterval: item.recurringInterval,
+              recurringIntervalCount: item.recurringIntervalCount,
+              name: item.name,
+              description: item.description,
+              amount: item.amount,
+              currency: item.currency,
+              metadata: item.metadata
+            }
+          }))
+      );
+    }).catch(() => undefined);
+  }, [snapshot?.id, snapshot?.boardConfig?.fieldDefinitions]);
+
   const tasks = snapshot?.tasks ?? [];
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const rawPerspectives: BoardConfig["perspectives"] =
@@ -84,7 +130,7 @@ export function BoardPage() {
         ? (rawBoardConfig as { views: BoardConfig["perspectives"] }).views
         : [];
 
-  const boardConfig = {
+  const boardConfigBase = {
     ...factoryBoardConfig,
     ...rawBoardConfig,
     statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
@@ -102,6 +148,8 @@ export function BoardPage() {
     cardLayout: rawBoardConfig?.cardLayout ?? factoryBoardConfig.cardLayout,
     perspectives: rawPerspectives
   };
+
+  const boardConfig = injectCatalogOptionsIntoBoardConfig(boardConfigBase, catalogFieldOptions);
 
   const availableTags = (snapshot?.tags ?? [])
     .filter(tag => tag.isActive !== false)
@@ -362,6 +410,7 @@ export function BoardPage() {
               linkDocumentToWorkItem={linkDocumentToWorkItem}
               unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
               onOpenDocument={handleOpenDocument}
+              listCustomers={listCustomers}
             />
           )}
         </div>

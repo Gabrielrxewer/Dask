@@ -26,6 +26,7 @@ import {
   Section,
   Select,
   StatusBadge,
+  Textarea,
   TextInput,
   WorkspaceFrame
 } from "@/shared/ui";
@@ -257,6 +258,18 @@ export function BillingPage() {
   const [catalogItemName, setCatalogItemName] = useState("");
   const [catalogItemDescription, setCatalogItemDescription] = useState("");
   const [catalogItemAmount, setCatalogItemAmount] = useState("");
+  const [catalogItemUnit, setCatalogItemUnit] = useState("servico");
+  const [catalogItemQuantity, setCatalogItemQuantity] = useState("1");
+  const [catalogItemScope, setCatalogItemScope] = useState("");
+  const [catalogItemDeliverables, setCatalogItemDeliverables] = useState("");
+  const [catalogItemDeliveryTerms, setCatalogItemDeliveryTerms] = useState("");
+  const [catalogItemPaymentTerms, setCatalogItemPaymentTerms] = useState("");
+  const [catalogItemProposalValidity, setCatalogItemProposalValidity] = useState("");
+  const [catalogItemContractTerm, setCatalogItemContractTerm] = useState("");
+  const [catalogItemCancellationTerms, setCatalogItemCancellationTerms] = useState("");
+  const [catalogItemClientResponsibilities, setCatalogItemClientResponsibilities] = useState("");
+  const [catalogItemAcceptanceCriteria, setCatalogItemAcceptanceCriteria] = useState("");
+  const [catalogItemContractNotes, setCatalogItemContractNotes] = useState("");
   const [amount, setAmount] = useState("100.00");
   const [description, setDescription] = useState("Serviço prestado via Dask");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -409,6 +422,58 @@ export function BillingPage() {
     const fallbackName = catalogItemDescription.trim();
     return fallbackName.length >= 2 ? fallbackName : "";
   }, [catalogItemDescription, catalogItemName]);
+
+  const catalogItemCommercialMetadata = useMemo<Record<string, string>>(() => {
+    const entries = {
+      unit: catalogItemUnit,
+      defaultQuantity: catalogItemQuantity,
+      scope: catalogItemScope,
+      deliverables: catalogItemDeliverables,
+      deliveryTerms: catalogItemDeliveryTerms,
+      paymentTerms: catalogItemPaymentTerms,
+      proposalValidity: catalogItemProposalValidity,
+      contractTerm: catalogItemContractTerm,
+      cancellationTerms: catalogItemCancellationTerms,
+      clientResponsibilities: catalogItemClientResponsibilities,
+      acceptanceCriteria: catalogItemAcceptanceCriteria,
+      contractNotes: catalogItemContractNotes
+    };
+
+    return Object.fromEntries(
+      Object.entries(entries)
+        .map(([key, value]) => [key, value.trim()])
+        .filter(([, value]) => value.length > 0)
+    );
+  }, [
+    catalogItemAcceptanceCriteria,
+    catalogItemCancellationTerms,
+    catalogItemClientResponsibilities,
+    catalogItemContractNotes,
+    catalogItemContractTerm,
+    catalogItemDeliverables,
+    catalogItemDeliveryTerms,
+    catalogItemPaymentTerms,
+    catalogItemProposalValidity,
+    catalogItemQuantity,
+    catalogItemScope,
+    catalogItemUnit
+  ]);
+
+  const canCreateCatalogItem =
+    Boolean(catalogItemAmountInCents) &&
+    catalogItemDisplayName.length >= 2 &&
+    catalogItemDescription.trim().length >= 3 &&
+    catalogItemUnit.trim().length > 0 &&
+    catalogItemQuantity.trim().length > 0 &&
+    catalogItemScope.trim().length >= 3 &&
+    catalogItemDeliverables.trim().length >= 3 &&
+    catalogItemDeliveryTerms.trim().length >= 3 &&
+    catalogItemPaymentTerms.trim().length >= 3 &&
+    catalogItemProposalValidity.trim().length >= 3 &&
+    catalogItemContractTerm.trim().length >= 3 &&
+    catalogItemCancellationTerms.trim().length >= 3 &&
+    catalogItemClientResponsibilities.trim().length >= 3 &&
+    catalogItemAcceptanceCriteria.trim().length >= 3;
 
   const canCreateCheckout = connectState === "ready" && connectStatus?.chargesEnabled === true;
   const onboardingChecklist = useMemo(() => buildOnboardingChecklist(connectStatus), [connectStatus]);
@@ -625,7 +690,7 @@ export function BillingPage() {
   }
 
   async function handleCreateCatalogItem() {
-    if (!workspaceId || isCreatingCatalogItem || !catalogItemAmountInCents || catalogItemDisplayName.length < 2) return;
+    if (!workspaceId || isCreatingCatalogItem || !canCreateCatalogItem || !catalogItemAmountInCents) return;
 
     setIsCreatingCatalogItem(true);
     setCatalogError(null);
@@ -640,7 +705,8 @@ export function BillingPage() {
         name: catalogItemDisplayName,
         description: catalogItemDescription.trim() || undefined,
         amount: catalogItemAmountInCents,
-        currency: "brl"
+        currency: "brl",
+        metadata: catalogItemCommercialMetadata
       });
       setCatalogItems((current) => [created, ...current]);
       setSelectedCatalogItemId(created.id);
@@ -648,6 +714,18 @@ export function BillingPage() {
       setCatalogItemName("");
       setCatalogItemDescription("");
       setCatalogItemAmount("");
+      setCatalogItemUnit("servico");
+      setCatalogItemQuantity("1");
+      setCatalogItemScope("");
+      setCatalogItemDeliverables("");
+      setCatalogItemDeliveryTerms("");
+      setCatalogItemPaymentTerms("");
+      setCatalogItemProposalValidity("");
+      setCatalogItemContractTerm("");
+      setCatalogItemCancellationTerms("");
+      setCatalogItemClientResponsibilities("");
+      setCatalogItemAcceptanceCriteria("");
+      setCatalogItemContractNotes("");
       setIsCatalogFormOpen(false);
       setCatalogCreatedNotice(true);
       setTimeout(() => setCatalogCreatedNotice(false), 5000);
@@ -1092,12 +1170,12 @@ export function BillingPage() {
 
             {/* Tab: Catálogo */}
             {activeTab === "catalogo" ? (
-              <div className="billing-view__panel" role="tabpanel">
+              <div className="billing-view__panel billing-view__panel--catalog" role="tabpanel">
                 <div className="billing-view__panel-head">
                   <div>
                     <h3 className="billing-view__panel-title">Catálogo</h3>
                     <p className="billing-view__panel-subtitle">
-                      Produtos e serviços prontos para cobrar em um clique.
+                      Produtos e serviços prontos para cobrar, orçar e contratar.
                     </p>
                   </div>
                   <Button
@@ -1188,7 +1266,7 @@ export function BillingPage() {
                         />
                       </FormField>
 
-                      <FormField label="Descrição (opcional)" className="billing-view__field">
+                      <FormField label="Resumo" className="billing-view__field">
                         <TextInput
                           value={catalogItemDescription}
                           onChange={(e) => setCatalogItemDescription(e.target.value)}
@@ -1197,13 +1275,125 @@ export function BillingPage() {
                       </FormField>
                     </div>
 
+                    <div className="billing-view__form-grid">
+                      <FormField label="Unidade" className="billing-view__field">
+                        <TextInput
+                          value={catalogItemUnit}
+                          onChange={(e) => setCatalogItemUnit(e.target.value)}
+                          placeholder="serviço, hora, projeto, licença"
+                        />
+                      </FormField>
+
+                      <FormField label="Quantidade padrão" className="billing-view__field">
+                        <TextInput
+                          value={catalogItemQuantity}
+                          onChange={(e) => setCatalogItemQuantity(e.target.value)}
+                          placeholder="1"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="billing-view__form-grid">
+                      <FormField label="Prazo / entrega" className="billing-view__field">
+                        <TextInput
+                          value={catalogItemDeliveryTerms}
+                          onChange={(e) => setCatalogItemDeliveryTerms(e.target.value)}
+                          placeholder="Ex.: até 10 dias úteis após aprovação"
+                        />
+                      </FormField>
+
+                      <FormField label="Condições de pagamento" className="billing-view__field">
+                        <TextInput
+                          value={catalogItemPaymentTerms}
+                          onChange={(e) => setCatalogItemPaymentTerms(e.target.value)}
+                          placeholder="Ex.: 50% na aprovação e 50% na entrega"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="billing-view__form-grid">
+                      <FormField label="Validade do orçamento" className="billing-view__field">
+                        <TextInput
+                          value={catalogItemProposalValidity}
+                          onChange={(e) => setCatalogItemProposalValidity(e.target.value)}
+                          placeholder="Ex.: 15 dias"
+                        />
+                      </FormField>
+
+                      <FormField label="Vigência do contrato" className="billing-view__field">
+                        <TextInput
+                          value={catalogItemContractTerm}
+                          onChange={(e) => setCatalogItemContractTerm(e.target.value)}
+                          placeholder="Ex.: 12 meses, renovação mensal"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="billing-view__form-grid billing-view__form-grid--stack">
+                      <FormField label="Escopo" className="billing-view__field">
+                        <Textarea
+                          value={catalogItemScope}
+                          onChange={(e) => setCatalogItemScope(e.target.value)}
+                          placeholder="Atividades incluídas, limites e premissas"
+                          rows={3}
+                        />
+                      </FormField>
+
+                      <FormField label="Entregáveis" className="billing-view__field">
+                        <Textarea
+                          value={catalogItemDeliverables}
+                          onChange={(e) => setCatalogItemDeliverables(e.target.value)}
+                          placeholder="Itens, arquivos, acessos ou resultados entregues"
+                          rows={3}
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="billing-view__form-grid billing-view__form-grid--stack">
+                      <FormField label="Responsabilidades do cliente" className="billing-view__field">
+                        <Textarea
+                          value={catalogItemClientResponsibilities}
+                          onChange={(e) => setCatalogItemClientResponsibilities(e.target.value)}
+                          placeholder="Informações, aprovações, materiais e acessos necessários"
+                          rows={3}
+                        />
+                      </FormField>
+
+                      <FormField label="Critérios de aceite" className="billing-view__field">
+                        <Textarea
+                          value={catalogItemAcceptanceCriteria}
+                          onChange={(e) => setCatalogItemAcceptanceCriteria(e.target.value)}
+                          placeholder="Como a entrega será considerada aceita"
+                          rows={3}
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="billing-view__form-grid billing-view__form-grid--stack">
+                      <FormField label="Cancelamento / rescisão" className="billing-view__field">
+                        <Textarea
+                          value={catalogItemCancellationTerms}
+                          onChange={(e) => setCatalogItemCancellationTerms(e.target.value)}
+                          placeholder="Prazos, multas, reembolsos e encerramento"
+                          rows={3}
+                        />
+                      </FormField>
+
+                      <FormField label="Observações contratuais (opcional)" className="billing-view__field">
+                        <Textarea
+                          value={catalogItemContractNotes}
+                          onChange={(e) => setCatalogItemContractNotes(e.target.value)}
+                          placeholder="Garantias, exclusões, impostos ou regras específicas"
+                          rows={3}
+                        />
+                      </FormField>
+                    </div>
+
                     <div className="billing-view__actions">
                       <Button
                         type="button"
                         onClick={() => void handleCreateCatalogItem()}
-                        disabled={
-                          isCreatingCatalogItem || !catalogItemAmountInCents || catalogItemDisplayName.length < 2
-                        }
+                        disabled={isCreatingCatalogItem || !canCreateCatalogItem}
                       >
                         {isCreatingCatalogItem ? "Salvando..." : "Adicionar ao catálogo"}
                       </Button>
@@ -1234,6 +1424,28 @@ export function BillingPage() {
                         <p className="billing-view__catalog-card-name">{item.name}</p>
                         {item.description ? (
                           <p className="billing-view__catalog-card-desc">{item.description}</p>
+                        ) : null}
+                        {item.metadata ? (
+                          <div className="billing-view__catalog-card-meta">
+                            {item.metadata.defaultQuantity || item.metadata.unit ? (
+                              <span>
+                                <strong>Base</strong>
+                                {[item.metadata.defaultQuantity, item.metadata.unit].filter(Boolean).join(" ")}
+                              </span>
+                            ) : null}
+                            {item.metadata.deliveryTerms ? (
+                              <span>
+                                <strong>Prazo</strong>
+                                {item.metadata.deliveryTerms}
+                              </span>
+                            ) : null}
+                            {item.metadata.contractTerm ? (
+                              <span>
+                                <strong>Vigência</strong>
+                                {item.metadata.contractTerm}
+                              </span>
+                            ) : null}
+                          </div>
                         ) : null}
                         <div className="billing-view__catalog-card-actions">
                           <Button
@@ -1270,13 +1482,18 @@ export function BillingPage() {
                 }}
               >
                 <>
-                  <div className="billing-view__delete-modal-copy">
+                  <div className="billing-view__delete-modal-head">
+                    <span className="billing-view__delete-modal-icon" aria-hidden="true">
+                      <IconAlertCircle />
+                    </span>
+                    <div className="billing-view__delete-modal-copy">
                     <span className="billing-view__delete-modal-eyebrow">Excluir item</span>
                     <h2 id="billing-delete-catalog-item-title">Remover "{catalogItemPendingDelete.name}"?</h2>
                     <p>
                       Esse item ficará inativo e não poderá mais ser usado em novas cobranças. O histórico anterior
                       continua preservado.
                     </p>
+                    </div>
                   </div>
                   <div className="billing-view__delete-modal-actions">
                     <Button
@@ -1289,6 +1506,7 @@ export function BillingPage() {
                     </Button>
                     <Button
                       type="button"
+                      className="billing-view__delete-modal-confirm"
                       onClick={() => void handleDeleteCatalogItem(catalogItemPendingDelete)}
                       disabled={deletingCatalogItemId !== null}
                     >

@@ -75,6 +75,13 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
+  catalog_select: {
+    label: "Item de catalogo",
+    supportsOptions: true,
+    defaultCardArea: "custom-field",
+    defaultDetailZone: "main",
+    normalize: value => (value == null || value === "" ? null : String(value))
+  },
   multi_select: {
     label: "Selecao multipla",
     supportsOptions: true,
@@ -382,16 +389,6 @@ function formatDateValue(value: string): string {
 function getFieldSemantic(field: TaskFieldDefinition): string | null {
   if (typeof field.config?.semantic === "string") {
     return field.config.semantic;
-  }
-
-  const fieldKey = field.slug ?? field.id;
-  if (fieldKey === "contactEmail") return "email";
-  if (fieldKey === "contactPhone") return "phone";
-  if (fieldKey === "clientLogoUrl") return "url";
-  if (fieldKey === "estimatedValue") return "currency";
-  if (fieldKey === "probability") return "percentage";
-  if (fieldKey === "customerId" || fieldKey === "contactId" || fieldKey === "proposalId" || fieldKey === "contractId" || fieldKey === "billingOrderId") {
-    return "entity_reference";
   }
 
   return null;

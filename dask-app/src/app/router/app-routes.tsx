@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { GlobalLayout } from "@/app/layout";
 import { ProtectedRoute, PublicRoute, SubscribedRoute } from "@/features/auth";
 import { BillingProvider } from "@/app/providers/billing-provider";
@@ -39,7 +39,19 @@ import {
   PrivacyPolicyPage,
   WorkflowStatesSettingsPage
 } from "@/pages";
-import { buildWorkspaceBoardPath, routePaths } from "@/app/router";
+import { buildWorkspaceBoardPath, buildWorkspaceSettingsPath, routePaths } from "@/app/router";
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function hasRequiredCompanyProfile(settings: Record<string, unknown> | undefined): boolean {
+  const profile = readRecord(settings?.companyProfile);
+  return ["legalName", "document", "address", "jurisdictionCity", "jurisdictionState", "noticePeriod"].every((key) => {
+    const value = profile[key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+}
 
 function WorkspaceBoundary() {
   return (
@@ -57,9 +69,18 @@ function ModuleRoute({
   children: JSX.Element;
 }) {
   const { snapshot } = useWorkspace();
+  const location = useLocation();
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const allowedModules = new Set(
     snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"]
   );
+  const isCorporateWorkspace = snapshot?.workspace?.kind === "CORPORATE";
+  const needsCompanyProfile = isCorporateWorkspace && !hasRequiredCompanyProfile(snapshot?.preferences.settings);
+  const isSettingsRoute = workspaceSlug.length > 0 && location.pathname.startsWith(buildWorkspaceSettingsPath(workspaceSlug));
+
+  if (needsCompanyProfile && module !== "settings" && !isSettingsRoute) {
+    return <Navigate replace to={buildWorkspaceSettingsPath(workspaceSlug)} />;
+  }
 
   if (!allowedModules.has(module)) {
     return <Navigate replace to={routePaths.board} />;

@@ -28,6 +28,7 @@ export type WorkspaceAccess = {
     id: string;
     name: string;
     key: string;
+    kind: 'PERSONAL' | 'CORPORATE';
     organizationId: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -921,6 +922,7 @@ export class WorkspaceConfigService {
               id: true,
               name: true,
               key: true,
+              kind: true,
               organizationId: true,
               createdAt: true,
               updatedAt: true,
@@ -952,6 +954,7 @@ export class WorkspaceConfigService {
         id: membership.workspace.id,
         name: membership.workspace.name,
         key: membership.workspace.key,
+        kind: membership.workspace.kind,
         organizationId: membership.workspace.organizationId,
         createdAt: membership.workspace.createdAt,
         updatedAt: membership.workspace.updatedAt

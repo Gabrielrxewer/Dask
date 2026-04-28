@@ -18,6 +18,26 @@ type BoardPerspective = {
   caption?: string;
 };
 
+type CompanyProfileForm = {
+  name: string;
+  legalName: string;
+  document: string;
+  address: string;
+  jurisdictionCity: string;
+  jurisdictionState: string;
+  noticePeriod: string;
+};
+
+const emptyCompanyProfile: CompanyProfileForm = {
+  name: "",
+  legalName: "",
+  document: "",
+  address: "",
+  jurisdictionCity: "",
+  jurisdictionState: "",
+  noticePeriod: ""
+};
+
 const FALLBACK_TEMPLATES: WorkspaceTemplateOption[] = [
   {
     key: "software_delivery",
@@ -87,6 +107,39 @@ function getTemplatePreview(templateKey: WorkspaceTemplateOption["key"]): string
   return TEMPLATE_PREVIEWS[templateKey] ?? ["Inicio", "Em andamento", "Finalizado"];
 }
 
+function readString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function readCompanyProfile(settings: Record<string, unknown> | undefined): CompanyProfileForm {
+  const profile = settings?.companyProfile;
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    return emptyCompanyProfile;
+  }
+
+  const source = profile as Record<string, unknown>;
+  return {
+    name: readString(source.name),
+    legalName: readString(source.legalName),
+    document: readString(source.document),
+    address: readString(source.address),
+    jurisdictionCity: readString(source.jurisdictionCity),
+    jurisdictionState: readString(source.jurisdictionState),
+    noticePeriod: readString(source.noticePeriod)
+  };
+}
+
+function getCompanyProfileMissingFields(profile: CompanyProfileForm): string[] {
+  return [
+    { label: "Razao social / nome legal", value: profile.legalName },
+    { label: "CPF / CNPJ", value: profile.document },
+    { label: "Endereco da contratada", value: profile.address },
+    { label: "Cidade do foro", value: profile.jurisdictionCity },
+    { label: "Estado do foro", value: profile.jurisdictionState },
+    { label: "Aviso previo padrao", value: profile.noticePeriod }
+  ].filter((field) => field.value.trim().length === 0).map((field) => field.label);
+}
+
 export function GeneralSettings() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot, updatePreferences, resetWorkspaceTemplate } = useWorkspace();
@@ -105,6 +158,9 @@ export function GeneralSettings() {
   const [workspaceCompanyDraft, setWorkspaceCompanyDraft] = useState("");
   const [workspaceWebsiteDraft, setWorkspaceWebsiteDraft] = useState("");
   const [isSavingWorkspaceProfile, setIsSavingWorkspaceProfile] = useState(false);
+  const settings = (snapshot?.preferences.settings as Record<string, unknown> | undefined) ?? {};
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfileForm>(() => readCompanyProfile(settings));
+  const [isSavingCompanyProfile, setIsSavingCompanyProfile] = useState(false);
   const [connectStatus, setConnectStatus] = useState<ConnectAccountStatus | null>(null);
   const [connectLoadState, setConnectLoadState] = useState<"idle" | "loading" | "missing" | "ready" | "error">("idle");
   const [isOpeningOnboarding, setIsOpeningOnboarding] = useState(false);
@@ -120,6 +176,8 @@ export function GeneralSettings() {
   const defaultMode = snapshot?.preferences.defaultBoardMode ?? perspectives[0]?.id ?? "dev";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
   const availableTemplates = templates.length > 0 ? templates : FALLBACK_TEMPLATES;
+  const missingCompanyProfileFields = getCompanyProfileMissingFields(companyProfile);
+  const isCompanyProfileComplete = missingCompanyProfileFields.length === 0;
 
   const stepStates = {
     perspectives: statusLabel(perspectives.length, 1),
@@ -129,6 +187,10 @@ export function GeneralSettings() {
   };
   const completedSteps = Object.values(stepStates).filter(value => value === "done").length;
   const progress = Math.round((completedSteps / 4) * 100);
+
+  useEffect(() => {
+    setCompanyProfile(readCompanyProfile(settings));
+  }, [snapshot?.preferences.settings]);
 
   useEffect(() => {
     let mounted = true;
@@ -310,6 +372,43 @@ export function GeneralSettings() {
     }
   };
 
+  const handleSaveCompanyProfile = async () => {
+    const nextProfile = {
+      name: companyProfile.name.trim(),
+      legalName: companyProfile.legalName.trim(),
+      document: companyProfile.document.trim(),
+      address: companyProfile.address.trim(),
+      jurisdictionCity: companyProfile.jurisdictionCity.trim(),
+      jurisdictionState: companyProfile.jurisdictionState.trim(),
+      noticePeriod: companyProfile.noticePeriod.trim()
+    };
+    const missingFields = getCompanyProfileMissingFields(nextProfile);
+
+    if (missingFields.length > 0) {
+      setError(`Complete o cadastro da contratada: ${missingFields.join(", ")}.`);
+      setFeedback("");
+      return;
+    }
+
+    setIsSavingCompanyProfile(true);
+    setFeedback("");
+    setError("");
+
+    try {
+      await updatePreferences({
+        settings: {
+          ...settings,
+          companyProfile: nextProfile
+        }
+      });
+      setFeedback("Cadastro legal da contratada salvo.");
+    } catch {
+      setError("Nao foi possivel salvar o cadastro da contratada agora.");
+    } finally {
+      setIsSavingCompanyProfile(false);
+    }
+  };
+
   const hasConnectRequirements = Boolean(connectStatus && connectStatus.requirementsDue.length > 0);
   const connectNeedsAttention = Boolean(
     connectStatus && (!connectStatus.onboardingComplete || !connectStatus.chargesEnabled || hasConnectRequirements)
@@ -473,9 +572,16 @@ export function GeneralSettings() {
       <section className="general-settings__workspace-profile">
         <header>
           <span>Workspace</span>
-          <h2>Nome e informacoes</h2>
-          <p>Defina a identidade do workspace e mantenha os dados institucionais atualizados.</p>
+          <h2>Nome, informacoes e cadastro legal</h2>
+          <p>Defina a identidade do workspace e cadastre a contratada usada automaticamente em propostas e contratos.</p>
         </header>
+        {isCorporateWorkspace && !isCompanyProfileComplete ? (
+          <div className="general-settings__required-company-alert">
+            <strong>Cadastro obrigatorio para liberar o workspace</strong>
+            <p>Complete os dados legais da contratada. Sem isso, contratos e propostas ficam com campos "a definir".</p>
+            <small>Pendente: {missingCompanyProfileFields.join(", ")}</small>
+          </div>
+        ) : null}
         <div className="general-settings__workspace-profile-grid">
           <FormField label="Nome do workspace">
             <TextInput
@@ -519,6 +625,76 @@ export function GeneralSettings() {
             {isSavingWorkspaceProfile ? "Salvando..." : "Salvar dados do workspace"}
           </Button>
           {workspaceProfile?.kind ? <small>Tipo atual: {workspaceProfile.kind}</small> : null}
+        </div>
+        <div className="general-settings__legal-profile">
+          <div className="general-settings__legal-profile-header">
+            <div>
+              <span>Contratada</span>
+              <h3>Dados legais para documentos comerciais</h3>
+              <p>Essas informacoes pertencem ao workspace e nao ao card. Elas alimentam as variaveis da contratada.</p>
+            </div>
+            <strong className={isCompanyProfileComplete ? "is-complete" : "is-missing"}>
+              {isCompanyProfileComplete ? "Completo" : "Obrigatorio"}
+            </strong>
+          </div>
+          <div className="general-settings__workspace-profile-grid">
+            <FormField label="Nome fantasia">
+              <TextInput
+                value={companyProfile.name}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, name: event.target.value }))}
+                placeholder="Ex.: Dask Labs"
+              />
+            </FormField>
+            <FormField label="Razao social / nome legal">
+              <TextInput
+                value={companyProfile.legalName}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, legalName: event.target.value }))}
+                placeholder="Ex.: Dask Labs Tecnologia Ltda"
+              />
+            </FormField>
+            <FormField label="CPF / CNPJ">
+              <TextInput
+                value={companyProfile.document}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, document: event.target.value }))}
+                placeholder="Ex.: 00.000.000/0001-00"
+              />
+            </FormField>
+            <FormField label="Aviso previo padrao">
+              <TextInput
+                value={companyProfile.noticePeriod}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, noticePeriod: event.target.value }))}
+                placeholder="Ex.: 30"
+              />
+            </FormField>
+            <FormField label="Endereco da contratada">
+              <Textarea
+                value={companyProfile.address}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, address: event.target.value }))}
+                placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
+                rows={3}
+              />
+            </FormField>
+            <FormField label="Cidade do foro">
+              <TextInput
+                value={companyProfile.jurisdictionCity}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionCity: event.target.value }))}
+                placeholder="Ex.: Sao Paulo"
+              />
+            </FormField>
+            <FormField label="Estado do foro">
+              <TextInput
+                value={companyProfile.jurisdictionState}
+                onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionState: event.target.value }))}
+                placeholder="Ex.: SP"
+              />
+            </FormField>
+          </div>
+          <div className="general-settings__workspace-profile-actions">
+            <Button type="button" onClick={() => void handleSaveCompanyProfile()} disabled={isSavingCompanyProfile}>
+              {isSavingCompanyProfile ? "Salvando..." : "Salvar cadastro da contratada"}
+            </Button>
+            <small>Usado em: providerName, providerDocument, providerAddress, noticePeriod, city e state.</small>
+          </div>
         </div>
       </section>
 

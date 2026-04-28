@@ -657,6 +657,86 @@
   font-weight: 700;
 }
 
+.general-settings__required-company-alert {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #f1d29f;
+  border-radius: var(--radius-xs);
+  background: #fff7e8;
+  color: #7d4d05;
+}
+
+.general-settings__required-company-alert strong {
+  font-size: var(--font-size-sm);
+  font-weight: 900;
+}
+
+.general-settings__required-company-alert p,
+.general-settings__required-company-alert small {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.general-settings__legal-profile {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--builder-line);
+}
+
+.general-settings__legal-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.general-settings__legal-profile-header span {
+  color: var(--builder-accent);
+  font-size: var(--font-size-2xs);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.general-settings__legal-profile-header h3 {
+  margin: 2px 0 0;
+  color: var(--builder-text);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.general-settings__legal-profile-header p {
+  margin: 5px 0 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.general-settings__legal-profile-header > strong {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-2xs);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.general-settings__legal-profile-header > strong.is-complete {
+  background: #effaf3;
+  color: #0f6b3d;
+}
+
+.general-settings__legal-profile-header > strong.is-missing {
+  background: #fff4db;
+  color: #7a4d00;
+}
+
 .general-settings__templates {
   display: flex;
   flex-direction: column;
@@ -927,7 +1007,8 @@
   }
 
   .general-settings__active-panel header,
-  .general-settings__progress div {
+  .general-settings__progress div,
+  .general-settings__legal-profile-header {
     flex-direction: column;
   }
 }
@@ -986,6 +1067,7 @@
 
 .app-theme[data-theme="dark"] .general-settings__preview-column,
 .app-theme[data-theme="dark"] .general-settings__workspace-profile-actions,
+.app-theme[data-theme="dark"] .general-settings__required-company-alert,
 .app-theme[data-theme="dark"] .general-settings__template-preview span,
 .app-theme[data-theme="dark"] .general-settings__modal-preview span {
   border-color: var(--line) !important;
@@ -1043,6 +1125,7 @@
 .app-theme[data-theme="dark"] .general-settings__preference-card h2,
 .app-theme[data-theme="dark"] .general-settings__summary-card h2,
 .app-theme[data-theme="dark"] .general-settings__workspace-profile h2,
+.app-theme[data-theme="dark"] .general-settings__legal-profile-header h3,
 .app-theme[data-theme="dark"] .general-settings__billing-connect h2,
 .app-theme[data-theme="dark"] .general-settings__templates h2,
 .app-theme[data-theme="dark"] .general-settings__summary-grid strong,
@@ -1066,6 +1149,7 @@
 .app-theme[data-theme="dark"] .general-settings__billing-checklist li p,
 .app-theme[data-theme="dark"] .general-settings__billing-checklist li small,
 .app-theme[data-theme="dark"] .general-settings__workspace-profile header p,
+.app-theme[data-theme="dark"] .general-settings__legal-profile-header p,
 .app-theme[data-theme="dark"] .general-settings__workspace-profile-actions small,
 .app-theme[data-theme="dark"] .general-settings__template-card p,
 .app-theme[data-theme="dark"] .general-settings__modal-copy p {

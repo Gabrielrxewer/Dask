@@ -87,6 +87,14 @@ export interface CalendarFeedSnapshot {
 export interface WorkspaceSnapshot {
   id: string;
   name: string;
+  key?: string;
+  workspace?: {
+    id: string;
+    name: string;
+    key: string;
+    kind: "PERSONAL" | "CORPORATE";
+    organizationId: string | null;
+  };
   currentUserId: MemberId;
   membersById: MembersById;
   tasks: Task[];

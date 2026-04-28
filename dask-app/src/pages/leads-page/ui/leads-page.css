@@ -334,28 +334,24 @@
 }
 
 .leads-page__modal {
-  width: min(920px, calc(100vw - 36px));
-  max-height: 100%;
+  width: min(860px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
   --leads-text: var(--text-strong);
   --leads-text-soft: var(--text-soft);
   --leads-text-muted: var(--text-muted);
-  --leads-line: color-mix(in oklab, var(--line) 90%, var(--accent));
-  --leads-surface: var(--surface-overlay);
-  --leads-field: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--surface-elevated) 96%, white) 0%,
-    color-mix(in oklab, var(--surface-section-content) 96%, var(--surface-1)) 100%
-  );
+  --leads-line: var(--line);
+  --leads-surface: #ffffff;
+  --leads-field: #ffffff;
   --leads-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, var(--text-strong));
   display: grid;
-  gap: 12px;
+  gap: 14px;
   overflow: auto;
-  padding: 18px;
-  border: 1px solid color-mix(in oklab, var(--leads-line) 84%, transparent);
-  border-radius: 20px;
-  background: var(--leads-field);
+  padding: 20px 22px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: #ffffff;
   color: var(--leads-text);
-  box-shadow: 0 24px 70px color-mix(in oklab, var(--text-strong) 20%, transparent);
+  box-shadow: var(--shadow-3);
 }
 
 .leads-page__modal-header {
@@ -363,6 +359,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-height: 34px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
 }
 
 .leads-page__modal-header h2 {
@@ -376,34 +375,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in oklab, var(--leads-line) 76%, transparent);
+  border: 1px solid var(--line);
   background: var(--control-surface);
-  color: var(--leads-text-soft);
+  color: var(--leads-text);
   border-radius: 10px;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: none;
+}
+
+.leads-page__modal-header button:hover {
+  border-color: color-mix(in oklab, var(--accent) 26%, var(--leads-line));
+  color: var(--leads-accent-strong);
 }
 
 .leads-page__modal .shared-form-field {
-  gap: 7px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .leads-page__modal .shared-form-field__label {
   color: var(--leads-text-soft);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   font-weight: 860;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .leads-page__modal .shared-input,
 .leads-page__modal .shared-textarea,
 .leads-page__modal .shared-select__control,
 .leads-page__modal select.shared-input {
-  border-color: color-mix(in oklab, var(--leads-line) 82%, transparent);
-  background: color-mix(in oklab, var(--surface-1) 96%, white);
+  min-height: 42px;
+  border-color: var(--line);
+  background: #ffffff;
   color: var(--leads-text);
-  box-shadow: 0 8px 20px color-mix(in oklab, var(--text-strong) 6%, transparent);
+  box-shadow: none;
+}
+
+.leads-page__modal .shared-textarea {
+  min-height: 88px;
+  resize: vertical;
 }
 
 .leads-page__modal .shared-input::placeholder,
@@ -415,7 +429,7 @@
 .leads-page__modal .shared-textarea:focus,
 .leads-page__modal .shared-select__control:focus {
   border-color: color-mix(in oklab, var(--accent) 40%, var(--leads-line));
-  background: var(--surface-1);
+  background: #ffffff;
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 14%, transparent);
 }
 
@@ -431,9 +445,27 @@
 }
 
 .leads-page__modal-content {
-  margin-top: 10px;
+  margin-top: 0;
   display: grid;
-  gap: 8px;
+  gap: 12px;
+}
+
+.leads-page__modal-content > .leads-page__form-grid {
+  gap: 12px 10px;
+}
+
+.leads-page__modal-content > .leads-page__row-actions:last-child {
+  justify-content: flex-end;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.leads-page__modal-content > .leads-page__row-actions:last-child .shared-button,
+.leads-page__modal-content > .leads-page__row-actions:last-child button {
+  min-height: 42px;
+  padding-inline: 18px;
+  font-weight: 840;
 }
 
 .leads-page__modal-content p {
@@ -1538,26 +1570,23 @@
   --leads-text: var(--text-strong);
   --leads-text-soft: var(--text-soft);
   --leads-text-muted: var(--text-muted);
-  --leads-line: color-mix(in oklab, var(--line) 88%, transparent);
-  --leads-field: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--surface-elevated) 92%, var(--panel)) 0%,
-    color-mix(in oklab, var(--surface-raised) 88%, var(--panel)) 100%
-  );
+  --leads-line: var(--line);
+  --leads-surface: var(--surface-overlay);
+  --leads-field: var(--surface-muted);
   border-color: var(--line) !important;
-  background: var(--leads-field) !important;
+  background: var(--surface-overlay) !important;
   color: var(--text-strong) !important;
-  box-shadow: 0 28px 76px color-mix(in oklab, black 44%, transparent) !important;
+  box-shadow: var(--shadow-3) !important;
 }
 
 .app-theme[data-theme="dark"] .leads-page__modal .shared-input,
 .app-theme[data-theme="dark"] .leads-page__modal .shared-textarea,
 .app-theme[data-theme="dark"] .leads-page__modal .shared-select__control,
 .app-theme[data-theme="dark"] .leads-page__modal select.shared-input {
-  border-color: color-mix(in oklab, var(--line) 84%, transparent) !important;
-  background: color-mix(in oklab, var(--surface-muted) 84%, var(--panel)) !important;
+  border-color: var(--line) !important;
+  background: var(--surface-muted) !important;
   color: var(--text-strong) !important;
-  box-shadow: 0 1px 0 color-mix(in oklab, white 6%, transparent) inset !important;
+  box-shadow: none !important;
 }
 
 .app-theme[data-theme="dark"] .leads-page__modal .shared-form-field__label,

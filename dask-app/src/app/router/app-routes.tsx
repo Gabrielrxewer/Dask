@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { GlobalLayout } from "@/app/layout";
 import { ProtectedRoute, PublicRoute, SubscribedRoute } from "@/features/auth";
 import { BillingProvider } from "@/app/providers/billing-provider";
@@ -61,6 +61,45 @@ function WorkspaceBoundary() {
   );
 }
 
+function CompanyProfileRequired({ settingsPath }: { settingsPath: string }) {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      minHeight: 320,
+      padding: 32,
+      textAlign: "center",
+      color: "var(--text-soft)",
+      fontSize: "var(--font-size-sm)"
+    }}>
+      <p style={{ margin: 0, fontWeight: 600, color: "var(--text)", fontSize: "var(--font-size-base)" }}>
+        Perfil da empresa incompleto
+      </p>
+      <p style={{ margin: 0, maxWidth: 380 }}>
+        Para acessar este módulo, preencha os dados da empresa nas configurações do workspace (nome legal, CNPJ, endereço, cidade, estado e prazo de aviso).
+      </p>
+      <Link
+        to={settingsPath}
+        style={{
+          marginTop: 8,
+          padding: "8px 18px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--accent)",
+          color: "#fff",
+          fontWeight: 600,
+          fontSize: "var(--font-size-sm)",
+          textDecoration: "none"
+        }}
+      >
+        Ir para Settings
+      </Link>
+    </div>
+  );
+}
+
 function ModuleRoute({
   module,
   children
@@ -78,12 +117,12 @@ function ModuleRoute({
   const needsCompanyProfile = isCorporateWorkspace && !hasRequiredCompanyProfile(snapshot?.preferences.settings);
   const isSettingsRoute = workspaceSlug.length > 0 && location.pathname.startsWith(buildWorkspaceSettingsPath(workspaceSlug));
 
-  if (needsCompanyProfile && module !== "settings" && !isSettingsRoute) {
-    return <Navigate replace to={buildWorkspaceSettingsPath(workspaceSlug)} />;
-  }
-
   if (!allowedModules.has(module)) {
     return <Navigate replace to={routePaths.board} />;
+  }
+
+  if (needsCompanyProfile && module !== "settings" && !isSettingsRoute) {
+    return <CompanyProfileRequired settingsPath={buildWorkspaceSettingsPath(workspaceSlug)} />;
   }
 
   return children;

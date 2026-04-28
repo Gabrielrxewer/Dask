@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
-import { interpolateDocumentTemplate } from "@/modules/workspace/model/document-variables";
+import { interpolateDocumentTemplate, resolveDocumentVariables } from "@/modules/workspace/model/document-variables";
 import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentMetadata } from "@/modules/workspace";
 import { LoadingState, ModalShell, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
@@ -64,16 +64,18 @@ function normalizeDocumentKind(kind: WorkspaceDocument["kind"] | undefined): Doc
   return kind ?? "wiki";
 }
 
-function renderMarkdownWithMetadata(content: string, metadata: WorkspaceDocumentMetadata): string {
-  const variables = Object.entries(metadata).reduce<Record<string, string>>((acc, [key, value]) => {
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+function buildRenderVariables(
+  document: WorkspaceDocument,
+  workspace: Parameters<typeof resolveDocumentVariables>[0]["workspace"]
+): Record<string, string> {
+  const contextVars = resolveDocumentVariables({ document, workspace });
+  const metadataVars = Object.entries(document.metadata ?? {}).reduce<Record<string, string>>((acc, [key, value]) => {
+    if ((typeof value === "string" || typeof value === "number" || typeof value === "boolean") && String(value).trim().length > 0) {
       acc[key] = String(value);
     }
     return acc;
   }, {});
-  const interpolated = interpolateDocumentTemplate(content, variables);
-
-  return interpolated.replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "");
+  return { ...contextVars, ...metadataVars };
 }
 
 function markdownUrlTransform(url: string): string {
@@ -235,9 +237,10 @@ export function DocumentationPage() {
     if (!activeDoc) {
       return "";
     }
-
-    return renderMarkdownWithMetadata(activeDoc.content, activeDoc.metadata ?? {});
-  }, [activeDoc?.content, activeDoc?.metadata]);
+    const variables = buildRenderVariables(activeDoc, snapshot);
+    const interpolated = interpolateDocumentTemplate(activeDoc.content, variables);
+    return interpolated.replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "");
+  }, [activeDoc?.content, activeDoc?.metadata, snapshot]);
 
   const pushMessage = useCallback((docId: string, message: AssistantMessage) => {
     setChatsByDoc((previous) => ({

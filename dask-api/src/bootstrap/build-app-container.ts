@@ -33,8 +33,7 @@ import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-b
 import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
 import { FocusFiscalProvider } from '@/modules/fiscal/providers/focus/focus-fiscal-provider';
 import { PrismaFiscalRepository } from '@/modules/fiscal/repositories/prisma-fiscal-repository';
-import { LeadsService } from '@/modules/leads/application/leads-service';
-import { PrismaLeadsRepository } from '@/modules/leads/repositories/prisma-leads-repository';
+import { CommercialIntakeService } from '@/modules/commercial-intake/application/commercial-intake-service';
 import { MarketingService } from '@/modules/marketing/application/marketing-service';
 import { MockMarketingEmailProvider } from '@/modules/marketing/providers/mock-marketing-email-provider';
 import { ResendMarketingEmailProvider } from '@/modules/marketing/providers/resend-marketing-email-provider';
@@ -62,7 +61,7 @@ export type AppContainer = {
   workspaceInvitesService: WorkspaceInvitesService;
   billingService: BillingService | null;
   fiscalService: FiscalService;
-  leadsService: LeadsService;
+  commercialIntakeService: CommercialIntakeService;
   marketingService: MarketingService;
 };
 
@@ -140,11 +139,10 @@ export function buildAppContainer(): AppContainer {
     stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL ?? env.STRIPE_WEBHOOK_SECRET,
     focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
   });
-  const leadsRepo = new PrismaLeadsRepository(prisma);
   const workspaceCustomersService = new WorkspaceCustomersService(prisma, workspaceConfigService, eventPublisher);
-  const leadsService = new LeadsService({
-    repo: leadsRepo,
-    eventPublisher,
+  const commercialIntakeService = new CommercialIntakeService({
+    prisma,
+    workspaceWorkItemsService,
     webhookSecret: env.LEADS_WEBHOOK_SECRET
   });
   const marketingRepo = new PrismaMarketingRepository(prisma);
@@ -180,7 +178,7 @@ export function buildAppContainer(): AppContainer {
     workspaceInvitesService,
     billingService,
     fiscalService,
-    leadsService,
+    commercialIntakeService,
     marketingService
   };
 }

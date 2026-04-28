@@ -32,8 +32,7 @@ import { buildBillingRoutes } from '@/modules/billing/http/routes';
 import { buildAdminRoutes } from '@/modules/admin/http/routes';
 import { buildFiscalRoutes } from '@/modules/fiscal/http/routes';
 import { buildFiscalIntegrationRoutes } from '@/modules/fiscal/http/integration-routes';
-import { buildLeadsRoutes } from '@/modules/leads/http/routes';
-import { buildLeadsIntegrationRoutes } from '@/modules/leads/http/integration-routes';
+import { buildCommercialIntakeRoutes } from '@/modules/commercial-intake/http/commercial-intake-routes';
 import { buildMarketingRoutes } from '@/modules/marketing/http/routes';
 import { buildMarketingIntegrationRoutes } from '@/modules/marketing/http/integration-routes';
 
@@ -182,7 +181,7 @@ export const createApp = (): Express => {
     workspaceInvitesService,
     billingService,
     fiscalService,
-    leadsService,
+    commercialIntakeService,
     marketingService
   } = buildAppContainer();
   const requireSubscription = createSubscriptionMiddleware(prisma);
@@ -252,7 +251,7 @@ export const createApp = (): Express => {
   }
 
   app.use(env.API_PREFIX, buildFiscalIntegrationRoutes({ fiscalService }));
-  app.use(env.API_PREFIX, buildLeadsIntegrationRoutes({ leadsService }));
+  app.use(env.API_PREFIX, buildCommercialIntakeRoutes({ commercialIntakeService }));
   app.use(env.API_PREFIX, buildMarketingIntegrationRoutes({ marketingService }));
 
   app.use(
@@ -342,16 +341,6 @@ export const createApp = (): Express => {
       prisma,
       authorizationService: roleAuthorizationService,
       fiscalService
-    })
-  );
-  app.use(
-    env.API_PREFIX,
-    authMiddleware,
-    requireSubscription,
-    buildLeadsRoutes({
-      prisma,
-      authorizationService: roleAuthorizationService,
-      leadsService
     })
   );
   app.use(

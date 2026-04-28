@@ -703,7 +703,7 @@ export class AutomationRuntimeService {
       data: {
         workspaceId,
         title,
-        content: interpolateDocumentContent(template.content, variables),
+        content: template.content,
         kind,
         linkedEntityType: 'work_item',
         linkedEntityId: itemId,
@@ -835,7 +835,6 @@ export class AutomationRuntimeService {
     await this.prisma.workspaceDocument.update({
       where: { id: document.id },
       data: {
-        content: interpolateDocumentContent(template.content, variables),
         metadata: toJsonValue({
           ...(template.metadata ?? {}),
           ...currentMetadata,

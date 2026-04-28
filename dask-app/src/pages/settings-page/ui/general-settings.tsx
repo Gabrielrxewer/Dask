@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link, useParams } from "react-router-dom";
 import { factoryBoardConfig, mergeCardFieldDefinitions } from "@/entities/task";
@@ -164,6 +164,12 @@ export function GeneralSettings() {
   const [connectStatus, setConnectStatus] = useState<ConnectAccountStatus | null>(null);
   const [connectLoadState, setConnectLoadState] = useState<"idle" | "loading" | "missing" | "ready" | "error">("idle");
   const [isOpeningOnboarding, setIsOpeningOnboarding] = useState(false);
+  const templateTrackRef = useRef<HTMLDivElement>(null);
+  const previewTrackRef = useRef<HTMLDivElement>(null);
+
+  function scrollTrack(ref: React.RefObject<HTMLDivElement | null>, dir: -1 | 1) {
+    ref.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
+  }
 
   const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
   const perspectives = useMemo(() => resolvePerspectives(rawBoardConfig), [rawBoardConfig]);
@@ -327,7 +333,7 @@ export function GeneralSettings() {
     }
   };
 
-  const handleSaveWorkspaceProfile = async () => {
+  const handleSaveAll = async () => {
     const normalizedName = workspaceNameDraft.trim();
     const normalizedKey = workspaceKeyDraft.trim().toUpperCase();
 
@@ -343,36 +349,6 @@ export function GeneralSettings() {
       return;
     }
 
-    setIsSavingWorkspaceProfile(true);
-    setFeedback("");
-    setError("");
-
-    try {
-      const updated = await workspaceService.updateWorkspaceProfile(workspaceSlug, {
-        name: normalizedName,
-        key: normalizedKey,
-        info: {
-          description: workspaceDescriptionDraft.trim(),
-          company: workspaceCompanyDraft.trim(),
-          website: workspaceWebsiteDraft.trim()
-        }
-      });
-
-      setWorkspaceProfile(updated);
-      setWorkspaceNameDraft(updated.name);
-      setWorkspaceKeyDraft(updated.key);
-      setWorkspaceDescriptionDraft(updated.info.description);
-      setWorkspaceCompanyDraft(updated.info.company);
-      setWorkspaceWebsiteDraft(updated.info.website);
-      setFeedback("Dados do workspace atualizados.");
-    } catch {
-      setError("Nao foi possivel salvar os dados do workspace agora.");
-    } finally {
-      setIsSavingWorkspaceProfile(false);
-    }
-  };
-
-  const handleSaveCompanyProfile = async () => {
     const nextProfile = {
       name: companyProfile.name.trim(),
       legalName: companyProfile.legalName.trim(),
@@ -382,29 +358,42 @@ export function GeneralSettings() {
       jurisdictionState: companyProfile.jurisdictionState.trim(),
       noticePeriod: companyProfile.noticePeriod.trim()
     };
-    const missingFields = getCompanyProfileMissingFields(nextProfile);
 
-    if (missingFields.length > 0) {
-      setError(`Complete o cadastro da contratada: ${missingFields.join(", ")}.`);
-      setFeedback("");
-      return;
-    }
-
+    setIsSavingWorkspaceProfile(true);
     setIsSavingCompanyProfile(true);
     setFeedback("");
     setError("");
 
     try {
-      await updatePreferences({
-        settings: {
-          ...settings,
-          companyProfile: nextProfile
-        }
-      });
-      setFeedback("Cadastro legal da contratada salvo.");
+      const [updated] = await Promise.all([
+        workspaceService.updateWorkspaceProfile(workspaceSlug, {
+          name: normalizedName,
+          key: normalizedKey,
+          info: {
+            description: workspaceDescriptionDraft.trim(),
+            company: workspaceCompanyDraft.trim(),
+            website: workspaceWebsiteDraft.trim()
+          }
+        }),
+        updatePreferences({
+          settings: {
+            ...settings,
+            companyProfile: nextProfile
+          }
+        })
+      ]);
+
+      setWorkspaceProfile(updated);
+      setWorkspaceNameDraft(updated.name);
+      setWorkspaceKeyDraft(updated.key);
+      setWorkspaceDescriptionDraft(updated.info.description);
+      setWorkspaceCompanyDraft(updated.info.company);
+      setWorkspaceWebsiteDraft(updated.info.website);
+      setFeedback("Dados salvos.");
     } catch {
-      setError("Nao foi possivel salvar o cadastro da contratada agora.");
+      setError("Nao foi possivel salvar agora. Tente novamente.");
     } finally {
+      setIsSavingWorkspaceProfile(false);
       setIsSavingCompanyProfile(false);
     }
   };
@@ -443,35 +432,52 @@ export function GeneralSettings() {
   return (
     <div className="general-settings">
       <section className="general-settings__builder-hero">
-        <div className="general-settings__builder-copy">
-          <span>Comece aqui</span>
-          <h1>Monte seu sistema de trabalho visualmente.</h1>
-          <p>
-            Esta tela e somente o ponto de partida. Veja o estado geral do workspace, escolha um template e ajuste preferencias iniciais.
-          </p>
-        </div>
-
-        <div className="general-settings__live-preview" aria-label="Preview do board">
-          {statuses.map(status => (
-            <div key={status.id} className="general-settings__preview-column">
-              <span>
-                <i style={{ background: status.dot }} />
-                {status.label}
-              </span>
-              <div className="general-settings__preview-card">
-                <strong>{itemTypes[0]?.label ?? "Work item"}</strong>
-                <small>{fields[0]?.label ?? "Campo"} - prioridade media</small>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="general-settings__progress">
-          <div>
-            <strong>Board {progress}% configurado</strong>
-            <small>{completedSteps} de 4 areas prontas</small>
+        <div className="general-settings__builder-meta">
+          <div className="general-settings__builder-copy">
+            <span>Configuracao</span>
+            <h1>Monte seu workspace</h1>
+            <p>Veja o estado do board, aplique um template e ajuste preferencias iniciais.</p>
           </div>
-          <span><i style={{ width: `${progress}%` }} /></span>
+          <div className="general-settings__progress">
+            <div>
+              <strong>Board {progress}% configurado</strong>
+              <small>{completedSteps} de 4 areas prontas</small>
+            </div>
+            <span><i style={{ width: `${progress}%` }} /></span>
+          </div>
+        </div>
+
+        <div className="general-settings__track-wrap">
+          <button
+            type="button"
+            className="general-settings__track-arrow"
+            onClick={() => scrollTrack(previewTrackRef, -1)}
+            aria-label="Anterior"
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <div ref={previewTrackRef} className="general-settings__preview-track" aria-label="Preview do board">
+            {statuses.map(status => (
+              <div key={status.id} className="general-settings__preview-column">
+                <span>
+                  <i style={{ background: status.dot }} />
+                  {status.label}
+                </span>
+                <div className="general-settings__preview-card">
+                  <strong>{itemTypes[0]?.label ?? "Work item"}</strong>
+                  <small>{fields[0]?.label ?? "Campo"}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="general-settings__track-arrow"
+            onClick={() => scrollTrack(previewTrackRef, 1)}
+            aria-label="Proximo"
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
       </section>
 
@@ -480,32 +486,50 @@ export function GeneralSettings() {
           <span>Templates</span>
           <h2>Comece com uma base pronta</h2>
         </header>
-        <div className="general-settings__template-grid">
-          {availableTemplates.map(template => (
-            <article
-              key={template.key}
-              className={`general-settings__template-card${selectedTemplate === template.key ? " is-selected" : ""}`}
-              style={{ "--template-accent": TEMPLATE_ACCENTS[template.key] } as CSSProperties}
-            >
-              <div className="general-settings__template-preview">
-                {getTemplatePreview(template.key).map(label => (
-                  <span key={`${template.key}-${label}`}>{label}</span>
-                ))}
-              </div>
-              <div>
-                <h3>{template.name}</h3>
-                <p>{template.description}</p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setTemplateToConfirm(template)}
-                disabled={isLoadingTemplates || isResettingTemplate}
+        <div className="general-settings__track-wrap">
+          <button
+            type="button"
+            className="general-settings__track-arrow"
+            onClick={() => scrollTrack(templateTrackRef, -1)}
+            aria-label="Anterior"
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <div ref={templateTrackRef} className="general-settings__template-track">
+            {availableTemplates.map(template => (
+              <article
+                key={template.key}
+                className={`general-settings__template-card${selectedTemplate === template.key ? " is-selected" : ""}`}
+                style={{ "--template-accent": TEMPLATE_ACCENTS[template.key] } as CSSProperties}
               >
-                Usar
-              </Button>
-            </article>
-          ))}
+                <div className="general-settings__template-preview">
+                  {getTemplatePreview(template.key).map(label => (
+                    <span key={`${template.key}-${label}`}>{label}</span>
+                  ))}
+                </div>
+                <div>
+                  <h3>{template.name}</h3>
+                  <p>{template.description}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setTemplateToConfirm(template)}
+                  disabled={isLoadingTemplates || isResettingTemplate}
+                >
+                  Usar
+                </Button>
+              </article>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="general-settings__track-arrow"
+            onClick={() => scrollTrack(templateTrackRef, 1)}
+            aria-label="Proximo"
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
       </section>
 
@@ -572,13 +596,13 @@ export function GeneralSettings() {
       <section className="general-settings__workspace-profile">
         <header>
           <span>Workspace</span>
-          <h2>Nome, informacoes e cadastro legal</h2>
-          <p>Defina a identidade do workspace e cadastre a contratada usada automaticamente em propostas e contratos.</p>
+          <h2>Identidade e dados legais</h2>
+          <p>Nome e informacoes do workspace e cadastro da contratada usada em propostas e contratos.</p>
         </header>
         {isCorporateWorkspace && !isCompanyProfileComplete ? (
           <div className="general-settings__required-company-alert">
-            <strong>Cadastro obrigatorio para liberar o workspace</strong>
-            <p>Complete os dados legais da contratada. Sem isso, contratos e propostas ficam com campos "a definir".</p>
+            <strong>Cadastro legal incompleto</strong>
+            <p>Complete os dados da contratada. Sem isso, contratos e propostas ficam com campos "a definir".</p>
             <small>Pendente: {missingCompanyProfileFields.join(", ")}</small>
           </div>
         ) : null}
@@ -597,13 +621,6 @@ export function GeneralSettings() {
               placeholder="PRODCORE"
             />
           </FormField>
-          <FormField label="Empresa">
-            <TextInput
-              value={workspaceCompanyDraft}
-              onChange={(event) => setWorkspaceCompanyDraft(event.target.value)}
-              placeholder="Ex.: Dask Labs"
-            />
-          </FormField>
           <FormField label="Website">
             <TextInput
               value={workspaceWebsiteDraft}
@@ -611,90 +628,83 @@ export function GeneralSettings() {
               placeholder="https://suaempresa.com"
             />
           </FormField>
-          <FormField label="Descricao">
+          <FormField label="Descricao" className="general-settings__field--full">
             <Textarea
               value={workspaceDescriptionDraft}
               onChange={(event) => setWorkspaceDescriptionDraft(event.target.value)}
               placeholder="Resumo da area, objetivo ou contexto deste workspace."
-              rows={4}
+              rows={3}
+            />
+          </FormField>
+
+          <div className="general-settings__form-divider">
+            <span>Dados legais da contratada</span>
+          </div>
+
+          <FormField label="Nome fantasia / empresa">
+            <TextInput
+              value={companyProfile.name}
+              onChange={(event) => {
+                const value = event.target.value;
+                setCompanyProfile(current => ({ ...current, name: value }));
+                setWorkspaceCompanyDraft(value);
+              }}
+              placeholder="Ex.: Dask Labs"
+            />
+          </FormField>
+          <FormField label="Razao social / nome legal">
+            <TextInput
+              value={companyProfile.legalName}
+              onChange={(event) => setCompanyProfile(current => ({ ...current, legalName: event.target.value }))}
+              placeholder="Ex.: Dask Labs Tecnologia Ltda"
+            />
+          </FormField>
+          <FormField label="CPF / CNPJ">
+            <TextInput
+              value={companyProfile.document}
+              onChange={(event) => setCompanyProfile(current => ({ ...current, document: event.target.value }))}
+              placeholder="Ex.: 00.000.000/0001-00"
+            />
+          </FormField>
+          <FormField label="Aviso previo padrao (dias)">
+            <TextInput
+              value={companyProfile.noticePeriod}
+              onChange={(event) => setCompanyProfile(current => ({ ...current, noticePeriod: event.target.value }))}
+              placeholder="Ex.: 30"
+            />
+          </FormField>
+          <FormField label="Endereco da contratada" className="general-settings__field--full">
+            <Textarea
+              value={companyProfile.address}
+              onChange={(event) => setCompanyProfile(current => ({ ...current, address: event.target.value }))}
+              placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
+              rows={3}
+            />
+          </FormField>
+          <FormField label="Cidade do foro">
+            <TextInput
+              value={companyProfile.jurisdictionCity}
+              onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionCity: event.target.value }))}
+              placeholder="Ex.: Sao Paulo"
+            />
+          </FormField>
+          <FormField label="Estado do foro">
+            <TextInput
+              value={companyProfile.jurisdictionState}
+              onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionState: event.target.value }))}
+              placeholder="Ex.: SP"
             />
           </FormField>
         </div>
         <div className="general-settings__workspace-profile-actions">
-          <Button type="button" onClick={() => void handleSaveWorkspaceProfile()} disabled={isSavingWorkspaceProfile}>
-            {isSavingWorkspaceProfile ? "Salvando..." : "Salvar dados do workspace"}
+          <Button
+            type="button"
+            onClick={() => void handleSaveAll()}
+            disabled={isSavingWorkspaceProfile || isSavingCompanyProfile}
+          >
+            {isSavingWorkspaceProfile || isSavingCompanyProfile ? "Salvando..." : "Salvar"}
           </Button>
-          {workspaceProfile?.kind ? <small>Tipo atual: {workspaceProfile.kind}</small> : null}
-        </div>
-        <div className="general-settings__legal-profile">
-          <div className="general-settings__legal-profile-header">
-            <div>
-              <span>Contratada</span>
-              <h3>Dados legais para documentos comerciais</h3>
-              <p>Essas informacoes pertencem ao workspace e nao ao card. Elas alimentam as variaveis da contratada.</p>
-            </div>
-            <strong className={isCompanyProfileComplete ? "is-complete" : "is-missing"}>
-              {isCompanyProfileComplete ? "Completo" : "Obrigatorio"}
-            </strong>
-          </div>
-          <div className="general-settings__workspace-profile-grid">
-            <FormField label="Nome fantasia">
-              <TextInput
-                value={companyProfile.name}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, name: event.target.value }))}
-                placeholder="Ex.: Dask Labs"
-              />
-            </FormField>
-            <FormField label="Razao social / nome legal">
-              <TextInput
-                value={companyProfile.legalName}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, legalName: event.target.value }))}
-                placeholder="Ex.: Dask Labs Tecnologia Ltda"
-              />
-            </FormField>
-            <FormField label="CPF / CNPJ">
-              <TextInput
-                value={companyProfile.document}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, document: event.target.value }))}
-                placeholder="Ex.: 00.000.000/0001-00"
-              />
-            </FormField>
-            <FormField label="Aviso previo padrao">
-              <TextInput
-                value={companyProfile.noticePeriod}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, noticePeriod: event.target.value }))}
-                placeholder="Ex.: 30"
-              />
-            </FormField>
-            <FormField label="Endereco da contratada">
-              <Textarea
-                value={companyProfile.address}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, address: event.target.value }))}
-                placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
-                rows={3}
-              />
-            </FormField>
-            <FormField label="Cidade do foro">
-              <TextInput
-                value={companyProfile.jurisdictionCity}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionCity: event.target.value }))}
-                placeholder="Ex.: Sao Paulo"
-              />
-            </FormField>
-            <FormField label="Estado do foro">
-              <TextInput
-                value={companyProfile.jurisdictionState}
-                onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionState: event.target.value }))}
-                placeholder="Ex.: SP"
-              />
-            </FormField>
-          </div>
-          <div className="general-settings__workspace-profile-actions">
-            <Button type="button" onClick={() => void handleSaveCompanyProfile()} disabled={isSavingCompanyProfile}>
-              {isSavingCompanyProfile ? "Salvando..." : "Salvar cadastro da contratada"}
-            </Button>
-            <small>Usado em: providerName, providerDocument, providerAddress, noticePeriod, city e state.</small>
-          </div>
+          {workspaceProfile?.kind ? <small>Tipo: {workspaceProfile.kind}</small> : null}
         </div>
       </section>
 

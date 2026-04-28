@@ -215,6 +215,23 @@ export function BoardColumns({
     setOptimisticTasks(tasks);
   }, [tasks]);
 
+  useEffect(() => {
+    const clearDraggingState = () => {
+      setDraggingTaskId("");
+      setDropTarget(null);
+      document.body.classList.remove("board-is-dragging");
+    };
+
+    window.addEventListener("dragend", clearDraggingState);
+    window.addEventListener("drop", clearDraggingState);
+
+    return () => {
+      window.removeEventListener("dragend", clearDraggingState);
+      window.removeEventListener("drop", clearDraggingState);
+      document.body.classList.remove("board-is-dragging");
+    };
+  }, []);
+
   const columns = useMemo(() => groupTasksByStatus(optimisticTasks, statuses), [optimisticTasks, statuses]);
   const selectedTask = useMemo(
     () => optimisticTasks.find(task => task.id === selectedTaskId) ?? null,

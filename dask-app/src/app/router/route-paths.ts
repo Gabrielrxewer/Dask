@@ -72,6 +72,21 @@ export function buildWorkspaceDocumentationPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/documentation");
 }
 
+export function buildWorkspaceDocumentationPathWithDoc(
+  workspaceSlug: string,
+  docId: string,
+  taskId: string,
+  boardMode: string
+): string {
+  const params = new URLSearchParams({ docId, from: "card", taskId, boardMode });
+  return `${buildWorkspacePath(workspaceSlug, "/documentation")}?${params.toString()}`;
+}
+
+export function buildWorkspaceBoardPathWithTask(workspaceSlug: string, taskId: string, boardMode: string): string {
+  const params = new URLSearchParams({ openTaskId: taskId, boardMode });
+  return `${buildWorkspacePath(workspaceSlug, "/board")}?${params.toString()}`;
+}
+
 export function buildWorkspaceAiAgentsPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/ai");
 }

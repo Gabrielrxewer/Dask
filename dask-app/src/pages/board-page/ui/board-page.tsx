@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { buildWorkspaceDocumentationPath } from "@/app/router/route-paths";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { buildWorkspaceDocumentationPath, buildWorkspaceDocumentationPathWithDoc } from "@/app/router/route-paths";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardColumns } from "@/widgets/board-columns";
 import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
@@ -59,6 +59,9 @@ export function BoardPage() {
   } = useWorkspace();
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialOpenTaskId = searchParams.get("openTaskId") ?? "";
+  const initialBoardMode = searchParams.get("boardMode") ?? "";
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
@@ -203,7 +206,10 @@ export function BoardPage() {
 
     if (previousDefaultMode.current !== defaultMode) {
       previousDefaultMode.current = defaultMode;
-      setMode(defaultMode);
+      const modeToApply = (initialBoardMode && boardPerspectives.some(p => p.id === initialBoardMode))
+        ? initialBoardMode as WorkspaceBoardMode
+        : defaultMode;
+      setMode(modeToApply);
     }
   }, [snapshot, boardPerspectives]);
 
@@ -336,9 +342,9 @@ export function BoardPage() {
     return updateTask(taskId, { checklist });
   };
 
-  const handleOpenDocument = () => {
+  const handleOpenDocument = (documentId: string, taskId: string) => {
     if (workspaceSlug) {
-      navigate(buildWorkspaceDocumentationPath(workspaceSlug));
+      navigate(buildWorkspaceDocumentationPathWithDoc(workspaceSlug, documentId, taskId, mode));
     }
   };
 
@@ -347,7 +353,10 @@ export function BoardPage() {
       <BoardPerspectiveTabs
         perspectives={boardPerspectives.map(p => ({ id: p.id, label: p.label }))}
         value={mode}
-        onChange={setMode}
+        onChange={(nextMode) => {
+          setMode(nextMode);
+          setSearchParams({ boardMode: nextMode }, { replace: true });
+        }}
       />
       <div className="board-top-nav__filter">
         <DashboardFilter
@@ -410,6 +419,7 @@ export function BoardPage() {
               unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
               onOpenDocument={handleOpenDocument}
               listCustomers={listCustomers}
+              initialSelectedTaskId={initialOpenTaskId}
             />
           )}
         </div>

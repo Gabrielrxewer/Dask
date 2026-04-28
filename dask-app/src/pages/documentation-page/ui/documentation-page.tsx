@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildBoardMetrics } from "@/entities/task";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
 import { interpolateDocumentTemplate, resolveDocumentVariables } from "@/modules/workspace/model/document-variables";
 import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentMetadata } from "@/modules/workspace";
+import { buildWorkspaceBoardPathWithTask } from "@/app/router/route-paths";
 import { LoadingState, ModalShell, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./documentation-page.css";
@@ -178,6 +180,13 @@ export function DocumentationPage() {
     updateWorkspaceDocument,
     deleteWorkspaceDocument
   } = useWorkspace();
+  const navigate = useNavigate();
+  const { workspaceSlug = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const initialDocId = searchParams.get("docId");
+  const fromCard = searchParams.get("from") === "card";
+  const fromCardTaskId = searchParams.get("taskId") ?? "";
+  const fromCardBoardMode = searchParams.get("boardMode") ?? "";
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -213,12 +222,14 @@ export function DocumentationPage() {
   const activeDocKind = normalizeDocumentKind(activeDoc?.kind);
 
   const filteredDocs = useMemo(() => {
+    if (fromCard && initialDocId) {
+      return docs.filter((doc) => doc.id === initialDocId);
+    }
     if (documentKindFilter === "all") {
       return docs;
     }
-
     return docs.filter((doc) => normalizeDocumentKind(doc.kind) === documentKindFilter);
-  }, [docs, documentKindFilter]);
+  }, [docs, documentKindFilter, fromCard, initialDocId]);
 
   const activeMessages = useMemo(() => {
     if (!activeDoc) {
@@ -299,6 +310,9 @@ export function DocumentationPage() {
         }
         setDocs(fetchedDocs);
         setActiveDocId((current) => {
+          if (initialDocId && fetchedDocs.some((doc) => doc.id === initialDocId)) {
+            return initialDocId;
+          }
           if (current && fetchedDocs.some((doc) => doc.id === current)) {
             return current;
           }
@@ -789,14 +803,28 @@ export function DocumentationPage() {
 
   const topNavigation = (
     <section className="docs-top-nav" aria-label="Acoes de documentacao">
-      <WorkspaceActionButton
-        className="docs-top-nav__btn"
-        tone="accent"
-        label="Nova doc"
-        disabled={isDocsLoading || isLoading}
-        onClick={() => setIsCreateModalOpen(true)}
-        icon="+"
-      />
+      {fromCard ? (
+        <WorkspaceActionButton
+          className="docs-top-nav__btn"
+          label="Voltar"
+          disabled={isDocsLoading || isLoading}
+          onClick={() => navigate(buildWorkspaceBoardPathWithTask(workspaceSlug, fromCardTaskId, fromCardBoardMode))}
+          icon={(
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        />
+      ) : (
+        <WorkspaceActionButton
+          className="docs-top-nav__btn"
+          tone="accent"
+          label="Nova doc"
+          disabled={isDocsLoading || isLoading}
+          onClick={() => setIsCreateModalOpen(true)}
+          icon="+"
+        />
+      )}
       <div className="docs-top-nav__actions">
         <WorkspaceActionButton
           className={`docs-top-nav__btn${isAssistantOpen ? " docs-top-nav__btn--active" : ""}`}
@@ -903,18 +931,20 @@ export function DocumentationPage() {
             </div>
           </header>
 
-          <div className="documentation-page__kind-filters" aria-label="Filtrar documentos por tipo">
-            {DOCUMENT_KIND_FILTERS.map((filter) => (
-              <button
-                key={filter.value}
-                type="button"
-                className={documentKindFilter === filter.value ? "is-active" : ""}
-                onClick={() => setDocumentKindFilter(filter.value)}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
+          {!fromCard && (
+            <div className="documentation-page__kind-filters" aria-label="Filtrar documentos por tipo">
+              {DOCUMENT_KIND_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  className={documentKindFilter === filter.value ? "is-active" : ""}
+                  onClick={() => setDocumentKindFilter(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <nav className="documentation-page__files-list">
             {filteredDocs.map((doc) => {

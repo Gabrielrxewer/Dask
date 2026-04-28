@@ -65,8 +65,9 @@ interface BoardColumnsProps {
   listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
   linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
   unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
-  onOpenDocument?: (documentId: string) => void;
+  onOpenDocument?: (documentId: string, taskId: string) => void;
   listCustomers?: (input?: { search?: string }) => Promise<Customer[]>;
+  initialSelectedTaskId?: string;
 }
 
 type DropTarget = {
@@ -202,11 +203,12 @@ export function BoardColumns({
   linkDocumentToWorkItem,
   unlinkDocumentFromWorkItem,
   onOpenDocument,
-  listCustomers
+  listCustomers,
+  initialSelectedTaskId = ""
 }: BoardColumnsProps) {
   const [draggingTaskId, setDraggingTaskId] = useState("");
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  const [selectedTaskId, setSelectedTaskId] = useState<string>(initialSelectedTaskId);
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
   const [taskPendingDeleteId, setTaskPendingDeleteId] = useState<string>("");
   const [isDeletingTask, setIsDeletingTask] = useState(false);

@@ -96,7 +96,7 @@ type TaskDetailsModalProps =
       listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
       linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
       unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
-      onOpenDocument?: (documentId: string) => void;
+      onOpenDocument?: (documentId: string, taskId: string) => void;
       listCustomers?: (input?: { search?: string }) => Promise<Customer[]>;
       onClose: () => void;
     };
@@ -817,8 +817,8 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                           key={document.id}
                           role={openDocument ? "button" : undefined}
                           tabIndex={openDocument ? 0 : undefined}
-                          onClick={openDocument ? () => openDocument(document.id) : undefined}
-                          onKeyDown={openDocument ? (e) => { if (e.key === "Enter" || e.key === " ") openDocument(document.id); } : undefined}
+                          onClick={openDocument && task ? () => openDocument(document.id, task.id) : undefined}
+                          onKeyDown={openDocument && task ? (e) => { if (e.key === "Enter" || e.key === " ") openDocument(document.id, task.id); } : undefined}
                         >
                           <div className="task-details__document-info">
                             <span className="task-details__document-kind">{kindLabel}</span>

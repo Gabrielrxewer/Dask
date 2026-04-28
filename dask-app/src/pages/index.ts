@@ -30,11 +30,6 @@ export {
   GeneralSettingsPage,
   BoardEditorSettingsPage,
   WorkItemEditorSettingsPage,
-  ColumnsSettingsPage,
   WorkflowStatesSettingsPage,
-  ItemTypesSettingsPage,
-  PerspectivesSettingsPage,
-  CustomFieldsSettingsPage,
-  MembersSettingsPage,
-  SettingsPage
+  MembersSettingsPage
 } from "@/pages/settings-page";

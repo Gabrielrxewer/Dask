@@ -41,7 +41,6 @@ export {
   type TaskCardRenderModel,
   type TaskCardSlotArea
 } from "@/entities/task/model/task-card-render-model";
-export { initialTasks } from "@/entities/task/model/mock-tasks";
 export {
   groupTasksByStatus,
   buildBoardMetrics,

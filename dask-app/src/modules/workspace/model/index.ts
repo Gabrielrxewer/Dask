@@ -1,9 +1,4 @@
 export {
-  cloneWorkspaceSnapshot,
-  createInitialWorkspaceSnapshot,
-  createTaskFromInput
-} from "@/modules/workspace/model/mock-workspace";
-export {
   interpolateDocumentTemplate,
   resolveDocumentVariables
 } from "@/modules/workspace/model/document-variables";

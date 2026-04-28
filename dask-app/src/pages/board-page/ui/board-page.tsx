@@ -18,7 +18,6 @@ import {
   type TaskStatusId
 } from "@/entities/task";
 import { billingService } from "@/modules/billing";
-import { currentUserId, membersById } from "@/entities/member";
 import {
   applyDashboardFilter,
   DashboardFilter,
@@ -154,9 +153,9 @@ export function BoardPage() {
   const availableTags = (snapshot?.tags ?? [])
     .filter(tag => tag.isActive !== false)
     .map(tag => ({ id: tag.id, name: tag.name, color: tag.color }));
-  const activeUser = snapshot?.currentUserId ?? currentUserId;
+  const activeUser = snapshot?.currentUserId ?? user?.id ?? "";
   const activeMembers = useMemo(() => {
-    const sourceMembers = snapshot?.membersById ?? membersById;
+    const sourceMembers = snapshot?.membersById ?? {};
     const userAvatarUrl = user?.avatarUrl ?? null;
 
     if (!userAvatarUrl) {

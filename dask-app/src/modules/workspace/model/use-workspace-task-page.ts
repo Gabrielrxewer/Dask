@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { currentUserId, membersById } from "@/entities/member";
 import {
   buildBoardMetrics,
   factoryBoardConfig,
@@ -32,7 +31,7 @@ export function useWorkspaceTaskPage() {
     () => injectCatalogOptionsIntoBoardConfig(boardConfigWithTypes, catalogFieldOptions),
     [boardConfigWithTypes, catalogFieldOptions]
   );
-  const activeMembers = workspace.snapshot?.membersById ?? membersById;
+  const activeMembers = workspace.snapshot?.membersById ?? {};
 
   useEffect(() => {
     const workspaceId = workspace.snapshot?.id;
@@ -74,7 +73,7 @@ export function useWorkspaceTaskPage() {
       );
     }).catch(() => undefined);
   }, [workspace.snapshot?.id, rawBoardConfig.fieldDefinitions]);
-  const activeUser = workspace.snapshot?.currentUserId ?? currentUserId;
+  const activeUser = workspace.snapshot?.currentUserId ?? "";
 
   const filteredTasks = useMemo(
     () => applyDashboardFilter(tasks, filter, boardConfig, activeMembers, activeUser),

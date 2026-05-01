@@ -1,0 +1,63 @@
+.add-edge__btn-wrapper {
+  position: absolute;
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-edge__btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-contrast);
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s ease, background 0.14s ease, border-color 0.14s ease, transform 0.14s ease, color 0.14s ease;
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--text-strong) 10%, transparent);
+}
+
+.add-edge__btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Show on edge hover — ReactFlow adds .react-flow__edge:hover */
+.react-flow__edge:hover .add-edge__btn,
+.react-flow__edge.selected .add-edge__btn {
+  opacity: 1;
+}
+
+.add-edge__btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  transform: scale(1.15);
+}
+
+/* Branch label */
+.add-edge__branch-label {
+  position: absolute;
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.add-edge__branch-label--yes {
+  background: color-mix(in oklab, #22c55e 14%, transparent);
+  color: color-mix(in oklab, #22c55e 80%, var(--text-strong));
+}
+
+.add-edge__branch-label--no {
+  background: color-mix(in oklab, #ef4444 14%, transparent);
+  color: color-mix(in oklab, #ef4444 80%, var(--text-strong));
+}

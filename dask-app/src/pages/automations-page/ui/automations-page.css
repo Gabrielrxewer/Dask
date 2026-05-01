@@ -5,6 +5,17 @@
 /* ─── Root layout ─────────────────────────────────────────────────────────── */
 
 .flow-editor {
+  --ab-text: color-mix(in oklab, var(--text-strong, #0b2238) 96%, #041220);
+  --ab-text-soft: color-mix(in oklab, var(--text-soft, #4c6680) 84%, #10273a);
+  --ab-text-muted: color-mix(in oklab, var(--text-muted, #6c8399) 88%, #27425c);
+  --ab-line: color-mix(in oklab, var(--line, #d9e3ef) 88%, #8ea7bf);
+  --ab-surface: color-mix(in oklab, var(--surface-overlay, #fff) 84%, #f1f6fb);
+  --ab-surface-soft: color-mix(in oklab, var(--surface-section-content, #eef4fb) 70%, #e7eef6);
+  --ab-accent: color-mix(in oklab, var(--accent, #1986dc) 80%, #0b5f99);
+  --ab-accent-strong: color-mix(in oklab, var(--accent-strong, #0b72c9) 82%, #094772);
+  --agents-accent: var(--ab-accent);
+  --agents-accent-strong: var(--ab-accent-strong);
+
   display: flex;
   flex-direction: row;
   gap: 0;
@@ -299,12 +310,15 @@
 /* Canvas body — scrollable */
 .flow-canvas__body {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 40px 20px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+}
+
+.flow-canvas__body .flow-canvas-ui {
+  min-height: 0;
+  height: 100%;
 }
 
 /* ─── Flow nodes ──────────────────────────────────────────────────────────── */
@@ -503,6 +517,12 @@
   flex-shrink: 0;
 }
 
+.config-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .config-panel__title {
   font-size: var(--font-size-sm, 0.9rem);
   font-weight: 700;
@@ -525,6 +545,15 @@
 .config-panel__close:hover {
   color: var(--text, #16324c);
   background: var(--panel-muted, #eef4fb);
+}
+
+.config-panel__close--danger {
+  color: var(--danger, #d94848);
+}
+
+.config-panel__close--danger:hover {
+  color: #fff;
+  background: var(--danger, #d94848);
 }
 
 .config-panel__section {

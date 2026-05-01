@@ -1,10 +1,3 @@
-/* ── Reset ReactFlow built-in node-type styles ──────────────────────────────── */
-/*
- * ReactFlow has built-in CSS for node types named "input", "output", and "default".
- * Our custom "output" node type inherits .react-flow__node-output styles
- * (black border, white bg, padding) which create the black rectangle artifact.
- * We reset those here so only our .anode styles apply.
- */
 .react-flow__node-output,
 .react-flow__node-input,
 .react-flow__node-default {
@@ -19,9 +12,7 @@
   box-shadow: none !important;
 }
 
-/* ── Base node ──────────────────────────────────────────────────────────────── */
-
-.anode {
+.flow-node-card {
   --node-color: #6b7280;
   --node-color-light: color-mix(in oklab, var(--node-color) 14%, transparent);
   --node-color-ring: color-mix(in oklab, var(--node-color) 28%, transparent);
@@ -37,10 +28,9 @@
     0 0 0 0 var(--node-color-ring);
   transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
   position: relative;
-  /* NOTE: overflow must NOT be hidden – handles are positioned -7px outside the border */
 }
 
-.anode:hover {
+.flow-node-card:hover {
   transform: translateY(-1px);
   box-shadow:
     0 6px 20px rgba(0, 0, 0, 0.1),
@@ -48,25 +38,24 @@
   border-color: color-mix(in oklab, var(--node-color) 40%, var(--node-border));
 }
 
-.anode--selected {
+.flow-node-card--selected {
   border-color: var(--node-color) !important;
   box-shadow:
     0 6px 20px rgba(0, 0, 0, 0.1),
     0 0 0 3px var(--node-color-ring) !important;
 }
 
-/* ── Type colors ────────────────────────────────────────────────────────────── */
+.flow-node-card--trigger { --node-color: #10b981; }
+.flow-node-card--llm { --node-color: #8b5cf6; }
+.flow-node-card--rag { --node-color: #3b82f6; }
+.flow-node-card--tool { --node-color: #f59e0b; }
+.flow-node-card--condition { --node-color: #ef4444; }
+.flow-node-card--output { --node-color: #ec4899; }
+.flow-node-card--action { --node-color: #14b8a6; }
+.flow-node-card--delay { --node-color: #8b5cf6; }
+.flow-node-card--exit { --node-color: #ef4444; }
 
-.anode--trigger  { --node-color: #10b981; }
-.anode--llm      { --node-color: #8b5cf6; }
-.anode--rag      { --node-color: #3b82f6; }
-.anode--tool     { --node-color: #f59e0b; }
-.anode--condition { --node-color: #ef4444; }
-.anode--output   { --node-color: #ec4899; }
-
-/* ── Header ─────────────────────────────────────────────────────────────────── */
-
-.anode__header {
+.flow-node-card__header {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -77,7 +66,7 @@
   border-radius: 10px 10px 0 0;
 }
 
-.anode__header::before {
+.flow-node-card__header::before {
   content: '';
   position: absolute;
   left: 0;
@@ -88,7 +77,7 @@
   border-radius: 10px 0 0 0;
 }
 
-.anode__icon {
+.flow-node-card__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,12 +87,12 @@
   flex-shrink: 0;
 }
 
-.anode__icon svg {
+.flow-node-card__icon svg {
   width: 14px;
   height: 14px;
 }
 
-.anode__type {
+.flow-node-card__type {
   flex: 1;
   font-size: 11px;
   font-weight: 800;
@@ -112,14 +101,14 @@
   color: var(--node-color);
 }
 
-.anode__grip {
+.flow-node-card__grip {
   display: flex;
   gap: 2.5px;
   align-items: center;
   opacity: 0.4;
 }
 
-.anode__grip span {
+.flow-node-card__grip span {
   display: block;
   width: 3.5px;
   height: 3.5px;
@@ -127,15 +116,13 @@
   background: var(--text-muted, #94a3b8);
 }
 
-/* ── Body ───────────────────────────────────────────────────────────────────── */
-
-.anode__body {
+.flow-node-card__body {
   padding: 10px 12px 11px;
   display: grid;
   gap: 4px;
 }
 
-.anode__label {
+.flow-node-card__label {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-strong, #0f172a);
@@ -144,7 +131,7 @@
   text-overflow: ellipsis;
 }
 
-.anode__meta {
+.flow-node-card__meta {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted, #64748b);
@@ -153,7 +140,7 @@
   text-overflow: ellipsis;
 }
 
-.anode__prompt-preview {
+.flow-node-card__preview {
   font-size: 11px;
   color: var(--text-soft, #475569);
   line-height: 1.4;
@@ -166,22 +153,20 @@
   opacity: 0.8;
 }
 
-.anode__prompt-empty {
+.flow-node-card__empty {
   font-size: 11px;
   color: var(--text-muted, #94a3b8);
   font-style: italic;
   margin-top: 2px;
 }
 
-/* ── Condition branches ─────────────────────────────────────────────────────── */
-
-.anode__condition-branches {
+.flow-node-card__branches {
   display: flex;
   gap: 6px;
   margin-top: 6px;
 }
 
-.anode__branch {
+.flow-node-card__branch {
   flex: 1;
   text-align: center;
   font-size: 10px;
@@ -193,21 +178,25 @@
   border: 1px solid;
 }
 
-.anode__branch--true {
+.flow-node-card__branch--true {
   color: #16a34a;
   background: #dcfce7;
   border-color: #86efac;
 }
 
-.anode__branch--false {
+.flow-node-card__branch--false {
   color: #dc2626;
   background: #fee2e2;
   border-color: #fca5a5;
 }
 
-/* ── Handles ────────────────────────────────────────────────────────────────── */
+.flow-node-card__branch--neutral {
+  color: #2563eb;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
 
-.anode__handle.react-flow__handle {
+.flow-node-card__handle.react-flow__handle {
   width: 12px !important;
   height: 12px !important;
   border-radius: 50% !important;
@@ -217,67 +206,66 @@
   z-index: 10;
 }
 
-.anode__handle.react-flow__handle:hover {
+.flow-node-card__handle.react-flow__handle:hover {
   transform: scale(1.35) !important;
   box-shadow: 0 0 0 4px var(--node-color-ring) !important;
 }
 
-.anode__handle--source.react-flow__handle {
+.flow-node-card__handle--source.react-flow__handle {
   bottom: -7px !important;
   left: 50% !important;
   top: auto !important;
   transform: translateX(-50%) !important;
 }
 
-.anode__handle--source.react-flow__handle:hover {
+.flow-node-card__handle--source.react-flow__handle:hover {
   transform: translateX(-50%) scale(1.35) !important;
 }
 
-.anode__handle--target.react-flow__handle {
+.flow-node-card__handle--target.react-flow__handle {
   top: -7px !important;
   left: 50% !important;
   bottom: auto !important;
   transform: translateX(-50%) !important;
 }
 
-.anode__handle--target.react-flow__handle:hover {
+.flow-node-card__handle--target.react-flow__handle:hover {
   transform: translateX(-50%) scale(1.35) !important;
 }
 
-/* Condition has two source handles side by side */
-.anode__handle--left.react-flow__handle {
+.flow-node-card__handle--branch-0.react-flow__handle {
   left: 33% !important;
   bottom: -7px !important;
   top: auto !important;
   transform: translateX(-50%) !important;
 }
 
-.anode__handle--left.react-flow__handle:hover {
+.flow-node-card__handle--branch-0.react-flow__handle:hover {
   transform: translateX(-50%) scale(1.35) !important;
 }
 
-.anode__handle--right.react-flow__handle {
+.flow-node-card__handle--branch-1.react-flow__handle {
   left: 67% !important;
   bottom: -7px !important;
   top: auto !important;
   transform: translateX(-50%) !important;
 }
 
-.anode__handle--right.react-flow__handle:hover {
+.flow-node-card__handle--branch-1.react-flow__handle:hover {
   transform: translateX(-50%) scale(1.35) !important;
 }
 
-/* ── Per-type handle colors (fallback explicit, because var() cascade may be unreliable) ── */
-.anode--trigger  .anode__handle.react-flow__handle { background: #10b981 !important; }
-.anode--llm      .anode__handle.react-flow__handle { background: #8b5cf6 !important; }
-.anode--rag      .anode__handle.react-flow__handle { background: #3b82f6 !important; }
-.anode--tool     .anode__handle.react-flow__handle { background: #f59e0b !important; }
-.anode--condition .anode__handle.react-flow__handle { background: #ef4444 !important; }
-.anode--output   .anode__handle.react-flow__handle { background: #ec4899 !important; }
+.flow-node-card--trigger .flow-node-card__handle.react-flow__handle { background: #10b981 !important; }
+.flow-node-card--llm .flow-node-card__handle.react-flow__handle { background: #8b5cf6 !important; }
+.flow-node-card--rag .flow-node-card__handle.react-flow__handle { background: #3b82f6 !important; }
+.flow-node-card--tool .flow-node-card__handle.react-flow__handle { background: #f59e0b !important; }
+.flow-node-card--condition .flow-node-card__handle.react-flow__handle { background: #ef4444 !important; }
+.flow-node-card--output .flow-node-card__handle.react-flow__handle { background: #ec4899 !important; }
+.flow-node-card--action .flow-node-card__handle.react-flow__handle { background: #14b8a6 !important; }
+.flow-node-card--delay .flow-node-card__handle.react-flow__handle { background: #8b5cf6 !important; }
+.flow-node-card--exit .flow-node-card__handle.react-flow__handle { background: #ef4444 !important; }
 
-/* ── Dark mode ──────────────────────────────────────────────────────────────── */
-
-.app-theme[data-theme="dark"] .anode {
+.app-theme[data-theme="dark"] .flow-node-card {
   --node-surface: color-mix(in oklab, var(--surface-raised, #1e293b) 97%, var(--node-color));
   --node-border: color-mix(in oklab, var(--line, #334155) 72%, var(--node-color));
   box-shadow:
@@ -285,33 +273,33 @@
     0 0 0 0 var(--node-color-ring);
 }
 
-.app-theme[data-theme="dark"] .anode:hover {
+.app-theme[data-theme="dark"] .flow-node-card:hover {
   box-shadow:
     0 6px 24px rgba(0, 0, 0, 0.4),
     0 0 0 0 var(--node-color-ring);
 }
 
-.app-theme[data-theme="dark"] .anode--selected {
+.app-theme[data-theme="dark"] .flow-node-card--selected {
   box-shadow:
     0 6px 24px rgba(0, 0, 0, 0.4),
     0 0 0 3px var(--node-color-ring) !important;
 }
 
-.app-theme[data-theme="dark"] .anode__label {
+.app-theme[data-theme="dark"] .flow-node-card__label {
   color: var(--text-primary, #f1f5f9);
 }
 
-.app-theme[data-theme="dark"] .anode__handle.react-flow__handle {
+.app-theme[data-theme="dark"] .flow-node-card__handle.react-flow__handle {
   border-color: color-mix(in oklab, var(--node-surface) 70%, var(--background, #0f172a));
 }
 
-.app-theme[data-theme="dark"] .anode__branch--true {
+.app-theme[data-theme="dark"] .flow-node-card__branch--true {
   color: #4ade80;
   background: rgba(74, 222, 128, 0.12);
   border-color: rgba(74, 222, 128, 0.3);
 }
 
-.app-theme[data-theme="dark"] .anode__branch--false {
+.app-theme[data-theme="dark"] .flow-node-card__branch--false {
   color: #f87171;
   background: rgba(248, 113, 113, 0.12);
   border-color: rgba(248, 113, 113, 0.3);

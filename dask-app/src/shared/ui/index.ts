@@ -18,6 +18,8 @@ export { FilterBar } from "@/shared/ui/filter-bar";
 export { UserAvatar } from "@/shared/ui/user-avatar";
 export { WorkspaceFrame } from "@/shared/ui/workspace-frame";
 export { WorkspaceActionButton } from "@/shared/ui/workspace-action-button";
+export { FlowCanvas, FlowNodeCard } from "@/shared/ui/flow-canvas";
+export type { FlowCanvasPaletteItem, FlowCanvasProps, FlowNodeBranch } from "@/shared/ui/flow-canvas";
 export {
   DataTable,
   DataTableHeader,

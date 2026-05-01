@@ -386,7 +386,7 @@
   position: relative;
 }
 
-.ab-canvas-wrapper .afc {
+.ab-canvas-wrapper .flow-canvas-ui {
   flex: 1 1 auto;
   min-height: 0;
 }

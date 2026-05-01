@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { applyEdgeChanges, type Edge, type Node, type NodeProps, type OnEdgesChange, type OnNodesChange, type XYPosition } from "@xyflow/react";
 import { useWorkspace } from "@/modules/workspace";
 import type {
   ApiBoardColumn,
@@ -7,7 +8,7 @@ import type {
   AutomationView,
   CreateAutomationRuleInput
 } from "@/modules/workspace/model";
-import { Button, LoadingState, ModalShell, Select, StatusBadge, TextInput, WorkspaceFrame } from "@/shared/ui";
+import { Button, FlowCanvas, FlowNodeCard, LoadingState, ModalShell, Select, StatusBadge, TextInput, WorkspaceFrame, type FlowCanvasPaletteItem } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { buildBoardMetrics } from "@/entities/task";
 import "./automations-page.css";
@@ -225,6 +226,19 @@ interface FlowDraft {
 }
 
 type SelectedNode = { kind: "trigger" } | { kind: "action"; index: number };
+
+type AutomationCanvasNodeKind = "trigger" | "action";
+
+interface AutomationCanvasNodeData extends Record<string, unknown> {
+  kind: AutomationCanvasNodeKind;
+  label: string;
+  summary: string;
+  configured: boolean;
+  index?: number;
+}
+
+type AutomationCanvasNode = Node<AutomationCanvasNodeData, AutomationCanvasNodeKind>;
+type AutomationCanvasEdge = Edge;
 
 function ruleToFlowDraft(rule: AutomationRule): FlowDraft {
   const trigger = asRecord(rule.trigger);
@@ -475,6 +489,57 @@ function FlowConnector() {
     </div>
   );
 }
+
+function AutomationTriggerNode({ data, selected }: NodeProps) {
+  const d = data as AutomationCanvasNodeData;
+  return (
+    <FlowNodeCard
+      kind="trigger"
+      typeLabel="Gatilho"
+      label={d.label}
+      meta={d.summary}
+      emptyText={d.configured ? undefined : "Configure o gatilho"}
+      icon={<BoltIcon size={14} />}
+      selected={selected}
+      target={false}
+    />
+  );
+}
+
+function AutomationActionNode({ data, selected }: NodeProps) {
+  const d = data as AutomationCanvasNodeData;
+  return (
+    <FlowNodeCard
+      kind="action"
+      typeLabel={typeof d.index === "number" ? `Acao ${d.index + 1}` : "Acao"}
+      label={d.label}
+      meta={d.summary}
+      emptyText={d.configured ? undefined : "Configure a acao"}
+      icon={<PlayIcon size={14} />}
+      selected={selected}
+    />
+  );
+}
+
+const AUTOMATION_NODE_TYPES = {
+  trigger: AutomationTriggerNode,
+  action: AutomationActionNode
+};
+
+const AUTOMATION_PALETTE: FlowCanvasPaletteItem<AutomationCanvasNodeKind, AutomationCanvasNodeData>[] = [
+  {
+    kind: "action",
+    label: "Acao",
+    description: "Adiciona uma nova etapa executada pela automacao",
+    color: "#14b8a6",
+    buildData: () => ({
+      kind: "action",
+      label: "Nova acao",
+      summary: "Configure a acao",
+      configured: false
+    })
+  }
+];
 
 // ─── Trigger Config Panel ─────────────────────────────────────────────────────
 
@@ -797,6 +862,7 @@ export function AutomationsPage() {
   const [draft, setDraft] = useState<FlowDraft | null>(null);
   const [originalDraft, setOriginalDraft] = useState<FlowDraft | null>(null);
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
+  const [nodePositions, setNodePositions] = useState<Record<string, XYPosition>>({});
 
   // Action states
   const [saving, setSaving] = useState(false);
@@ -807,8 +873,6 @@ export function AutomationsPage() {
   // Dialog state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingNavigate, setPendingNavigate] = useState<(() => void) | null>(null);
-
-  const canvasRef = useRef<HTMLDivElement>(null);
 
   // ─── Data loading ───────────────────────────────────────────────────────────
 
@@ -998,14 +1062,18 @@ export function AutomationsPage() {
     });
   }
 
-  function addAction() {
+  function addAction(position?: XYPosition) {
     const defaultAction: { type: string; [key: string]: unknown } = { type: "set_view_column" };
     if (availableViews[0]) {
       defaultAction.targetViewKey = availableViews[0].key;
       defaultAction.targetColumnKey = availableViews[0].columns[0]?.key ?? "";
     }
+    const nextIndex = draft?.actions.length ?? 0;
+    if (position) {
+      setNodePositions((prev) => ({ ...prev, [`action-${nextIndex}`]: position }));
+    }
     setDraft((prev) => prev ? { ...prev, actions: [...prev.actions, defaultAction] } : prev);
-    setSelectedNode({ kind: "action", index: (draft?.actions.length ?? 0) });
+    setSelectedNode({ kind: "action", index: nextIndex });
   }
 
   function removeAction(index: number) {
@@ -1013,6 +1081,20 @@ export function AutomationsPage() {
       if (!prev || prev.actions.length <= 1) return prev;
       const actions = prev.actions.filter((_, i) => i !== index);
       return { ...prev, actions };
+    });
+    setNodePositions((prev) => {
+      const next: Record<string, XYPosition> = {};
+      Object.entries(prev).forEach(([id, position]) => {
+        if (!id.startsWith("action-")) {
+          next[id] = position;
+          return;
+        }
+        const currentIndex = Number(id.slice("action-".length));
+        if (Number.isNaN(currentIndex) || currentIndex === index) return;
+        const nextIndex = currentIndex > index ? currentIndex - 1 : currentIndex;
+        next[`action-${nextIndex}`] = position;
+      });
+      return next;
     });
     setSelectedNode(null);
   }
@@ -1143,6 +1225,106 @@ export function AutomationsPage() {
     return false;
   };
 
+  const selectedNodeId =
+    selectedNode?.kind === "trigger"
+      ? "trigger"
+      : selectedNode?.kind === "action"
+        ? `action-${selectedNode.index}`
+        : null;
+
+  const automationNodes = useMemo<AutomationCanvasNode[]>(() => {
+    if (!draft) return [];
+
+    const triggerSelected = selectedNodeId === "trigger";
+    const nodes: AutomationCanvasNode[] = [
+      {
+        id: "trigger",
+        type: "trigger",
+        position: nodePositions.trigger ?? { x: 180, y: 40 },
+        data: {
+          kind: "trigger",
+          label: TRIGGER_LABELS[draft.triggerType] ?? "Gatilho",
+          summary: summarizeTrigger(draft, availableViews),
+          configured: isNodeConfigured({ kind: "trigger" })
+        },
+        selected: triggerSelected,
+        deletable: false
+      }
+    ];
+
+    draft.actions.forEach((action, index) => {
+      const id = `action-${index}`;
+      nodes.push({
+        id,
+        type: "action",
+        position: nodePositions[id] ?? { x: 180, y: 220 + index * 180 },
+        data: {
+          kind: "action",
+          index,
+          label: ACTION_LABELS[asString(action.type)] ?? "Acao",
+          summary: summarizeAction(action, availableViews, stateOptions),
+          configured: isNodeConfigured({ kind: "action", index })
+        },
+        selected: selectedNodeId === id,
+        deletable: draft.actions.length > 1
+      });
+    });
+
+    return nodes;
+  }, [availableViews, draft, nodePositions, selectedNodeId, stateOptions]);
+
+  const automationEdges = useMemo<AutomationCanvasEdge[]>(() => {
+    if (!draft) return [];
+    return draft.actions.map((_, index) => {
+      const source = index === 0 ? "trigger" : `action-${index - 1}`;
+      const target = `action-${index}`;
+      return {
+        id: `edge-${source}-${target}`,
+        source,
+        target,
+        type: "smoothstep",
+        animated: true,
+        markerEnd: { type: "arrowclosed" as const, width: 14, height: 14 }
+      };
+    });
+  }, [draft]);
+
+  const handleAutomationNodesChange: OnNodesChange<AutomationCanvasNode> = useCallback((changes) => {
+    setNodePositions((prev) => {
+      let next = prev;
+      for (const change of changes) {
+        if (change.type !== "position" || !change.position) continue;
+        if (next === prev) next = { ...prev };
+        next[change.id] = change.position;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleAutomationEdgesChange: OnEdgesChange<AutomationCanvasEdge> = useCallback((changes) => {
+    applyEdgeChanges(changes, automationEdges);
+  }, [automationEdges]);
+
+  const handleAutomationNodesAdd = useCallback((nodes: AutomationCanvasNode[]) => {
+    const actionNode = nodes.find((node) => node.type === "action");
+    if (actionNode) addAction(actionNode.position);
+  }, [addAction]);
+
+  const handleAutomationNodeSelect = useCallback((nodeId: string | null) => {
+    if (!nodeId) {
+      setSelectedNode(null);
+      return;
+    }
+    if (nodeId === "trigger") {
+      setSelectedNode({ kind: "trigger" });
+      return;
+    }
+    if (nodeId.startsWith("action-")) {
+      const index = Number(nodeId.slice("action-".length));
+      if (!Number.isNaN(index)) setSelectedNode({ kind: "action", index });
+    }
+  }, []);
+
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -1237,7 +1419,7 @@ export function AutomationsPage() {
         </aside>
 
         {/* ── Canvas ── */}
-        <div className="flow-canvas" ref={canvasRef}>
+        <div className="flow-canvas">
           {!draft ? (
             <div className="flow-canvas__empty">
               <div className="flow-canvas__empty-icon">
@@ -1321,53 +1503,20 @@ export function AutomationsPage() {
 
               {/* Flow nodes */}
               <div className="flow-canvas__body">
-                <div className="flow-nodes">
-                  {/* Trigger */}
-                  <FlowNode
-                    kind="trigger"
-                    label="GATILHO"
-                    summary={summarizeTrigger(draft, availableViews)}
-                    isSelected={selectedNode?.kind === "trigger"}
-                    isConfigured={isNodeConfigured({ kind: "trigger" })}
-                    onSelect={() => setSelectedNode(selectedNode?.kind === "trigger" ? null : { kind: "trigger" })}
-                  />
-
-                  {/* Actions */}
-                  {draft.actions.map((action, index) => (
-                    <div key={index} className="flow-action-slot">
-                      <FlowConnector />
-                      <FlowNode
-                        kind="action"
-                        index={index}
-                        label={`AÇÃO ${draft.actions.length > 1 ? index + 1 : ""}`}
-                        summary={summarizeAction(action, availableViews, stateOptions)}
-                        isSelected={selectedNode?.kind === "action" && selectedNode.index === index}
-                        isConfigured={isNodeConfigured({ kind: "action", index })}
-                        onSelect={() =>
-                          setSelectedNode(
-                            selectedNode?.kind === "action" && selectedNode.index === index
-                              ? null
-                              : { kind: "action", index }
-                          )
-                        }
-                        onRemove={draft.actions.length > 1 ? () => removeAction(index) : undefined}
-                      />
-                    </div>
-                  ))}
-
-                  {/* Add action */}
-                  <div className="flow-add-action">
-                    <FlowConnector />
-                    <button
-                      type="button"
-                      className="flow-add-action__btn"
-                      onClick={addAction}
-                    >
-                      <PlusIcon size={14} />
-                      Adicionar ação
-                    </button>
-                  </div>
-                </div>
+                <FlowCanvas<AutomationCanvasNodeData, AutomationCanvasNodeKind>
+                  nodes={automationNodes}
+                  edges={automationEdges}
+                  nodeTypes={AUTOMATION_NODE_TYPES}
+                  paletteItems={AUTOMATION_PALETTE}
+                  onNodesChange={handleAutomationNodesChange}
+                  onEdgesChange={handleAutomationEdgesChange}
+                  onEdgesAdd={() => undefined}
+                  onNodesAdd={handleAutomationNodesAdd}
+                  onNodeSelect={handleAutomationNodeSelect}
+                  fitViewKey={draft.actions.length}
+                  emptyHint="Use o painel a esquerda para adicionar etapas na automacao"
+                  paletteTitle="Adicionar etapa"
+                />
               </div>
             </>
           )}
@@ -1380,14 +1529,27 @@ export function AutomationsPage() {
               <span className="config-panel__title">
                 {selectedNode.kind === "trigger" ? "Configurar gatilho" : "Configurar ação"}
               </span>
-              <button
-                type="button"
-                className="config-panel__close"
-                onClick={() => setSelectedNode(null)}
-                aria-label="Fechar painel"
-              >
-                <CloseIcon size={15} />
-              </button>
+              <div className="config-panel__actions">
+                {selectedNode.kind === "action" && draft.actions.length > 1 && (
+                  <button
+                    type="button"
+                    className="config-panel__close config-panel__close--danger"
+                    onClick={() => removeAction(selectedNode.index)}
+                    aria-label="Remover acao"
+                    title="Remover acao"
+                  >
+                    <TrashIcon size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="config-panel__close"
+                  onClick={() => setSelectedNode(null)}
+                  aria-label="Fechar painel"
+                >
+                  <CloseIcon size={15} />
+                </button>
+              </div>
             </div>
 
             <div className="config-panel__section">

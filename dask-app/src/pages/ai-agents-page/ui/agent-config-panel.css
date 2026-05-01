@@ -1,0 +1,342 @@
+/* ── Panel shell ────────────────────────────────────────────────────────────── */
+
+.acp {
+  --acp-color: #6b7280;
+  --acp-surface: color-mix(in oklab, var(--surface-raised, #fff) 98%, var(--acp-color));
+  --acp-line: color-mix(in oklab, var(--line, #e2e8f0) 80%, var(--acp-color));
+  --acp-accent: var(--acp-color);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--acp-surface);
+  border-left: 1px solid var(--acp-line);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+
+.acp__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 13px;
+  border-bottom: 1px solid var(--acp-line);
+  background: color-mix(in oklab, var(--acp-color) 8%, var(--acp-surface));
+  flex-shrink: 0;
+  position: relative;
+}
+
+.acp__header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--acp-color);
+}
+
+.acp__header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.acp__type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--acp-color);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 20%, transparent);
+}
+
+.acp__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.acp__type-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--acp-color);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.acp__description {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acp__close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--acp-line);
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+
+.acp__close:hover {
+  background: color-mix(in oklab, var(--acp-color) 10%, var(--acp-surface));
+  color: var(--acp-color);
+  border-color: color-mix(in oklab, var(--acp-color) 30%, var(--acp-line));
+}
+
+.acp__close svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Body ───────────────────────────────────────────────────────────────────── */
+
+.acp__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  scrollbar-width: thin;
+}
+
+.acp__form {
+  display: grid;
+  gap: 14px;
+}
+
+/* ── Field ──────────────────────────────────────────────────────────────────── */
+
+.acp__field {
+  display: grid;
+  gap: 6px;
+}
+
+.acp__field-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text-soft, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.acp__field-hint {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+/* ── Controls ───────────────────────────────────────────────────────────────── */
+
+.acp__input,
+.acp__textarea,
+.acp__select {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1.5px solid color-mix(in oklab, var(--line, #e2e8f0) 80%, var(--acp-color));
+  background: var(--surface-overlay, #fff);
+  color: var(--text-strong, #0f172a);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.acp__input:focus,
+.acp__textarea:focus,
+.acp__select:focus {
+  border-color: var(--acp-color);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 15%, transparent);
+}
+
+.acp__input:disabled,
+.acp__textarea:disabled,
+.acp__select:disabled {
+  color: var(--text-muted, #94a3b8);
+  background: color-mix(in oklab, var(--line, #e2e8f0) 18%, var(--surface-overlay, #fff));
+  cursor: not-allowed;
+}
+
+.acp__input[type="number"] {
+  appearance: textfield;
+}
+
+.acp__textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.acp__select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+/* ── Toggle ─────────────────────────────────────────────────────────────────── */
+
+.acp__toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft, #475569);
+  cursor: pointer;
+  user-select: none;
+}
+
+.acp__toggle--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.acp__toggle-track {
+  width: 34px;
+  height: 20px;
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--line, #e2e8f0) 80%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--line, #e2e8f0) 60%, transparent);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.acp__toggle-track--on {
+  background: var(--acp-color);
+  border-color: var(--acp-color);
+}
+
+.acp__toggle-track:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 20%, transparent);
+}
+
+.acp__toggle-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.18s ease;
+}
+
+.acp__toggle-track--on .acp__toggle-thumb {
+  transform: translateX(14px);
+}
+
+/* ── Tool list ──────────────────────────────────────────────────────────────── */
+
+.acp__tool-list {
+  display: grid;
+  gap: 6px;
+}
+
+.acp__tool-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1.5px solid color-mix(in oklab, var(--line, #e2e8f0) 80%, var(--acp-color));
+  background: var(--surface-overlay, #fff);
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
+  text-align: left;
+}
+
+.acp__tool-item:hover {
+  border-color: color-mix(in oklab, var(--acp-color) 40%, var(--line, #e2e8f0));
+  background: color-mix(in oklab, var(--acp-color) 5%, var(--surface-overlay, #fff));
+}
+
+.acp__tool-item--active {
+  border-color: var(--acp-color);
+  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, #fff));
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--acp-color) 15%, transparent);
+}
+
+.acp__tool-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong, #0f172a);
+}
+
+.acp__tool-group {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #94a3b8);
+}
+
+/* ── Info box ───────────────────────────────────────────────────────────────── */
+
+.acp__info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, #f8fafc));
+  border: 1px solid color-mix(in oklab, var(--acp-color) 20%, transparent);
+  color: var(--text-soft, #475569);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.acp__info-box svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--acp-color);
+  opacity: 0.8;
+}
+
+.acp__info-box strong {
+  font-weight: 700;
+  color: var(--text-strong, #0f172a);
+}
+
+/* ── Dark mode ──────────────────────────────────────────────────────────────── */
+
+.app-theme[data-theme="dark"] .acp {
+  --acp-surface: var(--surface-raised, #1e293b);
+}
+
+.app-theme[data-theme="dark"] .acp__input,
+.app-theme[data-theme="dark"] .acp__textarea,
+.app-theme[data-theme="dark"] .acp__select {
+  background: var(--surface-elevated, #263141);
+  border-color: var(--line, #334155);
+  color: var(--text-primary, #f1f5f9);
+}
+
+.app-theme[data-theme="dark"] .acp__tool-item {
+  background: var(--surface-elevated, #263141);
+  border-color: var(--line, #334155);
+}
+
+.app-theme[data-theme="dark"] .acp__tool-label {
+  color: var(--text-primary, #f1f5f9);
+}

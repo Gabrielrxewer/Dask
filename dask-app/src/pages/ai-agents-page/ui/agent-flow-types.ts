@@ -1,0 +1,123 @@
+import type { Edge, Node } from '@xyflow/react';
+
+export type AgentNodeKind = 'trigger' | 'llm' | 'rag' | 'tool' | 'condition' | 'output';
+
+export interface TriggerNodeData extends Record<string, unknown> {
+  kind: 'trigger';
+  label: string;
+  triggerType: 'manual' | 'card_created' | 'card_updated' | 'card_status_changed';
+}
+
+export interface LlmNodeData extends Record<string, unknown> {
+  kind: 'llm';
+  label: string;
+  model: string;
+  temperature: number;
+  systemPrompt: string;
+}
+
+export type RagSource = 'none' | 'documentation' | 'card' | 'card_and_documentation';
+
+export interface RagNodeData extends Record<string, unknown> {
+  kind: 'rag';
+  label: string;
+  source: RagSource;
+  topK: number;
+  contextInstruction: string;
+  includeSemanticContext: boolean;
+  includeLinkedDocuments: boolean;
+}
+
+export type ToolId =
+  | 'web_search'
+  | 'update_item_description'
+  | 'set_item_status'
+  | 'set_item_priority';
+
+export interface ToolNodeData extends Record<string, unknown> {
+  kind: 'tool';
+  label: string;
+  toolId: ToolId;
+}
+
+export interface ConditionNodeData extends Record<string, unknown> {
+  kind: 'condition';
+  label: string;
+  condition: string;
+}
+
+export type OutputType = 'text_response' | 'update_card';
+
+export interface OutputNodeData extends Record<string, unknown> {
+  kind: 'output';
+  label: string;
+  outputType: OutputType;
+}
+
+export type AgentNodeData =
+  | TriggerNodeData
+  | LlmNodeData
+  | RagNodeData
+  | ToolNodeData
+  | ConditionNodeData
+  | OutputNodeData;
+
+export type AgentFlowNode = Node<AgentNodeData, AgentNodeKind>;
+export type AgentFlowEdge = Edge;
+
+export interface AgentFlow {
+  nodes: AgentFlowNode[];
+  edges: AgentFlowEdge[];
+}
+
+// ── palette metadata ──────────────────────────────────────────────────────────
+
+export interface NodeKindMeta {
+  kind: AgentNodeKind;
+  label: string;
+  description: string;
+  color: string;
+}
+
+export const NODE_KIND_META: NodeKindMeta[] = [
+  {
+    kind: 'trigger',
+    label: 'Trigger',
+    description: 'Ponto de entrada do fluxo',
+    color: '#10b981',
+  },
+  {
+    kind: 'llm',
+    label: 'LLM',
+    description: 'Chamada ao modelo de linguagem',
+    color: '#8b5cf6',
+  },
+  {
+    kind: 'rag',
+    label: 'Contexto',
+    description: 'Recuperação de documentos / cards',
+    color: '#3b82f6',
+  },
+  {
+    kind: 'tool',
+    label: 'Tool',
+    description: 'Executa uma ação externa',
+    color: '#f59e0b',
+  },
+  {
+    kind: 'condition',
+    label: 'Condição',
+    description: 'Ramificação condicional',
+    color: '#ef4444',
+  },
+  {
+    kind: 'output',
+    label: 'Resposta',
+    description: 'Saída final do fluxo',
+    color: '#ec4899',
+  },
+];
+
+export function getNodeColor(kind: AgentNodeKind): string {
+  return NODE_KIND_META.find((m) => m.kind === kind)?.color ?? '#6b7280';
+}

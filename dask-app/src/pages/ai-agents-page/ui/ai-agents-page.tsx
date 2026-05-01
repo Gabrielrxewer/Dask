@@ -1,475 +1,497 @@
-import { useEffect, useMemo, useState } from "react";
-import { buildBoardMetrics } from "@/entities/task";
-import { useWorkspace } from "@/modules/workspace";
-import type { AiAgentConfig, AiAgentRagSource, AiAgentSummary, CreateAiAgentInput } from "@/modules/workspace/model";
-import { FormField, LoadingState, Section, Select, StatusBadge, TextInput, Textarea, WorkspaceActionButton, WorkspaceFrame } from "@/shared/ui";
-import { AppShell } from "@/widgets/app-shell";
-import "./ai-agents-page.css";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { applyEdgeChanges, applyNodeChanges, type OnEdgesChange, type OnNodesChange } from '@xyflow/react';
+import { buildBoardMetrics } from '@/entities/task';
+import { useWorkspace } from '@/modules/workspace';
+import type {
+  AiAgentConfig,
+  AiAgentRagSource,
+  AiAgentSummary,
+  CreateAiAgentInput,
+} from '@/modules/workspace/model';
+import { LoadingState, StatusBadge, WorkspaceActionButton, WorkspaceFrame } from '@/shared/ui';
+import { AppShell } from '@/widgets/app-shell';
+import { AgentFlowCanvas } from './agent-flow-canvas';
+import { AgentConfigPanel, type AgentMetaForm } from './agent-config-panel';
+import type {
+  AgentFlow,
+  AgentFlowEdge,
+  AgentFlowNode,
+  AgentNodeData,
+  AgentNodeKind,
+  LlmNodeData,
+  RagNodeData,
+  ToolNodeData,
+  RagSource,
+  ToolId,
+} from './agent-flow-types';
+import './ai-agents-page.css';
 
-interface AgentFormState {
-  id: string | null;
-  baseConfig: AiAgentConfig;
-  name: string;
-  key: string;
-  description: string;
-  model: string;
-  temperature: string;
-  systemPrompt: string;
-  isActive: boolean;
-  ragSource: AiAgentRagSource;
-  includeSemanticContext: boolean;
-  includeLinkedDocuments: boolean;
-  topKContextDocs: string;
-  contextInstruction: string;
-  nativeToolsEnabled: boolean;
-  allowedNativeTools: string[];
-  gptToolsEnabled: boolean;
-  allowedGptTools: string[];
+// ── Flow serialization ────────────────────────────────────────────────────────
+
+function agentToFlow(agent: AiAgentSummary | null): AgentFlow {
+  const CX = 220;
+  const SPACE = 180;
+
+  if (!agent) {
+    return {
+      nodes: [
+        fixedNode('trigger', 'trigger-1', CX, 40, { kind: 'trigger', label: 'Disparador', triggerType: 'manual' }),
+        flowNode('rag', 'rag-1', CX, 40 + SPACE, { kind: 'rag', label: 'Contexto', source: 'documentation', topK: 5, contextInstruction: '', includeSemanticContext: true, includeLinkedDocuments: true }),
+        flowNode('llm', 'llm-1', CX, 40 + SPACE * 2, { kind: 'llm', label: 'LLM', model: 'gpt-4.1-mini', temperature: 0.2, systemPrompt: '' }),
+        fixedNode('output', 'output-1', CX, 40 + SPACE * 3, { kind: 'output', label: 'Resposta', outputType: 'text_response' }),
+      ],
+      edges: [
+        makeEdge('trigger-1', 'rag-1'),
+        makeEdge('rag-1', 'llm-1'),
+        makeEdge('llm-1', 'output-1'),
+      ],
+    };
+  }
+
+  const cfg = (agent.config ?? {}) as AiAgentConfig;
+
+  // If a saved flow exists, restore it directly
+  const savedFlow = (cfg as Record<string, unknown>).flow as AgentFlow | undefined;
+  if (savedFlow?.nodes?.length) return savedFlow;
+
+  // Build a representative flow from flat config
+  const rag = cfg.rag;
+  const tools = cfg.tools;
+  const nativeTools: string[] = tools?.nativeAllowed ?? tools?.allowed ?? [];
+  const gptTools: string[] = tools?.gptAllowed ?? [];
+  const allToolIds = [...nativeTools, ...gptTools];
+
+  const nodes: AgentFlowNode[] = [];
+  const edges: AgentFlowEdge[] = [];
+  let y = 40;
+  let prevId = '';
+
+  const triggerId = 'trigger-1';
+  nodes.push(fixedNode('trigger', triggerId, CX, y, { kind: 'trigger', label: 'Disparador', triggerType: 'manual' }));
+  prevId = triggerId;
+  y += SPACE;
+
+  if (rag?.enabled !== false) {
+    const ragId = 'rag-1';
+    nodes.push(flowNode('rag', ragId, CX, y, {
+      kind: 'rag',
+      label: 'Contexto',
+      source: (rag?.source ?? 'documentation') as RagSource,
+      topK: rag?.topKContextDocs ?? 5,
+      contextInstruction: rag?.contextInstruction ?? '',
+      includeSemanticContext: rag?.includeSemanticContext !== false,
+      includeLinkedDocuments: rag?.includeLinkedDocuments !== false,
+    }));
+    edges.push(makeEdge(prevId, ragId));
+    prevId = ragId;
+    y += SPACE;
+  }
+
+  if (allToolIds.length > 0) {
+    const totalW = (allToolIds.length - 1) * 280;
+    let tx = CX - totalW / 2;
+    for (const toolId of allToolIds) {
+      const nodeId = `tool-${toolId}`;
+      nodes.push(flowNode('tool', nodeId, tx, y, { kind: 'tool', label: 'Tool', toolId: toolId as ToolId }));
+      edges.push(makeEdge(prevId, nodeId));
+      tx += 280;
+    }
+    y += SPACE;
+  }
+
+  const llmId = 'llm-1';
+  nodes.push(flowNode('llm', llmId, CX, y, {
+    kind: 'llm',
+    label: 'LLM',
+    model: agent.model || 'gpt-4.1-mini',
+    temperature: agent.temperature ?? 0.2,
+    systemPrompt: agent.systemPrompt ?? '',
+  }));
+
+  if (allToolIds.length > 0) {
+    for (const toolId of allToolIds) {
+      edges.push(makeEdge(`tool-${toolId}`, llmId));
+    }
+  } else {
+    edges.push(makeEdge(prevId, llmId));
+  }
+  y += SPACE;
+
+  const outputId = 'output-1';
+  nodes.push(fixedNode('output', outputId, CX, y, { kind: 'output', label: 'Resposta', outputType: 'text_response' }));
+  edges.push(makeEdge(llmId, outputId));
+
+  return { nodes, edges };
 }
 
-const RAG_OPTIONS: Array<{ value: AiAgentRagSource; label: string; description: string }> = [
-  {
-    value: "none",
-    label: "Sem RAG",
-    description: "O agente responde apenas pelo prompt, sem consultar docs/cards."
-  },
-  {
-    value: "documentation",
-    label: "So documentacao",
-    description: "Consulta apenas docs do workspace."
-  },
-  {
-    value: "card",
-    label: "So cards",
-    description: "Consulta apenas contexto dos cards."
-  },
-  {
-    value: "card_and_documentation",
-    label: "Doc + cards",
-    description: "Consulta docs e cards juntos na resposta."
-  }
-];
+function flowToAgentPayload(
+  flow: AgentFlow,
+  meta: { name: string; key: string; description: string; isActive: boolean },
+): CreateAiAgentInput {
+  const llmNode = flow.nodes.find((n) => n.type === 'llm');
+  const ragNode = flow.nodes.find((n) => n.type === 'rag');
+  const toolNodes = flow.nodes.filter((n) => n.type === 'tool');
 
-const NATIVE_TOOL_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  {
-    value: "update_item_description",
-    label: "Atualizar descricao do card",
-    description: "Permite a IA editar descricao do item."
-  },
-  {
-    value: "set_item_status",
-    label: "Alterar status do card",
-    description: "Permite mover status/state do item."
-  },
-  {
-    value: "set_item_priority",
-    label: "Alterar prioridade do card",
-    description: "Permite definir prioridade do item."
-  }
-];
+  const llm = llmNode?.data as LlmNodeData | undefined;
+  const rag = ragNode?.data as RagNodeData | undefined;
 
-const GPT_TOOL_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  {
-    value: "web_search",
-    label: "Web Search",
-    description: "Permite a IA buscar informacoes na web em tempo real."
-  }
-];
+  const nativeToolIds = toolNodes
+    .map((n) => (n.data as ToolNodeData).toolId)
+    .filter((id) => id !== 'web_search');
+  const gptToolIds = toolNodes
+    .map((n) => (n.data as ToolNodeData).toolId)
+    .filter((id) => id === 'web_search');
 
-const MODEL_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "", label: "Padrao do backend (gpt-4.1-mini)" },
-  { value: "gpt-4.1-mini", label: "gpt-4.1-mini" },
-  { value: "gpt-4.1", label: "gpt-4.1" },
-  { value: "gpt-4o-mini", label: "gpt-4o-mini" },
-  { value: "gpt-4o", label: "gpt-4o" }
-];
+  const config: AiAgentConfig = {
+    rag: rag
+      ? {
+          enabled: rag.source !== 'none',
+          source: rag.source as AiAgentRagSource,
+          topKContextDocs: rag.topK,
+          contextInstruction: rag.contextInstruction,
+          includeSemanticContext: rag.includeSemanticContext,
+          includeLinkedDocuments: rag.includeLinkedDocuments,
+        }
+      : { enabled: false },
+    tools: {
+      enabled: nativeToolIds.length > 0,
+      allowed: nativeToolIds,
+      nativeEnabled: nativeToolIds.length > 0,
+      nativeAllowed: nativeToolIds,
+      gptEnabled: gptToolIds.length > 0,
+      gptAllowed: gptToolIds,
+    },
+    flow: flow as unknown as Record<string, unknown>,
+  };
 
-const TOP_K_OPTIONS = ["3", "5", "7", "10"];
+  return {
+    key: meta.key,
+    name: meta.name,
+    description: meta.description || undefined,
+    model: llm?.model || undefined,
+    temperature: llm?.temperature ?? 0.2,
+    systemPrompt: llm?.systemPrompt ?? '',
+    config,
+    isActive: meta.isActive,
+  };
+}
 
-const PROMPT_PLACEHOLDER = "Descreva o comportamento do agente.";
-const LEGACY_RISK_ANALYST_PROMPT = [
-  "You are a senior delivery risk analyst.",
-  "Evaluate work-item risk in software/product operations contexts.",
-  "Keep response objective and executable for teams."
-].join("\n");
+// ── Node builder helpers ──────────────────────────────────────────────────────
 
-function asAgentConfig(value: unknown): AiAgentConfig {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  return value as AiAgentConfig;
+function flowNode(type: AgentNodeKind, id: string, x: number, y: number, data: AgentNodeData): AgentFlowNode {
+  return { id, type, position: { x, y }, data };
+}
+
+function fixedNode(type: AgentNodeKind, id: string, x: number, y: number, data: AgentNodeData): AgentFlowNode {
+  return { id, type, position: { x, y }, data, deletable: false };
+}
+
+function makeEdge(source: string, target: string): AgentFlowEdge {
+  return {
+    id: `e-${source}-${target}`,
+    source,
+    target,
+    type: 'smoothstep',
+    animated: true,
+    markerEnd: { type: 'arrowclosed' as const, width: 14, height: 14 },
+  };
 }
 
 function normalizeKey(value: string): string {
   return value
     .trim()
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9-_]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9-_]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
-function resolveSource(source: unknown): AiAgentRagSource {
-  if (source === "none" || source === "documentation" || source === "card" || source === "card_and_documentation") {
-    return source;
-  }
-  return "documentation";
+function asConfig(value: unknown): AiAgentConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as AiAgentConfig;
 }
 
-function sourceLabel(source: AiAgentRagSource): string {
-  if (source === "documentation") {
-    return "Documentacao";
-  }
-  if (source === "card") {
-    return "Cards";
-  }
-  if (source === "card_and_documentation") {
-    return "Card + Doc";
-  }
-  return "Sem RAG";
+function sourceLabel(source: string): string {
+  if (source === 'documentation') return 'Docs';
+  if (source === 'card') return 'Cards';
+  if (source === 'card_and_documentation') return 'Doc+Card';
+  return 'Sem RAG';
 }
 
-function normalizeNativeTools(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const allowed = new Set(NATIVE_TOOL_OPTIONS.map((tool) => tool.value));
-  return value
-    .filter((entry): entry is string => typeof entry === "string")
-    .filter((entry) => allowed.has(entry));
-}
-
-function normalizeGptTools(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const allowed = new Set(GPT_TOOL_OPTIONS.map((tool) => tool.value));
-  return value
-    .filter((entry): entry is string => typeof entry === "string")
-    .filter((entry) => allowed.has(entry));
-}
-
-function isPresetModel(value: string): boolean {
-  return MODEL_OPTIONS.some((option) => option.value === value);
-}
-
-function normalizeSystemPrompt(value: string | null | undefined): string {
-  const normalized = value?.trim() ?? "";
-  if (!normalized) {
-    return "";
-  }
-
-  return normalized === LEGACY_RISK_ANALYST_PROMPT ? "" : value ?? "";
-}
-
-function createDefaultForm(): AgentFormState {
-  return {
-    id: null,
-    baseConfig: {},
-    name: "",
-    key: "",
-    description: "",
-    model: "",
-    temperature: "0.2",
-    systemPrompt: "",
-    isActive: true,
-    ragSource: "documentation",
-    includeSemanticContext: true,
-    includeLinkedDocuments: true,
-    topKContextDocs: "5",
-    contextInstruction: "Responda priorizando a documentacao selecionada e, quando necessario, complemente com contexto relevante.",
-    nativeToolsEnabled: false,
-    allowedNativeTools: [],
-    gptToolsEnabled: false,
-    allowedGptTools: []
-  };
-}
-
-function formFromAgent(agent: AiAgentSummary): AgentFormState {
-  const config = asAgentConfig(agent.config);
-  const rag = config.rag ?? {};
-  const source = rag.enabled === false ? "none" : resolveSource(rag.source);
-  const tools = config.tools ?? {};
-  const nativeAllowedTools = normalizeNativeTools(tools.nativeAllowed ?? tools.allowed);
-  const gptAllowedTools = normalizeGptTools(tools.gptAllowed);
-
-  return {
-    id: agent.id,
-    baseConfig: config,
-    name: agent.name,
-    key: agent.key,
-    description: agent.description ?? "",
-    model: agent.model,
-    temperature: String(agent.temperature),
-    systemPrompt: normalizeSystemPrompt(agent.systemPrompt),
-    isActive: agent.isActive,
-    ragSource: source,
-    includeSemanticContext: rag.includeSemanticContext !== false,
-    includeLinkedDocuments: rag.includeLinkedDocuments !== false,
-    topKContextDocs: String(rag.topKContextDocs ?? 5),
-    contextInstruction: rag.contextInstruction ?? "",
-    nativeToolsEnabled: (tools.nativeEnabled ?? tools.enabled) === true,
-    allowedNativeTools: nativeAllowedTools,
-    gptToolsEnabled: tools.gptEnabled === true,
-    allowedGptTools: gptAllowedTools
-  };
-}
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export function AiAgentsPage() {
   const { snapshot, listAiAgents, createAiAgent, updateAiAgent } = useWorkspace();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
 
+  // Agent list
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
+
+  // Agent metadata form (top nav)
+  const [agentName, setAgentName] = useState('');
+  const [agentKey, setAgentKey] = useState('');
+  const [agentDescription, setAgentDescription] = useState('');
+  const [agentIsActive, setAgentIsActive] = useState(true);
+  const isCreateMode = selectedAgentId === null;
+
+  // Flow state (lifted so config panel can update nodes)
+  const [nodes, setNodes] = useState<AgentFlowNode[]>([]);
+  const [edges, setEdges] = useState<AgentFlowEdge[]>([]);
+  const [fitViewKey, setFitViewKey] = useState(0);
+
+  // Selected node for config panel
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [configPanelMode, setConfigPanelMode] = useState<'agent' | 'node' | null>(null);
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+  const agentMetaPanel: AgentMetaForm | null =
+    configPanelMode === 'agent'
+      ? {
+          name: agentName,
+          key: agentKey,
+          description: agentDescription,
+          isActive: agentIsActive,
+          isCreateMode,
+        }
+      : null;
+  const selectedConfigNode = configPanelMode === 'node' ? selectedNode : null;
+  const isConfigPanelVisible = Boolean(agentMetaPanel || selectedConfigNode);
+
+  // Save state
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [form, setForm] = useState<AgentFormState>(() => createDefaultForm());
-  const [useCustomModelInput, setUseCustomModelInput] = useState(false);
+
+  // ── Load agents ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     let mounted = true;
     setIsLoadingAgents(true);
-    setError(null);
-
     listAiAgents()
       .then((result) => {
-        if (!mounted) {
-          return;
-        }
-
+        if (!mounted) return;
         setAgents(result);
-
-        if (result.length === 0) {
-          setSelectedAgentId(null);
-          setForm(createDefaultForm());
-          setUseCustomModelInput(false);
-          return;
+        if (result.length > 0) {
+          const first = result[0];
+          selectAgent(first);
+        } else {
+          loadFlow(null);
         }
-
-        const selected = result[0];
-        setSelectedAgentId(selected.id);
-        setForm(formFromAgent(selected));
-        setUseCustomModelInput(selected.model.trim().length > 0 && !isPresetModel(selected.model.trim()));
       })
-      .catch((err) => {
-        if (!mounted) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "Nao foi possivel carregar os agentes.");
+      .catch(() => {
+        if (mounted) setError('Não foi possível carregar os agentes.');
       })
       .finally(() => {
-        if (mounted) {
-          setIsLoadingAgents(false);
-        }
+        if (mounted) setIsLoadingAgents(false);
       });
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [listAiAgents]);
 
-  const isCreateMode = form.id === null;
-  const derivedRagSource = form.ragSource;
-  const canSave =
-    form.name.trim().length >= 2 &&
-    normalizeKey(form.key).length >= 2 &&
-    form.systemPrompt.trim().length >= 10 &&
-    !isLoadingAgents &&
-    !isSaving;
-  const activeNativeToolsCount = form.nativeToolsEnabled ? form.allowedNativeTools.length : 0;
-  const activeGptToolsCount = form.gptToolsEnabled ? form.allowedGptTools.length : 0;
-  const activeToolsCount = activeNativeToolsCount + activeGptToolsCount;
-  const selectedModelValue = useCustomModelInput ? "__custom__" : form.model.trim();
+  // ── Flow state management ────────────────────────────────────────────────────
 
-  function handleSelectAgent(agent: AiAgentSummary) {
+  function loadFlow(agent: AiAgentSummary | null) {
+    const flow = agentToFlow(agent);
+    setNodes(flow.nodes);
+    setEdges(flow.edges);
+    setFitViewKey((k) => k + 1);
+    setSelectedNodeId(null);
+    setConfigPanelMode(null);
+  }
+
+  function selectAgent(agent: AiAgentSummary) {
     setSelectedAgentId(agent.id);
-    setForm(formFromAgent(agent));
-    setUseCustomModelInput(agent.model.trim().length > 0 && !isPresetModel(agent.model.trim()));
+    setAgentName(agent.name);
+    setAgentKey(agent.key);
+    setAgentDescription(agent.description ?? '');
+    setAgentIsActive(agent.isActive);
     setError(null);
+    loadFlow(agent);
   }
 
   function handleCreateNew() {
     setSelectedAgentId(null);
-    setForm(createDefaultForm());
-    setUseCustomModelInput(false);
+    setAgentName('');
+    setAgentKey('');
+    setAgentDescription('');
+    setAgentIsActive(true);
     setError(null);
+    loadFlow(null);
+    setConfigPanelMode('agent');
   }
 
-  function updateForm<K extends keyof AgentFormState>(key: K, value: AgentFormState[K]) {
-    setForm((current) => ({
-      ...current,
-      [key]: value
-    }));
-  }
+  // ── ReactFlow handlers ───────────────────────────────────────────────────────
 
-  function toggleNativeTool(tool: string) {
-    setForm((current) => {
-      const nextTools = current.allowedNativeTools.includes(tool)
-        ? current.allowedNativeTools.filter((entry) => entry !== tool)
-        : [...current.allowedNativeTools, tool];
+  const onNodesChange: OnNodesChange<AgentFlowNode> = useCallback(
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds) as AgentFlowNode[]),
+    [],
+  );
 
-      return {
-        ...current,
-        nativeToolsEnabled: nextTools.length > 0,
-        allowedNativeTools: nextTools
-      };
-    });
-  }
+  const onEdgesChange: OnEdgesChange<AgentFlowEdge> = useCallback(
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds) as AgentFlowEdge[]),
+    [],
+  );
 
-  function toggleGptTool(tool: string) {
-    setForm((current) => {
-      const nextTools = current.allowedGptTools.includes(tool)
-        ? current.allowedGptTools.filter((entry) => entry !== tool)
-        : [...current.allowedGptTools, tool];
+  const handleEdgesAdd = useCallback((newEdges: AgentFlowEdge[]) => {
+    setEdges(newEdges);
+  }, []);
 
-      return {
-        ...current,
-        gptToolsEnabled: nextTools.length > 0,
-        allowedGptTools: nextTools
-      };
-    });
-  }
+  const handleNodesAdd = useCallback((newNodes: AgentFlowNode[]) => {
+    setNodes((nds) => [...nds, ...newNodes]);
+  }, []);
 
-  async function refreshAgentsAndSelect(targetAgentId?: string) {
-    const nextAgents = await listAiAgents();
-    setAgents(nextAgents);
+  const handleNodeDataChange = useCallback((nodeId: string, data: AgentNodeData) => {
+    setNodes((nds) =>
+      nds.map((n) => (n.id === nodeId ? { ...n, data } : n)),
+    );
+  }, []);
 
-    if (nextAgents.length === 0) {
-      setSelectedAgentId(null);
-      setForm(createDefaultForm());
-      return;
-    }
+  const handleNodeSelect = useCallback((nodeId: string | null) => {
+    setSelectedNodeId(nodeId);
+    setConfigPanelMode(nodeId ? 'node' : null);
+  }, []);
 
-    const selected = nextAgents.find((agent) => agent.id === targetAgentId)
-      ?? nextAgents.find((agent) => agent.id === selectedAgentId)
-      ?? nextAgents[0];
-    setSelectedAgentId(selected.id);
-    setForm(formFromAgent(selected));
-  }
-
-  async function handleSubmit() {
-    if (!canSave) {
-      return;
-    }
-
-    const temperature = Number(form.temperature);
-    if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) {
-      setError("Temperatura invalida. Use um valor entre 0 e 2.");
-      return;
-    }
-
-    const topKContextDocs = Math.min(Math.max(Number(form.topKContextDocs) || 5, 1), 10);
-    const normalizedKey = normalizeKey(form.key);
-    if (!/^[a-z0-9-_]+$/.test(normalizedKey)) {
-      setError("A chave aceita apenas letras minusculas, numeros, hifen e underscore.");
-      return;
-    }
-
-    const nextConfig: AiAgentConfig = {
-      ...form.baseConfig,
-      rag: {
-        ...(form.baseConfig.rag ?? {}),
-        enabled: derivedRagSource !== "none",
-        source: derivedRagSource,
-        contextInstruction: form.contextInstruction.trim(),
-        includeSemanticContext: form.includeSemanticContext,
-        includeLinkedDocuments: form.includeLinkedDocuments,
-        topKContextDocs
-      },
-      tools: {
-        ...(form.baseConfig.tools ?? {}),
-        enabled: form.nativeToolsEnabled && form.allowedNativeTools.length > 0,
-        allowed: form.allowedNativeTools,
-        nativeEnabled: form.nativeToolsEnabled && form.allowedNativeTools.length > 0,
-        nativeAllowed: form.allowedNativeTools,
-        gptEnabled: form.gptToolsEnabled && form.allowedGptTools.length > 0,
-        gptAllowed: form.allowedGptTools
+  const handleAgentMetaChange = useCallback(
+    (patch: Partial<Omit<AgentMetaForm, 'isCreateMode'>>) => {
+      if (patch.name !== undefined) {
+        setAgentName(patch.name);
+        if (isCreateMode && patch.key === undefined) setAgentKey(normalizeKey(patch.name));
       }
-    };
+      if (patch.key !== undefined && isCreateMode) setAgentKey(normalizeKey(patch.key));
+      if (patch.description !== undefined) setAgentDescription(patch.description);
+      if (patch.isActive !== undefined) setAgentIsActive(patch.isActive);
+    },
+    [isCreateMode],
+  );
 
-    const payload: CreateAiAgentInput = {
-      key: normalizedKey,
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      model: form.model.trim() || undefined,
-      temperature,
-      systemPrompt: form.systemPrompt.trim(),
-      config: nextConfig,
-      isActive: form.isActive
-    };
+  function handleEditAgent(agent: AiAgentSummary) {
+    if (agent.id !== selectedAgentId) selectAgent(agent);
+    setSelectedNodeId(null);
+    setConfigPanelMode('agent');
+  }
+
+  function handleCloseConfigPanel() {
+    setSelectedNodeId(null);
+    setConfigPanelMode(null);
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+
+  const canSave =
+    agentName.trim().length >= 2 &&
+    !isSaving &&
+    !isLoadingAgents;
+
+  async function handleSave() {
+    if (!canSave) return;
+
+    const key = isCreateMode ? normalizeKey(agentKey || agentName) : agentKey;
+    if (isCreateMode && key.length < 2) {
+      setError('Nome do agente muito curto para gerar chave.');
+      return;
+    }
+
+    const currentFlow: AgentFlow = { nodes, edges };
+    const payload = flowToAgentPayload(currentFlow, {
+      name: agentName.trim(),
+      key,
+      description: agentDescription.trim(),
+      isActive: agentIsActive,
+    });
 
     setIsSaving(true);
     setError(null);
-
     try {
-      if (form.id) {
-        await updateAiAgent(form.id, {
+      let savedId: string;
+      if (isCreateMode) {
+        const created = await createAiAgent(payload);
+        savedId = created.id;
+      } else {
+        await updateAiAgent(selectedAgentId!, {
           name: payload.name,
           description: payload.description ?? null,
           model: payload.model,
           temperature: payload.temperature,
           systemPrompt: payload.systemPrompt,
           config: payload.config,
-          isActive: payload.isActive
+          isActive: payload.isActive,
         });
-        await refreshAgentsAndSelect(form.id);
-      } else {
-        const created = await createAiAgent(payload);
-        await refreshAgentsAndSelect(created.id);
+        savedId = selectedAgentId!;
       }
+      const nextAgents = await listAiAgents();
+      setAgents(nextAgents);
+      const saved = nextAgents.find((a) => a.id === savedId) ?? nextAgents[0];
+      if (saved) selectAgent(saved);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar este agente.");
+      setError(err instanceof Error ? err.message : 'Não foi possível salvar.');
     } finally {
       setIsSaving(false);
     }
   }
 
+  // ── Auto-generate key from name (create mode) ────────────────────────────────
+
+  function handleNameChange(value: string) {
+    setAgentName(value);
+    if (isCreateMode) setAgentKey(normalizeKey(value));
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   const topNavigation = (
-    <section className="ai-agents-top-nav" aria-label="Ações de agentes">
-      <WorkspaceActionButton
-        className="ai-agents-top-nav__btn"
-        tone="accent"
-        label="Novo agente"
-        onClick={handleCreateNew}
-        disabled={isSaving}
-        icon="+"
-      />
-      <div className="ai-agents-top-nav__actions">
+    <div className="ab-nav">
+      <div className="ab-nav__identity">
+        <input
+          className="ab-nav__name"
+          value={agentName}
+          onChange={(e) => handleNameChange(e.target.value)}
+          placeholder="Nome do agente"
+          maxLength={80}
+        />
+        {agentKey ? (
+          <span className="ab-nav__key">{agentKey}</span>
+        ) : null}
+      </div>
+
+      <div className="ab-nav__status">
+        <button
+          type="button"
+          className={`ab-nav__status-btn${agentIsActive ? ' ab-nav__status-btn--active' : ''}`}
+          onClick={() => setAgentIsActive((v) => !v)}
+        >
+          <span className="ab-nav__status-dot" />
+          {agentIsActive ? 'Ativo' : 'Inativo'}
+        </button>
+      </div>
+
+      <div className="ab-nav__actions">
         <WorkspaceActionButton
-          className="ai-agents-top-nav__btn"
-          label="Limpar"
+          label="Novo agente"
           onClick={handleCreateNew}
           disabled={isSaving}
-          icon={(
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M4 15l7-7 5 5-7 7H4v-5z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-              <path d="M13 6l2-2a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8l-2 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-              <path d="M3 21h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-            </svg>
-          )}
+          icon="+"
         />
         <WorkspaceActionButton
-          className="ai-agents-top-nav__btn"
-          label={isCreateMode ? "Criar agente" : "Salvar alteracoes"}
-          aria-label={isCreateMode ? "Criar agente" : "Salvar alterações"}
-          title={isCreateMode ? "Criar agente" : "Salvar alterações"}
-          onClick={() => void handleSubmit()}
+          label={isCreateMode ? 'Criar agente' : 'Salvar alterações'}
+          onClick={() => void handleSave()}
           disabled={!canSave}
-          icon={(
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M5 4h12l2 2v14H5V4z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-              <path d="M8 4v6h8V4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-              <path d="M8 20v-6h8v6" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-            </svg>
-          )}
+          icon={
+            isSaving ? (
+              <svg viewBox="0 0 16 16" fill="none" className="ab-nav__spin">
+                <path d="M8 2a6 6 0 1 1-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 4h12l2 2v14H5V4z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                <path d="M8 4v6h8V4M8 20v-6h8v6" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+              </svg>
+            )
+          }
         />
       </div>
-    </section>
+    </div>
   );
 
   return (
@@ -480,291 +502,114 @@ export function AiAgentsPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="ai-agents-page">
+      <WorkspaceFrame className="ab-page">
         <LoadingState text="Carregando agentes..." animation="ai" variant="frame" visible={isLoadingAgents} />
-        <div className="ai-agents-page__layout">
-          <Section
-            title={agents.length > 0 ? `Agentes · ${agents.length}` : "Agentes"}
-            className="ai-agents-page__catalog workspace-view__panel"
-          >
-            {agents.length === 0 ? (
-              <div className="ai-agents-page__empty">
-                <h3>Nenhum agente ainda</h3>
-                <p>Crie o primeiro agente para configurar prompt e contexto RAG.</p>
-              </div>
-            ) : (
-              <div className="ai-agents-page__agent-list">
-                {agents.map((agent) => {
-                  const config = asAgentConfig(agent.config);
-                  const rag = config.rag ?? {};
-                  const source =
-                    rag.enabled === false
-                      ? ("none" as AiAgentRagSource)
-                      : resolveSource(rag.source);
 
+        <div className="ab-layout">
+          {/* ── Left sidebar: agent list ── */}
+          <aside className="ab-sidebar">
+            <div className="ab-sidebar__head">
+              <span className="ab-sidebar__title">
+                Agentes{agents.length > 0 ? ` · ${agents.length}` : ''}
+              </span>
+            </div>
+            <div className="ab-sidebar__list">
+              {agents.length === 0 && !isLoadingAgents ? (
+                <div className="ab-sidebar__empty">
+                  <p>Nenhum agente ainda</p>
+                  <span>Clique em "Novo agente" para começar.</span>
+                </div>
+              ) : (
+                agents.map((agent) => {
+                  const cfg = asConfig(agent.config);
+                  const rag = cfg.rag ?? {};
+                  const src = rag.enabled === false ? 'none' : (rag.source ?? 'documentation');
+                  const isSelected = agent.id === selectedAgentId;
                   return (
-                    <button
+                    <div
                       key={agent.id}
-                      type="button"
-                      className={`ai-agents-page__agent-item${selectedAgentId === agent.id ? " ai-agents-page__agent-item--active" : ""}`}
-                      onClick={() => handleSelectAgent(agent)}
+                      className={`ab-agent-card${isSelected ? ' ab-agent-card--active' : ''}`}
                     >
-                      <header>
-                        <strong>{agent.name}</strong>
-                        <StatusBadge tone={agent.isActive ? "success" : "warning"}>
-                          {agent.isActive ? "Ativo" : "Inativo"}
+                      <button
+                        type="button"
+                        className="ab-agent-card__main"
+                        onClick={() => selectAgent(agent)}
+                      >
+                      <div className="ab-agent-card__row">
+                        <strong className="ab-agent-card__name">{agent.name}</strong>
+                        <StatusBadge tone={agent.isActive ? 'success' : 'warning'}>
+                          {agent.isActive ? 'Ativo' : 'Inativo'}
                         </StatusBadge>
-                      </header>
-                      <p>{agent.description || "Sem descricao"}</p>
-                      <footer>
+                      </div>
+                      <p className="ab-agent-card__desc">{agent.description || 'Sem descrição'}</p>
+                      <div className="ab-agent-card__meta">
                         <span>{agent.key}</span>
-                        <span>{sourceLabel(source)}</span>
-                      </footer>
-                    </button>
+                        <span>{sourceLabel(src)}</span>
+                      </div>
+                      </button>
+                      <button
+                        type="button"
+                        className="ab-agent-card__edit"
+                        onClick={() => handleEditAgent(agent)}
+                        aria-label={`Editar ${agent.name}`}
+                        title="Editar agente"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path
+                            d="M9.8 3.1l3.1 3.1M3.5 12.5l2.7-.5 6.2-6.2a1.45 1.45 0 0 0-2.1-2.1L4.1 9.9l-.6 2.6z"
+                            stroke="currentColor"
+                            strokeWidth="1.4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   );
-                })}
-              </div>
-            )}
-          </Section>
+                })
+              )}
 
-          <Section
-            title={isCreateMode ? "Novo agente" : (form.name || "Editar agente")}
-            className="ai-agents-page__editor workspace-view__panel"
-          >
-            <form
-              className="ai-agents-page__form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void handleSubmit();
-              }}
-            >
-              <div className="ai-agents-page__grid">
-                <FormField label="Nome do agente">
-                  <TextInput
-                    value={form.name}
-                    onChange={(event) => updateForm("name", event.target.value)}
-                    placeholder="Ex.: Especialista de Produto"
-                    required
-                  />
-                </FormField>
-
-                <FormField label="Chave tecnica">
-                  <TextInput
-                    value={form.key}
-                    onChange={(event) => updateForm("key", normalizeKey(event.target.value))}
-                    placeholder="ex.: specialist-product"
-                    disabled={!isCreateMode}
-                    required
-                  />
-                </FormField>
-              </div>
-
-              <div className="ai-agents-page__grid">
-                <FormField label="Modelo (opcional)">
-                  <div className="ai-agents-page__field-stack">
-                    <Select
-                      className="ai-agents-page__select"
-                      value={selectedModelValue}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        if (nextValue === "__custom__") {
-                          setUseCustomModelInput(true);
-                          if (isPresetModel(form.model.trim())) {
-                            updateForm("model", "");
-                          }
-                          return;
-                        }
-
-                        setUseCustomModelInput(false);
-                        updateForm("model", nextValue);
-                      }}
-                    >
-                      {MODEL_OPTIONS.map((option) => (
-                        <option key={option.value || "default"} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                      <option value="__custom__">Outro modelo</option>
-                    </Select>
-
-                    {useCustomModelInput ? (
-                      <TextInput
-                        value={form.model}
-                        onChange={(event) => updateForm("model", event.target.value)}
-                        placeholder="Ex.: gpt-4.1-nano"
-                      />
-                    ) : null}
+              {/* Create-mode ghost card */}
+              {isCreateMode && (
+                <div className="ab-agent-card ab-agent-card--active ab-agent-card--new">
+                  <div className="ab-agent-card__row">
+                    <strong className="ab-agent-card__name">{agentName || 'Novo agente'}</strong>
+                    <StatusBadge tone="warning">Novo</StatusBadge>
                   </div>
-                </FormField>
-
-                <FormField label="Temperatura (0 a 2)">
-                  <TextInput
-                    type="number"
-                    step="0.1"
-                    min={0}
-                    max={2}
-                    value={form.temperature}
-                    onChange={(event) => updateForm("temperature", event.target.value)}
-                  />
-                </FormField>
-              </div>
-
-              <FormField label="Descricao (opcional)">
-                <TextInput
-                  value={form.description}
-                  onChange={(event) => updateForm("description", event.target.value)}
-                  placeholder="Objetivo do agente dentro do workspace"
-                />
-              </FormField>
-
-              <FormField label="Prompt do agente">
-                <Textarea
-                  rows={8}
-                  value={form.systemPrompt}
-                  onChange={(event) => updateForm("systemPrompt", event.target.value)}
-                  placeholder={PROMPT_PLACEHOLDER}
-                />
-              </FormField>
-
-              <div className="ai-agents-page__toggles">
-                <label className="ai-agents-page__toggle">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(event) => updateForm("isActive", event.target.checked)}
-                  />
-                  <span>Agente ativo</span>
-                </label>
-              </div>
-
-              <section className="ai-agents-page__rag-panel">
-                <header>
-                  <h3>Politica de contexto (RAG)</h3>
-                  <StatusBadge tone={derivedRagSource === "none" ? "warning" : "success"}>
-                    {sourceLabel(derivedRagSource)}
-                  </StatusBadge>
-                </header>
-
-                <div className="ai-agents-page__rag-options" role="radiogroup" aria-label="Tipo de RAG">
-                  {RAG_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`ai-agents-page__rag-option${form.ragSource === option.value ? " ai-agents-page__rag-option--active" : ""}`}
-                      role="radio"
-                      aria-checked={form.ragSource === option.value}
-                      onClick={() => updateForm("ragSource", option.value)}
-                    >
-                      <strong>{option.label}</strong>
-                      <span>{option.description}</span>
-                    </button>
-                  ))}
+                  <p className="ab-agent-card__desc">Ainda não salvo</p>
                 </div>
+              )}
+            </div>
+          </aside>
 
-                <div className="ai-agents-page__toggles">
-                  <label className="ai-agents-page__toggle">
-                    <input
-                      type="checkbox"
-                      disabled={derivedRagSource === "none" || (derivedRagSource !== "card" && derivedRagSource !== "card_and_documentation")}
-                      checked={form.includeSemanticContext}
-                      onChange={(event) => updateForm("includeSemanticContext", event.target.checked)}
-                    />
-                    <span>Contexto semantico (quando usar cards)</span>
-                  </label>
-                  <label className="ai-agents-page__toggle">
-                    <input
-                      type="checkbox"
-                      disabled={derivedRagSource === "none" || (derivedRagSource !== "card" && derivedRagSource !== "card_and_documentation")}
-                      checked={form.includeLinkedDocuments}
-                      onChange={(event) => updateForm("includeLinkedDocuments", event.target.checked)}
-                    />
-                    <span>Incluir docs vinculadas ao card</span>
-                  </label>
-                </div>
+          {/* ── Center: canvas ── */}
+          <div className="ab-canvas-wrapper">
+            {error ? (
+              <div className="ab-error">{error}</div>
+            ) : null}
+            <AgentFlowCanvas
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onEdgesAdd={handleEdgesAdd}
+              onNodesAdd={handleNodesAdd}
+              onNodeSelect={handleNodeSelect}
+              fitViewKey={fitViewKey}
+              selectedNodeId={selectedNodeId}
+            />
+          </div>
 
-                <div className="ai-agents-page__grid">
-                  <FormField label="Top K documentos">
-                    <Select
-                      className="ai-agents-page__select"
-                      value={form.topKContextDocs}
-                      onChange={(event) => updateForm("topKContextDocs", event.target.value)}
-                      disabled={derivedRagSource === "none"}
-                    >
-                      {TOP_K_OPTIONS.map((value) => (
-                        <option key={value} value={value}>
-                          {value} documentos
-                        </option>
-                      ))}
-                    </Select>
-                  </FormField>
-                </div>
-
-                <FormField label="Definicao de contexto para resposta">
-                  <Textarea
-                    rows={4}
-                    value={form.contextInstruction}
-                    onChange={(event) => updateForm("contextInstruction", event.target.value)}
-                    placeholder="Ex.: Quando houver conflito entre card e doc, priorize a documentacao oficial e explique a diferenca."
-                    disabled={derivedRagSource === "none"}
-                  />
-                </FormField>
-              </section>
-
-              <section className="ai-agents-page__rag-panel">
-                <header>
-                  <h3>Tools do agente</h3>
-                  <StatusBadge tone={activeToolsCount > 0 ? "success" : "warning"}>
-                    {activeToolsCount > 0 ? `${activeToolsCount} habilitada(s)` : "Nenhuma tool ativa"}
-                  </StatusBadge>
-                </header>
-
-                <div className="ai-agents-page__tools-group">
-                  <div className="ai-agents-page__tools-group-head">
-                    <strong>Tools nativas (acoes no card)</strong>
-                  </div>
-                  <div className="ai-agents-page__tools-list">
-                    {NATIVE_TOOL_OPTIONS.map((tool) => (
-                      <label key={tool.value} className="ai-agents-page__tool-item">
-                        <input
-                          type="checkbox"
-                          checked={form.allowedNativeTools.includes(tool.value)}
-                          onChange={() => toggleNativeTool(tool.value)}
-                        />
-                        <div>
-                          <strong>{tool.label}</strong>
-                          <p>{tool.description}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ai-agents-page__tools-group">
-                  <div className="ai-agents-page__tools-group-head">
-                    <strong>Tools do GPT</strong>
-                  </div>
-                  <div className="ai-agents-page__tools-list">
-                    {GPT_TOOL_OPTIONS.map((tool) => (
-                      <label key={tool.value} className="ai-agents-page__tool-item">
-                        <input
-                          type="checkbox"
-                          checked={form.allowedGptTools.includes(tool.value)}
-                          onChange={() => toggleGptTool(tool.value)}
-                        />
-                        <div>
-                          <strong>{tool.label}</strong>
-                          <p>{tool.description}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </section>
-
-              {error ? <p className="ai-agents-page__error">{error}</p> : null}
-
-            </form>
-          </Section>
+          {/* ── Right: config panel ── */}
+          <div className={`ab-config${isConfigPanelVisible ? ' ab-config--visible' : ''}`}>
+            <AgentConfigPanel
+              node={selectedConfigNode}
+              agent={agentMetaPanel}
+              onClose={handleCloseConfigPanel}
+              onNodeDataChange={handleNodeDataChange}
+              onAgentMetaChange={handleAgentMetaChange}
+            />
+          </div>
         </div>
       </WorkspaceFrame>
     </AppShell>

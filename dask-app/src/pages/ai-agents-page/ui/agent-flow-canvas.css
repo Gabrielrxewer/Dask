@@ -1,0 +1,370 @@
+.afc {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border-radius: var(--radius-xs, 8px);
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--agents-accent, #3b82f6) 7%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised, #fff) 96%, #eef5fb) 0%, color-mix(in oklab, var(--surface-muted, #f1f5f9) 88%, #fff) 100%);
+}
+
+.afc__flow {
+  width: 100%;
+  height: 100%;
+}
+
+.afc .react-flow__pane {
+  cursor: grab;
+}
+
+.afc .react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.afc .react-flow__background {
+  opacity: 0.42;
+}
+
+.afc .react-flow__edge-path {
+  stroke: var(--agents-accent, #3b82f6);
+  stroke-width: 2;
+}
+
+.afc .react-flow__edge.selected .react-flow__edge-path,
+.afc .react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--agents-accent-strong, #2563eb);
+  stroke-width: 2.5;
+}
+
+.afc .react-flow__arrowhead path {
+  fill: var(--agents-accent, #3b82f6);
+}
+
+.afc .react-flow__connection-path {
+  stroke: var(--agents-accent, #3b82f6);
+  stroke-width: 2;
+}
+
+.afc__rail {
+  position: absolute;
+  z-index: 7;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 238px;
+  transform: translateX(calc(-100% + 24px));
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.afc__rail--open {
+  transform: translateX(14px);
+}
+
+.afc__sidebar {
+  width: 224px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto;
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 84%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--ab-surface, var(--surface-raised, #fff)) 92%, transparent);
+  box-shadow:
+    0 18px 38px rgba(8, 28, 47, 0.12),
+    0 2px 8px rgba(8, 28, 47, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.afc__sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 76%, transparent);
+  flex-shrink: 0;
+}
+
+.afc__sidebar-title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.afc__sidebar-title span,
+.afc__sidebar-foot-label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ab-text-muted, var(--text-muted, #7a8da3));
+}
+
+.afc__sidebar-title strong {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--ab-text, var(--text-strong, #0f172a));
+}
+
+.afc__sidebar-close,
+.afc__rail-toggle,
+.afc__ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 82%, transparent);
+  background: color-mix(in oklab, var(--surface-raised, #fff) 88%, transparent);
+  color: var(--ab-text-soft, var(--text-soft, #52667c));
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    transform 0.12s ease,
+    box-shadow 0.14s ease;
+}
+
+.afc__sidebar-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.afc__sidebar-close svg {
+  width: 15px;
+  height: 15px;
+}
+
+.afc__sidebar-close:hover,
+.afc__rail-toggle:hover,
+.afc__ctrl-btn:hover {
+  color: var(--agents-accent-strong, #2563eb);
+  border-color: color-mix(in oklab, var(--agents-accent, #3b82f6) 24%, var(--ab-line, #d8e4ef));
+  background: color-mix(in oklab, var(--agents-accent, #3b82f6) 8%, var(--surface-raised, #fff));
+}
+
+.afc__sidebar-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.afc__sidebar-item {
+  --item-color: #3b82f6;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  cursor: grab;
+  user-select: none;
+  outline: none;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+
+.afc__sidebar-item:active {
+  cursor: grabbing;
+  transform: scale(0.985);
+}
+
+.afc__sidebar-item:hover,
+.afc__sidebar-item:focus-visible {
+  background: color-mix(in oklab, var(--item-color) 8%, var(--surface-raised, #fff));
+  border-color: color-mix(in oklab, var(--item-color) 26%, transparent);
+}
+
+.afc__sidebar-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--item-color);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--item-color) 16%, transparent);
+}
+
+.afc__sidebar-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.afc__sidebar-label {
+  font-size: 12.5px;
+  font-weight: 900;
+  line-height: 1.15;
+  color: var(--ab-text, var(--text-strong, #0f172a));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.afc__sidebar-desc {
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--ab-text-muted, var(--text-muted, #7a8da3));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.afc__sidebar-foot {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 76%, transparent);
+  background: color-mix(in oklab, var(--surface-muted, #f1f5f9) 54%, transparent);
+  flex-shrink: 0;
+}
+
+.afc__ctrl {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 84%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface-raised, #fff) 90%, transparent);
+}
+
+.afc__ctrl-btn {
+  flex: 1 1 0;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.afc__ctrl-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.afc__ctrl-sep {
+  width: 1px;
+  height: 100%;
+  background: color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 80%, transparent);
+}
+
+.afc__rail-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 28px;
+  height: 54px;
+  border-radius: 0 10px 10px 0;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  box-shadow: 0 8px 18px rgba(8, 28, 47, 0.1);
+}
+
+.afc__rail-toggle:hover {
+  transform: translateY(-50%) translateX(2px);
+}
+
+.afc__rail-toggle svg {
+  width: 10px;
+  height: 18px;
+}
+
+.afc__empty-hint.react-flow__panel {
+  top: 22px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.afc__empty-hint span {
+  display: block;
+  max-width: min(520px, calc(100vw - 80px));
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface-raised, #fff) 88%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 82%, transparent);
+  box-shadow: 0 8px 18px rgba(8, 28, 47, 0.06);
+  color: var(--ab-text-muted, var(--text-muted, #7a8da3));
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(8px);
+}
+
+.app-theme[data-theme="dark"] .afc {
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--accent, #3b82f6) 10%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in oklab, var(--panel, #0f172a) 92%, black) 0%, var(--panel, #0f172a) 100%);
+}
+
+.app-theme[data-theme="dark"] .afc .react-flow__background {
+  opacity: 0.28;
+}
+
+.app-theme[data-theme="dark"] .afc__sidebar {
+  background: color-mix(in oklab, var(--surface-raised, #1e293b) 92%, transparent);
+  border-color: var(--line, #334155);
+  box-shadow:
+    0 18px 38px color-mix(in oklab, black 34%, transparent),
+    0 2px 8px color-mix(in oklab, black 24%, transparent);
+}
+
+.app-theme[data-theme="dark"] .afc__sidebar-head,
+.app-theme[data-theme="dark"] .afc__sidebar-foot {
+  border-color: var(--line, #334155);
+}
+
+.app-theme[data-theme="dark"] .afc__sidebar-foot {
+  background: color-mix(in oklab, var(--panel-soft, #172033) 64%, transparent);
+}
+
+.app-theme[data-theme="dark"] .afc__sidebar-close,
+.app-theme[data-theme="dark"] .afc__rail-toggle,
+.app-theme[data-theme="dark"] .afc__ctrl {
+  background: color-mix(in oklab, var(--surface-raised, #1e293b) 88%, transparent);
+  border-color: var(--line, #334155);
+}
+
+.app-theme[data-theme="dark"] .afc__ctrl-btn {
+  color: var(--text-soft, #94a3b8);
+}
+
+.app-theme[data-theme="dark"] .afc__ctrl-sep {
+  background: var(--line, #334155);
+}
+
+.app-theme[data-theme="dark"] .afc__empty-hint span {
+  background: color-mix(in oklab, var(--surface-raised, #1e293b) 88%, transparent);
+  border-color: var(--line, #334155);
+}
+
+@media (max-width: 720px) {
+  .afc__rail {
+    top: 10px;
+    bottom: 10px;
+    width: min(232px, calc(100% - 18px));
+    transform: translateX(calc(-100% + 22px));
+  }
+
+  .afc__rail--open {
+    transform: translateX(10px);
+  }
+
+  .afc__sidebar {
+    width: calc(100% - 18px);
+  }
+}

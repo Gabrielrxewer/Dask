@@ -13,7 +13,7 @@ import {
 } from "react";
 import { cn } from "@/shared/lib/cn";
 
-interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {}
+export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {}
 
 interface SelectOption {
   disabled: boolean;

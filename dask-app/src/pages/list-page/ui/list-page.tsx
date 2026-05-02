@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
+import { useAuth } from "@/features/auth";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { useWorkspaceTaskPage } from "@/modules/workspace";
 import type { AiAgentSummary } from "@/modules/workspace/model";
+import { MemberAvatar } from "@/entities/member";
 import {
   DataTable,
   DataTableBody,
@@ -20,7 +22,22 @@ import { CreateTaskButton } from "@/features/create-task";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
 
+function formatDueDate(due: string): { label: string; overdue: boolean; isToday: boolean } {
+  if (!due) return { label: "—", overdue: false, isToday: false };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const date = new Date(`${due}T00:00:00`);
+  const diff = Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return { label: "Hoje", overdue: false, isToday: true };
+  if (diff === 1) return { label: "Amanhã", overdue: false, isToday: false };
+  if (diff === -1) return { label: "Ontem", overdue: true, isToday: false };
+  if (diff < 0) return { label: `${Math.abs(diff)}d atraso`, overdue: true, isToday: false };
+  const [, month, day] = due.split("-");
+  return { label: `${day}/${month}`, overdue: false, isToday: false };
+}
+
 export function ListPage() {
+  const { user } = useAuth();
   const {
     isLoading,
     createTask,
@@ -43,7 +60,7 @@ export function ListPage() {
     setFilterQuery,
     toggleMineFilter,
     boardConfig,
-    activeMembers,
+    activeMembers: rawActiveMembers,
     filteredTasks,
     metrics,
     selectedTask,
@@ -51,10 +68,20 @@ export function ListPage() {
     selectTask,
     clearSelectedTask
   } = useWorkspaceTaskPage();
+
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
   const [taskOrder, setTaskOrder] = useState<string[]>([]);
   const [pendingStatuses, setPendingStatuses] = useState<Record<string, TaskStatusId>>({});
   const taskTypeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
+
+  const activeMembers = useMemo(() => {
+    const userAvatarUrl = user?.avatarUrl ?? null;
+    if (!userAvatarUrl) return rawActiveMembers;
+    const memberId = user?.id;
+    const member = memberId ? rawActiveMembers[memberId] : null;
+    if (!member) return rawActiveMembers;
+    return { ...rawActiveMembers, [memberId!]: { ...member, avatarUrl: userAvatarUrl } };
+  }, [rawActiveMembers, user?.avatarUrl, user?.id]);
 
   useEffect(() => {
     setTaskOrder((currentOrder) => {
@@ -63,25 +90,20 @@ export function ListPage() {
       const preservedIds = currentOrder.filter(taskId => nextIdSet.has(taskId));
       const newIds = nextIds.filter(taskId => !currentOrder.includes(taskId));
       const nextOrder = [...preservedIds, ...newIds];
-
       if (nextOrder.length === currentOrder.length && nextOrder.every((taskId, index) => taskId === currentOrder[index])) {
         return currentOrder;
       }
-
       return nextOrder;
     });
   }, [filteredTasks]);
 
   const orderedTasks = useMemo(() => {
-    if (taskOrder.length === 0) {
-      return filteredTasks;
-    }
-
+    if (taskOrder.length === 0) return filteredTasks;
     const orderIndex = new Map(taskOrder.map((taskId, index) => [taskId, index]));
-    return [...filteredTasks].sort((leftTask, rightTask) => {
-      const leftIndex = orderIndex.get(leftTask.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightIndex = orderIndex.get(rightTask.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftIndex - rightIndex;
+    return [...filteredTasks].sort((a, b) => {
+      const ai = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const bi = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return ai - bi;
     });
   }, [filteredTasks, taskOrder]);
 
@@ -89,7 +111,6 @@ export function ListPage() {
     setPendingStatuses((currentStatuses) => {
       const nextStatuses = { ...currentStatuses };
       let changed = false;
-
       Object.entries(currentStatuses).forEach(([taskId, pendingStatus]) => {
         const task = filteredTasks.find(item => item.id === taskId);
         if (!task || task.status === pendingStatus) {
@@ -97,7 +118,6 @@ export function ListPage() {
           changed = true;
         }
       });
-
       return changed ? nextStatuses : currentStatuses;
     });
   }, [filteredTasks]);
@@ -105,26 +125,18 @@ export function ListPage() {
   useEffect(() => {
     let mounted = true;
     void listAiAgents().then((result) => {
-      if (mounted) {
-        setAgents(result.filter(agent => agent.isActive));
-      }
+      if (mounted) setAgents(result.filter(agent => agent.isActive));
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [listAiAgents]);
 
   const handleStatusChange = (taskId: string, statusId: TaskStatusId) => {
-    setPendingStatuses((currentStatuses) => ({
-      ...currentStatuses,
-      [taskId]: statusId
-    }));
-
+    setPendingStatuses(prev => ({ ...prev, [taskId]: statusId }));
     void moveTask(taskId, statusId).catch(() => {
-      setPendingStatuses((currentStatuses) => {
-        const nextStatuses = { ...currentStatuses };
-        delete nextStatuses[taskId];
-        return nextStatuses;
+      setPendingStatuses(prev => {
+        const next = { ...prev };
+        delete next[taskId];
+        return next;
       });
     });
   };
@@ -172,17 +184,18 @@ export function ListPage() {
           className="list-view__section workspace-view__section"
         >
           <DataTable
-            columns="minmax(220px, 2.2fr) 1fr 1fr 1.2fr 0.7fr"
+            columns="minmax(200px, 2.4fr) minmax(140px, 1.2fr) minmax(120px, 1fr) minmax(80px, 0.65fr) minmax(76px, 0.5fr) 68px"
             className="list-view__table"
-            responsiveMinWidth="860px"
+            responsiveMinWidth="900px"
             responsiveMinWidthMobile="760px"
           >
             <DataTableHeader>
-              <span>Titulo</span>
-              <span>Tipo</span>
-              <span>Status</span>
-              <span>Owner</span>
-              <span>Checklist</span>
+              <span>Negócio</span>
+              <span>Etapa</span>
+              <span>Responsável</span>
+              <span>Prazo</span>
+              <span>Progresso</span>
+              <span />
             </DataTableHeader>
 
             <DataTableBody>
@@ -193,27 +206,32 @@ export function ListPage() {
                   const done = task.checklist.items.filter(item => item.done).length;
                   const total = task.checklist.items.length;
                   const type = getTaskTypeDisplayMeta(taskTypeMap, task.type);
+                  const owner = activeMembers[task.assignee];
+                  const due = task.due ? formatDueDate(task.due) : null;
+                  const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
 
                   return (
-                    <DataTableRow key={task.id}>
+                    <DataTableRow key={task.id} className="list-view__row">
                       <DataTableCell>
-                        <button type="button" className="list-view__title" onClick={() => selectTask(task.id)}>
-                          <strong>{task.title}</strong>
-                          <p>{task.text}</p>
-                        </button>
+                        <div className="list-view__negocio">
+                          <button type="button" className="list-view__title" onClick={() => selectTask(task.id)}>
+                            {task.title}
+                          </button>
+                          {type && (
+                            <span
+                              className="list-view__type"
+                              style={{
+                                "--list-type-background": type.background ?? "var(--info-bg)",
+                                "--list-type-border": type.border ?? "var(--info-border)",
+                                "--list-type-text": type.text ?? "var(--text-primary)"
+                              } as CSSProperties}
+                            >
+                              {type.label}
+                            </span>
+                          )}
+                        </div>
                       </DataTableCell>
-                      <DataTableCell>
-                        <span
-                          className="list-view__type"
-                          style={{
-                            "--list-type-background": type?.background ?? "#edf5ff",
-                            "--list-type-border": type?.border ?? "#cfe2ff",
-                            "--list-type-text": type?.text ?? "#1d4e85"
-                          } as CSSProperties}
-                        >
-                          {type?.label ?? task.type}
-                        </span>
-                      </DataTableCell>
+
                       <DataTableCell>
                         <Select
                           className="list-view__status"
@@ -221,17 +239,57 @@ export function ListPage() {
                           onChange={event => handleStatusChange(task.id, event.target.value)}
                         >
                           {boardConfig.statuses.map(status => (
-                            <option key={status.id} value={status.id}>
-                              {status.label}
-                            </option>
+                            <option key={status.id} value={status.id}>{status.label}</option>
                           ))}
                         </Select>
                       </DataTableCell>
+
                       <DataTableCell>
-                        <span className="list-view__owner">{activeMembers[task.assignee]?.name}</span>
+                        {owner ? (
+                          <span className="list-view__owner-wrap">
+                            <MemberAvatar member={owner} />
+                            <span className="list-view__owner">{owner.name}</span>
+                          </span>
+                        ) : <span className="list-view__empty-cell">—</span>}
                       </DataTableCell>
+
                       <DataTableCell>
-                        <span className="list-view__checklist">{`${done}/${total}`}</span>
+                        {due ? (
+                          <span className={`list-view__due${due.overdue ? " list-view__due--overdue" : due.isToday ? " list-view__due--today" : ""}`}>
+                            {due.label}
+                          </span>
+                        ) : <span className="list-view__empty-cell">—</span>}
+                      </DataTableCell>
+
+                      <DataTableCell>
+                        {total === 0 ? (
+                          <span className="list-view__empty-cell">—</span>
+                        ) : (
+                          <span className="list-view__progress">
+                            <span className="list-view__progress-bar">
+                              <span
+                                className="list-view__progress-fill"
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </span>
+                            <span className={`list-view__progress-label${done === total ? " list-view__progress-label--done" : ""}`}>
+                              {done}/{total}
+                            </span>
+                          </span>
+                        )}
+                      </DataTableCell>
+
+                      <DataTableCell>
+                        <div className="list-view__row-actions">
+                          <button
+                            type="button"
+                            className="list-view__action-btn"
+                            onClick={() => selectTask(task.id)}
+                            title="Abrir"
+                          >
+                            Abrir
+                          </button>
+                        </div>
                       </DataTableCell>
                     </DataTableRow>
                   );

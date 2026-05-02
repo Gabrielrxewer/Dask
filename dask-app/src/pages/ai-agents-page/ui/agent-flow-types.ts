@@ -84,40 +84,40 @@ export const NODE_KIND_META: NodeKindMeta[] = [
     kind: 'trigger',
     label: 'Trigger',
     description: 'Ponto de entrada do fluxo',
-    color: '#10b981',
+    color: 'var(--decorative-cyan)',
   },
   {
     kind: 'llm',
     label: 'LLM',
     description: 'Chamada ao modelo de linguagem',
-    color: '#8b5cf6',
+    color: 'var(--decorative-purple)',
   },
   {
     kind: 'rag',
     label: 'Contexto',
     description: 'Recuperação de documentos / cards',
-    color: '#3b82f6',
+    color: 'var(--text-secondary)',
   },
   {
     kind: 'tool',
     label: 'Tool',
     description: 'Executa uma ação externa',
-    color: '#f59e0b',
+    color: 'var(--warning)',
   },
   {
     kind: 'condition',
     label: 'Condição',
     description: 'Ramificação condicional',
-    color: '#ef4444',
+    color: 'var(--danger)',
   },
   {
     kind: 'output',
     label: 'Resposta',
     description: 'Saída final do fluxo',
-    color: '#ec4899',
+    color: 'var(--decorative-purple)',
   },
 ];
 
 export function getNodeColor(kind: AgentNodeKind): string {
-  return NODE_KIND_META.find((m) => m.kind === kind)?.color ?? '#6b7280';
+  return NODE_KIND_META.find((m) => m.kind === kind)?.color ?? 'var(--primary)';
 }

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import "./billing-cancel-page.css";
 
 export function BillingCancelPage() {

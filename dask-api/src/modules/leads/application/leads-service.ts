@@ -133,6 +133,7 @@ export class LeadsService {
   public async captureLead(input: CaptureLeadInput): Promise<Lead> {
     const normalizedSource = input.externalSource ?? null;
     const normalizedExternalId = normalizeText(input.externalId);
+    const normalizedCustomerId = normalizeText(input.customerId);
 
     if (normalizedSource && normalizedExternalId) {
       const existing = await this.repo.findLeadByExternal({
@@ -146,6 +147,13 @@ export class LeadsService {
       }
     }
 
+    if (normalizedCustomerId) {
+      const customerExists = await this.repo.customerExistsInWorkspace(input.workspaceId, normalizedCustomerId);
+      if (!customerExists) {
+        throw new AppError('Customer not found for this workspace', 404);
+      }
+    }
+
     const { firstName, lastName, fullName } = resolveLeadName({
       firstName: input.firstName,
       lastName: input.lastName,
@@ -154,6 +162,7 @@ export class LeadsService {
 
     const created = await this.repo.createLead({
       workspaceId: input.workspaceId,
+      customerId: normalizedCustomerId,
       externalSource: normalizedSource,
       externalId: normalizedExternalId,
       captureSource: input.source,
@@ -616,6 +625,7 @@ export class LeadsService {
         workspaceId,
         source: 'WEBHOOK',
         externalSource: source,
+        customerId: normalizeText(leadPayload['customerId'] as string | undefined),
         externalId: normalizeText((leadPayload['externalId'] as string | undefined) ?? (leadPayload['id'] as string | undefined)),
         firstName: normalizeText(leadPayload['firstName'] as string | undefined),
         lastName: normalizeText(leadPayload['lastName'] as string | undefined),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type Task } from "@/entities/task";
 import {
@@ -7,218 +7,42 @@ import {
   type AiAgentSummary,
   type CalendarFeedSnapshot
 } from "@/modules/workspace";
-import { DashboardFilter } from "@/features/dashboard-filter";
-import { EmptyState, LoadingState, ModalShell, Section, StatusBadge, WorkspaceFrame } from "@/shared/ui";
+import { AppIcon, EmptyState, LoadingState, Section, StatusBadge, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { TaskDetailsModal } from "@/widgets/task-details";
-import "@/pages/timeline-page/ui/timeline-page.css";
+import { InfoHint } from "./agenda-info-hint";
+import { AgendaSlotModal } from "./agenda-slot-modal";
+import { AgendaToolbar } from "./agenda-toolbar";
+import { AgendaTopNavigation } from "./agenda-top-navigation";
+import {
+  AGENDA_END_HOUR,
+  AGENDA_ROW_HEIGHT,
+  AGENDA_START_HOUR,
+  MINUTE_MS,
+  SLOT_MINUTES,
+  addDays,
+  extractTaskResources,
+  getInitialSelectedDayIndex,
+  getOverlapDuration,
+  getStateLabel,
+  overlaps,
+  parseDateTime,
+  resolvePlannedWindow,
+  startOfWeek,
+  toAgendaDayLabel,
+  toHourLabel,
+  toWeekRangeLabel,
+  type AgendaSegment,
+  type AvailabilityMode,
+  type AvailabilityRow,
+  type AvailabilityRowSnapshot,
+  type AvailabilityState,
+  type DetailTarget,
+  type PlannedTask,
+  type SlotInspection,
+  type UnscheduledGroup
+} from "./agenda-page.model";
 import "./agenda-page.css";
-
-type AgendaSegment = {
-  id: string;
-  start: number;
-  end: number;
-  title: string;
-  subtitle: string;
-  tone: {
-    background: string;
-    border: string;
-    text: string;
-  };
-  taskId?: string;
-  lane: number;
-  laneCount: number;
-};
-
-type PlannedTask = {
-  task: Task;
-  window: { start: number; end: number; explicit: boolean };
-};
-
-type AvailabilityMode = "people" | "resources";
-type DetailKind = "person" | "resource";
-type AvailabilityState = "free" | "partial" | "busy" | "conflict";
-
-type AvailabilityRow = {
-  id: string;
-  label: string;
-  tasks: PlannedTask[];
-  detailKind: DetailKind;
-  subtitle?: string;
-};
-
-type AvailabilitySlot = {
-  key: string;
-  startOffset: number;
-  endOffset: number;
-  state: AvailabilityState;
-  tasks: PlannedTask[];
-  slotStart: number;
-  slotEnd: number;
-};
-
-type AvailabilityRowSnapshot = AvailabilityRow & {
-  slots: AvailabilitySlot[];
-  occupiedCount: number;
-};
-
-type DetailTarget = {
-  id: string;
-  label: string;
-  kind: DetailKind;
-};
-
-type SlotInspection = {
-  rowLabel: string;
-  rowKind: DetailKind;
-  state: AvailabilityState;
-  tasks: PlannedTask[];
-  slotStart: number;
-  slotEnd: number;
-};
-
-type UnscheduledGroup = {
-  assigneeId: string;
-  label: string;
-  tasks: Task[];
-  totalCount: number;
-  plannedCount: number;
-  doneCount: number;
-  unscheduledCount: number;
-};
-
-const MINUTE_MS = 1000 * 60;
-const DAY_MS = 1000 * 60 * 60 * 24;
-const AGENDA_START_HOUR = 6;
-const AGENDA_END_HOUR = 22;
-const SLOT_MINUTES = 30;
-const AGENDA_ROW_HEIGHT = 34;
-const RESOURCE_KEYS = ["resource", "resources", "recurso", "recursos", "room", "sala", "equipment", "equipamento"];
-
-function InfoHint({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <span className="agenda-view__info">
-      <button type="button" aria-label={label}>i</button>
-      <span role="tooltip">{children}</span>
-    </span>
-  );
-}
-
-function toHourLabel(value: number): string {
-  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
-
-function toAgendaDayLabel(value: number): string {
-  return new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" }).format(new Date(value));
-}
-
-function toWeekRangeLabel(weekStart: number): string {
-  const weekEnd = addDays(weekStart, 6);
-  return `${toAgendaDayLabel(weekStart)} - ${toAgendaDayLabel(weekEnd)}`;
-}
-
-function parseDateTime(value: string | null | undefined): number | null {
-  if (!value || value.trim().length === 0) {
-    return null;
-  }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
-}
-
-function startOfDay(value: number): number {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
-function startOfWeek(value: number): number {
-  const dayStart = startOfDay(value);
-  const weekday = new Date(dayStart).getDay();
-  const distanceToMonday = (weekday + 6) % 7;
-  return dayStart - distanceToMonday * DAY_MS;
-}
-
-function addDays(value: number, days: number): number {
-  return value + days * DAY_MS;
-}
-
-function resolvePlannedWindow(task: Task): { start: number; end: number; explicit: boolean } | null {
-  const plannedStart = parseDateTime(task.plannedStartAt);
-  const plannedEnd = parseDateTime(task.plannedEndAt);
-  if (plannedStart === null && plannedEnd === null) {
-    return null;
-  }
-  const fallbackStart = plannedStart ?? plannedEnd ?? Date.now();
-  const fallbackEnd = plannedEnd ?? fallbackStart + 1000 * 60 * 60;
-  const normalizedEnd = fallbackEnd > fallbackStart ? fallbackEnd : fallbackStart + 1000 * 60 * 30;
-  return { start: fallbackStart, end: normalizedEnd, explicit: true };
-}
-
-function normalizeResourceKey(value: string): string {
-  return value
-    .trim()
-    .replace(/^recurso:\s*/i, "")
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase("pt-BR");
-}
-
-function extractTaskResources(task: Task): Array<{ id: string; label: string }> {
-  const values = RESOURCE_KEYS.flatMap((key) => {
-    const raw = task.customFields[key];
-    if (typeof raw === "string" && raw.trim().length > 0) {
-      return raw.split(",").map(part => part.trim()).filter(Boolean);
-    }
-    if (Array.isArray(raw)) {
-      return raw.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean);
-    }
-    return [];
-  });
-
-  const fallback = task.tags
-    .filter(tag => tag.toLowerCase().startsWith("recurso:"))
-    .map(tag => tag.split(":")[1]?.trim())
-    .filter((value): value is string => Boolean(value));
-
-  const allValues = values.length > 0 ? values : fallback;
-  const byId = new Map<string, string>();
-
-  allValues.forEach((value) => {
-    const id = normalizeResourceKey(value);
-    if (!id) {
-      return;
-    }
-    if (!byId.has(id)) {
-      byId.set(id, value.trim());
-    }
-  });
-
-  return Array.from(byId.entries()).map(([id, label]) => ({ id, label }));
-}
-
-function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {
-  return endA > startB && startA < endB;
-}
-
-function getOverlapDuration(startA: number, endA: number, startB: number, endB: number): number {
-  return Math.max(0, Math.min(endA, endB) - Math.max(startA, startB));
-}
-
-function getInitialSelectedDayIndex(): number {
-  return (new Date().getDay() + 6) % 7;
-}
-
-function getStateLabel(state: AvailabilityState, count: number): string {
-  if (state === "conflict") {
-    return `Conflito (${count})`;
-  }
-  if (state === "busy") {
-    return "Ocupado";
-  }
-  if (state === "partial") {
-    return "Parcial";
-  }
-  return "Livre";
-}
 
 export function AgendaPage() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
@@ -540,9 +364,9 @@ export function AgendaPage() {
                   title: event.title,
                   subtitle: event.provider === "teams" ? "Reuniao Teams" : "Reuniao externa",
                   tone: {
-                    background: "color-mix(in oklab, #1f6feb 18%, white)",
-                    border: "color-mix(in oklab, #1f6feb 42%, transparent)",
-                    text: "#0b3d81"
+                    background: "color-mix(in oklab, var(--primary) 18%, var(--neutral-white))",
+                    border: "color-mix(in oklab, var(--primary) 42%, transparent)",
+                    text: "var(--primary)"
                   },
                   lane: 0,
                   laneCount: 1
@@ -591,36 +415,16 @@ export function AgendaPage() {
     ? `${toWeekRangeLabel(weekStart)} • ${selectedDetailTarget.kind === "person" ? "Detalhe semanal" : "Uso do recurso"}`
     : "";
   const topNavigation = (
-    <section className="agenda-top-nav" aria-label="Navegacao da agenda">
-      <div className="agenda-top-nav__tabs" role="tablist" aria-label="Modo da agenda">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={availabilityMode === "people"}
-          className={availabilityMode === "people" ? "agenda-top-nav__tab agenda-top-nav__tab--active" : "agenda-top-nav__tab"}
-          onClick={() => { setAvailabilityMode("people"); setSelectedDetailTarget(null); }}
-        >
-          Pessoas
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={availabilityMode === "resources"}
-          className={availabilityMode === "resources" ? "agenda-top-nav__tab agenda-top-nav__tab--active" : "agenda-top-nav__tab"}
-          onClick={() => { setAvailabilityMode("resources"); setSelectedDetailTarget(null); }}
-        >
-          Recursos
-        </button>
-      </div>
-      <div className="agenda-top-nav__filter">
-        <DashboardFilter
-          query={filter.query}
-          mineOnly={filter.mineOnly}
-          onQueryChange={setFilterQuery}
-          onMineToggle={toggleMineFilter}
-        />
-      </div>
-    </section>
+    <AgendaTopNavigation
+      availabilityMode={availabilityMode}
+      filter={filter}
+      onModeChange={(mode) => {
+        setAvailabilityMode(mode);
+        setSelectedDetailTarget(null);
+      }}
+      onQueryChange={setFilterQuery}
+      onMineToggle={toggleMineFilter}
+    />
   );
 
   return (
@@ -631,7 +435,7 @@ export function AgendaPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="agenda-view timeline-view">
+      <WorkspaceFrame className="agenda-view">
         <LoadingState
           text="Carregando agenda..."
           animation="agenda"
@@ -641,48 +445,19 @@ export function AgendaPage() {
         <Section
           title={sectionTitle}
           subtitle={sectionSubtitle}
-          className="agenda-view__section timeline-view__section"
+          className="agenda-view__section"
         >
           {filteredTasks.length === 0 ? (
             <EmptyState>Nao ha atividades para exibir com os filtros atuais.</EmptyState>
           ) : (
             <div className="agenda-view__surface">
-              <div className="agenda-view__topbar">
-                <div className="agenda-view__week-nav">
-                  <button
-                    type="button"
-                    className="agenda-view__nav-btn"
-                    aria-label="Semana anterior"
-                    onClick={() => setWeekAnchor(current => addDays(current, -7))}
-                  >
-                    ‹
-                  </button>
-                  <span className="agenda-view__week-label">{toWeekRangeLabel(weekStart)}</span>
-                  <button
-                    type="button"
-                    className="agenda-view__nav-btn"
-                    aria-label="Proxima semana"
-                    onClick={() => setWeekAnchor(current => addDays(current, 7))}
-                  >
-                    ›
-                  </button>
-                  {weekViewDirection !== "current" && (
-                    <button type="button" className="agenda-view__today-btn" onClick={() => setWeekAnchor(Date.now())}>
-                      Hoje
-                    </button>
-                  )}
-                </div>
-
-                <div className="agenda-view__topbar-end">
-                  <div className="agenda-view__legend" aria-label="Legenda da agenda">
-                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--free" />Livre</span>
-                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--partial" />Parcial</span>
-                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--busy" />Ocupado</span>
-                    <span><i className="agenda-view__legend-dot agenda-view__legend-dot--conflict" />Conflito</span>
-                  </div>
-                  {tasksOutsideAgenda.length > 0 ? <StatusBadge tone="warning">{`${tasksOutsideAgenda.length} fora da janela`}</StatusBadge> : null}
-                </div>
-              </div>
+              <AgendaToolbar
+                weekStart={weekStart}
+                weekViewDirection={weekViewDirection}
+                tasksOutsideAgendaCount={tasksOutsideAgenda.length}
+                onWeekAnchorChange={setWeekAnchor}
+                onToday={() => setWeekAnchor(Date.now())}
+              />
 
               {selectedDetailTarget ? (
                 <div className="agenda-view__person-shell">
@@ -692,7 +467,8 @@ export function AgendaPage() {
                       className="agenda-view__ghost-button"
                       onClick={() => setSelectedDetailTarget(null)}
                     >
-                      ‹ Voltar
+                      <AppIcon name="chevron-left" size={15} />
+                      Voltar
                     </button>
                     <div className="agenda-view__detail-heading">
                       <strong>{selectedDetailTarget.label}</strong>
@@ -923,51 +699,16 @@ export function AgendaPage() {
       </WorkspaceFrame>
 
       {selectedSlotInspection ? (
-        <ModalShell titleId="agenda-slot-title" className="agenda-slot-modal" onClose={() => setSelectedSlotInspection(null)}>
-          <div className="agenda-slot-modal__content">
-            <div className="agenda-slot-modal__header">
-              <div>
-                <h2 id="agenda-slot-title">{selectedSlotInspection.rowLabel}</h2>
-                <p>
-                  {selectedSlotInspection.rowKind === "person" ? "Pessoa" : "Recurso"} • {toAgendaDayLabel(selectedSlotInspection.slotStart)} •{" "}
-                  {`${toHourLabel(selectedSlotInspection.slotStart)} - ${toHourLabel(selectedSlotInspection.slotEnd)}`}
-                </p>
-              </div>
-              <StatusBadge tone={selectedSlotInspection.state === "conflict" ? "warning" : "default"}>
-                {getStateLabel(selectedSlotInspection.state, selectedSlotInspection.tasks.length)}
-              </StatusBadge>
-            </div>
-
-            <div className="agenda-slot-modal__list">
-              {selectedSlotInspection.tasks.map(({ task, window }) => {
-                const typeMeta = getTaskTypeDisplayMeta(typeMap, task.type);
-
-                return (
-                  <button
-                    key={`${task.id}-${window.start}`}
-                    type="button"
-                    className="agenda-slot-modal__item"
-                    style={
-                      {
-                        "--agenda-slot-item-accent": typeMeta.text,
-                        "--agenda-slot-item-accent-soft": typeMeta.background,
-                        "--agenda-slot-item-border": typeMeta.border
-                      } as CSSProperties
-                    }
-                    onClick={() => {
-                      setSelectedSlotInspection(null);
-                      selectTask(task.id);
-                    }}
-                  >
-                    <strong>{task.title}</strong>
-                    <span>{`${toHourLabel(window.start)} - ${toHourLabel(window.end)}`}</span>
-                    <small>{activeMembers[task.assignee]?.name ?? "Sem responsavel"}</small>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </ModalShell>
+        <AgendaSlotModal
+          slotInspection={selectedSlotInspection}
+          typeMap={typeMap}
+          membersById={activeMembers}
+          onClose={() => setSelectedSlotInspection(null)}
+          onSelectTask={(taskId) => {
+            setSelectedSlotInspection(null);
+            selectTask(taskId);
+          }}
+        />
       ) : null}
 
 

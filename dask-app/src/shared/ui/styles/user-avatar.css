@@ -8,20 +8,20 @@
   position: relative;
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(177, 213, 234, 0.7);
+  border: 1px solid color-mix(in srgb, var(--info-border) 70%, transparent);
   border-radius: 999px;
   display: grid;
   place-items: center;
   padding: 0;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(11, 66, 111, 0.94) 0%, rgba(10, 134, 232, 0.92) 56%, rgba(15, 159, 152, 0.9) 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--brand-blue) 92%, transparent) 56%, color-mix(in srgb, var(--decorative-cyan) 90%, transparent) 100%);
+  color: var(--neutral-white);
   cursor: default;
   font-family: var(--font-family-heading);
   font-weight: 900;
   box-shadow:
-    0 10px 22px rgba(10, 64, 112, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 10px 22px color-mix(in srgb, var(--primary) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 30%, transparent);
 }
 
 .shared-user-avatar--sm .shared-user-avatar__media {
@@ -39,11 +39,11 @@
 .shared-user-avatar--lg .shared-user-avatar__media {
   width: 76px;
   height: 76px;
-  border: 3px solid rgba(255, 255, 255, 0.9);
+  border: 3px solid color-mix(in srgb, var(--neutral-white) 90%, transparent);
   font-size: 1.08rem;
   box-shadow:
-    0 18px 34px rgba(10, 64, 112, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    0 18px 34px color-mix(in srgb, var(--primary) 20%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 32%, transparent);
 }
 
 .shared-user-avatar__media img {
@@ -60,8 +60,8 @@
   min-height: 24px;
   display: grid;
   place-items: center;
-  background: rgba(7, 31, 53, 0.74);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--primary) 74%, transparent);
+  color: var(--neutral-white);
   font-family: var(--font-family-body);
   font-size: 0.62rem;
   font-style: normal;
@@ -103,11 +103,11 @@
 
 .shared-user-avatar__actions button {
   min-height: 30px;
-  border: 1px solid rgba(184, 202, 222, 0.82);
+  border: 1px solid color-mix(in srgb, var(--info-border) 82%, transparent);
   border-radius: 8px;
   padding: 0 10px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #173653;
+  background: color-mix(in srgb, var(--neutral-white) 72%, transparent);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 800;
@@ -119,21 +119,21 @@
 }
 
 .shared-user-avatar__actions button:first-of-type {
-  border-color: rgba(10, 134, 232, 0.32);
-  background: rgba(232, 243, 254, 0.88);
-  color: #0a6fc1;
+  border-color: color-mix(in srgb, var(--brand-blue) 32%, transparent);
+  background: color-mix(in srgb, var(--info-bg) 88%, transparent);
+  color: var(--text-primary);
 }
 
 .shared-user-avatar__actions button:hover:not(:disabled) {
-  border-color: rgba(10, 134, 232, 0.34);
-  background: #ffffff;
+  border-color: color-mix(in srgb, var(--brand-blue) 34%, transparent);
+  background: var(--neutral-white);
   transform: translateY(-1px);
 }
 
 .shared-user-avatar__actions button:focus-visible {
   outline: none;
   box-shadow: none;
-  border-color: rgba(10, 134, 232, 0.4);
+  border-color: color-mix(in srgb, var(--brand-blue) 40%, transparent);
 }
 
 .shared-user-avatar__actions button:disabled {

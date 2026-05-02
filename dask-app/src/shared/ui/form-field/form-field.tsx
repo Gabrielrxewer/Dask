@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
-interface FormFieldProps {
+export interface FormFieldProps {
   label: string;
   className?: string;
   children: ReactNode;

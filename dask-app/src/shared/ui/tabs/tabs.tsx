@@ -1,30 +1,125 @@
 import { cn } from "@/shared/lib/cn";
+import { isValidElement, type DragEventHandler, type MouseEventHandler, type ReactNode } from "react";
 
-interface TabsItem<T extends string> {
+export interface TabsItem<T extends string> {
   id: T;
   label: string;
+  badge?: ReactNode;
+  disabled?: boolean;
+  locked?: boolean;
+  className?: string;
+  activeClassName?: string;
+  badgeClassName?: string;
+  labelClassName?: string;
+  title?: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  onDragOver?: DragEventHandler<HTMLButtonElement>;
+  onDragEnter?: DragEventHandler<HTMLButtonElement>;
+  onDragLeave?: DragEventHandler<HTMLButtonElement>;
+  onDrop?: DragEventHandler<HTMLButtonElement>;
 }
 
-interface TabsProps<T extends string> {
+export interface TabsProps<T extends string> {
   value: T;
   items: Array<TabsItem<T>>;
   onChange: (id: T) => void;
+  ariaLabel?: string;
   className?: string;
+  itemClassName?: string;
+  activeItemClassName?: string;
+  lockedItemClassName?: string;
+  disabledItemClassName?: string;
+  labelClassName?: string;
+  badgeClassName?: string;
+  afterItems?: ReactNode;
 }
 
-export function Tabs<T extends string>({ value, items, onChange, className = "" }: TabsProps<T>) {
+export interface WorkspaceTopNavigationProps<T extends string> extends TabsProps<T> {
+  actions?: ReactNode;
+  actionsClassName?: string;
+  tabsClassName?: string;
+}
+
+export function Tabs<T extends string>({
+  value,
+  items,
+  onChange,
+  ariaLabel,
+  className = "",
+  itemClassName,
+  activeItemClassName,
+  lockedItemClassName,
+  disabledItemClassName,
+  labelClassName,
+  badgeClassName,
+  afterItems
+}: TabsProps<T>) {
   return (
-    <div className={cn("shared-tabs", className)}>
-      {items.map(item => (
-        <button
-          key={item.id}
-          type="button"
-          className={cn("shared-tabs__item", value === item.id && "shared-tabs__item--active")}
-          onClick={() => onChange(item.id)}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
+    <>
+      <div className={cn("shared-tabs", className)} role="tablist" aria-label={ariaLabel}>
+        {items.map(item => {
+          const active = value === item.id;
+          const disabled = item.disabled === true;
+          const locked = item.locked === true;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-disabled={disabled || locked ? true : undefined}
+              disabled={disabled}
+              title={item.title}
+              className={cn(
+                "shared-tabs__item",
+                active && "shared-tabs__item--active",
+                locked && "shared-tabs__item--locked",
+                disabled && "shared-tabs__item--disabled",
+                itemClassName,
+                item.className,
+                active && activeItemClassName,
+                active && item.activeClassName,
+                locked && lockedItemClassName,
+                disabled && disabledItemClassName
+              )}
+              onClick={(event) => {
+                item.onClick?.(event);
+                if (!event.defaultPrevented && !disabled) {
+                  onChange(item.id);
+                }
+              }}
+              onDragOver={item.onDragOver}
+              onDragEnter={item.onDragEnter}
+              onDragLeave={item.onDragLeave}
+              onDrop={item.onDrop}
+            >
+              <span className={cn("shared-tabs__label", labelClassName, item.labelClassName)}>{item.label}</span>
+              {item.badge !== undefined && item.badge !== null && isValidElement(item.badge) ? (
+                item.badge
+              ) : item.badge !== undefined && item.badge !== null ? (
+                <span className={cn("shared-tabs__badge", badgeClassName, item.badgeClassName)}>{item.badge}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {afterItems}
+    </>
+  );
+}
+
+export function WorkspaceTopNavigation<T extends string>({
+  actions,
+  actionsClassName,
+  tabsClassName,
+  className,
+  ...tabsProps
+}: WorkspaceTopNavigationProps<T>) {
+  return (
+    <section className={cn("shared-top-navigation", className)} aria-label={tabsProps.ariaLabel}>
+      <Tabs {...tabsProps} className={tabsClassName} />
+      {actions ? <div className={cn("shared-top-navigation__actions", actionsClassName)}>{actions}</div> : null}
+    </section>
   );
 }

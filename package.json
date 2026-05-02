@@ -15,6 +15,7 @@
     "typecheck:api": "npm --prefix dask-api run typecheck",
     "test:app": "npm --prefix dask-app run test",
     "test:api": "npm --prefix dask-api run test",
+    "test:mock": "npm --prefix dask-api run test:mock",
     "check:app": "npm --prefix dask-app run check",
     "check:api": "npm --prefix dask-api run check",
     "check:all": "npm run check:app && npm run check:api"

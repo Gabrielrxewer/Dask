@@ -2,6 +2,7 @@ export {
   interpolateDocumentTemplate,
   resolveDocumentVariables
 } from "@/modules/workspace/model/document-variables";
+export { formatCustomerOptionDetail, getCustomerDisplayName } from "@/modules/workspace/model/customer-formatting";
 export type {
   DocumentVariableContext,
   DocumentVariables

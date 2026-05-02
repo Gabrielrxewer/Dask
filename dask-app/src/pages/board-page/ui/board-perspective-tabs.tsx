@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { cn } from "@/shared/lib/cn";
+import { AppIcon, Tabs, type TabsItem } from "@/shared/ui";
 import type { WorkspaceBoardMode } from "@/modules/workspace";
 import "./board-perspective-tabs.css";
 
@@ -56,24 +57,16 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
     }
   };
 
-  const renderPerspectiveButton = (perspective: Perspective) => (
-    <button
-      key={perspective.id}
-      type="button"
-      className={cn(
-        "shared-tabs__item",
-        value === perspective.id && "shared-tabs__item--active",
-        dragHoverId === perspective.id && "board-perspective-tabs__item--drag-hover"
-      )}
-      onClick={() => changePerspective(perspective.id)}
-      onDragOver={event => handlePerspectiveDragOver(event, perspective.id)}
-      onDragEnter={event => handlePerspectiveDragOver(event, perspective.id)}
-      onDragLeave={event => clearPerspectiveDragHover(event, perspective.id)}
-      onDrop={() => setDragHoverId("")}
-    >
-      {perspective.label}
-    </button>
-  );
+  const buildPerspectiveTabItems = (items: Perspective[]): Array<TabsItem<string>> =>
+    items.map((perspective) => ({
+      id: perspective.id,
+      label: perspective.label,
+      className: dragHoverId === perspective.id ? "board-perspective-tabs__item--drag-hover" : undefined,
+      onDragOver: event => handlePerspectiveDragOver(event, perspective.id),
+      onDragEnter: event => handlePerspectiveDragOver(event, perspective.id),
+      onDragLeave: event => clearPerspectiveDragHover(event, perspective.id),
+      onDrop: () => setDragHoverId("")
+    }));
 
   useEffect(() => {
     if (!open) return;
@@ -96,9 +89,7 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
         aria-label="Perspectiva anterior"
         title="Perspectiva anterior"
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M10 3.5L5.5 8L10 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <AppIcon name="chevron-left" size={16} strokeWidth={1.8} />
       </button>
       <button
         type="button"
@@ -108,9 +99,7 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
         aria-label="Proxima perspectiva"
         title="Proxima perspectiva"
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M6 3.5L10.5 8L6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <AppIcon name="chevron-right" size={16} strokeWidth={1.8} />
       </button>
     </div>
   ) : null;
@@ -118,9 +107,13 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
   if (perspectives.length <= MAX_VISIBLE) {
     return (
       <div className="board-perspective-tabs">
-        <div className="shared-tabs board-top-nav__tabs">
-          {perspectives.map(renderPerspectiveButton)}
-        </div>
+        <Tabs
+          value={value}
+          items={buildPerspectiveTabItems(perspectives)}
+          onChange={changePerspective}
+          ariaLabel="Perspectivas do board"
+          className="board-top-nav__tabs"
+        />
         {navigationControls}
       </div>
     );
@@ -141,12 +134,8 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
 
   const overflowHasActive = overflowItems.some(p => p.id === value);
 
-  return (
-    <div className="board-perspective-tabs">
-      <div className="shared-tabs board-top-nav__tabs">
-      {visibleItems.map(renderPerspectiveButton)}
-
-      <div ref={moreRef} className="board-perspective-tabs__more">
+  const overflowMenu = (
+    <div ref={moreRef} className="board-perspective-tabs__more">
         <button
           type="button"
           className={cn(
@@ -168,16 +157,7 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
           aria-expanded={open}
           aria-haspopup="listbox"
         >
-          <svg
-            className="board-perspective-tabs__more-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <AppIcon className="board-perspective-tabs__more-icon" name="chevron-down" size={16} strokeWidth={1.8} />
         </button>
 
         {open && (
@@ -211,7 +191,18 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
           </div>
         )}
       </div>
-      </div>
+  );
+
+  return (
+    <div className="board-perspective-tabs">
+      <Tabs
+        value={value}
+        items={buildPerspectiveTabItems(visibleItems)}
+        onChange={changePerspective}
+        ariaLabel="Perspectivas do board"
+        className="board-top-nav__tabs"
+        afterItems={overflowMenu}
+      />
       {navigationControls}
     </div>
   );

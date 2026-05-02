@@ -7,6 +7,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { SubscriptionStatus } from '../domain/types';
 import type {
   BillingRepository,
+  BillingCustomerSnapshot,
   BillingUser,
   ConnectCatalogItem,
   ConnectPaymentOrder,
@@ -123,6 +124,26 @@ export class PrismaBillingRepository implements BillingRepository {
     };
   }
 
+  async findCustomerById(workspaceId: string, customerId: string): Promise<BillingCustomerSnapshot | null> {
+    return (this.prisma.customer as any).findFirst({
+      where: { id: customerId, workspaceId },
+      select: {
+        id: true,
+        workspaceId: true,
+        name: true,
+        tradeName: true,
+        legalName: true,
+        document: true,
+        stateRegistration: true,
+        municipalRegistration: true,
+        taxRegime: true,
+        email: true,
+        phone: true,
+        address: true
+      }
+    });
+  }
+
   findConnectCatalogItemById(itemId: string): Promise<ConnectCatalogItem | null> {
     return (this.prisma as any).connectCatalogItem.findUnique({ where: { id: itemId } });
   }
@@ -216,7 +237,12 @@ export class PrismaBillingRepository implements BillingRepository {
         amount: input.amount,
         currency: input.currency,
         description: input.description,
+        customerId: input.customerId,
+        customerName: input.customerName,
         customerEmail: input.customerEmail,
+        customerDocument: input.customerDocument,
+        customerPhone: input.customerPhone,
+        customerAddress: input.customerAddress as any,
         applicationFeeAmount: input.applicationFeeAmount,
         metadata: input.metadata as any
       }

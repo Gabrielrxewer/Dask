@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-interface PageHeaderProps {
+export interface PageHeaderProps {
   label?: string;
   title: string;
   actions?: ReactNode;

@@ -11,8 +11,8 @@
 }
 
 .ms-section.shared-section {
-  border-color: #d3e0ec;
-  background: #ffffff;
+  border-color: var(--info-border);
+  background: var(--neutral-white);
   box-shadow: none;
 }
 
@@ -21,12 +21,12 @@
 }
 
 .ms-section .shared-section__header {
-  border-bottom-color: #d3e0ec;
-  background: #ffffff;
+  border-bottom-color: var(--info-border);
+  background: var(--neutral-white);
 }
 
 .ms-section .shared-section__content {
-  background: #fbfdff;
+  background: var(--neutral-white);
 }
 
 .ms-hint {
@@ -58,9 +58,9 @@
   gap: 14px;
   align-items: stretch;
   padding: 16px;
-  border: 1px solid #d3e0ec;
+  border: 1px solid var(--info-border);
   border-radius: var(--radius-xs);
-  background: #ffffff;
+  background: var(--neutral-white);
 }
 
 .ms-summary__copy {
@@ -71,7 +71,7 @@
 }
 
 .ms-summary__copy span {
-  color: #075f9d;
+  color: var(--text-primary);
   font-size: var(--font-size-2xs);
   font-weight: 900;
   text-transform: uppercase;
@@ -79,7 +79,7 @@
 
 .ms-summary__copy h2 {
   margin: 0;
-  color: #071f35;
+  color: var(--foreground);
   font-family: var(--font-family-heading);
   font-size: var(--font-size-title-md);
   font-weight: 900;
@@ -88,7 +88,7 @@
 
 .ms-summary__copy p {
   margin: 0;
-  color: #365b7a;
+  color: var(--text-secondary);
   font-size: var(--font-size-sm);
   font-weight: 600;
   line-height: 1.45;
@@ -107,16 +107,16 @@
   justify-content: center;
   gap: 4px;
   padding: 11px 12px;
-  border: 1px solid #d3e0ec;
+  border: 1px solid var(--info-border);
   border-radius: var(--radius-xs);
-  background: #f7fafc;
-  color: #1f405e;
+  background: var(--surface-tint);
+  color: var(--text-primary);
   font-size: var(--font-size-xs);
   font-weight: 800;
 }
 
 .ms-summary__grid strong {
-  color: #071f35;
+  color: var(--foreground);
   font-size: var(--font-size-xl);
   font-weight: 900;
   line-height: 1;
@@ -130,7 +130,7 @@
   min-width: 0;
   overflow-x: auto;
   padding: 0 2px 6px;
-  border-bottom: 1px solid #d3e0ec;
+  border-bottom: 1px solid var(--info-border);
   background: transparent;
 }
 
@@ -143,7 +143,7 @@
   background: transparent;
   box-shadow: none !important;
   transform: none;
-  color: #637d96;
+  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -152,9 +152,9 @@
 
 .ms-tabs .shared-tabs__item:hover {
   transform: none;
-  border-color: rgba(202, 219, 235, 0.72);
-  background: rgba(44, 120, 230, 0.06);
-  color: #355777;
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
@@ -162,7 +162,7 @@
   position: relative;
   border-color: transparent;
   background: transparent;
-  color: #163c5e;
+  color: var(--text-primary);
   font-weight: 860;
 }
 
@@ -172,7 +172,7 @@
   inset: auto 8px 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, rgba(44, 120, 230, 0.9) 0%, rgba(46, 213, 205, 0.72) 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 90%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 72%, transparent) 100%);
 }
 
 @media (max-width: 780px) {
@@ -205,11 +205,11 @@
 }
 
 .ms-feedback-bar__ok {
-  color: #1f6b43;
+  color: var(--success);
 }
 
 .ms-feedback-bar__err {
-  color: #ad2f2f;
+  color: var(--danger);
 }
 
 /* ─── Chips & badges ─────────────────────────────────────────────────────────── */
@@ -250,27 +250,27 @@
 }
 
 .ms-chip--role {
-  border-color: color-mix(in oklab, #6366f1 28%, var(--line));
-  background: color-mix(in oklab, #6366f1 10%, var(--surface-overlay));
-  color: color-mix(in oklab, #6366f1 80%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--brand-indigo) 28%, var(--line));
+  background: color-mix(in oklab, var(--brand-indigo) 10%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--brand-indigo) 80%, var(--text-strong));
 }
 
 .ms-chip--group {
-  border-color: color-mix(in oklab, #059669 28%, var(--line));
-  background: color-mix(in oklab, #059669 10%, var(--surface-overlay));
-  color: color-mix(in oklab, #059669 80%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--success) 28%, var(--line));
+  background: color-mix(in oklab, var(--success) 10%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--success) 80%, var(--text-strong));
 }
 
 .ms-chip--allow {
-  border-color: color-mix(in oklab, #16a34a 30%, var(--line));
-  background: color-mix(in oklab, #16a34a 10%, var(--surface-overlay));
-  color: color-mix(in oklab, #16a34a 82%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--success) 30%, var(--line));
+  background: color-mix(in oklab, var(--success) 10%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--success) 82%, var(--text-strong));
 }
 
 .ms-chip--deny {
-  border-color: color-mix(in oklab, #dc2626 28%, var(--line));
-  background: color-mix(in oklab, #dc2626 10%, var(--surface-overlay));
-  color: color-mix(in oklab, #dc2626 80%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--danger) 28%, var(--line));
+  background: color-mix(in oklab, var(--danger) 10%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--danger) 80%, var(--text-strong));
 }
 
 .ms-chip--module {
@@ -323,15 +323,15 @@
 }
 
 .ms-badge--green {
-  background: color-mix(in oklab, #16a34a 14%, var(--surface-overlay));
-  color: color-mix(in oklab, #16a34a 85%, var(--text-strong));
-  border-color: color-mix(in oklab, #16a34a 26%, var(--line));
+  background: color-mix(in oklab, var(--success) 14%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--success) 85%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--success) 26%, var(--line));
 }
 
 .ms-badge--red {
-  background: color-mix(in oklab, #dc2626 12%, var(--surface-overlay));
-  color: color-mix(in oklab, #dc2626 82%, var(--text-strong));
-  border-color: color-mix(in oklab, #dc2626 24%, var(--line));
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface-overlay));
+  color: color-mix(in oklab, var(--danger) 82%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--danger) 24%, var(--line));
 }
 
 .ms-badge--blue {
@@ -378,8 +378,8 @@
   gap: 12px;
   padding: 16px;
   border-radius: var(--radius-xs);
-  border: 1px solid #d3e0ec;
-  background: #ffffff;
+  border: 1px solid var(--info-border);
+  background: var(--neutral-white);
   margin-bottom: 20px;
 }
 
@@ -401,8 +401,8 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-xs);
-  border: 1px solid #d3e0ec;
-  background: #ffffff;
+  border: 1px solid var(--info-border);
+  background: var(--neutral-white);
   flex-wrap: wrap;
 }
 
@@ -456,16 +456,16 @@
 }
 
 .ms-module-card {
-  border: 1px solid #d3e0ec;
+  border: 1px solid var(--info-border);
   border-radius: var(--radius-xs);
   padding: 14px 16px;
-  background: #ffffff;
+  background: var(--neutral-white);
   transition: border-color 0.18s, background 0.18s;
 }
 
 .ms-module-card--enabled {
   border-color: color-mix(in oklab, var(--accent) 22%, var(--line));
-  background: color-mix(in oklab, var(--accent) 4%, #ffffff);
+  background: color-mix(in oklab, var(--accent) 4%, var(--neutral-white));
 }
 
 .ms-module-card__head {
@@ -535,8 +535,8 @@
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  background: var(--neutral-white);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--neutral-black) 22%, transparent);
   transition: transform 0.2s;
   flex-shrink: 0;
 }
@@ -554,8 +554,8 @@
 }
 
 .ms-status-dot--on {
-  background: #22c55e;
-  box-shadow: 0 0 0 3px color-mix(in oklab, #22c55e 18%, transparent);
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--success) 18%, transparent);
 }
 
 /* ─── Group list ─────────────────────────────────────────────────────────────── */
@@ -566,10 +566,10 @@
 }
 
 .ms-group-card {
-  border: 1px solid #d3e0ec;
+  border: 1px solid var(--info-border);
   border-radius: var(--radius-xs);
   padding: 14px 16px;
-  background: #ffffff;
+  background: var(--neutral-white);
   display: grid;
   gap: 10px;
 }
@@ -624,15 +624,15 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-xs);
-  border: 1px solid #d3e0ec;
-  background: #ffffff;
+  border: 1px solid var(--info-border);
+  background: var(--neutral-white);
   transition: border-color 0.16s, background 0.16s;
   flex-wrap: wrap;
 }
 
 .ms-member-row:hover {
   border-color: color-mix(in oklab, var(--accent) 16%, var(--line));
-  background: color-mix(in oklab, var(--accent) 3%, #ffffff);
+  background: color-mix(in oklab, var(--accent) 3%, var(--neutral-white));
 }
 
 .ms-member-row__info {
@@ -722,7 +722,7 @@
 }
 
 .ms-perm-picker__item input[type="checkbox"] {
-  accent-color: var(--accent, #6366f1);
+  accent-color: var(--accent, var(--brand-indigo));
   width: 14px;
   height: 14px;
   flex-shrink: 0;
@@ -792,7 +792,7 @@
 }
 
 .ms-group-picker__item input[type="checkbox"] {
-  accent-color: var(--accent, #6366f1);
+  accent-color: var(--accent, var(--brand-indigo));
   width: 15px;
   height: 15px;
   margin-top: 2px;
@@ -828,7 +828,7 @@
 }
 
 .ms-toggle-label input[type="checkbox"] {
-  accent-color: var(--accent, #6366f1);
+  accent-color: var(--accent, var(--brand-indigo));
   width: 15px;
   height: 15px;
   cursor: pointer;
@@ -840,13 +840,13 @@
   margin-top: 16px;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid color-mix(in oklab, #6366f1 16%, var(--line));
-  background: color-mix(in oklab, #6366f1 5%, var(--surface-card));
+  border: 1px solid color-mix(in oklab, var(--brand-indigo) 16%, var(--line));
+  background: color-mix(in oklab, var(--brand-indigo) 5%, var(--surface-card));
 }
 
 .ms-perm-source--deny {
-  border-color: color-mix(in oklab, #dc2626 16%, var(--line));
-  background: color-mix(in oklab, #dc2626 5%, var(--surface-card));
+  border-color: color-mix(in oklab, var(--danger) 16%, var(--line));
+  background: color-mix(in oklab, var(--danger) 5%, var(--surface-card));
 }
 
 .ms-perm-source__label {
@@ -949,15 +949,15 @@
 }
 
 .ms-perm-breakdown__layer-icon--role {
-  background: #6366f1;
+  background: var(--brand-indigo);
 }
 
 .ms-perm-breakdown__layer-icon--group {
-  background: #059669;
+  background: var(--success);
 }
 
 .ms-perm-breakdown__layer-icon--override {
-  background: #f59e0b;
+  background: var(--warning);
 }
 
 /* ─── Group preview (in group editor info tab) ─────────────────────────────────── */
@@ -985,7 +985,7 @@
 
 .ms-drawer {
   width: min(560px, 96vw);
-  background: var(--surface-card, white);
+  background: var(--surface-card, var(--neutral-white));
   border-radius: var(--radius-xl, 24px);
   display: grid;
   grid-template-rows: auto auto auto 1fr auto;
@@ -1054,9 +1054,9 @@
   padding: 10px 20px;
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: color-mix(in oklab, #f59e0b 82%, var(--text-strong));
-  background: color-mix(in oklab, #f59e0b 10%, var(--surface-card));
-  border-bottom: 1px solid color-mix(in oklab, #f59e0b 20%, var(--line));
+  color: color-mix(in oklab, var(--warning) 82%, var(--text-strong));
+  background: color-mix(in oklab, var(--warning) 10%, var(--surface-card));
+  border-bottom: 1px solid color-mix(in oklab, var(--warning) 20%, var(--line));
 }
 
 .ms-drawer__nav {
@@ -1118,9 +1118,9 @@
   margin: 0;
   padding: 10px 20px;
   font-size: var(--font-size-xs);
-  color: #ad2f2f;
-  background: color-mix(in oklab, #dc2626 6%, var(--surface-card));
-  border-top: 1px solid color-mix(in oklab, #dc2626 14%, var(--line));
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 6%, var(--surface-card));
+  border-top: 1px solid color-mix(in oklab, var(--danger) 14%, var(--line));
 }
 
 .ms-drawer__footer {
@@ -1236,7 +1236,7 @@
 }
 
 .ms-matrix__cell--yes {
-  color: #16a34a;
+  color: var(--success);
 }
 
 .ms-matrix__cell--no {
@@ -1306,23 +1306,23 @@
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item {
   background: transparent !important;
   border-color: transparent !important;
-  color: #7e96ae;
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item:hover {
-  border-color: rgba(72, 101, 131, 0.72) !important;
-  background: rgba(72, 148, 255, 0.08) !important;
-  color: #c3d8ee;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item--active {
   border-color: transparent !important;
   background: transparent !important;
-  color: #e4f0fc;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item--active::before {
-  background: linear-gradient(90deg, rgba(72, 148, 255, 0.96) 0%, rgba(62, 219, 211, 0.76) 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 76%, transparent) 100%);
 }
 
 .app-theme[data-theme="dark"] .members-settings__feedback {

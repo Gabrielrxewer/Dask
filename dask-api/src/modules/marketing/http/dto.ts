@@ -223,6 +223,21 @@ export const aiImproveVariantDto = z.object({
   tone: z.string().trim().max(120).optional()
 });
 
+export const signalInboxQueryDto = z.object({
+  types: z.string().trim().optional(),
+  includeDismissed: z.enum(['true', 'false']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional()
+});
+
+export const signalEventParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  eventId: z.string().uuid()
+});
+
+export const markSignalDto = z.object({
+  action: z.enum(['seen', 'dismissed'])
+});
+
 export const providerWebhookParamsDto = z.object({
   provider: z.string().trim().min(1).max(40)
 });

@@ -1,5 +1,11 @@
 export { calendarFeedService, workspaceService } from "@/modules/workspace/api";
-export { interpolateDocumentTemplate, resolveDocumentVariables, useWorkspaceTaskPage } from "@/modules/workspace/model";
+export {
+  formatCustomerOptionDetail,
+  getCustomerDisplayName,
+  interpolateDocumentTemplate,
+  resolveDocumentVariables,
+  useWorkspaceTaskPage
+} from "@/modules/workspace/model";
 export type {
   AiAgentSummary,
   AiAgentConfig,

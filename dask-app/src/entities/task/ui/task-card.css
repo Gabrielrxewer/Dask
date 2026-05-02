@@ -4,7 +4,7 @@
   border-radius: 16px;
   border: 1px solid var(--border-default);
   border-left: 4px solid var(--task-card-priority-border);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 96%, white) 0%, var(--surface-1) 100%);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 96%, var(--neutral-white)) 0%, var(--surface-1) 100%);
   padding: 12px 12px 11px;
   cursor: grab;
   box-shadow:
@@ -15,15 +15,15 @@
 }
 
 .task-card--priority-0 {
-  --task-card-priority-soft: color-mix(in oklab, #cf2f2a 14%, var(--surface-1));
-  --task-card-priority-soft-strong: color-mix(in oklab, #cf2f2a 24%, var(--surface-1));
-  --task-card-priority-border: #c42a24;
+  --task-card-priority-soft: color-mix(in oklab, var(--danger) 14%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--danger) 24%, var(--surface-1));
+  --task-card-priority-border: var(--danger);
 }
 
 .task-card--priority-1 {
-  --task-card-priority-soft: color-mix(in oklab, #de5b2b 14%, var(--surface-1));
-  --task-card-priority-soft-strong: color-mix(in oklab, #de5b2b 24%, var(--surface-1));
-  --task-card-priority-border: #d45226;
+  --task-card-priority-soft: color-mix(in oklab, var(--danger) 14%, var(--surface-1));
+  --task-card-priority-soft-strong: color-mix(in oklab, var(--danger) 24%, var(--surface-1));
+  --task-card-priority-border: var(--danger);
 }
 
 .task-card--priority-2 {
@@ -126,13 +126,13 @@
 }
 
 .task-card__priority--0 {
-  background: color-mix(in oklab, #c42a24 14%, white);
-  color: #b22621;
+  background: color-mix(in oklab, var(--danger) 14%, var(--neutral-white));
+  color: var(--danger);
 }
 
 .task-card__priority--1 {
-  background: color-mix(in oklab, #d45226 14%, white);
-  color: #c24c24;
+  background: color-mix(in oklab, var(--danger) 14%, var(--neutral-white));
+  color: var(--danger);
 }
 
 .task-card__priority--2 {
@@ -178,7 +178,7 @@
 .task-card__ghost:hover,
 .task-card__ghost[aria-expanded="true"] {
   background: var(--selected-bg);
-  color: var(--primary-hover);
+  color: var(--text-primary);
   box-shadow: 0 8px 16px color-mix(in oklab, var(--primary) 14%, transparent);
   transform: translateY(-1px);
 }
@@ -224,7 +224,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--text-muted) 92%, var(--primary) 8%);
+  color: var(--text-secondary);
   padding: 2px 4px 0;
 }
 
@@ -264,7 +264,7 @@
 .task-card__menu-action--danger:focus-visible {
   background: color-mix(in oklab, var(--danger-bg) 82%, var(--surface-1));
   border-color: color-mix(in oklab, var(--danger) 28%, var(--danger-border));
-  color: color-mix(in oklab, var(--danger) 82%, black);
+  color: color-mix(in oklab, var(--danger) 82%, var(--neutral-black));
 }
 
 .task-card__menu-action:focus-visible {
@@ -321,8 +321,8 @@
   padding: 0 4px;
 }
 
-.task-card__menu-priority-dot--0 { background: #c42a24; }
-.task-card__menu-priority-dot--1 { background: #d45226; }
+.task-card__menu-priority-dot--0 { background: var(--danger); }
+.task-card__menu-priority-dot--1 { background: var(--danger); }
 .task-card__menu-priority-dot--2 { background: var(--warning); }
 .task-card__menu-priority-dot--3 { background: var(--success); }
 .task-card__menu-priority-dot--4 { background: var(--info); }
@@ -370,7 +370,7 @@
 .app-theme[data-theme="dark"] .task-card__menu-action--danger:focus-visible {
   background: color-mix(in oklab, var(--danger-bg) 88%, var(--surface-1));
   border-color: color-mix(in oklab, var(--danger) 34%, var(--danger-border));
-  color: color-mix(in oklab, var(--danger) 90%, white);
+  color: color-mix(in oklab, var(--danger) 90%, var(--neutral-white));
 }
 
 .app-theme[data-theme="dark"] .task-card__menu-priority-pill {
@@ -582,20 +582,20 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid color-mix(in oklab, var(--task-card-priority-border) 36%, rgba(177, 204, 227, 0.82)) !important;
+  border: 1px solid color-mix(in oklab, var(--task-card-priority-border) 36%, color-mix(in srgb, var(--border-default) 82%, transparent)) !important;
   border-left: 0 !important;
   border-radius: 24px !important;
   background:
     linear-gradient(
       145deg,
-      color-mix(in oklab, white 92%, var(--task-card-priority-border) 8%) 0%,
-      color-mix(in oklab, white 87%, var(--task-card-priority-border) 13%) 42%,
-      color-mix(in oklab, white 78%, var(--task-card-priority-border) 22%) 100%
+      color-mix(in oklab, var(--neutral-white) 92%, var(--task-card-priority-border) 8%) 0%,
+      color-mix(in oklab, var(--neutral-white) 87%, var(--task-card-priority-border) 13%) 42%,
+      color-mix(in oklab, var(--neutral-white) 78%, var(--task-card-priority-border) 22%) 100%
     ) !important;
   padding: 12px 12px 11px !important;
   box-shadow:
-    0 12px 24px color-mix(in oklab, var(--task-card-priority-border) 7%, rgba(12, 42, 71, 0.04)),
-    0 1px 0 rgba(255, 255, 255, 0.86) inset !important;
+    0 12px 24px color-mix(in oklab, var(--task-card-priority-border) 7%, color-mix(in srgb, var(--ink-shadow) 4%, transparent)),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 86%, transparent) inset !important;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"]::before {
@@ -606,9 +606,9 @@
   background:
     linear-gradient(
       180deg,
-      color-mix(in oklab, var(--task-card-priority-border) 96%, white 4%) 0%,
-      color-mix(in oklab, var(--task-card-priority-border) 82%, white 18%) 52%,
-      color-mix(in oklab, var(--task-card-priority-border) 62%, white 38%) 100%
+      color-mix(in oklab, var(--task-card-priority-border) 96%, var(--neutral-white) 4%) 0%,
+      color-mix(in oklab, var(--task-card-priority-border) 82%, var(--neutral-white) 18%) 52%,
+      color-mix(in oklab, var(--task-card-priority-border) 62%, var(--neutral-white) 38%) 100%
     ) !important;
   box-shadow: 0 0 18px color-mix(in oklab, var(--task-card-priority-border) 24%, transparent) !important;
 }
@@ -618,7 +618,7 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.18), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 18%, transparent), transparent 42%),
     radial-gradient(
       circle at 100% 0%,
       color-mix(in oklab, var(--task-card-priority-border) 12%, transparent) 0%,
@@ -634,17 +634,17 @@
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"]:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 48%, rgba(155, 193, 226, 0.94)) !important;
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 48%, color-mix(in srgb, var(--primary) 94%, transparent)) !important;
   box-shadow:
-    0 16px 30px color-mix(in oklab, var(--task-card-priority-border) 8%, rgba(12, 42, 71, 0.055)),
-    0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
+    0 16px 30px color-mix(in oklab, var(--task-card-priority-border) 8%, color-mix(in srgb, var(--ink-shadow) 5.5%, transparent)),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 90%, transparent) inset !important;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"].task-card--dragging {
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 42%, rgba(177, 204, 227, 0.7)) !important;
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 42%, color-mix(in srgb, var(--border-default) 70%, transparent)) !important;
   box-shadow:
-    0 10px 18px color-mix(in oklab, var(--task-card-priority-border) 8%, rgba(12, 42, 71, 0.05)),
-    0 1px 0 rgba(255, 255, 255, 0.82) inset !important;
+    0 10px 18px color-mix(in oklab, var(--task-card-priority-border) 8%, color-mix(in srgb, var(--ink-shadow) 5%, transparent)),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 82%, transparent) inset !important;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"].task-card--compact {
@@ -668,8 +668,8 @@
   flex: 0 0 26px;
   border: 0;
   border-radius: 10px;
-  background: color-mix(in oklab, var(--task-card-priority-border) 16%, rgba(255, 255, 255, 0.78)) !important;
-  color: color-mix(in oklab, var(--task-card-priority-border) 82%, #294863) !important;
+  background: color-mix(in oklab, var(--task-card-priority-border) 16%, color-mix(in srgb, var(--neutral-white) 78%, transparent)) !important;
+  color: color-mix(in oklab, var(--task-card-priority-border) 82%, var(--text-primary)) !important;
   box-shadow: none;
 }
 
@@ -682,21 +682,21 @@
   width: 26px;
   height: 26px;
   border: 0;
-  background: rgba(24, 50, 74, 0.04);
-  color: #6c86a1;
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view .task-card__ghost:hover,
 .app-theme:not([data-theme="dark"]) .board-view .task-card__ghost[aria-expanded="true"] {
-  background: rgba(44, 120, 230, 0.1);
-  color: #17446f;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view .task-card__title {
   margin-bottom: 4px;
-  color: #102844;
+  color: var(--text-primary);
   font-family: var(--font-family-heading);
   font-size: 0.92rem;
   font-weight: 800;
@@ -705,7 +705,7 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-view .task-card__text {
-  color: #54708a;
+  color: var(--text-secondary);
   font-size: 0.76rem;
   line-height: 1.44;
   -webkit-line-clamp: 1;
@@ -741,27 +741,27 @@
 .app-theme:not([data-theme="dark"]) .board-view .task-card__meta {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 118px), 1fr));
   gap: 7px;
-  color: #4a6480;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"] {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid color-mix(in oklab, var(--task-card-priority-border) 38%, rgba(77, 103, 129, 0.82)) !important;
+  border: 1px solid color-mix(in oklab, var(--task-card-priority-border) 26%, var(--border-default)) !important;
   border-left: 0 !important;
   border-radius: 24px !important;
   background:
     linear-gradient(
       145deg,
-      color-mix(in oklab, #101a25 88%, var(--task-card-priority-border) 12%) 0%,
-      color-mix(in oklab, #132231 80%, var(--task-card-priority-border) 20%) 42%,
-      color-mix(in oklab, #182838 70%, var(--task-card-priority-border) 30%) 100%
+      color-mix(in oklab, var(--surface-2) 92%, var(--task-card-priority-border) 8%) 0%,
+      color-mix(in oklab, var(--surface-1) 94%, var(--task-card-priority-border) 6%) 48%,
+      color-mix(in oklab, var(--surface-1) 98%, var(--neutral-black) 2%) 100%
     ) !important;
   padding: 12px 12px 11px !important;
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset !important;
+    0 14px 28px color-mix(in srgb, var(--neutral-black) 24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset !important;
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"]::before {
@@ -772,9 +772,9 @@
   background:
     linear-gradient(
       180deg,
-      color-mix(in oklab, var(--task-card-priority-border) 96%, white 4%) 0%,
-      color-mix(in oklab, var(--task-card-priority-border) 82%, white 18%) 52%,
-      color-mix(in oklab, var(--task-card-priority-border) 62%, white 38%) 100%
+      color-mix(in oklab, var(--task-card-priority-border) 96%, var(--neutral-white) 4%) 0%,
+      color-mix(in oklab, var(--task-card-priority-border) 82%, var(--neutral-white) 18%) 52%,
+      color-mix(in oklab, var(--task-card-priority-border) 62%, var(--neutral-white) 38%) 100%
     ) !important;
   box-shadow: 0 0 18px color-mix(in oklab, var(--task-card-priority-border) 24%, transparent) !important;
 }
@@ -784,10 +784,10 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 3%, transparent), transparent 42%),
     radial-gradient(
       circle at 100% 0%,
-      color-mix(in oklab, var(--task-card-priority-border) 16%, transparent) 0%,
+      color-mix(in oklab, var(--task-card-priority-border) 9%, transparent) 0%,
       transparent 30%
     ) !important;
   pointer-events: none;
@@ -800,17 +800,17 @@
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"]:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 54%, rgba(101, 134, 168, 0.96)) !important;
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 40%, var(--border-strong)) !important;
   box-shadow:
-    0 18px 32px rgba(0, 0, 0, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+    0 18px 32px color-mix(in srgb, var(--neutral-black) 28%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset !important;
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"].task-card--dragging {
-  border-color: color-mix(in oklab, var(--task-card-priority-border) 46%, rgba(86, 114, 141, 0.72)) !important;
+  border-color: color-mix(in oklab, var(--task-card-priority-border) 34%, var(--border-default)) !important;
   box-shadow:
-    0 10px 18px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset !important;
+    0 10px 18px color-mix(in srgb, var(--neutral-black) 22%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset !important;
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"].task-card--compact {
@@ -834,8 +834,8 @@
   flex: 0 0 26px;
   border: 0;
   border-radius: 10px;
-  background: color-mix(in oklab, var(--task-card-priority-border) 18%, rgba(15, 26, 39, 0.84)) !important;
-  color: color-mix(in oklab, var(--task-card-priority-border) 74%, #d8ebff) !important;
+  background: color-mix(in oklab, var(--task-card-priority-border) 13%, var(--surface-2)) !important;
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
@@ -848,21 +848,21 @@
   width: 26px;
   height: 26px;
   border: 0;
-  background: rgba(235, 243, 251, 0.04);
-  color: #8ea4bc;
+  background: color-mix(in srgb, var(--surface-tint) 4%, transparent);
+  color: var(--text-muted);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-view .task-card__ghost:hover,
 .app-theme[data-theme="dark"] .board-view .task-card__ghost[aria-expanded="true"] {
-  background: rgba(72, 148, 255, 0.16);
-  color: #dcecff;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-view .task-card__title {
   margin-bottom: 4px;
-  color: #e2edf8;
+  color: var(--text-primary);
   font-family: var(--font-family-heading);
   font-size: 0.92rem;
   font-weight: 800;
@@ -871,7 +871,7 @@
 }
 
 .app-theme[data-theme="dark"] .board-view .task-card__text {
-  color: #8ca3ba;
+  color: var(--text-secondary);
   font-size: 0.76rem;
   line-height: 1.44;
   -webkit-line-clamp: 1;
@@ -907,7 +907,7 @@
 .app-theme[data-theme="dark"] .board-view .task-card__meta {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 118px), 1fr));
   gap: 7px;
-  color: #8da3ba;
+  color: var(--text-primary);
 }
 
 @media (max-width: 520px) {

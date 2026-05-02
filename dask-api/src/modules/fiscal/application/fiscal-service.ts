@@ -483,7 +483,10 @@ export class FiscalService {
         customerName: asString(customer.name) ?? 'Cliente Stripe',
         customerTaxId: asString(customer.document),
         customerEmail: asString(customer.email),
-        customerPhone: asString(customer.phone)
+        customerPhone: asString(customer.phone),
+        customerStateRegistration: asString(customer.stateRegistration),
+        customerMunicipalRegistration: asString(customer.municipalRegistration),
+        customerAddress: asRecord(customer.address)
       })
     });
 
@@ -872,10 +875,12 @@ export class FiscalService {
     const documentType = hintToType(metadata.document_hint);
     const origin = originFromStripe(metadata);
     const amountTotal = centsToDec(session.amount_total);
-    const customerTaxId = session.customer_details?.tax_ids?.[0]?.value ?? null;
-    const customerName = asString(session.customer_details?.name) ?? 'Cliente Stripe';
-    const customerEmail = asString(session.customer_details?.email);
-    const customerPhone = asString(session.customer_details?.phone);
+    const customerTaxId = session.customer_details?.tax_ids?.[0]?.value ?? asString(metadata.customer_document);
+    const customerName = asString(session.customer_details?.name) ?? asString(metadata.customer_name) ?? 'Cliente Stripe';
+    const customerEmail = asString(session.customer_details?.email) ?? asString(metadata.customer_email);
+    const customerPhone = asString(session.customer_details?.phone) ?? asString(metadata.customer_phone);
+    const customerStateRegistration = asString(metadata.customer_state_registration);
+    const customerMunicipalRegistration = asString(metadata.customer_municipal_registration);
     const internalReference = sanitizeDocumentReference(metadata.internal_sale_id ?? metadata.order_id ?? `stripe-${session.id}`);
     const lineItems = await this.fetchStripeCheckoutLineItems(session.id, stripeAccountId);
 
@@ -886,7 +891,15 @@ export class FiscalService {
       metadata,
       amountTotal,
       currency: asString(session.currency) ?? 'BRL',
-      customer: { name: customerName, document: customerTaxId, email: customerEmail, phone: customerPhone },
+      customer: {
+        id: asString(metadata.customer_id),
+        name: customerName,
+        document: customerTaxId,
+        email: customerEmail,
+        phone: customerPhone,
+        stateRegistration: customerStateRegistration,
+        municipalRegistration: customerMunicipalRegistration
+      },
       stripeAccountId: stripeAccountId ?? null,
       lineItems
     };
@@ -955,7 +968,9 @@ export class FiscalService {
         customerName,
         customerTaxId,
         customerEmail,
-        customerPhone
+        customerPhone,
+        customerStateRegistration,
+        customerMunicipalRegistration
       })
     });
 
@@ -1127,6 +1142,9 @@ export class FiscalService {
     customerTaxId: string | null;
     customerEmail: string | null;
     customerPhone: string | null;
+    customerStateRegistration?: string | null;
+    customerMunicipalRegistration?: string | null;
+    customerAddress?: Record<string, unknown> | null;
   }): CreateFiscalDocumentInput['parties'] {
     if (!input.customerTaxId) {
       return [];
@@ -1138,11 +1156,11 @@ export class FiscalService {
         name: input.customerName,
         legalName: input.customerName,
         cnpjCpf: input.customerTaxId,
-        stateRegistration: null,
-        municipalRegistration: null,
+        stateRegistration: input.customerStateRegistration ?? null,
+        municipalRegistration: input.customerMunicipalRegistration ?? null,
         email: input.customerEmail,
         phone: input.customerPhone,
-        address: null,
+        address: input.customerAddress ?? null,
         metadata: {
           source: 'stripe_customer_details'
         }

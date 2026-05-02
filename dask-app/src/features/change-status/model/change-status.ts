@@ -18,7 +18,7 @@ export function setTaskDragPayload(event: DragEvent<HTMLElement>, taskId: string
   preview.style.pointerEvents = "none";
   preview.style.opacity = "0.96";
   preview.style.transform = "rotate(2deg)";
-  preview.style.boxShadow = "0 18px 36px rgba(12, 42, 73, 0.22)";
+  preview.style.boxShadow = "0 18px 36px color-mix(in srgb, var(--primary) 22%, transparent)";
   preview.style.zIndex = "9999";
   preview.classList.add("task-card--drag-preview");
 

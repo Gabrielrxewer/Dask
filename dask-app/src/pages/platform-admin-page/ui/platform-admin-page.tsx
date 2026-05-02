@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth";
 import { adminTelemetryService } from "@/pages/platform-admin-page/api/admin-telemetry-service";
 import type { AdminTelemetryOverview } from "@/pages/platform-admin-page/model/types";
+import { MetricCard } from "@/shared/ui";
 import "./platform-admin-page.css";
 
 function formatPct(value: number): string {
@@ -234,72 +235,48 @@ export function PlatformAdminPage() {
         </header>
 
         <section className="platform-admin-page__kpi-grid">
-          <article className="platform-admin-page__kpi-card">
-            <div className="platform-admin-page__kpi-head">
-              <span>Usuarios totais</span>
-              <InfoHint
-                label="Usuarios totais"
-                detail="Numero total de usuarios cadastrados na plataforma, incluindo ativos e inativos."
-              />
-            </div>
-            <strong>{formatCompact(overview.users.total)}</strong>
-            <small>{overview.users.verified} verificados</small>
-          </article>
-          <article className="platform-admin-page__kpi-card">
-            <div className="platform-admin-page__kpi-head">
-              <span>Ativos (7d)</span>
-              <InfoHint
-                label="Ativos 7 dias"
-                detail="Usuarios unicos que tiveram atividade recente. A linha inferior mostra os ativos nas ultimas 24h."
-              />
-            </div>
-            <strong>{formatCompact(overview.users.activeByPeriod.week)}</strong>
-            <small>{overview.users.activeByPeriod.day} no dia</small>
-          </article>
-          <article className="platform-admin-page__kpi-card">
-            <div className="platform-admin-page__kpi-head">
-              <span>Logins (30d)</span>
-              <InfoHint
-                label="Logins 30 dias"
-                detail="Volume de autenticacoes bem-sucedidas no mes. A linha inferior exibe o recorte de 24h."
-              />
-            </div>
-            <strong>{formatCompact(overview.auth.loginByPeriod.month)}</strong>
-            <small>{overview.auth.loginByPeriod.day} nas ultimas 24h</small>
-          </article>
-          <article className={`platform-admin-page__kpi-card platform-admin-page__kpi-card--latency-${latencyP95Tone}`}>
-            <div className="platform-admin-page__kpi-head">
-              <span>Latencia p95</span>
-              <InfoHint
-                label="Latencia p95"
-                detail="Tempo em milissegundos abaixo do qual 95% das requisicoes finalizaram no periodo de 24h."
-              />
-            </div>
-            <strong>{formatLatencyMs(overview.backend.latency24h.p95Ms)}</strong>
-            <small>p99 {formatLatencyMs(overview.backend.latency24h.p99Ms)}</small>
-          </article>
-          <article className="platform-admin-page__kpi-card">
-            <div className="platform-admin-page__kpi-head">
-              <span>IA (falha 24h)</span>
-              <InfoHint
-                label="Falha de IA 24h"
-                detail="Taxa de execucoes com erro nos fluxos de IA. A linha inferior mostra falhas absolutas e total de runs."
-              />
-            </div>
-            <strong>{formatPct(overview.ai.failureRate24h)}</strong>
-            <small>{overview.ai.failed24h} falhas / {overview.ai.runs24h} runs</small>
-          </article>
-          <article className="platform-admin-page__kpi-card">
-            <div className="platform-admin-page__kpi-head">
-              <span>Outbox pendente</span>
-              <InfoHint
-                label="Outbox pendente"
-                detail="Eventos aguardando processamento/entrega. A linha inferior destaca itens atualmente em retry."
-              />
-            </div>
-            <strong>{formatCompact(overview.outbox.pending)}</strong>
-            <small>{overview.outbox.retryPending} em retry</small>
-          </article>
+          <MetricCard
+            label="Usuarios totais"
+            value={formatCompact(overview.users.total)}
+            subtitle={`${overview.users.verified} verificados`}
+            helpText="Numero total de usuarios cadastrados na plataforma, incluindo ativos e inativos."
+            className="platform-admin-page__kpi-card"
+          />
+          <MetricCard
+            label="Ativos (7d)"
+            value={formatCompact(overview.users.activeByPeriod.week)}
+            subtitle={`${overview.users.activeByPeriod.day} no dia`}
+            helpText="Usuarios unicos que tiveram atividade recente. A linha inferior mostra os ativos nas ultimas 24h."
+            className="platform-admin-page__kpi-card"
+          />
+          <MetricCard
+            label="Logins (30d)"
+            value={formatCompact(overview.auth.loginByPeriod.month)}
+            subtitle={`${overview.auth.loginByPeriod.day} nas ultimas 24h`}
+            helpText="Volume de autenticacoes bem-sucedidas no mes. A linha inferior exibe o recorte de 24h."
+            className="platform-admin-page__kpi-card"
+          />
+          <MetricCard
+            label="Latencia p95"
+            value={formatLatencyMs(overview.backend.latency24h.p95Ms)}
+            subtitle={`p99 ${formatLatencyMs(overview.backend.latency24h.p99Ms)}`}
+            helpText="Tempo em milissegundos abaixo do qual 95% das requisicoes finalizaram no periodo de 24h."
+            className={`platform-admin-page__kpi-card platform-admin-page__kpi-card--latency-${latencyP95Tone}`}
+          />
+          <MetricCard
+            label="IA (falha 24h)"
+            value={formatPct(overview.ai.failureRate24h)}
+            subtitle={`${overview.ai.failed24h} falhas / ${overview.ai.runs24h} runs`}
+            helpText="Taxa de execucoes com erro nos fluxos de IA. A linha inferior mostra falhas absolutas e total de runs."
+            className="platform-admin-page__kpi-card"
+          />
+          <MetricCard
+            label="Outbox pendente"
+            value={formatCompact(overview.outbox.pending)}
+            subtitle={`${overview.outbox.retryPending} em retry`}
+            helpText="Eventos aguardando processamento/entrega. A linha inferior destaca itens atualmente em retry."
+            className="platform-admin-page__kpi-card"
+          />
         </section>
 
         <section className="platform-admin-page__grid-two">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/shared/ui";
 import { authService } from "@/features/auth/api/auth-service";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import "./verify-email-page.css";
 
 type VerifyStatus = "idle" | "verifying" | "success" | "error";

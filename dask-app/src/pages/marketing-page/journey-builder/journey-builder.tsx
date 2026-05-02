@@ -54,10 +54,10 @@ const DEFAULT_EDGE_OPTIONS = {
 
 const KIND_COLORS: Record<JourneyNodeKind, string> = {
   TRIGGER: 'var(--accent)',
-  ACTION: '#22c55e',
-  CONDITION: '#f59e0b',
-  DELAY: '#8b5cf6',
-  EXIT: '#ef4444',
+  ACTION: 'var(--success)',
+  CONDITION: 'var(--warning)',
+  DELAY: 'var(--decorative-purple)',
+  EXIT: 'var(--danger)',
 };
 
 const CANVAS_PALETTE_ITEMS: FlowCanvasPaletteItem<JourneyNodeKind, JourneyNodeData>[] = PALETTE_ITEMS.map((item) => ({
@@ -347,8 +347,8 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
           disabled={isSaving}
         >
           <svg viewBox="0 0 14 14" fill="none">
-            <path d="M2 2h8l2 2v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2Z" stroke="white" strokeWidth="1.3" />
-            <path d="M5 2v3h4V2M4 8h6" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+            <path d="M2 2h8l2 2v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2Z" stroke="var(--neutral-white)" strokeWidth="1.3" />
+            <path d="M5 2v3h4V2M4 8h6" stroke="var(--neutral-white)" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           {isSaving ? 'Salvando...' : 'Salvar'}
         </button>

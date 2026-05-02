@@ -34,9 +34,9 @@ export function AddEdge(props: EdgeProps) {
   const branchType = edgeData?.branchType;
   const edgeColor =
     branchType === 'yes'
-      ? '#22c55e'
+      ? 'var(--success)'
       : branchType === 'no'
-        ? '#ef4444'
+        ? 'var(--danger)'
         : 'var(--line-contrast)';
 
   return (

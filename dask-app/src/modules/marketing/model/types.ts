@@ -138,6 +138,47 @@ export interface MarketingCampaignAnalytics {
   byStatus: Array<{ status: string; total: number }>;
 }
 
+export type MarketingSignalType =
+  | 'EMAIL_CLICKED'
+  | 'EMAIL_OPENED'
+  | 'EMAIL_BOUNCED'
+  | 'EMAIL_COMPLAINT'
+  | 'EMAIL_UNSUBSCRIBED'
+  | 'LEAD_SCORE_CHANGED';
+
+export type MarketingSignalPriority = 'urgent' | 'high' | 'medium' | 'low';
+
+export interface MarketingSignal {
+  id: string;
+  type: MarketingSignalType | string;
+  headline: string | null;
+  description: string | null;
+  payload: Record<string, unknown> | null;
+  occurredAt: string;
+  seenAt: string | null;
+  dismissedAt: string | null;
+  leadId: string | null;
+  campaignId: string | null;
+  lead: {
+    id: string;
+    fullName: string | null;
+    email: string | null;
+    companyName: string | null;
+    score: number;
+    status: string;
+  } | null;
+  campaign: {
+    id: string;
+    name: string;
+    objective: string;
+  } | null;
+}
+
+export interface MarketingSignalsInbox {
+  items: MarketingSignal[];
+  unreadCount: number;
+}
+
 export interface CreateMarketingCampaignInput {
   name: string;
   description?: string;

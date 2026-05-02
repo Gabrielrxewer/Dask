@@ -72,12 +72,12 @@
       from 90deg,
       color-mix(in oklab, var(--accent) 0%, transparent) 0deg,
       color-mix(in oklab, var(--accent) 0%, transparent) 205deg,
-      color-mix(in oklab, var(--accent) 46%, white) 286deg,
-      color-mix(in oklab, var(--accent-strong) 58%, white) 320deg,
+      color-mix(in oklab, var(--accent) 46%, var(--neutral-white)) 286deg,
+      color-mix(in oklab, var(--accent-strong) 58%, var(--neutral-white)) 320deg,
       color-mix(in oklab, var(--accent) 0%, transparent) 360deg
     );
-  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), var(--neutral-black) calc(100% - 1px));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), var(--neutral-black) calc(100% - 1px));
   animation: global-loading-spin 1.15s linear infinite;
 }
 
@@ -91,10 +91,10 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, color-mix(in oklab, var(--accent-strong) 72%, white), color-mix(in oklab, var(--accent) 88%, white));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent-strong) 72%, var(--neutral-white)), color-mix(in oklab, var(--accent) 88%, var(--neutral-white)));
   box-shadow:
     0 8px 18px color-mix(in oklab, var(--accent) 10%, transparent),
-    inset 0 1px 0 color-mix(in oklab, white 54%, transparent);
+    inset 0 1px 0 color-mix(in oklab, var(--neutral-white) 54%, transparent);
   animation: global-loading-core-breathe 1.5s ease-in-out infinite;
 }
 
@@ -161,8 +161,8 @@
     linear-gradient(
       90deg,
       transparent 0%,
-      color-mix(in oklab, var(--accent-strong) 26%, white) 30%,
-      color-mix(in oklab, var(--accent) 16%, white) 50%,
+      color-mix(in oklab, var(--accent-strong) 26%, var(--neutral-white)) 30%,
+      color-mix(in oklab, var(--accent) 16%, var(--neutral-white)) 50%,
       transparent 100%
     );
   transform: translateX(-100%);

@@ -2,10 +2,10 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import "./button.css";
 
-type ButtonVariant = "default" | "primary" | "outline";
-type ButtonSize = "sm" | "md";
+export type ButtonVariant = "default" | "primary" | "outline";
+export type ButtonSize = "sm" | "md";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;

@@ -25,6 +25,21 @@ export interface WorkspaceBillingConnectInfo {
   connectAccountId: string | null;
 }
 
+export interface BillingCustomerSnapshot {
+  id: string;
+  workspaceId: string;
+  name: string;
+  tradeName: string | null;
+  legalName: string | null;
+  document: string | null;
+  stateRegistration: string | null;
+  municipalRegistration: string | null;
+  taxRegime: string | null;
+  email: string | null;
+  phone: string | null;
+  address: unknown;
+}
+
 export type ConnectCatalogItemKind = 'PRODUCT' | 'SERVICE';
 export type ConnectCatalogBillingType = 'ONE_TIME' | 'ASSINATURA' | 'SUBSCRIPTION';
 export type ConnectCatalogRecurringInterval = 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
@@ -91,7 +106,12 @@ export interface ConnectPaymentOrder {
   amount: number;
   currency: string;
   description: string;
+  customerId: string | null;
+  customerName: string | null;
   customerEmail: string | null;
+  customerDocument: string | null;
+  customerPhone: string | null;
+  customerAddress: unknown;
   applicationFeeAmount: number;
   status: ConnectPaymentOrderStatus;
   statusReason: string | null;
@@ -113,7 +133,12 @@ export interface CreateConnectPaymentOrderInput {
   amount: number;
   currency: string;
   description: string;
+  customerId?: string | null;
+  customerName?: string | null;
   customerEmail?: string;
+  customerDocument?: string | null;
+  customerPhone?: string | null;
+  customerAddress?: unknown;
   applicationFeeAmount: number;
   metadata?: Record<string, string>;
 }
@@ -183,6 +208,7 @@ export interface BillingRepository {
   hasGuestWorkspaceMembership(userId: string): Promise<boolean>;
   findWorkspaceMembership(workspaceId: string, userId: string): Promise<WorkspaceMembership | null>;
   findWorkspaceBillingConnectInfo(workspaceId: string): Promise<WorkspaceBillingConnectInfo | null>;
+  findCustomerById(workspaceId: string, customerId: string): Promise<BillingCustomerSnapshot | null>;
   findConnectCatalogItemById(itemId: string): Promise<ConnectCatalogItem | null>;
   listConnectCatalogItemsByWorkspace(workspaceId: string, includeInactive?: boolean): Promise<ConnectCatalogItem[]>;
   findConnectPaymentOrderById(orderId: string): Promise<ConnectPaymentOrder | null>;

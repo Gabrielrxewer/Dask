@@ -8,6 +8,7 @@ import type {
   MarketingCampaignListItem,
   MarketingDashboard,
   MarketingSegment,
+  MarketingSignalsInbox,
   MarketingTemplate
 } from '@/modules/marketing/model/types';
 
@@ -290,6 +291,14 @@ export const marketingService = {
     });
   },
 
+  updateAutomationFlow(workspaceId: string, flowId: string, patch: Record<string, unknown>): Promise<MarketingAutomationFlow> {
+    return apiClient.patch<MarketingAutomationFlow>(
+      `/marketing/workspaces/${workspaceId}/automations/flows/${flowId}`,
+      patch,
+      { authMode: 'required', retryOnUnauthorized: true }
+    );
+  },
+
   aiGenerateCampaign(
     workspaceId: string,
     input: {
@@ -327,5 +336,35 @@ export const marketingService = {
         retryOnUnauthorized: true
       }
     );
+  },
+
+  listSignalsInbox(
+    workspaceId: string,
+    input: {
+      types?: string[];
+      includeDismissed?: boolean;
+      limit?: number;
+    } = {}
+  ): Promise<MarketingSignalsInbox> {
+    const query = new URLSearchParams();
+    if (input.types && input.types.length > 0) query.set('types', input.types.join(','));
+    if (input.includeDismissed) query.set('includeDismissed', 'true');
+    if (input.limit) query.set('limit', String(input.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiClient.get<MarketingSignalsInbox>(`/marketing/workspaces/${workspaceId}/signals/inbox${qs}`, {
+      authMode: 'required',
+      retryOnUnauthorized: true
+    });
+  },
+
+  markSignal(
+    workspaceId: string,
+    eventId: string,
+    action: 'seen' | 'dismissed'
+  ): Promise<void> {
+    return apiClient.patch<void>(`/marketing/workspaces/${workspaceId}/signals/${eventId}`, { action }, {
+      authMode: 'required',
+      retryOnUnauthorized: true
+    });
   }
 };

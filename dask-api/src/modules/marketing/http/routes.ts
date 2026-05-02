@@ -18,9 +18,12 @@ import {
   createCampaignDto,
   createSegmentDto,
   createTemplateDto,
+  markSignalDto,
   scheduleCampaignDto,
   segmentParamsDto,
   sendTestEmailDto,
+  signalEventParamsDto,
+  signalInboxQueryDto,
   templateParamsDto,
   updateCampaignDto,
   updateSegmentDto,
@@ -346,6 +349,54 @@ export const buildMarketingRoutes = (deps: {
         actorUserId: req.auth?.userId ?? null
       });
       res.status(201).json(flow);
+    })
+  );
+
+  router.patch(
+    '/marketing/workspaces/:workspaceId/automations/flows/:flowId',
+    requireCampaignCreate,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceParamsDto.parse(req.params);
+      const { flowId } = req.params as { flowId: string };
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const flow = await deps.marketingService.updateAutomationFlow({
+        workspaceId,
+        flowId,
+        name: typeof body.name === 'string' ? body.name : undefined,
+        description: typeof body.description === 'string' ? body.description : undefined,
+        status: body.status as 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | undefined,
+        triggerDefinition: body.triggerDefinition as Record<string, unknown> | undefined,
+        actorUserId: req.auth?.userId ?? null
+      });
+      res.status(200).json(flow);
+    })
+  );
+
+  router.get(
+    '/marketing/workspaces/:workspaceId/signals/inbox',
+    requireMarketingView,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceParamsDto.parse(req.params);
+      const query = signalInboxQueryDto.parse(req.query ?? {});
+      const types = query.types ? query.types.split(',').map((t) => t.trim()).filter(Boolean) : undefined;
+      const result = await deps.marketingService.listSignalsInbox({
+        workspaceId,
+        types,
+        includeDismissed: query.includeDismissed === 'true',
+        limit: query.limit
+      });
+      res.status(200).json(result);
+    })
+  );
+
+  router.patch(
+    '/marketing/workspaces/:workspaceId/signals/:eventId',
+    requireMarketingView,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, eventId } = signalEventParamsDto.parse(req.params);
+      const payload = markSignalDto.parse(req.body ?? {});
+      await deps.marketingService.markSignal({ workspaceId, eventId, action: payload.action });
+      res.status(204).end();
     })
   );
 

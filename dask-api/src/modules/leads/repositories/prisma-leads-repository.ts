@@ -123,6 +123,14 @@ export class PrismaLeadsRepository implements LeadsRepository {
     });
   }
 
+  public async customerExistsInWorkspace(workspaceId: string, customerId: string): Promise<boolean> {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, workspaceId },
+      select: { id: true }
+    });
+    return Boolean(customer);
+  }
+
   public async createLead(data: Prisma.LeadUncheckedCreateInput): Promise<Lead> {
     return this.prisma.lead.create({ data });
   }

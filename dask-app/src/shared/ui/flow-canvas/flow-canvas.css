@@ -6,8 +6,8 @@
   overflow: hidden;
   position: relative;
   background:
-    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--agents-accent, #3b82f6) 7%, transparent) 0%, transparent 32%),
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised, #fff) 96%, #eef5fb) 0%, color-mix(in oklab, var(--surface-muted, #f1f5f9) 88%, #fff) 100%);
+    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--agents-accent, var(--primary)) 7%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 96%, var(--surface-tint)) 0%, color-mix(in oklab, var(--surface-muted, var(--secondary)) 88%, var(--neutral-white)) 100%);
 }
 
 .flow-canvas-ui__flow {
@@ -28,22 +28,22 @@
 }
 
 .flow-canvas-ui .react-flow__edge-path {
-  stroke: var(--agents-accent, #3b82f6);
+  stroke: var(--agents-accent, var(--primary));
   stroke-width: 2;
 }
 
 .flow-canvas-ui .react-flow__edge.selected .react-flow__edge-path,
 .flow-canvas-ui .react-flow__edge:hover .react-flow__edge-path {
-  stroke: var(--agents-accent-strong, #2563eb);
+  stroke: var(--agents-accent-strong, var(--primary));
   stroke-width: 2.5;
 }
 
 .flow-canvas-ui .react-flow__arrowhead path {
-  fill: var(--agents-accent, #3b82f6);
+  fill: var(--agents-accent, var(--primary));
 }
 
 .flow-canvas-ui .react-flow__connection-path {
-  stroke: var(--agents-accent, #3b82f6);
+  stroke: var(--agents-accent, var(--primary));
   stroke-width: 2;
 }
 
@@ -70,12 +70,12 @@
   flex-direction: column;
   overflow: hidden;
   pointer-events: auto;
-  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 84%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 84%, transparent);
   border-radius: 10px;
-  background: color-mix(in oklab, var(--ab-surface, var(--surface-raised, #fff)) 92%, transparent);
+  background: color-mix(in oklab, var(--ab-surface, var(--surface-raised, var(--neutral-white))) 92%, transparent);
   box-shadow:
-    0 18px 38px rgba(8, 28, 47, 0.12),
-    0 2px 8px rgba(8, 28, 47, 0.06);
+    0 18px 38px color-mix(in srgb, var(--primary) 12%, transparent),
+    0 2px 8px color-mix(in srgb, var(--primary) 6%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -85,7 +85,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 12px 10px;
-  border-bottom: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 76%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 76%, transparent);
   flex-shrink: 0;
 }
 
@@ -101,14 +101,14 @@
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ab-text-muted, var(--text-muted, #7a8da3));
+  color: var(--ab-text-muted, var(--text-muted, var(--primary)));
 }
 
 .flow-canvas-ui__sidebar-title strong {
   font-size: 13px;
   font-weight: 900;
   line-height: 1.1;
-  color: var(--ab-text, var(--text-strong, #0f172a));
+  color: var(--ab-text, var(--text-strong, var(--foreground)));
 }
 
 .flow-canvas-ui__sidebar-close,
@@ -117,9 +117,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 82%, transparent);
-  background: color-mix(in oklab, var(--surface-raised, #fff) 88%, transparent);
-  color: var(--ab-text-soft, var(--text-soft, #52667c));
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 82%, transparent);
+  background: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 88%, transparent);
+  color: var(--ab-text-soft, var(--text-soft, var(--primary)));
   cursor: pointer;
   transition:
     background 0.14s ease,
@@ -144,9 +144,9 @@
 .flow-canvas-ui__sidebar-close:hover,
 .flow-canvas-ui__rail-toggle:hover,
 .flow-canvas-ui__ctrl-btn:hover {
-  color: var(--agents-accent-strong, #2563eb);
-  border-color: color-mix(in oklab, var(--agents-accent, #3b82f6) 24%, var(--ab-line, #d8e4ef));
-  background: color-mix(in oklab, var(--agents-accent, #3b82f6) 8%, var(--surface-raised, #fff));
+  color: var(--agents-accent-strong, var(--primary));
+  border-color: color-mix(in oklab, var(--agents-accent, var(--primary)) 24%, var(--ab-line, var(--border-blue-muted)));
+  background: color-mix(in oklab, var(--agents-accent, var(--primary)) 8%, var(--surface-raised, var(--neutral-white)));
 }
 
 .flow-canvas-ui__sidebar-list {
@@ -161,7 +161,7 @@
 }
 
 .flow-canvas-ui__sidebar-item {
-  --item-color: #3b82f6;
+  --item-color: var(--text-primary);
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr);
   align-items: center;
@@ -186,7 +186,7 @@
 
 .flow-canvas-ui__sidebar-item:hover,
 .flow-canvas-ui__sidebar-item:focus-visible {
-  background: color-mix(in oklab, var(--item-color) 8%, var(--surface-raised, #fff));
+  background: color-mix(in oklab, var(--item-color) 8%, var(--surface-raised, var(--neutral-white)));
   border-color: color-mix(in oklab, var(--item-color) 26%, transparent);
 }
 
@@ -208,7 +208,7 @@
   font-size: 12.5px;
   font-weight: 900;
   line-height: 1.15;
-  color: var(--ab-text, var(--text-strong, #0f172a));
+  color: var(--ab-text, var(--text-strong, var(--foreground)));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -218,7 +218,7 @@
   font-size: 11px;
   font-weight: 650;
   line-height: 1.25;
-  color: var(--ab-text-muted, var(--text-muted, #7a8da3));
+  color: var(--ab-text-muted, var(--text-muted, var(--primary)));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -228,8 +228,8 @@
   display: grid;
   gap: 8px;
   padding: 10px;
-  border-top: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 76%, transparent);
-  background: color-mix(in oklab, var(--surface-muted, #f1f5f9) 54%, transparent);
+  border-top: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 76%, transparent);
+  background: color-mix(in oklab, var(--surface-muted, var(--secondary)) 54%, transparent);
   flex-shrink: 0;
 }
 
@@ -237,9 +237,9 @@
   display: flex;
   align-items: stretch;
   overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 84%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 84%, transparent);
   border-radius: 8px;
-  background: color-mix(in oklab, var(--surface-raised, #fff) 90%, transparent);
+  background: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 90%, transparent);
 }
 
 .flow-canvas-ui__ctrl-btn {
@@ -258,7 +258,7 @@
 .flow-canvas-ui__ctrl-sep {
   width: 1px;
   height: 100%;
-  background: color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 80%, transparent);
+  background: color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 80%, transparent);
 }
 
 .flow-canvas-ui__rail-toggle {
@@ -270,7 +270,7 @@
   border-radius: 0 10px 10px 0;
   transform: translateY(-50%);
   pointer-events: auto;
-  box-shadow: 0 8px 18px rgba(8, 28, 47, 0.1);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .flow-canvas-ui__rail-toggle:hover {
@@ -293,10 +293,10 @@
   max-width: min(520px, calc(100vw - 80px));
   padding: 9px 14px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--surface-raised, #fff) 88%, transparent);
-  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, #d8e4ef)) 82%, transparent);
-  box-shadow: 0 8px 18px rgba(8, 28, 47, 0.06);
-  color: var(--ab-text-muted, var(--text-muted, #7a8da3));
+  background: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 88%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 82%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 6%, transparent);
+  color: var(--ab-text-muted, var(--text-muted, var(--primary)));
   font-size: 12px;
   font-weight: 750;
   white-space: nowrap;
@@ -307,8 +307,8 @@
 
 .app-theme[data-theme="dark"] .flow-canvas-ui {
   background:
-    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--accent, #3b82f6) 10%, transparent) 0%, transparent 32%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel, #0f172a) 92%, black) 0%, var(--panel, #0f172a) 100%);
+    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--accent, var(--primary)) 10%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in oklab, var(--panel, var(--foreground)) 92%, var(--neutral-black)) 0%, var(--panel, var(--foreground)) 100%);
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui .react-flow__background {
@@ -316,40 +316,40 @@
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__sidebar {
-  background: color-mix(in oklab, var(--surface-raised, #1e293b) 92%, transparent);
-  border-color: var(--line, #334155);
+  background: color-mix(in oklab, var(--surface-raised, var(--text-primary)) 92%, transparent);
+  border-color: var(--line, var(--text-secondary));
   box-shadow:
-    0 18px 38px color-mix(in oklab, black 34%, transparent),
-    0 2px 8px color-mix(in oklab, black 24%, transparent);
+    0 18px 38px color-mix(in oklab, var(--neutral-black) 34%, transparent),
+    0 2px 8px color-mix(in oklab, var(--neutral-black) 24%, transparent);
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__sidebar-head,
 .app-theme[data-theme="dark"] .flow-canvas-ui__sidebar-foot {
-  border-color: var(--line, #334155);
+  border-color: var(--line, var(--text-secondary));
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__sidebar-foot {
-  background: color-mix(in oklab, var(--panel-soft, #172033) 64%, transparent);
+  background: color-mix(in oklab, var(--panel-soft, var(--primary)) 64%, transparent);
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__sidebar-close,
 .app-theme[data-theme="dark"] .flow-canvas-ui__rail-toggle,
 .app-theme[data-theme="dark"] .flow-canvas-ui__ctrl {
-  background: color-mix(in oklab, var(--surface-raised, #1e293b) 88%, transparent);
-  border-color: var(--line, #334155);
+  background: color-mix(in oklab, var(--surface-raised, var(--text-primary)) 88%, transparent);
+  border-color: var(--line, var(--text-secondary));
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__ctrl-btn {
-  color: var(--text-soft, #94a3b8);
+  color: var(--text-soft, var(--text-muted));
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__ctrl-sep {
-  background: var(--line, #334155);
+  background: var(--line, var(--text-secondary));
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui__empty-hint span {
-  background: color-mix(in oklab, var(--surface-raised, #1e293b) 88%, transparent);
-  border-color: var(--line, #334155);
+  background: color-mix(in oklab, var(--surface-raised, var(--text-primary)) 88%, transparent);
+  border-color: var(--line, var(--text-secondary));
 }
 
 @media (max-width: 720px) {

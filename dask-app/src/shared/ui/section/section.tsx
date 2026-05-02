@@ -1,17 +1,25 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
-interface SectionProps {
-  title: string;
-  subtitle?: string;
+export interface SectionProps extends Omit<HTMLAttributes<HTMLElement>, "title"> {
+  title: ReactNode;
+  subtitle?: ReactNode;
   actions?: ReactNode;
-  className?: string;
+  contentClassName?: string;
   children: ReactNode;
 }
 
-export function Section({ title, subtitle, actions, className = "", children }: SectionProps) {
+export function Section({
+  title,
+  subtitle,
+  actions,
+  className = "",
+  contentClassName,
+  children,
+  ...props
+}: SectionProps) {
   return (
-    <section className={cn("shared-section", className)}>
+    <section className={cn("shared-section", className)} {...props}>
       <header className="shared-section__header">
         <div>
           <h2 className="shared-section__title">{title}</h2>
@@ -19,7 +27,7 @@ export function Section({ title, subtitle, actions, className = "", children }: 
         </div>
         {actions ? <div>{actions}</div> : null}
       </header>
-      <div className="shared-section__content">{children}</div>
+      <div className={cn("shared-section__content", contentClassName)}>{children}</div>
     </section>
   );
 }

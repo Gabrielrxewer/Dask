@@ -16,10 +16,10 @@
   --fiscal-surface-soft: var(--surface-section-content);
   --fiscal-field: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--surface-elevated) 92%, white) 0%,
+    color-mix(in oklab, var(--surface-elevated) 92%, var(--neutral-white)) 0%,
     color-mix(in oklab, var(--surface-section-content) 96%, var(--surface-1)) 100%
   );
-  --fiscal-accent: color-mix(in oklab, var(--accent) 84%, #30d5cd);
+  --fiscal-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
   --fiscal-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, var(--text-strong));
   --fiscal-shadow: 0 12px 28px color-mix(in oklab, var(--text-strong) 6%, transparent);
   --fiscal-shadow-hover: 0 16px 34px color-mix(in oklab, var(--text-strong) 9%, transparent);
@@ -80,12 +80,12 @@
 
 .app-theme:not([data-theme="dark"]) .fiscal-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .fiscal-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(64, 90, 116, 0.82);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
 }
 
 .fiscal-view__tabs.shared-tabs {
@@ -140,7 +140,7 @@
   inset: auto 8px 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, var(--accent) 0%, #30d5cd 100%);
+  background: linear-gradient(90deg, var(--accent) 0%, var(--decorative-cyan) 100%);
 }
 
 .fiscal-view__feedback {
@@ -367,7 +367,7 @@
     color-mix(in oklab, var(--control-surface) 84%, var(--panel)) 100%
   );
   --fiscal-shadow: var(--shadow-1);
-  --fiscal-shadow-hover: 0 18px 34px color-mix(in oklab, black 32%, transparent);
+  --fiscal-shadow-hover: 0 18px 34px color-mix(in oklab, var(--neutral-black) 32%, transparent);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item {
@@ -376,8 +376,8 @@
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item:hover {
-  border-color: rgba(72, 101, 131, 0.72) !important;
-  background: rgba(72, 148, 255, 0.08) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
   color: var(--text-soft) !important;
 }
 

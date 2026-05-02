@@ -14,7 +14,6 @@ export { NoWorkspacePage } from "@/pages/no-workspace-page";
 export { TermsOfUsePage } from "@/pages/terms-of-use-page";
 export { PrivacyPolicyPage } from "@/pages/privacy-policy-page";
 export { WorkspaceSelectorPage } from "@/pages/workspace-selector-page";
-export { TimelinePage } from "@/pages/timeline-page";
 export { AgendaPage } from "@/pages/agenda-page";
 export { DocumentationPage } from "@/pages/documentation-page";
 export { AiAgentsPage } from "@/pages/ai-agents-page";

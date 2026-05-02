@@ -1,13 +1,13 @@
 .general-settings {
-  --builder-text: #071f35;
-  --builder-text-soft: #1f405e;
-  --builder-text-muted: #365b7a;
-  --builder-line: #d3e0ec;
-  --builder-line-strong: #a8c2db;
-  --builder-surface: #ffffff;
-  --builder-surface-soft: #f7fafc;
-  --builder-accent: #075f9d;
-  --builder-accent-strong: #064f85;
+  --builder-text: var(--foreground);
+  --builder-text-soft: var(--text-primary);
+  --builder-text-muted: var(--text-secondary);
+  --builder-line: var(--info-border);
+  --builder-line-strong: var(--info-border);
+  --builder-surface: var(--neutral-white);
+  --builder-surface-soft: var(--surface-tint);
+  --builder-accent: var(--brand-blue-hover);
+  --builder-accent-strong: var(--brand-blue-active);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -34,7 +34,7 @@
   padding: 20px;
   border: 1px solid var(--builder-line);
   border-radius: 14px;
-  background: linear-gradient(140deg, #f4f9ff 0%, #ffffff 60%);
+  background: linear-gradient(140deg, var(--surface-tint) 0%, var(--neutral-white) 60%);
 }
 
 .general-settings__builder-meta {
@@ -112,14 +112,14 @@
   height: 6px;
   overflow: hidden;
   border-radius: 99px;
-  background: #dceaf7;
+  background: var(--info-bg);
 }
 
 .general-settings__progress i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0a86e8 0%, #12a99e 100%);
+  background: linear-gradient(90deg, var(--brand-blue) 0%, var(--decorative-cyan) 100%);
   transition: width 0.4s ease;
 }
 
@@ -147,7 +147,7 @@
 
 .general-settings__track-arrow:hover {
   border-color: var(--builder-accent);
-  background: #eef7ff;
+  background: var(--surface-tint-strong);
   color: var(--builder-accent);
 }
 
@@ -289,12 +289,12 @@
 
 .general-settings__template-card:hover {
   border-color: color-mix(in oklab, var(--template-accent) 34%, var(--builder-line));
-  background: #fbfdff;
+  background: var(--neutral-white);
 }
 
 .general-settings__template-card.is-selected {
   border-color: color-mix(in oklab, var(--template-accent) 50%, var(--builder-line));
-  background: color-mix(in oklab, var(--template-accent) 4%, #ffffff);
+  background: color-mix(in oklab, var(--template-accent) 4%, var(--neutral-white));
 }
 
 .general-settings__template-preview {
@@ -312,7 +312,7 @@
   border: 1px solid var(--builder-line);
   border-radius: 7px;
   background: var(--builder-surface-soft);
-  color: #29465f;
+  color: var(--text-primary);
   font-size: 10px;
   font-weight: 800;
   line-height: 1.2;
@@ -321,8 +321,8 @@
 }
 
 .general-settings__template-card.is-selected .general-settings__template-preview span {
-  border-color: color-mix(in oklab, var(--template-accent) 28%, #c7d8ea);
-  background: color-mix(in oklab, var(--template-accent) 6%, #ffffff);
+  border-color: color-mix(in oklab, var(--template-accent) 28%, var(--info-border));
+  background: color-mix(in oklab, var(--template-accent) 6%, var(--neutral-white));
 }
 
 .general-settings__template-card h3 {
@@ -345,15 +345,15 @@
 .general-settings__template-card .shared-button {
   margin-top: auto;
   border-color: color-mix(in oklab, var(--template-accent) 28%, var(--builder-line));
-  background: #ffffff;
-  color: color-mix(in oklab, var(--template-accent) 72%, #20384d);
+  background: var(--neutral-white);
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
 .general-settings__template-card .shared-button:hover {
   border-color: color-mix(in oklab, var(--template-accent) 42%, var(--builder-line));
-  background: color-mix(in oklab, var(--template-accent) 7%, #ffffff);
-  color: color-mix(in oklab, var(--template-accent) 82%, #16324a);
+  background: color-mix(in oklab, var(--template-accent) 7%, var(--neutral-white));
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
@@ -416,7 +416,7 @@
   padding: 9px 12px;
   border: 1px solid var(--builder-line-strong);
   border-radius: var(--radius-xs);
-  background: #eef7ff;
+  background: var(--surface-tint-strong);
 }
 
 .general-settings__inline-action {
@@ -618,10 +618,10 @@
   display: grid;
   gap: 5px;
   padding: 12px 14px;
-  border: 1px solid #f1d29f;
+  border: 1px solid var(--warning-border);
   border-radius: var(--radius-xs);
-  background: #fff7e8;
-  color: #7d4d05;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .general-settings__required-company-alert strong {
@@ -674,15 +674,15 @@
 }
 
 .general-settings__billing-warning {
-  border-color: #f1d29f !important;
-  background: #fff7e8 !important;
-  color: #7d4d05 !important;
+  border-color: var(--warning-border) !important;
+  background: var(--warning-bg) !important;
+  color: var(--warning) !important;
 }
 
 .general-settings__billing-success {
-  border-color: #b8dfc7 !important;
-  background: #effaf3 !important;
-  color: #0f6b3d !important;
+  border-color: var(--success-border) !important;
+  background: var(--surface-tint) !important;
+  color: var(--success) !important;
 }
 
 .general-settings__billing-grid {
@@ -749,8 +749,8 @@
 }
 
 .general-settings__billing-checklist li.is-done {
-  border-color: #b8dfc7;
-  background: #f2fbf5;
+  border-color: var(--success-border);
+  background: var(--surface-tint);
 }
 
 .general-settings__billing-checklist li strong {
@@ -769,7 +769,7 @@
 .general-settings__billing-checklist li small {
   display: block;
   margin-top: 6px;
-  color: #7d4d05;
+  color: var(--warning);
   font-size: 11px;
   font-weight: 700;
 }
@@ -812,15 +812,15 @@
   color: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(12, 35, 63, 0.04);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--ink-shadow) 4%, transparent);
   transition: border-color 0.16s, box-shadow 0.16s, transform 0.16s, background 0.16s;
 }
 
 .general-settings__step-card:hover,
 .general-settings__step-card.is-active {
   border-color: var(--builder-line-strong);
-  background: #eef7ff;
-  box-shadow: 0 8px 24px rgba(12, 35, 63, 0.08);
+  background: var(--surface-tint-strong);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink-shadow) 8%, transparent);
   transform: translateY(-1px);
 }
 
@@ -835,17 +835,17 @@
 }
 
 .general-settings__step-status--done {
-  background: #dff5e8;
-  color: #0f6b3d;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .general-settings__step-status--partial {
-  background: #fff4db;
-  color: #7a4d00;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .general-settings__step-status--empty {
-  background: #e8f3fe;
+  background: var(--surface-blue-muted);
   color: var(--builder-accent);
 }
 
@@ -890,11 +890,11 @@
 }
 
 .general-settings__feedback {
-  color: #0f6b3d;
+  color: var(--success);
 }
 
 .general-settings__error {
-  color: #a91f1f;
+  color: var(--danger);
 }
 
 /* ── Modal ── */
@@ -907,7 +907,7 @@
   border: 1px solid var(--builder-line);
   border-radius: 14px;
   background: var(--builder-surface);
-  box-shadow: 0 28px 70px rgba(7, 31, 53, 0.24);
+  box-shadow: 0 28px 70px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .general-settings__modal-preview {
@@ -925,8 +925,8 @@
   padding: 0 12px;
   border: 1px solid color-mix(in oklab, var(--template-accent) 26%, var(--builder-line));
   border-radius: var(--radius-xs);
-  background: color-mix(in oklab, var(--template-accent) 10%, #ffffff);
-  color: color-mix(in oklab, var(--template-accent) 66%, #0a2338);
+  background: color-mix(in oklab, var(--template-accent) 10%, var(--neutral-white));
+  color: var(--text-secondary);
   font-size: var(--font-size-xs);
   font-weight: 900;
   line-height: 1;
@@ -971,23 +971,23 @@
 }
 
 .general-settings__modal-actions .shared-button:not(.shared-button--outline) {
-  border-color: rgba(189, 226, 249, 0.34);
+  border-color: color-mix(in srgb, var(--info-border) 34%, transparent);
   background: var(--button-gradient-main);
-  color: #f4fbff;
+  color: var(--surface-tint);
   box-shadow:
-    0 16px 30px rgba(8, 31, 53, 0.22),
-    0 8px 16px rgba(40, 207, 199, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    0 16px 30px color-mix(in srgb, var(--ink-shadow-strong) 22%, transparent),
+    0 8px 16px color-mix(in srgb, var(--decorative-cyan) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 20%, transparent) inset;
 }
 
 .general-settings__modal-actions .shared-button:not(.shared-button--outline):hover {
-  border-color: rgba(208, 234, 249, 0.56);
+  border-color: color-mix(in srgb, var(--info-bg) 56%, transparent);
   background: var(--button-gradient-main-hover);
-  color: #ffffff;
+  color: var(--neutral-white);
   box-shadow:
-    0 18px 34px rgba(8, 31, 53, 0.26),
-    0 10px 18px rgba(40, 207, 199, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    0 18px 34px color-mix(in srgb, var(--ink-shadow-strong) 26%, transparent),
+    0 10px 18px color-mix(in srgb, var(--decorative-cyan) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 18%, transparent) inset;
   filter: saturate(1.04) brightness(1.02);
 }
 
@@ -1050,7 +1050,7 @@
   --builder-surface: var(--surface-raised);
   --builder-surface-soft: var(--surface-muted);
   --builder-accent: var(--accent);
-  --builder-accent-strong: color-mix(in oklab, var(--accent) 78%, white 6%);
+  --builder-accent-strong: color-mix(in oklab, var(--accent) 78%, var(--neutral-white) 6%);
 }
 
 .app-theme[data-theme="dark"] .general-settings__builder-hero {

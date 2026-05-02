@@ -182,6 +182,9 @@ export interface Customer {
   tradeName?: string;
   legalName?: string;
   document?: string;
+  stateRegistration?: string;
+  municipalRegistration?: string;
+  taxRegime?: string;
   email?: string;
   phone?: string;
   website?: string;
@@ -198,6 +201,9 @@ export interface CreateCustomerInput {
   tradeName?: string | null;
   legalName?: string | null;
   document?: string | null;
+  stateRegistration?: string | null;
+  municipalRegistration?: string | null;
+  taxRegime?: string | null;
   email?: string | null;
   phone?: string | null;
   website?: string | null;
@@ -538,6 +544,7 @@ export type CustomFieldType =
   | "datetime"
   | "boolean"
   | "select"
+  | "catalog_select"
   | "multi_select"
   | "user"
   | "checklist"

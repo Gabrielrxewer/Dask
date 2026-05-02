@@ -4,7 +4,9 @@ export {
   buildWorkspaceAutomationsPath,
   buildWorkspaceBillingPath,
   buildWorkspaceBoardPath,
+  buildWorkspaceBoardPathWithTask,
   buildWorkspaceDocumentationPath,
+  buildWorkspaceDocumentationPathWithDoc,
   buildWorkspaceFiscalPath,
   buildWorkspaceLeadsPath,
   buildWorkspaceMarketingPath,
@@ -20,7 +22,6 @@ export {
   buildWorkspaceSettingsMembersPath,
   buildWorkspaceSettingsPath,
   buildWorkspaceSettingsWorkflowPath,
-  buildWorkspaceTimelinePath,
   routePaths
 } from "@/app/router/route-paths";
 export type { AppRoutePath } from "@/app/router/route-paths";

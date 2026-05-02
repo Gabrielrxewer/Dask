@@ -1,30 +1,18 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { buildWorkspaceDocumentationPath, buildWorkspaceDocumentationPathWithDoc } from "@/app/router/route-paths";
+import { buildWorkspaceDocumentationPathWithDoc } from "@/app/router";
 import { AppShell } from "@/widgets/app-shell";
 import { BoardColumns } from "@/widgets/board-columns";
 import { buildBoardColumnsRuntimeView, mapTasksForBoardPerspective } from "@/widgets/board-columns/model/board-runtime";
 import {
-  applyFieldDefinitionOverrides,
-  applyFieldCapabilityOverrides,
-  factoryBoardConfig,
-  injectCatalogOptionsIntoBoardConfig,
-  mergeCardFieldDefinitions,
-  type BoardConfig,
   type Task,
   type TaskCustomFieldValue,
-  type TaskFieldOption,
   type TaskPriority,
   type TaskStatusId
 } from "@/entities/task";
-import { billingService } from "@/modules/billing";
-import {
-  applyDashboardFilter,
-  DashboardFilter,
-  useDashboardFilter
-} from "@/features/dashboard-filter";
+import { DashboardFilter } from "@/features/dashboard-filter";
 import { useAuth } from "@/features/auth";
-import { useWorkspace, type WorkspaceBoardMode } from "@/modules/workspace";
+import { useWorkspaceTaskPage, type WorkspaceBoardMode } from "@/modules/workspace";
 import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { BoardPerspectiveTabs } from "./board-perspective-tabs";
@@ -55,21 +43,27 @@ export function BoardPage() {
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem,
-    listCustomers
-  } = useWorkspace();
+    listCustomers,
+    filter,
+    setFilterQuery,
+    toggleMineFilter,
+    tasks,
+    boardConfig,
+    activeMembers,
+    filteredTasks,
+    metrics
+  } = useWorkspaceTaskPage({ currentUser: user });
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialOpenTaskId = searchParams.get("openTaskId") ?? "";
   const initialBoardMode = searchParams.get("boardMode") ?? "";
-  const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
 
   const [apiBoardCols, setApiBoardCols] = useState<ApiBoardColumn[]>([]);
   const [apiWorkflowStates, setApiWorkflowStates] = useState<ApiWorkflowState[]>([]);
   const [aiAgents, setAiAgents] = useState<AiAgentSummary[]>([]);
-  const [catalogFieldOptions, setCatalogFieldOptions] = useState<TaskFieldOption[]>([]);
 
   const loadBoardConfig = useCallback(async () => {
     const [cols, states, agents] = await Promise.all([fetchBoardColumns(), fetchWorkflowStates(), listAiAgents()]);
@@ -82,106 +76,9 @@ export function BoardPage() {
     void loadBoardConfig();
   }, [loadBoardConfig]);
 
-  useEffect(() => {
-    const workspaceId = snapshot?.id;
-    if (!workspaceId) {
-      return;
-    }
-
-    const hasCatalogField = (snapshot?.boardConfig?.fieldDefinitions ?? []).some(
-      f => f.config?.entityType === "billing_catalog_item"
-    );
-    if (!hasCatalogField) {
-      return;
-    }
-
-    void billingService.listConnectCatalogItems(workspaceId, false).then(({ items }) => {
-      setCatalogFieldOptions(
-        items
-          .filter(item => item.isActive)
-          .map(item => ({
-            id: item.id,
-            label: item.name,
-            value: item.id,
-            color: null,
-            order: 0,
-            isActive: true,
-            catalogItem: {
-              id: item.id,
-              kind: item.kind,
-              billingType: item.billingType,
-              recurringInterval: item.recurringInterval,
-              recurringIntervalCount: item.recurringIntervalCount,
-              name: item.name,
-              description: item.description,
-              amount: item.amount,
-              currency: item.currency,
-              metadata: item.metadata
-            }
-          }))
-      );
-    }).catch(() => undefined);
-  }, [snapshot?.id, snapshot?.boardConfig?.fieldDefinitions]);
-
-  const tasks = snapshot?.tasks ?? [];
-  const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const rawPerspectives: BoardConfig["perspectives"] =
-    Array.isArray((rawBoardConfig as { perspectives?: unknown }).perspectives)
-      ? (rawBoardConfig as { perspectives: BoardConfig["perspectives"] }).perspectives
-      : Array.isArray((rawBoardConfig as { views?: unknown }).views)
-        ? (rawBoardConfig as { views: BoardConfig["perspectives"] }).views
-        : [];
-
-  const boardConfigBase = {
-    ...factoryBoardConfig,
-    ...rawBoardConfig,
-    statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
-    taskTypes: Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes,
-    fieldDefinitions: applyFieldCapabilityOverrides(
-      applyFieldDefinitionOverrides(
-        mergeCardFieldDefinitions(
-          Array.isArray(rawBoardConfig?.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : factoryBoardConfig.fieldDefinitions
-        ),
-        snapshot?.preferences.settings
-      ),
-      snapshot?.preferences.settings
-    ),
-    fieldBindings: Array.isArray(rawBoardConfig?.fieldBindings) ? rawBoardConfig.fieldBindings : factoryBoardConfig.fieldBindings,
-    cardLayout: rawBoardConfig?.cardLayout ?? factoryBoardConfig.cardLayout,
-    perspectives: rawPerspectives
-  };
-
-  const boardConfig = injectCatalogOptionsIntoBoardConfig(boardConfigBase, catalogFieldOptions);
-
   const availableTags = (snapshot?.tags ?? [])
     .filter(tag => tag.isActive !== false)
     .map(tag => ({ id: tag.id, name: tag.name, color: tag.color }));
-  const activeUser = snapshot?.currentUserId ?? user?.id ?? "";
-  const activeMembers = useMemo(() => {
-    const sourceMembers = snapshot?.membersById ?? {};
-    const userAvatarUrl = user?.avatarUrl ?? null;
-
-    if (!userAvatarUrl) {
-      return sourceMembers;
-    }
-
-    const authMemberId = user?.id ?? "";
-    const memberId = authMemberId && sourceMembers[authMemberId] ? authMemberId : activeUser;
-    const member = sourceMembers[memberId];
-
-    if (!member) {
-      return sourceMembers;
-    }
-
-    return {
-      ...sourceMembers,
-      [memberId]: {
-        ...member,
-        name: user?.name ?? member.name,
-        avatarUrl: userAvatarUrl
-      }
-    };
-  }, [activeUser, snapshot?.membersById, user?.avatarUrl, user?.id, user?.name]);
 
   const boardPerspectives =
     boardConfig.perspectives.length > 0
@@ -212,11 +109,6 @@ export function BoardPage() {
       setMode(modeToApply);
     }
   }, [snapshot, boardPerspectives]);
-
-  const filteredTasks = useMemo(
-    () => applyDashboardFilter(tasks, filter, boardConfig, activeMembers, activeUser),
-    [tasks, filter, boardConfig, activeMembers, activeUser]
-  );
 
   const activePerspective = boardPerspectives.find(perspective => perspective.id === mode) ?? boardPerspectives[0];
 
@@ -362,8 +254,8 @@ export function BoardPage() {
         <DashboardFilter
           query={filter.query}
           mineOnly={filter.mineOnly}
-          onQueryChange={setQuery}
-          onMineToggle={toggleMineOnly}
+          onQueryChange={setFilterQuery}
+          onMineToggle={toggleMineFilter}
         />
       </div>
     </section>
@@ -371,15 +263,7 @@ export function BoardPage() {
 
   return (
     <AppShell
-      metrics={{
-        total: 0,
-        doing: 0,
-        review: 0,
-        done: 0,
-        dueThisWeek: 0,
-        donePercent: 0,
-        active: 0
-      }}
+      metrics={metrics}
       noPageScroll
       hidePageHeader
       hideSidebarBrandMark

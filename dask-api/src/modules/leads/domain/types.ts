@@ -13,6 +13,7 @@ import type {
 export interface CaptureLeadInput {
   workspaceId: string;
   source: LeadSource;
+  customerId?: string | null;
   externalSource?: LeadIntegrationSource | null;
   externalId?: string | null;
   firstName?: string | null;

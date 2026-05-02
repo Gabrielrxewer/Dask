@@ -3,16 +3,16 @@
   height: 32px;
   min-width: 32px;
   min-height: 32px;
-  border: 1px solid rgba(206, 220, 233, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #637d96;
+  background: color-mix(in srgb, var(--neutral-white) 92%, transparent);
+  color: var(--text-secondary);
   display: inline-grid;
   place-items: center;
   padding: 0;
   flex-shrink: 0;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(12, 35, 63, 0.06);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink-shadow) 6%, transparent);
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -42,16 +42,16 @@
 }
 
 .workspace-action-button:hover:not(:disabled) {
-  border-color: rgba(44, 120, 230, 0.3);
-  background: rgba(44, 120, 230, 0.05);
-  color: #163c5e;
-  box-shadow: 0 2px 6px rgba(12, 35, 63, 0.1);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--ink-shadow) 10%, transparent);
   transform: translateY(-1px);
 }
 
 .workspace-action-button--danger:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--danger) 42%, rgba(206, 220, 233, 0.9));
-  background: color-mix(in oklab, var(--danger-soft) 56%, rgba(255, 255, 255, 0.92));
+  border-color: color-mix(in oklab, var(--danger) 42%, color-mix(in srgb, var(--border-default) 90%, transparent));
+  background: color-mix(in oklab, var(--danger-soft) 56%, color-mix(in srgb, var(--neutral-white) 92%, transparent));
   color: var(--danger);
 }
 
@@ -64,25 +64,25 @@
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 0 1px 3px rgba(12, 35, 63, 0.04);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink-shadow) 4%, transparent);
 }
 
 .app-theme[data-theme="dark"] .workspace-action-button {
-  border: 1px solid rgba(72, 101, 131, 0.6);
-  background: rgba(25, 40, 56, 0.72);
-  color: #9cb2c8;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 60%, transparent);
+  background: var(--button-neutral-bg);
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .workspace-action-button:hover:not(:disabled) {
-  border-color: rgba(72, 101, 131, 0.9);
-  background: rgba(72, 148, 255, 0.1);
-  color: #c3d8ee;
+  border-color: color-mix(in srgb, var(--border-strong) 90%, transparent);
+  background: var(--button-neutral-bg-hover);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .workspace-action-button--danger:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--danger) 46%, rgba(72, 101, 131, 0.9));
-  background: color-mix(in oklab, var(--danger-soft) 40%, rgba(25, 40, 56, 0.72));
+  border-color: color-mix(in oklab, var(--danger) 46%, color-mix(in srgb, var(--border-strong) 90%, transparent));
+  background: color-mix(in oklab, var(--danger-soft) 40%, var(--button-neutral-bg));
   color: var(--danger);
 }

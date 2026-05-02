@@ -548,7 +548,6 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.get(
     '/workspaces/:workspaceId/customers',
-    requireWorkspaceModule('leads'),
     requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
@@ -565,7 +564,6 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.post(
     '/workspaces/:workspaceId/customers',
-    requireWorkspaceModule('leads'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
@@ -581,7 +579,6 @@ export const buildWorkspacePlatformRoutes = (deps: {
 
   router.patch(
     '/workspaces/:workspaceId/customers/:customerId',
-    requireWorkspaceModule('leads'),
     ...requireItemWrite,
     asyncHandler(async (req, res) => {
       const { workspaceId, customerId } = customerParamsDto.parse(req.params);

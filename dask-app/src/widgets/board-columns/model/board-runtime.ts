@@ -68,7 +68,7 @@ export function buildBoardColumnsRuntimeView(
     return {
       id: column.id,
       label: column.name,
-      dot: firstState?.color ?? "#64748b"
+      dot: firstState?.color ?? "var(--text-secondary)"
     };
   });
 

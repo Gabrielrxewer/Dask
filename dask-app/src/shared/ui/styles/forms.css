@@ -157,7 +157,32 @@
 
 .shared-form-field__label {
   font-size: var(--font-size-label);
-  color: color-mix(in oklab, var(--text-primary) 84%, var(--primary-hover));
+  color: var(--text-secondary);
   font-weight: 700;
   letter-spacing: 0.015em;
+}
+
+.shared-form-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--shared-form-grid-columns, 2), minmax(0, 1fr));
+  gap: var(--shared-form-grid-gap, 10px);
+}
+
+.shared-form-grid--two {
+  --shared-form-grid-columns: 2;
+}
+
+.shared-form-grid--three {
+  --shared-form-grid-columns: 3;
+}
+
+.shared-form-grid--stack {
+  align-items: stretch;
+}
+
+.shared-actions-row {
+  display: flex;
+  align-items: center;
+  gap: var(--shared-actions-row-gap, 10px);
+  flex-wrap: wrap;
 }

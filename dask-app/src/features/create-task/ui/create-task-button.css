@@ -9,22 +9,22 @@
   gap: 18px;
   padding: clamp(18px, 2.3vw, 24px);
   overflow: hidden;
-  border: 1px solid rgba(165, 201, 228, 0.8);
+  border: 1px solid color-mix(in srgb, var(--info-border) 80%, transparent);
   border-radius: 32px;
   background:
     linear-gradient(
       135deg,
-      rgba(255, 144, 132, 0.08) 0%,
-      rgba(214, 156, 242, 0.04) 28%,
-      rgba(123, 146, 242, 0.04) 58%,
-      rgba(56, 132, 238, 0.06) 100%
+      color-mix(in srgb, var(--danger) 8%, transparent) 0%,
+      color-mix(in srgb, var(--decorative-purple) 4%, transparent) 28%,
+      color-mix(in srgb, var(--brand-indigo) 4%, transparent) 58%,
+      color-mix(in srgb, var(--primary) 6%, transparent) 100%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 249, 255, 0.82) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 92%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%);
   box-shadow:
-    0 28px 58px rgba(10, 36, 61, 0.12),
-    0 12px 28px rgba(31, 76, 132, 0.08),
-    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
-    0 1px 0 rgba(255, 255, 255, 0.78) inset;
+    0 28px 58px color-mix(in srgb, var(--ink-shadow) 12%, transparent),
+    0 12px 28px color-mix(in srgb, var(--primary) 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--neutral-white) 55%, transparent) inset,
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 78%, transparent) inset;
   isolation: isolate;
   backdrop-filter: blur(22px);
 }
@@ -39,8 +39,8 @@
 .create-task-type-modal__surface::before {
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 44%);
+    linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 24%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 12%, transparent), transparent 44%);
 }
 
 .create-task-type-modal__surface::after {
@@ -48,7 +48,7 @@
   width: clamp(220px, 30vw, 360px);
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0) 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--neutral-white) 26%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 0%, transparent) 72%);
   filter: blur(18px);
 }
 
@@ -85,21 +85,21 @@
   min-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(184, 209, 230, 0.84);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 255, 0.9) 100%);
+  border: 1px solid color-mix(in srgb, var(--info-border) 84%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 90%, transparent) 100%);
   box-shadow:
-    0 8px 16px rgba(16, 54, 87, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;
-  color: #1d4d79;
+    0 8px 16px color-mix(in srgb, var(--primary) 6%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 80%, transparent) inset;
+  color: var(--text-primary);
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
 
 .create-task-type-modal__badge--accent {
-  color: #177864;
-  border-color: rgba(141, 221, 204, 0.92);
-  background: linear-gradient(145deg, rgba(244, 255, 251, 0.96) 0%, rgba(234, 252, 246, 0.88) 100%);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--info-border) 92%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface-tint) 96%, transparent) 0%, color-mix(in srgb, var(--success-bg) 88%, transparent) 100%);
 }
 
 .create-task-type-modal__header-copy {
@@ -116,12 +116,12 @@
 }
 
 .create-task-type-modal__eyebrow {
-  color: #285e91;
+  color: var(--text-primary);
 }
 
 .create-task-type-modal__header h2 {
   margin: 0;
-  color: #10233f;
+  color: var(--foreground);
   font-family: var(--font-family-heading);
   font-size: clamp(1.68rem, 1.16rem + 0.9vw, 2.24rem);
   line-height: 0.98;
@@ -130,7 +130,7 @@
 
 .create-task-type-modal__description {
   margin: 0;
-  color: #4a6480;
+  color: var(--text-primary);
   font-size: 0.96rem;
   line-height: 1.62;
 }
@@ -138,13 +138,13 @@
 .create-task-type-modal__close {
   width: 38px;
   height: 38px;
-  border: 1px solid rgba(182, 209, 231, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
   box-shadow:
-    0 12px 24px rgba(12, 42, 71, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
-  color: #214d78;
+    0 12px 24px color-mix(in srgb, var(--ink-shadow) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
+  color: var(--text-primary);
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -156,12 +156,12 @@
 
 .create-task-type-modal__close:hover {
   transform: translateY(-1px);
-  color: #17446f;
-  border-color: rgba(151, 190, 224, 0.98);
-  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
+  background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
   box-shadow:
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
 }
 
 .create-task-type-modal__close:focus-visible,
@@ -177,29 +177,29 @@
 }
 
 .create-task-type-modal__option {
-  --create-task-type-bg: #e7f3ff;
-  --create-task-type-border: #c8e3ff;
-  --create-task-type-text: #0f3d4a;
+  --create-task-type-bg: var(--surface-blue-muted);
+  --create-task-type-border: var(--info-border);
+  --create-task-type-text: var(--primary);
   position: relative;
   min-height: 190px;
   display: grid;
   align-content: start;
   gap: 14px;
   padding: 18px 18px 16px;
-  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 74%, rgba(177, 204, 227, 0.7));
+  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 74%, color-mix(in srgb, var(--border-default) 70%, transparent));
   border-radius: 24px;
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--create-task-type-bg) 52%, rgba(255, 255, 255, 0.98)) 0%,
-      rgba(247, 251, 255, 0.9) 44%,
-      rgba(241, 248, 255, 0.82) 100%
+      color-mix(in srgb, var(--create-task-type-bg) 52%, color-mix(in srgb, var(--neutral-white) 98%, transparent)) 0%,
+      color-mix(in srgb, var(--surface-tint) 90%, transparent) 44%,
+      color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%
     );
   box-shadow:
-    0 14px 28px rgba(12, 42, 71, 0.055),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 14px 28px color-mix(in srgb, var(--ink-shadow) 5.5%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
   overflow: hidden;
-  color: #214d78;
+  color: var(--text-primary);
   text-align: left;
   cursor: pointer;
   transition:
@@ -216,7 +216,7 @@
   width: 3px;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--create-task-type-text) 82%, white) 0%,
+    color-mix(in srgb, var(--create-task-type-text) 82%, var(--neutral-white)) 0%,
     color-mix(in srgb, var(--create-task-type-border) 82%, var(--create-task-type-text)) 100%
   );
   box-shadow: 0 0 16px color-mix(in srgb, var(--create-task-type-text) 16%, transparent);
@@ -227,7 +227,7 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 16%, transparent), transparent 42%),
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--create-task-type-bg) 40%, transparent) 0%, transparent 32%);
   pointer-events: none;
 }
@@ -239,16 +239,16 @@
 
 .create-task-type-modal__option:hover {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--create-task-type-border) 82%, rgba(151, 190, 224, 0.98));
+  border-color: color-mix(in srgb, var(--create-task-type-border) 82%, color-mix(in srgb, var(--info-border) 98%, transparent));
   box-shadow:
-    0 18px 34px rgba(12, 42, 71, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 18px 34px color-mix(in srgb, var(--ink-shadow) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--create-task-type-bg) 58%, rgba(255, 255, 255, 1)) 0%,
-      rgba(248, 252, 255, 0.94) 44%,
-      rgba(242, 249, 255, 0.86) 100%
+      color-mix(in srgb, var(--create-task-type-bg) 58%, color-mix(in srgb, var(--neutral-white) 100%, transparent)) 0%,
+      color-mix(in srgb, var(--neutral-white) 94%, transparent) 44%,
+      color-mix(in srgb, var(--surface-tint) 86%, transparent) 100%
     );
 }
 
@@ -265,15 +265,15 @@
   display: grid;
   place-items: center;
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 80%, white);
+  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 80%, var(--neutral-white));
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--create-task-type-bg) 84%, white) 0%,
-      color-mix(in srgb, var(--create-task-type-bg) 52%, white) 100%
+      color-mix(in srgb, var(--create-task-type-bg) 84%, var(--neutral-white)) 0%,
+      color-mix(in srgb, var(--create-task-type-bg) 52%, var(--neutral-white)) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 72%, transparent),
     0 10px 20px color-mix(in srgb, var(--create-task-type-text) 8%, transparent);
 }
 
@@ -296,7 +296,7 @@
 }
 
 .create-task-type-modal__option-label {
-  color: color-mix(in srgb, var(--create-task-type-text) 78%, #10233f);
+  color: color-mix(in srgb, var(--create-task-type-text) 78%, var(--foreground));
   font-family: var(--font-family-heading);
   font-size: 1rem;
   line-height: 1.12;
@@ -309,14 +309,14 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 72%, white);
-  background: rgba(255, 255, 255, 0.56);
-  color: color-mix(in srgb, var(--create-task-type-text) 72%, #537298);
+  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 72%, var(--neutral-white));
+  background: color-mix(in srgb, var(--neutral-white) 56%, transparent);
+  color: var(--text-secondary);
 }
 
 .create-task-type-modal__option-description {
   margin: 0;
-  color: #57718b;
+  color: var(--text-secondary);
   font-size: 0.84rem;
   line-height: 1.56;
 }
@@ -328,9 +328,9 @@
   min-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 82%, white);
-  background: color-mix(in srgb, var(--create-task-type-bg) 70%, white);
-  color: color-mix(in srgb, var(--create-task-type-text) 84%, #214d78);
+  border: 1px solid color-mix(in srgb, var(--create-task-type-border) 82%, var(--neutral-white));
+  background: color-mix(in srgb, var(--create-task-type-bg) 70%, var(--neutral-white));
+  color: color-mix(in srgb, var(--create-task-type-text) 84%, var(--text-primary));
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -346,46 +346,46 @@
 .create-task-type-modal__footer-note {
   margin: 0;
   max-width: 48ch;
-  color: #58718b;
+  color: var(--text-secondary);
   font-size: 0.82rem;
   line-height: 1.52;
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__surface {
-  border-color: rgba(79, 120, 150, 0.62);
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
   background:
     linear-gradient(
       135deg,
-      rgba(55, 109, 168, 0.16) 0%,
-      rgba(44, 73, 130, 0.1) 32%,
-      rgba(21, 77, 103, 0.12) 68%,
-      rgba(9, 20, 32, 0.96) 100%
+      color-mix(in srgb, var(--primary) 16%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 10%, transparent) 32%,
+      color-mix(in srgb, var(--primary) 12%, transparent) 68%,
+      color-mix(in srgb, var(--primary) 96%, transparent) 100%
     ),
-    linear-gradient(180deg, rgba(15, 25, 37, 0.98) 0%, rgba(10, 18, 28, 0.96) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 96%, transparent) 100%);
   box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.46),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    0 30px 80px color-mix(in srgb, var(--neutral-black) 46%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__surface::before {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 44%);
+    linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 8%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 4%, transparent), transparent 44%);
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__badge {
-  border-color: rgba(58, 85, 112, 0.46);
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.92) 0%, rgba(14, 24, 36, 0.88) 100%);
+  border-color: color-mix(in srgb, var(--primary) 46%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, transparent) 0%, color-mix(in srgb, var(--primary) 88%, transparent) 100%);
   box-shadow:
-    0 10px 18px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
-  color: #d7e7f6;
+    0 10px 18px color-mix(in srgb, var(--neutral-black) 18%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__badge--accent {
-  color: #8edec2;
-  border-color: rgba(62, 111, 96, 0.66);
-  background: linear-gradient(180deg, rgba(17, 47, 39, 0.94) 0%, rgba(11, 33, 28, 0.9) 100%);
+  color: var(--success-border);
+  border-color: color-mix(in srgb, var(--decorative-cyan) 66%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--decorative-cyan) 94%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 90%, transparent) 100%);
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__eyebrow {
@@ -404,38 +404,38 @@
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__close {
-  border-color: rgba(82, 124, 155, 0.7) !important;
-  background: linear-gradient(180deg, rgba(18, 42, 61, 0.98) 0%, rgba(13, 31, 46, 1) 100%) !important;
+  border-color: color-mix(in srgb, var(--primary) 70%, transparent) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 100%, transparent) 100%) !important;
   color: var(--text-strong) !important;
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 20%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__close:hover {
-  border-color: color-mix(in srgb, var(--accent-strong) 38%, rgba(82, 124, 155, 0.7)) !important;
-  background: linear-gradient(180deg, rgba(22, 50, 74, 0.98) 0%, rgba(16, 38, 56, 1) 100%) !important;
-  color: #f4fbff !important;
+  border-color: color-mix(in srgb, var(--accent-strong) 38%, color-mix(in srgb, var(--primary) 70%, transparent)) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 100%, transparent) 100%) !important;
+  color: var(--surface-tint) !important;
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__option {
-  border-color: color-mix(in srgb, var(--create-task-type-border) 34%, rgba(79, 120, 150, 0.56)) !important;
+  border-color: color-mix(in srgb, var(--create-task-type-border) 34%, color-mix(in srgb, var(--primary) 56%, transparent)) !important;
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--create-task-type-bg) 12%, rgba(18, 32, 47, 0.98)) 0%,
-      rgba(14, 25, 36, 0.96) 44%,
-      rgba(10, 20, 30, 0.94) 100%
+      color-mix(in srgb, var(--create-task-type-bg) 12%, color-mix(in srgb, var(--primary) 98%, transparent)) 0%,
+      color-mix(in srgb, var(--primary) 96%, transparent) 44%,
+      color-mix(in srgb, var(--primary) 94%, transparent) 100%
     ) !important;
   color: var(--text) !important;
   box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 18px 34px color-mix(in srgb, var(--neutral-black) 22%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__option::after {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.05), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 5%, transparent), transparent 42%),
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--create-task-type-bg) 18%, transparent) 0%, transparent 32%);
 }
 
@@ -444,42 +444,42 @@
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--create-task-type-bg) 16%, rgba(21, 38, 56, 0.99)) 0%,
-      rgba(16, 29, 42, 0.98) 44%,
-      rgba(11, 22, 34, 0.96) 100%
+      color-mix(in srgb, var(--create-task-type-bg) 16%, color-mix(in srgb, var(--primary) 99%, transparent)) 0%,
+      color-mix(in srgb, var(--primary) 98%, transparent) 44%,
+      color-mix(in srgb, var(--primary) 96%, transparent) 100%
     ) !important;
   box-shadow:
-    0 22px 40px rgba(0, 0, 0, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    0 22px 40px color-mix(in srgb, var(--neutral-black) 28%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__option-icon-shell {
-  border-color: color-mix(in srgb, var(--create-task-type-border) 30%, rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--create-task-type-border) 30%, color-mix(in srgb, var(--neutral-white) 8%, transparent));
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--create-task-type-bg) 16%, rgba(31, 55, 80, 0.96)) 0%,
-      rgba(16, 31, 46, 0.96) 100%
+      color-mix(in srgb, var(--create-task-type-bg) 16%, color-mix(in srgb, var(--primary) 96%, transparent)) 0%,
+      color-mix(in srgb, var(--primary) 96%, transparent) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 12px 24px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent),
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent);
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__option-icon {
-  color: color-mix(in srgb, var(--create-task-type-text) 64%, white);
+  color: color-mix(in srgb, var(--create-task-type-text) 64%, var(--neutral-white));
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__option-chevron {
-  border-color: color-mix(in srgb, var(--create-task-type-border) 30%, rgba(255, 255, 255, 0.08));
-  background: rgba(18, 42, 61, 0.86);
-  color: color-mix(in srgb, var(--create-task-type-text) 58%, white);
+  border-color: color-mix(in srgb, var(--create-task-type-border) 30%, color-mix(in srgb, var(--neutral-white) 8%, transparent));
+  background: color-mix(in srgb, var(--primary) 86%, transparent);
+  color: color-mix(in srgb, var(--create-task-type-text) 58%, var(--neutral-white));
 }
 
 .app-theme[data-theme="dark"] .create-task-type-modal__option-pill {
-  border-color: color-mix(in srgb, var(--create-task-type-border) 32%, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--create-task-type-bg) 12%, rgba(18, 42, 61, 0.92));
-  color: color-mix(in srgb, var(--create-task-type-text) 56%, white);
+  border-color: color-mix(in srgb, var(--create-task-type-border) 32%, color-mix(in srgb, var(--neutral-white) 8%, transparent));
+  background: color-mix(in srgb, var(--create-task-type-bg) 12%, color-mix(in srgb, var(--primary) 92%, transparent));
+  color: color-mix(in srgb, var(--create-task-type-text) 56%, var(--neutral-white));
 }
 
 @media (max-width: 1320px) {

@@ -69,10 +69,10 @@ const TEMPLATE_PREVIEWS: Record<WorkspaceTemplateOption["key"], string[]> = {
 };
 
 const TEMPLATE_ACCENTS: Record<WorkspaceTemplateOption["key"], string> = {
-  software_delivery: "#0a86e8",
-  product_discovery: "#7d61ee",
-  operations_kanban: "#0f9f98",
-  commercial_crm: "#0f766e"
+  software_delivery: "var(--brand-blue)",
+  product_discovery: "var(--brand-indigo)",
+  operations_kanban: "var(--decorative-cyan)",
+  commercial_crm: "var(--brand-cyan-strong)"
 };
 
 function resolvePerspectives(rawBoardConfig: unknown): BoardPerspective[] {

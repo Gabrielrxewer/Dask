@@ -30,7 +30,7 @@
   border-color: transparent;
   background: var(--button-gradient-main);
   color: var(--button-primary-text);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--neutral-black) 12%, transparent);
 }
 
 .shared-button--primary:hover {
@@ -55,7 +55,7 @@
 .shared-button--outline.active {
   border-color: var(--selected-border);
   background: var(--selected-bg);
-  color: var(--primary-hover);
+  color: var(--text-primary);
 }
 
 .shared-button--sm {

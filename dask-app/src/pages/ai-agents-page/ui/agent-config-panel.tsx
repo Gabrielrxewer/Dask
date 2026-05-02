@@ -42,7 +42,7 @@ export function AgentConfigPanel({
 
   if (agent) {
     return (
-      <aside className="acp" style={{ '--acp-color': '#2563eb' } as React.CSSProperties}>
+      <aside className="acp" style={{ '--acp-color': 'var(--primary)' } as React.CSSProperties}>
         <header className="acp__header">
           <div className="acp__header-left">
             <span className="acp__type-dot" />

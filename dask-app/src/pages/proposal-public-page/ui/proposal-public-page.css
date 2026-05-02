@@ -4,8 +4,8 @@
   place-items: center;
   padding: 32px;
   background:
-    linear-gradient(135deg, rgba(245, 249, 255, 0.96), rgba(235, 247, 245, 0.96)),
-    #f4f8fc;
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-tint) 96%, transparent), color-mix(in srgb, var(--surface-tint) 96%, transparent)),
+    var(--surface-tint);
 }
 
 .proposal-public-page__panel {
@@ -13,14 +13,14 @@
   display: grid;
   gap: 14px;
   padding: 28px;
-  border: 1px solid rgba(198, 216, 236, 0.86);
+  border: 1px solid color-mix(in srgb, var(--info-border) 86%, transparent);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 24px 60px rgba(13, 37, 61, 0.16);
+  background: color-mix(in srgb, var(--neutral-white) 90%, transparent);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .proposal-public-page__panel span {
-  color: #4d718f;
+  color: var(--text-primary);
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -29,14 +29,14 @@
 
 .proposal-public-page__panel h1 {
   margin: 0;
-  color: #12385f;
+  color: var(--text-primary);
   font-size: 2rem;
   line-height: 1.05;
 }
 
 .proposal-public-page__panel p {
   margin: 0;
-  color: #55718d;
+  color: var(--text-primary);
   font-weight: 650;
 }
 
@@ -52,8 +52,8 @@
   min-height: 40px;
   padding: 0 16px;
   border-radius: 10px;
-  background: #12385f;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--neutral-white);
   font-weight: 800;
   text-decoration: none;
 }

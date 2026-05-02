@@ -20,6 +20,7 @@ export const leadListQueryDto = z.object({
 
 export const captureLeadDto = z.object({
   source: z.enum(['MANUAL', 'API', 'WEBHOOK', 'IMPORT', 'INTEGRATION']).default('MANUAL'),
+  customerId: z.string().uuid().optional(),
   externalSource: z.enum(['GENERIC_WEBHOOK', 'ZAPIER', 'MAKE', 'N8N', 'HUBSPOT', 'RD_STATION']).optional(),
   externalId: z.string().trim().min(1).max(255).optional(),
   firstName: z.string().trim().max(80).optional(),

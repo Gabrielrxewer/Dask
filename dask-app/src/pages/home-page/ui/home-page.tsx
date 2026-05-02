@@ -303,7 +303,7 @@ function PricingSection({
           <ul className="home-page__pricing-features">
             {[
               "1 workspace pessoal",
-              "Boards, listas e timeline",
+              "Boards, listas e agenda",
               "Contexto continuo para demandas e entregas",
               "IA aplicada ao fluxo",
               "Automacoes basicas e busca contextual"
@@ -332,7 +332,7 @@ function PricingSection({
             {[
               "Multiplos workspaces",
               "Fluxo compartilhado entre comercial, operacao e faturamento",
-              "Boards, listas, timeline e agenda",
+              "Boards, listas e agenda",
               "IA contextual e automacoes",
               "Campos personalizados",
               "Rastreabilidade, auditoria e integracoes",

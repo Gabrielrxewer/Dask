@@ -63,7 +63,7 @@ export const processStages: HomeProcessStage[] = [
   {
     step: "03",
     title: "Execucao conectada",
-    description: "Boards, listas, timeline e agenda operam sobre o mesmo contexto que veio das etapas anteriores."
+    description: "Boards, listas e agenda operam sobre o mesmo contexto que veio das etapas anteriores."
   },
   {
     step: "04",
@@ -115,7 +115,7 @@ export const architectureItems: HomeArchitectureItem[] = [
   },
   {
     label: "Views",
-    detail: "Leia o mesmo processo por kanban, lista, timeline e agenda conforme a necessidade da operacao."
+    detail: "Leia o mesmo processo por kanban, lista e agenda conforme a necessidade da operacao."
   },
   {
     label: "Regras",

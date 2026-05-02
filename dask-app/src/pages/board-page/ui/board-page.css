@@ -82,30 +82,30 @@
 
 
 .app-theme:not([data-theme="dark"]) .board-view {
-  --builder-line: color-mix(in oklab, var(--line) 92%, rgba(151, 190, 224, 0.74));
-  --builder-line-strong: color-mix(in oklab, var(--line-strong) 76%, rgba(46, 207, 195, 0.24));
+  --builder-line: color-mix(in oklab, var(--line) 92%, color-mix(in srgb, var(--info-border) 74%, transparent));
+  --builder-line-strong: color-mix(in oklab, var(--line-strong) 76%, color-mix(in srgb, var(--decorative-cyan) 24%, transparent));
   --builder-surface:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.985) 0%,
-      rgba(248, 251, 255, 0.94) 48%,
-      rgba(243, 248, 255, 0.88) 100%
+      color-mix(in srgb, var(--neutral-white) 98.5%, transparent) 0%,
+      color-mix(in srgb, var(--surface-tint) 94%, transparent) 48%,
+      color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%
     );
   --builder-surface-soft:
     linear-gradient(
       135deg,
-      rgba(255, 144, 132, 0.035) 0%,
-      rgba(214, 156, 242, 0.018) 28%,
-      rgba(123, 146, 242, 0.02) 58%,
-      rgba(56, 132, 238, 0.03) 100%
+      color-mix(in srgb, var(--danger) 3.5%, transparent) 0%,
+      color-mix(in srgb, var(--decorative-purple) 1.8%, transparent) 28%,
+      color-mix(in srgb, var(--brand-indigo) 2%, transparent) 58%,
+      color-mix(in srgb, var(--primary) 3%, transparent) 100%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 249, 255, 0.82) 100%);
-  --builder-accent: color-mix(in oklab, var(--accent) 84%, #4aa8dd);
-  --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 78%, #22527f);
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 92%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%);
+  --builder-accent: color-mix(in oklab, var(--accent) 84%, var(--primary));
+  --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 78%, var(--primary));
   --workspace-view-frame-border: transparent;
   --workspace-view-panel-border: transparent;
   --workspace-view-card-border: transparent;
-  --workspace-view-accent-line: rgba(151, 190, 224, 0.94);
+  --workspace-view-accent-line: color-mix(in srgb, var(--info-border) 94%, transparent);
   position: relative;
   isolation: isolate;
   gap: 10px;
@@ -125,14 +125,14 @@
   inset: 30px auto auto -42px;
   width: 132px;
   height: 132px;
-  background: radial-gradient(circle, rgba(127, 195, 255, 0.16) 0%, rgba(127, 195, 255, 0.03) 58%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 16%, transparent) 0%, color-mix(in srgb, var(--primary) 3%, transparent) 58%, transparent 76%);
 }
 
 .app-theme:not([data-theme="dark"]) .board-view::after {
   inset: auto -40px 8% auto;
   width: 154px;
   height: 154px;
-  background: radial-gradient(circle, rgba(73, 204, 198, 0.14) 0%, rgba(145, 106, 237, 0.03) 56%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 14%, transparent) 0%, color-mix(in srgb, var(--brand-indigo) 3%, transparent) 56%, transparent 76%);
 }
 
 .app-theme:not([data-theme="dark"]) .board-view > * {
@@ -142,7 +142,7 @@
 
 .app-theme:not([data-theme="dark"]) .board-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__tabs.shared-tabs {
@@ -167,7 +167,7 @@
   margin-bottom: 0;
   border-radius: 10px;
   background: transparent;
-  color: #637d96;
+  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -178,16 +178,16 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__tabs .shared-tabs__item:hover {
-  background: rgba(44, 120, 230, 0.06);
-  color: #355777;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  color: var(--text-secondary);
   box-shadow: none;
-  border-color: rgba(202, 219, 235, 0.72);
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__tabs .shared-tabs__item--active {
   font-weight: 860;
   background: transparent;
-  color: #163c5e;
+  color: var(--text-primary);
   border-color: transparent;
   box-shadow: none;
 }
@@ -198,7 +198,7 @@
   inset: auto 8px 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, rgba(44, 120, 230, 0.9) 0%, rgba(46, 213, 205, 0.72) 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 90%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 72%, transparent) 100%);
 }
 
 
@@ -222,18 +222,18 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search:hover {
-  background: rgba(44, 120, 230, 0.06);
-  border-color: rgba(202, 219, 235, 0.72);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search:focus-within {
-  background: rgba(255, 255, 255, 0.82);
-  border-color: rgba(176, 204, 228, 0.9);
-  box-shadow: 0 0 0 3px rgba(77, 133, 186, 0.1);
+  background: color-mix(in srgb, var(--neutral-white) 82%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search-icon {
-  color: #6a8ba8;
+  color: var(--text-muted);
   left: calc(50% - 122px);
   transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -250,7 +250,7 @@
   padding-right: 10px;
   border: none;
   background: transparent;
-  color: #163553;
+  color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -267,7 +267,7 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter .shared-input::placeholder {
-  color: #8fa8c0;
+  color: var(--text-muted);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button {
@@ -278,7 +278,7 @@
   border-radius: 10px;
   border: 1px solid transparent !important;
   background: transparent !important;
-  color: #637d96 !important;
+  color: var(--text-secondary) !important;
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -287,48 +287,48 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: rgba(44, 120, 230, 0.06) !important;
-  border-color: rgba(202, 219, 235, 0.72) !important;
-  color: #355777 !important;
+  background: color-mix(in srgb, var(--primary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent) !important;
+  color: var(--text-secondary) !important;
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
   background: linear-gradient(
     135deg,
-    rgba(44, 120, 230, 0.1) 0%,
-    rgba(48, 213, 205, 0.06) 100%
+    color-mix(in srgb, var(--primary) 10%, transparent) 0%,
+    color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 100%
   ),
-  linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 251, 255, 0.96) 100%) !important;
-  border-color: rgba(176, 204, 228, 0.9) !important;
-  color: #163c5e !important;
+  linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 99%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 96%, transparent) 100%) !important;
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent) !important;
+  color: var(--text-primary) !important;
   font-weight: 860;
 }
 
 .app-theme[data-theme="dark"] .board-view {
-  --builder-line: color-mix(in oklab, var(--line) 82%, rgba(78, 116, 152, 0.78));
-  --builder-line-strong: color-mix(in oklab, var(--line-strong) 72%, rgba(71, 198, 190, 0.24));
+  --builder-line: color-mix(in oklab, var(--line) 82%, color-mix(in srgb, var(--primary) 78%, transparent));
+  --builder-line-strong: color-mix(in oklab, var(--line-strong) 72%, color-mix(in srgb, var(--decorative-cyan) 24%, transparent));
   --builder-surface:
     linear-gradient(
       145deg,
-      rgba(13, 22, 33, 0.985) 0%,
-      rgba(16, 28, 42, 0.96) 48%,
-      rgba(18, 31, 46, 0.92) 100%
+      color-mix(in srgb, var(--primary) 98.5%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 96%, transparent) 48%,
+      color-mix(in srgb, var(--primary) 92%, transparent) 100%
     );
   --builder-surface-soft:
     linear-gradient(
       135deg,
-      rgba(62, 108, 181, 0.08) 0%,
-      rgba(67, 138, 206, 0.04) 38%,
-      rgba(50, 190, 183, 0.05) 100%
+      color-mix(in srgb, var(--primary) 8%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 4%, transparent) 38%,
+      color-mix(in srgb, var(--decorative-cyan) 5%, transparent) 100%
     ),
-    linear-gradient(180deg, rgba(15, 25, 37, 0.92) 0%, rgba(17, 29, 43, 0.86) 100%);
-  --builder-accent: color-mix(in oklab, var(--accent) 88%, #66a8ff);
-  --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 72%, #d9ecff);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, transparent) 0%, color-mix(in srgb, var(--primary) 86%, transparent) 100%);
+  --builder-accent: color-mix(in oklab, var(--accent) 88%, var(--primary));
+  --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 72%, var(--info-bg));
   --workspace-view-frame-border: transparent;
   --workspace-view-panel-border: transparent;
   --workspace-view-card-border: transparent;
-  --workspace-view-accent-line: rgba(79, 112, 145, 0.94);
+  --workspace-view-accent-line: color-mix(in srgb, var(--primary) 94%, transparent);
   position: relative;
   isolation: isolate;
   gap: 10px;
@@ -348,14 +348,14 @@
   inset: 30px auto auto -42px;
   width: 132px;
   height: 132px;
-  background: radial-gradient(circle, rgba(57, 119, 199, 0.18) 0%, rgba(57, 119, 199, 0.04) 58%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 18%, transparent) 0%, color-mix(in srgb, var(--primary) 4%, transparent) 58%, transparent 76%);
 }
 
 .app-theme[data-theme="dark"] .board-view::after {
   inset: auto -40px 8% auto;
   width: 154px;
   height: 154px;
-  background: radial-gradient(circle, rgba(46, 184, 178, 0.14) 0%, rgba(77, 123, 212, 0.05) 56%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 14%, transparent) 0%, color-mix(in srgb, var(--primary) 5%, transparent) 56%, transparent 76%);
 }
 
 .app-theme[data-theme="dark"] .board-view > * {
@@ -365,7 +365,7 @@
 
 .app-theme[data-theme="dark"] .board-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(64, 90, 116, 0.82);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs.shared-tabs {
@@ -390,7 +390,7 @@
   margin-bottom: 0;
   border-radius: 10px;
   background: transparent !important;
-  color: #7e96ae;
+  color: var(--text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -402,15 +402,15 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item:hover {
-  background: rgba(72, 148, 255, 0.08) !important;
-  color: #c3d8ee;
-  border-color: rgba(72, 101, 131, 0.72) !important;
+  background: var(--selected-bg) !important;
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active {
   font-weight: 860;
   background: transparent !important;
-  color: #e4f0fc;
+  color: var(--text-primary);
   border-color: transparent !important;
   box-shadow: none !important;
 }
@@ -421,7 +421,7 @@
   inset: auto 8px 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, rgba(72, 148, 255, 0.96) 0%, rgba(62, 219, 211, 0.76) 100%);
+  background: var(--text-primary);
 }
 
 
@@ -445,18 +445,18 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search:hover {
-  background: rgba(72, 148, 255, 0.08);
-  border-color: rgba(72, 101, 131, 0.72);
+  background: var(--selected-bg);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search:focus-within {
   background: transparent;
-  border-color: rgba(82, 119, 156, 0.72);
+  border-color: var(--selected-border);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search-icon {
-  color: #86a9cd;
+  color: var(--text-muted);
   left: calc(50% - 122px);
   transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -473,7 +473,7 @@
   padding-right: 10px;
   border: none;
   background: transparent !important;
-  color: #dbeafb;
+  color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -490,7 +490,7 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter .shared-input::placeholder {
-  color: #89a0b7;
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button {
@@ -501,7 +501,7 @@
   border-radius: 10px;
   border: 1px solid transparent !important;
   background: transparent !important;
-  color: #7e96ae !important;
+  color: var(--text-muted) !important;
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -510,21 +510,16 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: rgba(72, 148, 255, 0.08) !important;
-  border-color: rgba(72, 101, 131, 0.72) !important;
-  color: #c3d8ee !important;
+  background: var(--selected-bg) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
+  color: var(--text-primary) !important;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: linear-gradient(
-    135deg,
-    rgba(44, 120, 230, 0.16) 0%,
-    rgba(48, 213, 205, 0.08) 100%
-  ),
-  linear-gradient(180deg, rgba(25, 38, 53, 0.98) 0%, rgba(20, 32, 46, 0.96) 100%) !important;
-  border-color: rgba(82, 119, 156, 0.92) !important;
-  color: #e4f0fc !important;
+  background: var(--selected-bg) !important;
+  border-color: var(--selected-border) !important;
+  color: var(--text-primary) !important;
   font-weight: 860;
 }
 

@@ -43,7 +43,7 @@
   min-height: 58px;
   color: var(--text);
   font-weight: 500;
-  border-bottom: 1px solid color-mix(in oklab, var(--line) 78%, #fff);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 78%, var(--neutral-white));
   transition: background 0.16s ease;
 }
 

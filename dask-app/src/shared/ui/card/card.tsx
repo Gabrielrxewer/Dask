@@ -1,9 +1,9 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
-type CardVariant = "default" | "interactive";
+export type CardVariant = "default" | "interactive";
 
-interface CardProps extends HTMLAttributes<HTMLElement> {
+export interface CardProps extends HTMLAttributes<HTMLElement> {
   children: ReactNode;
   variant?: CardVariant;
 }

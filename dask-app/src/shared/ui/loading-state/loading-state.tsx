@@ -1,10 +1,11 @@
 import { cn } from "@/shared/lib/cn";
+import type { HTMLAttributes } from "react";
 
 export type LoadingAnimation =
+  | "default"
   | "workspace"
   | "board"
   | "list"
-  | "timeline"
   | "agenda"
   | "documentation"
   | "ai"
@@ -15,19 +16,18 @@ export type LoadingAnimation =
   | "marketing"
   | "settings";
 
-interface LoadingStateProps {
+export interface LoadingStateProps extends HTMLAttributes<HTMLDivElement> {
   text?: string;
   animation?: LoadingAnimation;
   variant?: "inline" | "frame";
   visible?: boolean;
-  className?: string;
 }
 
 const animationGlyphs: Record<LoadingAnimation, string[]> = {
+  default: ["01", "02", "03"],
   workspace: ["D", "A", "S", "K"],
   board: ["todo", "doing", "done"],
   list: ["01", "02", "03"],
-  timeline: ["09:00", "13:30", "18:00"],
   agenda: ["seg", "qua", "sex"],
   documentation: ["doc", "md", "pdf"],
   ai: ["AI", "ctx", "run"],
@@ -39,8 +39,14 @@ const animationGlyphs: Record<LoadingAnimation, string[]> = {
   settings: ["cfg", "ui", "api"]
 };
 
+function resolveVisualAnimation(animation: LoadingAnimation): Exclude<LoadingAnimation, "default"> {
+  return animation === "default" ? "list" : animation;
+}
+
 function renderLoadingVisual(animation: LoadingAnimation) {
-  if (animation === "billing") {
+  const visualAnimation = resolveVisualAnimation(animation);
+
+  if (visualAnimation === "billing") {
     return (
       <div className="shared-loading-state__card">
         <div className="shared-loading-state__card-face">
@@ -64,7 +70,7 @@ function renderLoadingVisual(animation: LoadingAnimation) {
   }
 
   return (
-    <div className={`shared-loading-state__visual shared-loading-state__visual--${animation}`}>
+    <div className={`shared-loading-state__visual shared-loading-state__visual--${visualAnimation}`}>
       <span />
       <span />
       <span />
@@ -83,7 +89,12 @@ export function LoadingState({
   animation = "workspace",
   variant = "inline",
   visible = true,
-  className
+  className,
+  style,
+  role = "status",
+  "aria-live": ariaLive = "polite",
+  "aria-hidden": ariaHidden,
+  ...props
 }: LoadingStateProps) {
   const glyphs = animationGlyphs[animation] ?? animationGlyphs.workspace;
   const frameStyle =
@@ -98,7 +109,7 @@ export function LoadingState({
 
   return (
     <div
-      style={frameStyle}
+      style={{ ...style, ...frameStyle }}
       className={cn(
         "shared-loading-state",
         `shared-loading-state--${variant}`,
@@ -106,9 +117,10 @@ export function LoadingState({
         !visible && "shared-loading-state--out",
         className
       )}
-      role="status"
-      aria-live="polite"
-      aria-hidden={!visible}
+      role={role}
+      aria-live={ariaLive}
+      aria-hidden={ariaHidden ?? !visible}
+      {...props}
     >
       <div className="shared-loading-state__stage" aria-hidden="true">
         {glyphs.flatMap((glyph, glyphIndex) => [

@@ -1,10 +1,11 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { AppIcon } from "@/shared/ui/icon";
 import "./workspace-action-button.css";
 
-type WorkspaceActionButtonTone = "default" | "accent" | "danger";
+export type WorkspaceActionButtonTone = "default" | "accent" | "danger";
 
-interface WorkspaceActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface WorkspaceActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   icon: ReactNode;
   tone?: WorkspaceActionButtonTone;
@@ -18,6 +19,8 @@ export function WorkspaceActionButton({
   className = "",
   ...props
 }: WorkspaceActionButtonProps) {
+  const renderedIcon = icon === "+" ? <AppIcon name="plus" /> : icon;
+
   return (
     <button
       type={type}
@@ -27,7 +30,7 @@ export function WorkspaceActionButton({
       {...props}
     >
       <span className="workspace-action-button__icon" aria-hidden="true">
-        {icon}
+        {renderedIcon}
       </span>
     </button>
   );

@@ -11,25 +11,24 @@ import type {
   FiscalReceivedDocument,
   FiscalReceivedType
 } from "@/modules/fiscal";
-import { useWorkspace } from "@/modules/workspace";
+import { formatCustomerOptionDetail, getCustomerDisplayName, useWorkspace, type Customer } from "@/modules/workspace";
+import { formatDateTime as formatDate } from "@/shared/lib/date";
+import { formatMoney } from "@/shared/lib/money";
 import {
   Button,
-  DataTable,
-  DataTableBody,
-  DataTableCell,
-  DataTableHeader,
-  DataTableRow,
   EmptyState,
   FormField,
   LoadingState,
   ModalShell,
+  ResourceTable,
   Select,
   StatusBadge,
   Tabs,
   TextInput,
   Textarea,
   WorkspaceActionButton,
-  WorkspaceFrame
+  WorkspaceFrame,
+  type ResourceTableColumn
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./fiscal-page.css";
@@ -39,6 +38,7 @@ type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "wizard" | "se
 interface WizardState {
   documentType: FiscalDocumentType;
   companyConfigId: string;
+  customerId: string;
   customerName: string;
   customerDocument: string;
   itemName: string;
@@ -93,19 +93,6 @@ function mapTone(status: string): "default" | "success" | "warning" {
   return "default";
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString("pt-BR");
-}
-
-function formatMoney(value: string | null | undefined): string {
-  const amount = Number(value ?? "0");
-  if (!Number.isFinite(amount)) return "-";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
-}
-
 function toNumber(value: string): number {
   const parsed = Number(value.trim().replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -119,10 +106,17 @@ function safeJson(value: unknown): string {
   }
 }
 
+function getCustomerAddressRecord(customer: Customer): Record<string, unknown> | null {
+  if (!customer.address) return null;
+  const entries = Object.entries(customer.address).filter(([, value]) => typeof value === "string" && value.trim());
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
 function initialWizardState(): WizardState {
   return {
     documentType: "NFE",
     companyConfigId: "",
+    customerId: "",
     customerName: "",
     customerDocument: "",
     itemName: "",
@@ -135,7 +129,7 @@ function initialWizardState(): WizardState {
 }
 
 export function FiscalPage() {
-  const { snapshot } = useWorkspace();
+  const { snapshot, listCustomers } = useWorkspace();
   const workspaceId = snapshot?.id ?? "";
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
 
@@ -150,6 +144,7 @@ export function FiscalPage() {
   const [received, setReceived] = useState<FiscalReceivedDocument[]>([]);
   const [drafts, setDrafts] = useState<FiscalEmissionDraft[]>([]);
   const [companies, setCompanies] = useState<FiscalCompanyConfig[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [issuedSearch, setIssuedSearch] = useState("");
   const [receivedSearch, setReceivedSearch] = useState("");
@@ -173,12 +168,13 @@ export function FiscalPage() {
     setIsLoading(true);
     setError("");
     try {
-      const [dash, docs, recs, stripeDrafts, companyList] = await Promise.all([
+      const [dash, docs, recs, stripeDrafts, companyList, customerList] = await Promise.all([
         fiscalService.getDashboard(workspaceId),
         fiscalService.listDocuments(workspaceId, { direction: "OUTBOUND", search: issuedSearch || undefined, limit: 150 }),
         fiscalService.listReceived(workspaceId, { search: receivedSearch || undefined, limit: 150 }),
         fiscalService.listDrafts(workspaceId, 150),
-        fiscalService.listCompanies(workspaceId)
+        fiscalService.listCompanies(workspaceId),
+        listCustomers()
       ]);
 
       setDashboard(dash);
@@ -186,12 +182,13 @@ export function FiscalPage() {
       setReceived(recs.items);
       setDrafts(stripeDrafts.items);
       setCompanies(companyList.items);
+      setCustomers(customerList);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar modulo fiscal.");
     } finally {
       setIsLoading(false);
     }
-  }, [issuedSearch, receivedSearch, workspaceId]);
+  }, [issuedSearch, listCustomers, receivedSearch, workspaceId]);
 
   useEffect(() => {
     void loadAll();
@@ -206,6 +203,9 @@ export function FiscalPage() {
       setSyncCompanyConfigId(companies[0].id);
     }
   }, [companies, syncCompanyConfigId, wizard.companyConfigId]);
+
+  const customersById = useMemo(() => new Map(customers.map((customer) => [customer.id, customer])), [customers]);
+  const selectedWizardCustomer = wizard.customerId ? customersById.get(wizard.customerId) ?? null : null;
 
   const runAction = useCallback(
     async (action: () => Promise<unknown>, successMessage: string) => {
@@ -240,9 +240,25 @@ export function FiscalPage() {
     }
   };
 
+  const handleWizardCustomerChange = (customerId: string) => {
+    const customer = customersById.get(customerId);
+    setWizard((current) => ({
+      ...current,
+      customerId,
+      customerName: customer ? getCustomerDisplayName(customer) : "",
+      customerDocument: customer?.document ?? ""
+    }));
+  };
+
   const submitWizard = async () => {
-    if (!workspaceId || !wizard.companyConfigId || !wizard.customerName.trim() || !wizard.itemName.trim()) {
-      setError("Preencha empresa, cliente e item para emitir.");
+    const customer = selectedWizardCustomer;
+    if (!workspaceId || !wizard.companyConfigId || !customer || !wizard.itemName.trim()) {
+      setError("Selecione empresa, cliente cadastrado e item para emitir.");
+      return;
+    }
+    const customerDocument = customer.document;
+    if (!customerDocument) {
+      setError("Complete CPF/CNPJ no cadastro do cliente antes de emitir.");
       return;
     }
 
@@ -261,10 +277,11 @@ export function FiscalPage() {
         documentType: wizard.documentType,
         origin,
         sourceSystem: "INTERNAL",
+        customerId: customer.id,
         amountSubtotal: total.toFixed(2),
         amountDiscount: discount.toFixed(2),
         amountTotal: total.toFixed(2),
-        requestPayloadSnapshot: { notes: wizard.notes, source: "manual_wizard" },
+        requestPayloadSnapshot: { notes: wizard.notes, source: "manual_wizard", customerId: customer.id },
         items: [
           {
             itemType,
@@ -279,16 +296,20 @@ export function FiscalPage() {
             totalAmount: total.toFixed(2)
           }
         ],
-        parties: wizard.customerDocument
-          ? [
-              {
-                role: wizard.documentType === "NFSE" ? "TAKER" : "RECIPIENT",
-                name: wizard.customerName,
-                legalName: wizard.customerName,
-                cnpjCpf: wizard.customerDocument
-              }
-            ]
-          : []
+        parties: [
+          {
+            role: wizard.documentType === "NFSE" ? "TAKER" : "RECIPIENT",
+            name: getCustomerDisplayName(customer),
+            legalName: customer.legalName || getCustomerDisplayName(customer),
+            cnpjCpf: customerDocument,
+            stateRegistration: customer.stateRegistration ?? null,
+            municipalRegistration: customer.municipalRegistration ?? null,
+            email: customer.email ?? null,
+            phone: customer.phone ?? null,
+            address: getCustomerAddressRecord(customer),
+            metadata: { source: "customer_registry", customerId: customer.id }
+          }
+        ]
       });
 
       await fiscalService.issueDocument(workspaceId, created.id);
@@ -296,6 +317,114 @@ export function FiscalPage() {
       setTab("issued");
     }, "Documento criado e enviado para emissao.");
   };
+
+  const issuedColumns = useMemo<Array<ResourceTableColumn<FiscalDocument>>>(
+    () => [
+      { id: "reference", header: "Referencia", width: "1fr", accessor: "internalReference" },
+      { id: "type", header: "Tipo", width: "0.7fr", accessor: "documentType" },
+      {
+        id: "status",
+        header: "Status",
+        width: "0.9fr",
+        render: (document) => (
+          <StatusBadge tone={mapTone(document.status)}>{STATUS_LABELS[document.status] ?? document.status}</StatusBadge>
+        )
+      },
+      {
+        id: "amount",
+        header: "Valor",
+        width: "0.9fr",
+        render: (document) => formatMoney(document.amountTotal)
+      },
+      {
+        id: "created",
+        header: "Criado",
+        width: "1fr",
+        render: (document) => formatDate(document.createdAt)
+      }
+    ],
+    []
+  );
+
+  const receivedColumns = useMemo<Array<ResourceTableColumn<FiscalReceivedDocument>>>(
+    () => [
+      { id: "type", header: "Tipo", width: "0.8fr", accessor: "type" },
+      {
+        id: "issuer",
+        header: "Fornecedor",
+        width: "1fr",
+        render: (item) => item.issuerName ?? "-"
+      },
+      {
+        id: "status",
+        header: "Status",
+        width: "0.8fr",
+        render: (item) => (
+          <StatusBadge tone={mapTone(item.status)}>{STATUS_LABELS[item.status] ?? item.status}</StatusBadge>
+        )
+      },
+      {
+        id: "amount",
+        header: "Valor",
+        width: "0.8fr",
+        render: (item) => formatMoney(item.amountTotal)
+      },
+      {
+        id: "issued",
+        header: "Emissao",
+        width: "1fr",
+        render: (item) => formatDate(item.issuedAt)
+      },
+      {
+        id: "files",
+        header: "Arquivos",
+        width: "0.8fr",
+        render: (item) => (
+          <div className="fiscal-page__row-actions">
+            {item.xmlUrl ? <a href={item.xmlUrl} target="_blank" rel="noreferrer">XML</a> : <span>-</span>}
+            {item.pdfUrl ? <a href={item.pdfUrl} target="_blank" rel="noreferrer">PDF</a> : <span>-</span>}
+          </div>
+        )
+      }
+    ],
+    []
+  );
+
+  const stripeDraftColumns = useMemo<Array<ResourceTableColumn<FiscalEmissionDraft>>>(
+    () => [
+      {
+        id: "session",
+        header: "Session Stripe",
+        width: "1fr",
+        render: (draft) => draft.stripeSessionId ?? "-"
+      },
+      { id: "type", header: "Tipo", width: "0.8fr", accessor: "documentType" },
+      {
+        id: "status",
+        header: "Status",
+        width: "0.8fr",
+        render: (draft) => (
+          <StatusBadge tone={mapTone(draft.status)}>{STATUS_LABELS[draft.status] ?? draft.status}</StatusBadge>
+        )
+      },
+      {
+        id: "created",
+        header: "Criado",
+        width: "1fr",
+        render: (draft) => formatDate(draft.createdAt)
+      }
+    ],
+    []
+  );
+
+  const companyColumns = useMemo<Array<ResourceTableColumn<FiscalCompanyConfig>>>(
+    () => [
+      { id: "company", header: "Empresa", width: "1fr", accessor: "displayName" },
+      { id: "cnpj", header: "CNPJ", width: "0.9fr", accessor: "cnpj" },
+      { id: "environment", header: "Ambiente", width: "0.9fr", accessor: "focusEnvironment" }
+    ],
+    []
+  );
 
   const topNavigation = (
     <section className="fiscal-top-nav" aria-label="Navegacao fiscal">
@@ -362,47 +491,25 @@ export function FiscalPage() {
                 <FormField label="Buscar documentos" className="fiscal-view__field">
                   <TextInput value={issuedSearch} onChange={(event) => setIssuedSearch(event.target.value)} placeholder="Referencia, venda, Focus..." />
                 </FormField>
-                <DataTable className="fiscal-view__table" columns="1fr 0.7fr 0.9fr 0.9fr 1fr 1.2fr" responsiveMinWidth="960px">
-              <DataTableHeader>
-                <DataTableCell>Referencia</DataTableCell>
-                <DataTableCell>Tipo</DataTableCell>
-                <DataTableCell>Status</DataTableCell>
-                <DataTableCell>Valor</DataTableCell>
-                <DataTableCell>Criado</DataTableCell>
-                <DataTableCell>Acoes</DataTableCell>
-              </DataTableHeader>
-              <DataTableBody>
-                {documents.length === 0 ? (
-                  <DataTableRow>
-                    <DataTableCell>Nenhum documento encontrado.</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                  </DataTableRow>
-                ) : (
-                  documents.map((document) => (
-                    <DataTableRow key={document.id}>
-                      <DataTableCell>{document.internalReference}</DataTableCell>
-                      <DataTableCell>{document.documentType}</DataTableCell>
-                      <DataTableCell>
-                        <StatusBadge tone={mapTone(document.status)}>{STATUS_LABELS[document.status] ?? document.status}</StatusBadge>
-                      </DataTableCell>
-                      <DataTableCell>{formatMoney(document.amountTotal)}</DataTableCell>
-                      <DataTableCell>{formatDate(document.createdAt)}</DataTableCell>
-                      <DataTableCell>
-                        <div className="fiscal-page__row-actions">
-                          <Button size="sm" variant="outline" onClick={() => void openDetails(document.id)}>Detalhe</Button>
-                          <Button size="sm" onClick={() => void runAction(() => fiscalService.issueDocument(workspaceId, document.id), "Emissao enviada.")} disabled={isSubmitting}>Emitir</Button>
-                          <Button size="sm" variant="outline" onClick={() => void runAction(() => fiscalService.retryDocument(workspaceId, document.id), "Reprocesso solicitado.")} disabled={isSubmitting}>Retry</Button>
-                        </div>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))
-                )}
-              </DataTableBody>
-            </DataTable>
+                <ResourceTable
+                  className="fiscal-view__table"
+                  data={documents}
+                  columns={issuedColumns}
+                  rowKey="id"
+                  responsiveMinWidth="960px"
+                  emptyState="Nenhum documento encontrado."
+                  actions={{
+                    header: "Acoes",
+                    width: "1.2fr",
+                    render: (document) => (
+                      <div className="fiscal-page__row-actions">
+                        <Button size="sm" variant="outline" onClick={() => void openDetails(document.id)}>Detalhe</Button>
+                        <Button size="sm" onClick={() => void runAction(() => fiscalService.issueDocument(workspaceId, document.id), "Emissao enviada.")} disabled={isSubmitting}>Emitir</Button>
+                        <Button size="sm" variant="outline" onClick={() => void runAction(() => fiscalService.retryDocument(workspaceId, document.id), "Reprocesso solicitado.")} disabled={isSubmitting}>Retry</Button>
+                      </div>
+                    )
+                  }}
+                />
               </>
             ) : null}
 
@@ -433,82 +540,35 @@ export function FiscalPage() {
                 >
                   Sincronizar recebidas
                 </Button>
-                <DataTable className="fiscal-view__table" columns="0.8fr 1fr 0.8fr 0.8fr 1fr 0.8fr" responsiveMinWidth="920px">
-              <DataTableHeader>
-                <DataTableCell>Tipo</DataTableCell>
-                <DataTableCell>Fornecedor</DataTableCell>
-                <DataTableCell>Status</DataTableCell>
-                <DataTableCell>Valor</DataTableCell>
-                <DataTableCell>Emissao</DataTableCell>
-                <DataTableCell>Arquivos</DataTableCell>
-              </DataTableHeader>
-              <DataTableBody>
-                {received.length === 0 ? (
-                  <DataTableRow>
-                    <DataTableCell>Nenhuma nota recebida encontrada.</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                  </DataTableRow>
-                ) : (
-                  received.map((item) => (
-                    <DataTableRow key={item.id}>
-                      <DataTableCell>{item.type}</DataTableCell>
-                      <DataTableCell>{item.issuerName ?? "-"}</DataTableCell>
-                      <DataTableCell><StatusBadge tone={mapTone(item.status)}>{STATUS_LABELS[item.status] ?? item.status}</StatusBadge></DataTableCell>
-                      <DataTableCell>{formatMoney(item.amountTotal)}</DataTableCell>
-                      <DataTableCell>{formatDate(item.issuedAt)}</DataTableCell>
-                      <DataTableCell>
-                        <div className="fiscal-page__row-actions">
-                          {item.xmlUrl ? <a href={item.xmlUrl} target="_blank" rel="noreferrer">XML</a> : <span>-</span>}
-                          {item.pdfUrl ? <a href={item.pdfUrl} target="_blank" rel="noreferrer">PDF</a> : <span>-</span>}
-                        </div>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))
-                )}
-              </DataTableBody>
-            </DataTable>
+                <ResourceTable
+                  className="fiscal-view__table"
+                  data={received}
+                  columns={receivedColumns}
+                  rowKey="id"
+                  responsiveMinWidth="920px"
+                  emptyState="Nenhuma nota recebida encontrada."
+                />
               </>
             ) : null}
 
             {tab === "stripe" ? (
-              <DataTable className="fiscal-view__table" columns="1fr 0.8fr 0.8fr 1fr 0.8fr" responsiveMinWidth="900px">
-              <DataTableHeader>
-                <DataTableCell>Session Stripe</DataTableCell>
-                <DataTableCell>Tipo</DataTableCell>
-                <DataTableCell>Status</DataTableCell>
-                <DataTableCell>Criado</DataTableCell>
-                <DataTableCell>Acoes</DataTableCell>
-              </DataTableHeader>
-              <DataTableBody>
-                {drafts.length === 0 ? (
-                  <DataTableRow>
-                    <DataTableCell>Nenhum draft Stripe pendente.</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                  </DataTableRow>
-                ) : (
-                  drafts.map((draft) => (
-                    <DataTableRow key={draft.id}>
-                      <DataTableCell>{draft.stripeSessionId ?? "-"}</DataTableCell>
-                      <DataTableCell>{draft.documentType}</DataTableCell>
-                      <DataTableCell><StatusBadge tone={mapTone(draft.status)}>{STATUS_LABELS[draft.status] ?? draft.status}</StatusBadge></DataTableCell>
-                      <DataTableCell>{formatDate(draft.createdAt)}</DataTableCell>
-                      <DataTableCell>
-                        <Button size="sm" onClick={() => void runAction(() => fiscalService.emitDraft(workspaceId, draft.id), "Draft emitido.")} disabled={isSubmitting}>
-                          Emitir
-                        </Button>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))
-                )}
-              </DataTableBody>
-            </DataTable>
+              <ResourceTable
+                className="fiscal-view__table"
+                data={drafts}
+                columns={stripeDraftColumns}
+                rowKey="id"
+                responsiveMinWidth="900px"
+                emptyState="Nenhum draft Stripe pendente."
+                actions={{
+                  header: "Acoes",
+                  width: "0.8fr",
+                  render: (draft) => (
+                    <Button size="sm" onClick={() => void runAction(() => fiscalService.emitDraft(workspaceId, draft.id), "Draft emitido.")} disabled={isSubmitting}>
+                      Emitir
+                    </Button>
+                  )
+                }}
+              />
             ) : null}
 
             {tab === "wizard" ? (
@@ -532,12 +592,32 @@ export function FiscalPage() {
               </FormField>
                 </div>
                 <div className="fiscal-view__inline-grid">
-                  <FormField label="Cliente" className="fiscal-view__field">
-                <TextInput value={wizard.customerName} onChange={(event) => setWizard((current) => ({ ...current, customerName: event.target.value }))} />
+                  <FormField label="Cliente cadastrado" className="fiscal-view__field">
+                <Select value={wizard.customerId} onChange={(event) => handleWizardCustomerChange(event.target.value)}>
+                  <option value="">Selecione um cliente</option>
+                  {customers.map((customer) => {
+                    const detail = formatCustomerOptionDetail(customer);
+                    return (
+                      <option key={customer.id} value={customer.id}>
+                        {getCustomerDisplayName(customer)}{detail ? ` - ${detail}` : ""}
+                      </option>
+                    );
+                  })}
+                </Select>
+              </FormField>
+                  <FormField label="Nome fiscal" className="fiscal-view__field">
+                <TextInput value={wizard.customerName} readOnly />
               </FormField>
                   <FormField label="Documento" className="fiscal-view__field">
-                <TextInput value={wizard.customerDocument} onChange={(event) => setWizard((current) => ({ ...current, customerDocument: event.target.value }))} />
+                <TextInput value={wizard.customerDocument} readOnly />
               </FormField>
+                </div>
+                {selectedWizardCustomer && !selectedWizardCustomer.document ? (
+                  <div className="fiscal-view__feedback fiscal-view__feedback--error">
+                    Complete CPF/CNPJ no cadastro do cliente antes de emitir.
+                  </div>
+                ) : null}
+                <div className="fiscal-view__inline-grid">
                   <FormField label="Item" className="fiscal-view__field">
                 <TextInput value={wizard.itemName} onChange={(event) => setWizard((current) => ({ ...current, itemName: event.target.value }))} />
               </FormField>
@@ -583,37 +663,23 @@ export function FiscalPage() {
                 Cadastrar empresa
               </Button>
             </div>
-                <DataTable className="fiscal-view__table" columns="1fr 0.9fr 0.9fr 0.8fr" responsiveMinWidth="880px">
-              <DataTableHeader>
-                <DataTableCell>Empresa</DataTableCell>
-                <DataTableCell>CNPJ</DataTableCell>
-                <DataTableCell>Ambiente</DataTableCell>
-                <DataTableCell>Validar</DataTableCell>
-              </DataTableHeader>
-              <DataTableBody>
-                {companies.length === 0 ? (
-                  <DataTableRow>
-                    <DataTableCell>Nenhuma empresa fiscal cadastrada.</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                    <DataTableCell>-</DataTableCell>
-                  </DataTableRow>
-                ) : (
-                  companies.map((company) => (
-                    <DataTableRow key={company.id}>
-                      <DataTableCell>{company.displayName}</DataTableCell>
-                      <DataTableCell>{company.cnpj}</DataTableCell>
-                      <DataTableCell>{company.focusEnvironment}</DataTableCell>
-                      <DataTableCell>
-                        <Button size="sm" variant="outline" onClick={() => void runAction(() => fiscalService.validateCompany(workspaceId, company.id).then(() => undefined), "Validacao concluida.")} disabled={isSubmitting}>
-                          Validar
-                        </Button>
-                      </DataTableCell>
-                    </DataTableRow>
-                  ))
-                )}
-              </DataTableBody>
-            </DataTable>
+                <ResourceTable
+                  className="fiscal-view__table"
+                  data={companies}
+                  columns={companyColumns}
+                  rowKey="id"
+                  responsiveMinWidth="880px"
+                  emptyState="Nenhuma empresa fiscal cadastrada."
+                  actions={{
+                    header: "Validar",
+                    width: "0.8fr",
+                    render: (company) => (
+                      <Button size="sm" variant="outline" onClick={() => void runAction(() => fiscalService.validateCompany(workspaceId, company.id).then(() => undefined), "Validacao concluida.")} disabled={isSubmitting}>
+                        Validar
+                      </Button>
+                    )
+                  }}
+                />
               </>
             ) : null}
 

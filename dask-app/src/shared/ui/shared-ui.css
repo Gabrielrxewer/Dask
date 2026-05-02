@@ -1,8 +1,10 @@
 @import "./styles/forms.css";
 @import "./styles/modal.css";
 @import "./styles/section.css";
+@import "./styles/resource-section.css";
 @import "./styles/feedback.css";
 @import "./styles/cards.css";
+@import "./styles/skeleton.css";
 @import "./styles/tabs.css";
 @import "./styles/page-header.css";
 @import "./styles/data-table.css";

@@ -24,6 +24,9 @@ type CustomerPayload = {
   tradeName?: string | null;
   legalName?: string | null;
   document?: string | null;
+  stateRegistration?: string | null;
+  municipalRegistration?: string | null;
+  taxRegime?: string | null;
   email?: string | null;
   phone?: string | null;
   website?: string | null;
@@ -156,6 +159,9 @@ export class WorkspaceCustomersService {
         tradeName: normalizeNullableText(input.payload.tradeName),
         legalName: normalizeNullableText(input.payload.legalName),
         document: normalizeNullableText(input.payload.document),
+        stateRegistration: normalizeNullableText(input.payload.stateRegistration),
+        municipalRegistration: normalizeNullableText(input.payload.municipalRegistration),
+        taxRegime: normalizeNullableText(input.payload.taxRegime),
         email: normalizeNullableText(input.payload.email)?.toLowerCase(),
         phone: normalizeNullableText(input.payload.phone),
         website: normalizeNullableText(input.payload.website),
@@ -224,6 +230,9 @@ export class WorkspaceCustomersService {
         tradeName: normalizeNullableText(input.payload.tradeName),
         legalName: normalizeNullableText(input.payload.legalName),
         document: normalizeNullableText(input.payload.document),
+        stateRegistration: normalizeNullableText(input.payload.stateRegistration),
+        municipalRegistration: normalizeNullableText(input.payload.municipalRegistration),
+        taxRegime: normalizeNullableText(input.payload.taxRegime),
         email: normalizeNullableText(input.payload.email)?.toLowerCase(),
         phone: normalizeNullableText(input.payload.phone),
         website: normalizeNullableText(input.payload.website),
@@ -245,6 +254,9 @@ export class WorkspaceCustomersService {
     tradeName: string | null;
     legalName: string | null;
     document: string | null;
+    stateRegistration: string | null;
+    municipalRegistration: string | null;
+    taxRegime: string | null;
     email: string | null;
     phone: string | null;
     website: string | null;
@@ -262,6 +274,9 @@ export class WorkspaceCustomersService {
       tradeName: customer.tradeName ?? undefined,
       legalName: customer.legalName ?? undefined,
       document: customer.document ?? undefined,
+      stateRegistration: customer.stateRegistration ?? undefined,
+      municipalRegistration: customer.municipalRegistration ?? undefined,
+      taxRegime: customer.taxRegime ?? undefined,
       email: customer.email ?? undefined,
       phone: customer.phone ?? undefined,
       website: customer.website ?? undefined,

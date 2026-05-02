@@ -4,6 +4,7 @@ import { AppError } from '@/core/errors/app-error';
 import type { EmailService } from '@/infra/email/email-service';
 import type { BillingRepository } from '../repositories/billing-repository';
 import type {
+  BillingCustomerSnapshot,
   ConnectCatalogBillingType,
   ConnectCatalogItem,
   ConnectCatalogItemKind,
@@ -29,6 +30,22 @@ type StripePaymentMethodConfigurationUpdateParams = Record<string, {
 
 const BRL_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'boleto'];
 const CARD_ONLY_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card'];
+
+function asRecordOrNull(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function getBillingCustomerDisplayName(customer: BillingCustomerSnapshot | null): string | null {
+  if (!customer) return null;
+  return customer.tradeName ?? customer.legalName ?? customer.name;
+}
+
+function normalizedMetadataValue(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
 // Minimal local interfaces for Stripe event payloads (avoids namespace type conflicts)
 interface StripeCheckoutSession {
@@ -136,6 +153,7 @@ export interface CreateConnectCheckoutSessionInput {
   currency?: string;
   description?: string;
   catalogItemId?: string;
+  customerId?: string;
   customerEmail?: string;
   customerName?: string;
   sendEmail?: boolean;
@@ -182,7 +200,11 @@ export interface ConnectPaymentOrderListItem {
   amount: number;
   currency: string;
   description: string;
+  customerId: string | null;
+  customerName: string | null;
   customerEmail: string | null;
+  customerDocument: string | null;
+  customerPhone: string | null;
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
   checkoutUrl: string | null;
@@ -511,6 +533,18 @@ export class BillingService {
       throw new AppError('description is required for this charge', 422);
     }
 
+    const customer = input.customerId
+      ? await this.repo.findCustomerById(workspaceId, input.customerId)
+      : null;
+    if (input.customerId && !customer) {
+      throw new AppError('Customer not found for this workspace', 404);
+    }
+    const customerName = getBillingCustomerDisplayName(customer) ?? input.customerName?.trim() ?? null;
+    const customerEmail = input.customerEmail?.trim() || customer?.email || undefined;
+    const customerDocument = customer?.document ?? null;
+    const customerPhone = customer?.phone ?? null;
+    const customerAddress = asRecordOrNull(customer?.address);
+
     const applicationFeeAmount = this.resolveApplicationFeeAmount(amount, input.applicationFeeAmount);
     const checkoutMode = this.isRecurringCatalogBillingType(catalogItem?.billingType)
       ? 'subscription'
@@ -522,7 +556,12 @@ export class BillingService {
       amount,
       currency,
       description,
-      customerEmail: input.customerEmail,
+      customerId: customer?.id ?? null,
+      customerName,
+      customerEmail,
+      customerDocument,
+      customerPhone,
+      customerAddress,
       applicationFeeAmount,
       metadata: {
         ...(input.metadata ?? {}),
@@ -538,6 +577,7 @@ export class BillingService {
       workspaceId,
       orderId: order.id,
       catalogItem,
+      customer,
       metadata: input.metadata
     });
 
@@ -565,7 +605,7 @@ export class BillingService {
           }
         }
       ],
-      customer_email: input.customerEmail,
+      customer_email: customerEmail,
       success_url: input.successUrl ?? `${this.appPublicUrl}/billing/success`,
       cancel_url: input.cancelUrl ?? `${this.appPublicUrl}/billing/cancel`,
       billing_address_collection: 'required',
@@ -661,14 +701,14 @@ export class BillingService {
       applicationFeeAmount
     });
 
-    if (input.sendEmail && input.customerEmail && this.emailService) {
+    if (input.sendEmail && customerEmail && this.emailService) {
       const formattedAmount = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: currency.toUpperCase()
       }).format(amount / 100);
 
       void this.emailService
-        .sendCheckoutLinkEmail(input.customerEmail, {
+        .sendCheckoutLinkEmail(customerEmail, {
           workspaceName: workspace.name,
           description,
           amount: formattedAmount,
@@ -919,19 +959,30 @@ export class BillingService {
     workspaceId: string;
     orderId: string;
     catalogItem: ConnectCatalogItem | null;
+    customer: BillingCustomerSnapshot | null;
     metadata?: Record<string, string>;
   }): Record<string, string> {
     const source = input.metadata ?? {};
     const catalogTypeHint = input.catalogItem?.kind === 'SERVICE' ? 'nfse' : 'nfe';
     const saleOriginHint =
       this.isRecurringCatalogBillingType(input.catalogItem?.billingType) ? 'stripe_subscription' : 'stripe_payment';
+    const customerName = getBillingCustomerDisplayName(input.customer);
 
     const merged: Record<string, string> = {
       ...source,
       workspace_id: source.workspace_id ?? input.workspaceId,
       workspace_business_id: source.workspace_business_id ?? '',
       internal_sale_id: source.internal_sale_id ?? input.orderId,
-      customer_id: source.customer_id ?? '',
+      customer_id: source.customer_id ?? input.customer?.id ?? '',
+      customer_name: source.customer_name ?? customerName ?? '',
+      customer_document: source.customer_document ?? normalizedMetadataValue(input.customer?.document),
+      customer_email: source.customer_email ?? normalizedMetadataValue(input.customer?.email),
+      customer_phone: source.customer_phone ?? normalizedMetadataValue(input.customer?.phone),
+      customer_state_registration:
+        source.customer_state_registration ?? normalizedMetadataValue(input.customer?.stateRegistration),
+      customer_municipal_registration:
+        source.customer_municipal_registration ?? normalizedMetadataValue(input.customer?.municipalRegistration),
+      customer_tax_regime: source.customer_tax_regime ?? normalizedMetadataValue(input.customer?.taxRegime),
       catalog_item_ids: source.catalog_item_ids ?? (input.catalogItem?.id ?? ''),
       order_id: source.order_id ?? input.orderId,
       document_hint: source.document_hint ?? catalogTypeHint,
@@ -1456,7 +1507,11 @@ export class BillingService {
       amount: order.amount,
       currency: order.currency,
       description: order.description,
+      customerId: order.customerId,
+      customerName: order.customerName,
       customerEmail: order.customerEmail,
+      customerDocument: order.customerDocument,
+      customerPhone: order.customerPhone,
       stripeCheckoutSessionId: order.stripeCheckoutSessionId,
       stripePaymentIntentId: order.stripePaymentIntentId,
       checkoutUrl: order.checkoutUrl,

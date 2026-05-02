@@ -1164,6 +1164,23 @@ export class MarketingService {
     return flow;
   }
 
+  public async updateAutomationFlow(input: {
+    workspaceId: string;
+    flowId: string;
+    name?: string;
+    description?: string;
+    status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+    triggerDefinition?: Record<string, unknown>;
+    actorUserId: string | null;
+  }) {
+    const patch: Record<string, unknown> = { updatedByUserId: input.actorUserId ?? null };
+    if (input.name !== undefined) patch.name = normalizeText(input.name) ?? '';
+    if (input.description !== undefined) patch.description = normalizeText(input.description);
+    if (input.status !== undefined) patch.status = input.status;
+    if (input.triggerDefinition !== undefined) patch.triggerDefinition = input.triggerDefinition;
+    return this.repo.updateAutomationFlow(input.flowId, input.workspaceId, patch as Prisma.InputJsonValue);
+  }
+
   public async generateCampaignWithAI(input: {
     workspaceId: string;
     objective: string;
@@ -1571,5 +1588,27 @@ export class MarketingService {
         sourceEventType: input.eventType
       }
     });
+  }
+
+  async listSignalsInbox(input: {
+    workspaceId: string;
+    types?: string[];
+    includeDismissed?: boolean;
+    limit?: number;
+  }): Promise<{ items: import('../repositories/marketing-repository').SignalInboxItem[]; unreadCount: number }> {
+    const items = await this.repo.listSignalsInbox({
+      workspaceId: input.workspaceId,
+      types: input.types,
+      onlyWithLead: true,
+      includeDismissed: input.includeDismissed ?? false,
+      limit: input.limit ?? 80
+    });
+
+    const unreadCount = items.filter((item) => item.seenAt === null).length;
+    return { items, unreadCount };
+  }
+
+  async markSignal(input: { workspaceId: string; eventId: string; action: 'seen' | 'dismissed' }): Promise<void> {
+    await this.repo.markSignal(input.workspaceId, input.eventId, input.action);
   }
 }

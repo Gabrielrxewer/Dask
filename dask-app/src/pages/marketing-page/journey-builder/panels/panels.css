@@ -295,10 +295,10 @@
   border-width: 1px;
   border-color: color-mix(in oklab, var(--line) 82%, transparent);
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, white) 0%, color-mix(in oklab, var(--surface-2) 78%, var(--surface-1)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, var(--neutral-white)) 0%, color-mix(in oklab, var(--surface-2) 78%, var(--surface-1)) 100%);
   box-shadow:
     0 14px 30px color-mix(in oklab, var(--text-strong) 8%, transparent),
-    0 1px 0 color-mix(in oklab, white 72%, transparent) inset;
+    0 1px 0 color-mix(in oklab, var(--neutral-white) 72%, transparent) inset;
 }
 
 .jb-palette__item {
@@ -308,11 +308,11 @@
 
 .jb-palette__item:hover {
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, white) 0%, color-mix(in oklab, var(--accent-soft) 30%, var(--surface-1)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, var(--neutral-white)) 0%, color-mix(in oklab, var(--accent-soft) 30%, var(--surface-1)) 100%);
 }
 
 .jb-palette__item-icon {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, white 34%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--neutral-white) 34%, transparent);
 }
 
 .jb-inspector {
@@ -337,7 +337,7 @@
   border-width: 1px;
   border-radius: 8px;
   background: color-mix(in oklab, var(--surface-1) 86%, transparent);
-  box-shadow: 0 1px 0 color-mix(in oklab, white 62%, transparent) inset;
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--neutral-white) 62%, transparent) inset;
 }
 
 .jb-inspector__add-rule {
@@ -350,9 +350,9 @@
 .app-theme[data-theme="dark"] .jb-palette__item,
 .app-theme[data-theme="dark"] .jb-inspector {
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, #17283a) 0%, color-mix(in oklab, var(--surface-1) 90%, #07111c) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 90%, var(--foreground)) 100%);
   border-color: var(--line);
-  box-shadow: 0 16px 34px color-mix(in oklab, black 28%, transparent);
+  box-shadow: 0 16px 34px color-mix(in oklab, var(--neutral-black) 28%, transparent);
 }
 
 .app-theme[data-theme="dark"] .jb-inspector__head,
@@ -375,7 +375,7 @@
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: white;
+  color: var(--neutral-white);
   font-size: 12px;
   font-weight: 860;
   font-family: inherit;
@@ -456,9 +456,9 @@
 .app-theme[data-theme="dark"] .jb-palette__item,
 .app-theme[data-theme="dark"] .jb-inspector {
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, #17283a) 0%, color-mix(in oklab, var(--surface-1) 90%, #07111c) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 90%, var(--foreground)) 100%);
   border-color: var(--line);
-  box-shadow: 0 16px 34px color-mix(in oklab, black 28%, transparent);
+  box-shadow: 0 16px 34px color-mix(in oklab, var(--neutral-black) 28%, transparent);
 }
 
 .app-theme[data-theme="dark"] .jb-inspector__head,

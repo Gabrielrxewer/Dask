@@ -33,7 +33,6 @@ import {
   WorkItemEditorSettingsPage,
   SubscriptionBlockedPage,
   TermsOfUsePage,
-  TimelinePage,
   WorkspaceSelectorPage,
   VerifyEmailPage,
   PrivacyPolicyPage,
@@ -88,7 +87,7 @@ function CompanyProfileRequired({ settingsPath }: { settingsPath: string }) {
           padding: "8px 18px",
           borderRadius: "var(--radius-sm)",
           background: "var(--accent)",
-          color: "#fff",
+          color: "var(--neutral-white)",
           fontWeight: 600,
           fontSize: "var(--font-size-sm)",
           textDecoration: "none"
@@ -231,7 +230,6 @@ export function AppRoutes() {
             <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />
             <Route path={routePaths.board} element={<BoardPage />} />
             <Route path={routePaths.list} element={<ListPage />} />
-            <Route path={routePaths.timeline} element={<TimelinePage />} />
             <Route path={routePaths.agenda} element={<AgendaPage />} />
             <Route
               path={routePaths.documentation}

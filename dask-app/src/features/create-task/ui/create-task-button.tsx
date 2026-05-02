@@ -4,7 +4,7 @@ import type { MembersById } from "@/entities/member";
 import type { CreateTaskInput } from "@/modules/workspace";
 import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
 import { cn } from "@/shared/lib/cn";
-import { Button, ModalShell, WorkspaceActionButton } from "@/shared/ui";
+import { AppIcon, Button, ModalShell, WorkspaceActionButton } from "@/shared/ui";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./create-task-button.css";
 
@@ -80,9 +80,7 @@ function TaskTypePickerDialog({ taskTypes, onClose, onSelect }: TaskTypePickerDi
           </div>
 
           <button className="create-task-type-modal__close" type="button" onClick={onClose} aria-label="Fechar seletor">
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" width="16" height="16">
-              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
+            <AppIcon name="x" size={16} strokeWidth={2.2} />
           </button>
         </header>
 
@@ -99,9 +97,9 @@ function TaskTypePickerDialog({ taskTypes, onClose, onSelect }: TaskTypePickerDi
                 type="button"
                 className="create-task-type-modal__option"
                 style={{
-                  "--create-task-type-bg": taskType.background ?? "#e7f3ff",
-                  "--create-task-type-border": taskType.border ?? "#c8e3ff",
-                  "--create-task-type-text": taskType.text ?? "#0f3d4a"
+                  "--create-task-type-bg": taskType.background ?? "var(--surface-blue-muted)",
+                  "--create-task-type-border": taskType.border ?? "var(--info-border)",
+                  "--create-task-type-text": taskType.text ?? "var(--primary)"
                 } as CSSProperties}
                 onClick={() => onSelect(taskType.id)}
               >
@@ -117,15 +115,7 @@ function TaskTypePickerDialog({ taskTypes, onClose, onSelect }: TaskTypePickerDi
                   </span>
 
                   <span className="create-task-type-modal__option-chevron" aria-hidden="true">
-                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
-                      <path
-                        d="M7 5l5 5-5 5"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <AppIcon name="chevron-right" size={16} strokeWidth={2} />
                   </span>
                 </div>
 

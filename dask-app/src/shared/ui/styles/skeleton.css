@@ -1,0 +1,45 @@
+.shared-skeleton-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  gap: 10px;
+}
+
+.shared-skeleton-layout--row {
+  flex-direction: row;
+}
+
+.shared-skeleton-layout--column {
+  flex-direction: column;
+}
+
+.shared-skeleton-block {
+  min-height: 1rem;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--info-border) 0%, var(--info-bg) 50%, var(--info-border) 100%);
+  background-size: 200% 100%;
+  animation: shared-skeleton-shimmer 1.4s infinite linear;
+}
+
+@keyframes shared-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.app-theme[data-theme="dark"] .shared-skeleton-block {
+  border-color: var(--line);
+  background: linear-gradient(90deg, var(--surface-muted) 0%, var(--surface-2) 50%, var(--surface-muted) 100%);
+  background-size: 200% 100%;
+  color: var(--text-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shared-skeleton-block {
+    animation: none;
+  }
+}

@@ -4,7 +4,7 @@ import { Button, TextInput } from "@/shared/ui";
 import { authService } from "@/features/auth/api/auth-service";
 import { isApiError } from "@/shared/api/http-client";
 import { cn } from "@/shared/lib/cn";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import "./reset-password-page.css";
 
 type ResetStatus = "idle" | "loading" | "success" | "error";

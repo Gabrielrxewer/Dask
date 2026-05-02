@@ -1,7 +1,7 @@
 .shared-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 17, 32, 0.52);
+  background: color-mix(in srgb, var(--ink-shadow-strong) 52%, transparent);
   backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
@@ -18,4 +18,147 @@
   max-width: 100%;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
+}
+
+.shared-form-modal {
+  width: min(720px, calc(100vw - 32px));
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid color-mix(in oklab, var(--line) 78%, transparent);
+  background: var(--surface-overlay-strong);
+  color: var(--text);
+}
+
+.shared-form-modal__header,
+.shared-form-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shared-form-modal__title {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.shared-form-modal__title h2,
+.shared-form-modal__title p,
+.shared-form-modal__error {
+  margin: 0;
+}
+
+.shared-form-modal__title h2 {
+  color: var(--text-strong);
+  font-size: var(--font-size-title-sm);
+  font-weight: 900;
+}
+
+.shared-form-modal__title p {
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.shared-form-modal__close {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--control-surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.shared-form-modal__close:hover:not(:disabled) {
+  border-color: var(--selected-border);
+  color: var(--text-strong);
+}
+
+.shared-form-modal__close:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.shared-form-modal__content {
+  display: grid;
+  gap: 12px;
+}
+
+.shared-form-modal__footer {
+  justify-content: flex-end;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.shared-form-modal__error {
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: color-mix(in oklab, var(--danger) 8%, var(--surface-overlay));
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.shared-drawer-shell {
+  width: min(560px, 96vw);
+  display: grid;
+  overflow: hidden;
+  background: var(--surface-card);
+  color: var(--text);
+}
+
+.shared-drawer-shell__frame {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.shared-drawer-shell__header,
+.shared-drawer-shell__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shared-drawer-shell__title {
+  min-width: 0;
+  flex: 1;
+}
+
+.shared-drawer-shell__title h2,
+.shared-drawer-shell__title p,
+.shared-drawer-shell__error {
+  margin: 0;
+}
+
+.shared-drawer-shell__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--control-surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.shared-drawer-shell__body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.shared-drawer-shell__error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.shared-drawer-shell__footer {
+  justify-content: flex-end;
 }

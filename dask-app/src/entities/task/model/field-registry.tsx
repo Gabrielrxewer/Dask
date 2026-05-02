@@ -24,11 +24,11 @@ type TaskFieldRegistryEntry = {
 };
 
 const priorityOptions: Array<{ value: string; label: string; color: string }> = [
-  { value: "0", label: "P0 Critica", color: "#d92d20" },
-  { value: "1", label: "P1 Alta", color: "#f97316" },
-  { value: "2", label: "P2 Media", color: "#0a86e8" },
-  { value: "3", label: "P3 Baixa", color: "#16a34a" },
-  { value: "4", label: "P4 Minima", color: "#64748b" }
+  { value: "0", label: "P0 Critica", color: "var(--danger)" },
+  { value: "1", label: "P1 Alta", color: "var(--warning)" },
+  { value: "2", label: "P2 Media", color: "var(--text-secondary)" },
+  { value: "3", label: "P3 Baixa", color: "var(--success)" },
+  { value: "4", label: "P4 Minima", color: "var(--text-secondary)" }
 ];
 
 export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry> = {

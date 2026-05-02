@@ -1,9 +1,9 @@
 /* ── Panel shell ────────────────────────────────────────────────────────────── */
 
 .acp {
-  --acp-color: #6b7280;
-  --acp-surface: color-mix(in oklab, var(--surface-raised, #fff) 98%, var(--acp-color));
-  --acp-line: color-mix(in oklab, var(--line, #e2e8f0) 80%, var(--acp-color));
+  --acp-color: var(--text-primary);
+  --acp-surface: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 98%, var(--acp-color));
+  --acp-line: color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
   --acp-accent: var(--acp-color);
 
   display: flex;
@@ -70,7 +70,7 @@
 
 .acp__description {
   font-size: 11px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--text-secondary));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -85,7 +85,7 @@
   border-radius: 8px;
   border: 1px solid var(--acp-line);
   background: transparent;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--text-secondary));
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.14s, color 0.14s, border-color 0.14s;
@@ -126,14 +126,14 @@
 .acp__field-label {
   font-size: 11.5px;
   font-weight: 800;
-  color: var(--text-soft, #475569);
+  color: var(--text-soft, var(--text-secondary));
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .acp__field-hint {
   font-size: 11px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted);
   line-height: 1.4;
 }
 
@@ -145,14 +145,14 @@
   width: 100%;
   padding: 9px 11px;
   border-radius: 9px;
-  border: 1.5px solid color-mix(in oklab, var(--line, #e2e8f0) 80%, var(--acp-color));
-  background: var(--surface-overlay, #fff);
-  color: var(--text-strong, #0f172a);
+  border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
+  background: var(--surface-overlay, var(--neutral-white));
+  color: var(--text-strong, var(--foreground));
   font-size: 13px;
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--neutral-black) 4%, transparent);
 }
 
 .acp__input:focus,
@@ -165,8 +165,8 @@
 .acp__input:disabled,
 .acp__textarea:disabled,
 .acp__select:disabled {
-  color: var(--text-muted, #94a3b8);
-  background: color-mix(in oklab, var(--line, #e2e8f0) 18%, var(--surface-overlay, #fff));
+  color: var(--text-muted);
+  background: color-mix(in oklab, var(--line, var(--border-default)) 18%, var(--surface-overlay, var(--neutral-white)));
   cursor: not-allowed;
 }
 
@@ -197,7 +197,7 @@
   gap: 9px;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--text-soft, #475569);
+  color: var(--text-soft, var(--text-secondary));
   cursor: pointer;
   user-select: none;
 }
@@ -211,8 +211,8 @@
   width: 34px;
   height: 20px;
   border-radius: 20px;
-  background: color-mix(in oklab, var(--line, #e2e8f0) 80%, transparent);
-  border: 1.5px solid color-mix(in oklab, var(--line, #e2e8f0) 60%, transparent);
+  background: color-mix(in oklab, var(--line, var(--border-default)) 80%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 60%, transparent);
   display: flex;
   align-items: center;
   padding: 2px;
@@ -235,8 +235,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: var(--neutral-white);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--neutral-black) 20%, transparent);
   transition: transform 0.18s ease;
 }
 
@@ -257,28 +257,28 @@
   justify-content: space-between;
   padding: 10px 12px;
   border-radius: 9px;
-  border: 1.5px solid color-mix(in oklab, var(--line, #e2e8f0) 80%, var(--acp-color));
-  background: var(--surface-overlay, #fff);
+  border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
+  background: var(--surface-overlay, var(--neutral-white));
   cursor: pointer;
   transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
   text-align: left;
 }
 
 .acp__tool-item:hover {
-  border-color: color-mix(in oklab, var(--acp-color) 40%, var(--line, #e2e8f0));
-  background: color-mix(in oklab, var(--acp-color) 5%, var(--surface-overlay, #fff));
+  border-color: color-mix(in oklab, var(--acp-color) 40%, var(--line, var(--border-default)));
+  background: color-mix(in oklab, var(--acp-color) 5%, var(--surface-overlay, var(--neutral-white)));
 }
 
 .acp__tool-item--active {
   border-color: var(--acp-color);
-  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, #fff));
+  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, var(--neutral-white)));
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--acp-color) 15%, transparent);
 }
 
 .acp__tool-label {
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-strong, #0f172a);
+  color: var(--text-strong, var(--foreground));
 }
 
 .acp__tool-group {
@@ -286,7 +286,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted);
 }
 
 /* ── Info box ───────────────────────────────────────────────────────────────── */
@@ -297,9 +297,9 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: 9px;
-  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, #f8fafc));
+  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, var(--surface-tint)));
   border: 1px solid color-mix(in oklab, var(--acp-color) 20%, transparent);
-  color: var(--text-soft, #475569);
+  color: var(--text-soft, var(--text-secondary));
   font-size: 12px;
   line-height: 1.45;
 }
@@ -315,28 +315,28 @@
 
 .acp__info-box strong {
   font-weight: 700;
-  color: var(--text-strong, #0f172a);
+  color: var(--text-strong, var(--foreground));
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────── */
 
 .app-theme[data-theme="dark"] .acp {
-  --acp-surface: var(--surface-raised, #1e293b);
+  --acp-surface: var(--surface-raised, var(--text-primary));
 }
 
 .app-theme[data-theme="dark"] .acp__input,
 .app-theme[data-theme="dark"] .acp__textarea,
 .app-theme[data-theme="dark"] .acp__select {
-  background: var(--surface-elevated, #263141);
-  border-color: var(--line, #334155);
-  color: var(--text-primary, #f1f5f9);
+  background: var(--surface-elevated, var(--primary));
+  border-color: var(--line, var(--text-secondary));
+  color: var(--text-primary, var(--secondary));
 }
 
 .app-theme[data-theme="dark"] .acp__tool-item {
-  background: var(--surface-elevated, #263141);
-  border-color: var(--line, #334155);
+  background: var(--surface-elevated, var(--primary));
+  border-color: var(--line, var(--text-secondary));
 }
 
 .app-theme[data-theme="dark"] .acp__tool-label {
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, var(--secondary));
 }

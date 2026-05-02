@@ -122,6 +122,21 @@ function storeGlobalThemePreference(theme: string): void {
   }
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Nao foi possivel carregar a imagem."));
+    });
+    reader.addEventListener("error", () => reject(new Error("Nao foi possivel carregar a imagem.")));
+    reader.readAsDataURL(file);
+  });
+}
+
 function getHomeSectionFromHash(hash: string): string {
   const sectionId = hash.replace("#", "");
   return homeNavigationIds.has(sectionId) ? sectionId : "top";
@@ -252,7 +267,7 @@ function scrollPublicMainTo(top: number): void {
 export function GlobalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, status, updateUserProfile } = useAuth();
+  const { user, status, updateUserProfile, updateUserAvatar } = useAuth();
   const { logout, isSubmitting } = useLogout();
   const isHomeRoute = location.pathname === routePaths.home;
   const isLoginRoute = location.pathname === routePaths.login;
@@ -288,6 +303,8 @@ export function GlobalLayout() {
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => getSystemResolvedTheme());
   const [profileSaveState, setProfileSaveState] = useState<"idle" | "saving" | "error">("idle");
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+  const [profileAvatarState, setProfileAvatarState] = useState<"idle" | "saving">("idle");
+  const [profileAvatarError, setProfileAvatarError] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const normalizedProfileTheme = normalizeUserProfileTheme(profileTheme);
@@ -339,6 +356,8 @@ export function GlobalLayout() {
     if (!isUserProfileOpen) {
       setProfileSaveState("idle");
       setProfileSaveError(null);
+      setProfileAvatarState("idle");
+      setProfileAvatarError(null);
       return;
     }
 
@@ -661,6 +680,7 @@ export function GlobalLayout() {
   const canUpgradeToBusiness = billingStatus?.plan !== "BUSINESS";
   const normalizedProfileName = profileNameDraft.trim();
   const isProfileSaveBusy = profileSaveState === "saving";
+  const isProfileAvatarBusy = profileAvatarState === "saving";
   const profileAccountBadge = user?.emailVerified ? "Email verificado" : "Email pendente";
   const profileAccountStatus = user?.emailVerified ? "Verificada" : "Pendente";
   const profileCreatedAt = formatDateLabel(user?.createdAt);
@@ -721,6 +741,33 @@ export function GlobalLayout() {
     } catch (error) {
       setProfileSaveState("error");
       setProfileSaveError(error instanceof Error ? error.message : "Nao foi possivel salvar seu perfil.");
+    }
+  };
+
+  const uploadUserProfileAvatar = async (file: File) => {
+    setProfileAvatarState("saving");
+    setProfileAvatarError(null);
+
+    try {
+      const manualAvatarDataUrl = await readFileAsDataUrl(file);
+      await updateUserAvatar({ manualAvatarDataUrl });
+      setProfileAvatarState("idle");
+    } catch (error) {
+      setProfileAvatarState("idle");
+      setProfileAvatarError(error instanceof Error ? error.message : "Nao foi possivel atualizar sua foto.");
+    }
+  };
+
+  const removeUserProfileAvatar = async () => {
+    setProfileAvatarState("saving");
+    setProfileAvatarError(null);
+
+    try {
+      await updateUserAvatar({ manualAvatarDataUrl: null, removeProviderAvatar: true });
+      setProfileAvatarState("idle");
+    } catch (error) {
+      setProfileAvatarState("idle");
+      setProfileAvatarError(error instanceof Error ? error.message : "Nao foi possivel remover sua foto.");
     }
   };
 
@@ -998,6 +1045,12 @@ export function GlobalLayout() {
                     imageUrl={profileAvatarUrl}
                     initials={profileInitials}
                     size="lg"
+                    editable
+                    canRemove={Boolean(profileAvatarUrl)}
+                    isLoading={isProfileAvatarBusy}
+                    error={profileAvatarError}
+                    onUpload={uploadUserProfileAvatar}
+                    onRemove={removeUserProfileAvatar}
                     className="user-profile-modal__avatar"
                   />
                   <div className="user-profile-modal__identity-copy">

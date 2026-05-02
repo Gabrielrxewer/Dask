@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import { useBilling } from "@/modules/billing";
 import "./subscription-blocked-page.css";
 

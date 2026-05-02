@@ -608,27 +608,27 @@ export function LoginForm() {
                     <svg viewBox="0 0 24 24" focusable="false">
                       <path
                         d="M21.77 12.25c0-.77-.07-1.5-.2-2.21H12.2v4.18h5.36a4.59 4.59 0 0 1-1.98 3.02v2.5h3.2c1.87-1.72 2.99-4.25 2.99-7.49Z"
-                        fill="#4285F4"
+                        fill="var(--primary)"
                       />
                       <path
                         d="M12.2 22c2.69 0 4.95-.89 6.6-2.42l-3.2-2.5c-.89.6-2.03.96-3.4.96-2.61 0-4.82-1.76-5.62-4.12H3.27v2.57A9.97 9.97 0 0 0 12.2 22Z"
-                        fill="#34A853"
+                        fill="var(--success)"
                       />
                       <path
                         d="M6.58 13.92a5.98 5.98 0 0 1 0-3.84V7.5H3.27a9.97 9.97 0 0 0 0 8.99l3.31-2.57Z"
-                        fill="#FBBC04"
+                        fill="var(--warning)"
                       />
                       <path
                         d="M12.2 6.04c1.46 0 2.78.5 3.82 1.48l2.86-2.86C17.14 3.06 14.89 2 12.2 2a9.97 9.97 0 0 0-8.93 5.5l3.31 2.58c.8-2.37 3.01-4.04 5.62-4.04Z"
-                        fill="#EA4335"
+                        fill="var(--danger)"
                       />
                     </svg>
                   ) : (
                     <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M3 3h8.5v8.5H3z" fill="#F1511B" />
-                      <path d="M12.5 3H21v8.5h-8.5z" fill="#80CC28" />
-                      <path d="M3 12.5h8.5V21H3z" fill="#00ADEF" />
-                      <path d="M12.5 12.5H21V21h-8.5z" fill="#FBBC09" />
+                      <path d="M3 3h8.5v8.5H3z" fill="var(--danger)" />
+                      <path d="M12.5 3H21v8.5h-8.5z" fill="var(--success)" />
+                      <path d="M3 12.5h8.5V21H3z" fill="var(--info)" />
+                      <path d="M12.5 12.5H21V21h-8.5z" fill="var(--warning)" />
                     </svg>
                   )}
                 </span>

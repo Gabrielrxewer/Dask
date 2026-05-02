@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import { billingService, billingStore } from "@/modules/billing";
 import "./billing-success-page.css";
 

@@ -4,6 +4,20 @@
   flex-wrap: wrap;
 }
 
+.shared-top-navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.shared-top-navigation__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
 .shared-tabs__item {
   border: 1px solid var(--border-default);
   background: var(--surface-overlay);
@@ -29,6 +43,27 @@
 .shared-tabs__item--active {
   border-color: var(--selected-border);
   background: var(--selected-bg);
-  color: var(--primary-hover);
+  color: var(--text-primary);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 8%, transparent) inset, var(--shadow-soft);
+}
+
+.shared-tabs__item--disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.shared-tabs__item--locked {
+  opacity: 0.62;
+}
+
+.shared-tabs__label,
+.shared-tabs__badge {
+  position: relative;
+  z-index: 1;
+}
+
+.shared-tabs__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

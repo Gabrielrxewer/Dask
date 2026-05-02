@@ -42,7 +42,7 @@
   min-width: 0;
   margin-bottom: 0;
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .settings-top-nav__tabs.shared-tabs {
@@ -69,7 +69,7 @@
   background: transparent;
   box-shadow: none !important;
   transform: none;
-  color: #637d96;
+  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -81,9 +81,9 @@
 
 .settings-top-nav__tab.shared-tabs__item:hover {
   transform: none;
-  border-color: rgba(202, 219, 235, 0.72);
-  background: rgba(44, 120, 230, 0.06);
-  color: #355777;
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
@@ -91,7 +91,7 @@
   position: relative;
   border-color: transparent;
   background: transparent;
-  color: #163c5e;
+  color: var(--text-primary);
   font-weight: 860;
   box-shadow: none !important;
 }
@@ -102,7 +102,7 @@
   inset: auto 8px 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, rgba(44, 120, 230, 0.9) 0%, rgba(46, 213, 205, 0.72) 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 90%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 72%, transparent) 100%);
 }
 
 .workspace__top-nav:has(.settings-top-nav) {
@@ -113,56 +113,56 @@
 }
 
 .app-theme:not([data-theme="dark"]) .settings-shell {
-  --builder-line: color-mix(in oklab, var(--line) 92%, rgba(151, 190, 224, 0.74));
-  --builder-line-strong: color-mix(in oklab, var(--line-strong) 76%, rgba(46, 207, 195, 0.24));
+  --builder-line: color-mix(in oklab, var(--line) 92%, color-mix(in srgb, var(--info-border) 74%, transparent));
+  --builder-line-strong: color-mix(in oklab, var(--line-strong) 76%, color-mix(in srgb, var(--decorative-cyan) 24%, transparent));
   --builder-surface:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.985) 0%,
-      rgba(248, 251, 255, 0.94) 48%,
-      rgba(243, 248, 255, 0.88) 100%
+      color-mix(in srgb, var(--neutral-white) 98.5%, transparent) 0%,
+      color-mix(in srgb, var(--surface-tint) 94%, transparent) 48%,
+      color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%
     );
   --builder-surface-soft:
     linear-gradient(
       135deg,
-      rgba(255, 144, 132, 0.03) 0%,
-      rgba(214, 156, 242, 0.014) 28%,
-      rgba(123, 146, 242, 0.018) 58%,
-      rgba(56, 132, 238, 0.026) 100%
+      color-mix(in srgb, var(--danger) 3%, transparent) 0%,
+      color-mix(in srgb, var(--decorative-purple) 1.4%, transparent) 28%,
+      color-mix(in srgb, var(--brand-indigo) 1.8%, transparent) 58%,
+      color-mix(in srgb, var(--primary) 2.6%, transparent) 100%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 249, 255, 0.82) 100%);
-  --builder-accent: color-mix(in oklab, var(--accent) 84%, #4aa8dd);
-  --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 78%, #22527f);
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 92%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%);
+  --builder-accent: color-mix(in oklab, var(--accent) 84%, var(--primary));
+  --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 78%, var(--primary));
   --workspace-view-frame-border: transparent;
   --workspace-view-panel-border: transparent;
   --workspace-view-card-border: transparent;
-  --workspace-view-accent-line: rgba(151, 190, 224, 0.94);
+  --workspace-view-accent-line: color-mix(in srgb, var(--info-border) 94%, transparent);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav {
-  border-bottom-color: rgba(64, 90, 116, 0.82);
+  border-bottom-color: color-mix(in srgb, var(--border-strong) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item {
   background: transparent !important;
   border-color: transparent !important;
-  color: #7e96ae;
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item:hover {
-  border-color: rgba(72, 101, 131, 0.72) !important;
-  background: rgba(72, 148, 255, 0.08) !important;
-  color: #c3d8ee;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item--active {
   border-color: transparent !important;
   background: transparent !important;
-  color: #e4f0fc;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item--active::before {
-  background: linear-gradient(90deg, rgba(72, 148, 255, 0.96) 0%, rgba(62, 219, 211, 0.76) 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 76%, transparent) 100%);
 }
 
 @media (min-width: 1141px) {

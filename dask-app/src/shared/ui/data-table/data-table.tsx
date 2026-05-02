@@ -1,9 +1,8 @@
-import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
-interface DataTableProps {
+export interface DataTableProps extends HTMLAttributes<HTMLDivElement> {
   columns: string;
-  className?: string;
   responsiveMinWidth?: string;
   responsiveMinWidthMobile?: string;
   children: ReactNode;
@@ -24,11 +23,12 @@ export function DataTable({
   className = "",
   responsiveMinWidth = "100%",
   responsiveMinWidthMobile = "100%",
-  children
+  children,
+  ...props
 }: DataTableProps) {
   return (
     <DataTableGridContext.Provider value={{ columns }}>
-      <div className={cn("shared-data-table", className)}>
+      <div className={cn("shared-data-table", className)} {...props}>
         <div
           className="shared-data-table__scroll"
           style={
@@ -45,33 +45,40 @@ export function DataTable({
   );
 }
 
-interface RowLikeProps {
+export interface DataTableRowLikeProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  className?: string;
 }
 
-export function DataTableHeader({ children, className = "" }: RowLikeProps) {
+export function DataTableHeader({ children, className = "", style, ...props }: DataTableRowLikeProps) {
   const columns = useDataTableColumns();
   return (
-    <header className={cn("shared-data-table__header", className)} style={{ gridTemplateColumns: columns }}>
+    <header
+      className={cn("shared-data-table__header", className)}
+      style={{ ...style, gridTemplateColumns: columns }}
+      {...props}
+    >
       {children}
     </header>
   );
 }
 
-export function DataTableBody({ children, className = "" }: RowLikeProps) {
-  return <div className={cn("shared-data-table__body", className)}>{children}</div>;
+export function DataTableBody({ children, className = "", ...props }: DataTableRowLikeProps) {
+  return <div className={cn("shared-data-table__body", className)} {...props}>{children}</div>;
 }
 
-export function DataTableRow({ children, className = "" }: RowLikeProps) {
+export function DataTableRow({ children, className = "", style, ...props }: DataTableRowLikeProps) {
   const columns = useDataTableColumns();
   return (
-    <div className={cn("shared-data-table__row", className)} style={{ gridTemplateColumns: columns }}>
+    <div
+      className={cn("shared-data-table__row", className)}
+      style={{ ...style, gridTemplateColumns: columns }}
+      {...props}
+    >
       {children}
     </div>
   );
 }
 
-export function DataTableCell({ children, className = "" }: RowLikeProps) {
-  return <div className={cn("shared-data-table__cell", className)}>{children}</div>;
+export function DataTableCell({ children, className = "", ...props }: DataTableRowLikeProps) {
+  return <div className={cn("shared-data-table__cell", className)} {...props}>{children}</div>;
 }

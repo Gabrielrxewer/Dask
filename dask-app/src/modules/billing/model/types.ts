@@ -38,6 +38,7 @@ export interface CreateConnectCheckoutSessionInput {
   currency?: string;
   description?: string;
   catalogItemId?: string;
+  customerId?: string;
   customerEmail?: string;
   customerName?: string;
   sendEmail?: boolean;
@@ -86,7 +87,11 @@ export interface ConnectPaymentOrder {
   amount: number;
   currency: string;
   description: string;
+  customerId: string | null;
+  customerName: string | null;
   customerEmail: string | null;
+  customerDocument: string | null;
+  customerPhone: string | null;
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
   checkoutUrl: string | null;

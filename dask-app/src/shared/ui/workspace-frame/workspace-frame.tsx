@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
-interface WorkspaceFrameProps {
+export interface WorkspaceFrameProps {
   className?: string;
   children: ReactNode;
 }

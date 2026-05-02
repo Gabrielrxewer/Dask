@@ -1,0 +1,63 @@
+.shared-resource-section {
+  position: relative;
+  display: grid;
+  gap: 12px;
+}
+
+.shared-resource-section.shared-section {
+  gap: 0;
+}
+
+.shared-resource-section__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.shared-resource-section__title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--font-size-title-sm);
+}
+
+.shared-resource-section__subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.shared-resource-section__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shared-resource-section__content {
+  min-width: 0;
+}
+
+.shared-resource-section__empty {
+  margin: 0;
+  border: 1px dashed color-mix(in oklab, var(--line-contrast) 82%, transparent);
+  background: var(--surface-overlay);
+  color: var(--text-soft);
+  border-radius: 18px;
+  padding: var(--space-5);
+}
+
+.shared-resource-section__empty strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: var(--font-size-sm);
+}
+
+.shared-resource-section__empty p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}

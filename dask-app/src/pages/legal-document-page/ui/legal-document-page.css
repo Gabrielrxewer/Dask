@@ -69,12 +69,12 @@
   padding: 0 14px;
   min-height: 34px;
   border-radius: 999px;
-  border: 1px solid rgba(184, 209, 230, 0.84);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 255, 0.9) 46%, rgba(239, 247, 255, 0.82) 100%);
+  border: 1px solid color-mix(in srgb, var(--info-border) 84%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 90%, transparent) 46%, color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%);
   box-shadow:
-    0 8px 16px rgba(16, 54, 87, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;
-  color: #1d4d79;
+    0 8px 16px color-mix(in srgb, var(--primary) 6%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 80%, transparent) inset;
+  color: var(--text-primary);
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -163,12 +163,12 @@
 }
 
 .app-theme[data-theme="dark"] .legal-page__updated {
-  border-color: rgba(95, 182, 248, 0.32);
-  background: rgba(19, 52, 75, 0.72);
+  border-color: color-mix(in srgb, var(--primary) 32%, transparent);
+  background: color-mix(in srgb, var(--primary) 72%, transparent);
   color: var(--accent-strong);
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 @media (max-width: 1120px) {

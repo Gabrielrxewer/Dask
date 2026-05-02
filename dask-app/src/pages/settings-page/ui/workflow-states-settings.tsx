@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { apiClient } from "@/shared/api/http-client";
 import { workspaceService } from "@/modules/workspace/api";
 import { Button, FormField, TextInput } from "@/shared/ui";
+import { resolveCssColorForInput, withCssColorAlpha } from "@/shared/lib/color/css-color";
 import "./workflow-states-settings.css";
 
 interface ApiWorkflowState {
@@ -29,14 +30,14 @@ interface WorkflowStateDraft {
   isActive: boolean;
 }
 
-const DEFAULT_COLOR = "#64748b";
+const DEFAULT_COLOR = "var(--text-secondary)";
 
 const STATE_PRESETS = [
-  { key: "backlog", label: "Backlog", slug: "backlog", color: "#7c8fa1", category: "Planejamento", isTerminal: false },
-  { key: "doing", label: "Em progresso", slug: "em-progresso", color: "#0a86e8", category: "Execucao", isTerminal: false },
-  { key: "review", label: "Em revisao", slug: "em-revisao", color: "#f59e0b", category: "Qualidade", isTerminal: false },
-  { key: "done", label: "Concluido", slug: "concluido", color: "#22c55e", category: "Entrega", isTerminal: true },
-  { key: "blocked", label: "Bloqueado", slug: "bloqueado", color: "#ef4444", category: "Risco", isTerminal: false }
+  { key: "backlog", label: "Backlog", slug: "backlog", color: "var(--text-secondary)", category: "Planejamento", isTerminal: false },
+  { key: "doing", label: "Em progresso", slug: "em-progresso", color: "var(--text-secondary)", category: "Execucao", isTerminal: false },
+  { key: "review", label: "Em revisao", slug: "em-revisao", color: "var(--warning)", category: "Qualidade", isTerminal: false },
+  { key: "done", label: "Concluido", slug: "concluido", color: "var(--success)", category: "Entrega", isTerminal: true },
+  { key: "blocked", label: "Bloqueado", slug: "bloqueado", color: "var(--danger)", category: "Risco", isTerminal: false }
 ] as const;
 
 function toSlug(value: string): string {
@@ -478,9 +479,9 @@ export function WorkflowStatesSettings() {
                     <span
                       className="wse__status-pill"
                       style={{
-                        background: `${previewColor}1A`,
+                        background: withCssColorAlpha(previewColor, 10),
                         color: previewColor,
-                        borderColor: `${previewColor}55`
+                        borderColor: withCssColorAlpha(previewColor, 33)
                       }}
                     >
                       <i style={{ background: previewColor }} />
@@ -509,9 +510,9 @@ export function WorkflowStatesSettings() {
                   <span
                     className="wse__status-pill"
                     style={{
-                      background: `${previewColor}1A`,
+                      background: withCssColorAlpha(previewColor, 10),
                       color: previewColor,
-                      borderColor: `${previewColor}55`
+                      borderColor: withCssColorAlpha(previewColor, 33)
                     }}
                   >
                     <i style={{ background: previewColor }} />
@@ -545,9 +546,9 @@ export function WorkflowStatesSettings() {
                 <span
                   className="wse__status-pill wse__status-pill--lg"
                   style={{
-                    background: `${previewColor}1A`,
+                    background: withCssColorAlpha(previewColor, 10),
                     color: previewColor,
-                    borderColor: `${previewColor}55`
+                    borderColor: withCssColorAlpha(previewColor, 33)
                   }}
                 >
                   <i style={{ background: previewColor }} />
@@ -618,12 +619,12 @@ export function WorkflowStatesSettings() {
                     <input
                       type="color"
                       className="wse__color-picker"
-                      value={draft.color}
+                      value={resolveCssColorForInput(draft.color)}
                       onChange={event => updateDraft("color", event.target.value)}
                     />
                     <TextInput
                       value={draft.color}
-                      placeholder="#64748b"
+                      placeholder="var(--text-secondary)"
                       onChange={event => updateDraft("color", event.target.value)}
                     />
                   </div>

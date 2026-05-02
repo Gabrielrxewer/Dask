@@ -2,16 +2,16 @@ import { isDateWithinNextDays } from "@/shared/lib/date/format-date";
 import type { BoardMetrics, Task, TaskStatus, TaskStatusId, TaskTypeMetaItem } from "@/entities/task/model/types";
 
 const canonicalTaskTypePalette: Record<string, Pick<TaskTypeMetaItem, "background" | "border" | "text">> = {
-  bug: { background: "#ffe9e9", border: "#ffc8c8", text: "#b42318" },
-  task: { background: "#e7f3ff", border: "#bfdbfe", text: "#1d4ed8" },
-  "user-story": { background: "#e9f8ef", border: "#b7e4c7", text: "#15803d" },
-  epic: { background: "#fff1e8", border: "#ffd0b2", text: "#c2410c" },
-  spike: { background: "#fff9db", border: "#fde68a", text: "#a16207" },
-  improvement: { background: "#ecfeff", border: "#a5f3fc", text: "#0f766e" },
-  incident: { background: "#ffeef0", border: "#fecdd3", text: "#be123c" },
-  hotfix: { background: "#fff0e6", border: "#fdba74", text: "#c2410c" },
-  chore: { background: "#f2f5f8", border: "#d7dee7", text: "#475569" },
-  research: { background: "#eef2ff", border: "#c7d2fe", text: "#4338ca" }
+  bug: { background: "var(--danger-bg)", border: "var(--danger-border)", text: "var(--danger)" },
+  task: { background: "var(--surface-blue-muted)", border: "var(--info-border)", text: "var(--primary-active)" },
+  "user-story": { background: "var(--surface-tint)", border: "var(--success-border)", text: "var(--success)" },
+  epic: { background: "var(--danger-bg)", border: "var(--danger-border)", text: "var(--danger)" },
+  spike: { background: "var(--warning-bg)", border: "var(--warning-border)", text: "var(--warning)" },
+  improvement: { background: "var(--info-bg)", border: "var(--info-border)", text: "var(--brand-cyan-strong)" },
+  incident: { background: "var(--surface-tint)", border: "var(--danger-border)", text: "var(--danger)" },
+  hotfix: { background: "var(--danger-bg)", border: "var(--danger-border)", text: "var(--danger)" },
+  chore: { background: "var(--secondary)", border: "var(--border-default)", text: "var(--text-secondary)" },
+  research: { background: "var(--surface-tint)", border: "var(--info-border)", text: "var(--brand-indigo)" }
 };
 
 function resolveCanonicalTaskTypePalette(taskType: string): Pick<TaskTypeMetaItem, "background" | "border" | "text"> | null {
@@ -99,9 +99,9 @@ export function getTaskTypeDisplayMeta(
       : {
       id: taskType,
       label: taskType,
-      background: "#edf5ff",
-      border: "#cfe2ff",
-      text: "#1d4e85"
+      background: "var(--info-bg)",
+      border: "var(--info-border)",
+      text: "var(--text-primary)"
         })
   );
 }

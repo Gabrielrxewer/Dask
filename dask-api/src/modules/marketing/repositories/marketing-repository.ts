@@ -96,6 +96,41 @@ export interface MarketingRepository {
   listWorkspaceDocuments(workspaceId: string, limit: number): Promise<Array<{ id: string; title: string; content: string }>>;
   listAutomationFlows(workspaceId: string): Promise<Record<string, unknown>[]>;
   createAutomationFlow(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
+  updateAutomationFlow(id: string, workspaceId: string, patch: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   createAutomationStep(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   createAutomationEnrollment(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
+  listSignalsInbox(input: {
+    workspaceId: string;
+    types?: string[];
+    onlyWithLead?: boolean;
+    includeDismissed?: boolean;
+    limit: number;
+  }): Promise<SignalInboxItem[]>;
+  markSignal(workspaceId: string, eventId: string, action: 'seen' | 'dismissed'): Promise<void>;
 }
+
+export type SignalInboxItem = {
+  id: string;
+  type: string;
+  headline: string | null;
+  description: string | null;
+  payload: Record<string, unknown> | null;
+  occurredAt: Date;
+  seenAt: Date | null;
+  dismissedAt: Date | null;
+  leadId: string | null;
+  campaignId: string | null;
+  lead: {
+    id: string;
+    fullName: string | null;
+    email: string | null;
+    companyName: string | null;
+    score: number;
+    status: string;
+  } | null;
+  campaign: {
+    id: string;
+    name: string;
+    objective: string;
+  } | null;
+};

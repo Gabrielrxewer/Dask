@@ -5,12 +5,12 @@
   --global-sidebar-width: 280px;
   --global-chrome-border: var(--chrome-border);
   --global-chrome-surface:
-    radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 24%),
-    linear-gradient(90deg, rgba(24, 50, 74, 0.98) 0%, rgba(30, 59, 86, 0.98) 100%);
+    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--neutral-white) 8%, transparent) 0%, transparent 24%),
+    linear-gradient(90deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%);
   --global-chrome-highlight:
-    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);
-  --global-chrome-shadow-top: 0 8px 18px rgba(18, 50, 74, 0.12);
-  --global-chrome-shadow-bottom: 0 -6px 14px rgba(18, 50, 74, 0.1);
+    linear-gradient(90deg, color-mix(in srgb, var(--neutral-white) 0%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 10%, transparent) 50%, color-mix(in srgb, var(--neutral-white) 0%, transparent) 100%);
+  --global-chrome-shadow-top: 0 8px 18px color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --global-chrome-shadow-bottom: 0 -6px 14px color-mix(in srgb, var(--text-primary) 10%, transparent);
   --global-chrome-pill-bg: var(--chrome-pill-bg);
   --global-chrome-pill-bg-hover: var(--chrome-pill-bg-hover);
   --global-chrome-pill-border: var(--chrome-pill-border);
@@ -50,8 +50,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 18%, transparent 40%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--neutral-white) 22%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 8%, transparent) 18%, transparent 40%),
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 6%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 1%, transparent) 100%);
   z-index: 0;
 }
 
@@ -66,8 +66,8 @@
   overflow: hidden;
   background: var(--global-chrome-surface);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 8%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--neutral-black) 6%, transparent);
 }
 
 body.shared-modal-open .global-header,
@@ -93,7 +93,7 @@ body.shared-modal-open .global-footer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 22% 50%, rgba(47, 128, 237, 0.08) 0%, transparent 20%);
+  background: radial-gradient(circle at 22% 50%, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 20%);
   opacity: 0.56;
 }
 
@@ -109,7 +109,7 @@ body.shared-modal-open .global-footer {
   padding: 0 18px;
   box-shadow:
     var(--global-chrome-shadow-top),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
   overflow: visible;
   background:
     linear-gradient(var(--global-chrome-border), var(--global-chrome-border))
@@ -165,8 +165,8 @@ body.shared-modal-open .global-footer {
   padding: 0;
   margin-right: 0;
   box-shadow:
-    0 6px 14px rgba(4, 21, 37, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+    0 6px 14px color-mix(in srgb, var(--ink-shadow-strong) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 7%, transparent) inset;
   transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
   position: relative;
   z-index: 1;
@@ -185,8 +185,8 @@ body.shared-modal-open .global-footer {
   width: 100%;
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(221, 236, 248, 0.92) 100%);
-  box-shadow: 0 1px 2px rgba(8, 34, 58, 0.14);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--info-bg) 92%, transparent) 100%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .global-header__menu:hover {
@@ -228,7 +228,7 @@ body.shared-modal-open .global-footer {
   flex-shrink: 0;
   object-fit: contain;
   object-position: center;
-  filter: drop-shadow(0 10px 18px rgba(26, 61, 95, 0.14));
+  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--primary) 14%, transparent));
 }
 
 .global-header__marketing-nav {
@@ -255,7 +255,7 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__marketing-link:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--neutral-white) 12%, transparent);
   color: var(--global-chrome-text);
   transform: translateY(-1px);
 }
@@ -296,7 +296,7 @@ body.shared-modal-open .global-footer {
   bottom: 5px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.78), rgba(198, 240, 234, 0.82));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--neutral-white) 78%, transparent), color-mix(in srgb, var(--info-bg) 82%, transparent));
   opacity: 0;
   transform: scaleX(0.7);
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -305,7 +305,7 @@ body.shared-modal-open .global-footer {
 .global-header__home-link:hover,
 .global-header__home-link--active {
   color: var(--global-chrome-text);
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--neutral-white) 12%, transparent);
 }
 
 .global-header__home-link:hover {
@@ -366,8 +366,8 @@ body.shared-modal-open .global-footer {
   cursor: pointer;
   padding: 0 12px 0 5px;
   box-shadow:
-    0 10px 20px rgba(4, 21, 37, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+    0 10px 20px color-mix(in srgb, var(--ink-shadow-strong) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 16%, transparent) inset;
   transition: background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
   position: relative;
   z-index: 1;
@@ -379,7 +379,7 @@ body.shared-modal-open .global-footer {
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 10%, transparent), color-mix(in srgb, var(--neutral-white) 2%, transparent));
   pointer-events: none;
 }
 
@@ -431,8 +431,8 @@ body.shared-modal-open .global-footer {
   letter-spacing: 0.01em;
   cursor: pointer;
   box-shadow:
-    0 8px 18px rgba(4, 21, 37, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    0 8px 18px color-mix(in srgb, var(--ink-shadow-strong) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 20%, transparent) inset;
   transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
 }
 
@@ -456,21 +456,21 @@ body.shared-modal-open .global-footer {
   padding: 0 16px;
   border-radius: 12px;
   border: 1px solid color-mix(in oklab, var(--accent-strong) 18%, var(--global-chrome-pill-border));
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(228, 241, 250, 0.12));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 20%, transparent), color-mix(in srgb, var(--info-bg) 12%, transparent));
   color: var(--global-chrome-text);
   text-decoration: none;
   font-size: 0.78rem;
   font-weight: 700;
   box-shadow:
-    0 10px 22px rgba(4, 21, 37, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    0 10px 22px color-mix(in srgb, var(--ink-shadow-strong) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 18%, transparent) inset;
   transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
 .global-header__marketing-cta:hover {
   transform: translateY(-1px);
   border-color: color-mix(in oklab, var(--accent-strong) 30%, var(--global-chrome-pill-border));
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(236, 247, 255, 0.16));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 28%, transparent), color-mix(in srgb, var(--info-bg) 16%, transparent));
 }
 
 .global-header__user-avatar {
@@ -480,12 +480,12 @@ body.shared-modal-open .global-footer {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.28) 24%, transparent 48%),
-    linear-gradient(135deg, rgba(223, 240, 255, 0.98) 0%, rgba(233, 250, 246, 0.98) 100%);
-  border: 1px solid rgba(193, 225, 243, 0.88);
+    radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--neutral-white) 90%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 28%, transparent) 24%, transparent 48%),
+    linear-gradient(135deg, color-mix(in srgb, var(--info-bg) 98%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 98%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--info-border) 88%, transparent);
   box-shadow:
-    0 6px 14px rgba(15, 57, 89, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset;
+    0 6px 14px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 62%, transparent) inset;
   position: relative;
   z-index: 1;
 }
@@ -495,7 +495,7 @@ body.shared-modal-open .global-footer {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  border: 2px solid #1d5d8f;
+  border: 2px solid var(--primary-hover);
   border-bottom: 0;
   transform: translateY(-2px);
 }
@@ -507,7 +507,7 @@ body.shared-modal-open .global-footer {
   top: 13px;
   width: 15px;
   height: 8px;
-  border: 2px solid #1d5d8f;
+  border: 2px solid var(--primary-hover);
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
   border-bottom: 0;
@@ -517,7 +517,7 @@ body.shared-modal-open .global-footer {
 .global-header__user-name {
   font-size: 0.74rem;
   line-height: 1;
-  color: #ffffff;
+  color: var(--neutral-white);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -558,7 +558,7 @@ body.shared-modal-open .global-footer {
   display: flex;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid color-mix(in oklab, var(--line) 82%, white 18%);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 82%, var(--neutral-white) 18%);
   padding-bottom: 8px;
 }
 
@@ -587,9 +587,9 @@ body.shared-modal-open .global-footer {
   font-family: var(--font-family-heading);
   font-size: 0.72rem;
   font-weight: 700;
-  color: #0f446d;
-  background: linear-gradient(135deg, #dff2ff 0%, #e9fbf6 100%);
-  border: 1px solid rgba(177, 213, 234, 0.7);
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--info-bg) 0%, var(--surface-cyan-muted) 100%);
+  border: 1px solid color-mix(in srgb, var(--info-border) 70%, transparent);
 }
 
 .global-header__user-menu-actions {
@@ -601,7 +601,7 @@ body.shared-modal-open .global-footer {
   display: grid;
   gap: 8px;
   padding: 10px;
-  border: 1px solid color-mix(in oklab, var(--line) 82%, white 18%);
+  border: 1px solid color-mix(in oklab, var(--line) 82%, var(--neutral-white) 18%);
   border-radius: 10px;
   background: var(--surface-overlay);
 }
@@ -646,7 +646,7 @@ body.shared-modal-open .global-footer {
 
 .global-header__billing-actions button,
 .global-header__user-menu-actions button {
-  border: 1px solid color-mix(in oklab, var(--line) 82%, white 18%);
+  border: 1px solid color-mix(in oklab, var(--line) 82%, var(--neutral-white) 18%);
   background: var(--button-neutral-bg);
   color: var(--button-neutral-text);
   border-radius: 9px;
@@ -692,12 +692,12 @@ body.shared-modal-open .global-footer {
 
 .global-header__user-avatar .shared-user-avatar__media {
   box-shadow:
-    0 6px 14px rgba(15, 57, 89, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset;
+    0 6px 14px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 62%, transparent) inset;
 }
 
 .global-header__user-menu-avatar .shared-user-avatar__media {
-  color: #ffffff;
+  color: var(--neutral-white);
 }
 
 .user-profile-modal__avatar {
@@ -710,12 +710,12 @@ body.shared-modal-open .global-footer {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid color-mix(in oklab, var(--border-default) 90%, white 10%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 90%, var(--neutral-white) 10%);
   border-radius: 24px;
   background:
-    linear-gradient(180deg, #f7fbff 0%, #eef5fb 100%);
+    linear-gradient(180deg, var(--surface-tint) 0%, var(--surface-tint) 100%);
   color: var(--text);
-  box-shadow: 0 28px 72px rgba(7, 27, 47, 0.16);
+  box-shadow: 0 28px 72px color-mix(in srgb, var(--ink-shadow-strong) 16%, transparent);
 }
 
 .user-profile-modal__header {
@@ -725,10 +725,10 @@ body.shared-modal-open .global-footer {
   justify-content: space-between;
   gap: 20px;
   padding: 28px 28px 22px;
-  border-bottom: 1px solid color-mix(in oklab, var(--border-default) 86%, white 14%);
+  border-bottom: 1px solid color-mix(in oklab, var(--border-default) 86%, var(--neutral-white) 14%);
   background:
-    radial-gradient(circle at top left, rgba(220, 238, 255, 0.92) 0%, transparent 34%),
-    linear-gradient(135deg, #edf6ff 0%, #e7f1fa 100%);
+    radial-gradient(circle at top left, color-mix(in srgb, var(--info-bg) 92%, transparent) 0%, transparent 34%),
+    linear-gradient(135deg, var(--surface-tint-strong) 0%, var(--info-bg) 100%);
 }
 
 .user-profile-modal__header::after {
@@ -802,10 +802,10 @@ body.shared-modal-open .global-footer {
   border: 1px solid color-mix(in oklab, var(--selected-border) 76%, var(--border-default));
   border-radius: 999px;
   padding: 0 12px 0 10px;
-  background: color-mix(in oklab, var(--surface-1) 88%, white 12%);
+  background: color-mix(in oklab, var(--surface-1) 88%, var(--neutral-white) 12%);
   font-size: 0.72rem;
   font-weight: 800;
-  box-shadow: inset 0 1px 0 color-mix(in oklab, white 60%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--neutral-white) 60%, transparent);
 }
 
 .user-profile-modal__plan-badge {
@@ -828,9 +828,9 @@ body.shared-modal-open .global-footer {
 .user-profile-modal__close {
   width: 34px;
   height: 34px;
-  border: 1px solid color-mix(in oklab, var(--border-default) 88%, white 12%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 88%, var(--neutral-white) 12%);
   border-radius: 12px;
-  background: color-mix(in oklab, var(--surface-1) 92%, white 8%);
+  background: color-mix(in oklab, var(--surface-1) 92%, var(--neutral-white) 8%);
   color: var(--text-soft);
   font-size: 0;
   font-weight: 800;
@@ -865,27 +865,27 @@ body.shared-modal-open .global-footer {
   gap: 20px;
   padding: 22px 28px 24px;
   overflow: auto;
-  background: #edf3f8;
+  background: var(--surface-3);
 }
 
 .user-profile-modal__panel {
   display: grid;
   gap: 16px;
-  border: 1px solid color-mix(in oklab, var(--border-default) 90%, white 10%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 90%, var(--neutral-white) 10%);
   border-radius: 20px;
   padding: 20px;
-  background: #f3f7fb;
+  background: var(--surface-tint);
   box-shadow: var(--shadow-soft);
 }
 
 .user-profile-modal__panel--summary {
   background:
-    linear-gradient(180deg, #f5f9fd 0%, #eef4f9 100%);
+    linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-3) 100%);
 }
 
 .user-profile-modal__panel--identity {
   background:
-    linear-gradient(180deg, #f7fbff 0%, #edf4fa 100%);
+    linear-gradient(180deg, var(--surface-tint) 0%, var(--surface-3) 100%);
 }
 
 .user-profile-modal__summary-grid {
@@ -899,11 +899,11 @@ body.shared-modal-open .global-footer {
   display: grid;
   gap: 6px;
   min-width: 0;
-  border: 1px solid color-mix(in oklab, var(--border-default) 86%, white 14%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 86%, var(--neutral-white) 14%);
   border-radius: 16px;
   padding: 14px;
-  background: #ffffff;
-  box-shadow: inset 0 1px 0 color-mix(in oklab, white 72%, transparent);
+  background: var(--neutral-white);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--neutral-white) 72%, transparent);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -954,7 +954,7 @@ body.shared-modal-open .global-footer {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  background: linear-gradient(135deg, color-mix(in oklab, var(--selected-bg) 92%, white 8%), color-mix(in oklab, var(--surface-1) 92%, white 8%));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--selected-bg) 92%, var(--neutral-white) 8%), color-mix(in oklab, var(--surface-1) 92%, var(--neutral-white) 8%));
   color: color-mix(in oklab, var(--accent-strong) 78%, var(--text-strong));
   font-size: 0.7rem;
   font-weight: 900;
@@ -990,10 +990,10 @@ body.shared-modal-open .global-footer {
   display: grid;
   gap: 12px;
   min-height: 132px;
-  border: 1px solid color-mix(in oklab, var(--border-default) 88%, white 12%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 88%, var(--neutral-white) 12%);
   border-radius: 18px;
   padding: 14px;
-  background: #ffffff;
+  background: var(--neutral-white);
   color: var(--text-strong);
   text-align: left;
   cursor: pointer;
@@ -1014,7 +1014,7 @@ body.shared-modal-open .global-footer {
   height: 10px;
   border: 1px solid color-mix(in oklab, var(--text-muted) 44%, transparent);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--neutral-white) 72%, transparent);
   transition:
     background 180ms ease,
     border-color 180ms ease,
@@ -1029,7 +1029,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal__choice:focus-visible {
   outline: none;
-  box-shadow: var(--focus-strong), 0 16px 28px rgba(10, 64, 112, 0.1);
+  box-shadow: var(--focus-strong), 0 16px 28px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .user-profile-modal__choice:active {
@@ -1059,9 +1059,9 @@ body.shared-modal-open .global-footer {
   height: 70px;
   border-radius: 14px;
   padding: 7px;
-  border: 1px solid color-mix(in oklab, var(--border-default) 84%, white 16%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 84%, var(--neutral-white) 16%);
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 78%, transparent);
 }
 
 .user-profile-modal__theme-preview > span {
@@ -1073,57 +1073,57 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__theme-preview--light {
-  background: linear-gradient(135deg, #ffffff 0%, #eef7ff 100%);
+  background: linear-gradient(135deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
 }
 
 .user-profile-modal__theme-preview--light > span:first-child {
-  background: linear-gradient(180deg, #dff0ff, #cdeaff);
+  background: linear-gradient(180deg, var(--info-bg), var(--info-bg));
 }
 
 .user-profile-modal__theme-preview--light > span:nth-child(2) {
-  background: #ffffff;
+  background: var(--neutral-white);
 }
 
 .user-profile-modal__theme-preview--light > span:nth-child(3) {
-  background: #dff7f1;
+  background: var(--surface-success-muted);
 }
 
 .user-profile-modal__theme-preview--dark {
-  background: linear-gradient(135deg, #0a2036 0%, #102f4a 100%);
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--foreground) 100%);
 }
 
 .user-profile-modal__theme-preview--dark > span:first-child {
-  background: linear-gradient(180deg, #123b5b, #0f9f98);
+  background: linear-gradient(180deg, var(--primary), var(--decorative-cyan));
 }
 
 .user-profile-modal__theme-preview--dark > span:nth-child(2) {
-  background: #1a4666;
+  background: var(--primary);
 }
 
 .user-profile-modal__theme-preview--dark > span:nth-child(3) {
-  background: #14344f;
+  background: var(--primary);
 }
 
 .user-profile-modal__theme-preview--system {
   background:
-    linear-gradient(90deg, #ffffff 0 50%, #0c253d 50% 100%);
+    linear-gradient(90deg, var(--neutral-white) 0 50%, var(--primary) 50% 100%);
 }
 
 .user-profile-modal__theme-preview--system > span:first-child {
-  background: linear-gradient(180deg, #cdeaff 0 50%, #123b5b 50% 100%);
+  background: linear-gradient(180deg, var(--info-bg) 0 50%, var(--primary) 50% 100%);
 }
 
 .user-profile-modal__theme-preview--system > span:nth-child(2) {
-  background: linear-gradient(90deg, #ffffff 0 50%, #1a4666 50% 100%);
+  background: linear-gradient(90deg, var(--neutral-white) 0 50%, var(--primary) 50% 100%);
 }
 
 .user-profile-modal__theme-preview--system > span:nth-child(3) {
-  background: linear-gradient(90deg, #dff7f1 0 50%, #14344f 50% 100%);
+  background: linear-gradient(90deg, var(--surface-success-muted) 0 50%, var(--primary) 50% 100%);
 }
 
 .user-profile-modal__choice--active {
   border-color: color-mix(in oklab, var(--selected-border) 88%, var(--border-default));
-  background: linear-gradient(135deg, color-mix(in oklab, var(--selected-bg) 88%, white 12%), color-mix(in oklab, var(--surface-1) 86%, white 14%));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--selected-bg) 88%, var(--neutral-white) 12%), color-mix(in oklab, var(--surface-1) 86%, var(--neutral-white) 14%));
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 10%, transparent), var(--shadow-card);
 }
 
@@ -1131,7 +1131,7 @@ body.shared-modal-open .global-footer {
   border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
   background: var(--accent);
   box-shadow:
-    inset 0 0 0 3px #ffffff,
+    inset 0 0 0 3px var(--neutral-white),
     0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
@@ -1154,7 +1154,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal__field .shared-input[readonly] {
   color: var(--text-soft);
-  background: #eef4f9;
+  background: var(--surface-3);
   cursor: default;
 }
 
@@ -1175,10 +1175,10 @@ body.shared-modal-open .global-footer {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border: 1px solid color-mix(in oklab, var(--border-default) 86%, white 14%);
+  border: 1px solid color-mix(in oklab, var(--border-default) 86%, var(--neutral-white) 14%);
   border-radius: 16px;
   padding: 14px 16px;
-  background: #ffffff;
+  background: var(--neutral-white);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -1226,8 +1226,8 @@ body.shared-modal-open .global-footer {
   flex-wrap: wrap;
   gap: 12px;
   padding: 16px 28px 22px;
-  border-top: 1px solid color-mix(in oklab, var(--border-default) 86%, white 14%);
-  background: #e7edf3;
+  border-top: 1px solid color-mix(in oklab, var(--border-default) 86%, var(--neutral-white) 14%);
+  background: var(--surface-tint);
 }
 
 .user-profile-modal__feedback {
@@ -1261,8 +1261,8 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__secondary {
-  border: 1px solid color-mix(in oklab, var(--border-default) 88%, white 12%);
-  background: #ffffff;
+  border: 1px solid color-mix(in oklab, var(--border-default) 88%, var(--neutral-white) 12%);
+  background: var(--neutral-white);
   color: var(--text-strong);
 }
 
@@ -1306,30 +1306,30 @@ body.shared-modal-open .global-footer {
 
 .global-layout:not([data-theme="dark"]) {
   --global-chrome-surface:
-    radial-gradient(circle at 16% 40%, rgba(50, 123, 203, 0.16) 0%, transparent 18%),
-    radial-gradient(circle at 84% 0%, rgba(76, 96, 208, 0.1) 0%, transparent 24%),
-    linear-gradient(135deg, rgba(165, 197, 228, 0.98) 0%, rgba(149, 185, 220, 0.975) 40%, rgba(140, 178, 214, 0.97) 100%);
+    radial-gradient(circle at 16% 40%, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 18%),
+    radial-gradient(circle at 84% 0%, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 24%),
+    linear-gradient(135deg, color-mix(in srgb, var(--info-border) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 97.5%, transparent) 40%, color-mix(in srgb, var(--primary) 97%, transparent) 100%);
   --global-chrome-highlight:
-    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(226, 239, 249, 0.44) 50%, rgba(255, 255, 255, 0) 100%);
+    linear-gradient(90deg, color-mix(in srgb, var(--neutral-white) 0%, transparent) 0%, color-mix(in srgb, var(--info-bg) 44%, transparent) 50%, color-mix(in srgb, var(--neutral-white) 0%, transparent) 100%);
   --global-chrome-shadow-top:
-    0 16px 32px rgba(17, 56, 93, 0.1),
-    0 6px 16px rgba(53, 117, 183, 0.06);
+    0 16px 32px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 6px 16px color-mix(in srgb, var(--primary) 6%, transparent);
   --global-chrome-shadow-bottom:
-    0 -14px 28px rgba(17, 56, 93, 0.08),
-    0 -5px 14px rgba(53, 117, 183, 0.04);
-  --global-chrome-pill-bg: linear-gradient(180deg, rgba(184, 209, 232, 0.88) 0%, rgba(168, 196, 223, 0.86) 100%);
-  --global-chrome-pill-bg-hover: linear-gradient(180deg, rgba(201, 221, 239, 0.94) 0%, rgba(176, 203, 229, 0.9) 100%);
-  --global-chrome-pill-border: rgba(109, 152, 192, 0.8);
-  --global-chrome-text: #143250;
-  --global-chrome-text-soft: #335573;
+    0 -14px 28px color-mix(in srgb, var(--primary) 8%, transparent),
+    0 -5px 14px color-mix(in srgb, var(--primary) 4%, transparent);
+  --global-chrome-pill-bg: linear-gradient(180deg, color-mix(in srgb, var(--info-border) 88%, transparent) 0%, color-mix(in srgb, var(--info-border) 86%, transparent) 100%);
+  --global-chrome-pill-bg-hover: linear-gradient(180deg, color-mix(in srgb, var(--info-border) 94%, transparent) 0%, color-mix(in srgb, var(--info-border) 90%, transparent) 100%);
+  --global-chrome-pill-border: color-mix(in srgb, var(--primary) 80%, transparent);
+  --global-chrome-text: var(--primary);
+  --global-chrome-text-soft: var(--primary);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header,
 .global-layout:not([data-theme="dark"]) .global-footer {
-  border-color: rgba(132, 171, 206, 0.72);
+  border-color: color-mix(in srgb, var(--primary) 72%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(233, 243, 251, 0.48),
-    inset 0 -1px 0 rgba(92, 135, 174, 0.12);
+    inset 0 1px 0 color-mix(in srgb, var(--info-bg) 48%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header::before,
@@ -1340,21 +1340,21 @@ body.shared-modal-open .global-footer {
 .global-layout:not([data-theme="dark"]) .global-header::after,
 .global-layout:not([data-theme="dark"]) .global-footer::after {
   background:
-    radial-gradient(circle at 18% 50%, rgba(42, 113, 200, 0.14) 0%, transparent 16%),
-    radial-gradient(circle at 84% 10%, rgba(94, 99, 210, 0.1) 0%, transparent 20%);
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--primary) 14%, transparent) 0%, transparent 16%),
+    radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 20%);
   opacity: 0.72;
 }
 
 .global-layout:not([data-theme="dark"]) .global-header {
   background:
-    radial-gradient(circle at 18% 50%, rgba(86, 160, 235, 0.22) 0%, transparent 18%),
-    radial-gradient(circle at 84% 0%, rgba(121, 158, 233, 0.16) 0%, transparent 24%),
-    linear-gradient(135deg, #2b4f72 0%, #3f6c9f 100%);
-  border-color: rgba(79, 128, 179, 0.68);
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--primary) 22%, transparent) 0%, transparent 18%),
+    radial-gradient(circle at 84% 0%, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 24%),
+    linear-gradient(135deg, var(--primary) 0%, var(--primary) 100%);
+  border-color: color-mix(in srgb, var(--primary) 68%, transparent);
   box-shadow:
     var(--global-chrome-shadow-top),
-    0 1px 0 rgba(208, 230, 251, 0.12) inset,
-    0 1px 0 rgba(24, 56, 90, 0.36);
+    0 1px 0 color-mix(in srgb, var(--info-border) 12%, transparent) inset,
+    0 1px 0 color-mix(in srgb, var(--primary) 36%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__brand {
@@ -1366,37 +1366,37 @@ body.shared-modal-open .global-footer {
   position: absolute;
   inset: 5px -14px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(111, 176, 239, 0.18) 0%, rgba(111, 176, 239, 0.06) 48%, transparent 74%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 18%, transparent) 0%, color-mix(in srgb, var(--primary) 6%, transparent) 48%, transparent 74%);
   filter: blur(8px);
   pointer-events: none;
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__brand-mark {
   filter:
-    drop-shadow(0 12px 24px rgba(9, 24, 40, 0.22))
-    drop-shadow(0 3px 10px rgba(123, 184, 242, 0.1));
+    drop-shadow(0 12px 24px color-mix(in srgb, var(--primary) 22%, transparent))
+    drop-shadow(0 3px 10px color-mix(in srgb, var(--primary) 10%, transparent));
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__home-link,
 .global-layout:not([data-theme="dark"]) .global-header__marketing-link {
-  color: rgba(230, 240, 250, 0.84);
+  color: var(--text-secondary);
   box-shadow: inset 0 1px 0 transparent;
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__home-link:hover,
 .global-layout:not([data-theme="dark"]) .global-header__home-link--active,
 .global-layout:not([data-theme="dark"]) .global-header__marketing-link:hover {
-  color: #f4f9ff;
+  color: var(--surface-tint);
   background:
-    linear-gradient(180deg, rgba(88, 130, 175, 0.32) 0%, rgba(50, 88, 129, 0.28) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 32%, transparent) 0%, color-mix(in srgb, var(--primary) 28%, transparent) 100%);
   box-shadow:
-    0 8px 16px rgba(12, 30, 49, 0.16),
-    inset 0 1px 0 rgba(208, 230, 251, 0.12);
+    0 8px 16px color-mix(in srgb, var(--primary) 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--info-border) 12%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__home-link::after {
-  background: linear-gradient(90deg, rgba(145, 202, 255, 0.92), rgba(118, 172, 243, 0.82), rgba(110, 216, 207, 0.74));
-  box-shadow: 0 0 12px rgba(111, 176, 239, 0.22);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--info-border) 92%, transparent), color-mix(in srgb, var(--primary) 82%, transparent), color-mix(in srgb, var(--info-border) 74%, transparent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__menu,
@@ -1404,19 +1404,19 @@ body.shared-modal-open .global-footer {
 .global-layout:not([data-theme="dark"]) .global-header__guest-link,
 .global-layout:not([data-theme="dark"]) .global-header__marketing-cta,
 .global-layout:not([data-theme="dark"]) .global-header__marketing-cta:visited {
-  border-color: rgba(111, 160, 209, 0.4);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
   background:
-    linear-gradient(180deg, rgba(74, 114, 156, 0.42) 0%, rgba(45, 80, 119, 0.4) 100%);
-  color: #f4f9ff;
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 42%, transparent) 0%, color-mix(in srgb, var(--primary) 40%, transparent) 100%);
+  color: var(--surface-tint);
   box-shadow:
-    0 10px 20px rgba(12, 30, 49, 0.16),
-    0 3px 10px rgba(73, 147, 214, 0.08),
-    0 1px 0 rgba(206, 229, 249, 0.1) inset;
+    0 10px 20px color-mix(in srgb, var(--primary) 16%, transparent),
+    0 3px 10px color-mix(in srgb, var(--primary) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-border) 10%, transparent) inset;
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__user-name {
-  color: #ffffff !important;
-  text-shadow: 0 1px 1px rgba(16, 42, 68, 0.28);
+  color: var(--neutral-white) !important;
+  text-shadow: 0 1px 1px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__menu:hover,
@@ -1424,13 +1424,13 @@ body.shared-modal-open .global-footer {
 .global-layout:not([data-theme="dark"]) .global-header__guest-link:hover,
 .global-layout:not([data-theme="dark"]) .global-header__marketing-cta:hover,
 .global-layout:not([data-theme="dark"]) .global-header__home-return:hover {
-  border-color: rgba(133, 184, 231, 0.52);
+  border-color: color-mix(in srgb, var(--primary) 52%, transparent);
   background:
-    linear-gradient(180deg, rgba(95, 139, 186, 0.5) 0%, rgba(54, 94, 137, 0.46) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 50%, transparent) 0%, color-mix(in srgb, var(--primary) 46%, transparent) 100%);
   box-shadow:
-    0 12px 22px rgba(12, 30, 49, 0.18),
-    0 4px 12px rgba(73, 147, 214, 0.1),
-    0 1px 0 rgba(214, 234, 251, 0.14) inset;
+    0 12px 22px color-mix(in srgb, var(--primary) 18%, transparent),
+    0 4px 12px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-bg) 14%, transparent) inset;
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__menu:focus-visible,
@@ -1440,31 +1440,31 @@ body.shared-modal-open .global-footer {
 .global-layout:not([data-theme="dark"]) .global-header__home-return:focus-visible,
 .global-layout:not([data-theme="dark"]) .global-header__home-link:focus-visible {
   outline: none;
-  border-color: rgba(150, 200, 244, 0.7);
+  border-color: color-mix(in srgb, var(--info-border) 70%, transparent);
   box-shadow:
-    0 0 0 3px rgba(115, 177, 238, 0.18),
-    0 10px 20px rgba(12, 30, 49, 0.16),
-    0 1px 0 rgba(214, 234, 251, 0.12) inset;
+    0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent),
+    0 10px 20px color-mix(in srgb, var(--primary) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-bg) 12%, transparent) inset;
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__menu-grid i {
-  background: linear-gradient(180deg, rgba(239, 246, 253, 0.96) 0%, rgba(189, 216, 239, 0.88) 100%);
-  box-shadow: 0 1px 2px rgba(8, 34, 58, 0.18);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 96%, transparent) 0%, color-mix(in srgb, var(--info-border) 88%, transparent) 100%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__user::before {
-  background: linear-gradient(135deg, rgba(214, 234, 251, 0.12), rgba(188, 215, 239, 0.04));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--info-bg) 12%, transparent), color-mix(in srgb, var(--info-border) 4%, transparent));
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer {
   background:
-    radial-gradient(circle at 18% 50%, rgba(86, 160, 235, 0.18) 0%, transparent 18%),
-    radial-gradient(circle at 84% 0%, rgba(121, 158, 233, 0.12) 0%, transparent 24%),
-    linear-gradient(135deg, #2b4f72 0%, #3f6c9f 100%);
-  border-color: rgba(79, 128, 179, 0.52);
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--primary) 18%, transparent) 0%, transparent 18%),
+    radial-gradient(circle at 84% 0%, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 24%),
+    linear-gradient(135deg, var(--primary) 0%, var(--primary) 100%);
+  border-color: color-mix(in srgb, var(--primary) 52%, transparent);
   box-shadow:
     var(--global-chrome-shadow-bottom),
-    0 1px 0 rgba(208, 230, 251, 0.1) inset;
+    0 1px 0 color-mix(in srgb, var(--info-border) 10%, transparent) inset;
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer::before {
@@ -1481,11 +1481,11 @@ body.shared-modal-open .global-footer {
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__wordmark {
-  color: #f4f9ff;
-  -webkit-text-stroke: 1.35px #78b3ea;
+  color: var(--surface-tint);
+  -webkit-text-stroke: 1.35px var(--primary);
   text-shadow:
-    0 2px 8px rgba(12, 30, 49, 0.24),
-    0 0 16px rgba(120, 179, 234, 0.16);
+    0 2px 8px color-mix(in srgb, var(--primary) 24%, transparent),
+    0 0 16px color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__links {
@@ -1501,42 +1501,42 @@ body.shared-modal-open .global-footer {
   width: 1px;
   height: 16px;
   transform: translateY(-50%);
-  background: linear-gradient(180deg, transparent, rgba(164, 206, 244, 0.38), transparent);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--info-border) 38%, transparent), transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__links a {
-  color: rgba(230, 240, 250, 0.84);
+  color: var(--text-secondary);
   border-bottom-color: transparent;
-  text-shadow: 0 1px 0 rgba(11, 29, 47, 0.22);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__links a:hover,
 .global-layout:not([data-theme="dark"]) .global-footer__links a:focus-visible {
-  color: #f4f9ff;
-  border-bottom-color: rgba(164, 206, 244, 0.46);
+  color: var(--surface-tint);
+  border-bottom-color: color-mix(in srgb, var(--info-border) 46%, transparent);
 }
 
 .app-theme[data-theme="dark"] {
   --global-chrome-border: var(--chrome-border);
   --global-chrome-surface:
-    radial-gradient(circle at 14% 50%, rgba(31, 117, 212, 0.26) 0%, transparent 22%),
-    radial-gradient(circle at 84% 0%, rgba(66, 81, 206, 0.2) 0%, transparent 28%),
-    linear-gradient(135deg, rgba(6, 17, 31, 0.985) 0%, rgba(10, 26, 46, 0.985) 34%, rgba(8, 38, 66, 0.98) 68%, rgba(7, 32, 54, 0.985) 100%);
+    radial-gradient(circle at 14% 50%, color-mix(in srgb, var(--primary) 26%, transparent) 0%, transparent 22%),
+    radial-gradient(circle at 84% 0%, color-mix(in srgb, var(--primary) 20%, transparent) 0%, transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--primary) 98.5%, transparent) 0%, color-mix(in srgb, var(--primary) 98.5%, transparent) 34%, color-mix(in srgb, var(--primary) 98%, transparent) 68%, color-mix(in srgb, var(--primary) 98.5%, transparent) 100%);
   --global-chrome-highlight:
-    linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(164, 207, 255, 0.14) 50%, rgba(255, 255, 255, 0) 100%);
+    linear-gradient(90deg, color-mix(in srgb, var(--neutral-white) 0%, transparent) 0%, color-mix(in srgb, var(--info-border) 14%, transparent) 50%, color-mix(in srgb, var(--neutral-white) 0%, transparent) 100%);
   --global-chrome-shadow-top:
-    0 16px 34px rgba(0, 0, 0, 0.3),
-    0 6px 18px rgba(3, 18, 34, 0.24),
-    0 1px 0 rgba(180, 221, 255, 0.05) inset;
+    0 16px 34px color-mix(in srgb, var(--neutral-black) 30%, transparent),
+    0 6px 18px color-mix(in srgb, var(--primary) 24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-border) 5%, transparent) inset;
   --global-chrome-shadow-bottom:
-    0 -14px 30px rgba(0, 0, 0, 0.24),
-    0 -5px 16px rgba(3, 18, 34, 0.18),
-    0 1px 0 rgba(180, 221, 255, 0.05) inset;
-  --global-chrome-pill-bg: linear-gradient(180deg, rgba(14, 37, 63, 0.92) 0%, rgba(10, 28, 49, 0.94) 100%);
-  --global-chrome-pill-bg-hover: linear-gradient(180deg, rgba(18, 47, 79, 0.96) 0%, rgba(13, 34, 59, 0.96) 100%);
-  --global-chrome-pill-border: rgba(60, 111, 168, 0.58);
-  --global-chrome-text: #e7f3ff;
-  --global-chrome-text-soft: #9fbcdc;
+    0 -14px 30px color-mix(in srgb, var(--neutral-black) 24%, transparent),
+    0 -5px 16px color-mix(in srgb, var(--primary) 18%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-border) 5%, transparent) inset;
+  --global-chrome-pill-bg: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%);
+  --global-chrome-pill-bg-hover: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 96%, transparent) 100%);
+  --global-chrome-pill-border: color-mix(in srgb, var(--primary) 58%, transparent);
+  --global-chrome-text: var(--surface-blue-muted);
+  --global-chrome-text-soft: var(--primary);
   --global-floating-border: var(--border-default);
   --global-floating-surface: var(--chrome-surface-floating-dark);
   --global-floating-shadow: var(--shadow-3);
@@ -1550,10 +1550,10 @@ body.shared-modal-open .global-footer {
 
 .app-theme[data-theme="dark"] .global-header,
 .app-theme[data-theme="dark"] .global-footer {
-  border-color: rgba(42, 78, 120, 0.62);
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(181, 222, 255, 0.07),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+    inset 0 1px 0 color-mix(in srgb, var(--info-border) 7%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--neutral-black) 24%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-header::before,
@@ -1564,17 +1564,17 @@ body.shared-modal-open .global-footer {
 .app-theme[data-theme="dark"] .global-header::after,
 .app-theme[data-theme="dark"] .global-footer::after {
   background:
-    radial-gradient(circle at 18% 50%, rgba(43, 126, 222, 0.24) 0%, transparent 18%),
-    radial-gradient(circle at 84% 10%, rgba(84, 95, 228, 0.16) 0%, transparent 22%),
-    linear-gradient(90deg, rgba(196, 227, 255, 0.03) 0%, transparent 36%, rgba(196, 227, 255, 0.04) 100%);
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--primary) 24%, transparent) 0%, transparent 18%),
+    radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 22%),
+    linear-gradient(90deg, color-mix(in srgb, var(--info-border) 3%, transparent) 0%, transparent 36%, color-mix(in srgb, var(--info-border) 4%, transparent) 100%);
   opacity: 0.96;
 }
 
 .app-theme[data-theme="dark"] .global-header {
   box-shadow:
     var(--global-chrome-shadow-top),
-    0 1px 0 rgba(173, 217, 255, 0.07) inset,
-    0 1px 0 rgba(28, 67, 108, 0.54);
+    0 1px 0 color-mix(in srgb, var(--info-border) 7%, transparent) inset,
+    0 1px 0 color-mix(in srgb, var(--primary) 54%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-header__brand {
@@ -1586,15 +1586,15 @@ body.shared-modal-open .global-footer {
   position: absolute;
   inset: 4px -14px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(49, 134, 229, 0.18) 0%, rgba(49, 134, 229, 0.06) 48%, transparent 74%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 18%, transparent) 0%, color-mix(in srgb, var(--primary) 6%, transparent) 48%, transparent 74%);
   filter: blur(12px);
   pointer-events: none;
 }
 
 .app-theme[data-theme="dark"] .global-header__brand-mark {
   filter:
-    drop-shadow(0 14px 28px rgba(1, 10, 20, 0.34))
-    drop-shadow(0 0 14px rgba(60, 148, 232, 0.16));
+    drop-shadow(0 14px 28px color-mix(in srgb, var(--primary) 34%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--primary) 16%, transparent));
 }
 
 .app-theme[data-theme="dark"] .global-header__home-link,
@@ -1608,16 +1608,16 @@ body.shared-modal-open .global-footer {
 .app-theme[data-theme="dark"] .global-header__marketing-link:hover {
   color: var(--global-chrome-text);
   background:
-    linear-gradient(180deg, rgba(16, 44, 74, 0.86) 0%, rgba(11, 31, 54, 0.92) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 86%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%);
   box-shadow:
-    0 12px 22px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(64, 119, 180, 0.18) inset,
-    inset 0 1px 0 rgba(196, 227, 255, 0.08);
+    0 12px 22px color-mix(in srgb, var(--neutral-black) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent) inset,
+    inset 0 1px 0 color-mix(in srgb, var(--info-border) 8%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-header__home-link::after {
-  background: linear-gradient(90deg, rgba(61, 146, 237, 0.94), rgba(97, 110, 236, 0.8), rgba(38, 193, 182, 0.78));
-  box-shadow: 0 0 14px rgba(61, 146, 237, 0.28);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 94%, transparent), color-mix(in srgb, var(--primary) 80%, transparent), color-mix(in srgb, var(--decorative-cyan) 78%, transparent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-header__menu,
@@ -1625,14 +1625,14 @@ body.shared-modal-open .global-footer {
 .app-theme[data-theme="dark"] .global-header__guest-link,
 .app-theme[data-theme="dark"] .global-header__marketing-cta,
 .app-theme[data-theme="dark"] .global-header__marketing-cta:visited {
-  border-color: rgba(54, 103, 158, 0.62);
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
   background:
-    linear-gradient(180deg, rgba(13, 36, 61, 0.94) 0%, rgba(9, 26, 45, 0.96) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 96%, transparent) 100%);
   color: var(--global-chrome-text);
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.24),
-    0 4px 14px rgba(11, 48, 84, 0.18),
-    0 1px 0 rgba(188, 224, 255, 0.08) inset;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 24%, transparent),
+    0 4px 14px color-mix(in srgb, var(--primary) 18%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-border) 8%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .global-header__menu:hover,
@@ -1640,13 +1640,13 @@ body.shared-modal-open .global-footer {
 .app-theme[data-theme="dark"] .global-header__guest-link:hover,
 .app-theme[data-theme="dark"] .global-header__marketing-cta:hover,
 .app-theme[data-theme="dark"] .global-header__home-return:hover {
-  border-color: rgba(79, 132, 192, 0.76);
+  border-color: color-mix(in srgb, var(--primary) 76%, transparent);
   background:
-    linear-gradient(180deg, rgba(16, 44, 74, 0.96) 0%, rgba(10, 30, 52, 0.98) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%);
   box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.28),
-    0 6px 16px rgba(14, 63, 110, 0.2),
-    0 1px 0 rgba(196, 227, 255, 0.1) inset;
+    0 16px 28px color-mix(in srgb, var(--neutral-black) 28%, transparent),
+    0 6px 16px color-mix(in srgb, var(--primary) 20%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-border) 10%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .global-header__menu:focus-visible,
@@ -1656,27 +1656,27 @@ body.shared-modal-open .global-footer {
 .app-theme[data-theme="dark"] .global-header__home-return:focus-visible,
 .app-theme[data-theme="dark"] .global-header__home-link:focus-visible {
   outline: none;
-  border-color: rgba(88, 153, 223, 0.84);
+  border-color: color-mix(in srgb, var(--primary) 84%, transparent);
   box-shadow:
-    0 0 0 3px rgba(50, 128, 212, 0.2),
-    0 12px 24px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(196, 227, 255, 0.08) inset;
+    0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent),
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-border) 8%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .global-header__menu-grid i {
-  background: linear-gradient(180deg, rgba(226, 240, 255, 0.96) 0%, rgba(140, 187, 234, 0.92) 100%);
-  box-shadow: 0 1px 3px rgba(2, 14, 28, 0.28);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--info-bg) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-header__user::before {
-  background: linear-gradient(135deg, rgba(193, 226, 255, 0.08), rgba(193, 226, 255, 0.02));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--info-border) 8%, transparent), color-mix(in srgb, var(--info-border) 2%, transparent));
 }
 
 .app-theme[data-theme="dark"] .global-footer {
   box-shadow:
     var(--global-chrome-shadow-bottom),
-    0 1px 0 rgba(173, 217, 255, 0.06) inset,
-    0 -1px 0 rgba(28, 67, 108, 0.44);
+    0 1px 0 color-mix(in srgb, var(--info-border) 6%, transparent) inset,
+    0 -1px 0 color-mix(in srgb, var(--primary) 44%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-footer__inner {
@@ -1689,11 +1689,11 @@ body.shared-modal-open .global-footer {
 }
 
 .app-theme[data-theme="dark"] .global-footer__wordmark {
-  color: #f4f9ff;
-  -webkit-text-stroke: 1.35px #4e95ea;
+  color: var(--surface-tint);
+  -webkit-text-stroke: 1.35px var(--primary);
   text-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.22),
-    0 0 18px rgba(61, 146, 237, 0.18);
+    0 2px 10px color-mix(in srgb, var(--neutral-black) 22%, transparent),
+    0 0 18px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-footer__links {
@@ -1709,23 +1709,23 @@ body.shared-modal-open .global-footer {
   width: 1px;
   height: 16px;
   transform: translateY(-50%);
-  background: linear-gradient(180deg, transparent, rgba(87, 134, 189, 0.72), transparent);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--primary) 72%, transparent), transparent);
 }
 
 .app-theme[data-theme="dark"] .global-footer__links a {
-  color: #9dbbda;
+  color: var(--text-primary);
   border-bottom-color: transparent;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--neutral-black) 18%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-footer__links a:hover,
 .app-theme[data-theme="dark"] .global-footer__links a:focus-visible {
-  color: #ecf6ff;
-  border-bottom-color: rgba(95, 163, 236, 0.54);
+  color: var(--text-primary);
+  border-bottom-color: color-mix(in srgb, var(--primary) 54%, transparent);
 }
 
 .app-theme[data-theme="dark"] .global-layout__surface::before {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 3%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 1%, transparent) 100%);
 }
 
 .app-theme[data-theme="dark"] .global-layout__main:not(.global-layout__main--public) {
@@ -1886,7 +1886,7 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__summary-grid strong,
 .user-profile-modal--dark .user-profile-modal__choice-copy span,
 .user-profile-modal--dark .user-profile-modal__toggle strong {
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--neutral-black) 18%, transparent);
 }
 
 .user-profile-modal--dark .user-profile-modal__secondary:hover,
@@ -1900,7 +1900,7 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal--dark .user-profile-modal__feedback {
-  color: color-mix(in oklab, var(--danger) 82%, white 18%);
+  color: color-mix(in oklab, var(--danger) 82%, var(--neutral-white) 18%);
 }
 
 .user-profile-modal--dark .user-profile-modal__secondary,
@@ -1937,22 +1937,22 @@ body.shared-modal-open .global-footer {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(165, 201, 228, 0.8);
+  border: 1px solid color-mix(in srgb, var(--info-border) 80%, transparent);
   border-radius: 32px;
   background:
     linear-gradient(
       135deg,
-      rgba(255, 144, 132, 0.08) 0%,
-      rgba(214, 156, 242, 0.04) 28%,
-      rgba(123, 146, 242, 0.04) 58%,
-      rgba(56, 132, 238, 0.06) 100%
+      color-mix(in srgb, var(--danger) 8%, transparent) 0%,
+      color-mix(in srgb, var(--decorative-purple) 4%, transparent) 28%,
+      color-mix(in srgb, var(--brand-indigo) 4%, transparent) 58%,
+      color-mix(in srgb, var(--primary) 6%, transparent) 100%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(245, 249, 255, 0.76) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 88%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 76%, transparent) 100%);
   box-shadow:
-    0 28px 58px rgba(10, 36, 61, 0.09),
-    0 12px 28px rgba(31, 76, 132, 0.06),
-    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
-    0 1px 0 rgba(255, 255, 255, 0.78) inset;
+    0 28px 58px color-mix(in srgb, var(--ink-shadow) 9%, transparent),
+    0 12px 28px color-mix(in srgb, var(--primary) 6%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--neutral-white) 55%, transparent) inset,
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 78%, transparent) inset;
   backdrop-filter: blur(22px);
   isolation: isolate;
 }
@@ -1963,8 +1963,8 @@ body.shared-modal-open .global-footer {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 44%);
+    linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 24%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 12%, transparent), transparent 44%);
   z-index: 0;
 }
 
@@ -1975,7 +1975,7 @@ body.shared-modal-open .global-footer {
   width: clamp(220px, 26vw, 320px);
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--neutral-white) 18%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 0%, transparent) 72%);
   filter: blur(18px);
   pointer-events: none;
   z-index: 0;
@@ -2012,10 +2012,10 @@ body.shared-modal-open .global-footer {
 .user-profile-modal__avatar .shared-user-avatar__media {
   width: 72px;
   height: 72px;
-  border: 3px solid rgba(255, 255, 255, 0.9);
+  border: 3px solid color-mix(in srgb, var(--neutral-white) 90%, transparent);
   box-shadow:
-    0 18px 34px rgba(10, 64, 112, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    0 18px 34px color-mix(in srgb, var(--primary) 20%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 32%, transparent);
 }
 
 .user-profile-modal__identity-copy {
@@ -2026,7 +2026,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal__eyebrow,
 .user-profile-modal__section-label {
-  color: #285e91;
+  color: var(--text-primary);
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.15em;
@@ -2035,7 +2035,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal__header h2 {
   margin: 0;
-  color: #10233f;
+  color: var(--foreground);
   font-family: var(--font-family-heading);
   font-size: clamp(1.5rem, 1.8vw, 1.88rem);
   line-height: 0.96;
@@ -2045,7 +2045,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal__header p {
   margin: 0;
-  color: #47617b;
+  color: var(--text-secondary);
   font-size: 0.88rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -2064,18 +2064,18 @@ body.shared-modal-open .global-footer {
   gap: 7px;
   min-height: 28px;
   padding: 0 11px;
-  border: 1px solid rgba(184, 209, 230, 0.84);
+  border: 1px solid color-mix(in srgb, var(--info-border) 84%, transparent);
   border-radius: 999px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 255, 0.9) 46%, rgba(239, 247, 255, 0.82) 100%);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 90%, transparent) 46%, color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%);
   box-shadow:
-    0 8px 16px rgba(16, 54, 87, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    0 8px 16px color-mix(in srgb, var(--primary) 6%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 80%, transparent) inset;
   font-size: 0.68rem;
   font-weight: 700;
 }
 
 .user-profile-modal__plan-badge {
-  color: #1d4d79;
+  color: var(--text-primary);
 }
 
 .user-profile-modal__plan-badge::before {
@@ -2083,12 +2083,12 @@ body.shared-modal-open .global-footer {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #28cfc7;
-  box-shadow: 0 0 0 3px rgba(40, 207, 199, 0.14);
+  background: var(--decorative-cyan);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--decorative-cyan) 14%, transparent);
 }
 
 .user-profile-modal__meta-badge {
-  color: #47617b;
+  color: var(--text-secondary);
 }
 
 .user-profile-modal__close {
@@ -2096,16 +2096,16 @@ body.shared-modal-open .global-footer {
   place-items: center;
   width: 36px;
   height: 36px;
-  border: 1px solid rgba(182, 209, 231, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
-  color: #214d78;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
+  color: var(--text-primary);
   font-size: 0;
   font-weight: 800;
   cursor: pointer;
   box-shadow:
-    0 12px 24px rgba(17, 74, 118, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 12px 24px color-mix(in srgb, var(--primary) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
   transition:
     background 180ms ease,
     border-color 180ms ease,
@@ -2120,19 +2120,19 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__close:hover {
-  border-color: rgba(151, 190, 224, 0.98);
-  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
+  background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
   box-shadow:
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
   transform: translateY(-1px);
 }
 
 .user-profile-modal__close:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 4px rgba(10, 134, 232, 0.14),
-    0 16px 28px rgba(12, 42, 71, 0.11);
+    0 0 0 4px color-mix(in srgb, var(--brand-blue) 14%, transparent),
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent);
 }
 
 .user-profile-modal__body {
@@ -2152,13 +2152,13 @@ body.shared-modal-open .global-footer {
   display: grid;
   gap: 12px;
   padding: 16px;
-  border: 1px solid rgba(177, 204, 227, 0.7);
+  border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
   border-radius: 24px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(247, 251, 255, 0.88) 44%, rgba(241, 248, 255, 0.78) 100%);
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 95%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 44%, color-mix(in srgb, var(--surface-tint) 78%, transparent) 100%);
   box-shadow:
-    0 14px 28px rgba(12, 42, 71, 0.055),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 14px 28px color-mix(in srgb, var(--ink-shadow) 5.5%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
   overflow: visible;
 }
 
@@ -2170,8 +2170,8 @@ body.shared-modal-open .global-footer {
   clip-path: inset(0 round 24px);
   pointer-events: none;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.14), transparent 42%),
-    radial-gradient(circle at 100% 0%, rgba(56, 132, 238, 0.05) 0%, transparent 30%);
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 14%, transparent), transparent 42%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--primary) 5%, transparent) 0%, transparent 30%);
 }
 
 .user-profile-modal__panel > * {
@@ -2188,16 +2188,16 @@ body.shared-modal-open .global-footer {
 .user-profile-modal__section-icon {
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(182, 209, 231, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
   border-radius: 14px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
-  color: #2f6596;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
+  color: var(--text-primary);
   box-shadow:
-    0 10px 20px rgba(17, 74, 118, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 10px 20px color-mix(in srgb, var(--primary) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
   font-size: 0.62rem;
   font-weight: 800;
 }
@@ -2210,7 +2210,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal__section-head p {
   margin: 0;
-  color: #58718c;
+  color: var(--text-primary);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -2227,7 +2227,7 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__field span {
-  color: #2f6596;
+  color: var(--text-primary);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -2237,34 +2237,34 @@ body.shared-modal-open .global-footer {
 .user-profile-modal__field .shared-input {
   min-height: 44px;
   border-radius: 14px;
-  border-color: rgba(177, 205, 230, 0.9);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
-  color: #102a43;
+  border-color: color-mix(in srgb, var(--info-border) 90%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
+  color: var(--text-primary);
   box-shadow:
-    0 12px 24px rgba(12, 42, 71, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 12px 24px color-mix(in srgb, var(--ink-shadow) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
 }
 
 .user-profile-modal__field .shared-input:hover {
-  border-color: rgba(151, 190, 224, 0.98);
-  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
+  background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
   box-shadow:
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
 }
 
 .user-profile-modal__field .shared-input:focus,
 .user-profile-modal__field .shared-input:focus-visible {
-  border-color: rgba(10, 134, 232, 0.72);
-  background: #fcfeff;
+  border-color: color-mix(in srgb, var(--brand-blue) 72%, transparent);
+  background: var(--neutral-white);
   box-shadow:
-    0 0 0 4px rgba(10, 134, 232, 0.14),
-    0 16px 32px rgba(18, 86, 137, 0.1);
+    0 0 0 4px color-mix(in srgb, var(--brand-blue) 14%, transparent),
+    0 16px 32px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .user-profile-modal__field .shared-input[readonly] {
-  color: #58718c;
-  background: linear-gradient(180deg, rgba(244, 249, 253, 0.96) 0%, rgba(237, 244, 250, 0.92) 100%);
+  color: var(--text-primary);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 96%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 92%, transparent) 100%);
   cursor: default;
 }
 
@@ -2282,12 +2282,12 @@ body.shared-modal-open .global-footer {
   min-width: 0;
   min-height: 78px;
   padding: 12px;
-  border: 1px solid rgba(184, 209, 230, 0.84);
+  border: 1px solid color-mix(in srgb, var(--info-border) 84%, transparent);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 250, 255, 0.9) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 100%);
   box-shadow:
-    0 10px 22px rgba(17, 74, 118, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+    0 10px 22px color-mix(in srgb, var(--primary) 6%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 82%, transparent) inset;
 }
 
 .user-profile-modal__basic-card::before {
@@ -2295,11 +2295,11 @@ body.shared-modal-open .global-footer {
   width: 28px;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0a86e8 0%, #28cfc7 100%);
+  background: linear-gradient(90deg, var(--brand-blue) 0%, var(--decorative-cyan) 100%);
 }
 
 .user-profile-modal__basic-card small {
-  color: #7992a9;
+  color: var(--text-primary);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -2307,7 +2307,7 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__basic-card strong {
-  color: #16304d;
+  color: var(--text-primary);
   font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.28;
@@ -2326,15 +2326,15 @@ body.shared-modal-open .global-footer {
   min-height: 96px;
   gap: 8px;
   padding: 12px;
-  border: 1px solid rgba(184, 209, 230, 0.84);
+  border: 1px solid color-mix(in srgb, var(--info-border) 84%, transparent);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.92) 100%);
-  color: #16304d;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 98%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 92%, transparent) 100%);
+  color: var(--text-primary);
   text-align: left;
   cursor: pointer;
   box-shadow:
-    0 10px 22px rgba(17, 74, 118, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+    0 10px 22px color-mix(in srgb, var(--primary) 6%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 82%, transparent) inset;
   transition:
     background 180ms ease,
     border-color 180ms ease,
@@ -2349,9 +2349,9 @@ body.shared-modal-open .global-footer {
   right: 12px;
   width: 10px;
   height: 10px;
-  border: 1px solid rgba(116, 146, 174, 0.52);
+  border: 1px solid color-mix(in srgb, var(--primary) 52%, transparent);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--neutral-white) 72%, transparent);
   transition:
     background 180ms ease,
     border-color 180ms ease,
@@ -2359,17 +2359,17 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__choice:hover {
-  border-color: rgba(151, 190, 224, 0.98);
+  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
   box-shadow:
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
 }
 
 .user-profile-modal__choice:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 4px rgba(10, 134, 232, 0.14),
-    0 16px 28px rgba(12, 42, 71, 0.11);
+    0 0 0 4px color-mix(in srgb, var(--brand-blue) 14%, transparent),
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent);
 }
 
 .user-profile-modal__choice:active {
@@ -2377,12 +2377,12 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__choice-copy span {
-  color: #16304d;
+  color: var(--text-primary);
   font-weight: 800;
 }
 
 .user-profile-modal__choice-copy small {
-  color: #58718c;
+  color: var(--text-primary);
   font-size: 0.7rem;
   line-height: 1.35;
 }
@@ -2393,20 +2393,20 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__choice--active {
-  border-color: rgba(106, 170, 228, 0.92);
-  background: linear-gradient(135deg, rgba(240, 248, 255, 0.98) 0%, rgba(233, 244, 255, 0.92) 100%);
+  border-color: color-mix(in srgb, var(--primary) 92%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-tint) 98%, transparent) 0%, color-mix(in srgb, var(--info-bg) 92%, transparent) 100%);
   box-shadow:
-    0 0 0 4px rgba(10, 134, 232, 0.08),
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 0 0 4px color-mix(in srgb, var(--brand-blue) 8%, transparent),
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
 }
 
 .user-profile-modal__choice--active::after {
-  border-color: rgba(10, 134, 232, 0.42);
-  background: #0a86e8;
+  border-color: color-mix(in srgb, var(--brand-blue) 42%, transparent);
+  background: var(--brand-blue);
   box-shadow:
-    inset 0 0 0 3px #ffffff,
-    0 0 0 3px rgba(10, 134, 232, 0.12);
+    inset 0 0 0 3px var(--neutral-white),
+    0 0 0 3px color-mix(in srgb, var(--brand-blue) 12%, transparent);
 }
 
 .user-profile-modal__footer {
@@ -2424,10 +2424,10 @@ body.shared-modal-open .global-footer {
   margin: 0;
   flex: 1 1 100%;
   padding: 12px 14px;
-  border: 1px solid rgba(230, 145, 145, 0.68);
+  border: 1px solid color-mix(in srgb, var(--danger) 68%, transparent);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 240, 240, 0.92), rgba(255, 247, 247, 0.72));
-  color: #a63737;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-tint) 92%, transparent), color-mix(in srgb, var(--neutral-white) 72%, transparent));
+  color: var(--danger);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -2449,12 +2449,12 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__secondary {
-  border: 1px solid rgba(182, 209, 231, 0.9);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
-  color: #214d78;
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
+  color: var(--text-primary);
   box-shadow:
-    0 12px 24px rgba(12, 42, 71, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 12px 24px color-mix(in srgb, var(--ink-shadow) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
 }
 
 .user-profile-modal__primary:hover {
@@ -2464,11 +2464,11 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal__secondary:hover {
-  border-color: rgba(151, 190, 224, 0.98);
-  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
+  background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
   box-shadow:
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
   transform: translateY(-1px);
 }
 
@@ -2476,46 +2476,46 @@ body.shared-modal-open .global-footer {
 .user-profile-modal__secondary:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 4px rgba(10, 134, 232, 0.14),
-    0 16px 28px rgba(12, 42, 71, 0.11);
+    0 0 0 4px color-mix(in srgb, var(--brand-blue) 14%, transparent),
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent);
 }
 
 .user-profile-modal--dark {
-  border-color: rgba(79, 120, 150, 0.66);
+  border-color: color-mix(in srgb, var(--primary) 66%, transparent);
   background:
-    radial-gradient(circle at 12% 0%, rgba(47, 128, 237, 0.1) 0%, transparent 24%),
-    radial-gradient(circle at 88% 18%, rgba(40, 207, 199, 0.06) 0%, transparent 20%),
-    linear-gradient(180deg, rgba(11, 27, 41, 0.96) 0%, rgba(9, 24, 38, 0.97) 52%, rgba(7, 20, 31, 0.98) 100%);
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 24%),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 0%, transparent 20%),
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 97%, transparent) 52%, color-mix(in srgb, var(--primary) 98%, transparent) 100%);
   box-shadow:
-    0 34px 90px rgba(0, 0, 0, 0.38),
-    0 18px 44px rgba(6, 18, 30, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
-    0 0 0 1px rgba(90, 183, 255, 0.05);
+    0 34px 90px color-mix(in srgb, var(--neutral-black) 38%, transparent),
+    0 18px 44px color-mix(in srgb, var(--primary) 28%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 7%, transparent) inset,
+    0 0 0 1px color-mix(in srgb, var(--primary) 5%, transparent);
 }
 
 .user-profile-modal--dark::before {
   background:
-    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.12) 48%, transparent 100%) 0 0 / 100% 1px no-repeat,
-    linear-gradient(145deg, rgba(79, 149, 210, 0.08), transparent 42%),
-    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.06) 0%, transparent 28%);
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--neutral-white) 12%, transparent) 48%, transparent 100%) 0 0 / 100% 1px no-repeat,
+    linear-gradient(145deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent 42%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 0%, transparent 28%);
   opacity: 0.74;
 }
 
 .user-profile-modal--dark::after {
-  background: radial-gradient(circle, rgba(47, 128, 237, 0.14) 0%, rgba(47, 128, 237, 0) 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 14%, transparent) 0%, color-mix(in srgb, var(--primary) 0%, transparent) 72%);
   opacity: 0.72;
 }
 
 .user-profile-modal--dark .user-profile-modal__eyebrow,
 .user-profile-modal--dark .user-profile-modal__section-label,
 .user-profile-modal--dark .user-profile-modal__field span {
-  color: color-mix(in oklab, var(--accent-strong) 86%, #d7ebff) !important;
+  color: var(--text-secondary);
 }
 
 .user-profile-modal--dark .user-profile-modal__header h2,
 .user-profile-modal--dark .user-profile-modal__basic-card strong,
 .user-profile-modal--dark .user-profile-modal__choice-copy span {
-  color: #f2f8ff !important;
+  color: var(--surface-tint) !important;
   text-shadow: none;
 }
 
@@ -2523,14 +2523,14 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__section-head p,
 .user-profile-modal--dark .user-profile-modal__basic-card small,
 .user-profile-modal--dark .user-profile-modal__choice-copy small {
-  color: color-mix(in oklab, var(--text-muted) 72%, #bfd0e0) !important;
+  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong)) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__avatar .shared-user-avatar__media {
-  border-color: rgba(173, 217, 255, 0.14);
+  border-color: color-mix(in srgb, var(--info-border) 14%, transparent);
   box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.26),
-    inset 0 1px 0 rgba(233, 244, 252, 0.14);
+    0 18px 34px color-mix(in srgb, var(--neutral-black) 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--info-bg) 14%, transparent);
 }
 
 .user-profile-modal--dark .user-profile-modal__panel,
@@ -2538,135 +2538,302 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__choice {
   border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default)) !important;
   background:
-    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.05) 0%, transparent 22%),
-    linear-gradient(180deg, rgba(18, 30, 43, 0.98) 0%, rgba(12, 21, 31, 0.985) 100%) !important;
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 5%, transparent) 0%, transparent 22%),
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 98.5%, transparent) 100%) !important;
   box-shadow:
-    0 18px 36px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset !important;
+    0 18px 36px color-mix(in srgb, var(--neutral-black) 24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__panel::after {
   border-radius: inherit;
   clip-path: inset(0 round 24px);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 42%),
-    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.06) 0%, transparent 32%);
+    linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 6%, transparent), transparent 42%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 0%, transparent 32%);
 }
 
 .user-profile-modal--dark .user-profile-modal__section-icon {
   border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default));
-  background: linear-gradient(180deg, rgba(18, 37, 57, 0.96) 0%, rgba(12, 28, 43, 0.98) 100%);
-  color: color-mix(in oklab, var(--accent-strong) 86%, #d7ebff);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%);
+  color: var(--text-secondary);
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__plan-badge,
 .user-profile-modal--dark .user-profile-modal__meta-badge {
   border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default));
-  background: linear-gradient(180deg, rgba(18, 37, 57, 0.96) 0%, rgba(12, 28, 43, 0.98) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%);
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__plan-badge {
-  color: #eaf2fb;
+  color: var(--surface-tint);
 }
 
 .user-profile-modal--dark .user-profile-modal__meta-badge {
-  color: color-mix(in oklab, var(--text-muted) 72%, #bfd0e0);
+  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong));
 }
 
 .user-profile-modal--dark .user-profile-modal__close,
 .user-profile-modal--dark .user-profile-modal__secondary {
   border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default));
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.94) 0%, rgba(14, 24, 36, 0.92) 100%);
-  color: #e6f0fa;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%);
+  color: var(--text-primary);
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 20%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__close:hover,
 .user-profile-modal--dark .user-profile-modal__secondary:hover {
   border-color: color-mix(in oklab, var(--primary) 44%, var(--border-default));
-  background: linear-gradient(180deg, rgba(23, 39, 58, 0.96) 0%, rgba(16, 29, 42, 0.94) 100%);
-  color: #f1f7fd;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%);
+  color: var(--surface-tint);
 }
 
 .user-profile-modal--dark .user-profile-modal__primary {
-  border-color: color-mix(in oklab, var(--primary) 42%, #12314b);
-  background: linear-gradient(135deg, #0d5f9d 0%, #1d79bb 58%, #27b2bc 100%);
-  color: #f6fbff;
+  border-color: color-mix(in oklab, var(--primary) 42%, var(--primary));
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 58%, var(--decorative-cyan) 100%);
+  color: var(--neutral-white);
   box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.26),
-    0 12px 22px rgba(10, 66, 107, 0.26),
-    0 1px 0 rgba(233, 244, 252, 0.16) inset;
+    0 18px 34px color-mix(in srgb, var(--neutral-black) 26%, transparent),
+    0 12px 22px color-mix(in srgb, var(--primary) 26%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-bg) 16%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__primary:hover {
-  border-color: color-mix(in oklab, var(--primary) 52%, #153653);
-  background: linear-gradient(135deg, #1169ab 0%, #2485c3 58%, #2cbec3 100%);
+  border-color: color-mix(in oklab, var(--primary) 52%, var(--primary));
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 58%, var(--decorative-cyan) 100%);
   box-shadow:
-    0 22px 38px rgba(0, 0, 0, 0.3),
-    0 14px 24px rgba(12, 76, 121, 0.3),
-    0 1px 0 rgba(233, 244, 252, 0.18) inset;
+    0 22px 38px color-mix(in srgb, var(--neutral-black) 30%, transparent),
+    0 14px 24px color-mix(in srgb, var(--primary) 30%, transparent),
+    0 1px 0 color-mix(in srgb, var(--info-bg) 18%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input {
   border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default)) !important;
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.94) 0%, rgba(14, 24, 36, 0.92) 100%) !important;
-  color: #f0f7ff !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%) !important;
+  color: var(--surface-tint-strong) !important;
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+    0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input:hover {
   border-color: color-mix(in oklab, var(--primary) 44%, var(--border-default)) !important;
-  background: linear-gradient(180deg, rgba(23, 39, 58, 0.96) 0%, rgba(16, 29, 42, 0.94) 100%) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input:focus,
 .user-profile-modal--dark .user-profile-modal__field .shared-input:focus-visible {
   border-color: var(--selected-border) !important;
-  background: linear-gradient(180deg, rgba(23, 39, 58, 0.96) 0%, rgba(16, 29, 42, 0.94) 100%) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%) !important;
   box-shadow:
-    0 0 0 4px rgba(47, 128, 237, 0.14),
-    0 16px 30px rgba(0, 0, 0, 0.22) !important;
+    0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 16px 30px color-mix(in srgb, var(--neutral-black) 22%, transparent) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input[readonly] {
-  color: color-mix(in oklab, var(--text-muted) 72%, #bfd0e0) !important;
-  background: linear-gradient(180deg, rgba(16, 28, 40, 0.96) 0%, rgba(12, 21, 31, 0.98) 100%) !important;
+  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong)) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%) !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__basic-card::before {
-  background: linear-gradient(90deg, rgba(61, 146, 237, 0.94), rgba(97, 110, 236, 0.8), rgba(38, 193, 182, 0.78));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 94%, transparent), color-mix(in srgb, var(--primary) 80%, transparent), color-mix(in srgb, var(--decorative-cyan) 78%, transparent));
 }
 
 .user-profile-modal--dark .user-profile-modal__choice--active {
   border-color: color-mix(in oklab, var(--primary) 44%, var(--border-default));
   background:
-    radial-gradient(circle at 100% 0%, rgba(40, 207, 199, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(17, 31, 45, 0.98) 0%, rgba(12, 24, 35, 0.99) 100%) !important;
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 8%, transparent) 0%, transparent 24%),
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 99%, transparent) 100%) !important;
   box-shadow:
-    0 0 0 4px rgba(47, 128, 237, 0.1),
-    0 18px 32px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+    0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 18px 32px color-mix(in srgb, var(--neutral-black) 24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset !important;
 }
 
 .user-profile-modal--dark .user-profile-modal__choice::after {
-  border-color: rgba(84, 124, 158, 0.78);
-  background: rgba(11, 27, 41, 0.92);
+  border-color: color-mix(in srgb, var(--primary) 78%, transparent);
+  background: color-mix(in srgb, var(--primary) 92%, transparent);
 }
 
 .user-profile-modal--dark .user-profile-modal__feedback {
   border-color: color-mix(in oklab, var(--danger) 44%, var(--border-default));
-  background: linear-gradient(135deg, rgba(52, 19, 26, 0.94), rgba(35, 15, 20, 0.88));
-  color: color-mix(in oklab, var(--danger) 32%, #ffd2db);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 94%, transparent), color-mix(in srgb, var(--danger) 88%, transparent));
+  color: color-mix(in oklab, var(--danger) 32%, var(--danger-border));
+}
+
+.app-theme[data-theme="dark"] {
+  --global-chrome-border: rgba(58, 85, 112, 0.36);
+  --global-chrome-surface:
+    radial-gradient(circle at 14% 50%, rgba(47, 128, 237, 0.08) 0%, transparent 22%),
+    radial-gradient(circle at 84% 0%, rgba(48, 213, 205, 0.04) 0%, transparent 28%),
+    linear-gradient(135deg, rgba(8, 17, 27, 0.98) 0%, rgba(11, 22, 34, 0.98) 46%, rgba(7, 15, 24, 0.98) 100%);
+  --global-chrome-highlight:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+  --global-chrome-shadow-top:
+    0 16px 34px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --global-chrome-shadow-bottom:
+    0 -14px 30px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --global-chrome-pill-bg: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(13, 24, 36, 0.96) 100%);
+  --global-chrome-pill-bg-hover: linear-gradient(180deg, rgba(23, 39, 58, 0.98) 0%, rgba(16, 29, 42, 0.98) 100%);
+  --global-chrome-pill-border: rgba(58, 85, 112, 0.56);
+  --global-chrome-text: var(--text-primary);
+  --global-chrome-text-soft: var(--text-secondary);
+}
+
+.app-theme[data-theme="dark"] .global-header,
+.app-theme[data-theme="dark"] .global-footer {
+  border-color: var(--global-chrome-border);
+  background: var(--global-chrome-surface);
+}
+
+.app-theme[data-theme="dark"] .global-header {
+  box-shadow:
+    var(--global-chrome-shadow-top),
+    0 1px 0 var(--global-chrome-border);
+}
+
+.app-theme[data-theme="dark"] .global-footer {
+  box-shadow:
+    var(--global-chrome-shadow-bottom),
+    0 -1px 0 var(--global-chrome-border);
+}
+
+.app-theme[data-theme="dark"] .global-header::after,
+.app-theme[data-theme="dark"] .global-footer::after {
+  background:
+    radial-gradient(circle at 18% 50%, rgba(47, 128, 237, 0.08) 0%, transparent 18%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, transparent 38%, rgba(255, 255, 255, 0.025) 100%);
+  opacity: 0.7;
+}
+
+.app-theme[data-theme="dark"] .global-header__menu,
+.app-theme[data-theme="dark"] .global-header__user,
+.app-theme[data-theme="dark"] .global-header__guest-link,
+.app-theme[data-theme="dark"] .global-header__marketing-cta,
+.app-theme[data-theme="dark"] .global-header__marketing-cta:visited,
+.app-theme[data-theme="dark"] .global-header__home-link:hover,
+.app-theme[data-theme="dark"] .global-header__home-link--active,
+.app-theme[data-theme="dark"] .global-header__marketing-link:hover {
+  border-color: var(--global-chrome-pill-border);
+  background: var(--global-chrome-pill-bg);
+  color: var(--global-chrome-text);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.app-theme[data-theme="dark"] .global-header__menu:hover,
+.app-theme[data-theme="dark"] .global-header__user:hover,
+.app-theme[data-theme="dark"] .global-header__guest-link:hover,
+.app-theme[data-theme="dark"] .global-header__marketing-cta:hover,
+.app-theme[data-theme="dark"] .global-header__home-return:hover {
+  border-color: color-mix(in srgb, var(--border-strong) 76%, var(--primary));
+  background: var(--global-chrome-pill-bg-hover);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+}
+
+.app-theme[data-theme="dark"] .global-header__user-name,
+.app-theme[data-theme="dark"] .global-footer__wordmark,
+.app-theme[data-theme="dark"] .global-footer__links a,
+.app-theme[data-theme="dark"] .global-footer__links a:hover,
+.app-theme[data-theme="dark"] .global-footer__links a:focus-visible {
+  color: var(--text-primary);
+  text-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .global-footer__wordmark {
+  -webkit-text-stroke: 0;
+}
+
+.app-theme[data-theme="dark"] .global-footer__links::before {
+  background: linear-gradient(180deg, transparent, var(--border-strong), transparent);
+}
+
+.user-profile-modal--dark {
+  border-color: var(--border-default);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(47, 128, 237, 0.08) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(13, 22, 32, 0.98) 0%, rgba(9, 17, 27, 0.98) 100%) !important;
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.user-profile-modal--dark .user-profile-modal__panel,
+.user-profile-modal--dark .user-profile-modal__basic-card,
+.user-profile-modal--dark .user-profile-modal__choice {
+  border-color: var(--border-default) !important;
+  background: linear-gradient(180deg, rgba(18, 30, 43, 0.98) 0%, rgba(13, 22, 32, 0.98) 100%) !important;
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+}
+
+.user-profile-modal--dark .user-profile-modal__section-icon,
+.user-profile-modal--dark .user-profile-modal__plan-badge,
+.user-profile-modal--dark .user-profile-modal__meta-badge,
+.user-profile-modal--dark .user-profile-modal__close,
+.user-profile-modal--dark .user-profile-modal__secondary,
+.user-profile-modal--dark .user-profile-modal__field .shared-input {
+  border-color: var(--border-default) !important;
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%) !important;
+  color: var(--text-primary) !important;
+}
+
+.user-profile-modal--dark .user-profile-modal__header h2,
+.user-profile-modal--dark .user-profile-modal__basic-card strong,
+.user-profile-modal--dark .user-profile-modal__choice-copy span {
+  color: var(--text-primary) !important;
+}
+
+.user-profile-modal--dark .user-profile-modal__header p,
+.user-profile-modal--dark .user-profile-modal__section-head p,
+.user-profile-modal--dark .user-profile-modal__basic-card small,
+.user-profile-modal--dark .user-profile-modal__choice-copy small,
+.user-profile-modal--dark .user-profile-modal__field .shared-input[readonly] {
+  color: var(--text-secondary) !important;
+}
+
+.user-profile-modal--dark .user-profile-modal__choice--active {
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--border-default)) !important;
+  background: linear-gradient(180deg, rgba(22, 38, 56, 0.98) 0%, rgba(15, 28, 42, 0.98) 100%) !important;
+}
+
+.user-profile-modal--dark .user-profile-modal__primary {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border-default));
+  background: linear-gradient(135deg, #102f4d 0%, #16466f 100%);
+}
+
+.user-profile-modal--dark .user-profile-modal__field .shared-input[readonly],
+.user-profile-modal--dark .user-profile-modal__field .shared-input:disabled {
+  border-color: var(--border-default) !important;
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%) !important;
+  color: var(--text-secondary) !important;
+  -webkit-text-fill-color: var(--text-secondary) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.user-profile-modal--dark .user-profile-modal__field .shared-input[readonly]:hover,
+.user-profile-modal--dark .user-profile-modal__field .shared-input:disabled:hover {
+  border-color: var(--border-default) !important;
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%) !important;
+}
+
+.user-profile-modal__header h2 {
+  letter-spacing: 0;
 }
 
 .global-layout__main--public {
@@ -2703,7 +2870,7 @@ body.shared-modal-open .global-footer {
   padding: 0 18px;
   box-shadow:
     var(--global-chrome-shadow-bottom),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
   background: var(--global-chrome-surface);
 }
 
@@ -2767,10 +2934,10 @@ body.shared-modal-open .global-footer {
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: #ffffff;
-  -webkit-text-stroke: 1.35px #2c78e6;
+  color: var(--neutral-white);
+  -webkit-text-stroke: 1.35px var(--primary);
   paint-order: stroke fill;
-  text-shadow: 0 2px 7px rgba(11, 28, 46, 0.16);
+  text-shadow: 0 2px 7px color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .global-footer__links {
@@ -2805,13 +2972,13 @@ body.shared-modal-open .global-footer {
   width: 1px;
   height: 14px;
   transform: translateY(-50%);
-  background: linear-gradient(180deg, transparent, rgba(164, 206, 244, 0.48), transparent);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--info-border) 48%, transparent), transparent);
 }
 
 .global-footer__links a:hover,
 .global-footer__links a:focus-visible {
-  color: #ffffff;
-  border-bottom-color: rgba(255, 255, 255, 0.72);
+  color: var(--neutral-white);
+  border-bottom-color: color-mix(in srgb, var(--neutral-white) 72%, transparent);
 }
 
 @media (max-width: 1140px) {

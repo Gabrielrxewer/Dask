@@ -48,6 +48,7 @@ export interface LeadsRepository {
     externalSource: LeadIntegrationSource;
     externalId: string;
   }): Promise<Lead | null>;
+  customerExistsInWorkspace(workspaceId: string, customerId: string): Promise<boolean>;
   createLead(data: Prisma.LeadUncheckedCreateInput): Promise<Lead>;
   updateLead(workspaceId: string, leadId: string, data: Prisma.LeadUncheckedUpdateInput): Promise<Lead>;
   createActivity(data: Prisma.LeadActivityUncheckedCreateInput): Promise<LeadActivity>;

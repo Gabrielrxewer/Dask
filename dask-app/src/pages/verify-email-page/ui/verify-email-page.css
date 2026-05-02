@@ -7,20 +7,20 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(circle at 16% 24%, rgba(247, 145, 159, 0.16) 0%, rgba(247, 145, 159, 0.02) 26%, transparent 44%),
-    radial-gradient(circle at 80% 20%, rgba(125, 97, 238, 0.13) 0%, rgba(125, 97, 238, 0.02) 24%, transparent 42%),
-    radial-gradient(circle at 72% 74%, rgba(48, 213, 205, 0.1) 0%, rgba(48, 213, 205, 0.02) 26%, transparent 46%),
-    linear-gradient(135deg, rgba(247, 145, 159, 0.08) 0%, rgba(165, 96, 234, 0.06) 28%, rgba(44, 120, 230, 0.08) 58%, rgba(48, 213, 205, 0.1) 100%),
-    linear-gradient(180deg, #f8fbff 0%, #eef5fd 52%, #e9f3fb 100%);
+    radial-gradient(circle at 16% 24%, color-mix(in srgb, var(--danger) 16%, transparent) 0%, color-mix(in srgb, var(--danger) 2%, transparent) 26%, transparent 44%),
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--brand-indigo) 13%, transparent) 0%, color-mix(in srgb, var(--brand-indigo) 2%, transparent) 24%, transparent 42%),
+    radial-gradient(circle at 72% 74%, color-mix(in srgb, var(--decorative-cyan) 10%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 2%, transparent) 26%, transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, var(--danger) 8%, transparent) 0%, color-mix(in srgb, var(--brand-indigo) 6%, transparent) 28%, color-mix(in srgb, var(--primary) 8%, transparent) 58%, color-mix(in srgb, var(--decorative-cyan) 10%, transparent) 100%),
+    linear-gradient(180deg, var(--surface-tint) 0%, var(--surface-tint) 52%, var(--info-bg) 100%);
 }
 
 .verify-email-page__backdrop {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.54) 0%, rgba(255, 255, 255, 0.18) 20%, transparent 40%),
-    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.08) 18%, transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--neutral-white) 54%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 18%, transparent) 20%, transparent 40%),
+    radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--neutral-white) 36%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 8%, transparent) 18%, transparent 36%),
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 12%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 2%, transparent) 100%);
   filter: blur(1px);
   pointer-events: none;
   z-index: -1;
@@ -30,13 +30,13 @@
 
 .verify-email-page__card {
   width: min(440px, 100%);
-  background: rgba(248, 251, 255, 0.84);
-  border: 1px solid rgba(186, 206, 227, 0.72);
+  background: color-mix(in srgb, var(--surface-tint) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info-border) 72%, transparent);
   border-radius: 32px;
   box-shadow:
-    0 34px 72px rgba(15, 41, 72, 0.14),
-    0 14px 30px rgba(36, 80, 128, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.92) inset;
+    0 34px 72px color-mix(in srgb, var(--ink-shadow) 14%, transparent),
+    0 14px 30px color-mix(in srgb, var(--primary) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 92%, transparent) inset;
   padding: clamp(30px, 2.6vw, 40px) clamp(28px, 2.5vw, 38px);
   display: grid;
   gap: 16px;
@@ -50,7 +50,7 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--neutral-white) 22%, transparent);
 }
 
 /* ── Icons ───────────────────────────────────────────────────────────────── */
@@ -58,10 +58,10 @@
 .verify-email-page__envelope-icon {
   width: 52px;
   height: 40px;
-  border: 3px solid #2c78e6;
+  border: 3px solid var(--primary);
   border-radius: 6px;
   position: relative;
-  background: rgba(44, 120, 230, 0.08);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .verify-email-page__envelope-icon::before {
@@ -70,7 +70,7 @@
   top: 0;
   left: 0;
   right: 0;
-  border-top: 3px solid #2c78e6;
+  border-top: 3px solid var(--primary);
   border-left: 26px solid transparent;
   border-right: 26px solid transparent;
   border-top-width: 20px;
@@ -82,7 +82,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  border-bottom: 14px solid #2c78e6;
+  border-bottom: 14px solid var(--primary);
   border-left: 22px solid transparent;
   border-right: 22px solid transparent;
 }
@@ -91,8 +91,8 @@
   width: 52px;
   height: 52px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
-  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.28);
+  background: linear-gradient(135deg, var(--success) 0%, var(--success) 100%);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--success) 28%, transparent);
   position: relative;
 }
 
@@ -103,8 +103,8 @@
   left: 50%;
   width: 24px;
   height: 12px;
-  border-left: 3px solid #fff;
-  border-bottom: 3px solid #fff;
+  border-left: 3px solid var(--neutral-white);
+  border-bottom: 3px solid var(--neutral-white);
   transform: translate(-50%, -62%) rotate(-45deg);
 }
 
@@ -113,8 +113,8 @@
 .verify-email-page__spinner {
   width: 44px;
   height: 44px;
-  border: 3px solid rgba(44, 120, 230, 0.18);
-  border-top-color: #2c78e6;
+  border: 3px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  border-top-color: var(--primary);
   border-radius: 999px;
   animation: verify-spin 0.8s linear infinite;
 }
@@ -130,19 +130,19 @@
   font-size: clamp(1.56rem, 1.3rem + 0.54vw, 1.82rem);
   line-height: 1.05;
   letter-spacing: -0.038em;
-  color: #102644;
+  color: var(--text-primary);
 }
 
 .verify-email-page__text {
   margin: 0;
-  color: #3a5a76;
+  color: var(--text-primary);
   line-height: 1.68;
   font-size: 0.96rem;
 }
 
 .verify-email-page__hint {
   margin: 0;
-  color: #758fa7;
+  color: var(--text-primary);
   font-size: 0.84rem;
   line-height: 1.56;
 }
@@ -157,9 +157,9 @@
 .verify-email-page__resend-success {
   margin: 0;
   font-size: 0.86rem;
-  color: #1a5c35;
-  background: linear-gradient(180deg, rgba(240, 253, 246, 0.98) 0%, rgba(232, 250, 240, 0.96) 100%);
-  border: 1px solid rgba(167, 219, 189, 0.96);
+  color: var(--success);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 98%, transparent) 0%, color-mix(in srgb, var(--success-bg) 96%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--success-border) 96%, transparent);
   border-radius: 14px;
   padding: 10px 12px;
   line-height: 1.5;
@@ -168,7 +168,7 @@
 .verify-email-page__resend-error {
   margin: 0;
   font-size: 0.82rem;
-  color: #963629;
+  color: var(--danger);
 }
 
 /* ── CTA button ──────────────────────────────────────────────────────────── */
@@ -180,21 +180,21 @@
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: #eaf7ff;
-  border-color: rgba(78, 126, 206, 0.18);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary) 18%, transparent);
   box-shadow:
-    0 14px 28px rgba(74, 87, 184, 0.18),
-    0 8px 16px rgba(22, 120, 180, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.22) inset;
+    0 14px 28px color-mix(in srgb, var(--primary) 18%, transparent),
+    0 8px 16px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 22%, transparent) inset;
   transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .verify-email-page__cta.shared-button--primary {
-  background: linear-gradient(135deg, #07559d 0%, #1d72c9 58%, #31c8d4 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 58%, var(--decorative-cyan) 100%);
 }
 
 .verify-email-page__cta.shared-button--primary:hover {
-  background: linear-gradient(135deg, #064f92 0%, #1a68bb 58%, #2db9c5 100%);
+  background: linear-gradient(135deg, var(--brand-blue-active) 0%, var(--primary-hover) 58%, var(--decorative-cyan) 100%);
   transform: translateY(-1px);
 }
 
@@ -204,7 +204,7 @@
   margin: 4px 0 0;
   text-align: center;
   font-size: 0.82rem;
-  color: #5f7690;
+  color: var(--text-secondary);
 }
 
 .verify-email-page__switch-cta-button {
@@ -213,7 +213,7 @@
   padding: 0;
   background: none;
   box-shadow: none;
-  color: #0f5da2;
+  color: var(--text-primary);
   font-size: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -223,5 +223,5 @@
 }
 
 .verify-email-page__switch-cta-button:hover {
-  color: #0a4c84;
+  color: var(--text-primary);
 }

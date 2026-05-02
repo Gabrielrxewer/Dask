@@ -1,16 +1,16 @@
 /* ── Page shell ─────────────────────────────────────────────────────────────── */
 
 .ab-page {
-  --ab-text: color-mix(in oklab, var(--text-strong) 96%, #041220);
-  --ab-text-soft: color-mix(in oklab, var(--text-soft) 84%, #10273a);
-  --ab-text-muted: color-mix(in oklab, var(--text-muted) 88%, #27425c);
-  --ab-line: color-mix(in oklab, var(--line) 88%, #8ea7bf);
-  --ab-surface: color-mix(in oklab, var(--surface-overlay) 84%, #f1f6fb);
-  --ab-surface-soft: color-mix(in oklab, var(--surface-section-content) 70%, #e7eef6);
-  --ab-accent: color-mix(in oklab, var(--accent) 80%, #0b5f99);
-  --ab-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, #094772);
-  --ab-shadow: 0 6px 18px rgba(6, 23, 39, 0.07);
-  --ab-shadow-strong: 0 12px 32px rgba(6, 23, 39, 0.1);
+  --ab-text: color-mix(in oklab, var(--text-strong) 96%, var(--primary));
+  --ab-text-soft: color-mix(in oklab, var(--text-soft) 84%, var(--primary));
+  --ab-text-muted: color-mix(in oklab, var(--text-muted) 88%, var(--primary));
+  --ab-line: color-mix(in oklab, var(--line) 88%, var(--primary));
+  --ab-surface: color-mix(in oklab, var(--surface-overlay) 84%, var(--surface-tint));
+  --ab-surface-soft: color-mix(in oklab, var(--surface-section-content) 70%, var(--surface-tint));
+  --ab-accent: color-mix(in oklab, var(--accent) 80%, var(--primary));
+  --ab-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, var(--primary));
+  --ab-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 7%, transparent);
+  --ab-shadow-strong: 0 12px 32px color-mix(in srgb, var(--primary) 10%, transparent);
 
   /* Forward to workspace-view tokens used by shared components */
   --workspace-view-text: var(--ab-text);
@@ -34,7 +34,7 @@
   color: var(--ab-text);
   background:
     radial-gradient(circle at top left, color-mix(in oklab, var(--ab-accent) 10%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--ab-surface-soft) 72%, white) 0%, color-mix(in oklab, var(--ab-surface-soft) 94%, var(--ab-surface)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--ab-surface-soft) 72%, var(--neutral-white)) 0%, color-mix(in oklab, var(--ab-surface-soft) 94%, var(--ab-surface)) 100%);
   border-radius: var(--radius-xs, 8px);
   padding: 2px;
 }
@@ -52,11 +52,11 @@
 .workspace__top-nav:has(.ab-nav) {
   position: relative;
   z-index: 2;
-  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .workspace__top-nav:has(.ab-nav) {
-  border-bottom-color: rgba(64, 90, 116, 0.82);
+  border-bottom-color: color-mix(in srgb, var(--border-strong) 82%, transparent);
 }
 
 .ab-nav__identity {
@@ -86,7 +86,7 @@
 }
 
 .ab-nav__name:focus {
-  background: color-mix(in oklab, var(--ab-accent) 8%, white);
+  background: color-mix(in oklab, var(--ab-accent) 8%, var(--neutral-white));
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--ab-accent) 24%, transparent);
 }
 
@@ -119,9 +119,9 @@
   gap: 6px;
   padding: 5px 12px;
   border-radius: 20px;
-  border: 1.5px solid color-mix(in oklab, #e8ca8a 80%, transparent);
-  background: #fff3df;
-  color: #8a5b08;
+  border: 1.5px solid color-mix(in oklab, var(--warning-border) 80%, transparent);
+  background: var(--surface-warning-muted);
+  color: var(--warning);
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -133,9 +133,9 @@
 }
 
 .ab-nav__status-btn--active {
-  border-color: color-mix(in oklab, #95d5af 80%, transparent);
-  background: #e8f7ef;
-  color: #21643e;
+  border-color: color-mix(in oklab, var(--success-border) 80%, transparent);
+  background: var(--surface-success-muted);
+  color: var(--success);
 }
 
 .ab-nav__status-dot {
@@ -236,14 +236,14 @@
 .ab-agent-card {
   width: 100%;
   position: relative;
-  border: 1px solid color-mix(in oklab, var(--ab-line) 90%, white);
+  border: 1px solid color-mix(in oklab, var(--ab-line) 90%, var(--neutral-white));
   border-radius: 10px;
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--ab-surface) 78%, white) 0%,
+    color-mix(in oklab, var(--ab-surface) 78%, var(--neutral-white)) 0%,
     color-mix(in oklab, var(--ab-surface-soft) 88%, var(--ab-surface)) 100%
   );
-  box-shadow: 0 1px 4px rgba(6, 23, 39, 0.05);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--primary) 5%, transparent);
   text-align: left;
   overflow: hidden;
   transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
@@ -252,17 +252,17 @@
 .ab-agent-card:hover {
   transform: translateY(-1px);
   border-color: color-mix(in oklab, var(--ab-accent) 22%, var(--ab-line));
-  box-shadow: 0 4px 12px rgba(6, 23, 39, 0.08);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .ab-agent-card--active {
   border-color: color-mix(in oklab, var(--ab-accent) 32%, var(--ab-line));
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--selected-bg, #dbeafe) 36%, white) 0%,
-    color-mix(in oklab, var(--selected-bg, #dbeafe) 82%, var(--ab-surface-soft)) 100%
+    color-mix(in oklab, var(--selected-bg, var(--info-bg)) 36%, var(--neutral-white)) 0%,
+    color-mix(in oklab, var(--selected-bg, var(--info-bg)) 82%, var(--ab-surface-soft)) 100%
   );
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ab-accent) 14%, transparent), 0 4px 12px rgba(6, 23, 39, 0.08);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ab-accent) 14%, transparent), 0 4px 12px color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .ab-agent-card--new {
@@ -394,9 +394,9 @@
 .ab-error {
   padding: 8px 12px;
   border-radius: 8px;
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger);
   font-size: 12.5px;
   font-weight: 700;
   flex-shrink: 0;
@@ -434,10 +434,10 @@
   --ab-surface: var(--surface-raised);
   --ab-surface-soft: color-mix(in oklab, var(--panel-soft) 86%, var(--panel));
   --ab-shadow: var(--shadow-1);
-  --ab-shadow-strong: 0 18px 34px color-mix(in oklab, black 32%, transparent);
+  --ab-shadow-strong: 0 18px 34px color-mix(in oklab, var(--neutral-black) 32%, transparent);
   background:
     radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 14%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, black) 0%, color-mix(in oklab, var(--panel-soft) 82%, black) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, var(--neutral-black)) 0%, color-mix(in oklab, var(--panel-soft) 82%, var(--neutral-black)) 100%);
 }
 
 .app-theme[data-theme="dark"] .ab-nav__name {
@@ -449,15 +449,15 @@
 }
 
 .app-theme[data-theme="dark"] .ab-nav__status-btn {
-  background: color-mix(in oklab, #f59e0b 14%, var(--panel));
-  border-color: color-mix(in oklab, #f59e0b 30%, var(--line));
-  color: #fbbf24;
+  background: color-mix(in oklab, var(--warning) 14%, var(--panel));
+  border-color: color-mix(in oklab, var(--warning) 30%, var(--line));
+  color: var(--warning-border);
 }
 
 .app-theme[data-theme="dark"] .ab-nav__status-btn--active {
-  background: color-mix(in oklab, #22c55e 14%, var(--panel));
-  border-color: color-mix(in oklab, #22c55e 30%, var(--line));
-  color: #4ade80;
+  background: color-mix(in oklab, var(--success) 14%, var(--panel));
+  border-color: color-mix(in oklab, var(--success) 30%, var(--line));
+  color: var(--success);
 }
 
 .app-theme[data-theme="dark"] .ab-sidebar {
@@ -489,9 +489,9 @@
 }
 
 .app-theme[data-theme="dark"] .ab-error {
-  background: color-mix(in oklab, #ef4444 14%, var(--panel));
-  border-color: color-mix(in oklab, #ef4444 30%, var(--line));
-  color: #f87171;
+  background: color-mix(in oklab, var(--danger) 14%, var(--panel));
+  border-color: color-mix(in oklab, var(--danger) 30%, var(--line));
+  color: var(--danger);
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */

@@ -1,7 +1,39 @@
 :root {
+  /*
+   * Dask design tokens
+   * Source of truth for application colors. Components should consume semantic
+   * aliases from this file instead of declaring raw color values locally.
+   */
+  --neutral-white: #ffffff;
+  --neutral-black: #000000;
+  --brand-blue: #0a86e8;
+  --brand-blue-hover: #075f9d;
+  --brand-blue-active: #064f85;
+  --brand-cyan: #30d5cd;
+  --brand-cyan-strong: #0f9f98;
+  --brand-indigo: #6366f1;
+  --brand-purple: #8b5cf6;
+  --brand-rose: #d45a74;
+  --brand-amber: #f59e0b;
+  --brand-orange: #d97706;
+  --ink-shadow: #0c2a47;
+  --ink-shadow-strong: #041120;
+  --surface-tint: #f8fbff;
+  --surface-tint-strong: #eef7ff;
+  --surface-blue-muted: #e8f3fe;
+  --surface-cyan-muted: #e9fbf6;
+  --surface-danger-muted: #fbecec;
+  --surface-warning-muted: #fcf3e3;
+  --surface-success-muted: #eaf6ef;
+  --border-blue-muted: #d8e4ee;
+  --border-cyan-muted: #b8cada;
+  --border-danger-muted: #edc1c1;
+  --border-warning-muted: #ecd1a3;
+  --border-success-muted: #bfe2cc;
+
   --bg-app: #f4f7fb;
   --bg-subtle: #e9f0f7;
-  --surface-1: #ffffff;
+  --surface-1: var(--neutral-white);
   --surface-2: #fafcfe;
   --surface-3: #eef3f8;
   --border-subtle: #e5ecf4;
@@ -14,6 +46,8 @@
   --primary: #2f80ed;
   --primary-hover: #256fd1;
   --primary-active: #1f5fb5;
+  --primary-muted: var(--selected-bg);
+  --primary-foreground: var(--neutral-white);
   --secondary: #f1f5f9;
   --secondary-hover: #e6edf5;
   --success: #238454;
@@ -31,6 +65,48 @@
   --focus-ring: color-mix(in oklab, var(--primary) 24%, transparent);
   --selected-bg: color-mix(in oklab, var(--primary) 10%, var(--surface-1));
   --selected-border: color-mix(in oklab, var(--primary) 30%, var(--border-default));
+
+  --background: var(--bg-app);
+  --foreground: var(--text-primary);
+  --surface: var(--surface-1);
+  --card: var(--surface-card);
+  --card-foreground: var(--text-primary);
+  --border: var(--border-default);
+  --input: var(--control-surface);
+  --ring: var(--focus-ring);
+  --accent-muted: var(--accent-soft);
+  --muted: var(--surface-3);
+  --muted-foreground: var(--text-secondary);
+  --overlay: rgba(4, 17, 32, 0.52);
+  --overlay-foreground: var(--neutral-white);
+  --highlight-on-dark: rgba(255, 255, 255, 0.16);
+  --highlight-on-light: rgba(255, 255, 255, 0.72);
+  --shadow-color: rgba(12, 42, 71, 0.08);
+  --shadow-color-strong: rgba(4, 17, 32, 0.18);
+  --decorative-cyan: var(--brand-cyan);
+  --decorative-purple: var(--brand-purple);
+  --decorative-rose: var(--brand-rose);
+  --decorative-amber: var(--brand-amber);
+  --status-info-bg: var(--info-bg);
+  --status-success-bg: var(--success-bg);
+  --status-warning-bg: var(--warning-bg);
+  --status-danger-bg: var(--danger-bg);
+  --status-info-text: var(--info);
+  --status-success-text: var(--success);
+  --status-warning-text: var(--warning);
+  --status-danger-text: var(--danger);
+  --status-info-foreground: var(--neutral-white);
+  --status-success-foreground: var(--neutral-white);
+  --status-warning-foreground: var(--neutral-white);
+  --status-danger-foreground: var(--neutral-white);
+  --module-board-accent: var(--primary);
+  --module-leads-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
+  --module-marketing-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
+  --module-automation-accent: var(--decorative-purple);
+  --module-billing-accent: var(--info);
+  --module-fiscal-accent: var(--success);
+  --module-agenda-accent: var(--warning);
+  --module-documentation-accent: var(--text-secondary);
 
   --bg: var(--bg-app);
   --bg-soft: var(--bg-subtle);
@@ -52,8 +128,8 @@
   --line-contrast: color-mix(in oklab, var(--border-strong) 82%, var(--text-secondary));
   --accent: var(--primary);
   --accent-strong: var(--primary-hover);
-  --accent-soft: color-mix(in oklab, var(--primary) 8%, white);
-  --accent-soft-strong: color-mix(in oklab, var(--primary) 14%, white);
+  --accent-soft: color-mix(in oklab, var(--primary) 8%, var(--neutral-white));
+  --accent-soft-strong: color-mix(in oklab, var(--primary) 14%, var(--neutral-white));
   --brand-gradient-soft: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
   --brand-gradient-main: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   --brand-gradient-main-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
@@ -157,7 +233,7 @@
   --button-neutral-border: var(--border-default);
   --button-neutral-bg: var(--surface-elevated);
   --button-neutral-bg-hover: var(--surface-overlay-strong);
-  --button-primary-text: #ffffff;
+  --button-primary-text: var(--primary-foreground);
   --button-primary-border: color-mix(in oklab, #2d5479 54%, #4575ab);
   --button-primary-shadow:
     0 16px 30px rgba(12, 30, 49, 0.26),
@@ -178,6 +254,20 @@
 }
 
 .app-theme[data-theme="dark"] {
+  --neutral-white: #ffffff;
+  --neutral-black: #000000;
+  --surface-tint: #132131;
+  --surface-tint-strong: #182838;
+  --surface-blue-muted: #122336;
+  --surface-cyan-muted: #102824;
+  --surface-danger-muted: #34181c;
+  --surface-warning-muted: #312312;
+  --surface-success-muted: #10281d;
+  --border-blue-muted: #21364d;
+  --border-cyan-muted: #35506d;
+  --border-danger-muted: #6d3137;
+  --border-warning-muted: #6b4a1d;
+  --border-success-muted: #24523a;
   --bg-app: #08111b;
   --bg-subtle: #0b1520;
   --surface-1: #0e1824;
@@ -193,6 +283,8 @@
   --primary: #2f80ed;
   --primary-hover: #256fd1;
   --primary-active: #1d5aad;
+  --primary-muted: var(--selected-bg);
+  --primary-foreground: var(--neutral-white);
   --secondary: #162534;
   --secondary-hover: #1b2d40;
   --success: #52b788;
@@ -210,6 +302,36 @@
   --focus-ring: color-mix(in oklab, var(--primary) 30%, transparent);
   --selected-bg: color-mix(in oklab, var(--primary) 12%, var(--surface-1));
   --selected-border: color-mix(in oklab, var(--primary) 36%, var(--border-default));
+
+  --background: var(--bg-app);
+  --foreground: var(--text-primary);
+  --surface: var(--surface-1);
+  --card: var(--surface-card);
+  --card-foreground: var(--text-primary);
+  --border: var(--border-default);
+  --input: var(--control-surface);
+  --ring: var(--focus-ring);
+  --accent-muted: var(--accent-soft);
+  --muted: var(--surface-3);
+  --muted-foreground: var(--text-secondary);
+  --overlay: rgba(3, 9, 16, 0.64);
+  --overlay-foreground: var(--neutral-white);
+  --highlight-on-dark: rgba(255, 255, 255, 0.12);
+  --highlight-on-light: rgba(255, 255, 255, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.24);
+  --shadow-color-strong: rgba(0, 0, 0, 0.36);
+  --status-info-bg: var(--info-bg);
+  --status-success-bg: var(--success-bg);
+  --status-warning-bg: var(--warning-bg);
+  --status-danger-bg: var(--danger-bg);
+  --status-info-text: var(--info);
+  --status-success-text: var(--success);
+  --status-warning-text: var(--warning);
+  --status-danger-text: var(--danger);
+  --status-info-foreground: var(--neutral-white);
+  --status-success-foreground: var(--neutral-white);
+  --status-warning-foreground: var(--neutral-white);
+  --status-danger-foreground: var(--neutral-white);
 
   --bg: var(--bg-app);
   --bg-soft: var(--bg-subtle);

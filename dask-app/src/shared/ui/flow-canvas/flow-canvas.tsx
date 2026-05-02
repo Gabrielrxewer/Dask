@@ -20,6 +20,7 @@ import {
   type XYPosition,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { AppIcon } from "@/shared/ui/icon";
 import './flow-canvas.css';
 
 export interface FlowCanvasPaletteItem<TKind extends string, TData extends Record<string, unknown>> {
@@ -44,21 +45,15 @@ function FlowCanvasControls() {
   return (
     <div className="flow-canvas-ui__ctrl">
       <button type="button" className="flow-canvas-ui__ctrl-btn" title="Aumentar zoom" aria-label="Aumentar zoom" onClick={() => zoomIn({ duration: 200 })}>
-        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        </svg>
+        <AppIcon name="plus" size={16} strokeWidth={1.7} />
       </button>
       <div className="flow-canvas-ui__ctrl-sep" />
       <button type="button" className="flow-canvas-ui__ctrl-btn" title="Reduzir zoom" aria-label="Reduzir zoom" onClick={() => zoomOut({ duration: 200 })}>
-        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        </svg>
+        <AppIcon name="minus" size={16} strokeWidth={1.7} />
       </button>
       <div className="flow-canvas-ui__ctrl-sep" />
       <button type="button" className="flow-canvas-ui__ctrl-btn" title="Ajustar tela" aria-label="Ajustar tela" onClick={() => fitView({ duration: 300, padding: 0.2 })}>
-        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M2 5.5V3h2.5M11.5 3H14v2.5M14 10.5V13h-2.5M4.5 13H2v-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <AppIcon name="settings" size={16} strokeWidth={1.5} />
       </button>
     </div>
   );

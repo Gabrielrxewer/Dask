@@ -73,6 +73,7 @@ export const createConnectCheckoutSessionDto = z.object({
   currency: currencySchema.default('brl'),
   description: z.string().trim().min(3).max(120).optional(),
   catalogItemId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
   customerEmail: z.string().email().optional(),
   customerName: z.string().trim().min(2).max(120).optional(),
   sendEmail: z.boolean().optional(),

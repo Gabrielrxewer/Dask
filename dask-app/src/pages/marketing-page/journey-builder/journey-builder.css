@@ -116,13 +116,13 @@
 .jb-toolbar__btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--neutral-white);
 }
 
 .jb-toolbar__btn--primary:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
-  color: white;
+  color: var(--neutral-white);
 }
 
 .jb-toolbar__btn--danger {
@@ -322,12 +322,12 @@
 
 .jb {
   --jb-surface:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, white) 0%, color-mix(in oklab, var(--surface-2) 82%, var(--surface-1)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, var(--neutral-white)) 0%, color-mix(in oklab, var(--surface-2) 82%, var(--surface-1)) 100%);
   --jb-panel:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, white) 0%, color-mix(in oklab, var(--surface-2) 76%, var(--surface-1)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, var(--neutral-white)) 0%, color-mix(in oklab, var(--surface-2) 76%, var(--surface-1)) 100%);
   --jb-shadow:
     0 16px 36px color-mix(in oklab, var(--text-strong) 8%, transparent),
-    0 1px 0 color-mix(in oklab, white 72%, transparent) inset;
+    0 1px 0 color-mix(in oklab, var(--neutral-white) 72%, transparent) inset;
   background:
     linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 28%, transparent) 0%, transparent 44%),
     var(--jb-surface);
@@ -366,11 +366,11 @@
   border-width: 1px;
   border-radius: 8px;
   background: var(--jb-panel);
-  box-shadow: 0 1px 0 color-mix(in oklab, white 64%, transparent) inset;
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--neutral-white) 64%, transparent) inset;
 }
 
 .jb-toolbar__btn--primary {
-  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent-strong) 86%, #30d5cd) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent-strong) 86%, var(--decorative-cyan)) 100%);
   box-shadow: 0 10px 22px color-mix(in oklab, var(--accent) 20%, transparent);
 }
 
@@ -409,7 +409,7 @@
 
 .jb__empty-icon {
   border-style: solid;
-  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, var(--surface-1)), color-mix(in oklab, #30d5cd 8%, var(--surface-2)));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, var(--surface-1)), color-mix(in oklab, var(--decorative-cyan) 8%, var(--surface-2)));
   box-shadow: 0 12px 24px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
@@ -423,12 +423,12 @@
 
 .app-theme[data-theme="dark"] .jb {
   --jb-surface:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 86%, #162534) 0%, color-mix(in oklab, var(--surface-1) 90%, #07111c) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 86%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 90%, var(--foreground)) 100%);
   --jb-panel:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, #152638) 0%, color-mix(in oklab, var(--surface-1) 90%, #07111c) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 90%, var(--foreground)) 100%);
   --jb-shadow:
-    0 18px 38px color-mix(in oklab, black 30%, transparent),
-    0 1px 0 color-mix(in oklab, white 8%, transparent) inset;
+    0 18px 38px color-mix(in oklab, var(--neutral-black) 30%, transparent),
+    0 1px 0 color-mix(in oklab, var(--neutral-white) 8%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .jb-toolbar {

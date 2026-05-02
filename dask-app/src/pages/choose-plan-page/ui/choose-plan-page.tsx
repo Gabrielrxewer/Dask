@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { routePaths } from "@/app/router/route-paths";
+import { routePaths } from "@/app/router";
 import { billingService, PLAN_DISPLAY } from "@/modules/billing";
 import type { BillingStatus, SubscriptionPlan } from "@/modules/billing";
 import "./choose-plan-page.css";
@@ -8,7 +8,7 @@ import "./choose-plan-page.css";
 const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
   PERSONAL: [
     "1 workspace pessoal",
-    "Boards, listas e timeline",
+    "Boards, listas e agenda",
     "IA para melhorias",
     "Automações básicas",
     "Busca semântica"
@@ -16,7 +16,7 @@ const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
   BUSINESS: [
     "Múltiplos workspaces",
     "Suporte a equipes",
-    "Boards, listas e timeline",
+    "Boards, listas e agenda",
     "IA avançada e automações",
     "Campos personalizados",
     "Auditoria e integrações",

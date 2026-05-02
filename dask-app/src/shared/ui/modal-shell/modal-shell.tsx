@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/cn";
 const modalOpenClassName = "shared-modal-open";
 const modalCounterDatasetKey = "sharedModalCount";
 
-interface ModalShellProps {
+export interface ModalShellProps {
   titleId: string;
   className?: string;
   onClose: () => void;

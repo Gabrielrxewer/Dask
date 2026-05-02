@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   formatTaskFieldValue,
   getTaskFieldRegistryEntry,
@@ -107,7 +108,7 @@ type ChecklistDisplayConfig = {
 
 const DEFAULT_CHECKLIST_DISPLAY: ChecklistDisplayConfig = {
   label: "Checklist",
-  color: "#0a86e8",
+  color: "var(--text-secondary)",
   icon: "checklist"
 };
 
@@ -828,6 +829,7 @@ function CatalogSelectFieldCardDisplay(props: FieldPresentationComponentProps) {
 function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = props.controller.options.find(opt => opt.value === props.controller.stringValue) ?? null;
@@ -851,6 +853,44 @@ function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
 
   const inputDisplayValue = open ? query : (selectedOption?.label ?? "");
 
+  const updateDropdownPosition = useCallback(() => {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) {
+      setDropdownStyle(null);
+      return;
+    }
+
+    const gap = 4;
+    const viewportPadding = 12;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(220, openUp ? spaceAbove - gap : spaceBelow - gap));
+
+    setDropdownStyle({
+      position: "fixed",
+      left: rect.left,
+      top: openUp ? undefined : rect.bottom + gap,
+      bottom: openUp ? window.innerHeight - rect.top + gap : undefined,
+      width: rect.width,
+      maxHeight,
+      zIndex: 10050
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateDropdownPosition();
+    window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateDropdownPosition);
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+    };
+  }, [open, updateDropdownPosition]);
+
   return (
     <div ref={wrapRef} className="task-field-presentation__catalog-combobox" style={{ position: "relative" }}>
       <div className="task-field-presentation__catalog-input-row">
@@ -872,7 +912,10 @@ function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
             setQuery(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            window.requestAnimationFrame(updateDropdownPosition);
+          }}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
         />
         {selectedOption && !props.controller.readonly ? (
@@ -888,8 +931,12 @@ function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
           </button>
         ) : null}
       </div>
-      {open && filtered.length > 0 ? (
-        <ul className="task-field-presentation__catalog-dropdown" role="listbox">
+      {open && filtered.length > 0 && dropdownStyle ? createPortal(
+        <ul
+          className="task-field-presentation__catalog-dropdown task-field-presentation__catalog-dropdown--portal"
+          role="listbox"
+          style={dropdownStyle}
+        >
           {filtered.map(opt => (
             <li
               key={opt.id}
@@ -907,7 +954,8 @@ function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
               <span className="task-field-presentation__catalog-option-label">{opt.label}</span>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       ) : null}
     </div>
   );
@@ -1061,7 +1109,7 @@ function BooleanFieldDisplay(props: FieldPresentationComponentProps) {
         label: props.controller.booleanValue ? "Ativado" : "Desativado",
         value: props.controller.booleanValue ? "true" : "false",
         isActive: true,
-        color: props.controller.booleanValue ? "#0a86e8" : "#94a3b8"
+        color: props.controller.booleanValue ? "var(--brand-blue)" : "var(--text-muted)"
       }}
       compact={props.context === "table" || props.context === "card"}
     />
@@ -1089,7 +1137,7 @@ function BooleanFieldCardDisplay(props: FieldPresentationComponentProps) {
   return renderCardSizedDisplay(props, {
     primary: props.controller.booleanValue ? "Ativado" : "Desativado",
     secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? props.field.label : null,
-    accent: props.controller.booleanValue ? "#0a86e8" : "#94a3b8"
+    accent: props.controller.booleanValue ? "var(--brand-blue)" : "var(--text-muted)"
   });
 }
 
@@ -1105,7 +1153,7 @@ function UserFieldDisplay(props: FieldPresentationComponentProps) {
     : fullLabel;
 
   if (props.context === "detail" || props.context === "form" || props.readonly) {
-    const accentColor = option?.color ?? props.membersById?.[props.controller.stringValue]?.color ?? "#7b9abc";
+    const accentColor = option?.color ?? props.membersById?.[props.controller.stringValue]?.color ?? "var(--text-muted)";
 
     return (
       <span className="task-field-presentation__identity">
@@ -1159,7 +1207,7 @@ function UserFieldCardDisplay(props: FieldPresentationComponentProps) {
   return renderCardSizedDisplay(props, {
     primary: shortLabel,
     secondary: resolveCardDisplaySize(props) === "mid" && shouldShowCardSecondary(props) ? props.field.label : null,
-    accent: option?.color ?? props.membersById?.[props.controller.stringValue]?.color ?? "#7b9abc",
+    accent: option?.color ?? props.membersById?.[props.controller.stringValue]?.color ?? "var(--text-muted)",
     leading: <span className="task-field-presentation__card-avatar">{buildInitials(shortLabel)}</span>
   });
 }

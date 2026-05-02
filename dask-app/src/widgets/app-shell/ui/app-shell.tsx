@@ -11,8 +11,7 @@ import {
   buildWorkspaceLeadsPath,
   buildWorkspaceMarketingPath,
   buildWorkspaceListPath,
-  buildWorkspaceSettingsPath,
-  buildWorkspaceTimelinePath
+  buildWorkspaceSettingsPath
 } from "@/app/router/route-paths";
 import { useGlobalChrome } from "@/app/layout";
 import { useWorkspace } from "@/modules/workspace";
@@ -21,10 +20,10 @@ import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import { cn } from "@/shared/lib/cn";
-import { PageHeader } from "@/shared/ui";
+import { AppIcon, PageHeader, type AppIconName } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "timeline" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
+type SidebarIconName = "board" | "list" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
 type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
@@ -43,169 +42,21 @@ interface AppShellProps {
 }
 
 function SidebarIcon({ name }: { name: SidebarIconName }) {
-  const commonProps = {
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.9,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true,
-    focusable: false
+  const iconByName: Record<SidebarIconName, AppIconName> = {
+    board: "board",
+    list: "list",
+    agenda: "calendar-check",
+    documentation: "documentation",
+    ai: "bot",
+    automation: "automation",
+    settings: "settings",
+    billing: "billing",
+    fiscal: "receipt",
+    leads: "users",
+    marketing: "marketing"
   };
 
-  if (name === "board") {
-    return (
-      <svg {...commonProps}>
-        <rect x="4" y="4" width="16" height="16" rx="3.5" />
-        <path d="M9 4v16" />
-        <path d="M15 4v16" />
-        <path d="M4 10h5" />
-        <path d="M15 14h5" />
-      </svg>
-    );
-  }
-
-  if (name === "list") {
-    return (
-      <svg {...commonProps}>
-        <path d="M9 6h10" />
-        <path d="M9 12h10" />
-        <path d="M9 18h10" />
-        <path d="M5 6h.01" />
-        <path d="M5 12h.01" />
-        <path d="M5 18h.01" />
-      </svg>
-    );
-  }
-
-  if (name === "timeline") {
-    return (
-      <svg {...commonProps}>
-        <path d="M4 18h16" />
-        <path d="M7 18V8" />
-        <path d="M12 18V5" />
-        <path d="M17 18v-7" />
-        <circle cx="7" cy="8" r="2" />
-        <circle cx="12" cy="5" r="2" />
-        <circle cx="17" cy="11" r="2" />
-      </svg>
-    );
-  }
-
-  if (name === "agenda") {
-    return (
-      <svg {...commonProps}>
-        <rect x="4" y="5" width="16" height="15" rx="3" />
-        <path d="M8 3.5v3" />
-        <path d="M16 3.5v3" />
-        <path d="M4 9h16" />
-        <path d="M8 13h3.5" />
-        <path d="M8 16h2.5" />
-        <path d="m14 15.5 1.4 1.4 2.6-3" />
-      </svg>
-    );
-  }
-
-  if (name === "automation") {
-    return (
-      <svg {...commonProps}>
-        <path d="M8 7.2A6.4 6.4 0 0 1 18.2 10" />
-        <path d="M16.6 10h2.9V7.1" />
-        <path d="M16 16.8A6.4 6.4 0 0 1 5.8 14" />
-        <path d="M7.4 14H4.5v2.9" />
-        <path d="m11 8 3 4h-3l2 4" />
-      </svg>
-    );
-  }
-
-  if (name === "ai") {
-    return (
-      <svg {...commonProps}>
-        <rect x="4" y="4" width="16" height="16" rx="4" />
-        <path d="M12 8v8" />
-        <path d="M8 12h8" />
-        <circle cx="8" cy="8" r="1.4" />
-        <circle cx="16" cy="8" r="1.4" />
-        <circle cx="8" cy="16" r="1.4" />
-        <circle cx="16" cy="16" r="1.4" />
-      </svg>
-    );
-  }
-
-  if (name === "documentation") {
-    return (
-      <svg {...commonProps}>
-        <path d="M8 4.8h7.1L19 8.7V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.8a2 2 0 0 1 2-2Z" />
-        <path d="M15.1 4.8V9H19" />
-        <path d="M9.5 12.3h5" />
-        <path d="M9.5 15.5h5" />
-      </svg>
-    );
-  }
-
-  if (name === "settings") {
-    return (
-      <svg {...commonProps}>
-        <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z" />
-        <path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.2-2-3.4-2.2 1a8 8 0 0 0-2.6-1.5L14.3 3h-4.1l-.4 2.4a8 8 0 0 0-2.6 1.5l-2.2-1-2 3.4 2 1.2a7.7 7.7 0 0 0 0 3l-2 1.2 2 3.4 2.2-1a8 8 0 0 0 2.6 1.5l.4 2.4h4.1l.4-2.4a8 8 0 0 0 2.6-1.5l2.2 1 2-3.4-2.1-1.2Z" />
-      </svg>
-    );
-  }
-
-  if (name === "billing") {
-    return (
-      <svg {...commonProps}>
-        <rect x="3.5" y="5" width="17" height="13.5" rx="2.8" />
-        <path d="M3.5 10h17" />
-        <path d="M7 14h4" />
-        <path d="M14 14h3.5" />
-      </svg>
-    );
-  }
-
-  if (name === "fiscal") {
-    return (
-      <svg {...commonProps}>
-        <path d="M8 4.8h7.1L19 8.7V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.8a2 2 0 0 1 2-2Z" />
-        <path d="M15.1 4.8V9H19" />
-        <path d="M9.2 12.2h5.6" />
-        <path d="M9.2 15.4h5.6" />
-        <path d="M9.2 18.6h3.2" />
-      </svg>
-    );
-  }
-
-  if (name === "leads") {
-    return (
-      <svg {...commonProps}>
-        <circle cx="8" cy="8" r="2.5" />
-        <circle cx="16" cy="8" r="2.5" />
-        <path d="M5.5 17.5a2.5 2.5 0 0 1 5 0" />
-        <path d="M13.5 17.5a2.5 2.5 0 0 1 5 0" />
-        <path d="M8 12.5h8" />
-      </svg>
-    );
-  }
-
-  if (name === "marketing") {
-    return (
-      <svg {...commonProps}>
-        <path d="M4.2 18.3 12 14l7.8 4.3V5.7L12 10 4.2 5.7Z" />
-        <path d="M4.2 5.7 12 10l7.8-4.3" />
-        <path d="m12 14 0 7" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg {...commonProps}>
-      <rect x="4" y="7" width="16" height="13" rx="3" />
-      <path d="M8 7V5.8A2.8 2.8 0 0 1 10.8 3h2.4A2.8 2.8 0 0 1 16 5.8V7" />
-      <path d="M4 12h16" />
-      <path d="M10 15h4" />
-    </svg>
-  );
+  return <AppIcon name={iconByName[name]} size={18} strokeWidth={1.9} />;
 }
 
 export function AppShell({
@@ -242,13 +93,6 @@ export function AppShell({
           label: "List",
           icon: "list" as const,
           tone: "mint" as const,
-          module: "board" as AppModuleKey
-        },
-        {
-          to: buildWorkspaceTimelinePath(workspaceSlug),
-          label: "Timeline",
-          icon: "timeline" as const,
-          tone: "amber" as const,
           module: "board" as AppModuleKey
         },
         {

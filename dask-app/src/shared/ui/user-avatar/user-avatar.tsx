@@ -3,7 +3,7 @@ import { cn } from "@/shared/lib/cn";
 
 const acceptedAvatarTypes = ["image/jpeg", "image/png", "image/webp"];
 
-interface UserAvatarProps {
+export interface UserAvatarProps {
   alt: string;
   imageUrl?: string | null;
   initials: string;
@@ -57,7 +57,14 @@ export function UserAvatar({
       <span className={cn("shared-user-avatar", `shared-user-avatar--${size}`, className)}>
         <span className="shared-user-avatar__media" aria-label={alt} role="img">
           {shouldShowImage ? (
-            <img src={imageUrl ?? undefined} alt={alt} loading="lazy" decoding="async" onError={() => setImageFailed(true)} />
+            <img
+              src={imageUrl ?? undefined}
+              alt={alt}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={() => setImageFailed(true)}
+            />
           ) : (
             <span>{initials}</span>
           )}
@@ -98,7 +105,14 @@ export function UserAvatar({
         onClick={() => inputRef.current?.click()}
       >
         {shouldShowImage ? (
-          <img src={imageUrl ?? undefined} alt={alt} loading="lazy" decoding="async" onError={() => setImageFailed(true)} />
+          <img
+            src={imageUrl ?? undefined}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <span>{initials}</span>
         )}

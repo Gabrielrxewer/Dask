@@ -120,28 +120,39 @@
 }
 
 .list-view__table .shared-data-table__header {
-  min-height: 40px;
+  min-height: 36px;
   border-bottom-color: color-mix(in oklab, var(--list-line) 36%, transparent);
   background: transparent;
-  color: var(--list-text-soft);
-  font-size: var(--font-size-xs);
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  color: var(--list-text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
 }
 
 .list-view__table .shared-data-table__row {
-  min-height: 52px;
-  border-bottom-color: color-mix(in oklab, var(--list-line) 24%, transparent);
+  min-height: 0;
+  border-bottom-color: color-mix(in oklab, var(--list-line) 18%, transparent);
   color: var(--list-text);
   background: transparent;
+  transition: background 0.13s ease;
 }
 
 .list-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--list-accent) 4%, transparent);
+  background: color-mix(in oklab, var(--list-accent) 5%, transparent);
 }
 
 .list-view__table .shared-data-table__row:hover .shared-data-table__cell {
   background: transparent;
+}
+
+/* ── Negócio cell ─────────────────────────────────────────────────────────── */
+
+.list-view__negocio {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 0;
 }
 
 .list-view__title {
@@ -151,30 +162,18 @@
   padding: 0;
   cursor: pointer;
   width: 100%;
-  min-height: 44px;
-  transition: transform 0.15s ease;
-}
-
-.list-view__title strong {
-  display: block;
   color: var(--list-text);
   font-size: var(--font-size-sm);
-  font-weight: 900;
-}
-
-.list-view__title p {
-  margin: 2px 0 0;
-  color: var(--list-text-soft);
-  font-size: var(--font-size-xs);
-  line-height: 1.35;
-}
-
-.list-view__title:hover strong {
-  color: var(--list-accent-strong);
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.12s ease;
 }
 
 .list-view__title:hover {
-  transform: translateX(1px);
+  color: var(--list-accent-strong);
 }
 
 .list-view__title:focus-visible {
@@ -182,38 +181,160 @@
 }
 
 .list-view__type {
-  border-radius: 999px;
+  border-radius: 5px;
   border: 1px solid var(--list-type-border, transparent);
-  background: var(--list-type-background, #edf5ff);
-  color: var(--list-type-text, #1d4e85);
-  font-size: var(--font-size-2xs);
+  background: var(--list-type-background, var(--info-bg));
+  color: var(--list-type-text, var(--text-primary));
+  font-size: 0.63rem;
   font-weight: 700;
   width: fit-content;
-  padding: 3px 8px;
+  padding: 2px 6px;
+  letter-spacing: 0.03em;
 }
 
+/* ── Etapa (status) ────────────────────────────────────────────────────────── */
+
 .list-view__status {
-  min-height: 28px;
+  min-height: 26px;
   font-size: var(--font-size-xs);
   width: 100%;
+  max-width: 172px;
 }
 
 .list-view__status .shared-select__control {
-  min-height: 28px;
-  height: 28px;
+  min-height: 26px;
+  height: 26px;
   border-radius: var(--radius-xs);
-  padding: 0 9px;
+  padding: 0 8px;
 }
 
 .list-view__status .shared-select__value {
   font-size: var(--font-size-xs);
+  font-weight: 600;
 }
 
-.list-view__owner,
-.list-view__checklist {
+/* ── Responsável ───────────────────────────────────────────────────────────── */
+
+.list-view__owner-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.list-view__owner-wrap .member-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 0.58rem;
+}
+
+.list-view__owner {
+  color: var(--list-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Prazo ─────────────────────────────────────────────────────────────────── */
+
+.list-view__due {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
   color: var(--list-text-muted);
+  white-space: nowrap;
+}
+
+.list-view__due--today {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.list-view__due--overdue {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* ── Progresso ─────────────────────────────────────────────────────────────── */
+
+.list-view__progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.list-view__progress-bar {
+  flex: 1 1 auto;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--list-line) 36%, transparent);
+  overflow: hidden;
+  min-width: 24px;
+  max-width: 36px;
+}
+
+.list-view__progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--list-accent);
+  transition: width 0.25s ease;
+}
+
+.list-view__progress-label {
   font-size: var(--font-size-xs);
   font-weight: 700;
+  color: var(--list-text-muted);
+  flex-shrink: 0;
+}
+
+.list-view__progress-label--done {
+  color: var(--success);
+}
+
+/* ── Célula vazia ──────────────────────────────────────────────────────────── */
+
+.list-view__empty-cell {
+  color: var(--list-text-muted);
+  opacity: 0.3;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+/* ── Ações rápidas ─────────────────────────────────────────────────────────── */
+
+.list-view__row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.list-view__table .shared-data-table__row:hover .list-view__row-actions {
+  opacity: 1;
+}
+
+.list-view__action-btn {
+  border: 1px solid color-mix(in oklab, var(--list-line) 60%, transparent);
+  background: var(--list-surface);
+  color: var(--list-text-soft);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  letter-spacing: 0.01em;
+}
+
+.list-view__action-btn:hover {
+  background: color-mix(in oklab, var(--list-accent) 10%, var(--list-surface));
+  border-color: color-mix(in oklab, var(--list-accent) 40%, transparent);
+  color: var(--list-accent-strong);
 }
 
 .app-theme[data-theme="dark"] .list-view__table {
@@ -241,14 +362,14 @@
   inset: 60px auto auto -42px;
   width: 132px;
   height: 132px;
-  background: radial-gradient(circle, rgba(127, 195, 255, 0.14) 0%, rgba(127, 195, 255, 0.03) 58%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 14%, transparent) 0%, color-mix(in srgb, var(--primary) 3%, transparent) 58%, transparent 76%);
 }
 
 .app-theme:not([data-theme="dark"]) .list-view::after {
   inset: auto -40px 15% auto;
   width: 120px;
   height: 120px;
-  background: radial-gradient(circle, rgba(73, 204, 198, 0.12) 0%, rgba(145, 106, 237, 0.03) 56%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 12%, transparent) 0%, color-mix(in srgb, var(--brand-indigo) 3%, transparent) 56%, transparent 76%);
 }
 
 .app-theme:not([data-theme="dark"]) .list-view > * {
@@ -258,11 +379,11 @@
 
 .app-theme:not([data-theme="dark"]) .list-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(206, 220, 233, 0.72);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav > strong {
-  color: #163c5e;
+  color: var(--text-primary);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter {
@@ -277,21 +398,21 @@
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__search:hover {
-  background: rgba(44, 120, 230, 0.06);
-  border-color: rgba(202, 219, 235, 0.72);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__search:focus-within {
-  background: rgba(255, 255, 255, 0.82);
-  border-color: rgba(176, 204, 228, 0.9);
-  box-shadow: 0 0 0 3px rgba(77, 133, 186, 0.1);
+  background: color-mix(in srgb, var(--neutral-white) 82%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter .shared-input {
   min-height: 34px;
   border: none;
   background: transparent;
-  color: #163553;
+  color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -303,7 +424,7 @@
   border-radius: 10px;
   border: 1px solid transparent !important;
   background: transparent !important;
-  color: #637d96 !important;
+  color: var(--text-secondary) !important;
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -312,21 +433,21 @@
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: rgba(44, 120, 230, 0.06) !important;
-  border-color: rgba(202, 219, 235, 0.72) !important;
-  color: #355777 !important;
+  background: color-mix(in srgb, var(--primary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent) !important;
+  color: var(--text-secondary) !important;
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: rgba(44, 120, 230, 0.1) !important;
-  border-color: rgba(176, 204, 228, 0.9) !important;
-  color: #163c5e !important;
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent) !important;
+  color: var(--text-primary) !important;
   font-weight: 860;
 }
 
 .app-theme:not([data-theme="dark"]) .list-view__section .shared-section__header {
-  background: rgba(248, 251, 255, 0.94);
+  background: color-mix(in srgb, var(--surface-tint) 94%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .list-view__table .shared-data-table {
@@ -379,14 +500,14 @@
   inset: 60px auto auto -42px;
   width: 132px;
   height: 132px;
-  background: radial-gradient(circle, rgba(57, 119, 199, 0.16) 0%, rgba(57, 119, 199, 0.04) 58%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 16%, transparent) 0%, color-mix(in srgb, var(--primary) 4%, transparent) 58%, transparent 76%);
 }
 
 .app-theme[data-theme="dark"] .list-view::after {
   inset: auto -40px 15% auto;
   width: 120px;
   height: 120px;
-  background: radial-gradient(circle, rgba(46, 184, 178, 0.12) 0%, rgba(77, 123, 212, 0.04) 56%, transparent 76%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 12%, transparent) 0%, color-mix(in srgb, var(--primary) 4%, transparent) 56%, transparent 76%);
 }
 
 .app-theme[data-theme="dark"] .list-view > * {
@@ -396,11 +517,11 @@
 
 .app-theme[data-theme="dark"] .list-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid rgba(64, 90, 116, 0.82);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav > strong {
-  color: #e4f0fc;
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter {
@@ -414,15 +535,15 @@
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__search:hover {
-  background: rgba(72, 148, 255, 0.08);
-  border-color: rgba(72, 101, 131, 0.72);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter .shared-input {
   min-height: 34px;
   border: none;
   background: transparent !important;
-  color: #dbeafb;
+  color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -434,7 +555,7 @@
   border-radius: 10px;
   border: 1px solid transparent !important;
   background: transparent !important;
-  color: #7e96ae !important;
+  color: var(--text-muted) !important;
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -443,16 +564,16 @@
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: rgba(72, 148, 255, 0.08) !important;
-  border-color: rgba(72, 101, 131, 0.72) !important;
-  color: #c3d8ee !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
+  color: var(--text-primary) !important;
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: rgba(73, 140, 226, 0.16) !important;
-  border-color: rgba(82, 119, 156, 0.92) !important;
-  color: #e4f0fc !important;
+  background: color-mix(in srgb, var(--primary) 16%, transparent) !important;
+  border-color: color-mix(in srgb, var(--primary) 92%, transparent) !important;
+  color: var(--text-primary) !important;
   font-weight: 860;
 }
 
@@ -477,6 +598,35 @@
   background: color-mix(in oklab, var(--list-type-text, var(--accent)) 20%, var(--panel)) !important;
   color: color-mix(in oklab, var(--list-type-background, var(--accent-soft)) 30%, var(--text-strong)) !important;
 }
+
+.app-theme[data-theme="dark"] .list-view__progress-label--done {
+  color: var(--success) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__progress-fill {
+  background: var(--accent) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__due--today {
+  color: var(--warning-border) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__due--overdue {
+  color: var(--danger) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__action-btn {
+  border-color: color-mix(in oklab, var(--line) 60%, transparent) !important;
+  background: var(--control-surface) !important;
+  color: var(--text-soft) !important;
+}
+
+.app-theme[data-theme="dark"] .list-view__action-btn:hover {
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent) !important;
+  color: var(--text-strong) !important;
+}
+
 
 @media (min-width: 1141px) {
   .app-shell--no-scroll .list-view {

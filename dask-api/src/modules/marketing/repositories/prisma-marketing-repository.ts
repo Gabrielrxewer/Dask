@@ -1,4 +1,4 @@
-﻿import type { Lead, LeadActivity, LeadNurtureTouch, LeadStatus, Prisma, PrismaClient } from '@prisma/client';
+﻿import { Prisma, type Lead, type LeadActivity, type LeadNurtureTouch, type LeadStatus, type PrismaClient } from '@prisma/client';
 import type { SegmentFilter, SegmentRule } from '@/modules/marketing/domain/types';
 import type {
   MarketingCampaignDetails,
@@ -176,6 +176,8 @@ type MarketingRepositoryDb = PrismaClient & {
     count(args: DbRecord): Promise<number>;
     findMany(args: DbRecord): Promise<DbRecord[]>;
     create(args: DbRecord): Promise<DbRecord>;
+    update(args: DbRecord): Promise<DbRecord>;
+    findUnique(args: DbRecord): Promise<DbRecord | null>;
   };
   marketingCampaignSend: {
     count(args: DbRecord): Promise<number>;
@@ -816,6 +818,14 @@ export class PrismaMarketingRepository implements MarketingRepository {
     return db.marketingAutomationFlow.create({ data: asRecord(data) });
   }
 
+  public async updateAutomationFlow(id: string, workspaceId: string, patch: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
+    const db = this.db;
+    return db.marketingAutomationFlow.update({
+      where: { id, workspaceId } as DbRecord,
+      data: asRecord(patch as Record<string, unknown>)
+    });
+  }
+
   public async createAutomationStep(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
     const db = this.db;
     return db.marketingAutomationStep.create({ data: asRecord(data) });
@@ -825,6 +835,123 @@ export class PrismaMarketingRepository implements MarketingRepository {
     const db = this.db;
     return db.marketingAutomationEnrollment.create({ data: asRecord(data) });
   }
+
+  public async listSignalsInbox(input: {
+    workspaceId: string;
+    types?: string[];
+    onlyWithLead?: boolean;
+    includeDismissed?: boolean;
+    limit: number;
+  }): Promise<import('./marketing-repository').SignalInboxItem[]> {
+    const db = this.db;
+
+    const INBOX_TYPES = input.types && input.types.length > 0 ? input.types : [
+      'EMAIL_CLICKED',
+      'EMAIL_OPENED',
+      'EMAIL_BOUNCED',
+      'EMAIL_COMPLAINT',
+      'EMAIL_UNSUBSCRIBED',
+      'LEAD_SCORE_CHANGED'
+    ];
+
+    const onlyWithLead = input.onlyWithLead ? Prisma.sql`AND e."leadId" IS NOT NULL` : Prisma.empty;
+    const includeDismissed = input.includeDismissed ? Prisma.empty : Prisma.sql`AND e."dismissedAt" IS NULL`;
+
+    type RawSignalInboxItem = {
+      id: string;
+      type: string;
+      headline: string | null;
+      description: string | null;
+      payload: Record<string, unknown> | null;
+      occurredAt: Date;
+      seenAt: Date | null;
+      dismissedAt: Date | null;
+      leadId: string | null;
+      campaignId: string | null;
+      lead_id: string | null;
+      lead_fullName: string | null;
+      lead_email: string | null;
+      lead_companyName: string | null;
+      lead_score: number | null;
+      lead_status: string | null;
+      campaign_id: string | null;
+      campaign_name: string | null;
+      campaign_objective: string | null;
+    };
+
+    const events = await db.$queryRaw<RawSignalInboxItem[]>(Prisma.sql`
+      SELECT
+        e."id",
+        e."type"::text AS "type",
+        e."headline",
+        e."description",
+        e."payload",
+        e."occurredAt",
+        e."seenAt",
+        e."dismissedAt",
+        e."leadId",
+        e."campaignId",
+        l."id" AS "lead_id",
+        l."fullName" AS "lead_fullName",
+        l."email" AS "lead_email",
+        l."companyName" AS "lead_companyName",
+        l."score" AS "lead_score",
+        l."status"::text AS "lead_status",
+        c."id" AS "campaign_id",
+        c."name" AS "campaign_name",
+        c."objective"::text AS "campaign_objective"
+      FROM "MarketingEvent" e
+      LEFT JOIN "Lead" l ON l."id" = e."leadId"
+      LEFT JOIN "MarketingCampaign" c ON c."id" = e."campaignId"
+      WHERE e."workspaceId" = ${input.workspaceId}
+        AND e."type"::text IN (${Prisma.join(INBOX_TYPES)})
+        ${onlyWithLead}
+        ${includeDismissed}
+      ORDER BY e."occurredAt" DESC
+      LIMIT ${input.limit}
+    `);
+
+    return events.map((event) => ({
+      id: event.id,
+      type: event.type,
+      headline: event.headline,
+      description: event.description,
+      payload: event.payload,
+      occurredAt: event.occurredAt,
+      seenAt: event.seenAt,
+      dismissedAt: event.dismissedAt,
+      leadId: event.leadId,
+      campaignId: event.campaignId,
+      lead: event.lead_id
+        ? {
+            id: event.lead_id,
+            fullName: event.lead_fullName,
+            email: event.lead_email,
+            companyName: event.lead_companyName,
+            score: Number(event.lead_score ?? 0),
+            status: String(event.lead_status)
+          }
+        : null,
+      campaign: event.campaign_id
+        ? {
+            id: event.campaign_id,
+            name: String(event.campaign_name),
+            objective: String(event.campaign_objective)
+          }
+        : null
+    }));
+  }
+
+  public async markSignal(workspaceId: string, eventId: string, action: 'seen' | 'dismissed'): Promise<void> {
+    const column = action === 'seen' ? Prisma.sql`"seenAt"` : Prisma.sql`"dismissedAt"`;
+    await this.db.$executeRaw(Prisma.sql`
+      UPDATE "MarketingEvent"
+      SET ${column} = ${new Date()}
+      WHERE "id" = ${eventId}
+        AND "workspaceId" = ${workspaceId}
+    `);
+  }
+
 }
 
 

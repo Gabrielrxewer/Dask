@@ -13,18 +13,18 @@
 }
 
 .flow-node-card {
-  --node-color: #6b7280;
+  --node-color: var(--text-primary);
   --node-color-light: color-mix(in oklab, var(--node-color) 14%, transparent);
   --node-color-ring: color-mix(in oklab, var(--node-color) 28%, transparent);
-  --node-surface: color-mix(in oklab, var(--surface-raised, #fff) 97%, var(--node-color));
-  --node-border: color-mix(in oklab, var(--line, #e2e8f0) 72%, var(--node-color));
+  --node-surface: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 97%, var(--node-color));
+  --node-border: color-mix(in oklab, var(--line, var(--border-default)) 72%, var(--node-color));
 
   width: 252px;
   border-radius: 12px;
   border: 1.5px solid var(--node-border);
   background: var(--node-surface);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.07),
+    0 2px 8px color-mix(in srgb, var(--neutral-black) 7%, transparent),
     0 0 0 0 var(--node-color-ring);
   transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
   position: relative;
@@ -33,7 +33,7 @@
 .flow-node-card:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.1),
+    0 6px 20px color-mix(in srgb, var(--neutral-black) 10%, transparent),
     0 0 0 0 var(--node-color-ring);
   border-color: color-mix(in oklab, var(--node-color) 40%, var(--node-border));
 }
@@ -41,19 +41,19 @@
 .flow-node-card--selected {
   border-color: var(--node-color) !important;
   box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.1),
+    0 6px 20px color-mix(in srgb, var(--neutral-black) 10%, transparent),
     0 0 0 3px var(--node-color-ring) !important;
 }
 
-.flow-node-card--trigger { --node-color: #10b981; }
-.flow-node-card--llm { --node-color: #8b5cf6; }
-.flow-node-card--rag { --node-color: #3b82f6; }
-.flow-node-card--tool { --node-color: #f59e0b; }
-.flow-node-card--condition { --node-color: #ef4444; }
-.flow-node-card--output { --node-color: #ec4899; }
-.flow-node-card--action { --node-color: #14b8a6; }
-.flow-node-card--delay { --node-color: #8b5cf6; }
-.flow-node-card--exit { --node-color: #ef4444; }
+.flow-node-card--trigger { --node-color: var(--decorative-cyan); }
+.flow-node-card--llm { --node-color: var(--decorative-purple); }
+.flow-node-card--rag { --node-color: var(--text-primary); }
+.flow-node-card--tool { --node-color: var(--warning); }
+.flow-node-card--condition { --node-color: var(--danger); }
+.flow-node-card--output { --node-color: var(--decorative-purple); }
+.flow-node-card--action { --node-color: var(--text-primary); }
+.flow-node-card--delay { --node-color: var(--decorative-purple); }
+.flow-node-card--exit { --node-color: var(--danger); }
 
 .flow-node-card__header {
   display: flex;
@@ -113,7 +113,7 @@
   width: 3.5px;
   height: 3.5px;
   border-radius: 50%;
-  background: var(--text-muted, #94a3b8);
+  background: var(--text-muted);
 }
 
 .flow-node-card__body {
@@ -125,7 +125,7 @@
 .flow-node-card__label {
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-strong, #0f172a);
+  color: var(--text-strong, var(--foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -134,7 +134,7 @@
 .flow-node-card__meta {
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--text-secondary));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -142,7 +142,7 @@
 
 .flow-node-card__preview {
   font-size: 11px;
-  color: var(--text-soft, #475569);
+  color: var(--text-soft, var(--text-secondary));
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -155,7 +155,7 @@
 
 .flow-node-card__empty {
   font-size: 11px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted);
   font-style: italic;
   margin-top: 2px;
 }
@@ -179,28 +179,28 @@
 }
 
 .flow-node-card__branch--true {
-  color: #16a34a;
-  background: #dcfce7;
-  border-color: #86efac;
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: var(--success-border);
 }
 
 .flow-node-card__branch--false {
-  color: #dc2626;
-  background: #fee2e2;
-  border-color: #fca5a5;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger);
 }
 
 .flow-node-card__branch--neutral {
-  color: #2563eb;
-  background: #dbeafe;
-  border-color: #93c5fd;
+  color: var(--text-primary);
+  background: var(--info-bg);
+  border-color: var(--info-border);
 }
 
 .flow-node-card__handle.react-flow__handle {
   width: 12px !important;
   height: 12px !important;
   border-radius: 50% !important;
-  border: 2.5px solid #fff !important;
+  border: 2.5px solid var(--neutral-white) !important;
   background: var(--node-color) !important;
   transition: transform 0.15s ease, box-shadow 0.15s ease !important;
   z-index: 10;
@@ -255,52 +255,52 @@
   transform: translateX(-50%) scale(1.35) !important;
 }
 
-.flow-node-card--trigger .flow-node-card__handle.react-flow__handle { background: #10b981 !important; }
-.flow-node-card--llm .flow-node-card__handle.react-flow__handle { background: #8b5cf6 !important; }
-.flow-node-card--rag .flow-node-card__handle.react-flow__handle { background: #3b82f6 !important; }
-.flow-node-card--tool .flow-node-card__handle.react-flow__handle { background: #f59e0b !important; }
-.flow-node-card--condition .flow-node-card__handle.react-flow__handle { background: #ef4444 !important; }
-.flow-node-card--output .flow-node-card__handle.react-flow__handle { background: #ec4899 !important; }
-.flow-node-card--action .flow-node-card__handle.react-flow__handle { background: #14b8a6 !important; }
-.flow-node-card--delay .flow-node-card__handle.react-flow__handle { background: #8b5cf6 !important; }
-.flow-node-card--exit .flow-node-card__handle.react-flow__handle { background: #ef4444 !important; }
+.flow-node-card--trigger .flow-node-card__handle.react-flow__handle { background: var(--decorative-cyan) !important; }
+.flow-node-card--llm .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple) !important; }
+.flow-node-card--rag .flow-node-card__handle.react-flow__handle { background: var(--primary) !important; }
+.flow-node-card--tool .flow-node-card__handle.react-flow__handle { background: var(--warning) !important; }
+.flow-node-card--condition .flow-node-card__handle.react-flow__handle { background: var(--danger) !important; }
+.flow-node-card--output .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple) !important; }
+.flow-node-card--action .flow-node-card__handle.react-flow__handle { background: var(--brand-cyan) !important; }
+.flow-node-card--delay .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple) !important; }
+.flow-node-card--exit .flow-node-card__handle.react-flow__handle { background: var(--danger) !important; }
 
 .app-theme[data-theme="dark"] .flow-node-card {
-  --node-surface: color-mix(in oklab, var(--surface-raised, #1e293b) 97%, var(--node-color));
-  --node-border: color-mix(in oklab, var(--line, #334155) 72%, var(--node-color));
+  --node-surface: color-mix(in oklab, var(--surface-raised, var(--text-primary)) 97%, var(--node-color));
+  --node-border: color-mix(in oklab, var(--line, var(--text-secondary)) 72%, var(--node-color));
   box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.3),
+    0 2px 12px color-mix(in srgb, var(--neutral-black) 30%, transparent),
     0 0 0 0 var(--node-color-ring);
 }
 
 .app-theme[data-theme="dark"] .flow-node-card:hover {
   box-shadow:
-    0 6px 24px rgba(0, 0, 0, 0.4),
+    0 6px 24px color-mix(in srgb, var(--neutral-black) 40%, transparent),
     0 0 0 0 var(--node-color-ring);
 }
 
 .app-theme[data-theme="dark"] .flow-node-card--selected {
   box-shadow:
-    0 6px 24px rgba(0, 0, 0, 0.4),
+    0 6px 24px color-mix(in srgb, var(--neutral-black) 40%, transparent),
     0 0 0 3px var(--node-color-ring) !important;
 }
 
 .app-theme[data-theme="dark"] .flow-node-card__label {
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, var(--secondary));
 }
 
 .app-theme[data-theme="dark"] .flow-node-card__handle.react-flow__handle {
-  border-color: color-mix(in oklab, var(--node-surface) 70%, var(--background, #0f172a));
+  border-color: color-mix(in oklab, var(--node-surface) 70%, var(--background, var(--foreground)));
 }
 
 .app-theme[data-theme="dark"] .flow-node-card__branch--true {
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.12);
-  border-color: rgba(74, 222, 128, 0.3);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .app-theme[data-theme="dark"] .flow-node-card__branch--false {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.3);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }

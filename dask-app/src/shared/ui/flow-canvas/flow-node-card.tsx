@@ -7,7 +7,7 @@ export interface FlowNodeBranch {
   tone: 'true' | 'false' | 'neutral';
 }
 
-interface FlowNodeCardProps {
+export interface FlowNodeCardProps {
   kind: string;
   typeLabel: string;
   label: string;

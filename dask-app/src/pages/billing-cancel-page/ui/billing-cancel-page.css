@@ -17,20 +17,20 @@
   align-items: center;
   justify-content: center;
   font-size: 26px;
-  background: rgba(100, 116, 139, 0.15);
-  border: 2px solid rgba(100, 116, 139, 0.3);
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  border: 2px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
 }
 
 .billing-cancel__title {
   font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 700;
-  color: var(--color-text-primary, #f1f5f9);
+  color: var(--color-text-primary, var(--secondary));
   margin: 0;
 }
 
 .billing-cancel__description {
   font-size: 15px;
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--color-text-secondary, var(--text-muted));
   max-width: 400px;
   line-height: 1.6;
   margin: 0;
@@ -55,26 +55,26 @@
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
-  border: 1px solid rgba(182, 209, 231, 0.9);
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
   text-decoration: none;
 }
 
 .billing-cancel__btn--primary {
-  background: linear-gradient(135deg, #07559d 0%, #1d72c9 58%, #31c8d4 100%);
-  border-color: rgba(42, 119, 196, 0.28);
-  color: #f4fbff;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 58%, var(--decorative-cyan) 100%);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+  color: var(--surface-tint);
   box-shadow:
-    0 16px 30px rgba(8, 80, 145, 0.22),
-    0 8px 16px rgba(34, 173, 201, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    0 16px 30px color-mix(in srgb, var(--primary) 22%, transparent),
+    0 8px 16px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 20%, transparent) inset;
 }
 
 .billing-cancel__btn--secondary {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 255, 0.88) 100%);
-  color: #214d78;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
+  color: var(--text-primary);
   box-shadow:
-    0 12px 24px rgba(12, 42, 71, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    0 12px 24px color-mix(in srgb, var(--ink-shadow) 8%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
 }
 
 .billing-cancel__btn:hover {
@@ -82,18 +82,18 @@
 }
 
 .billing-cancel__btn--primary:hover {
-  background: linear-gradient(135deg, #064f92 0%, #1a68bb 58%, #2db9c5 100%);
+  background: linear-gradient(135deg, var(--brand-blue-active) 0%, var(--primary-hover) 58%, var(--decorative-cyan) 100%);
   box-shadow:
-    0 18px 34px rgba(8, 80, 145, 0.26),
-    0 10px 18px rgba(34, 173, 201, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    0 18px 34px color-mix(in srgb, var(--primary) 26%, transparent),
+    0 10px 18px color-mix(in srgb, var(--primary) 16%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 18%, transparent) inset;
 }
 
 .billing-cancel__btn--secondary:hover {
-  border-color: rgba(151, 190, 224, 0.98);
-  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
-  color: #17446f;
+  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
+  background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
+  color: var(--text-primary);
   box-shadow:
-    0 16px 28px rgba(12, 42, 71, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
 }

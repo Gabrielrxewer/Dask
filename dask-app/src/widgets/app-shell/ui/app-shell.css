@@ -215,7 +215,7 @@
 }
 
 .sidebar__menu-link--tone-violet {
-  --sidebar-item: color-mix(in oklab, var(--primary) 60%, #7a67d8);
+  --sidebar-item: color-mix(in oklab, var(--primary) 60%, var(--brand-indigo));
   --sidebar-item-soft: color-mix(in oklab, var(--primary) 10%, var(--surface-1));
   --sidebar-item-line: color-mix(in oklab, var(--primary) 20%, var(--border-default));
 }

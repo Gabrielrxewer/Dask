@@ -36,7 +36,7 @@
 .add-edge__btn:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--neutral-white);
   transform: scale(1.15);
 }
 
@@ -53,11 +53,11 @@
 }
 
 .add-edge__branch-label--yes {
-  background: color-mix(in oklab, #22c55e 14%, transparent);
-  color: color-mix(in oklab, #22c55e 80%, var(--text-strong));
+  background: color-mix(in oklab, var(--success) 14%, transparent);
+  color: color-mix(in oklab, var(--success) 80%, var(--text-strong));
 }
 
 .add-edge__branch-label--no {
-  background: color-mix(in oklab, #ef4444 14%, transparent);
-  color: color-mix(in oklab, #ef4444 80%, var(--text-strong));
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  color: color-mix(in oklab, var(--danger) 80%, var(--text-strong));
 }

@@ -4,14 +4,14 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: #082234;
+  color: var(--text-primary);
   font-size: 0.68rem;
   font-weight: 700;
   overflow: hidden;
-  border: 1px solid color-mix(in oklab, #ffffff 62%, transparent);
+  border: 1px solid color-mix(in oklab, var(--neutral-white) 62%, transparent);
   box-shadow:
-    0 6px 14px rgba(8, 31, 53, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    0 6px 14px color-mix(in srgb, var(--ink-shadow-strong) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 28%, transparent);
   flex: 0 0 auto;
 }
 

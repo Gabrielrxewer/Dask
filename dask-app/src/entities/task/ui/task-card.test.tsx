@@ -71,7 +71,7 @@ const boardConfig: BoardConfig = {
 
 const projectedStatusBoardConfig: BoardConfig = {
   ...factoryBoardConfig,
-  statuses: [{ id: "backlog", label: "Backlog", dot: "#94a3b8" }],
+  statuses: [{ id: "backlog", label: "Backlog", dot: "var(--text-muted)" }],
   fieldDefinitions: [titleField, statusField],
   fieldBindings: [
     {
@@ -207,7 +207,7 @@ describe("TaskCard", () => {
             id: "user-1",
             name: "Ana Souza",
             initials: "AS",
-            color: "#7b9abc"
+            color: "var(--text-muted)"
           }
         }}
         draggable={false}
@@ -233,7 +233,7 @@ describe("TaskCard", () => {
             id: "user-1",
             name: "Ana Souza",
             initials: "AS",
-            color: "#7b9abc"
+            color: "var(--text-muted)"
           }
         }}
         draggable={false}
@@ -268,7 +268,7 @@ describe("TaskCard", () => {
             id: "user-1",
             name: "Ana Souza",
             initials: "AS",
-            color: "#7b9abc"
+            color: "var(--text-muted)"
           }
         }}
         draggable={false}
@@ -293,7 +293,7 @@ describe("TaskCard", () => {
       <TaskCard
         task={projectedTask}
         boardConfig={projectedStatusBoardConfig}
-        displayStatuses={[{ id: "column-backlog", label: "Backlog", dot: "#94a3b8" }]}
+        displayStatuses={[{ id: "column-backlog", label: "Backlog", dot: "var(--text-muted)" }]}
         draggable={false}
         onDragStart={() => undefined}
         onDragEnd={() => undefined}
@@ -302,7 +302,7 @@ describe("TaskCard", () => {
     const { debugSnapshot } = buildTaskCardRenderModel({
       task: projectedTask,
       boardConfig: projectedStatusBoardConfig,
-      statuses: [{ id: "column-backlog", label: "Backlog", dot: "#94a3b8" }]
+      statuses: [{ id: "column-backlog", label: "Backlog", dot: "var(--text-muted)" }]
     });
 
     expect(html).toContain("Backlog");
@@ -324,7 +324,7 @@ describe("TaskCard", () => {
             id: "user-2",
             name: "Debora Romitti de Oliveira",
             initials: "DO",
-            color: "#7b9abc"
+            color: "var(--text-muted)"
           }
         }}
         draggable={false}
@@ -349,13 +349,13 @@ describe("TaskCard", () => {
             id: "user-1",
             name: "Ana Souza",
             initials: "AS",
-            color: "#7b9abc"
+            color: "var(--text-muted)"
           },
           "user-2": {
             id: "user-2",
             name: "Debora Romitti de Oliveira",
             initials: "DO",
-            color: "#8ab49c"
+            color: "var(--success)"
           }
         }}
         contextualDisplay={{

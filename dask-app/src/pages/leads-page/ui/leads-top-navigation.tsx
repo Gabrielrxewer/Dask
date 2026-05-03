@@ -20,7 +20,7 @@ export function LeadsTopNavigation({
   onNewLead: () => void;
 }) {
   return (
-    <section className="leads-top-nav" aria-label="NavegaÃ§Ã£o comercial">
+    <section className="leads-top-nav" aria-label="Navegação comercial">
       <Tabs<LeadsTab> value={tab} items={TABS} onChange={onChangeTab} className="leads-page__tabs" />
       <div className="leads-top-nav__actions">
         <WorkspaceActionButton className="leads-top-nav__btn" label="Atualizar" icon={<IconRefresh />} onClick={onRefresh} disabled={isAuxLoading || isSubmitting} />

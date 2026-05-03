@@ -64,13 +64,18 @@ export function BoardPage() {
   const [apiBoardCols, setApiBoardCols] = useState<ApiBoardColumn[]>([]);
   const [apiWorkflowStates, setApiWorkflowStates] = useState<ApiWorkflowState[]>([]);
   const [aiAgents, setAiAgents] = useState<AiAgentSummary[]>([]);
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
 
   const loadBoardConfig = useCallback(async () => {
-    const [cols, states, agents] = await Promise.all([fetchBoardColumns(), fetchWorkflowStates(), listAiAgents()]);
+    const [cols, states, agents] = await Promise.all([
+      fetchBoardColumns(),
+      fetchWorkflowStates(),
+      isClient ? Promise.resolve([]) : listAiAgents()
+    ]);
     setApiBoardCols(cols.filter(c => c.isActive).sort((a, b) => a.order - b.order));
     setApiWorkflowStates(states.filter(s => s.isActive));
     setAiAgents(agents.filter(agent => agent.isActive));
-  }, [fetchBoardColumns, fetchWorkflowStates, listAiAgents]);
+  }, [fetchBoardColumns, fetchWorkflowStates, isClient, listAiAgents]);
 
   useEffect(() => {
     void loadBoardConfig();

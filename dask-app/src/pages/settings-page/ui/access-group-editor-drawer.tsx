@@ -42,16 +42,16 @@ export function AccessGroupEditorDrawer({
     try {
       await onSave(draft);
     } catch {
-      setError("NÃ£o foi possÃ­vel salvar o grupo.");
+      setError("Não foi possível salvar o grupo.");
       setIsSaving(false);
     }
   };
 
   const SECTIONS: Array<{ id: GroupEditorSection; label: string }> = [
-    { id: "info", label: "InformaÃ§Ãµes" },
+    { id: "info", label: "Informações" },
     { id: "allow", label: "Permitir" },
     { id: "deny", label: "Bloquear" },
-    { id: "modules", label: "MÃ³dulos" },
+    { id: "modules", label: "Módulos" },
   ];
 
   const drawerNav = (
@@ -84,7 +84,7 @@ export function AccessGroupEditorDrawer({
         Cancelar
       </Button>
       <Button type="button" onClick={() => void handleSave()} disabled={isSaving}>
-        {isSaving ? "Salvando..." : group ? "Salvar alteraÃ§Ãµes" : "Criar grupo"}
+        {isSaving ? "Salvando..." : group ? "Salvar alterações" : "Criar grupo"}
       </Button>
     </>
   );
@@ -92,13 +92,13 @@ export function AccessGroupEditorDrawer({
     <DrawerShell
       title={group ? `Editar grupo: ${group.name}` : "Novo grupo de acesso"}
       titleId="group-editor-title"
-      subtitle="Defina permissÃµes e restriÃ§Ãµes para aplicar a mÃºltiplos membros"
+      subtitle="Defina permissões e restrições para aplicar a múltiplos membros"
       onClose={onClose}
       shellClassName="ms-drawer"
       headerClassName="ms-drawer__header"
       titleWrapperClassName="ms-drawer__header-info ms-drawer__header-info--full"
       closeButtonClassName="ms-drawer__close"
-      closeButtonContent="Ã—"
+      closeButtonContent="×"
       nav={drawerNav}
       navClassName="ms-drawer__nav"
       bodyClassName="ms-drawer__body"
@@ -117,10 +117,10 @@ export function AccessGroupEditorDrawer({
                 disabled={isSaving}
               />
             </FormField>
-            <FormField label="DescriÃ§Ã£o (opcional)">
+            <FormField label="Descrição (opcional)">
               <TextInput
                 value={draft.description}
-                placeholder="Descreva o propÃ³sito deste grupo..."
+                placeholder="Descreva o propósito deste grupo..."
                 onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
                 disabled={isSaving}
               />
@@ -153,7 +153,7 @@ export function AccessGroupEditorDrawer({
                 )}
                 {draft.allowedModules.length > 0 && (
                   <div className="ms-chips ms-chips--sm">
-                    <span className="ms-perm-source__label">MÃ³dulos:</span>
+                    <span className="ms-perm-source__label">Módulos:</span>
                     {draft.allowedModules.map(m => (
                       <span key={m} className="ms-chip ms-chip--module">{MODULE_META[m].label}</span>
                     ))}
@@ -167,7 +167,7 @@ export function AccessGroupEditorDrawer({
         {section === "allow" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">
-              PermissÃµes concedidas aos membros deste grupo.
+              Permissões concedidas aos membros deste grupo.
             </p>
             <PermissionPicker
               catalog={catalog}
@@ -181,7 +181,7 @@ export function AccessGroupEditorDrawer({
         {section === "deny" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">
-              PermissÃµes bloqueadas para os membros deste grupo.
+              Permissões bloqueadas para os membros deste grupo.
             </p>
             <PermissionPicker
               catalog={catalog}
@@ -194,14 +194,14 @@ export function AccessGroupEditorDrawer({
 
         {section === "modules" && (
           <div className="ms-drawer__section">
-            <FormField label="MÃ³dulos habilitados para este grupo">
+            <FormField label="Módulos habilitados para este grupo">
               <ModulePicker
                 selected={draft.allowedModules}
                 onChange={keys => setDraft(d => ({ ...d, allowedModules: keys }))}
                 disabled={isSaving}
               />
             </FormField>
-            <FormField label="Views do board permitidas (separadas por vÃ­rgula)">
+            <FormField label="Views do board permitidas (separadas por vírgula)">
               <TextInput
                 value={draft.boardViewKeys}
                 placeholder="kanban, list, agenda..."
@@ -216,7 +216,7 @@ export function AccessGroupEditorDrawer({
                 onChange={e => setDraft(d => ({ ...d, ownCardsOnly: e.target.checked }))}
                 disabled={isSaving}
               />
-              <span>Mostrar somente cards prÃ³prios</span>
+              <span>Mostrar somente cards próprios</span>
             </label>
           </div>
         )}

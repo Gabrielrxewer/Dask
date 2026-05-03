@@ -97,13 +97,18 @@ function makeWorkspace(overrides: Record<string, unknown> = {}) {
 function makeRepo(): Mocked<BillingRepository> {
   return {
     findUserById: vi.fn(),
+    findUserByEmail: vi.fn(),
     findUserByStripeCustomerId: vi.fn(),
     findSubscriptionByStripeId: vi.fn(),
     findActiveSubscriptionByUserId: vi.fn(),
     findLatestSubscriptionByUserId: vi.fn(),
     hasGuestWorkspaceMembership: vi.fn().mockResolvedValue(false),
     findWorkspaceMembership: vi.fn(),
+    findCustomerIdsForUser: vi.fn(),
     findWorkspaceBillingConnectInfo: vi.fn(),
+    findCustomerByEmail: vi.fn(),
+    createCustomerForBilling: vi.fn(),
+    linkCustomerToUser: vi.fn(),
     findConnectCatalogItemById: vi.fn(),
     listConnectCatalogItemsByWorkspace: vi.fn(),
     findConnectPaymentOrderById: vi.fn(),
@@ -115,6 +120,7 @@ function makeRepo(): Mocked<BillingRepository> {
     createConnectCatalogItem: vi.fn(),
     createConnectPaymentOrder: vi.fn(),
     updateConnectPaymentOrder: vi.fn(),
+    syncWorkItemBillingSnapshot: vi.fn().mockResolvedValue(undefined),
     createSubscription: vi.fn(),
     updateSubscription: vi.fn(),
     syncUserBillingFields: vi.fn().mockResolvedValue(undefined),
@@ -340,7 +346,7 @@ describe('BillingService', () => {
         applicationFeeAmount: 500,
         status: 'DRAFT',
         statusReason: null,
-        metadata: { orderId: 'order-1' },
+        metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' },
         checkoutUrl: null,
         paidAt: null,
         failedAt: null,
@@ -364,7 +370,7 @@ describe('BillingService', () => {
         applicationFeeAmount: 500,
         status: 'CHECKOUT_OPEN',
         statusReason: null,
-        metadata: { orderId: 'order-1' },
+        metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' },
         checkoutUrl: 'https://checkout.stripe.com/connect/cs_connect_1',
         paidAt: null,
         failedAt: null,
@@ -383,7 +389,7 @@ describe('BillingService', () => {
         amount: 10000,
         currency: 'brl',
         description: 'Servico mensal',
-        metadata: { orderId: 'order-1' }
+        metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' }
       });
 
       expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
@@ -399,6 +405,14 @@ describe('BillingService', () => {
       );
       expect(response.sessionId).toBe('cs_connect_1');
       expect(response.orderId).toBe('order-connect-1');
+      expect(repo.syncWorkItemBillingSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: 'workspace-1',
+          itemId: 'item-1',
+          billingOrderId: 'order-connect-1',
+          billingStatus: 'pending'
+        })
+      );
     });
 
     it('returns connect account status', async () => {
@@ -422,6 +436,40 @@ describe('BillingService', () => {
 
       expect(status.onboardingComplete).toBe(true);
       expect(status.stripeAccountId).toBe('acct_existing');
+    });
+  });
+
+  describe('client billing isolation', () => {
+    it('lists only payment orders for the customers linked to a CLIENT membership', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-client',
+        role: 'CLIENT'
+      });
+      repo.findCustomerIdsForUser.mockResolvedValue(['customer-1', 'customer-2']);
+      repo.listConnectPaymentOrdersByWorkspace.mockResolvedValue([]);
+
+      await service.listConnectPaymentOrders('workspace-1', 'user-client', 30);
+
+      expect(repo.listConnectPaymentOrdersByWorkspace).toHaveBeenCalledWith(
+        'workspace-1',
+        30,
+        ['customer-1', 'customer-2']
+      );
+    });
+
+    it('rejects CLIENT billing access when no customer link exists', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-client',
+        role: 'CLIENT'
+      });
+      repo.findCustomerIdsForUser.mockResolvedValue([]);
+
+      await expect(service.listConnectPaymentOrders('workspace-1', 'user-client', 30)).rejects.toMatchObject({
+        statusCode: 403
+      });
+      expect(repo.listConnectPaymentOrdersByWorkspace).not.toHaveBeenCalled();
     });
   });
 

@@ -144,6 +144,7 @@ interface WorkspaceContextValue {
       position?: number;
     }
   ) => Promise<WorkspaceDocument>;
+  sendWorkspaceDocument: (documentId: string, input: { email?: string; emails?: string[] }) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
   linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
@@ -679,6 +680,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [workspaceSlug]
   );
 
+  const sendWorkspaceDocument = useCallback(
+    async (documentId: string, input: { email?: string; emails?: string[] }): Promise<WorkspaceDocument> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.sendWorkspaceDocument(workspaceSlug, documentId, input);
+    },
+    [workspaceSlug]
+  );
+
   const deleteWorkspaceDocument = useCallback(
     async (documentId: string): Promise<void> => {
       if (!workspaceSlug) {
@@ -777,6 +788,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       updateCustomer,
       createWorkspaceDocument,
       updateWorkspaceDocument,
+      sendWorkspaceDocument,
       deleteWorkspaceDocument,
       listWorkItemLinkedDocuments,
       linkDocumentToWorkItem,
@@ -839,6 +851,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       updateCustomer,
       createWorkspaceDocument,
       updateWorkspaceDocument,
+      sendWorkspaceDocument,
       deleteWorkspaceDocument,
       listWorkItemLinkedDocuments,
       linkDocumentToWorkItem,

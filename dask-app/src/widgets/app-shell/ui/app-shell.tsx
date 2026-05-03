@@ -25,7 +25,7 @@ import "./app-shell.css";
 
 type SidebarIconName = "board" | "list" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
-type AppModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+type AppModuleKey = "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -74,8 +74,9 @@ export function AppShell({
 }: AppShellProps) {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot } = useWorkspace();
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
   const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"]
+    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
   );
   const navGroups = [
     {
@@ -93,7 +94,8 @@ export function AppShell({
           label: "List",
           icon: "list" as const,
           tone: "mint" as const,
-          module: "board" as AppModuleKey
+          module: "board" as AppModuleKey,
+          hideForClient: true
         },
         {
           to: buildWorkspaceAgendaPath(workspaceSlug),
@@ -159,14 +161,14 @@ export function AppShell({
           label: "Cobranca",
           icon: "billing" as const,
           tone: "amber" as const,
-          module: "settings" as AppModuleKey
+          module: "billing" as AppModuleKey
         }
       ]
     }
   ]
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => allowedModules.has(item.module))
+      items: group.items.filter((item) => allowedModules.has(item.module) && !(isClient && "hideForClient" in item && item.hideForClient))
     }))
     .filter((group) => group.items.length > 0);
   const { isSidebarOpen, closeNavigation } = useGlobalChrome();

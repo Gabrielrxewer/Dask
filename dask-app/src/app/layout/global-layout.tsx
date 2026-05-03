@@ -275,8 +275,27 @@ export function GlobalLayout() {
   const isVerifyEmailRoute = location.pathname === routePaths.verifyEmail;
   const isTermsRoute = location.pathname === routePaths.termsOfUse;
   const isPrivacyRoute = location.pathname === routePaths.privacyPolicy;
+  const isCommercialDocumentPublicRoute = location.pathname.startsWith("/documents/public/");
+  const isProposalPublicRoute = location.pathname.startsWith("/proposals/public/");
+  const isBillingPublicRoute = location.pathname === routePaths.billingPublic;
+  const isBillingSuccessRoute = location.pathname === routePaths.billingSuccess;
+  const isBillingCancelRoute = location.pathname === routePaths.billingCancel;
+  const isChoosePlanRoute = location.pathname === routePaths.choosePlan;
+  const isSubscriptionBlockedRoute = location.pathname === routePaths.subscriptionBlocked;
   const isPublicRoute =
-    isHomeRoute || isLoginRoute || isResetPasswordRoute || isVerifyEmailRoute || isTermsRoute || isPrivacyRoute;
+    isHomeRoute ||
+    isLoginRoute ||
+    isResetPasswordRoute ||
+    isVerifyEmailRoute ||
+    isTermsRoute ||
+    isPrivacyRoute ||
+    isCommercialDocumentPublicRoute ||
+    isProposalPublicRoute ||
+    isBillingPublicRoute ||
+    isBillingSuccessRoute ||
+    isBillingCancelRoute ||
+    isChoosePlanRoute ||
+    isSubscriptionBlockedRoute;
   const isAppRoute = !isPublicRoute;
   const isAdminRoute = location.pathname === routePaths.admin;
   const shouldDisableMainScroll = isAppRoute && !isAdminRoute;

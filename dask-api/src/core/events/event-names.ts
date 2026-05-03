@@ -15,6 +15,7 @@ export const DomainEventNames = {
   ProposalSent: 'proposal.sent',
   ProposalApproved: 'proposal.approved',
   ContractCreated: 'contract.created',
+  ContractSent: 'contract.sent',
   ContractAccepted: 'contract.accepted',
   BillingRequested: 'billing.requested',
   BillingPaymentConfirmed: 'billing.payment.confirmed',

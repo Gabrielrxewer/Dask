@@ -4,9 +4,10 @@ import { AppError } from '@/core/errors/app-error';
 import type { AuthorizationService, Permission } from '@/modules/identity/domain/authorization';
 import { resolveWorkspaceAccessPolicy, type WorkspaceModuleKey } from '@/modules/identity/domain/access-policy';
 
-type WorkspaceMembershipRole = 'VIEWER' | 'MEMBER' | 'ADMIN' | 'OWNER';
+type WorkspaceMembershipRole = 'CLIENT' | 'VIEWER' | 'MEMBER' | 'ADMIN' | 'OWNER';
 
 const roleRank: Record<WorkspaceMembershipRole, number> = {
+  CLIENT: 0,
   VIEWER: 1,
   MEMBER: 2,
   ADMIN: 3,

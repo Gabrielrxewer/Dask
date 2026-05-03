@@ -33,7 +33,7 @@ import {
 import { AppShell } from "@/widgets/app-shell";
 import "./fiscal-page.css";
 
-type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "wizard" | "settings";
+type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "wizard" | "settings" | "portal";
 
 interface WizardState {
   documentType: FiscalDocumentType;
@@ -56,6 +56,10 @@ const TAB_ITEMS: Array<{ id: FiscalTab; label: string }> = [
   { id: "stripe", label: "Stripe" },
   { id: "wizard", label: "Wizard" },
   { id: "settings", label: "Configuracoes" }
+];
+
+const TAB_ITEMS_CLIENT: Array<{ id: FiscalTab; label: string }> = [
+  { id: "portal", label: "Portal do cliente" }
 ];
 
 const STATUS_LABELS: Record<string, string> = {
@@ -132,6 +136,8 @@ export function FiscalPage() {
   const { snapshot, listCustomers } = useWorkspace();
   const workspaceId = snapshot?.id ?? "";
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
+  const customerIds = useMemo(() => snapshot?.access?.customerIds ?? [], [snapshot?.access?.customerIds]);
 
   const [tab, setTab] = useState<FiscalTab>("dashboard");
   const [isLoading, setIsLoading] = useState(false);
@@ -168,6 +174,22 @@ export function FiscalPage() {
     setIsLoading(true);
     setError("");
     try {
+      if (isClient) {
+        if (customerIds.length === 0) {
+          setDocuments([]);
+        } else {
+          const results = await Promise.all(
+            customerIds.map((id) =>
+              fiscalService.listDocuments(workspaceId, { customerId: id, direction: "OUTBOUND", limit: 150 })
+            )
+          );
+          const merged = results.flatMap((r) => r.items);
+          merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setDocuments(merged);
+        }
+        return;
+      }
+
       const [dash, docs, recs, stripeDrafts, companyList, customerList] = await Promise.all([
         fiscalService.getDashboard(workspaceId),
         fiscalService.listDocuments(workspaceId, { direction: "OUTBOUND", search: issuedSearch || undefined, limit: 150 }),
@@ -188,7 +210,11 @@ export function FiscalPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [issuedSearch, listCustomers, receivedSearch, workspaceId]);
+  }, [customerIds, isClient, issuedSearch, listCustomers, receivedSearch, workspaceId]);
+
+  useEffect(() => {
+    if (isClient) setTab("portal");
+  }, [isClient]);
 
   useEffect(() => {
     void loadAll();
@@ -426,26 +452,77 @@ export function FiscalPage() {
     []
   );
 
+  const portalStats = useMemo(() => {
+    const authorized = documents.filter((d) => ["AUTHORIZED", "ISSUED"].includes(d.status)).length;
+    const pending = documents.filter((d) =>
+      ["PROCESSING", "ISSUING", "READY_TO_ISSUE", "READY", "DRAFT"].includes(d.status)
+    ).length;
+    const total = documents
+      .filter((d) => ["AUTHORIZED", "ISSUED"].includes(d.status))
+      .reduce((sum, d) => sum + (Number(d.amountTotal) || 0), 0);
+    return { authorized, pending, total };
+  }, [documents]);
+
+  const portalColumns = useMemo<Array<ResourceTableColumn<FiscalDocument>>>(
+    () => [
+      { id: "type", header: "Tipo", width: "0.7fr", accessor: "documentType" },
+      {
+        id: "status",
+        header: "Status",
+        width: "0.95fr",
+        render: (document) => (
+          <StatusBadge tone={mapTone(document.status)}>{STATUS_LABELS[document.status] ?? document.status}</StatusBadge>
+        )
+      },
+      {
+        id: "amount",
+        header: "Valor",
+        width: "0.9fr",
+        render: (document) => formatMoney(document.amountTotal)
+      },
+      {
+        id: "number",
+        header: "Numero",
+        width: "0.8fr",
+        render: (document) => document.number ?? "-"
+      },
+      {
+        id: "issued",
+        header: "Emissao",
+        width: "1fr",
+        render: (document) => formatDate(document.issuedAt ?? document.createdAt)
+      }
+    ],
+    []
+  );
+
   const topNavigation = (
     <section className="fiscal-top-nav" aria-label="Navegacao fiscal">
-      <Tabs<FiscalTab> value={tab} items={TAB_ITEMS} onChange={setTab} className="fiscal-view__tabs" />
-      <div className="fiscal-top-nav__actions">
-        <WorkspaceActionButton
-          className="fiscal-top-nav__btn"
-          label="Atualizar fiscal"
-          icon={REFRESH_ICON}
-          onClick={() => void loadAll()}
-          disabled={isLoading || isSubmitting}
-        />
-        <WorkspaceActionButton
-          className="fiscal-top-nav__btn"
-          tone="accent"
-          label="Nova emissao"
-          icon="+"
-          onClick={() => setTab("wizard")}
-          disabled={isSubmitting}
-        />
-      </div>
+      <Tabs<FiscalTab>
+        value={tab}
+        items={isClient ? TAB_ITEMS_CLIENT : TAB_ITEMS}
+        onChange={setTab}
+        className="fiscal-view__tabs"
+      />
+      {!isClient ? (
+        <div className="fiscal-top-nav__actions">
+          <WorkspaceActionButton
+            className="fiscal-top-nav__btn"
+            label="Atualizar fiscal"
+            icon={REFRESH_ICON}
+            onClick={() => void loadAll()}
+            disabled={isLoading || isSubmitting}
+          />
+          <WorkspaceActionButton
+            className="fiscal-top-nav__btn"
+            tone="accent"
+            label="Nova emissao"
+            icon="+"
+            onClick={() => setTab("wizard")}
+            disabled={isSubmitting}
+          />
+        </div>
+      ) : null}
     </section>
   );
 
@@ -464,6 +541,92 @@ export function FiscalPage() {
 
         <div className="fiscal-view__content">
           <div className="fiscal-view__stack">
+            {tab === "portal" ? (
+              <div className="fiscal-view__portal">
+                <div className="fiscal-view__portal-head">
+                  <div className="fiscal-view__portal-head-text">
+                    <h2 className="fiscal-view__portal-title">Documentos fiscais</h2>
+                    <p className="fiscal-view__portal-subtitle">
+                      Notas emitidas em seu nome vinculadas a contratos e cobranças realizadas.
+                    </p>
+                  </div>
+                  <StatusBadge>{documents.length} {documents.length === 1 ? "nota" : "notas"}</StatusBadge>
+                </div>
+
+                {documents.length > 0 ? (
+                  <div className="fiscal-view__summary-grid fiscal-view__portal-stats">
+                    <article className="fiscal-view__summary-card">
+                      <span className="fiscal-view__summary-label">Autorizadas</span>
+                      <strong>{portalStats.authorized}</strong>
+                      <p>Notas confirmadas e autorizadas pelo orgao emissor.</p>
+                    </article>
+                    <article className="fiscal-view__summary-card">
+                      <span className="fiscal-view__summary-label">Em processo</span>
+                      <strong>{portalStats.pending}</strong>
+                      <p>Notas em tramitacao ou aguardando autorizacao.</p>
+                    </article>
+                    <article className="fiscal-view__summary-card">
+                      <span className="fiscal-view__summary-label">Total faturado</span>
+                      <strong>{formatMoney(portalStats.total > 0 ? portalStats.total : 0)}</strong>
+                      <p>Soma das notas autorizadas emitidas para voce.</p>
+                    </article>
+                  </div>
+                ) : null}
+
+                {documents.length === 0 && !isLoading ? (
+                  <div className="fiscal-view__portal-empty">
+                    <span className="fiscal-view__portal-empty-icon">
+                      <svg viewBox="0 0 24 24" fill="none" width="32" height="32">
+                        <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                        <path d="M8 8h8M8 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                    <p>Nenhum documento fiscal emitido para o seu cadastro ainda.</p>
+                    <span>Os documentos aparecerao aqui assim que forem emitidos.</span>
+                  </div>
+                ) : null}
+
+                {documents.length > 0 ? (
+                  <ResourceTable
+                    className="fiscal-view__table"
+                    data={documents}
+                    rowKey="id"
+                    columns={portalColumns}
+                    responsiveMinWidth="100%"
+                    responsiveMinWidthMobile="100%"
+                    emptyState="Nenhum documento encontrado."
+                    actions={{
+                      header: "Arquivos",
+                      width: "1fr",
+                      render: (document) => (
+                        <div className="fiscal-page__row-actions">
+                          {document.pdfUrl ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(document.pdfUrl ?? "", "_blank", "noopener,noreferrer")}
+                            >
+                              PDF
+                            </Button>
+                          ) : null}
+                          {document.xmlUrl ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(document.xmlUrl ?? "", "_blank", "noopener,noreferrer")}
+                            >
+                              XML
+                            </Button>
+                          ) : null}
+                          {!document.pdfUrl && !document.xmlUrl ? <span className="fiscal-view__portal-no-file">Aguardando</span> : null}
+                        </div>
+                      )
+                    }}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
             {tab === "dashboard" ? (
               dashboard ? (
                 <div className="fiscal-view__summary-grid">

@@ -91,7 +91,7 @@ export function LeadFormModal({
           ))}
         </Select>
       </FormField>
-      <FormField label="ObservaÃ§Ãµes">
+      <FormField label="Observações">
         <Textarea rows={3} value={leadForm.notes} onChange={(e) => onChange((c) => ({ ...c, notes: e.target.value }))} />
       </FormField>
     </FormModal>

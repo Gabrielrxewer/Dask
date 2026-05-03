@@ -1,4 +1,4 @@
-import type { Prisma} from '@prisma/client';
+import { MembershipRole, type Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
@@ -6,6 +6,11 @@ import { DomainEventNames } from '@/core/events/event-names';
 import type { EventPublisher } from '@/core/events/event-publisher';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
 import type { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import {
+  requireClientCustomerScope,
+  resolveCustomerAccessScope,
+  type CustomerAccessScope
+} from '@/modules/workspace-platform/application/customer-access-scope';
 import {
   addHexAlpha,
   getColorFromId,
@@ -79,11 +84,15 @@ export class WorkspaceWorkItemsService {
 
   public async getWorkspaceSnapshot(input: { workspaceId: string; userId: string; limit?: number }) {
     const access = await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
-    const ownCardsFilter = access.ownCardsOnly
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    const clientCustomerIds = requireClientCustomerScope(customerScope);
+    const ownCardsFilter = access.ownCardsOnly && !customerScope.isClient
       ? {
           OR: [{ assigneeId: input.userId }, { createdBy: input.userId }]
         }
       : {};
+    const customerFilter = this.buildClientWorkItemWhere(customerScope);
+    const itemScopeFilter = this.combineItemWhere(ownCardsFilter, customerFilter);
 
     await ensureWorkspaceDefaultConfiguration(this.prisma, {
       workspaceId: input.workspaceId,
@@ -93,7 +102,9 @@ export class WorkspaceWorkItemsService {
     const [config, members, automations, workItems] = await Promise.all([
       this.configService.loadWorkspaceConfig(input.workspaceId),
       this.prisma.workspaceMembership.findMany({
-        where: { workspaceId: input.workspaceId },
+        where: customerScope.isClient
+          ? { workspaceId: input.workspaceId, userId: input.userId }
+          : { workspaceId: input.workspaceId },
         include: {
           user: {
             select: {
@@ -106,11 +117,11 @@ export class WorkspaceWorkItemsService {
         orderBy: { createdAt: 'asc' }
       }),
       this.prisma.automationRule.findMany({
-        where: { workspaceId: input.workspaceId },
+        where: customerScope.isClient ? { id: { in: [] } } : { workspaceId: input.workspaceId },
         orderBy: { updatedAt: 'desc' }
       }),
       this.prisma.item.findMany({
-        where: { workspaceId: input.workspaceId, ...ownCardsFilter },
+        where: { workspaceId: input.workspaceId, ...itemScopeFilter },
         include: this.itemInclude(),
         orderBy: [{ position: 'asc' }, { updatedAt: 'desc' }],
         take: input.limit ?? 500
@@ -145,6 +156,9 @@ export class WorkspaceWorkItemsService {
       ? allPerspectives.filter((view) => access.allowedBoardViewKeys!.includes(toSlug(view.id)))
       : allPerspectives;
 
+    const clientPerspective = customerScope.isClient
+      ? this.buildClientBoardPerspective(config.boardColumns, allPerspectives)
+      : null;
     const boardConfig = {
       statuses,
       taskTypes: config.itemTypes
@@ -211,7 +225,9 @@ export class WorkspaceWorkItemsService {
             : {}
       },
       perspectives:
-        boardPerspectives.length > 0
+        clientPerspective
+          ? [clientPerspective]
+          : boardPerspectives.length > 0
           ? boardPerspectives
           : allPerspectives.slice(0, 1)
     };
@@ -231,6 +247,9 @@ export class WorkspaceWorkItemsService {
       })),
       membersById,
       access: {
+        role: access.role,
+        isClient: customerScope.isClient,
+        customerIds: clientCustomerIds,
         ownCardsOnly: access.ownCardsOnly,
         allowedModules: access.allowedModules,
         moduleEntitlements: access.moduleEntitlements,
@@ -264,14 +283,16 @@ export class WorkspaceWorkItemsService {
 
   public async listWorkItems(input: { workspaceId: string; userId: string }) {
     const access = await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
-    const ownCardsFilter = access.ownCardsOnly
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    const ownCardsFilter = access.ownCardsOnly && !customerScope.isClient
       ? {
           OR: [{ assigneeId: input.userId }, { createdBy: input.userId }]
         }
       : {};
+    const itemScopeFilter = this.combineItemWhere(ownCardsFilter, this.buildClientWorkItemWhere(customerScope));
 
     const items = await this.prisma.item.findMany({
-      where: { workspaceId: input.workspaceId, ...ownCardsFilter },
+      where: { workspaceId: input.workspaceId, ...itemScopeFilter },
       include: this.itemInclude(),
       orderBy: [{ position: 'asc' }, { updatedAt: 'desc' }]
     });
@@ -574,12 +595,15 @@ export class WorkspaceWorkItemsService {
       stateId?: string;
     };
   }) {
-    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    const access = await this.configService.ensureItemTransitionWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    const itemScopeFilter = this.buildClientWorkItemWhere(customerScope);
 
     const current = await this.prisma.item.findFirst({
       where: {
         id: input.itemId,
-        workspaceId: input.workspaceId
+        workspaceId: input.workspaceId,
+        ...itemScopeFilter
       },
       select: {
         id: true,
@@ -594,6 +618,7 @@ export class WorkspaceWorkItemsService {
     }
 
     const column = await this.resolveBoardColumn(input.workspaceId, input.payload.columnId);
+    await this.ensureClientColumnAllowed(input.workspaceId, column.id, access);
     const state = input.payload.stateId
       ? await this.resolveWorkflowState(input.workspaceId, input.payload.stateId)
       : await this.resolveDefaultStateForColumn(input.workspaceId, column.id, current.stateId);
@@ -665,12 +690,15 @@ export class WorkspaceWorkItemsService {
       columnId?: string;
     };
   }) {
-    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    const access = await this.configService.ensureItemTransitionWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    const itemScopeFilter = this.buildClientWorkItemWhere(customerScope);
 
     const current = await this.prisma.item.findFirst({
       where: {
         id: input.itemId,
-        workspaceId: input.workspaceId
+        workspaceId: input.workspaceId,
+        ...itemScopeFilter
       },
       select: {
         id: true,
@@ -688,6 +716,7 @@ export class WorkspaceWorkItemsService {
     const column = input.payload.columnId
       ? await this.resolveBoardColumn(input.workspaceId, input.payload.columnId)
       : await this.resolveColumnForState(input.workspaceId, state.id, current.boardColumnId ?? current.columnId);
+    await this.ensureClientColumnAllowed(input.workspaceId, column.id, access);
 
     const transitionedItem = await this.prisma.$transaction(async (tx) => {
       await tx.item.update({
@@ -815,12 +844,18 @@ export class WorkspaceWorkItemsService {
 
   public async listLinkedDocuments(input: { workspaceId: string; itemId: string; userId: string }) {
     await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
-    await this.ensureWorkItemBelongsToWorkspace(input.workspaceId, input.itemId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    await this.ensureWorkItemVisibleToUser(input.workspaceId, input.itemId, customerScope);
 
     const links = await this.prisma.workItemDocumentLink.findMany({
       where: {
         workspaceId: input.workspaceId,
-        itemId: input.itemId
+        itemId: input.itemId,
+        ...(customerScope.isClient
+          ? {
+              document: this.buildClientDocumentWhere(customerScope.customerIds)
+            }
+          : {})
       },
       include: {
         document: {
@@ -887,6 +922,154 @@ export class WorkspaceWorkItemsService {
         documentId: input.documentId
       }
     });
+  }
+
+  private combineItemWhere(...parts: Prisma.ItemWhereInput[]): Prisma.ItemWhereInput {
+    const and = parts.filter((part) => Object.keys(part).length > 0);
+    return and.length > 0 ? { AND: and } : {};
+  }
+
+  private buildClientWorkItemWhere(scope: CustomerAccessScope): Prisma.ItemWhereInput {
+    if (!scope.isClient) {
+      return {};
+    }
+
+    const customerIds = requireClientCustomerScope(scope);
+    return {
+      OR: customerIds.flatMap((customerId) => [
+        {
+          fields: {
+            path: ['customerId'],
+            equals: customerId
+          }
+        },
+        {
+          metadata: {
+            path: ['customerId'],
+            equals: customerId
+          }
+        },
+        {
+          customFieldValues: {
+            some: {
+              field: {
+                slug: 'customerId'
+              },
+              value: {
+                equals: customerId as Prisma.InputJsonValue
+              }
+            }
+          }
+        }
+      ])
+    };
+  }
+
+  private buildClientDocumentWhere(customerIds: string[]): Prisma.WorkspaceDocumentWhereInput {
+    return {
+      kind: {
+        in: ['proposal', 'contract']
+      },
+      OR: customerIds.flatMap((customerId) => [
+        {
+          linkedEntityType: 'customer',
+          linkedEntityId: customerId
+        },
+        {
+          metadata: {
+            path: ['customerId'],
+            equals: customerId
+          }
+        },
+        {
+          metadata: {
+            path: ['customer', 'id'],
+            equals: customerId
+          }
+        }
+      ])
+    };
+  }
+
+  private async ensureWorkItemVisibleToUser(
+    workspaceId: string,
+    itemId: string,
+    customerScope: CustomerAccessScope
+  ): Promise<void> {
+    const item = await this.prisma.item.findFirst({
+      where: {
+        id: itemId,
+        workspaceId,
+        ...this.buildClientWorkItemWhere(customerScope)
+      },
+      select: { id: true }
+    });
+
+    if (!item) {
+      throw new AppError('Work item not found', 404);
+    }
+  }
+
+  private async ensureClientColumnAllowed(
+    workspaceId: string,
+    columnId: string,
+    access: { role: MembershipRole; customerIds: string[] }
+  ): Promise<void> {
+    if (access.role !== MembershipRole.CLIENT) {
+      return;
+    }
+
+    if (access.customerIds.length === 0) {
+      throw new AppError('Customer access is not linked to this workspace', 403);
+    }
+
+    const column = await this.prisma.boardColumn.findFirst({
+      where: {
+        id: columnId,
+        workspaceId,
+        isActive: true
+      },
+      select: { id: true }
+    });
+
+    if (!column) {
+      throw new AppError('Board column not available for customers', 403);
+    }
+  }
+
+  private buildClientBoardPerspective(
+    boardColumns: Array<{ id: string; slug: string; name: string; isActive: boolean; stateIds?: string[] }>,
+    allPerspectives: Array<{ id: string; visibleBoardColumnIds?: string[]; statuses?: Array<{ id: string; label: string; dot: string }> }>
+  ) {
+    const configuredClientPerspective = allPerspectives.find((p) => p.id === 'cliente');
+
+    const INTERNAL_COMMERCIAL_SLUGS = new Set([
+      'lead_new', 'lead_qualification',
+      'opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved',
+      'contract_preparing', 'lost'
+    ]);
+
+    const visibleBoardColumnIds = configuredClientPerspective?.visibleBoardColumnIds?.length
+      ? configuredClientPerspective.visibleBoardColumnIds
+      : boardColumns
+          .filter((column) => column.isActive && !INTERNAL_COMMERCIAL_SLUGS.has(column.slug))
+          .map((column) => column.id);
+
+    const statuses = configuredClientPerspective?.statuses ?? [
+      { id: 'pendente', label: 'Pendente', dot: '#f59e0b' },
+      { id: 'ativo', label: 'Ativo', dot: '#2563eb' },
+      { id: 'concluido', label: 'Concluido', dot: '#16a34a' }
+    ];
+
+    return {
+      id: 'cliente',
+      label: 'Cliente',
+      caption: 'Sua jornada',
+      statuses,
+      statusSource: { kind: 'workflow_state' as const },
+      visibleBoardColumnIds,
+      createTaskColumnIds: []
+    };
   }
 
   private itemInclude() {

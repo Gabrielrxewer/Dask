@@ -1,4 +1,4 @@
-import type { DocumentationAssistantMode, DocumentKind, WorkspaceDocument } from "@/modules/workspace";
+import type { CommercialDocumentStatus, DocumentationAssistantMode, DocumentKind, WorkspaceDocument } from "@/modules/workspace";
 import { resolveDocumentVariables } from "@/modules/workspace/model/document-variables";
 import { AppIcon } from "@/shared/ui";
 
@@ -52,6 +52,28 @@ export const DOCUMENT_KIND_FILTERS: Array<{ value: DocumentKindFilter; label: st
   { value: "proposal", label: "Propostas" },
   { value: "contract", label: "Contratos" }
 ];
+
+export const COMMERCIAL_DOCUMENT_STATUSES: CommercialDocumentStatus[] = [
+  "draft",
+  "sent",
+  "viewed",
+  "approved",
+  "rejected",
+  "accepted",
+  "signed"
+];
+
+export function getCommercialDocumentStatus(document: WorkspaceDocument): CommercialDocumentStatus {
+  const status = document.metadata?.status;
+  return COMMERCIAL_DOCUMENT_STATUSES.includes(status as CommercialDocumentStatus)
+    ? (status as CommercialDocumentStatus)
+    : "draft";
+}
+
+export function hasCommercialDocumentBeenSent(document: WorkspaceDocument): boolean {
+  const status = getCommercialDocumentStatus(document);
+  return status !== "draft" || Boolean(document.metadata?.sentAt || document.metadata?.sentToEmail);
+}
 
 export function normalizeDocumentKind(kind: WorkspaceDocument["kind"] | undefined): DocumentKind {
   return kind ?? "wiki";

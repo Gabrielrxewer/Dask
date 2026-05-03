@@ -11,12 +11,14 @@ import type {
   BillingUser,
   ConnectCatalogItem,
   ConnectPaymentOrder,
+  CreateBillingCustomerInput,
   CreateConnectCatalogItemInput,
   CreateConnectPaymentOrderInput,
   CreateSubscriptionInput,
   Subscription,
   UpdateConnectCatalogItemInput,
   UpdateConnectPaymentOrderInput,
+  SyncWorkItemBillingSnapshotInput,
   UpdateSubscriptionInput,
   WorkspaceBillingConnectInfo,
   WorkspaceMembership
@@ -47,6 +49,10 @@ export class PrismaBillingRepository implements BillingRepository {
 
   findUserById(userId: string): Promise<BillingUser | null> {
     return (this.prisma.user as any).findUnique({ where: { id: userId } });
+  }
+
+  findUserByEmail(email: string): Promise<BillingUser | null> {
+    return (this.prisma.user as any).findUnique({ where: { email: email.trim().toLowerCase() } });
   }
 
   findUserByStripeCustomerId(customerId: string): Promise<BillingUser | null> {
@@ -144,6 +150,106 @@ export class PrismaBillingRepository implements BillingRepository {
     });
   }
 
+  async findCustomerByEmail(workspaceId: string, email: string): Promise<BillingCustomerSnapshot | null> {
+    return (this.prisma.customer as any).findFirst({
+      where: {
+        workspaceId,
+        email: { equals: email.trim().toLowerCase(), mode: 'insensitive' }
+      },
+      select: {
+        id: true,
+        workspaceId: true,
+        name: true,
+        tradeName: true,
+        legalName: true,
+        document: true,
+        stateRegistration: true,
+        municipalRegistration: true,
+        taxRegime: true,
+        email: true,
+        phone: true,
+        address: true
+      }
+    });
+  }
+
+  async createCustomerForBilling(input: CreateBillingCustomerInput): Promise<BillingCustomerSnapshot> {
+    return (this.prisma.customer as any).create({
+      data: {
+        workspaceId: input.workspaceId,
+        name: input.name,
+        email: input.email.trim().toLowerCase(),
+        status: 'customer',
+        createdBy: input.createdByUserId,
+        updatedBy: input.createdByUserId
+      },
+      select: {
+        id: true,
+        workspaceId: true,
+        name: true,
+        tradeName: true,
+        legalName: true,
+        document: true,
+        stateRegistration: true,
+        municipalRegistration: true,
+        taxRegime: true,
+        email: true,
+        phone: true,
+        address: true
+      }
+    });
+  }
+
+  async linkCustomerToUser(
+    workspaceId: string,
+    customerId: string,
+    userId: string,
+    createdBy?: string
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const existingMembership = await tx.workspaceMembership.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId } },
+        select: { id: true }
+      });
+
+      if (!existingMembership) {
+        await tx.workspaceMembership.create({
+          data: {
+            workspaceId,
+            userId,
+            role: 'CLIENT'
+          }
+        });
+      }
+
+      await (tx as any).workspaceCustomerUser.upsert({
+        where: {
+          workspaceId_customerId_userId: {
+            workspaceId,
+            customerId,
+            userId
+          }
+        },
+        create: {
+          workspaceId,
+          customerId,
+          userId,
+          createdBy
+        },
+        update: {}
+      });
+    });
+  }
+
+  async findCustomerIdsForUser(workspaceId: string, userId: string): Promise<string[]> {
+    const links = await (this.prisma as any).workspaceCustomerUser.findMany({
+      where: { workspaceId, userId },
+      select: { customerId: true }
+    });
+
+    return links.map((link: { customerId: string }) => link.customerId);
+  }
+
   findConnectCatalogItemById(itemId: string): Promise<ConnectCatalogItem | null> {
     return (this.prisma as any).connectCatalogItem.findUnique({ where: { id: itemId } });
   }
@@ -220,9 +326,16 @@ export class PrismaBillingRepository implements BillingRepository {
     return (this.prisma as any).connectPaymentOrder.findUnique({ where: { stripePaymentIntentId: paymentIntentId } });
   }
 
-  listConnectPaymentOrdersByWorkspace(workspaceId: string, limit: number): Promise<ConnectPaymentOrder[]> {
+  listConnectPaymentOrdersByWorkspace(
+    workspaceId: string,
+    limit: number,
+    customerIds?: string[]
+  ): Promise<ConnectPaymentOrder[]> {
     return (this.prisma as any).connectPaymentOrder.findMany({
-      where: { workspaceId },
+      where: {
+        workspaceId,
+        ...(customerIds ? { customerId: { in: customerIds } } : {})
+      },
       orderBy: { createdAt: 'desc' },
       take: limit
     });
@@ -296,6 +409,84 @@ export class PrismaBillingRepository implements BillingRepository {
         updatedAt: new Date()
       }
     });
+  }
+
+  async syncWorkItemBillingSnapshot(input: SyncWorkItemBillingSnapshotInput): Promise<void> {
+    const item = await this.prisma.item.findFirst({
+      where: {
+        id: input.itemId,
+        workspaceId: input.workspaceId
+      },
+      select: {
+        id: true,
+        fields: true,
+        updatedBy: true,
+        createdBy: true
+      }
+    });
+
+    if (!item) {
+      return;
+    }
+
+    const fields =
+      item.fields && typeof item.fields === 'object' && !Array.isArray(item.fields)
+        ? (item.fields as Record<string, unknown>)
+        : {};
+    const nextFields: Record<string, unknown> = {
+      ...fields,
+      billingOrderId: input.billingOrderId,
+      billingStatus: input.billingStatus,
+      ...(input.checkoutUrl ? { billingCheckoutUrl: input.checkoutUrl } : {})
+    };
+    const updatedBy = input.updatedBy ?? item.updatedBy ?? item.createdBy;
+
+    await this.prisma.item.update({
+      where: { id: item.id },
+      data: {
+        fields: nextFields as any,
+        updatedBy
+      }
+    });
+
+    const definitions = await this.prisma.customFieldDefinition.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        slug: { in: ['billingOrderId', 'billingStatus', 'billingCheckoutUrl'] }
+      },
+      select: {
+        id: true,
+        slug: true
+      }
+    });
+
+    await Promise.all(
+      definitions.map((field) => {
+        const value = nextFields[field.slug];
+        if (value === undefined) {
+          return Promise.resolve();
+        }
+
+        return this.prisma.customFieldValue.upsert({
+          where: {
+            fieldId_itemId: {
+              fieldId: field.id,
+              itemId: item.id
+            }
+          },
+          create: {
+            fieldId: field.id,
+            itemId: item.id,
+            value: value as any,
+            updatedBy
+          },
+          update: {
+            value: value as any,
+            updatedBy
+          }
+        });
+      })
+    );
   }
 
   createSubscription(input: CreateSubscriptionInput): Promise<Subscription> {

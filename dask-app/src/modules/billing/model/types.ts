@@ -76,14 +76,28 @@ export type ConnectPaymentOrderStatus =
   | 'CHECKOUT_OPEN'
   | 'CHECKOUT_COMPLETED'
   | 'PENDING'
+  | 'OVERDUE'
   | 'PAID'
   | 'FAILED'
   | 'CANCELED'
-  | 'REFUNDED';
+  | 'REFUNDED'
+  | 'SUBSCRIPTION_ACTIVE'
+  | 'SUBSCRIPTION_CANCELED';
+
+export type CustomerFacingPaymentStatus =
+  | 'pending'
+  | 'paid'
+  | 'overdue'
+  | 'canceled'
+  | 'failed'
+  | 'refunded'
+  | 'subscription_active'
+  | 'subscription_canceled';
 
 export interface ConnectPaymentOrder {
   id: string;
   status: ConnectPaymentOrderStatus;
+  customerStatus: CustomerFacingPaymentStatus;
   amount: number;
   currency: string;
   description: string;
@@ -95,6 +109,7 @@ export interface ConnectPaymentOrder {
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
   checkoutUrl: string | null;
+  customerPortalUrl: string | null;
   createdAt: string;
   updatedAt: string;
   paidAt: string | null;

@@ -35,7 +35,7 @@ export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
 export const FUNNEL_STAGES = [
   { key: "entrada", label: "Entrada", statuses: ["lead_new", "lead_qualification"], color: "var(--text-secondary)" },
   { key: "venda", label: "Venda", statuses: ["opportunity_open", "proposal_preparing", "proposal_sent", "proposal_approved"], color: "var(--warning)" },
-  { key: "formalizacao", label: "FormalizaÃ§Ã£o", statuses: ["contract_preparing", "contract_sent", "contract_accepted"], color: "var(--decorative-purple)" },
+  { key: "formalizacao", label: "Formalização", statuses: ["contract_preparing", "contract_sent", "contract_accepted"], color: "var(--decorative-purple)" },
   { key: "financeiro", label: "Financeiro", statuses: ["billing_created", "payment_waiting", "paid_active"], color: "var(--success)" }
 ];
 
@@ -251,7 +251,7 @@ export type StatusDistribution = ReturnType<typeof buildStatusDistribution>;
 export function buildSourceBreakdown(commercialTasks: Task[]) {
   const counts: Record<string, { count: number; value: number }> = {};
   for (const task of commercialTasks) {
-    const src = getTextField(task, "source").trim() || "NÃ£o informada";
+    const src = getTextField(task, "source").trim() || "Não informada";
     if (!counts[src]) counts[src] = { count: 0, value: 0 };
     counts[src].count += 1;
     counts[src].value += getNumberField(task, "estimatedValue") ?? 0;
@@ -277,7 +277,7 @@ export function buildPendingItems(commercialTasks: Task[], documents: WorkspaceD
     ...withoutProposal.slice(0, 2).map((t) => ({ id: `np-${t.id}`, label: t.title, detail: "Oportunidade sem proposta", urgency: "medium" as const })),
     ...draftProposals.slice(0, 2).map((d) => ({ id: `dp-${d.id}`, label: d.title, detail: "Proposta em rascunho", urgency: "medium" as const })),
     ...sentProposals.slice(0, 2).map((d) => ({ id: `sp-${d.id}`, label: d.title, detail: "Aguardando resposta do cliente", urgency: "low" as const })),
-    ...contractDrafts.slice(0, 2).map((d) => ({ id: `cd-${d.id}`, label: d.title, detail: "Contrato em preparaÃ§Ã£o", urgency: "medium" as const }))
+    ...contractDrafts.slice(0, 2).map((d) => ({ id: `cd-${d.id}`, label: d.title, detail: "Contrato em preparação", urgency: "medium" as const }))
   ].slice(0, 8);
 }
 

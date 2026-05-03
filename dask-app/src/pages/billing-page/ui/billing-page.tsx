@@ -24,6 +24,7 @@ export function BillingPage() {
           catalogCount={billing.catalogSectionProps.catalogItems.length}
           paymentOrderCount={billing.paymentOrders.length}
           canCreateCheckout={billing.canCreateCheckout}
+          customerMode={billing.isClient}
           onTabChange={billing.setActiveTab}
         />
         <BoardMetrics
@@ -55,12 +56,13 @@ export function BillingPage() {
               catalogCount={billing.catalogSectionProps.catalogItems.length}
               paymentOrderCount={billing.paymentOrders.length}
               canCreateCheckout={billing.canCreateCheckout}
+              customerMode={billing.isClient}
               onTabChange={billing.setActiveTab}
             />
 
-            {billing.activeTab === "conta" ? <BillingAccountPanel {...billing.accountPanelProps} /> : null}
+            {!billing.isClient && billing.activeTab === "conta" ? <BillingAccountPanel {...billing.accountPanelProps} /> : null}
 
-            {billing.activeTab === "catalogo" ? <BillingCatalogSection {...billing.catalogSectionProps} /> : null}
+            {!billing.isClient && billing.activeTab === "catalogo" ? <BillingCatalogSection {...billing.catalogSectionProps} /> : null}
 
             {billing.catalogItemPendingDelete ? (
               <BillingCatalogDeleteModal
@@ -71,9 +73,9 @@ export function BillingPage() {
               />
             ) : null}
 
-            {billing.activeTab === "cobrar" ? <BillingChargePanel {...billing.chargePanelProps} /> : null}
+            {!billing.isClient && billing.activeTab === "cobrar" ? <BillingChargePanel {...billing.chargePanelProps} /> : null}
 
-            {billing.activeTab === "historico" ? <BillingHistoryPanel {...billing.historyPanelProps} /> : null}
+            {billing.activeTab === "historico" || billing.isClient ? <BillingHistoryPanel {...billing.historyPanelProps} /> : null}
           </div>
         </Section>
       </WorkspaceFrame>

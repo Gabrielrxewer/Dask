@@ -152,7 +152,9 @@ export class PrismaFiscalRepository implements FiscalRepository {
         direction: query.direction as FiscalDirection | undefined,
         status: query.status,
         origin: query.origin as FiscalDocumentOrigin | undefined,
-        customerId: query.customerId,
+        customerId: query.customerIds
+          ? { in: query.customerId ? query.customerIds.filter((id) => id === query.customerId) : query.customerIds }
+          : query.customerId,
         createdAt:
           query.from || query.to
             ? {
@@ -196,12 +198,14 @@ export class PrismaFiscalRepository implements FiscalRepository {
 
   public async getDocumentById(
     workspaceId: string,
-    documentId: string
+    documentId: string,
+    customerIds?: string[]
   ): Promise<(FiscalDocument & { items: FiscalDocumentItem[]; parties: FiscalParty[] }) | null> {
     return this.prisma.fiscalDocument.findFirst({
       where: {
         id: documentId,
-        workspaceId
+        workspaceId,
+        ...(customerIds ? { customerId: { in: customerIds } } : {})
       },
       include: {
         items: true,

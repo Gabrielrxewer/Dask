@@ -79,6 +79,10 @@
   max-width: 100%;
 }
 
+.workspace-selector-page__shell--create {
+  width: min(1040px, 100%);
+}
+
 .workspace-selector-page__card.no-workspace-page__card.shared-card {
   position: relative;
   width: 100%;
@@ -126,6 +130,7 @@
 }
 
 .workspace-selector-page .no-workspace-page__header,
+.workspace-selector-page__create-header,
 .workspace-selector-page__toolbar,
 .workspace-selector-page__create-card,
 .workspace-selector-page__feedback,
@@ -176,6 +181,48 @@
   line-height: 1.56;
 }
 
+.workspace-selector-page__create-header {
+  display: block;
+  max-width: none;
+}
+
+.workspace-selector-page__create-header-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  max-width: 720px;
+}
+
+.workspace-selector-page__create-header .no-workspace-page__title {
+  max-width: 16ch;
+}
+
+.workspace-selector-page__back-button.shared-button {
+  justify-self: start;
+  width: fit-content;
+  min-height: 36px;
+  margin-bottom: 6px;
+  padding: 0 4px 0 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-selector-page__back-button.shared-button:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.workspace-selector-page__back-button svg {
+  flex: 0 0 auto;
+}
+
 .workspace-selector-page__toolbar.no-workspace-page__actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -190,6 +237,7 @@
 
 .workspace-selector-page__toolbar .shared-input,
 .workspace-selector-page__create-card .shared-input,
+.workspace-selector-page__create-card .shared-textarea,
 .workspace-selector-page__create-card .shared-select__control,
 .workspace-selector-page__delete-dialog .shared-input {
   width: 100%;
@@ -211,6 +259,7 @@
 
 .workspace-selector-page__toolbar .shared-input:hover,
 .workspace-selector-page__create-card .shared-input:hover,
+.workspace-selector-page__create-card .shared-textarea:hover,
 .workspace-selector-page__create-card .shared-select__control:hover,
 .workspace-selector-page__delete-dialog .shared-input:hover {
   border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
@@ -223,6 +272,8 @@
 .workspace-selector-page__toolbar .shared-input:focus,
 .workspace-selector-page__toolbar .shared-input:focus-visible,
 .workspace-selector-page__create-card .shared-input:focus,
+.workspace-selector-page__create-card .shared-textarea:focus,
+.workspace-selector-page__create-card .shared-textarea:focus-visible,
 .workspace-selector-page__create-card .shared-select__control:focus,
 .workspace-selector-page__delete-dialog .shared-input:focus,
 .workspace-selector-page__delete-dialog .shared-input:focus-visible {
@@ -235,8 +286,16 @@
 
 .workspace-selector-page__toolbar .shared-input::placeholder,
 .workspace-selector-page__create-card .shared-input::placeholder,
+.workspace-selector-page__create-card .shared-textarea::placeholder,
 .workspace-selector-page__delete-dialog .shared-input::placeholder {
   color: var(--text-primary);
+}
+
+.workspace-selector-page__create-card .shared-textarea {
+  min-height: 96px;
+  padding-top: 13px;
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .workspace-selector-page__toolbar-actions {
@@ -301,7 +360,7 @@
 
 .workspace-selector-page__create-card {
   display: grid;
-  gap: 14px;
+  gap: 18px;
   padding: clamp(16px, 1.5vw, 20px);
   border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
   border-radius: 26px;
@@ -311,6 +370,25 @@
     0 14px 28px color-mix(in srgb, var(--ink-shadow) 5.5%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
   overflow: hidden;
+}
+
+.workspace-selector-page__create-section {
+  display: grid;
+  gap: 12px;
+}
+
+.workspace-selector-page__create-section + .workspace-selector-page__create-section {
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--border-default) 64%, transparent);
+}
+
+.workspace-selector-page__create-section h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-heading);
+  font-size: clamp(1rem, 0.96rem + 0.18vw, 1.12rem);
+  line-height: 1.08;
+  letter-spacing: 0;
 }
 
 .workspace-selector-page__create-card::before,
@@ -355,9 +433,25 @@
 
 .workspace-selector-page__create-actions {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--border-default) 64%, transparent);
+}
+
+.workspace-selector-page__create-action-feedback {
+  display: grid;
+  gap: 8px;
+  min-width: min(100%, 360px);
+  flex: 1 1 360px;
+}
+
+.workspace-selector-page__create-submit.shared-button {
+  min-width: 190px;
+  min-height: 50px;
+  padding-inline: 22px;
 }
 
 .workspace-selector-page .shared-form-field {
@@ -685,17 +779,16 @@
   font-weight: 700;
 }
 
-.app-theme[data-theme="dark"]:has(.workspace-selector-page) .global-header,
-.app-theme[data-theme="dark"]:has(.workspace-selector-page) .global-footer {
-  background:
-    linear-gradient(var(--global-chrome-border), var(--global-chrome-border))
-      calc(var(--global-sidebar-width)) 100% / calc(100% - var(--global-sidebar-width)) 1px no-repeat,
-    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--primary) 18%, transparent) 0%, transparent 24%),
-    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--brand-indigo) 16%, transparent) 0%, transparent 26%),
-    linear-gradient(90deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 38%, color-mix(in srgb, var(--primary) 98%, transparent) 72%, color-mix(in srgb, var(--primary) 96%, transparent) 100%);
+.app-theme[data-theme="dark"]:has(.workspace-selector-page) .global-header {
+  background: #08111b;
   box-shadow:
-    0 10px 24px color-mix(in srgb, var(--neutral-black) 24%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset;
+    0 10px 24px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.app-theme[data-theme="dark"]:has(.workspace-selector-page) .global-header::before,
+.app-theme[data-theme="dark"]:has(.workspace-selector-page) .global-header::after {
+  opacity: 0;
 }
 
 .app-theme[data-theme="dark"] {
@@ -738,10 +831,7 @@
 
 .app-theme[data-theme="dark"] .global-layout__main:has(.workspace-selector-page) {
   --workspace-selector-surface:
-    radial-gradient(circle at 14% 16%, color-mix(in srgb, var(--primary) 15%, transparent) 0%, transparent 24%),
-    radial-gradient(circle at 84% 20%, color-mix(in srgb, var(--decorative-cyan) 10%, transparent) 0%, transparent 22%),
-    radial-gradient(circle at 54% 100%, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, var(--primary) 0%, var(--primary) 48%, var(--primary) 100%);
+    linear-gradient(180deg, #08111b 0%, #0a1420 56%, #070f18 100%);
   background: var(--workspace-selector-surface);
 }
 
@@ -775,7 +865,7 @@
 
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__title,
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace-copy strong {
-  color: var(--surface-tint);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .no-workspace-page__description,
@@ -799,11 +889,12 @@
 
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-textarea,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input {
   border-color: color-mix(in oklab, var(--workspace-selector-dark-border) 88%, transparent);
   background: var(--workspace-selector-dark-control);
-  color: var(--surface-tint-strong);
+  color: var(--text-primary);
   box-shadow:
     0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
@@ -811,6 +902,7 @@
 
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input:hover,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input:hover,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-textarea:hover,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control:hover,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input:hover {
   border-color: var(--workspace-selector-dark-border-strong);
@@ -820,6 +912,8 @@
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input:focus,
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input:focus-visible,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input:focus,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-textarea:focus,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-textarea:focus-visible,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control:focus,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-select__control:focus-visible,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input:focus,
@@ -833,6 +927,7 @@
 
 .app-theme[data-theme="dark"] .workspace-selector-page__toolbar .shared-input::placeholder,
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-input::placeholder,
+.app-theme[data-theme="dark"] .workspace-selector-page__create-card .shared-textarea::placeholder,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input::placeholder {
   color: var(--text-secondary);
 }
@@ -851,29 +946,28 @@
 .app-theme[data-theme="dark"] .workspace-selector-page .shared-button--default:hover {
   border-color: var(--workspace-selector-dark-border-strong);
   background: var(--workspace-selector-dark-control-hover);
-  color: var(--surface-tint);
+  color: var(--text-primary);
   box-shadow:
     0 16px 28px color-mix(in srgb, var(--neutral-black) 24%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .shared-button--primary {
-  border-color: color-mix(in oklab, var(--primary) 42%, var(--primary));
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 58%, var(--decorative-cyan) 100%);
-  color: var(--neutral-white);
+  border-color: rgba(58, 85, 112, 0.7);
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(13, 24, 36, 0.96) 100%);
+  color: #eaf2fb;
   box-shadow:
-    0 18px 34px color-mix(in srgb, var(--neutral-black) 26%, transparent),
-    0 12px 22px color-mix(in srgb, var(--primary) 26%, transparent),
-    0 1px 0 color-mix(in srgb, var(--info-bg) 16%, transparent) inset;
+    0 14px 28px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page .shared-button--primary:hover {
-  border-color: color-mix(in oklab, var(--primary) 52%, var(--primary));
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 58%, var(--decorative-cyan) 100%);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border-strong));
+  background: linear-gradient(180deg, rgba(23, 39, 58, 0.98) 0%, rgba(16, 29, 42, 0.98) 100%);
+  color: #f4f8fc;
   box-shadow:
-    0 22px 38px color-mix(in srgb, var(--neutral-black) 30%, transparent),
-    0 14px 24px color-mix(in srgb, var(--primary) 30%, transparent),
-    0 1px 0 color-mix(in srgb, var(--info-bg) 18%, transparent) inset;
+    0 18px 32px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
   filter: none;
 }
 
@@ -881,29 +975,29 @@
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace {
   border-color: color-mix(in oklab, var(--workspace-selector-dark-border) 92%, transparent);
   background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 5%, transparent) 0%, transparent 22%),
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.025) 0%, transparent 22%),
     var(--workspace-selector-dark-surface-alt);
   box-shadow: var(--workspace-selector-dark-shadow-soft);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card::before,
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace::before {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 90%, transparent) 0%, color-mix(in srgb, var(--primary) 74%, transparent) 52%, color-mix(in srgb, var(--decorative-cyan) 72%, transparent) 100%);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 16%, transparent);
+  background: linear-gradient(180deg, rgba(138, 190, 248, 0.74) 0%, rgba(58, 85, 112, 0.72) 100%);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__create-card::after,
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace::after {
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--neutral-white) 6%, transparent), transparent 42%),
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 0%, transparent 32%);
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.025) 0%, transparent 32%);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__workspace:hover {
   border-color: var(--workspace-selector-dark-border-strong);
   background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 8%, transparent) 0%, transparent 24%),
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 99%, transparent) 100%);
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 24%),
+    linear-gradient(180deg, rgba(23, 39, 58, 0.98) 0%, rgba(14, 24, 36, 0.98) 100%);
   box-shadow:
     0 24px 44px color-mix(in srgb, var(--neutral-black) 28%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
@@ -947,28 +1041,29 @@
     radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 28%),
     radial-gradient(circle at top right, color-mix(in srgb, var(--danger) 8%, transparent) 0%, transparent 24%),
     var(--workspace-selector-dark-surface);
+  color: #eaf2fb;
   box-shadow: var(--workspace-selector-dark-shadow);
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-eyebrow,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target span,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-hint strong {
-  color: color-mix(in oklab, var(--danger) 42%, var(--danger-border));
+  color: #f08a8a;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-title,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target strong {
-  color: var(--surface-tint);
+  color: #f4f8fc;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-form-field__label {
-  color: var(--workspace-selector-dark-accent);
+  color: #8abef8;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-description,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-hint,
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target small {
-  color: var(--workspace-selector-dark-muted);
+  color: #a7b8c9;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-target {
@@ -977,6 +1072,24 @@
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--danger) 8%, transparent) 0%, transparent 22%),
     var(--workspace-selector-dark-surface-alt);
   box-shadow: var(--workspace-selector-dark-shadow-soft);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog p,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog span,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog small,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog strong,
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog label {
+  text-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .shared-input {
+  color: #eaf2fb !important;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-confirm.shared-button:disabled {
+  color: #93a7bc;
+  opacity: 0.72;
 }
 
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .no-workspace-page__secondary.shared-button {
@@ -988,7 +1101,7 @@
 .app-theme[data-theme="dark"] .workspace-selector-page__delete-dialog .no-workspace-page__secondary.shared-button:hover {
   border-color: var(--workspace-selector-dark-border-strong);
   background: var(--workspace-selector-dark-control-hover);
-  color: var(--surface-tint);
+  color: var(--text-primary);
   box-shadow:
     0 16px 28px color-mix(in srgb, var(--neutral-black) 24%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
@@ -1018,6 +1131,26 @@
   color: color-mix(in oklab, var(--danger) 32%, var(--danger-border));
 }
 
+.app-theme[data-theme="dark"] .workspace-selector-page__create-section + .workspace-selector-page__create-section {
+  border-top-color: color-mix(in oklab, var(--workspace-selector-dark-border) 72%, transparent);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__create-section h2 {
+  color: var(--text-primary);
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__back-button.shared-button {
+  color: #8abef8;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__back-button.shared-button:hover {
+  color: #eaf2fb;
+}
+
+.app-theme[data-theme="dark"] .workspace-selector-page__create-actions {
+  border-top-color: color-mix(in oklab, var(--workspace-selector-dark-border) 72%, transparent);
+}
+
 @media (max-width: 760px) {
   .workspace-selector-page.no-workspace-page {
     align-items: start;
@@ -1042,8 +1175,14 @@
   }
 
   .workspace-selector-page__toolbar-actions .shared-button,
+  .workspace-selector-page__create-submit.shared-button,
   .workspace-selector-page__enter-button.shared-button {
     width: 100%;
+  }
+
+  .workspace-selector-page__create-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .workspace-selector-page__field--wide {

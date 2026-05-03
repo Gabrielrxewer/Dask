@@ -148,6 +148,14 @@ export function InfoIcon({ size = 13 }: { size?: number }) {
   return <AppIcon name="info" size={size} strokeWidth={2} />;
 }
 
+export function ConditionIcon({ size = 16 }: { size?: number }) {
+  return <AppIcon name="list-checks" size={size} strokeWidth={2} />;
+}
+
+export function OutputIcon({ size = 16 }: { size?: number }) {
+  return <AppIcon name="square-check" size={size} strokeWidth={2} />;
+}
+
 // ─── Field with info tooltip ──────────────────────────────────────────────────
 
 export function InfoTip({ text }: { text: string }) {
@@ -183,9 +191,13 @@ export interface FlowDraft {
   priority: number;
 }
 
-export type SelectedNode = { kind: "trigger" } | { kind: "action"; index: number };
+export type SelectedNode =
+  | { kind: "trigger" }
+  | { kind: "action"; index: number }
+  | { kind: "condition"; nodeId: string }
+  | { kind: "output"; nodeId: string };
 
-export type AutomationCanvasNodeKind = "trigger" | "action";
+export type AutomationCanvasNodeKind = "trigger" | "action" | "condition" | "output";
 
 export interface AutomationCanvasNodeData extends Record<string, unknown> {
   kind: AutomationCanvasNodeKind;
@@ -193,10 +205,38 @@ export interface AutomationCanvasNodeData extends Record<string, unknown> {
   summary: string;
   configured: boolean;
   index?: number;
+  condition?: string;
 }
 
 export type AutomationCanvasNode = Node<AutomationCanvasNodeData, AutomationCanvasNodeKind>;
 export type AutomationCanvasEdge = Edge;
+
+// ─── Visual Flow (persistido em conditions._visualFlow) ───────────────────────
+
+export interface AutomationVisualNode {
+  id: string;
+  type: AutomationCanvasNodeKind;
+  position: { x: number; y: number };
+  data: AutomationCanvasNodeData;
+}
+
+export interface AutomationVisualEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+}
+
+export interface AutomationVisualFlow {
+  version: number;
+  nodes: AutomationVisualNode[];
+  edges: AutomationVisualEdge[];
+  metadata?: {
+    advanced?: boolean;
+    createdFromLegacy?: boolean;
+  };
+}
 
 export function ruleToFlowDraft(rule: AutomationRule): FlowDraft {
   const trigger = asRecord(rule.trigger);
@@ -237,7 +277,10 @@ export function emptyFlowDraft(): FlowDraft {
   };
 }
 
-export function draftToRuleInput(draft: FlowDraft): CreateAutomationRuleInput {
+export function draftToRuleInput(
+  draft: FlowDraft,
+  visualFlow?: AutomationVisualFlow
+): CreateAutomationRuleInput {
   const trigger: { type: string; [key: string]: unknown } =
     draft.triggerType === "item.moved"
       ? {
@@ -249,11 +292,20 @@ export function draftToRuleInput(draft: FlowDraft): CreateAutomationRuleInput {
         }
       : { type: draft.triggerType };
 
+  // Strip stale _visualFlow before rebuilding
+  const baseConditions = { ...draft.conditions };
+  delete baseConditions._visualFlow;
+
   const nextConditions =
     draft.triggerType === "item.moved" && draft.triggerConfig.toColumnKey
-      ? { ...draft.conditions, toColumnKeys: [asString(draft.triggerConfig.toColumnKey)] }
-      : draft.conditions;
-  const conditions = Object.keys(nextConditions).length > 0 ? nextConditions : undefined;
+      ? { ...baseConditions, toColumnKeys: [asString(draft.triggerConfig.toColumnKey)] }
+      : baseConditions;
+
+  const withFlow = visualFlow
+    ? { ...nextConditions, _visualFlow: visualFlow as unknown as Record<string, unknown> }
+    : nextConditions;
+
+  const conditions = Object.keys(withFlow).length > 0 ? withFlow : undefined;
 
   return {
     name: draft.name.trim(),
@@ -479,22 +531,83 @@ export function AutomationActionNode({ data, selected }: NodeProps) {
   );
 }
 
+export function AutomationConditionNode({ data, selected }: NodeProps) {
+  const d = data as AutomationCanvasNodeData;
+  return (
+    <FlowNodeCard
+      kind="condition"
+      typeLabel="Condição"
+      label={d.label}
+      meta={d.condition || undefined}
+      emptyText={d.condition ? undefined : "Configure a condição"}
+      icon={<ConditionIcon size={14} />}
+      selected={selected}
+      branches={[
+        { id: "true", label: "Verdadeiro", tone: "true" },
+        { id: "false", label: "Falso", tone: "false" }
+      ]}
+    />
+  );
+}
+
+export function AutomationOutputNode({ data, selected }: NodeProps) {
+  const d = data as AutomationCanvasNodeData;
+  return (
+    <FlowNodeCard
+      kind="output"
+      typeLabel="Finalização"
+      label={d.label}
+      meta={d.summary || undefined}
+      emptyText={d.configured ? undefined : "Configure a saída"}
+      icon={<OutputIcon size={14} />}
+      selected={selected}
+      source={false}
+    />
+  );
+}
+
 export const AUTOMATION_NODE_TYPES = {
   trigger: AutomationTriggerNode,
-  action: AutomationActionNode
+  action: AutomationActionNode,
+  condition: AutomationConditionNode,
+  output: AutomationOutputNode
 };
 
 export const AUTOMATION_PALETTE: FlowCanvasPaletteItem<AutomationCanvasNodeKind, AutomationCanvasNodeData>[] = [
   {
     kind: "action",
-    label: "Acao",
-    description: "Adiciona uma nova etapa executada pela automacao",
+    label: "Ação",
+    description: "Executa uma operação no workspace",
     color: "var(--text-secondary)",
     buildData: () => ({
       kind: "action",
-      label: "Nova acao",
-      summary: "Configure a acao",
+      label: "Nova ação",
+      summary: "Configure a ação",
       configured: false
+    })
+  },
+  {
+    kind: "condition",
+    label: "Condição",
+    description: "Ramificação condicional do fluxo",
+    color: "var(--warning)",
+    buildData: () => ({
+      kind: "condition",
+      label: "Verificar condição",
+      summary: "Configure a condição",
+      configured: false
+    })
+  },
+  {
+    kind: "output",
+    label: "Saída",
+    description: "Marca o fim ou conclusão do fluxo",
+    color: "var(--decorative-purple)",
+    buildData: () => ({
+      kind: "output",
+      label: "Fim do fluxo",
+      summary: "",
+      configured: true
     })
   }
 ];
@@ -741,6 +854,250 @@ export function ActionConfig({ action, views, stateOptions, onChange }: ActionCo
       )}
     </div>
   );
+}
+
+// ─── Condition Config Panel ───────────────────────────────────────────────────
+
+export interface ConditionConfigProps {
+  nodeId: string;
+  data: AutomationCanvasNodeData;
+  onChange: (nodeId: string, updates: Partial<AutomationCanvasNodeData>) => void;
+  onRemove: (nodeId: string) => void;
+}
+
+export function ConditionConfig({ nodeId, data, onChange, onRemove }: ConditionConfigProps) {
+  return (
+    <div className="config-panel__fields">
+      <div className="config-panel__field">
+        <FieldLabel
+          label="Condição"
+          hint="Descreva a condição a ser verificada. Ex.: cliente tem CNPJ cadastrado."
+        />
+        <TextInput
+          value={(data.condition as string) || ""}
+          onChange={(e) => onChange(nodeId, {
+            condition: e.target.value,
+            configured: e.target.value.trim().length > 0,
+            summary: e.target.value.trim() || "Configure a condição"
+          })}
+          placeholder="Ex.: cliente tem CNPJ cadastrado"
+        />
+      </div>
+      <p className="config-panel__hint">
+        O nó de condição cria duas saídas: <strong>Verdadeiro</strong> e <strong>Falso</strong>. Conecte cada saída ao próximo passo do fluxo.
+      </p>
+      <div className="config-panel__warning-note">
+        <WarningTriangleIcon size={13} />
+        <span>Ramificações condicionais são visuais nesta versão. O runtime atual executa o fluxo de forma linear.</span>
+      </div>
+      <button
+        type="button"
+        className="config-panel__remove-btn"
+        onClick={() => onRemove(nodeId)}
+      >
+        <TrashIcon size={13} />
+        Remover nó
+      </button>
+    </div>
+  );
+}
+
+// ─── Output Config Panel ──────────────────────────────────────────────────────
+
+export interface OutputConfigProps {
+  nodeId: string;
+  data: AutomationCanvasNodeData;
+  onChange: (nodeId: string, updates: Partial<AutomationCanvasNodeData>) => void;
+  onRemove: (nodeId: string) => void;
+}
+
+export function OutputConfig({ nodeId, data, onChange, onRemove }: OutputConfigProps) {
+  return (
+    <div className="config-panel__fields">
+      <div className="config-panel__field">
+        <FieldLabel
+          label="Rótulo"
+          hint="Identifica visualmente o fim deste caminho do fluxo."
+        />
+        <TextInput
+          value={data.label}
+          onChange={(e) => onChange(nodeId, { label: e.target.value || "Fim do fluxo" })}
+          placeholder="Fim do fluxo"
+        />
+      </div>
+      <div className="config-panel__warning-note">
+        <WarningTriangleIcon size={13} />
+        <span>O nó de saída é visual. O runtime atual não precisa dele para executar o fluxo.</span>
+      </div>
+      <button
+        type="button"
+        className="config-panel__remove-btn"
+        onClick={() => onRemove(nodeId)}
+      >
+        <TrashIcon size={13} />
+        Remover nó
+      </button>
+    </div>
+  );
+}
+
+// ─── Flow Validation ──────────────────────────────────────────────────────────
+
+export function isAdvancedFlow(extraNodes: AutomationCanvasNode[]): boolean {
+  return extraNodes.some((n) => n.type === "condition" || n.type === "output");
+}
+
+export interface AutomationValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  canPublish: boolean;
+  canSaveDraft: boolean;
+}
+
+export function validateAutomationDraft(
+  draft: FlowDraft | null,
+  extraNodes: AutomationCanvasNode[]
+): AutomationValidationResult {
+  if (!draft) {
+    return { valid: false, errors: [], warnings: [], canPublish: false, canSaveDraft: false };
+  }
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (draft.name.trim().length < 2) {
+    errors.push("O nome deve ter ao menos 2 caracteres.");
+  }
+
+  if (!draft.triggerType) {
+    errors.push("Configure o evento do gatilho.");
+  }
+
+  if (draft.actions.length === 0 && !extraNodes.some((n) => n.type === "output")) {
+    errors.push("Adicione pelo menos uma ação ao fluxo.");
+  }
+
+  const unconfiguredConditions = extraNodes.filter(
+    (n) => n.type === "condition" && !n.data.condition
+  );
+  for (const node of unconfiguredConditions) {
+    errors.push(`Configure a condição no nó "${node.data.label}".`);
+  }
+
+  const advanced = isAdvancedFlow(extraNodes);
+  if (advanced) {
+    const advancedKinds = [
+      ...new Set(extraNodes.filter((n) => n.type === "condition" || n.type === "output").map((n) => n.type))
+    ];
+    const kindNames = advancedKinds
+      .map((k) => (k === "condition" ? "Condição" : "Saída"))
+      .join(" e ");
+    warnings.push(
+      `Este fluxo contém nós de ${kindNames}, que ainda não são executados pelo runtime atual. ` +
+      "O desenho será salvo, mas a automação não poderá ser ativada até ser simplificada."
+    );
+  }
+
+  const canPublish = errors.length === 0 && !advanced;
+  const canSaveDraft = draft.name.trim().length >= 2;
+
+  return { valid: errors.length === 0, errors, warnings, canPublish, canSaveDraft };
+}
+
+// ─── Visual Flow Helpers ──────────────────────────────────────────────────────
+
+export function extractVisualFlowFromRule(rule: AutomationRule): AutomationVisualFlow | null {
+  const conditions = asRecord(rule.conditions);
+  const raw = conditions._visualFlow;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const flow = raw as Record<string, unknown>;
+  if (typeof flow.version !== "number") return null;
+  if (!Array.isArray(flow.nodes) || !Array.isArray(flow.edges)) return null;
+  return flow as unknown as AutomationVisualFlow;
+}
+
+export function buildVisualFlowFromState(
+  draft: FlowDraft,
+  nodePositions: Record<string, { x: number; y: number }>,
+  extraNodes: AutomationCanvasNode[],
+  extraEdges: AutomationCanvasEdge[]
+): AutomationVisualFlow {
+  const advanced = isAdvancedFlow(extraNodes);
+
+  // Positions for trigger and action nodes (legacy backbone)
+  const legacyNodes: AutomationVisualNode[] = [
+    {
+      id: "trigger",
+      type: "trigger",
+      position: nodePositions.trigger ?? { x: 180, y: 40 },
+      data: { kind: "trigger", label: "", summary: "", configured: true }
+    },
+    ...draft.actions.map((_, index) => ({
+      id: `action-${index}`,
+      type: "action" as const,
+      position: nodePositions[`action-${index}`] ?? { x: 180, y: 220 + index * 180 },
+      data: { kind: "action" as const, label: "", summary: "", configured: true, index }
+    }))
+  ];
+
+  // Extra visual nodes (condition, output) with latest positions
+  const visualExtraNodes: AutomationVisualNode[] = extraNodes.map((n) => ({
+    id: n.id,
+    type: n.type as AutomationCanvasNodeKind,
+    position: nodePositions[n.id] ?? n.position,
+    data: n.data
+  }));
+
+  const visualEdges: AutomationVisualEdge[] = extraEdges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.sourceHandle ?? null,
+    targetHandle: e.targetHandle ?? null
+  }));
+
+  return {
+    version: 1,
+    nodes: [...legacyNodes, ...visualExtraNodes],
+    edges: visualEdges,
+    metadata: { advanced }
+  };
+}
+
+export function restoreStateFromVisualFlow(flow: AutomationVisualFlow): {
+  extraNodes: AutomationCanvasNode[];
+  extraEdges: AutomationCanvasEdge[];
+  nodePositions: Record<string, { x: number; y: number }>;
+} {
+  const nodePositions: Record<string, { x: number; y: number }> = {};
+  const extraNodes: AutomationCanvasNode[] = [];
+
+  for (const node of flow.nodes) {
+    nodePositions[node.id] = node.position;
+    if (node.type === "condition" || node.type === "output") {
+      extraNodes.push({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+        deletable: true
+      });
+    }
+  }
+
+  const extraEdges: AutomationCanvasEdge[] = flow.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.sourceHandle ?? undefined,
+    targetHandle: e.targetHandle ?? undefined,
+    type: "smoothstep",
+    animated: true,
+    markerEnd: { type: "arrowclosed" as const, width: 14, height: 14 }
+  }));
+
+  return { extraNodes, extraEdges, nodePositions };
 }
 
 // ─── Recent Executions ────────────────────────────────────────────────────────

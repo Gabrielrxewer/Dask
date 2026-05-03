@@ -365,7 +365,7 @@ export class WorkspacesService {
       throw new AppError('Workspace not found', 404);
     }
 
-    if (role === MembershipRole.VIEWER) {
+    if (role === MembershipRole.VIEWER || role === MembershipRole.CLIENT) {
       throw new AppError('Forbidden', 403);
     }
   }

@@ -20,8 +20,8 @@ export function WorkspaceModulesSection({
 }: WorkspaceModulesSectionProps) {
   return (
     <Section
-      title="MÃ³dulos do workspace"
-      subtitle="Controle quais mÃ³dulos estÃ£o habilitados no plano atual."
+      title="Módulos do workspace"
+      subtitle="Controle quais módulos estão habilitados no plano atual."
       className="ms-section"
     >
       {isSavingModuleEntitlements && (

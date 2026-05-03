@@ -38,6 +38,7 @@ export function useBillingPageModel() {
   const { snapshot, listCustomers } = useWorkspace();
   const workspaceId = snapshot?.id ?? "";
   const metrics = buildBoardMetrics(snapshot?.tasks ?? []);
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("conta");
   const [connectState, setConnectState] = useState<ConnectLoadState>("loading");
@@ -98,14 +99,28 @@ export function useBillingPageModel() {
 
   const checkoutResult = searchParams.get("checkout");
   const checkoutSessionId = searchParams.get("session_id");
+  const focusedOrderId = searchParams.get("orderId");
 
   useEffect(() => {
-    if (checkoutResult === "success" || checkoutResult === "cancel") {
+    if (checkoutResult === "success" || checkoutResult === "cancel" || focusedOrderId) {
       setActiveTab("historico");
     }
-  }, [checkoutResult]);
+  }, [checkoutResult, focusedOrderId]);
 
   useEffect(() => {
+    if (isClient) {
+      setActiveTab("historico");
+    }
+  }, [isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      setConnectState("missing");
+      setConnectStatus(null);
+      setConnectError(null);
+      return;
+    }
+
     if (!workspaceId) return;
     let mounted = true;
     setConnectState("loading");
@@ -131,10 +146,10 @@ export function useBillingPageModel() {
       });
 
     return () => { mounted = false; };
-  }, [workspaceId]);
+  }, [isClient, workspaceId]);
 
   useEffect(() => {
-    if (!workspaceId || checkoutResult !== "success" || !checkoutSessionId) {
+    if (!workspaceId || isClient || checkoutResult !== "success" || !checkoutSessionId) {
       return;
     }
 
@@ -160,9 +175,16 @@ export function useBillingPageModel() {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, checkoutResult, checkoutSessionId]);
+  }, [workspaceId, isClient, checkoutResult, checkoutSessionId]);
 
   useEffect(() => {
+    if (isClient) {
+      setCatalogItems([]);
+      setCatalogLoadState("loaded");
+      setCatalogError(null);
+      return;
+    }
+
     if (!workspaceId) return;
     let mounted = true;
     setCatalogLoadState("loading");
@@ -183,7 +205,7 @@ export function useBillingPageModel() {
       });
 
     return () => { mounted = false; };
-  }, [workspaceId]);
+  }, [isClient, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -210,6 +232,36 @@ export function useBillingPageModel() {
 
   useEffect(() => {
     if (!workspaceId) return;
+
+    let cancelled = false;
+    const intervalId = window.setInterval(() => {
+      void billingService
+        .listConnectPaymentOrders(workspaceId, 30)
+        .then((response) => {
+          if (cancelled) return;
+          setPaymentOrders(response.items);
+          setPaymentOrdersLoadState("loaded");
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPaymentOrdersError("Nao foi possivel atualizar o status das cobrancas em tempo real.");
+        });
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (isClient) {
+      setCustomers([]);
+      setCustomersLoadState("loaded");
+      return;
+    }
+
+    if (!workspaceId) return;
     let mounted = true;
     setCustomersLoadState("loading");
 
@@ -226,7 +278,7 @@ export function useBillingPageModel() {
       });
 
     return () => { mounted = false; };
-  }, [listCustomers, workspaceId]);
+  }, [isClient, listCustomers, workspaceId]);
 
   const amountInCents = useMemo(() => {
     return parseAmountInCents(amount);
@@ -289,7 +341,7 @@ export function useBillingPageModel() {
     catalogItemClientResponsibilities.trim().length >= 3 &&
     catalogItemAcceptanceCriteria.trim().length >= 3;
 
-  const canCreateCheckout = connectState === "ready" && connectStatus?.chargesEnabled === true;
+  const canCreateCheckout = !isClient && connectState === "ready" && connectStatus?.chargesEnabled === true;
   const onboardingChecklist = useMemo(() => buildOnboardingChecklist(connectStatus), [connectStatus]);
 
   const statusCards = useMemo<Array<{ key: string; label: string; value: string; tone: StatusTone }>>(
@@ -437,15 +489,15 @@ export function useBillingPageModel() {
     if (!workspaceId) return;
     if (chargeSource === "catalog" && !selectedCatalogItem) return;
     if (chargeSource === "manual" && (!amountInCents || !description.trim())) return;
-    if (!selectedCustomer) {
-      setCheckoutError("Selecione um cliente cadastrado para gerar a cobranca.");
+    const trimmedEmail = customerEmail.trim() || selectedCustomer?.email?.trim() || "";
+    if (!selectedCustomer && !trimmedEmail) {
+      setCheckoutError("Informe o e-mail do cliente ou selecione um cliente cadastrado para gerar a cobranca.");
       return;
     }
 
     setReviewStep("preparing");
     setCheckoutError(null);
     try {
-      const trimmedEmail = customerEmail.trim() || selectedCustomer?.email?.trim() || "";
       const shouldSendEmail = sendEmailToCustomer && trimmedEmail.length > 0;
 
       const response = await billingService.createConnectCheckoutSession(workspaceId, {
@@ -596,8 +648,9 @@ export function useBillingPageModel() {
   }
 
   async function handleCopyHistoryLink(order: ConnectPaymentOrder) {
-    if (!order.checkoutUrl) return;
-    const copied = await copyText(order.checkoutUrl);
+    const link = order.customerPortalUrl ?? order.checkoutUrl;
+    if (!link) return;
+    const copied = await copyText(link);
     if (!copied) {
       setHistoryNotice("Não foi possível copiar o link dessa cobrança.");
       return;
@@ -651,7 +704,7 @@ export function useBillingPageModel() {
 
   const canReviewCharge =
     canCreateCheckout &&
-    Boolean(selectedCustomer) &&
+    Boolean(selectedCustomer || customerEmail.trim()) &&
     (chargeSource === "catalog"
       ? Boolean(selectedCatalogItem)
       : Boolean(amountInCents && description.trim().length >= 3));
@@ -666,6 +719,19 @@ export function useBillingPageModel() {
     setHistoryPage((current) => Math.min(current, historyTotalPages));
   }, [historyTotalPages]);
 
+  useEffect(() => {
+    if (!focusedOrderId) {
+      return;
+    }
+
+    const index = paymentOrders.findIndex((order) => order.id === focusedOrderId);
+    if (index < 0) {
+      return;
+    }
+
+    setHistoryPage(Math.floor(index / HISTORY_PAGE_SIZE) + 1);
+  }, [focusedOrderId, paymentOrders]);
+
   const metricCards = [
     { label: "Conta Stripe", value: connectState === "ready" && connectStatus ? "Conectada" : "Pendente" },
     { label: "Cobranças", value: paymentOrders.length },
@@ -673,7 +739,7 @@ export function useBillingPageModel() {
     { label: "Pendências", value: pendingItems.length }
   ];
   const isBillingFrameLoading =
-    connectState === "loading" || catalogLoadState === "loading" || paymentOrdersLoadState === "loading";
+    (!isClient && (connectState === "loading" || catalogLoadState === "loading")) || paymentOrdersLoadState === "loading";
 
   const catalogFormProps = {
     catalogItemKind,
@@ -727,6 +793,7 @@ export function useBillingPageModel() {
 
   return {
     activeTab,
+    isClient,
     canCreateCheckout,
     catalogItemPendingDelete,
     checkoutResult,
@@ -802,10 +869,12 @@ export function useBillingPageModel() {
       onCancelReview: handleCancelReview
     },
     historyPanelProps: {
+      customerMode: isClient,
       paymentOrders,
       paginatedPaymentOrders,
       paymentOrdersLoadState,
       paymentOrdersError,
+      focusedOrderId,
       historyCopiedOrderId,
       historyActionOrderId,
       historyActionType,

@@ -89,6 +89,23 @@ export const patchWorkspaceDocumentDto = z
     message: 'At least one field is required'
   });
 
+export const sendWorkspaceDocumentDto = z
+  .object({
+    email: z.string().trim().email().max(320).optional(),
+    emails: z.array(z.string().trim().email().max(320)).min(1).max(20).optional()
+  })
+  .refine((payload) => Boolean(payload.email || payload.emails?.length), {
+    message: 'At least one recipient email is required'
+  });
+
+export const publicWorkspaceDocumentTokenParamsDto = z.object({
+  token: z.string().trim().min(32).max(512)
+});
+
+export const decidePublicWorkspaceDocumentDto = z.object({
+  decision: z.enum(['approve', 'accept', 'sign', 'reject'])
+});
+
 export const itemTypeParamsDto = z.object({
   workspaceId: z.string().uuid(),
   typeId: z.string().uuid()
@@ -97,6 +114,12 @@ export const itemTypeParamsDto = z.object({
 export const customerParamsDto = z.object({
   workspaceId: z.string().uuid(),
   customerId: z.string().uuid()
+});
+
+export const customerUserLinkParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  customerId: z.string().uuid(),
+  memberUserId: z.string().uuid()
 });
 
 export const customerListQueryDto = z.object({
@@ -369,7 +392,7 @@ const moduleKeyDto = z
 
 export const patchWorkspaceMemberAccessDto = z
   .object({
-    role: z.enum(['OWNER', 'ADMIN', 'MEMBER', 'VIEWER']).optional(),
+    role: z.enum(['OWNER', 'ADMIN', 'MEMBER', 'VIEWER', 'CLIENT']).optional(),
     permissions: z
       .object({
         allow: z.array(permissionStringDto).optional(),
@@ -420,5 +443,5 @@ export const workspaceInviteParamsDto = z.object({
 
 export const createWorkspaceInviteDto = z.object({
   email: z.string().email(),
-  role: z.enum(['ADMIN', 'MEMBER', 'VIEWER']).default('MEMBER')
+  role: z.enum(['ADMIN', 'MEMBER', 'VIEWER', 'CLIENT']).default('MEMBER')
 });

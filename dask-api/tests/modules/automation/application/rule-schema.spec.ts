@@ -113,6 +113,19 @@ describe('rule-schema', () => {
     expect(spec.actions[1]?.type).toBe('create_document');
   });
 
+  it('parses contract sent automation triggers', () => {
+    const spec = parseRuleSpec({
+      trigger: { type: 'contract.sent' },
+      actions: [{ type: 'set_work_item_state', stateSlug: 'contract_sent' }]
+    });
+
+    expect(spec.trigger.type).toBe('contract.sent');
+    expect(spec.actions[0]).toMatchObject({
+      type: 'set_work_item_state',
+      stateSlug: 'contract_sent'
+    });
+  });
+
   it('parses commercial document sync action', () => {
     const spec = parseRuleSpec({
       trigger: { type: 'item.updated' },

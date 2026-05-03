@@ -4,6 +4,7 @@ import { env } from '@/core/config/env';
 import { prisma } from '@/infra/db/prisma';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
+import { MockEmailService } from '@/infra/email/mock-email-service';
 import { ResendEmailService } from '@/infra/email/resend-email-service';
 import { AuthService } from '@/modules/identity/application/auth-service';
 import { OrganizationService } from '@/modules/identity/application/organization-service';
@@ -28,6 +29,7 @@ import { WorkspaceCustomersService } from '@/modules/workspace-platform/applicat
 import { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
 import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 import { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
+import { CustomerAccountLinker } from '@/modules/portal/application/customer-account-linker';
 import { BillingService } from '@/modules/billing/application/billing-service';
 import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
 import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
@@ -75,15 +77,27 @@ export function buildAppContainer(): AppContainer {
   const itemsRepository = new PrismaItemsRepository(prisma);
 
   const passwordService = new PasswordService(env.HASH_PEPPER);
-  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : undefined;
+  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : new MockEmailService();
   const workspaceInvitesService = new WorkspaceInvitesService(prisma, emailService);
-  const authService = new AuthService(identityRepository, passwordService, emailService, workspaceInvitesService);
+  const customerAccountLinker = new CustomerAccountLinker(prisma);
+  const authService = new AuthService(
+    identityRepository,
+    passwordService,
+    emailService,
+    workspaceInvitesService,
+    customerAccountLinker
+  );
   const organizationService = new OrganizationService(identityRepository, eventPublisher);
   const roleAuthorizationService = new RoleAuthorizationService(prisma);
   const workspacesService = new WorkspacesService(workspacesRepository, eventPublisher);
   const itemsService = new ItemsService(itemsRepository, eventPublisher, prisma);
   const workspaceConfigService = new WorkspaceConfigService(prisma);
-  const workspaceDocumentsService = new WorkspaceDocumentsService(prisma, workspaceConfigService, eventPublisher);
+  const workspaceDocumentsService = new WorkspaceDocumentsService(
+    prisma,
+    workspaceConfigService,
+    eventPublisher,
+    emailService
+  );
   const { aiProvider, embeddingProvider } = buildAIProviderStack();
   const workspaceWorkItemsService = new WorkspaceWorkItemsService(
     prisma,
@@ -121,6 +135,7 @@ export function buildAppContainer(): AppContainer {
         appPublicUrl: env.APP_PUBLIC_URL,
         webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
         emailService,
+        eventPublisher,
         priceIds: {
           PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
           BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''

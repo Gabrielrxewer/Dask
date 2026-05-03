@@ -23,7 +23,26 @@ export type TaskFieldType =
   | "status"
   | "tag"
   | "schedule"
-  | "work_item_type";
+  | "work_item_type"
+  | "billing_summary";
+
+export type BillingChargeSummaryStatus =
+  | "DRAFT"
+  | "CHECKOUT_OPEN"
+  | "CHECKOUT_COMPLETED"
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELED"
+  | "REFUNDED";
+
+export interface BillingChargeSummaryEntry {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  status: BillingChargeSummaryStatus;
+}
 
 export interface TaskFieldCapabilities {
   aiEnhance?: boolean;

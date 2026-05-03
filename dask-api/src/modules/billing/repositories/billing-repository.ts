@@ -16,7 +16,7 @@ export interface BillingUser {
 export interface WorkspaceMembership {
   workspaceId: string;
   userId: string;
-  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER' | 'CLIENT';
 }
 
 export interface WorkspaceBillingConnectInfo {
@@ -91,10 +91,13 @@ export type ConnectPaymentOrderStatus =
   | 'CHECKOUT_OPEN'
   | 'CHECKOUT_COMPLETED'
   | 'PENDING'
+  | 'OVERDUE'
   | 'PAID'
   | 'FAILED'
   | 'CANCELED'
-  | 'REFUNDED';
+  | 'REFUNDED'
+  | 'SUBSCRIPTION_ACTIVE'
+  | 'SUBSCRIPTION_CANCELED';
 
 export interface ConnectPaymentOrder {
   id: string;
@@ -156,6 +159,22 @@ export interface UpdateConnectPaymentOrderInput {
   refundedAt?: Date | null;
 }
 
+export interface SyncWorkItemBillingSnapshotInput {
+  workspaceId: string;
+  itemId: string;
+  billingOrderId: string;
+  billingStatus: string;
+  checkoutUrl?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface CreateBillingCustomerInput {
+  workspaceId: string;
+  name: string;
+  email: string;
+  createdByUserId?: string;
+}
+
 // Minimal subscription shape until `prisma generate` produces the full type
 export interface Subscription {
   id: string;
@@ -201,20 +220,29 @@ export interface UpdateSubscriptionInput {
 
 export interface BillingRepository {
   findUserById(userId: string): Promise<BillingUser | null>;
+  findUserByEmail(email: string): Promise<BillingUser | null>;
   findUserByStripeCustomerId(customerId: string): Promise<BillingUser | null>;
   findSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | null>;
   findActiveSubscriptionByUserId(userId: string): Promise<Subscription | null>;
   findLatestSubscriptionByUserId(userId: string): Promise<Subscription | null>;
   hasGuestWorkspaceMembership(userId: string): Promise<boolean>;
   findWorkspaceMembership(workspaceId: string, userId: string): Promise<WorkspaceMembership | null>;
+  findCustomerIdsForUser(workspaceId: string, userId: string): Promise<string[]>;
   findWorkspaceBillingConnectInfo(workspaceId: string): Promise<WorkspaceBillingConnectInfo | null>;
   findCustomerById(workspaceId: string, customerId: string): Promise<BillingCustomerSnapshot | null>;
+  findCustomerByEmail(workspaceId: string, email: string): Promise<BillingCustomerSnapshot | null>;
+  createCustomerForBilling(input: CreateBillingCustomerInput): Promise<BillingCustomerSnapshot>;
+  linkCustomerToUser(workspaceId: string, customerId: string, userId: string, createdBy?: string): Promise<void>;
   findConnectCatalogItemById(itemId: string): Promise<ConnectCatalogItem | null>;
   listConnectCatalogItemsByWorkspace(workspaceId: string, includeInactive?: boolean): Promise<ConnectCatalogItem[]>;
   findConnectPaymentOrderById(orderId: string): Promise<ConnectPaymentOrder | null>;
   findConnectPaymentOrderByCheckoutSessionId(sessionId: string): Promise<ConnectPaymentOrder | null>;
   findConnectPaymentOrderByPaymentIntentId(paymentIntentId: string): Promise<ConnectPaymentOrder | null>;
-  listConnectPaymentOrdersByWorkspace(workspaceId: string, limit: number): Promise<ConnectPaymentOrder[]>;
+  listConnectPaymentOrdersByWorkspace(
+    workspaceId: string,
+    limit: number,
+    customerIds?: string[]
+  ): Promise<ConnectPaymentOrder[]>;
 
   upsertStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void>;
   upsertWorkspaceConnectAccountId(workspaceId: string, stripeConnectAccountId: string): Promise<void>;
@@ -225,6 +253,7 @@ export interface BillingRepository {
   updateConnectCatalogItem(itemId: string, input: UpdateConnectCatalogItemInput): Promise<ConnectCatalogItem>;
   createConnectPaymentOrder(input: CreateConnectPaymentOrderInput): Promise<ConnectPaymentOrder>;
   updateConnectPaymentOrder(orderId: string, input: UpdateConnectPaymentOrderInput): Promise<ConnectPaymentOrder>;
+  syncWorkItemBillingSnapshot(input: SyncWorkItemBillingSnapshotInput): Promise<void>;
 
   /** Sync User billing fields from subscription state */
   syncUserBillingFields(userId: string, subscription: Subscription): Promise<void>;

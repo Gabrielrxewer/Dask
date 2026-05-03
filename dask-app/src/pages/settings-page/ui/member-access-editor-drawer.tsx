@@ -69,7 +69,7 @@ export function MemberAccessEditorDrawer({
     try {
       await onSave(member.userId, draft);
     } catch {
-      setError("NÃ£o foi possÃ­vel salvar as alteraÃ§Ãµes.");
+      setError("Não foi possível salvar as alterações.");
       setIsSaving(false);
     }
   };
@@ -79,7 +79,7 @@ export function MemberAccessEditorDrawer({
     { id: "groups", label: "Grupos" },
     { id: "allow", label: "Allow" },
     { id: "deny", label: "Deny" },
-    { id: "modules", label: "MÃ³dulos" },
+    { id: "modules", label: "Módulos" },
     { id: "summary", label: "Resumo" },
   ];
 
@@ -121,17 +121,17 @@ export function MemberAccessEditorDrawer({
     <DrawerShell
       title={member.name}
       titleId="member-editor-title"
-      subtitle={member.email || "Sem e-mail visÃ­vel"}
+      subtitle={member.email || "Sem e-mail visível"}
       leading={<UserAvatar alt={member.name} initials={getInitials(member.name)} size="md" />}
       onClose={onClose}
       shellClassName="ms-drawer"
       headerClassName="ms-drawer__header"
       titleWrapperClassName="ms-drawer__header-info"
       closeButtonClassName="ms-drawer__close"
-      closeButtonContent="Ã—"
+      closeButtonContent="×"
       afterHeader={isOwner ? (
         <div className="ms-drawer__owner-banner">
-          ProprietÃ¡rio do workspace â€” acesso total, nÃ£o editÃ¡vel.
+          Proprietário do workspace — acesso total, não editável.
         </div>
       ) : null}
       nav={drawerNav}
@@ -144,9 +144,9 @@ export function MemberAccessEditorDrawer({
     >
         {section === "role" && (
           <div className="ms-drawer__section">
-            <p className="ms-drawer__section-hint">Define o nÃ­vel base de acesso deste membro.</p>
+            <p className="ms-drawer__section-hint">Define o nível base de acesso deste membro.</p>
             <div className="ms-role-selector">
-              {(["OWNER", "ADMIN", "MEMBER", "VIEWER"] as WorkspaceRole[]).map(role => (
+              {(["OWNER", "ADMIN", "MEMBER", "VIEWER", "CLIENT"] as WorkspaceRole[]).map(role => (
                 <button
                   key={role}
                   type="button"
@@ -157,7 +157,7 @@ export function MemberAccessEditorDrawer({
                   <strong>{ROLE_LABELS[role]}</strong>
                   <span>
                     {role === "OWNER"
-                      ? "ProprietÃ¡rio do workspace"
+                      ? "Proprietário do workspace"
                       : ASSIGNABLE_ROLES.find(r => r.value === role)?.description}
                   </span>
                 </button>
@@ -165,7 +165,7 @@ export function MemberAccessEditorDrawer({
             </div>
             <div className="ms-perm-source">
               <p className="ms-perm-source__label">
-                PermissÃµes da role {ROLE_LABELS[draft.role]} ({rolePerms.length})
+                Permissões da role {ROLE_LABELS[draft.role]} ({rolePerms.length})
               </p>
               <div className="ms-chips ms-chips--sm">
                 {rolePerms.slice(0, 14).map(p => (
@@ -182,7 +182,7 @@ export function MemberAccessEditorDrawer({
         {section === "groups" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">
-              Grupos aplicam permissÃµes coletivas a este membro.
+              Grupos aplicam permissões coletivas a este membro.
             </p>
             <GroupPicker
               groups={groups}
@@ -193,7 +193,7 @@ export function MemberAccessEditorDrawer({
             {groupPerms.allow.length > 0 && (
               <div className="ms-perm-source">
                 <p className="ms-perm-source__label">
-                  PermissÃµes adicionadas pelos grupos ({groupPerms.allow.length})
+                  Permissões adicionadas pelos grupos ({groupPerms.allow.length})
                 </p>
                 <div className="ms-chips ms-chips--sm">
                   {groupPerms.allow.map(p => (
@@ -205,7 +205,7 @@ export function MemberAccessEditorDrawer({
             {groupPerms.deny.length > 0 && (
               <div className="ms-perm-source ms-perm-source--deny">
                 <p className="ms-perm-source__label">
-                  RestriÃ§Ãµes dos grupos ({groupPerms.deny.length})
+                  Restrições dos grupos ({groupPerms.deny.length})
                 </p>
                 <div className="ms-chips ms-chips--sm">
                   {groupPerms.deny.map(p => (
@@ -220,7 +220,7 @@ export function MemberAccessEditorDrawer({
         {section === "allow" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">
-              PermissÃµes extras concedidas individualmente, alÃ©m da role e grupos.
+              Permissões extras concedidas individualmente, além da role e grupos.
             </p>
             <PermissionPicker
               catalog={catalog}
@@ -234,7 +234,7 @@ export function MemberAccessEditorDrawer({
         {section === "deny" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">
-              PermissÃµes bloqueadas individualmente, mesmo que venham da role ou de grupos.
+              Permissões bloqueadas individualmente, mesmo que venham da role ou de grupos.
             </p>
             <PermissionPicker
               catalog={catalog}
@@ -248,16 +248,16 @@ export function MemberAccessEditorDrawer({
         {section === "modules" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">
-              MÃ³dulos do workspace acessÃ­veis a este membro.
+              Módulos do workspace acessíveis a este membro.
             </p>
-            <FormField label="MÃ³dulos habilitados">
+            <FormField label="Módulos habilitados">
               <ModulePicker
                 selected={draft.allowedModules}
                 onChange={keys => setDraft(d => ({ ...d, allowedModules: keys }))}
                 disabled={isOwner || isSaving}
               />
             </FormField>
-            <FormField label="Views do board permitidas (separadas por vÃ­rgula)">
+            <FormField label="Views do board permitidas (separadas por vírgula)">
               <TextInput
                 value={draft.boardViewKeys}
                 placeholder="kanban, list, agenda..."
@@ -272,7 +272,7 @@ export function MemberAccessEditorDrawer({
                 onChange={e => setDraft(d => ({ ...d, ownCardsOnly: e.target.checked }))}
                 disabled={isOwner || isSaving}
               />
-              <span>Mostrar somente cards do prÃ³prio membro</span>
+              <span>Mostrar somente cards do próprio membro</span>
             </label>
           </div>
         )}
@@ -283,7 +283,7 @@ export function MemberAccessEditorDrawer({
               <div className="ms-perm-breakdown__layer">
                 <div className="ms-perm-breakdown__layer-header">
                   <span className="ms-perm-breakdown__layer-icon ms-perm-breakdown__layer-icon--role" />
-                  <strong>Role base â€” {ROLE_LABELS[draft.role]}</strong>
+                  <strong>Role base — {ROLE_LABELS[draft.role]}</strong>
                   <span className="ms-badge">{rolePerms.length}</span>
                 </div>
                 <div className="ms-chips ms-chips--sm">
@@ -305,7 +305,7 @@ export function MemberAccessEditorDrawer({
                       <span className="ms-badge ms-badge--green">+{groupPerms.allow.length}</span>
                     )}
                     {groupPerms.deny.length > 0 && (
-                      <span className="ms-badge ms-badge--red">âˆ’{groupPerms.deny.length}</span>
+                      <span className="ms-badge ms-badge--red">−{groupPerms.deny.length}</span>
                     )}
                   </div>
                   <div className="ms-chips ms-chips--sm">
@@ -328,7 +328,7 @@ export function MemberAccessEditorDrawer({
                       <span className="ms-badge ms-badge--green">+{draft.allowOverrides.length}</span>
                     )}
                     {draft.denyOverrides.length > 0 && (
-                      <span className="ms-badge ms-badge--red">âˆ’{draft.denyOverrides.length}</span>
+                      <span className="ms-badge ms-badge--red">−{draft.denyOverrides.length}</span>
                     )}
                   </div>
                   <div className="ms-chips ms-chips--sm">
@@ -345,7 +345,7 @@ export function MemberAccessEditorDrawer({
               <div className="ms-perm-breakdown__effective">
                 <div className="ms-perm-breakdown__layer-header">
                   <strong>Acesso efetivo</strong>
-                  <span className="ms-badge ms-badge--blue">{effective.length} permissÃµes</span>
+                  <span className="ms-badge ms-badge--blue">{effective.length} permissões</span>
                 </div>
                 <div className="ms-chips ms-chips--sm">
                   {effective.slice(0, 24).map(p => (

@@ -1457,17 +1457,13 @@ body.shared-modal-open .global-footer {
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer {
-  background:
-    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--primary) 18%, transparent) 0%, transparent 18%),
-    radial-gradient(circle at 84% 0%, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 24%),
-    linear-gradient(135deg, var(--primary) 0%, var(--primary) 100%);
+  background: var(--primary);
   border-color: color-mix(in srgb, var(--primary) 52%, transparent);
-  box-shadow:
-    var(--global-chrome-shadow-bottom),
-    0 1px 0 color-mix(in srgb, var(--info-border) 10%, transparent) inset;
+  box-shadow: 0 -8px 18px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
-.global-layout:not([data-theme="dark"]) .global-footer::before {
+.global-layout:not([data-theme="dark"]) .global-footer::before,
+.global-layout:not([data-theme="dark"]) .global-footer::after {
   opacity: 0;
 }
 
@@ -1481,11 +1477,9 @@ body.shared-modal-open .global-footer {
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__wordmark {
-  color: var(--surface-tint);
-  -webkit-text-stroke: 1.35px var(--primary);
-  text-shadow:
-    0 2px 8px color-mix(in srgb, var(--primary) 24%, transparent),
-    0 0 16px color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--neutral-white);
+  -webkit-text-stroke: 0;
+  text-shadow: none;
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__links {
@@ -1505,15 +1499,15 @@ body.shared-modal-open .global-footer {
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__links a {
-  color: var(--text-secondary);
+  color: color-mix(in srgb, var(--neutral-white) 74%, transparent);
   border-bottom-color: transparent;
-  text-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 22%, transparent);
+  text-shadow: none;
 }
 
 .global-layout:not([data-theme="dark"]) .global-footer__links a:hover,
 .global-layout:not([data-theme="dark"]) .global-footer__links a:focus-visible {
-  color: var(--surface-tint);
-  border-bottom-color: color-mix(in srgb, var(--info-border) 46%, transparent);
+  color: var(--neutral-white);
+  border-bottom-color: color-mix(in srgb, var(--neutral-white) 66%, transparent);
 }
 
 .app-theme[data-theme="dark"] {
@@ -1673,10 +1667,14 @@ body.shared-modal-open .global-footer {
 }
 
 .app-theme[data-theme="dark"] .global-footer {
-  box-shadow:
-    var(--global-chrome-shadow-bottom),
-    0 1px 0 color-mix(in srgb, var(--info-border) 6%, transparent) inset,
-    0 -1px 0 color-mix(in srgb, var(--primary) 44%, transparent);
+  background: #08111b;
+  border-color: rgba(58, 85, 112, 0.36);
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.app-theme[data-theme="dark"] .global-footer::before,
+.app-theme[data-theme="dark"] .global-footer::after {
+  opacity: 0;
 }
 
 .app-theme[data-theme="dark"] .global-footer__inner {
@@ -1689,11 +1687,9 @@ body.shared-modal-open .global-footer {
 }
 
 .app-theme[data-theme="dark"] .global-footer__wordmark {
-  color: var(--surface-tint);
-  -webkit-text-stroke: 1.35px var(--primary);
-  text-shadow:
-    0 2px 10px color-mix(in srgb, var(--neutral-black) 22%, transparent),
-    0 0 18px color-mix(in srgb, var(--primary) 18%, transparent);
+  color: #edf4fb;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .global-footer__links {
@@ -1713,15 +1709,15 @@ body.shared-modal-open .global-footer {
 }
 
 .app-theme[data-theme="dark"] .global-footer__links a {
-  color: var(--text-primary);
+  color: rgba(210, 223, 236, 0.78);
   border-bottom-color: transparent;
-  text-shadow: 0 1px 0 color-mix(in srgb, var(--neutral-black) 18%, transparent);
+  text-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .global-footer__links a:hover,
 .app-theme[data-theme="dark"] .global-footer__links a:focus-visible {
-  color: var(--text-primary);
-  border-bottom-color: color-mix(in srgb, var(--primary) 54%, transparent);
+  color: #edf4fb;
+  border-bottom-color: rgba(237, 244, 251, 0.58);
 }
 
 .app-theme[data-theme="dark"] .global-layout__surface::before {

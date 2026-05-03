@@ -1269,6 +1269,63 @@
   font-weight: 700;
 }
 
+/* ── Billing summary field preview ─────────────────────────────────────── */
+.wie__detail-preview-billing {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.wie__billing-charge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--neutral-white);
+}
+
+.wie__billing-charge-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wie__billing-charge-amount {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-strong);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wie__billing-charge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wie__billing-charge-status--paid {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.wie__billing-charge-status--pending {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
 /* Drop indicator line */
 .wie__drop-line {
   height: 3px;

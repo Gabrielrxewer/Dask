@@ -877,6 +877,86 @@
   background: var(--warning);
 }
 
+/* ─── Advanced flow banner ────────────────────────────────────────────────── */
+
+.flow-canvas__advanced-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 20px;
+  background: color-mix(in oklab, var(--warning) 10%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--warning) 28%, transparent);
+  color: color-mix(in oklab, var(--warning) 85%, var(--text-strong));
+  font-size: var(--font-size-xs, 0.8rem);
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+
+.flow-canvas__advanced-banner--error {
+  background: color-mix(in oklab, var(--danger) 8%, transparent);
+  border-bottom-color: color-mix(in oklab, var(--danger) 22%, transparent);
+  color: var(--danger);
+}
+
+.flow-canvas__advanced-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.flow-canvas__advanced-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.flow-canvas__advanced-banner-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ─── Config panel warning note ───────────────────────────────────────────── */
+
+.config-panel__warning-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 9px 11px;
+  background: color-mix(in oklab, var(--warning) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--warning) 22%, transparent);
+  border-radius: var(--radius-xs, 8px);
+  color: color-mix(in oklab, var(--warning) 80%, var(--text-strong));
+  font-size: var(--font-size-2xs, 0.72rem);
+  line-height: 1.45;
+}
+
+.config-panel__warning-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ─── Config panel remove button ──────────────────────────────────────────── */
+
+.config-panel__remove-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid color-mix(in oklab, var(--danger) 35%, transparent);
+  border-radius: var(--radius-xs, 8px);
+  color: var(--danger);
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 7px 12px;
+  transition: background 0.12s, border-color 0.12s;
+  letter-spacing: -0.01em;
+}
+
+.config-panel__remove-btn:hover {
+  background: color-mix(in oklab, var(--danger) 8%, transparent);
+  border-color: var(--danger);
+}
+
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {

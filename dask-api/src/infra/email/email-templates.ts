@@ -116,11 +116,11 @@ export function checkoutLinkTemplate(input: {
         <td style="padding:10px 16px;font-size:15px;color:#18181b;font-weight:700;">${input.amount}</td>
       </tr>
     </table>
-    <p class="text">Clique no botão abaixo para realizar o pagamento com segurança via Stripe.</p>
+    <p class="text">Clique no botão abaixo para abrir seu portal do cliente e realizar o pagamento com segurança.</p>
     <div class="btn-wrap">
-      <a href="${input.checkoutUrl}" class="btn">Pagar agora</a>
+      <a href="${input.checkoutUrl}" class="btn">Abrir portal e pagar</a>
     </div>
-    <p class="text" style="font-size:13px;color:#71717a;">O link de pagamento é de uso único e expira em 24 horas.</p>
+    <p class="text" style="font-size:13px;color:#71717a;">Use o mesmo e-mail desta mensagem ao entrar ou criar conta no Dask.</p>
     <hr class="divider" />
     <p class="fallback">Se o botão não funcionar, copie e cole este link no navegador:<br /><a href="${input.checkoutUrl}">${input.checkoutUrl}</a></p>`
   );
@@ -129,8 +129,8 @@ export function checkoutLinkTemplate(input: {
     `Você recebeu uma cobrança de ${input.workspaceName}.\n\n` +
     `Descrição: ${input.description}\n` +
     `Valor: ${input.amount}\n\n` +
-    `Acesse o link abaixo para pagar:\n${input.checkoutUrl}\n\n` +
-    `O link expira em 24 horas.`;
+    `Acesse o link abaixo para abrir seu portal do cliente e pagar:\n${input.checkoutUrl}\n\n` +
+    `Use o mesmo e-mail desta mensagem ao entrar ou criar conta no Dask.`;
 
   return { html, text };
 }
@@ -155,9 +155,9 @@ export function paymentReminderTemplate(input: {
         <td style="padding:10px 16px;font-size:15px;color:#18181b;font-weight:700;">${input.amount}</td>
       </tr>
     </table>
-    <p class="text">Seu link de pagamento ainda está ativo. Clique abaixo para finalizar com segurança via Stripe.</p>
+    <p class="text">Seu link de pagamento ainda está ativo. Clique abaixo para abrir o portal do cliente e finalizar com segurança.</p>
     <div class="btn-wrap">
-      <a href="${input.checkoutUrl}" class="btn">Finalizar pagamento</a>
+      <a href="${input.checkoutUrl}" class="btn">Abrir portal e pagar</a>
     </div>
     <hr class="divider" />
     <p class="fallback">Se o botão não funcionar, copie e cole este link no navegador:<br /><a href="${input.checkoutUrl}">${input.checkoutUrl}</a></p>`
@@ -168,7 +168,7 @@ export function paymentReminderTemplate(input: {
     `Você tem um pagamento pendente:\n` +
     `Descrição: ${input.description}\n` +
     `Valor: ${input.amount}\n\n` +
-    `Acesse o link abaixo para finalizar o pagamento:\n${input.checkoutUrl}`;
+    `Acesse o link abaixo para abrir o portal e finalizar o pagamento:\n${input.checkoutUrl}`;
 
   return { html, text };
 }
@@ -177,7 +177,7 @@ export function workspaceInviteTemplate(input: {
   workspaceName: string;
   inviterName: string;
   inviteUrl: string;
-  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER' | 'CLIENT';
 }): { html: string; text: string } {
   const inviterFirstName = input.inviterName.split(' ')[0];
 
@@ -198,6 +198,34 @@ export function workspaceInviteTemplate(input: {
     `${inviterFirstName} convidou você para entrar no workspace ${input.workspaceName} com role inicial ${input.role}.\n\n` +
     `Abra este link para aceitar:\n${input.inviteUrl}\n\n` +
     `Ao entrar ou criar conta com este e-mail convidado, o acesso ao workspace será liberado automaticamente.`;
+
+  return { html, text };
+}
+
+export function commercialDocumentTemplate(input: {
+  workspaceName: string;
+  documentTitle: string;
+  documentType: 'proposal' | 'contract';
+  publicUrl: string;
+}): { html: string; text: string } {
+  const documentLabel = input.documentType === 'proposal' ? 'proposta comercial' : 'contrato';
+
+  const html = baseLayout(
+    `${input.documentTitle} - Dask`,
+    `<p class="greeting">Voce recebeu ${documentLabel === 'contrato' ? 'um' : 'uma'} ${documentLabel}.</p>
+    <p class="text"><strong>${input.workspaceName}</strong> enviou o documento <strong>${input.documentTitle}</strong> para sua analise.</p>
+    <div class="btn-wrap">
+      <a href="${input.publicUrl}" class="btn">Abrir documento</a>
+    </div>
+    <p class="text">Use o link abaixo para acessar o documento com seguranca.</p>
+    <hr class="divider" />
+    <p class="fallback">Se o botao nao funcionar, copie e cole este link no navegador:<br /><a href="${input.publicUrl}">${input.publicUrl}</a></p>`
+  );
+
+  const text =
+    `Voce recebeu ${documentLabel === 'contrato' ? 'um' : 'uma'} ${documentLabel} de ${input.workspaceName}.\n\n` +
+    `Documento: ${input.documentTitle}\n\n` +
+    `Acesse o link abaixo para visualizar:\n${input.publicUrl}`;
 
   return { html, text };
 }

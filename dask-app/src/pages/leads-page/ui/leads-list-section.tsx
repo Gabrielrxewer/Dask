@@ -16,9 +16,21 @@ interface LeadTableRow {
   customer: Customer | undefined;
   proposal: WorkspaceDocument | undefined;
   contract: WorkspaceDocument | undefined;
+  billingStatus: string;
   stageColor: string | undefined;
   leadSubtitle: string;
 }
+
+const BILLING_STATUS_LABELS: Record<string, string> = {
+  pending: "Gerada",
+  paid: "Paga",
+  overdue: "Em atraso",
+  canceled: "Cancelada",
+  failed: "Falhou",
+  refunded: "Estornada",
+  subscription_active: "Assinatura ativa",
+  subscription_canceled: "Assinatura cancelada"
+};
 
 export function LeadsListSection({
   filteredTasks,
@@ -33,6 +45,7 @@ export function LeadsListSection({
   onOpenCustomerDetails,
   onOpenCustomerFromLead,
   onOpenLinkCustomer,
+  onCreateCharge,
   onOpenDocs,
   onOpenBoard
 }: {
@@ -48,6 +61,7 @@ export function LeadsListSection({
   onOpenCustomerDetails: (customerId: string) => void;
   onOpenCustomerFromLead: (task: Task) => void;
   onOpenLinkCustomer: (task: Task) => void;
+  onCreateCharge: (task: Task) => void;
   onOpenDocs: () => void;
   onOpenBoard: () => void;
 }) {
@@ -58,6 +72,7 @@ export function LeadsListSection({
         customer: customersById.get(getTextField(task, "customerId")),
         proposal: documentsById.get(getTextField(task, "proposalId")),
         contract: documentsById.get(getTextField(task, "contractId")),
+        billingStatus: getTextField(task, "billingStatus"),
         stageColor: boardStatuses.find((status) => status.id === task.status)?.dot,
         leadSubtitle: resolveCatalogLabel(getTextField(task, "interest")) || task.text || "Sem escopo informado"
       })),
@@ -220,6 +235,20 @@ export function LeadsListSection({
                 {contract ? "Gerado" : "-"}
               </StatusBadge>
             )
+          },
+          {
+            id: "billing",
+            header: "Cobrança",
+            width: "minmax(130px, .7fr)",
+            render: ({ billingStatus }) => (
+              <StatusBadge
+                size="sm"
+                tone={billingStatus === "paid" || billingStatus === "subscription_active" ? "success" : billingStatus ? "default" : "muted"}
+                className="leads-page__badge"
+              >
+                {billingStatus ? BILLING_STATUS_LABELS[billingStatus] ?? billingStatus : "Sem cobrança"}
+              </StatusBadge>
+            )
           }
         ]}
         actions={{
@@ -244,6 +273,9 @@ export function LeadsListSection({
                   Docs
                 </Button>
               ) : null}
+              <Button size="sm" variant="outline" onClick={() => onCreateCharge(task)}>
+                Cobrar
+              </Button>
               <Button size="sm" className="leads-page__board-button" onClick={onOpenBoard}>
                 Board
               </Button>

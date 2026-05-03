@@ -31,6 +31,7 @@ export interface FiscalDocumentsQuery {
   status?: FiscalDocumentStatus;
   origin?: string;
   customerId?: string;
+  customerIds?: string[];
   from?: Date;
   to?: Date;
   search?: string;
@@ -63,7 +64,8 @@ export interface FiscalRepository {
   ): Promise<Array<FiscalDocument & { items: FiscalDocumentItem[]; parties: FiscalParty[] }>>;
   getDocumentById(
     workspaceId: string,
-    documentId: string
+    documentId: string,
+    customerIds?: string[]
   ): Promise<(FiscalDocument & { items: FiscalDocumentItem[]; parties: FiscalParty[] }) | null>;
   findDocumentByReference(
     workspaceId: string,

@@ -139,7 +139,27 @@ export class FiscalService {
     this.focusWebhookSecret = deps.focusWebhookSecret ?? null;
   }
 
-  public async getDashboard(workspaceId: string) {
+  public async getDashboard(workspaceId: string, customerIds?: string[]) {
+    if (customerIds) {
+      const documents = await this.repo.listDocuments({ workspaceId, customerIds, limit: 500 });
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      return {
+        counters: {
+          issuedToday: documents.filter((document) => document.createdAt >= startOfToday && document.createdAt <= endOfToday).length,
+          pending: documents.filter((document) => document.status === 'DRAFT' || document.status === 'PENDING_REVIEW').length,
+          rejected: documents.filter((document) => document.status === 'REJECTED').length,
+          received: 0,
+          pendingReview: 0
+        },
+        latestSyncAt: null,
+        recentSyncRuns: []
+      };
+    }
+
     const [metrics, recentSyncRuns] = await Promise.all([
       this.repo.getDashboardMetrics(workspaceId),
       this.repo.listLatestSyncRuns(workspaceId, 10)
@@ -172,6 +192,7 @@ export class FiscalService {
     status?: string;
     origin?: string;
     customerId?: string;
+    customerIds?: string[];
     from?: Date;
     to?: Date;
     search?: string;
@@ -185,6 +206,7 @@ export class FiscalService {
       status: input.status as unknown as Parameters<FiscalRepository['listDocuments']>[0]['status'],
       origin: input.origin,
       customerId: input.customerId,
+      customerIds: input.customerIds,
       from: input.from,
       to: input.to,
       search: input.search,
@@ -192,8 +214,12 @@ export class FiscalService {
     });
   }
 
-  public async getDocumentDetails(workspaceId: string, documentId: string): Promise<FiscalDocumentDetails> {
-    const document = await this.repo.getDocumentById(workspaceId, documentId);
+  public async getDocumentDetails(
+    workspaceId: string,
+    documentId: string,
+    customerIds?: string[]
+  ): Promise<FiscalDocumentDetails> {
+    const document = await this.repo.getDocumentById(workspaceId, documentId, customerIds);
     if (!document) {
       throw new AppError('Fiscal document not found', 404);
     }
@@ -388,7 +414,12 @@ export class FiscalService {
     to?: Date;
     search?: string;
     limit?: number;
+    customerIds?: string[];
   }) {
+    if (input.customerIds) {
+      return [];
+    }
+
     return this.repo.listReceivedDocuments({
       workspaceId: input.workspaceId,
       workspaceBusinessId: input.workspaceBusinessId,
@@ -401,7 +432,11 @@ export class FiscalService {
     });
   }
 
-  public async listEmissionDrafts(workspaceId: string, limit?: number) {
+  public async listEmissionDrafts(workspaceId: string, limit?: number, customerIds?: string[]) {
+    if (customerIds) {
+      return [];
+    }
+
     return this.repo.listEmissionDrafts(workspaceId, limit ?? 100);
   }
 

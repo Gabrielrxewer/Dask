@@ -7,6 +7,7 @@ interface BillingNavigationProps {
   catalogCount: number;
   paymentOrderCount: number;
   canCreateCheckout: boolean;
+  customerMode?: boolean;
   onTabChange: (tab: ActiveTab) => void;
 }
 
@@ -15,15 +16,16 @@ function buildBillingTabs({
   catalogCount,
   paymentOrderCount,
   canCreateCheckout,
+  customerMode,
   badgeClassName,
   countClassName,
   lockedClassName
-}: Pick<BillingNavigationProps, "pendingCount" | "catalogCount" | "paymentOrderCount" | "canCreateCheckout"> & {
+}: Pick<BillingNavigationProps, "pendingCount" | "catalogCount" | "paymentOrderCount" | "canCreateCheckout" | "customerMode"> & {
   badgeClassName: string;
   countClassName: string;
   lockedClassName?: string;
 }): Array<TabsItem<ActiveTab>> {
-  return [
+  const items: Array<TabsItem<ActiveTab>> = [
     {
       id: "conta",
       label: "Conta",
@@ -44,11 +46,13 @@ function buildBillingTabs({
     },
     {
       id: "historico",
-      label: "Hist\u00f3rico",
+      label: customerMode ? "Portal do cliente" : "Hist\u00f3rico",
       badge: paymentOrderCount > 0 ? <StatusBadge count={paymentOrderCount} size="sm" tone="muted" className={countClassName} /> : undefined,
       badgeClassName: countClassName
     }
   ];
+
+  return customerMode ? items.filter((item) => item.id === "historico") : items;
 }
 
 export function BillingTopNavigation({
@@ -57,6 +61,7 @@ export function BillingTopNavigation({
   catalogCount,
   paymentOrderCount,
   canCreateCheckout,
+  customerMode,
   onTabChange
 }: BillingNavigationProps) {
   return (
@@ -67,6 +72,7 @@ export function BillingTopNavigation({
         catalogCount,
         paymentOrderCount,
         canCreateCheckout,
+        customerMode,
         badgeClassName: "billing-top-nav__badge",
         countClassName: "billing-top-nav__count",
         lockedClassName: "billing-top-nav__tab--locked"
@@ -86,6 +92,7 @@ export function BillingStatusTabs({
   catalogCount,
   paymentOrderCount,
   canCreateCheckout,
+  customerMode,
   onTabChange
 }: BillingNavigationProps) {
   return (
@@ -96,6 +103,7 @@ export function BillingStatusTabs({
         catalogCount,
         paymentOrderCount,
         canCreateCheckout,
+        customerMode,
         badgeClassName: "billing-view__tab-badge",
         countClassName: "billing-view__tab-count"
       })}

@@ -9,12 +9,12 @@ interface PermissionsMatrixSectionProps {
 export function PermissionsMatrixSection({ accessControl }: PermissionsMatrixSectionProps) {
   return (
     <Section
-      title="Matriz de permissÃµes"
-      subtitle="CatÃ¡logo completo de permissÃµes por role."
+      title="Matriz de permissões"
+      subtitle="Catálogo completo de permissões por role."
       className="ms-section"
     >
       {!accessControl ? (
-        <p className="ms-hint">Matriz indisponÃ­vel no momento.</p>
+        <p className="ms-hint">Matriz indisponível no momento.</p>
       ) : (
         <PermissionsMatrix accessControl={accessControl} />
       )}

@@ -11,6 +11,7 @@ const automationTriggerEvents = [
   DomainEventNames.ProposalSent,
   DomainEventNames.ProposalApproved,
   DomainEventNames.ContractCreated,
+  DomainEventNames.ContractSent,
   DomainEventNames.ContractAccepted,
   DomainEventNames.BillingRequested,
   DomainEventNames.BillingPaymentConfirmed

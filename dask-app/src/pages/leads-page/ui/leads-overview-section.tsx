@@ -51,13 +51,13 @@ export function LeadsOverviewSection({
         <MetricCard
           label="Receita ganha"
           value={formatMoneyCompact(pipelineMetrics.wonValue)}
-          subtitle={`Ticket mÃ©dio ${formatMoneyCompact(pipelineMetrics.avgDealSize)}`}
+          subtitle={`Ticket médio ${formatMoneyCompact(pipelineMetrics.avgDealSize)}`}
           accent="green"
           icon={<IconCheck />}
           className="leads-kpi-card"
         />
         <MetricCard
-          label="Taxa de conversÃ£o"
+          label="Taxa de conversão"
           value={`${pipelineMetrics.conversionRate}%`}
           subtitle={`${pipelineMetrics.linkedCount} de ${pipelineMetrics.totalLeads} leads vinculados`}
           accent="purple"
@@ -65,7 +65,7 @@ export function LeadsOverviewSection({
           className="leads-kpi-card"
         />
         <MetricCard
-          label="AprovaÃ§Ã£o de propostas"
+          label="Aprovação de propostas"
           value={`${pipelineMetrics.proposalWinRate}%`}
           subtitle={`${pipelineMetrics.approvedProposals} aprovadas de ${pipelineMetrics.proposals}`}
           accent="amber"
@@ -77,7 +77,7 @@ export function LeadsOverviewSection({
       <section className="leads-funnel-section">
         <header className="leads-section-header">
           <span className="leads-page__eyebrow">Funil de vendas</span>
-          <span className="leads-section-header__sub">ProgressÃ£o por perspectiva</span>
+          <span className="leads-section-header__sub">Progressão por perspectiva</span>
         </header>
         <div className="leads-funnel">
           {funnelData.map((stage, i) => (
@@ -87,7 +87,7 @@ export function LeadsOverviewSection({
                   <span className="leads-funnel__connector-rate" style={{ color: stage.conversionFromPrev >= 50 ? "var(--success)" : stage.conversionFromPrev >= 25 ? "var(--warning)" : "var(--danger)" }}>
                     {stage.conversionFromPrev}%
                   </span>
-                  <span className="leads-funnel__connector-label">conversÃ£o</span>
+                  <span className="leads-funnel__connector-label">conversão</span>
                 </div>
               ) : null}
               <div className="leads-funnel__stage">
@@ -115,7 +115,7 @@ export function LeadsOverviewSection({
       <div className="leads-analytics-grid">
         <section className="leads-chart-card">
           <header className="leads-section-header">
-            <span className="leads-page__eyebrow">DistribuiÃ§Ã£o por status</span>
+            <span className="leads-page__eyebrow">Distribuição por status</span>
           </header>
           {statusDistribution.length === 0 ? (
             <p className="leads-chart-card__empty">Nenhum lead registrado.</p>
@@ -174,14 +174,14 @@ export function LeadsOverviewSection({
       {pendingItems.length > 0 && (
         <section className="leads-pending-section">
           <header className="leads-section-header">
-            <span className="leads-page__eyebrow">AÃ§Ãµes pendentes</span>
+            <span className="leads-page__eyebrow">Ações pendentes</span>
             <span className="leads-pending-badge">{pendingItems.length}</span>
           </header>
           <div className="leads-pending-grid">
             {pendingItems.map((item) => (
               <div key={item.id} className={`leads-pending-item leads-pending-item--${item.urgency}`}>
                 <span className="leads-pending-urgency" aria-hidden="true">
-                  {item.urgency === "high" ? "â—" : item.urgency === "medium" ? "â—" : "â—‹"}
+                  {item.urgency === "high" ? "●" : item.urgency === "medium" ? "◐" : "○"}
                 </span>
                 <div className="leads-pending-content">
                   <strong>{item.label}</strong>

@@ -6,7 +6,9 @@ export const routePaths = {
   termsOfUse: "/termos-de-uso",
   privacyPolicy: "/politica-de-privacidade",
   choosePlan: "/choose-plan",
+  commercialDocumentPublic: "/documents/public/:token",
   proposalPublic: "/proposals/public/:token",
+  billingPublic: "/portal/billing",
   billingSuccess: "/billing/success",
   billingCancel: "/billing/cancel",
   subscriptionBlocked: "/subscription-blocked",
@@ -53,6 +55,10 @@ export function buildWorkspaceSelectorPath(): string {
 
 export function buildProposalPublicPath(token: string): string {
   return `/proposals/public/${encodeURIComponent(token)}`;
+}
+
+export function buildCommercialDocumentPublicPath(token: string): string {
+  return `/documents/public/${encodeURIComponent(token)}`;
 }
 
 export function buildWorkspaceListPath(workspaceSlug: string): string {

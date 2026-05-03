@@ -18,6 +18,8 @@
   max-width: 100%;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
+  background: var(--surface-overlay-strong);
+  color: var(--text);
 }
 
 .shared-form-modal {

@@ -11,6 +11,7 @@ import {
   AutomationsPage,
   AgendaPage,
   BillingPage,
+  BillingPublicPage,
   BillingCancelPage,
   BillingSuccessPage,
   BoardPage,
@@ -103,17 +104,18 @@ function ModuleRoute({
   module,
   children
 }: {
-  module: "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+  module: "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
   children: JSX.Element;
 }) {
   const { snapshot } = useWorkspace();
   const location = useLocation();
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"]
+    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
   );
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
   const isCorporateWorkspace = snapshot?.workspace?.kind === "CORPORATE";
-  const needsCompanyProfile = isCorporateWorkspace && !hasRequiredCompanyProfile(snapshot?.preferences.settings);
+  const needsCompanyProfile = !isClient && isCorporateWorkspace && !hasRequiredCompanyProfile(snapshot?.preferences.settings);
   const isSettingsRoute = workspaceSlug.length > 0 && location.pathname.startsWith(buildWorkspaceSettingsPath(workspaceSlug));
 
   if (!allowedModules.has(module)) {
@@ -122,6 +124,18 @@ function ModuleRoute({
 
   if (needsCompanyProfile && module !== "settings" && !isSettingsRoute) {
     return <CompanyProfileRequired settingsPath={buildWorkspaceSettingsPath(workspaceSlug)} />;
+  }
+
+  return children;
+}
+
+function NonClientRoute({ children }: { children: JSX.Element }) {
+  const { snapshot } = useWorkspace();
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
+
+  if (isClient) {
+    return <Navigate replace to={buildWorkspaceBoardPath(workspaceSlug)} />;
   }
 
   return children;
@@ -207,7 +221,9 @@ export function AppRoutes() {
         */}
         <Route path={routePaths.resetPassword} element={<ResetPasswordPage />} />
         <Route path={routePaths.verifyEmail} element={<VerifyEmailPage />} />
+        <Route path={routePaths.commercialDocumentPublic} element={<ProposalPublicPage />} />
         <Route path={routePaths.proposalPublic} element={<ProposalPublicPage />} />
+        <Route path={routePaths.billingPublic} element={<BillingPublicPage />} />
         <Route path={routePaths.termsOfUse} element={<TermsOfUsePage />} />
         <Route path={routePaths.privacyPolicy} element={<PrivacyPolicyPage />} />
 
@@ -228,9 +244,32 @@ export function AppRoutes() {
             <Route path={routePaths.workspaceEntry} element={<WorkspaceEntryRedirect />} />
             <Route path={routePaths.workspaceSelector} element={<WorkspaceSelectorPage />} />
             <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />
-            <Route path={routePaths.board} element={<BoardPage />} />
-            <Route path={routePaths.list} element={<ListPage />} />
-            <Route path={routePaths.agenda} element={<AgendaPage />} />
+            <Route
+              path={routePaths.board}
+              element={
+                <ModuleRoute module="board">
+                  <BoardPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.list}
+              element={
+                <ModuleRoute module="board">
+                  <NonClientRoute>
+                    <ListPage />
+                  </NonClientRoute>
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.agenda}
+              element={
+                <ModuleRoute module="board">
+                  <AgendaPage />
+                </ModuleRoute>
+              }
+            />
             <Route
               path={routePaths.documentation}
               element={
@@ -258,7 +297,7 @@ export function AppRoutes() {
             <Route
               path={routePaths.billing}
               element={
-                <ModuleRoute module="settings">
+                <ModuleRoute module="billing">
                   <BillingPage />
                 </ModuleRoute>
               }

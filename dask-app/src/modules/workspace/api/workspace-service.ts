@@ -825,6 +825,19 @@ export const workspaceService: WorkspaceService = {
     });
   },
 
+  async sendWorkspaceDocument(
+    workspaceSlug: string,
+    documentId: string,
+    input: { email?: string; emails?: string[] }
+  ): Promise<WorkspaceDocument> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkspaceDocument>(`/workspaces/${workspaceId}/documents/${documentId}/send`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true,
+      globalLoading: false
+    });
+  },
+
   async deleteWorkspaceDocument(workspaceSlug: string, documentId: string): Promise<void> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.delete(`/workspaces/${workspaceId}/documents/${documentId}`, {
@@ -1007,7 +1020,7 @@ export const workspaceService: WorkspaceService = {
 
   async createWorkspaceInvite(
     workspaceSlug: string,
-    input: { email: string; role: "ADMIN" | "MEMBER" | "VIEWER" }
+    input: { email: string; role: "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT" }
   ): Promise<WorkspaceInvite> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.post<WorkspaceInvite>(`/workspaces/${workspaceId}/invites`, input, {
@@ -1066,7 +1079,7 @@ export const workspaceService: WorkspaceService = {
     workspaceSlug: string,
     memberUserId: string,
     patch: {
-      role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+      role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT";
       permissions?: {
         allow?: WorkspacePermissionKey[];
         deny?: WorkspacePermissionKey[];

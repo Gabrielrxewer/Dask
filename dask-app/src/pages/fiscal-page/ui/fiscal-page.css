@@ -432,6 +432,102 @@
   color: var(--text-muted) !important;
 }
 
+/* ── Portal do cliente ─────────────────────────────────────────────── */
+
+.fiscal-view__portal {
+  display: grid;
+  gap: 16px;
+}
+
+.fiscal-view__portal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in oklab, var(--fiscal-line) 72%, transparent);
+  border-radius: var(--radius-xs);
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 22%, transparent) 0%, transparent 50%),
+    var(--fiscal-field);
+  box-shadow: var(--fiscal-shadow);
+}
+
+.fiscal-view__portal-head-text {
+  display: grid;
+  gap: 5px;
+}
+
+.fiscal-view__portal-title {
+  margin: 0;
+  color: var(--fiscal-text);
+  font-size: var(--font-size-title-sm);
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.fiscal-view__portal-subtitle {
+  margin: 0;
+  color: var(--fiscal-text-soft);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  max-width: 520px;
+}
+
+.fiscal-view__portal-stats {
+  margin-top: 0;
+}
+
+.fiscal-view__portal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  border: 1px dashed color-mix(in oklab, var(--fiscal-line) 72%, transparent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in oklab, var(--fiscal-surface) 60%, transparent);
+  text-align: center;
+}
+
+.fiscal-view__portal-empty-icon {
+  color: var(--fiscal-text-muted);
+  opacity: 0.7;
+}
+
+.fiscal-view__portal-empty p {
+  margin: 0;
+  color: var(--fiscal-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.fiscal-view__portal-empty span {
+  color: var(--fiscal-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.fiscal-view__portal-no-file {
+  color: var(--fiscal-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-style: italic;
+}
+
+.app-theme[data-theme="dark"] .fiscal-view__portal-head {
+  border-color: var(--line) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .fiscal-view__portal-empty {
+  border-color: color-mix(in srgb, var(--border-default) 60%, transparent) !important;
+  background: color-mix(in oklab, var(--surface-muted) 60%, transparent) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+
 @media (max-width: 980px) {
   .fiscal-view__summary-grid,
   .fiscal-view__inline-grid {

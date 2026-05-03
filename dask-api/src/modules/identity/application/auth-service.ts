@@ -27,6 +27,7 @@ import { validatePassword, normalizeEmail } from '@/modules/identity/domain/pass
 import type { PasswordService } from '@/modules/identity/application/password-service';
 import type { EmailService } from '@/infra/email/email-service';
 import type { WorkspaceInvitesService } from '@/modules/workspace-platform/application/workspace-invites-service';
+import type { CustomerAccountLinker } from '@/modules/portal/application/customer-account-linker';
 import type {
   ExternalAuthProvider,
   IdentityRepository
@@ -327,7 +328,8 @@ export class AuthService {
     private readonly identityRepository: IdentityRepository,
     private readonly passwordService: PasswordService,
     private readonly emailService?: EmailService,
-    private readonly workspaceInvitesService?: WorkspaceInvitesService
+    private readonly workspaceInvitesService?: WorkspaceInvitesService,
+    private readonly customerAccountLinker?: CustomerAccountLinker
   ) {}
 
   // ── Register ──────────────────────────────────────────────────────────────
@@ -392,6 +394,10 @@ export class AuthService {
 
     await this.tryAcceptWorkspaceInvite({
       inviteToken: input.inviteToken,
+      userId: user.id,
+      userEmail: user.email
+    });
+    await this.tryLinkCustomerAccountsByEmail({
       userId: user.id,
       userEmail: user.email
     });
@@ -542,6 +548,10 @@ export class AuthService {
       userId: user.id,
       userEmail: user.email
     });
+    await this.tryLinkCustomerAccountsByEmail({
+      userId: user.id,
+      userEmail: user.email
+    });
     logAuthEvent('auth.login.success', { userId: user.id, context });
     return { user: toUserProfile(user, isPlatformAdmin), ...tokens };
   }
@@ -619,6 +629,10 @@ export class AuthService {
     );
     await this.tryAcceptWorkspaceInvite({
       inviteToken: input.inviteToken,
+      userId: user.id,
+      userEmail: user.email
+    });
+    await this.tryLinkCustomerAccountsByEmail({
       userId: user.id,
       userEmail: user.email
     });
@@ -744,6 +758,25 @@ export class AuthService {
     }
     const isPlatformAdmin = await this.identityRepository.getIsPlatformAdmin(user.id);
     return toUserProfile(user, isPlatformAdmin);
+  }
+
+  public async resolveSessionUser(rawRefreshToken: string): Promise<{ userId: string; email: string } | null> {
+    const tokenHash = hashToken(rawRefreshToken);
+    const stored = await this.identityRepository.findRefreshToken(tokenHash);
+
+    if (!stored || stored.revokedAt !== null || stored.expiresAt < new Date()) {
+      return null;
+    }
+
+    const user = await this.identityRepository.findUserById(stored.userId);
+    if (!user || !user.emailVerified) {
+      return null;
+    }
+
+    return {
+      userId: user.id,
+      email: user.email
+    };
   }
 
   public async updateProfile(
@@ -945,6 +978,14 @@ export class AuthService {
       this.identityRepository.setEmailVerified(stored.userId)
     ]);
 
+    const user = await this.identityRepository.findUserById(stored.userId);
+    if (user) {
+      await this.tryLinkCustomerAccountsByEmail({
+        userId: user.id,
+        userEmail: user.email
+      });
+    }
+
     logAuthEvent('auth.email_verification.confirmed', { userId: stored.userId, context });
   }
 
@@ -1012,6 +1053,25 @@ export class AuthService {
     } catch (error) {
       logger.warn({
         event: 'workspace.invite.auto_accept.failed',
+        userId: input.userId,
+        err: error
+      });
+    }
+  }
+
+  private async tryLinkCustomerAccountsByEmail(input: {
+    userId: string;
+    userEmail: string;
+  }): Promise<void> {
+    if (!this.customerAccountLinker) {
+      return;
+    }
+
+    try {
+      await this.customerAccountLinker.linkExistingCustomersByEmail(input);
+    } catch (error) {
+      logger.warn({
+        event: 'portal.customer_account_auto_link.failed',
         userId: input.userId,
         err: error
       });

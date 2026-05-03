@@ -116,7 +116,7 @@ type TemplateSeedPreset = {
 };
 
 const CARD_FIELDS_SCHEMA_VERSION = 4;
-const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 7;
+const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 11;
 
 const defaultSystemCardFieldIds = [
   'sys:type',
@@ -607,7 +607,8 @@ const commercialCustomFields: DefaultCustomFieldSeed[] = [
   { name: 'Condicoes comerciais', slug: 'paymentTerms', variableKey: 'paymentTerms', type: 'LONG_TEXT', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Proposta', slug: 'proposalId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Contrato', slug: 'contractId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
-  { name: 'Ordem de cobranca', slug: 'billingOrderId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs }
+  { name: 'Ordem de cobranca', slug: 'billingOrderId', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Cobranças vinculadas', slug: 'billingCharges', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs, settings: { displayAs: 'billing_summary' } }
 ];
 
 const commercialBoardViews: DefaultBoardViewSeed[] = [
@@ -678,6 +679,22 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     statuses: [
       { id: 'lost', label: 'Perdido', dot: '#dc2626' },
       { id: 'closed', label: 'Encerrado', dot: '#64748b' }
+    ]
+  },
+  {
+    key: 'cliente',
+    name: 'Cliente',
+    caption: 'Visao do cliente',
+    visibleBoardColumnSlugs: ['contract_sent', 'contract_accepted', 'billing_created', 'payment_waiting', 'paid_active'],
+    createTaskColumnSlugs: [],
+    allowedTaskTypes: commercialTypeSlugs,
+    statusSource: { kind: 'workflow_state' },
+    statuses: [
+      { id: 'contract_sent', label: 'Contrato enviado', dot: '#6d28d9' },
+      { id: 'contract_accepted', label: 'Contrato aceito', dot: '#22c55e' },
+      { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
+      { id: 'payment_waiting', label: 'Aguardando pagamento', dot: '#0f766e' },
+      { id: 'paid_active', label: 'Pago / Ativo', dot: '#15803d' }
     ]
   }
 ];
@@ -752,7 +769,8 @@ const templateSeedPresets: Record<WorkspaceTemplateKey, TemplateSeedPreset> = {
       'paymentTerms',
       'proposalId',
       'contractId',
-      'billingOrderId'
+      'billingOrderId',
+      'billingCharges'
     ],
     defaultBoardViews: commercialBoardViews
   }
@@ -911,6 +929,8 @@ function mapTemplateFieldTypeToSeed(type: unknown): DefaultCustomFieldSeed['type
       return 'SCHEDULE';
     case 'work_item_type':
       return 'WORK_ITEM_TYPE';
+    case 'billing_summary':
+      return 'TEXT';
     default:
       return 'TEXT';
   }
@@ -1379,6 +1399,8 @@ function getAutomationName(automationId: string): string {
       return 'Marcar contrato como enviado';
     case 'prepare_billing_on_contract_accepted':
       return 'Preparar cobranca apos aceite do contrato';
+    case 'prepare_billing_on_contract_document_accepted':
+      return 'Preparar cobranca apos aceite do documento de contrato';
     case 'move_to_paid_active_on_payment_confirmed':
       return 'Mover para Pago / Ativo apos pagamento confirmado';
     default:
@@ -1441,7 +1463,12 @@ function buildSeededAutomationRuleSpec(
     normalizedTriggerType = status === 'sent' ? 'proposal.sent' : status === 'approved' ? 'proposal.approved' : null;
   } else if (rawTriggerType === 'contract_status_changed') {
     const status = readAutomationString(trigger, ['status']);
-    normalizedTriggerType = status === 'accepted' || status === 'signed' ? 'contract.accepted' : null;
+    normalizedTriggerType =
+      status === 'sent'
+        ? 'contract.sent'
+        : status === 'accepted' || status === 'signed'
+          ? 'contract.accepted'
+          : null;
   } else if (rawTriggerType === 'billing_payment_confirmed') {
     normalizedTriggerType = 'billing.payment.confirmed';
   }

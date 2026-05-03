@@ -44,7 +44,7 @@ export function WorkItemEditorToolbar({
               title={`Editar tipo ${type.name}`}
               onClick={() => onEditType(type)}
             >
-              âœŽ
+              ✎
             </button>
           </div>
         ))}

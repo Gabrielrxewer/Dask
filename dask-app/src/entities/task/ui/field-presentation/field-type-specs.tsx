@@ -862,6 +862,9 @@ function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
 
     const gap = 4;
     const viewportPadding = 12;
+    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2);
+    const dropdownWidth = Math.min(Math.max(rect.width, 260), availableWidth);
+    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - viewportPadding - dropdownWidth);
     const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
     const spaceAbove = rect.top - viewportPadding;
     const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
@@ -869,10 +872,10 @@ function CatalogSelectFieldEdit(props: FieldPresentationComponentProps) {
 
     setDropdownStyle({
       position: "fixed",
-      left: rect.left,
+      left,
       top: openUp ? undefined : rect.bottom + gap,
       bottom: openUp ? window.innerHeight - rect.top + gap : undefined,
-      width: rect.width,
+      width: dropdownWidth,
       maxHeight,
       zIndex: 10050
     });
@@ -1648,6 +1651,93 @@ function buildDefaultSpec(type: TaskFieldType, spec: FieldTypeSpecConfig): Field
   };
 }
 
+type BillingChargeEntry = {
+  id?: string;
+  title?: string;
+  amount?: number;
+  currency?: string;
+  status?: string;
+};
+
+const BILLING_STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  DRAFT:               { label: "Rascunho",             color: "var(--text-tertiary)",       bg: "var(--surface-raised)" },
+  CHECKOUT_OPEN:       { label: "Checkout aberto",      color: "var(--brand-blue)",          bg: "color-mix(in srgb, var(--brand-blue) 12%, transparent)" },
+  CHECKOUT_COMPLETED:  { label: "Checkout concluído",   color: "var(--success)",             bg: "color-mix(in srgb, var(--success) 12%, transparent)" },
+  PENDING:             { label: "Aguardando pagamento", color: "var(--warning)",             bg: "color-mix(in srgb, var(--warning) 12%, transparent)" },
+  PAID:                { label: "Pago",                 color: "var(--success)",             bg: "color-mix(in srgb, var(--success) 12%, transparent)" },
+  FAILED:              { label: "Falhou",               color: "var(--danger)",              bg: "color-mix(in srgb, var(--danger) 12%, transparent)" },
+  CANCELED:            { label: "Cancelado",            color: "var(--text-secondary)",      bg: "var(--surface-raised)" },
+  REFUNDED:            { label: "Reembolsado",          color: "var(--decorative-purple)",   bg: "color-mix(in srgb, var(--decorative-purple) 12%, transparent)" }
+};
+
+function parseBillingEntries(value: TaskCustomFieldValue): BillingChargeEntry[] {
+  if (Array.isArray(value)) return value as BillingChargeEntry[];
+  if (typeof value === "string" && value.trim().length > 0) {
+    try { return JSON.parse(value) as BillingChargeEntry[]; } catch { return []; }
+  }
+  return [];
+}
+
+function formatBillingAmount(amount: number, currency = "BRL"): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount);
+}
+
+function BillingChargeSummaryDisplay({ controller }: FieldPresentationComponentProps) {
+  const entries = parseBillingEntries(controller.value);
+  if (entries.length === 0) {
+    return <span className="billing-summary__empty">Nenhuma cobrança vinculada</span>;
+  }
+  return (
+    <div className="billing-summary">
+      {entries.map((entry, i) => {
+        const status = entry.status ?? "DRAFT";
+        const meta = BILLING_STATUS_META[status] ?? BILLING_STATUS_META.DRAFT;
+        return (
+          <div key={entry.id ?? i} className="billing-summary__item">
+            <span className="billing-summary__title">{entry.title ?? "Cobrança"}</span>
+            <span className="billing-summary__amount">
+              {typeof entry.amount === "number" ? formatBillingAmount(entry.amount, entry.currency) : "—"}
+            </span>
+            <span
+              className="billing-summary__badge"
+              style={{ color: meta.color, background: meta.bg }}
+            >
+              {meta.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BillingChargeSummaryCardDisplay({ controller }: FieldPresentationComponentProps) {
+  const entries = parseBillingEntries(controller.value);
+  if (entries.length === 0) return null;
+  const first = entries[0];
+  const status = first?.status ?? "DRAFT";
+  const meta = BILLING_STATUS_META[status] ?? BILLING_STATUS_META.DRAFT;
+  return (
+    <span
+      className="billing-summary__card-badge"
+      style={{ color: meta.color, background: meta.bg }}
+    >
+      {meta.label}
+      {entries.length > 1 ? ` +${entries.length - 1}` : ""}
+    </span>
+  );
+}
+
+function BillingChargeSummaryTableDisplay({ controller }: FieldPresentationComponentProps) {
+  const entries = parseBillingEntries(controller.value);
+  if (entries.length === 0) return <span className="billing-summary__empty">—</span>;
+  return (
+    <span className="billing-summary__table-summary">
+      {entries.length} cobrança{entries.length !== 1 ? "s" : ""}
+    </span>
+  );
+}
+
 export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
   text: buildDefaultSpec("text", {
     parseValue: input => (input == null ? "" : String(input)),
@@ -1896,6 +1986,23 @@ export const taskFieldTypeSpecs: Record<TaskFieldType, FieldTypeSpec> = {
       contexts: {
         table: { display: SelectFieldTableDisplay },
         card: { display: WorkItemTypeDisplay }
+      }
+    }
+  }),
+  billing_summary: buildDefaultSpec("billing_summary", {
+    parseValue: input => {
+      if (Array.isArray(input)) return input;
+      if (typeof input === "string" && input.trim().length > 0) {
+        try { return JSON.parse(input); } catch { return []; }
+      }
+      return [];
+    },
+    components: {
+      display: BillingChargeSummaryDisplay,
+      edit: BillingChargeSummaryDisplay,
+      contexts: {
+        card: { display: BillingChargeSummaryCardDisplay },
+        table: { display: BillingChargeSummaryTableDisplay }
       }
     }
   })

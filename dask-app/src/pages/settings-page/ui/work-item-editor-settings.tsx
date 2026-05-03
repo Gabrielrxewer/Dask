@@ -52,7 +52,7 @@ import { useWorkItemEditorPreview } from "./use-work-item-editor-preview";
 import { useWorkItemEditorSelection } from "./use-work-item-editor-selection";
 import "./work-item-editor-settings.css";
 
-// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkItemEditorSettings() {
   const {
@@ -85,36 +85,36 @@ export function WorkItemEditorSettings() {
   const fieldCapabilitiesById = useMemo(() => readFieldCapabilitiesById(settings), [settings]);
   const allowedFieldIds = useMemo(() => new Set(allFields.map((f) => f.id)), [allFields]);
 
-  // â”€â”€ Data state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Data state ──────────────────────────────────────────────────────────
   const [itemTypes, setItemTypes] = useState<ApiItemType[]>([]);
   const [customFields, setCustomFields] = useState<ApiCustomField[]>([]);
   const [boardColumns, setBoardColumns] = useState<ApiBoardColumn[]>([]);
   const [workflowStates, setWorkflowStates] = useState<ApiWorkflowState[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // â”€â”€ Type navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Type navigation ──────────────────────────────────────────────────────
   const [activeTypeSlug, setActiveTypeSlug] = useState("");
 
-  // â”€â”€ Type composer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Type composer ────────────────────────────────────────────────────────
   const [typeComposer, setTypeComposer] = useState<TypeDraft | null>(null);
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [typeSaving, setTypeSaving] = useState(false);
   const [typeDeletingId, setTypeDeletingId] = useState<string | null>(null);
 
-  // â”€â”€ Field panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Field panels ─────────────────────────────────────────────────────────
   const [fieldDraft, setFieldDraft] = useState<FieldDraft | null>(null);
   const [pendingFieldSetup, setPendingFieldSetup] = useState<PendingFieldSetup | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
   const [fieldDeletingId, setFieldDeletingId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState("");
 
-  // â”€â”€ Canvas interaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Canvas interaction ───────────────────────────────────────────────────
   const [activeCanvasTab, setActiveCanvasTab] = useState<WorkItemEditorCanvasTab>("card");
 
-  // â”€â”€ Library filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Library filter ───────────────────────────────────────────────────────
   const [librarySearch, setLibrarySearch] = useState("");
 
-  // â”€â”€ Load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load ─────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -278,7 +278,7 @@ export function WorkItemEditorSettings() {
     setSelectedFieldId,
     setTypeComposer
   });
-  // â”€â”€ Type CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Type CRUD ─────────────────────────────────────────────────────────────
   const persistFieldCapabilities = useCallback(
     async (fieldId: string, aiEnhance: boolean) => {
       if (!snapshot) return;
@@ -356,7 +356,7 @@ export function WorkItemEditorSettings() {
     finally { setTypeDeletingId(null); }
   };
 
-  // â”€â”€ Field CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Field CRUD ────────────────────────────────────────────────────────────
   const handleConfirmFieldSetup = async () => {
     if (!pendingFieldSetup?.name.trim() || !activeType) return;
 
@@ -516,7 +516,7 @@ export function WorkItemEditorSettings() {
     });
   };
 
-  // â”€â”€ Preview computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Preview computation ──────────────────────────────────────────────────
   const {
     typeColor,
     previewStatus,
@@ -536,7 +536,7 @@ export function WorkItemEditorSettings() {
     workflowStates,
     snapshot
   });
-  // â”€â”€ Card preview field props â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Card preview field props ──────────────────────────────────────────────
   const getCardPreviewFieldProps = ({
     fieldId,
     area,
@@ -601,7 +601,7 @@ export function WorkItemEditorSettings() {
     };
   };
 
-  // â”€â”€ Renders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Renders ───────────────────────────────────────────────────────────────
 
   const renderCardEmptySlot = ({
     area,
@@ -659,15 +659,15 @@ export function WorkItemEditorSettings() {
       onDropOnTarget={handleDropOnTarget}
     />
   );
-  // â”€â”€ Slot panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Slot panel ────────────────────────────────────────────────────────────
 
 
-  // â”€â”€ Properties panel content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Properties panel content ──────────────────────────────────────────────
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="wie">
-      {/* â”€â”€ Topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
       <WorkItemEditorToolbar
         activeItemTypes={activeItemTypes}
         activeType={activeType}
@@ -693,13 +693,13 @@ export function WorkItemEditorSettings() {
         onDiscardLayout={handleDiscardLayout}
         onSaveLayout={() => void handleSaveLayout()}
       />
-      {/* â”€â”€ Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Body ─────────────────────────────────────────────────────────────── */}
       <div className="wie__body">
         {loading ? (
           <WorkItemEditorLoadingState />
         ) : (
           <>
-            {/* â”€â”€ Library â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Library ────────────────────────────────────────────────────── */}
             <WorkItemFieldLibrary
               activeCanvasTab={activeCanvasTab}
               librarySearch={librarySearch}
@@ -722,7 +722,7 @@ export function WorkItemEditorSettings() {
               onDragEnd={handleDragEnd}
               onOpenNewFieldPanel={openNewFieldPanel}
             />
-            {/* â”€â”€ Canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Canvas ───────────────────────────────────────────────────────── */}
             <WorkItemEditorCanvas
               activeCanvasTab={activeCanvasTab}
               setActiveCanvasTab={setActiveCanvasTab}
@@ -758,7 +758,7 @@ export function WorkItemEditorSettings() {
               onDetailZoneDragOver={handleDetailZoneDragOver}
               onDetailZoneMouseMove={handleDetailZoneMouseMove}
             />
-            {/* â”€â”€ Properties â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Properties ──────────────────────────────────────────────────── */}
             <aside className="wie__props">
               <WorkItemEditorProperties
                 pendingFieldSetup={pendingFieldSetup}

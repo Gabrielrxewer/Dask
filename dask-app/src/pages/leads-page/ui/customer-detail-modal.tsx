@@ -44,7 +44,7 @@ export function CustomerDetailModal({
             <span className={`leads-customer-status leads-customer-status--${customer.status}`}>{CUSTOMER_STATUS_LABELS[customer.status]}</span>
             {customer.legalName ? <p>{customer.legalName}</p> : null}
             {customer.document ? <p>{customer.document}</p> : null}
-            {customer.email || customer.phone ? <p>{[customer.email, customer.phone].filter(Boolean).join(" Â· ")}</p> : null}
+            {customer.email || customer.phone ? <p>{[customer.email, customer.phone].filter(Boolean).join(" · ")}</p> : null}
             {formatCustomerAddress(customer) ? <p>{formatCustomerAddress(customer)}</p> : null}
           </div>
         </div>

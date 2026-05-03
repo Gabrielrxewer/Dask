@@ -1,6 +1,6 @@
 import type { WorkspaceModuleKey, WorkspacePermissionKey } from "@/modules/workspace/model";
 
-export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT";
 export type ActiveTab = "members" | "invites" | "modules" | "groups" | "matrix";
 
 export interface MemberEditorDraft {
@@ -27,7 +27,7 @@ export interface GroupDraft {
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MODULE_KEYS: WorkspaceModuleKey[] = [
-  "board", "automation", "documentation", "ai", "settings", "fiscal", "leads", "marketing"
+  "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"
 ];
 
 export const TAB_ITEMS: Array<{ id: ActiveTab; label: string }> = [
@@ -42,6 +42,7 @@ export const ASSIGNABLE_ROLES: Array<{ value: WorkspaceRole; label: string; desc
   { value: "ADMIN", label: "Admin", description: "Acesso total exceto ownership" },
   { value: "MEMBER", label: "Membro", description: "Acesso padrão ao workspace" },
   { value: "VIEWER", label: "Visualizador", description: "Somente leitura" },
+  { value: "CLIENT", label: "Cliente", description: "Acesso restrito aos dados vinculados ao cliente" },
 ];
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -49,6 +50,7 @@ export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
   MEMBER: "Membro",
   VIEWER: "Visualizador",
+  CLIENT: "Cliente",
   MANAGER: "Gerente",
   GUEST: "Convidado",
 };
@@ -58,6 +60,7 @@ export const ROLE_TONES: Record<string, "default" | "success" | "warning"> = {
   ADMIN: "success",
   MEMBER: "default",
   VIEWER: "default",
+  CLIENT: "default",
   MANAGER: "success",
   GUEST: "default",
 };
@@ -66,6 +69,7 @@ export const MODULE_META: Record<WorkspaceModuleKey, { label: string; descriptio
   board: { label: "Board", description: "Gestão de projetos e tarefas em quadros kanban" },
   automation: { label: "Automação", description: "Automações e fluxos de trabalho automáticos" },
   documentation: { label: "Documentação", description: "Wiki e base de conhecimento da equipe" },
+  billing: { label: "Cobrança", description: "Histórico e cobranças do workspace" },
   ai: { label: "Inteligência Artificial", description: "Assistente de IA e geração de conteúdo" },
   settings: { label: "Configurações", description: "Acesso ao painel de configurações do workspace" },
   fiscal: { label: "Fiscal", description: "Emissão de notas fiscais e gestão fiscal" },
@@ -93,8 +97,8 @@ export const PERMISSION_CATEGORY_PREFIXES: Array<{ prefix: string; label: string
   { prefix: "ai.", label: "IA" },
 ];
 
-export const MATRIX_ROLES: Array<"OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "MANAGER" | "GUEST"> =
-  ["OWNER", "ADMIN", "MEMBER", "VIEWER", "MANAGER", "GUEST"];
+export const MATRIX_ROLES: Array<"OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT" | "MANAGER" | "GUEST"> =
+  ["OWNER", "ADMIN", "MEMBER", "VIEWER", "CLIENT", "MANAGER", "GUEST"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

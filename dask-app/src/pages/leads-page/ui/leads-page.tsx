@@ -31,6 +31,7 @@ import {
   emptyLeadForm,
   findPossibleDuplicates,
   formatCustomerAddress,
+  getNumberField,
   getTextField,
   type LeadFormState,
   type LeadsTab,
@@ -181,7 +182,7 @@ export function LeadsPage() {
       setMessage(successMessage);
       await loadAuxData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Falha ao executar aÃ§Ã£o comercial.");
+      setError(e instanceof Error ? e.message : "Falha ao executar ação comercial.");
     } finally {
       setIsSubmitting(false);
     }
@@ -299,6 +300,54 @@ export function LeadsPage() {
     await updateTask(task.id, { fields: nextFields, customFieldValues: buildCommercialCustomFieldValues(nextFields) });
   };
 
+  const createChargeFromLead = async (task: Task) => {
+    const workspaceId = snapshot?.id;
+    if (!workspaceId) throw new Error("Workspace nao carregado.");
+    if (getTextField(task, "billingOrderId")) {
+      throw new Error("Este lead ja tem uma cobranca vinculada.");
+    }
+
+    const customer = customersById.get(getTextField(task, "customerId")) ?? null;
+    const catalogItem = catalogItemsById.get(getTextField(task, "interest")) ?? null;
+    const amount = getNumberField(task, "estimatedValue");
+    const customerEmail = getTextField(task, "contactEmail") || customer?.email || "";
+    if (!customer && !customerEmail) {
+      throw new Error("Vincule um cliente ou informe o email do contato antes de cobrar.");
+    }
+    if (!catalogItem && (!amount || amount <= 0)) {
+      throw new Error("Informe um item de catalogo ou valor estimado para gerar a cobranca.");
+    }
+    const amountInCents = amount ? Math.round(amount * 100) : undefined;
+
+    const response = await billingService.createConnectCheckoutSession(workspaceId, {
+      amount: catalogItem ? undefined : amountInCents,
+      currency: "brl",
+      description: catalogItem ? undefined : task.title,
+      catalogItemId: catalogItem?.id,
+      customerId: customer?.id,
+      customerName: getCustomerDisplayName(customer) || getTextField(task, "clientName") || task.title,
+      customerEmail: customerEmail || undefined,
+      sendEmail: true,
+      successUrl: workspaceSlug.length > 0
+        ? `${window.location.origin}/w/${workspaceSlug}/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+        : undefined,
+      cancelUrl: workspaceSlug.length > 0
+        ? `${window.location.origin}/w/${workspaceSlug}/billing?checkout=cancel`
+        : undefined,
+      metadata: {
+        sourceWorkItemId: task.id,
+        sourceLeadTitle: task.title
+      }
+    });
+    const nextFields = {
+      ...task.customFields,
+      billingOrderId: response.orderId,
+      billingStatus: "pending",
+      billingCheckoutUrl: response.url
+    };
+    await updateTask(task.id, { fields: nextFields, customFieldValues: buildCommercialCustomFieldValues(nextFields) });
+  };
+
   const topNavigation = (
     <LeadsTopNavigation
       tab={tab}
@@ -350,6 +399,10 @@ export function LeadsPage() {
                 onOpenCustomerDetails={(customerId) => { setSelectedCustomerId(customerId); setModalMode("customer-detail"); }}
                 onOpenCustomerFromLead={openCustomerFromLeadModal}
                 onOpenLinkCustomer={openLinkCustomerModal}
+                onCreateCharge={(task) => void runAction(
+                  async () => { await createChargeFromLead(task); },
+                  "Cobranca gerada e enviada para o email do lead."
+                )}
                 onOpenDocs={() => workspaceSlug && navigate(buildWorkspaceDocumentationPath(workspaceSlug))}
                 onOpenBoard={() => workspaceSlug && navigate(buildWorkspaceBoardPath(workspaceSlug))}
               />

@@ -1,6 +1,8 @@
 import type { MemberId, MembersById } from "@/entities/member";
 import type { BoardConfig, Task, TaskChecklist, TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 
+export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT";
+
 export type WorkspaceBoardMode = string;
 export type WorkspaceDateFormat = "dd/mm/yyyy" | "mm/dd/yyyy";
 
@@ -103,6 +105,9 @@ export interface WorkspaceSnapshot {
   automations: WorkspaceAutomation[];
   preferences: WorkspacePreferences;
   access?: {
+    role?: WorkspaceRole;
+    isClient?: boolean;
+    customerIds?: string[];
     ownCardsOnly: boolean;
     allowedModules: WorkspaceModuleKey[];
     moduleEntitlements: Partial<Record<WorkspaceModuleKey, boolean>>;
@@ -120,15 +125,21 @@ export interface WorkspaceTag {
 }
 
 export type DocumentKind = "wiki" | "proposal" | "contract";
+export type CommercialDocumentStatus = "draft" | "sent" | "viewed" | "approved" | "rejected" | "accepted" | "signed";
 
 export interface WorkspaceDocumentMetadata {
   clientLogoUrl?: string;
   clientName?: string;
+  clientEmail?: string;
   proposalCode?: string;
   proposalDate?: string;
   proposalValidity?: string;
   ownerName?: string;
-  status?: string;
+  sentAt?: string;
+  sentToEmail?: string;
+  sentToEmails?: string[];
+  sentBy?: string;
+  status?: CommercialDocumentStatus | string;
   publicToken?: string;
   [key: string]: unknown;
 }
@@ -221,7 +232,7 @@ export interface WorkspaceSummary {
   name: string;
   key: string;
   slug: string;
-  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role: WorkspaceRole;
 }
 
 export type WorkspaceTemplateKey = "software_delivery" | "product_discovery" | "operations_kanban" | "commercial_crm";
@@ -281,7 +292,7 @@ export interface WorkspaceProfile {
 export interface WorkspaceInvite {
   id: string;
   email: string;
-  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role: WorkspaceRole;
   status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
   expiresAt: string;
   sentAt: string;
@@ -292,7 +303,7 @@ export interface WorkspaceInvite {
 
 export interface PublicWorkspaceInvite {
   email: string;
-  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role: WorkspaceRole;
   workspace: {
     id: string;
     name: string;
@@ -367,7 +378,7 @@ export type WorkspacePermissionKey =
   | "board.write"
   | "item.write";
 
-export type WorkspaceModuleKey = "board" | "automation" | "documentation" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+export type WorkspaceModuleKey = "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
 export interface WorkspaceAccessGroup {
   id: string;
@@ -384,7 +395,7 @@ export interface WorkspaceAccessControlMember {
   userId: string;
   name: string;
   email: string;
-  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role: WorkspaceRole;
   overrides: {
     allow: WorkspacePermissionKey[];
     deny: WorkspacePermissionKey[];
@@ -404,7 +415,7 @@ export interface WorkspaceAccessControlSnapshot {
   moduleCatalog?: WorkspaceModuleKey[];
   moduleEntitlements?: Partial<Record<WorkspaceModuleKey, boolean>>;
   groups?: WorkspaceAccessGroup[];
-  rolePresets: Record<"OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "MANAGER" | "GUEST", WorkspacePermissionKey[]>;
+  rolePresets: Record<"OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT" | "MANAGER" | "GUEST", WorkspacePermissionKey[]>;
   members: WorkspaceAccessControlMember[];
 }
 
@@ -552,7 +563,8 @@ export type CustomFieldType =
   | "status"
   | "tag"
   | "schedule"
-  | "work_item_type";
+  | "work_item_type"
+  | "billing_summary";
 
 export interface CustomFieldOptionInput {
   label: string;
@@ -762,6 +774,11 @@ export interface WorkspaceService {
       position?: number;
     }
   ) => Promise<WorkspaceDocument>;
+  sendWorkspaceDocument: (
+    workspaceSlug: string,
+    documentId: string,
+    input: { email?: string; emails?: string[] }
+  ) => Promise<WorkspaceDocument>;
   deleteWorkspaceDocument: (workspaceSlug: string, documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (workspaceSlug: string, itemId: string) => Promise<WorkItemLinkedDocument[]>;
   linkDocumentToWorkItem: (
@@ -803,7 +820,7 @@ export interface WorkspaceService {
     workspaceSlug: string,
     memberUserId: string,
     patch: {
-      role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+      role?: WorkspaceRole;
       permissions?: {
         allow?: WorkspacePermissionKey[];
         deny?: WorkspacePermissionKey[];
@@ -847,7 +864,7 @@ export interface WorkspaceService {
   listWorkspaceInvites: (workspaceSlug: string) => Promise<WorkspaceInvite[]>;
   createWorkspaceInvite: (
     workspaceSlug: string,
-    input: { email: string; role: "ADMIN" | "MEMBER" | "VIEWER" }
+    input: { email: string; role: "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT" }
   ) => Promise<WorkspaceInvite>;
   resendWorkspaceInvite: (workspaceSlug: string, inviteId: string) => Promise<WorkspaceInvite>;
   revokeWorkspaceInvite: (workspaceSlug: string, inviteId: string) => Promise<void>;

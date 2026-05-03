@@ -15,15 +15,15 @@ export function CustomerForm({ value, duplicates, onChange, onLinkDuplicate }: {
       <div className="leads-page__form-grid shared-form-grid shared-form-grid--three">
         <FormField label="Nome *"><TextInput value={value.name ?? ""} onChange={(e) => onChange({ ...value, name: e.target.value })} /></FormField>
         <FormField label="Nome fantasia"><TextInput value={value.tradeName ?? ""} onChange={(e) => onChange({ ...value, tradeName: e.target.value })} /></FormField>
-        <FormField label="RazÃ£o social"><TextInput value={value.legalName ?? ""} onChange={(e) => onChange({ ...value, legalName: e.target.value })} /></FormField>
+        <FormField label="Razão social"><TextInput value={value.legalName ?? ""} onChange={(e) => onChange({ ...value, legalName: e.target.value })} /></FormField>
       </div>
       <div className="leads-page__form-grid shared-form-grid shared-form-grid--three">
         <FormField label="CNPJ / CPF"><TextInput value={value.document ?? ""} onChange={(e) => onChange({ ...value, document: e.target.value })} /></FormField>
-        <FormField label="InscriÃ§Ã£o estadual"><TextInput value={value.stateRegistration ?? ""} onChange={(e) => onChange({ ...value, stateRegistration: e.target.value })} /></FormField>
-        <FormField label="InscriÃ§Ã£o municipal"><TextInput value={value.municipalRegistration ?? ""} onChange={(e) => onChange({ ...value, municipalRegistration: e.target.value })} /></FormField>
+        <FormField label="Inscrição estadual"><TextInput value={value.stateRegistration ?? ""} onChange={(e) => onChange({ ...value, stateRegistration: e.target.value })} /></FormField>
+        <FormField label="Inscrição municipal"><TextInput value={value.municipalRegistration ?? ""} onChange={(e) => onChange({ ...value, municipalRegistration: e.target.value })} /></FormField>
       </div>
       <div className="leads-page__form-grid shared-form-grid shared-form-grid--three">
-        <FormField label="Regime tributÃ¡rio"><TextInput value={value.taxRegime ?? ""} onChange={(e) => onChange({ ...value, taxRegime: e.target.value })} /></FormField>
+        <FormField label="Regime tributário"><TextInput value={value.taxRegime ?? ""} onChange={(e) => onChange({ ...value, taxRegime: e.target.value })} /></FormField>
         <FormField label="E-mail"><TextInput value={value.email ?? ""} onChange={(e) => onChange({ ...value, email: e.target.value })} /></FormField>
         <FormField label="Telefone"><TextInput value={value.phone ?? ""} onChange={(e) => onChange({ ...value, phone: e.target.value })} /></FormField>
       </div>
@@ -40,8 +40,8 @@ export function CustomerForm({ value, duplicates, onChange, onLinkDuplicate }: {
         </FormField>
       </div>
       <div className="leads-page__form-grid shared-form-grid shared-form-grid--three">
-        <FormField label="EndereÃ§o"><TextInput value={value.address?.street ?? ""} onChange={(e) => updateAddress("street", e.target.value)} /></FormField>
-        <FormField label="NÃºmero"><TextInput value={value.address?.number ?? ""} onChange={(e) => updateAddress("number", e.target.value)} /></FormField>
+        <FormField label="Endereço"><TextInput value={value.address?.street ?? ""} onChange={(e) => updateAddress("street", e.target.value)} /></FormField>
+        <FormField label="Número"><TextInput value={value.address?.number ?? ""} onChange={(e) => updateAddress("number", e.target.value)} /></FormField>
         <FormField label="Complemento"><TextInput value={value.address?.complement ?? ""} onChange={(e) => updateAddress("complement", e.target.value)} /></FormField>
       </div>
       <div className="leads-page__form-grid shared-form-grid shared-form-grid--three">
@@ -49,10 +49,10 @@ export function CustomerForm({ value, duplicates, onChange, onLinkDuplicate }: {
         <FormField label="Estado"><TextInput value={value.address?.state ?? ""} onChange={(e) => updateAddress("state", e.target.value)} /></FormField>
         <FormField label="CEP"><TextInput value={value.address?.zipCode ?? ""} onChange={(e) => updateAddress("zipCode", e.target.value)} /></FormField>
       </div>
-      <FormField label="ObservaÃ§Ãµes"><Textarea rows={3} value={value.notes ?? ""} onChange={(e) => onChange({ ...value, notes: e.target.value })} /></FormField>
+      <FormField label="Observações"><Textarea rows={3} value={value.notes ?? ""} onChange={(e) => onChange({ ...value, notes: e.target.value })} /></FormField>
       {duplicates.length > 0 ? (
         <div className="leads-page__duplicates">
-          <span className="leads-page__eyebrow">PossÃ­veis duplicados â€” clique para vincular</span>
+          <span className="leads-page__eyebrow">Possíveis duplicados — clique para vincular</span>
           {duplicates.slice(0, 4).map((customer) => (
             <button key={customer.id} type="button" className="leads-duplicate-btn" onClick={() => onLinkDuplicate(customer)}>
               <div className="leads-customer-avatar"><span>{getCustomerDisplayName(customer).slice(0, 2).toUpperCase()}</span></div>

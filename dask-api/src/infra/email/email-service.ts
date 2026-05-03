@@ -8,7 +8,16 @@ export interface EmailService {
       workspaceName: string;
       inviterName: string;
       inviteUrl: string;
-      role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+      role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER' | 'CLIENT';
+    }
+  ): Promise<void>;
+  sendCommercialDocumentEmail(
+    to: string,
+    input: {
+      workspaceName: string;
+      documentTitle: string;
+      documentType: 'proposal' | 'contract';
+      publicUrl: string;
     }
   ): Promise<void>;
   sendCheckoutLinkEmail(

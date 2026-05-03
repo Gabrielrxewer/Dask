@@ -2,12 +2,13 @@ import type { ChangeEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { DocumentKind, WorkspaceDocument, WorkspaceDocumentMetadata } from "@/modules/workspace";
-import { AppIcon, TextInput, Textarea } from "@/shared/ui";
+import { AppIcon, Button, TextInput, Textarea } from "@/shared/ui";
 import {
   DOCUMENT_KIND_DESCRIPTIONS,
   DOCUMENT_KIND_LABELS,
   EDITOR_VIEW_LABELS,
   formatRelativeDate,
+  getCommercialDocumentStatus,
   markdownUrlTransform,
   type EditorViewMode
 } from "./documentation-page.local";
@@ -21,6 +22,15 @@ interface DocumentationEditorPanelProps {
   wordCount: number;
   renderedMarkdown: string;
   editorViewMode: EditorViewMode;
+  readOnly?: boolean;
+  clientDecision?: {
+    positiveLabel: string;
+    isSubmitting: boolean;
+    error: string | null;
+    success: boolean;
+    onAccept: () => void;
+    onReject: () => void;
+  };
   onUpdateDocDraft: (
     docId: string,
     patch: Partial<Pick<WorkspaceDocument, "title" | "content" | "kind" | "tags" | "metadata">>
@@ -43,6 +53,8 @@ export function DocumentationEditorPanel({
   wordCount,
   renderedMarkdown,
   editorViewMode,
+  readOnly = false,
+  clientDecision,
   onUpdateDocDraft,
   onUpdateProposalMetadata,
   onChooseClientLogoFile,
@@ -61,14 +73,23 @@ export function DocumentationEditorPanel({
               <span className={`documentation-page__kind-badge documentation-page__kind-badge--${activeDocKind}`}>
                 {DOCUMENT_KIND_LABELS[activeDocKind]}
               </span>
+              {activeDocKind !== "wiki" ? (
+                <span className={`documentation-page__commercial-status documentation-page__commercial-status--${getCommercialDocumentStatus(activeDoc)}`}>
+                  {getCommercialDocumentStatus(activeDoc)}
+                </span>
+              ) : null}
               <p>{DOCUMENT_KIND_DESCRIPTIONS[activeDocKind]}</p>
             </div>
-            <TextInput
-              value={activeDoc.title}
-              onChange={(event) => onUpdateDocDraft(activeDoc.id, { title: event.target.value })}
-              placeholder="Titulo da doc"
-            />
-            {activeDocKind === "proposal" ? (
+            {readOnly ? (
+              <h2 className="documentation-page__preview-title">{activeDoc.title}</h2>
+            ) : (
+              <TextInput
+                value={activeDoc.title}
+                onChange={(event) => onUpdateDocDraft(activeDoc.id, { title: event.target.value })}
+                placeholder="Titulo da doc"
+              />
+            )}
+            {!readOnly && activeDocKind === "proposal" ? (
               <section className="documentation-page__proposal-logo">
                 <input
                   ref={logoFileInputRef}
@@ -112,6 +133,7 @@ export function DocumentationEditorPanel({
             </div>
           </header>
 
+          {!readOnly ? (
           <div className="documentation-page__editor-toolbar">
             <div className="documentation-page__editor-toolbar-group">
               <button
@@ -207,9 +229,10 @@ export function DocumentationEditorPanel({
               ))}
             </div>
           </div>
+          ) : null}
 
           <div className={`documentation-page__editor-body documentation-page__editor-body--${editorViewMode}`}>
-            {editorViewMode !== "preview" ? (
+            {!readOnly && editorViewMode !== "preview" ? (
               <Textarea
                 ref={editorTextareaRef}
                 value={activeDoc.content}
@@ -230,6 +253,38 @@ export function DocumentationEditorPanel({
             ) : null}
           </div>
 
+          {clientDecision ? (
+            <section className="documentation-page__client-decision" aria-label="Decisao do cliente">
+              <div>
+                <strong>Revise o documento completo antes de continuar.</strong>
+                <p>Seu aceite fica registrado no historico deste documento.</p>
+              </div>
+              {clientDecision.error ? <p className="documentation-page__client-decision-error">{clientDecision.error}</p> : null}
+              {clientDecision.success ? (
+                <p className="documentation-page__client-decision-success">Decisao registrada com sucesso.</p>
+              ) : (
+                <div className="documentation-page__client-decision-actions">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={clientDecision.isSubmitting}
+                    onClick={clientDecision.onAccept}
+                  >
+                    {clientDecision.isSubmitting ? "Registrando..." : clientDecision.positiveLabel}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={clientDecision.isSubmitting}
+                    onClick={clientDecision.onReject}
+                  >
+                    Recusar
+                  </Button>
+                </div>
+              )}
+            </section>
+          ) : null}
+
           <footer className="documentation-page__editor-footer">
             <p>
               {selectedSnippet
@@ -241,7 +296,7 @@ export function DocumentationEditorPanel({
       ) : (
         <div className="documentation-page__panel-empty shared-empty-panel">
           <h3>Selecione uma doc</h3>
-          <p>Crie uma nova doc ou selecione uma existente para comeÃ§ar a editar.</p>
+          <p>Crie uma nova doc ou selecione uma existente para começar a editar.</p>
         </div>
       )}
     </section>

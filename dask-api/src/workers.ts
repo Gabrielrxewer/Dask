@@ -1,4 +1,5 @@
 import { type Job, Worker } from 'bullmq';
+import Stripe from 'stripe';
 import { startOutboxRelayWorker, type RelayWorkerHandle } from '@/bootstrap/outbox-relay-worker';
 import { env } from '@/core/config/env';
 import { EventPublisher } from '@/core/events/event-publisher';
@@ -19,6 +20,10 @@ import { ResendMarketingEmailProvider } from '@/modules/marketing/providers/rese
 import { PrismaMarketingRepository } from '@/modules/marketing/repositories/prisma-marketing-repository';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
+import { MockEmailService } from '@/infra/email/mock-email-service';
+import { ResendEmailService } from '@/infra/email/resend-email-service';
+import { BillingService } from '@/modules/billing/application/billing-service';
+import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
 
 type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
 const workerLogger = getLogger('worker');
@@ -53,9 +58,29 @@ export const startWorkers = (): WorkerHandle[] => {
   const promptService = new PromptOrchestrationService();
   const workspaceConfigService = new WorkspaceConfigService(prisma);
   const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
+  const outboxRepository = new PrismaOutboxRepository(prisma);
+  const workerEventPublisher = new EventPublisher(outboxRepository, prisma);
+  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : new MockEmailService();
+  const stripeClient = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
+  const billingService = stripeClient
+    ? new BillingService({
+        repo: new PrismaBillingRepository(prisma),
+        stripe: stripeClient,
+        appPublicUrl: env.APP_PUBLIC_URL,
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        emailService,
+        eventPublisher: workerEventPublisher,
+        priceIds: {
+          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
+          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+        },
+        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
+      })
+    : null;
   const automationRuntimeService = new AutomationRuntimeService(
     prisma,
-    async (workspaceId: string) => automationViewService.ensureDefaultViews(workspaceId)
+    async (workspaceId: string) => automationViewService.ensureDefaultViews(workspaceId),
+    billingService
   );
   const fiscalRepository = new PrismaFiscalRepository(prisma);
   const fiscalProvider = new FocusFiscalProvider();
@@ -68,8 +93,6 @@ export const startWorkers = (): WorkerHandle[] => {
     stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
     focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
   });
-  const outboxRepository = new PrismaOutboxRepository(prisma);
-  const workerEventPublisher = new EventPublisher(outboxRepository, prisma);
   const marketingRepository = new PrismaMarketingRepository(prisma);
   const marketingEmailProvider = env.RESEND_API_KEY
     ? new ResendMarketingEmailProvider()

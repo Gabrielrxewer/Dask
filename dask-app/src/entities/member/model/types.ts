@@ -6,7 +6,7 @@ export interface Member {
   initials: string;
   color: string;
   avatarUrl?: string | null;
-  role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role?: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT";
 }
 
 export type MembersById = Record<MemberId, Member>;

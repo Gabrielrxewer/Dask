@@ -22,6 +22,7 @@ export type {
   CalendarFeedSnapshot,
   CalendarIntegrationProvider,
   CalendarIntegrationStatus,
+  CommercialDocumentStatus,
   DocumentLinkedEntityType,
   DocumentKind,
   Customer,

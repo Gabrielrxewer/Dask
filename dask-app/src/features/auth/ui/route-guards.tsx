@@ -44,16 +44,23 @@ export function PublicRoute({ children }: PublicRouteProps) {
   if (guard.mode === "redirect") {
     const state = (location.state as LocationState | null) ?? null;
     const fallbackPath = guard.redirectTo ?? routePaths.workspaceEntry;
+    const searchParams = new URLSearchParams(location.search);
+    const returnTo = searchParams.get("returnTo");
     const fromPath = state?.from?.pathname;
     const fromSearch = state?.from?.search ?? "";
 
     // Allow redirecting back to protected app routes (/w/...) or billing flow (/choose-plan).
     // Paths like /login, /reset-password or /verify-email must never be
     // used as redirect targets — they would create confusing loops.
-    const VALID_PREFIXES = ["/w", "/choose-plan"];
+    const VALID_PREFIXES = ["/w", "/choose-plan", "/documents/public", "/proposals/public", "/portal/billing"];
     const isValidAppPath =
       typeof fromPath === "string" && VALID_PREFIXES.some((prefix) => fromPath.startsWith(prefix));
-    const redirectTo = isValidAppPath ? `${fromPath}${fromSearch}` : fallbackPath;
+    const isValidReturnTo =
+      typeof returnTo === "string" &&
+      returnTo.startsWith("/") &&
+      !returnTo.startsWith("//") &&
+      VALID_PREFIXES.some((prefix) => returnTo.startsWith(prefix));
+    const redirectTo = isValidAppPath ? `${fromPath}${fromSearch}` : isValidReturnTo ? returnTo : fallbackPath;
 
     return <Navigate replace to={redirectTo} />;
   }

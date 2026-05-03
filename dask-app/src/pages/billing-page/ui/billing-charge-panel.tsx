@@ -180,7 +180,7 @@ export function BillingChargePanel({
             ) : null}
 
             <div className="billing-view__form-grid shared-form-grid shared-form-grid--two">
-              <FormField label="Cliente cadastrado" className="billing-view__field billing-view__field--grow">
+              <FormField label="Cliente cadastrado (opcional)" className="billing-view__field billing-view__field--grow">
                 <Select
                   value={selectedCustomerId}
                   onChange={(e) => onCustomerSelect(e.target.value)}
@@ -210,7 +210,7 @@ export function BillingChargePanel({
             ) : null}
 
             <div className="billing-view__email-row">
-              <FormField label="E-mail do cliente (opcional)" className="billing-view__field billing-view__field--grow">
+              <FormField label="E-mail do cliente" className="billing-view__field billing-view__field--grow">
                 <TextInput
                   value={customerEmail}
                   onChange={(e) => onCustomerEmailChange(e.target.value)}

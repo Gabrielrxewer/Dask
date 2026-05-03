@@ -13,6 +13,7 @@ import {
 } from '@/modules/workspace-platform/application/field-platform';
 import {
   isSystemOnlyFieldType,
+  isRecord,
   mapCustomFieldTypeToInput,
   mapInputTypeToPrisma,
   normalizeFieldSection,
@@ -34,6 +35,8 @@ export type WorkspaceAccess = {
     updatedAt: Date;
   };
   role: MembershipRole;
+  isClient: boolean;
+  customerIds: string[];
   ownCardsOnly: boolean;
   allowedModules: WorkspaceModuleKey[];
   moduleEntitlements: Partial<Record<WorkspaceModuleKey, boolean>>;
@@ -827,12 +830,11 @@ export class WorkspaceConfigService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.item.updateMany({
+      const currentPreferences = await tx.workspacePreferences.findUnique({
         where: { workspaceId: input.workspaceId },
-        data: {
-          fields: toJsonValue({})
-        }
+        select: { settings: true }
       });
+      const preservedSettings = this.extractSettingsPreservedAcrossTemplateReset(currentPreferences?.settings);
 
       await tx.workItemViewPlacement.deleteMany({
         where: { workspaceId: input.workspaceId }
@@ -877,6 +879,24 @@ export class WorkspaceConfigService {
         templateKey: selectedTemplate.key
       });
 
+      if (Object.keys(preservedSettings).length > 0) {
+        const nextPreferences = await tx.workspacePreferences.findUnique({
+          where: { workspaceId: input.workspaceId },
+          select: { settings: true }
+        });
+        const nextSettings = isRecord(nextPreferences?.settings) ? nextPreferences.settings : {};
+
+        await tx.workspacePreferences.update({
+          where: { workspaceId: input.workspaceId },
+          data: {
+            settings: toJsonValue({
+              ...nextSettings,
+              ...preservedSettings
+            })
+          }
+        });
+      }
+
       const boardTemplate = await tx.boardTemplate.create({
         data: {
           workspaceId: input.workspaceId,
@@ -904,11 +924,21 @@ export class WorkspaceConfigService {
       workspace: access.workspace,
       templateKey: selectedTemplate.key,
       ...config
+      };
+  }
+
+  private extractSettingsPreservedAcrossTemplateReset(settings: unknown): JsonRecord {
+    if (!isRecord(settings) || !isRecord(settings.companyProfile)) {
+      return {};
+    }
+
+    return {
+      companyProfile: settings.companyProfile
     };
   }
 
   public async ensureReadableWorkspace(workspaceId: string, userId: string): Promise<WorkspaceAccess> {
-    const [membership, user] = await Promise.all([
+    const [membership, user, customerLinks] = await Promise.all([
       this.prisma.workspaceMembership.findFirst({
         where: {
           workspaceId,
@@ -934,6 +964,10 @@ export class WorkspaceConfigService {
       this.prisma.user.findUnique({
         where: { id: userId },
         select: { subscriptionPlan: true }
+      }),
+      this.prisma.workspaceCustomerUser.findMany({
+        where: { workspaceId, userId },
+        select: { customerId: true }
       })
     ]);
 
@@ -950,6 +984,8 @@ export class WorkspaceConfigService {
 
     return {
       role: membership.role,
+      isClient: membership.role === MembershipRole.CLIENT,
+      customerIds: membership.role === MembershipRole.CLIENT ? customerLinks.map((link) => link.customerId) : [],
       workspace: {
         id: membership.workspace.id,
         name: membership.workspace.name,
@@ -975,9 +1011,22 @@ export class WorkspaceConfigService {
 
   public async ensureItemWritableWorkspace(workspaceId: string, userId: string): Promise<void> {
     const access = await this.ensureReadableWorkspace(workspaceId, userId);
+    if (access.role === MembershipRole.VIEWER || access.role === MembershipRole.CLIENT) {
+      throw new AppError('Forbidden', 403);
+    }
+  }
+
+  public async ensureItemTransitionWorkspace(workspaceId: string, userId: string): Promise<WorkspaceAccess> {
+    const access = await this.ensureReadableWorkspace(workspaceId, userId);
     if (access.role === MembershipRole.VIEWER) {
       throw new AppError('Forbidden', 403);
     }
+
+    if (access.role === MembershipRole.CLIENT && access.customerIds.length === 0) {
+      throw new AppError('Customer access is not linked to this workspace', 403);
+    }
+
+    return access;
   }
 
   public async loadWorkspaceConfig(workspaceId: string) {

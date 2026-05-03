@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { applyEdgeChanges, type OnEdgesChange, type OnNodesChange, type XYPosition } from "@xyflow/react";
+import { type OnEdgesChange, type OnNodesChange, type XYPosition } from "@xyflow/react";
 import { useWorkspace } from "@/modules/workspace";
 import type {
   ApiBoardColumn,
@@ -17,25 +17,34 @@ import {
   ActionConfig,
   AutomationIcon,
   CloseIcon,
+  ConditionConfig,
   ConfirmDialog,
+  OutputConfig,
   PlusIcon,
   RecentExecutions,
   TRIGGER_LABELS,
   TrashIcon,
   TriggerConfig,
+  WarningTriangleIcon,
   asString,
   buildFallbackColumnsFromPerspectiveStatus,
+  buildVisualFlowFromState,
   draftToRuleInput,
   emptyFlowDraft,
+  extractVisualFlowFromRule,
+  isAdvancedFlow,
   normalizeColumnKeyFromSlug,
   normalizeKey,
+  restoreStateFromVisualFlow,
   ruleToFlowDraft,
   summarizeAction,
   summarizeTrigger,
+  validateAutomationDraft,
   type AutomationCanvasEdge,
   type AutomationCanvasNode,
   type AutomationCanvasNodeData,
   type AutomationCanvasNodeKind,
+  type AutomationValidationResult,
   type FlowDraft,
   type SelectedNode
 } from "./automations-page.local";
@@ -73,6 +82,8 @@ export function AutomationsPage() {
   const [originalDraft, setOriginalDraft] = useState<FlowDraft | null>(null);
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
   const [nodePositions, setNodePositions] = useState<Record<string, XYPosition>>({});
+  const [extraNodes, setExtraNodes] = useState<AutomationCanvasNode[]>([]);
+  const [extraEdges, setExtraEdges] = useState<AutomationCanvasEdge[]>([]);
 
   // Action states
   const [saving, setSaving] = useState(false);
@@ -215,6 +226,20 @@ export function AutomationsPage() {
         toColumnKey: currentColumnKey || (fallbackView.columns[0]?.key ?? "")
       };
     }
+
+    // Restore visual flow if persisted, otherwise start fresh
+    const savedFlow = extractVisualFlowFromRule(rule);
+    if (savedFlow) {
+      const restored = restoreStateFromVisualFlow(savedFlow);
+      setExtraNodes(restored.extraNodes);
+      setExtraEdges(restored.extraEdges);
+      setNodePositions(restored.nodePositions);
+    } else {
+      setExtraNodes([]);
+      setExtraEdges([]);
+      setNodePositions({});
+    }
+
     setDraft(d);
     setOriginalDraft(JSON.parse(JSON.stringify(d)) as FlowDraft);
     setSelectedRuleId(rule.id);
@@ -256,6 +281,8 @@ export function AutomationsPage() {
     setSelectedRuleId(null);
     setIsCreating(true);
     setSelectedNode({ kind: "trigger" });
+    setExtraNodes([]);
+    setExtraEdges([]);
     setSaveError(null);
   }
 
@@ -313,14 +340,28 @@ export function AutomationsPage() {
 
   async function handleSave() {
     if (!draft) return;
-    if (draft.name.trim().length < 2) {
-      setSaveError("O nome deve ter ao menos 2 caracteres.");
+
+    const validation = validateAutomationDraft(draft, extraNodes);
+
+    if (!validation.canSaveDraft) {
+      setSaveError(validation.errors[0] ?? "Corrija os erros antes de salvar.");
       return;
     }
+    if (!validation.canPublish && draft.enabled) {
+      setSaveError(
+        validation.errors.length > 0
+          ? validation.errors[0]
+          : "Fluxo com nós avançados não pode ser ativado. Salve como rascunho primeiro."
+      );
+      return;
+    }
+
+    const visualFlow = buildVisualFlowFromState(draft, nodePositions, extraNodes, extraEdges);
+
     setSaving(true);
     setSaveError(null);
     try {
-      const input = draftToRuleInput(draft);
+      const input = draftToRuleInput(draft, visualFlow);
       if (isCreating) {
         const created = await createAutomationRule(input);
         setRules((prev) => [created, ...prev]);
@@ -409,6 +450,10 @@ export function AutomationsPage() {
   const metrics = buildBoardMetrics(snapshot?.tasks ?? []);
   const pageLoading = isLoading || rulesLoading || viewsLoading;
   const selectedRule = rules.find((r) => r.id === selectedRuleId) ?? null;
+  const advanced = isAdvancedFlow(extraNodes);
+  const validation: AutomationValidationResult | null = draft
+    ? validateAutomationDraft(draft, extraNodes)
+    : null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -423,6 +468,7 @@ export function AutomationsPage() {
       }
       return true;
     }
+    if (node.kind === "condition" || node.kind === "output") return true;
     const action = draft.actions[node.index];
     if (!action) return false;
     const type = asString(action.type);
@@ -435,10 +481,11 @@ export function AutomationsPage() {
     return false;
   };
 
-  const selectedNodeId =
-    selectedNode?.kind === "trigger"
+  const selectedNodeId = !selectedNode
+    ? null
+    : selectedNode.kind === "trigger"
       ? "trigger"
-      : selectedNode?.kind === "action"
+      : selectedNode.kind === "action"
         ? `action-${selectedNode.index}`
         : null;
 
@@ -476,14 +523,27 @@ export function AutomationsPage() {
           configured: isNodeConfigured({ kind: "action", index })
         },
         selected: selectedNodeId === id,
-        deletable: draft.actions.length > 1
+        deletable: false
       });
     });
 
-    return nodes;
-  }, [availableViews, draft, nodePositions, selectedNodeId, stateOptions]);
+    const selectedExtraId =
+      selectedNode?.kind === "condition" || selectedNode?.kind === "output"
+        ? selectedNode.nodeId
+        : null;
 
-  const automationEdges = useMemo<AutomationCanvasEdge[]>(() => {
+    for (const extra of extraNodes) {
+      nodes.push({
+        ...extra,
+        selected: extra.id === selectedExtraId,
+        position: nodePositions[extra.id] ?? extra.position
+      });
+    }
+
+    return nodes;
+  }, [availableViews, draft, extraNodes, nodePositions, selectedNode, selectedNodeId, stateOptions]);
+
+  const linearEdges = useMemo<AutomationCanvasEdge[]>(() => {
     if (!draft) return [];
     return draft.actions.map((_, index) => {
       const source = index === 0 ? "trigger" : `action-${index - 1}`;
@@ -494,10 +554,16 @@ export function AutomationsPage() {
         target,
         type: "smoothstep",
         animated: true,
-        markerEnd: { type: "arrowclosed" as const, width: 14, height: 14 }
+        markerEnd: { type: "arrowclosed" as const, width: 14, height: 14 },
+        deletable: false
       };
     });
   }, [draft]);
+
+  const allEdges = useMemo<AutomationCanvasEdge[]>(
+    () => [...linearEdges, ...extraEdges],
+    [linearEdges, extraEdges]
+  );
 
   const handleAutomationNodesChange: OnNodesChange<AutomationCanvasNode> = useCallback((changes) => {
     setNodePositions((prev) => {
@@ -509,16 +575,49 @@ export function AutomationsPage() {
       }
       return next;
     });
+    const removals = changes.filter((c) => c.type === "remove");
+    if (removals.length > 0) {
+      const removedIds = new Set(removals.map((c) => c.id));
+      setExtraNodes((prev) => prev.filter((n) => !removedIds.has(n.id)));
+    }
   }, []);
 
   const handleAutomationEdgesChange: OnEdgesChange<AutomationCanvasEdge> = useCallback((changes) => {
-    applyEdgeChanges(changes, automationEdges);
-  }, [automationEdges]);
+    const removals = changes.filter((c) => c.type === "remove");
+    if (removals.length > 0) {
+      const removedIds = new Set(removals.map((c) => c.id));
+      setExtraEdges((prev) => prev.filter((e) => !removedIds.has(e.id)));
+    }
+  }, []);
+
+  const handleAutomationEdgesAdd = useCallback((newEdges: AutomationCanvasEdge[]) => {
+    const linearIds = new Set(linearEdges.map((e) => e.id));
+    setExtraEdges(newEdges.filter((e) => !linearIds.has(e.id)));
+  }, [linearEdges]);
 
   const handleAutomationNodesAdd = useCallback((nodes: AutomationCanvasNode[]) => {
-    const actionNode = nodes.find((node) => node.type === "action");
-    if (actionNode) addAction(actionNode.position);
+    for (const node of nodes) {
+      if (node.type === "action") {
+        addAction(node.position);
+      } else if (node.type === "condition" || node.type === "output") {
+        setExtraNodes((prev) => [...prev, node]);
+      }
+    }
   }, [addAction]);
+
+  const updateExtraNode = useCallback((nodeId: string, updates: Partial<AutomationCanvasNodeData>) => {
+    setExtraNodes((prev) =>
+      prev.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, ...updates } } : n
+      )
+    );
+  }, []);
+
+  const removeExtraNode = useCallback((nodeId: string) => {
+    setExtraNodes((prev) => prev.filter((n) => n.id !== nodeId));
+    setExtraEdges((prev) => prev.filter((e) => e.source !== nodeId && e.target !== nodeId));
+    setSelectedNode(null);
+  }, []);
 
   const handleAutomationNodeSelect = useCallback((nodeId: string | null) => {
     if (!nodeId) {
@@ -532,6 +631,14 @@ export function AutomationsPage() {
     if (nodeId.startsWith("action-")) {
       const index = Number(nodeId.slice("action-".length));
       if (!Number.isNaN(index)) setSelectedNode({ kind: "action", index });
+      return;
+    }
+    if (nodeId.startsWith("condition-")) {
+      setSelectedNode({ kind: "condition", nodeId });
+      return;
+    }
+    if (nodeId.startsWith("output-")) {
+      setSelectedNode({ kind: "output", nodeId });
     }
   }, []);
 
@@ -664,6 +771,9 @@ export function AutomationsPage() {
                       {draft.enabled ? "Ativa" : "Pausada"}
                     </StatusBadge>
                   )}
+                  {advanced && (
+                    <StatusBadge tone="warning">Rascunho visual</StatusBadge>
+                  )}
                 </div>
                 <div className="flow-canvas__header-actions">
                   {saveError && <span className="flow-canvas__error">{saveError}</span>}
@@ -674,7 +784,8 @@ export function AutomationsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => void handleToggle()}
-                        disabled={saving || deleting}
+                        disabled={saving || deleting || (advanced && !draft.enabled)}
+                        title={advanced && !draft.enabled ? "Fluxo com nós avançados não pode ser ativado" : undefined}
                       >
                         {draft.enabled ? "Pausar" : "Ativar"}
                       </Button>
@@ -705,25 +816,39 @@ export function AutomationsPage() {
                       onClick={() => void handleSave()}
                       disabled={saving || deleting}
                     >
-                      {saving ? "Salvando..." : isCreating ? "Criar automação" : "Salvar"}
+                      {saving ? "Salvando..." : isCreating ? "Criar automação" : advanced ? "Salvar rascunho" : "Salvar"}
                     </Button>
                   )}
                 </div>
               </div>
+              {/* Validation / advanced flow banner */}
+              {validation && (validation.warnings.length > 0 || validation.errors.filter((e) => !saveError?.includes(e)).length > 0) && (
+                <div className={`flow-canvas__advanced-banner${!advanced && validation.errors.length > 0 ? " flow-canvas__advanced-banner--error" : ""}`}>
+                  <WarningTriangleIcon size={13} />
+                  <div className="flow-canvas__advanced-banner-content">
+                    {validation.warnings.map((w, i) => (
+                      <span key={`w-${i}`}>{w}</span>
+                    ))}
+                    {validation.errors.filter((e) => !saveError?.includes(e)).map((e, i) => (
+                      <span key={`e-${i}`} className="flow-canvas__advanced-banner-error">{e}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Flow nodes */}
               <div className="flow-canvas__body">
                 <FlowCanvas<AutomationCanvasNodeData, AutomationCanvasNodeKind>
                   nodes={automationNodes}
-                  edges={automationEdges}
+                  edges={allEdges}
                   nodeTypes={AUTOMATION_NODE_TYPES}
                   paletteItems={AUTOMATION_PALETTE}
                   onNodesChange={handleAutomationNodesChange}
                   onEdgesChange={handleAutomationEdgesChange}
-                  onEdgesAdd={() => undefined}
+                  onEdgesAdd={handleAutomationEdgesAdd}
                   onNodesAdd={handleAutomationNodesAdd}
                   onNodeSelect={handleAutomationNodeSelect}
-                  fitViewKey={draft.actions.length}
+                  fitViewKey={draft.actions.length + extraNodes.length}
                   emptyHint="Use o painel a esquerda para adicionar etapas na automacao"
                   paletteTitle="Adicionar etapa"
                 />
@@ -737,7 +862,10 @@ export function AutomationsPage() {
           <div className="flow-config-panel">
             <div className="config-panel__header">
               <span className="config-panel__title">
-                {selectedNode.kind === "trigger" ? "Configurar gatilho" : "Configurar ação"}
+                {selectedNode.kind === "trigger" && "Configurar gatilho"}
+                {selectedNode.kind === "action" && "Configurar ação"}
+                {selectedNode.kind === "condition" && "Configurar condição"}
+                {selectedNode.kind === "output" && "Configurar saída"}
               </span>
               <div className="config-panel__actions">
                 {selectedNode.kind === "action" && draft.actions.length > 1 && (
@@ -763,13 +891,14 @@ export function AutomationsPage() {
             </div>
 
             <div className="config-panel__section">
-              {selectedNode.kind === "trigger" ? (
+              {selectedNode.kind === "trigger" && (
                 <TriggerConfig
                   draft={draft}
                   views={availableViews}
                   onChange={updateDraft}
                 />
-              ) : (
+              )}
+              {selectedNode.kind === "action" && (
                 <ActionConfig
                   action={draft.actions[selectedNode.index] ?? { type: "set_view_column" }}
                   views={availableViews}
@@ -777,6 +906,28 @@ export function AutomationsPage() {
                   onChange={(updated) => updateAction(selectedNode.index, updated)}
                 />
               )}
+              {selectedNode.kind === "condition" && (() => {
+                const node = extraNodes.find((n) => n.id === selectedNode.nodeId);
+                return node ? (
+                  <ConditionConfig
+                    nodeId={selectedNode.nodeId}
+                    data={node.data}
+                    onChange={updateExtraNode}
+                    onRemove={removeExtraNode}
+                  />
+                ) : null;
+              })()}
+              {selectedNode.kind === "output" && (() => {
+                const node = extraNodes.find((n) => n.id === selectedNode.nodeId);
+                return node ? (
+                  <OutputConfig
+                    nodeId={selectedNode.nodeId}
+                    data={node.data}
+                    onChange={updateExtraNode}
+                    onRemove={removeExtraNode}
+                  />
+                ) : null;
+              })()}
             </div>
           </div>
         )}

@@ -1,4 +1,6 @@
+import crypto from 'crypto';
 import type Stripe from 'stripe';
+import { DomainEventNames } from '@/core/events/event-names';
 import { logger } from '@/core/logging/logger';
 import { AppError } from '@/core/errors/app-error';
 import type { EmailService } from '@/infra/email/email-service';
@@ -10,7 +12,8 @@ import type {
   ConnectCatalogItemKind,
   ConnectCatalogRecurringInterval,
   ConnectPaymentOrder,
-  ConnectPaymentOrderStatus
+  ConnectPaymentOrderStatus,
+  UpdateConnectPaymentOrderInput
 } from '../repositories/billing-repository';
 import {
   PLAN_AMOUNTS_BRL,
@@ -129,6 +132,16 @@ interface BillingServiceDeps {
   appPublicUrl: string;
   webhookSecret: string;
   emailService?: EmailService;
+  eventPublisher?: {
+    publish(event: {
+      id: string;
+      name: string;
+      aggregateType: string;
+      aggregateId: string;
+      occurredAt: Date;
+      payload: Record<string, unknown>;
+    }): Promise<void>;
+  };
   priceIds?: Partial<Record<SubscriptionPlan, string>>;
   connectApplicationFeeBps?: number;
 }
@@ -197,6 +210,7 @@ export interface ConnectCatalogItemListItem {
 export interface ConnectPaymentOrderListItem {
   id: string;
   status: ConnectPaymentOrderStatus;
+  customerStatus: CustomerFacingPaymentStatus;
   amount: number;
   currency: string;
   description: string;
@@ -214,7 +228,18 @@ export interface ConnectPaymentOrderListItem {
   failedAt: Date | null;
   canceledAt: Date | null;
   refundedAt: Date | null;
+  customerPortalUrl: string | null;
 }
+
+export type CustomerFacingPaymentStatus =
+  | 'pending'
+  | 'paid'
+  | 'overdue'
+  | 'canceled'
+  | 'failed'
+  | 'refunded'
+  | 'subscription_active'
+  | 'subscription_canceled';
 
 /** Maps Stripe subscription status strings to our enum */
 function mapStripeStatus(stripeStatus: string): SubscriptionStatus {
@@ -237,6 +262,7 @@ export class BillingService {
   private readonly appPublicUrl: string;
   private readonly webhookSecret: string;
   private readonly emailService?: EmailService;
+  private readonly eventPublisher?: BillingServiceDeps['eventPublisher'];
   private readonly priceIds: Partial<Record<SubscriptionPlan, string>>;
   private readonly connectApplicationFeeBps: number;
 
@@ -246,6 +272,7 @@ export class BillingService {
     this.appPublicUrl = deps.appPublicUrl;
     this.webhookSecret = deps.webhookSecret;
     this.emailService = deps.emailService;
+    this.eventPublisher = deps.eventPublisher;
     this.priceIds = deps.priceIds ?? PLAN_PRICE_IDS;
     this.connectApplicationFeeBps = deps.connectApplicationFeeBps ?? 500;
   }
@@ -533,22 +560,41 @@ export class BillingService {
       throw new AppError('description is required for this charge', 422);
     }
 
-    const customer = input.customerId
+    const requestedCustomerEmail = normalizeCustomerEmail(input.customerEmail);
+    let customer = input.customerId
       ? await this.repo.findCustomerById(workspaceId, input.customerId)
       : null;
     if (input.customerId && !customer) {
       throw new AppError('Customer not found for this workspace', 404);
     }
+    if (!customer && requestedCustomerEmail) {
+      customer =
+        await this.repo.findCustomerByEmail(workspaceId, requestedCustomerEmail) ??
+        await this.repo.createCustomerForBilling({
+          workspaceId,
+          name: input.customerName?.trim() || requestedCustomerEmail,
+          email: requestedCustomerEmail,
+          createdByUserId: userId
+        });
+    }
     const customerName = getBillingCustomerDisplayName(customer) ?? input.customerName?.trim() ?? null;
-    const customerEmail = input.customerEmail?.trim() || customer?.email || undefined;
+    const customerEmail = requestedCustomerEmail ?? normalizeCustomerEmail(customer?.email) ?? undefined;
     const customerDocument = customer?.document ?? null;
     const customerPhone = customer?.phone ?? null;
     const customerAddress = asRecordOrNull(customer?.address);
+    if (customer && customerEmail) {
+      const existingUser = await this.repo.findUserByEmail(customerEmail);
+      if (existingUser) {
+        await this.repo.linkCustomerToUser(workspaceId, customer.id, existingUser.id, userId);
+      }
+    }
 
     const applicationFeeAmount = this.resolveApplicationFeeAmount(amount, input.applicationFeeAmount);
     const checkoutMode = this.isRecurringCatalogBillingType(catalogItem?.billingType)
       ? 'subscription'
       : 'payment';
+    const clientAccessToken = createPublicAccessToken();
+    const clientPortalUrl = this.buildCustomerPaymentPortalUrl(clientAccessToken);
     const order = await this.repo.createConnectPaymentOrder({
       workspaceId,
       createdByUserId: userId,
@@ -565,6 +611,8 @@ export class BillingService {
       applicationFeeAmount,
       metadata: {
         ...(input.metadata ?? {}),
+        clientAccessToken,
+        clientPortalUrl,
         ...(catalogItem
           ? {
               catalogItemId: catalogItem.id,
@@ -578,7 +626,11 @@ export class BillingService {
       orderId: order.id,
       catalogItem,
       customer,
-      metadata: input.metadata
+      metadata: {
+        ...(input.metadata ?? {}),
+        clientAccessToken,
+        clientPortalUrl
+      }
     });
 
     const sessionPayload: Record<string, unknown> = {
@@ -655,7 +707,7 @@ export class BillingService {
     } catch (error) {
       const statusReason = error instanceof Error ? error.message.slice(0, 500) : 'Stripe checkout creation failed';
 
-      await this.repo.updateConnectPaymentOrder(order.id, {
+      await this.updateConnectPaymentOrderAndSync(order.id, {
         status: 'FAILED',
         failedAt: new Date(),
         statusReason
@@ -679,7 +731,7 @@ export class BillingService {
       throw new AppError('Failed to create connected checkout session', 500);
     }
 
-    await this.repo.updateConnectPaymentOrder(order.id, {
+    await this.updateConnectPaymentOrderAndSync(order.id, {
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
         typeof session.payment_intent === 'string'
@@ -712,7 +764,7 @@ export class BillingService {
           workspaceName: workspace.name,
           description,
           amount: formattedAmount,
-          checkoutUrl: session.url
+          checkoutUrl: clientPortalUrl
         })
         .catch((err: unknown) => {
           logger.error({ event: 'billing.connect.checkout.email_failed', orderId: order.id, error: err });
@@ -720,7 +772,7 @@ export class BillingService {
     }
 
     return {
-      url: session.url,
+      url: clientPortalUrl,
       sessionId: session.id,
       orderId: order.id
     };
@@ -743,7 +795,7 @@ export class BillingService {
     if (!order.customerEmail) {
       throw new AppError('This order has no customer email on record', 409);
     }
-    if (['PAID', 'REFUNDED'].includes(order.status)) {
+    if (['PAID', 'REFUNDED', 'SUBSCRIPTION_ACTIVE', 'SUBSCRIPTION_CANCELED'].includes(order.status)) {
       throw new AppError('Cannot resend reminder for a completed order', 409);
     }
     if (!this.emailService) {
@@ -759,7 +811,7 @@ export class BillingService {
       workspaceName: workspace.name,
       description: order.description,
       amount: formattedAmount,
-      checkoutUrl: order.checkoutUrl
+      checkoutUrl: this.resolveCustomerPortalUrl(order) ?? order.checkoutUrl ?? ''
     });
 
     logger.info({ event: 'billing.connect.reminder.sent', orderId, workspaceId });
@@ -776,7 +828,7 @@ export class BillingService {
     if (!order || order.workspaceId !== workspaceId) {
       throw new AppError('Payment order not found', 404);
     }
-    if (['PAID', 'REFUNDED', 'CANCELED'].includes(order.status)) {
+    if (['PAID', 'REFUNDED', 'CANCELED', 'SUBSCRIPTION_ACTIVE', 'SUBSCRIPTION_CANCELED'].includes(order.status)) {
       throw new AppError('Order is already in a terminal state', 409);
     }
 
@@ -795,7 +847,7 @@ export class BillingService {
       }
     }
 
-    await this.repo.updateConnectPaymentOrder(orderId, {
+    await this.updateConnectPaymentOrderAndSync(orderId, {
       status: 'CANCELED',
       canceledAt: new Date(),
       statusReason: 'Canceled by workspace manager'
@@ -809,9 +861,13 @@ export class BillingService {
     userId: string,
     limit = 50
   ): Promise<ConnectPaymentOrderListItem[]> {
-    await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const scope = await this.assertWorkspaceBillingReader(workspaceId, userId);
     const safeLimit = Math.max(1, Math.min(limit, 200));
-    const orders = await this.repo.listConnectPaymentOrdersByWorkspace(workspaceId, safeLimit);
+    const orders = await this.repo.listConnectPaymentOrdersByWorkspace(
+      workspaceId,
+      safeLimit,
+      scope.isClient ? scope.customerIds : undefined
+    );
     return orders.map((order) => this.mapConnectPaymentOrder(order));
   }
 
@@ -834,24 +890,26 @@ export class BillingService {
     ) as unknown as StripeCheckoutSession;
 
     const nextStatus: ConnectPaymentOrderStatus =
-      session.payment_status === 'paid'
-        ? 'PAID'
-        : session.payment_status === 'unpaid'
-          ? (session.status === 'complete' ? 'PENDING' : 'CHECKOUT_OPEN')
-          : session.status === 'expired'
-            ? 'CANCELED'
-            : session.status === 'complete'
-              ? 'CHECKOUT_COMPLETED'
-              : 'CHECKOUT_OPEN';
+      session.mode === 'subscription' && session.payment_status === 'paid'
+        ? 'SUBSCRIPTION_ACTIVE'
+        : session.payment_status === 'paid'
+          ? 'PAID'
+          : session.payment_status === 'unpaid'
+            ? (session.status === 'complete' ? 'PENDING' : 'CHECKOUT_OPEN')
+            : session.status === 'expired'
+              ? 'CANCELED'
+              : session.status === 'complete'
+                ? 'CHECKOUT_COMPLETED'
+                : 'CHECKOUT_OPEN';
 
-    const updated = await this.repo.updateConnectPaymentOrder(order.id, {
+    const updated = await this.updateConnectPaymentOrderAndSync(order.id, {
       status: nextStatus,
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
         typeof session.payment_intent === 'string'
           ? session.payment_intent
           : session.payment_intent?.id,
-      paidAt: nextStatus === 'PAID' ? order.paidAt ?? new Date() : order.paidAt,
+      paidAt: nextStatus === 'PAID' || nextStatus === 'SUBSCRIPTION_ACTIVE' ? order.paidAt ?? new Date() : order.paidAt,
       canceledAt: nextStatus === 'CANCELED' ? order.canceledAt ?? new Date() : order.canceledAt,
       lastWebhookEvent: 'checkout.session.sync'
     });
@@ -1232,14 +1290,16 @@ export class BillingService {
     }
 
     const nextStatus: ConnectPaymentOrderStatus =
-      session.payment_status === 'paid'
-        ? 'PAID'
-        : session.payment_status === 'unpaid'
-          ? 'PENDING'
-          : 'CHECKOUT_COMPLETED';
-    const paidAt = nextStatus === 'PAID' ? new Date() : null;
+      session.mode === 'subscription' && session.payment_status === 'paid'
+        ? 'SUBSCRIPTION_ACTIVE'
+        : session.payment_status === 'paid'
+          ? 'PAID'
+          : session.payment_status === 'unpaid'
+            ? 'PENDING'
+            : 'CHECKOUT_COMPLETED';
+    const paidAt = nextStatus === 'PAID' || nextStatus === 'SUBSCRIPTION_ACTIVE' ? new Date() : null;
 
-    await this.repo.updateConnectPaymentOrder(orderId, {
+    await this.updateConnectPaymentOrderAndSync(orderId, {
       status: nextStatus,
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
@@ -1257,7 +1317,7 @@ export class BillingService {
       return;
     }
 
-    await this.repo.updateConnectPaymentOrder(orderId, {
+    await this.updateConnectPaymentOrderAndSync(orderId, {
       status: 'PAID',
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
@@ -1275,7 +1335,7 @@ export class BillingService {
       return;
     }
 
-    await this.repo.updateConnectPaymentOrder(orderId, {
+    await this.updateConnectPaymentOrderAndSync(orderId, {
       status: 'FAILED',
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
@@ -1294,7 +1354,7 @@ export class BillingService {
       return;
     }
 
-    await this.repo.updateConnectPaymentOrder(orderId, {
+    await this.updateConnectPaymentOrderAndSync(orderId, {
       status: 'CANCELED',
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
@@ -1313,7 +1373,7 @@ export class BillingService {
       return;
     }
 
-    await this.repo.updateConnectPaymentOrder(order.id, {
+    await this.updateConnectPaymentOrderAndSync(order.id, {
       status: 'PAID',
       stripePaymentIntentId: intent.id,
       lastWebhookEvent: 'payment_intent.succeeded',
@@ -1327,7 +1387,7 @@ export class BillingService {
       return;
     }
 
-    await this.repo.updateConnectPaymentOrder(order.id, {
+    await this.updateConnectPaymentOrderAndSync(order.id, {
       status: 'FAILED',
       stripePaymentIntentId: intent.id,
       lastWebhookEvent: 'payment_intent.payment_failed',
@@ -1350,7 +1410,7 @@ export class BillingService {
       return;
     }
 
-    await this.repo.updateConnectPaymentOrder(order.id, {
+    await this.updateConnectPaymentOrderAndSync(order.id, {
       status: 'REFUNDED',
       lastWebhookEvent: 'charge.refunded',
       refundedAt: new Date()
@@ -1358,6 +1418,16 @@ export class BillingService {
   }
 
   private async handleSubscriptionUpsert(sub: StripeSubscriptionObject, eventType: string): Promise<void> {
+    const connectOrderId = sub.metadata?.connectOrderId;
+    if (connectOrderId) {
+      await this.updateConnectPaymentOrderAndSync(connectOrderId, {
+        status: this.mapConnectSubscriptionStatus(sub.status),
+        lastWebhookEvent: eventType,
+        statusReason: `Stripe subscription status: ${sub.status}`
+      });
+      return;
+    }
+
     const userId = sub.metadata?.userId;
     const planCode = sub.metadata?.planCode as SubscriptionPlan | undefined;
     const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
@@ -1396,6 +1466,17 @@ export class BillingService {
   }
 
   private async handleSubscriptionDeleted(sub: StripeSubscriptionObject): Promise<void> {
+    const connectOrderId = sub.metadata?.connectOrderId;
+    if (connectOrderId) {
+      await this.updateConnectPaymentOrderAndSync(connectOrderId, {
+        status: 'SUBSCRIPTION_CANCELED',
+        canceledAt: new Date(),
+        lastWebhookEvent: 'customer.subscription.deleted',
+        statusReason: 'Stripe subscription canceled'
+      });
+      return;
+    }
+
     const existing = await this.repo.findSubscriptionByStripeId(sub.id);
     if (!existing) return;
 
@@ -1415,12 +1496,24 @@ export class BillingService {
       typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
     if (!subscriptionId) return;
 
-    const existing = await this.repo.findSubscriptionByStripeId(subscriptionId);
-    if (!existing) return;
-
     const retrieveSubscription = this.stripe.subscriptions
       .retrieve as unknown as StripeRetrieveSubscription;
     const stripeSub = await retrieveSubscription(subscriptionId);
+    const connectOrderId = stripeSub.metadata?.connectOrderId;
+    if (connectOrderId) {
+      const { end } = extractPeriodDates(stripeSub);
+      await this.updateConnectPaymentOrderAndSync(connectOrderId, {
+        status: this.mapConnectSubscriptionStatus(stripeSub.status),
+        paidAt: new Date(),
+        lastWebhookEvent: 'invoice.paid',
+        statusReason: `Subscription paid through ${end.toISOString()}`
+      });
+      return;
+    }
+
+    const existing = await this.repo.findSubscriptionByStripeId(subscriptionId);
+    if (!existing) return;
+
     const { start, end } = extractPeriodDates(stripeSub);
     const updated = await this.repo.updateSubscription(subscriptionId, {
       status: mapStripeStatus(stripeSub.status),
@@ -1437,7 +1530,23 @@ export class BillingService {
     if (!subscriptionId) return;
 
     const existing = await this.repo.findSubscriptionByStripeId(subscriptionId);
-    if (!existing) return;
+    if (!existing) {
+      const retrieveSubscription = this.stripe.subscriptions
+        .retrieve as unknown as StripeRetrieveSubscription;
+      const stripeSub = await retrieveSubscription(subscriptionId);
+      if (!stripeSub) {
+        return;
+      }
+      const connectOrderId = stripeSub.metadata?.connectOrderId;
+      if (connectOrderId) {
+        await this.updateConnectPaymentOrderAndSync(connectOrderId, {
+          status: 'OVERDUE',
+          lastWebhookEvent: 'invoice.payment_failed',
+          statusReason: 'Subscription invoice payment failed'
+        });
+      }
+      return;
+    }
 
     const updated = await this.repo.updateSubscription(subscriptionId, {
       status: 'PAST_DUE',
@@ -1447,6 +1556,76 @@ export class BillingService {
     await this.repo.revokeUserAccess(existing.userId);
 
     logger.warn({ event: 'billing.invoice.payment_failed', userId: existing.userId, subscriptionId });
+  }
+
+  private async updateConnectPaymentOrderAndSync(
+    orderId: string,
+    input: UpdateConnectPaymentOrderInput
+  ): Promise<ConnectPaymentOrder> {
+    const updated = await this.repo.updateConnectPaymentOrder(orderId, input);
+    await this.syncLinkedWorkItemBillingSnapshot(updated);
+    await this.publishConnectPaymentOrderEvent(updated);
+    return updated;
+  }
+
+  private async syncLinkedWorkItemBillingSnapshot(order: ConnectPaymentOrder): Promise<void> {
+    const metadata = order.metadata;
+    const sourceWorkItemId =
+      metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+        ? normalizedMetadataValue(metadata.sourceWorkItemId)
+        : '';
+    if (!sourceWorkItemId) {
+      return;
+    }
+
+    await this.repo.syncWorkItemBillingSnapshot({
+      workspaceId: order.workspaceId,
+      itemId: sourceWorkItemId,
+      billingOrderId: order.id,
+      billingStatus: this.mapCustomerFacingPaymentStatus(order.status),
+      checkoutUrl: this.resolveCustomerPortalUrl(order) ?? order.checkoutUrl,
+      updatedBy: order.createdByUserId
+    });
+  }
+
+  private async publishConnectPaymentOrderEvent(order: ConnectPaymentOrder): Promise<void> {
+    if (!this.eventPublisher) {
+      return;
+    }
+
+    const metadata = order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+      ? order.metadata
+      : {};
+    const sourceWorkItemId = normalizedMetadataValue(metadata.sourceWorkItemId);
+    const eventName =
+      order.status === 'PAID' || order.status === 'SUBSCRIPTION_ACTIVE'
+        ? DomainEventNames.BillingPaymentConfirmed
+        : order.status === 'CHECKOUT_OPEN' || order.status === 'PENDING'
+          ? DomainEventNames.BillingRequested
+          : null;
+
+    if (!eventName || !sourceWorkItemId) {
+      return;
+    }
+
+    await this.eventPublisher.publish({
+      id: crypto.randomUUID(),
+      name: eventName,
+      aggregateType: 'connect_payment_order',
+      aggregateId: order.id,
+      occurredAt: new Date(),
+      payload: {
+        workspaceId: order.workspaceId,
+        itemId: sourceWorkItemId,
+        linkedEntityType: 'work_item',
+        linkedEntityId: sourceWorkItemId,
+        billingOrderId: order.id,
+        status: this.mapCustomerFacingPaymentStatus(order.status),
+        connectPaymentOrderStatus: order.status,
+        customerId: order.customerId,
+        requestedBy: order.createdByUserId
+      }
+    });
   }
 
   private async assertWorkspaceBillingManager(workspaceId: string, userId: string) {
@@ -1465,6 +1644,31 @@ export class BillingService {
     }
 
     return workspace;
+  }
+
+  private async assertWorkspaceBillingReader(
+    workspaceId: string,
+    userId: string
+  ): Promise<{ isClient: boolean; customerIds: string[] }> {
+    const membership = await this.repo.findWorkspaceMembership(workspaceId, userId);
+    if (!membership) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    if (membership.role === 'CLIENT') {
+      const customerIds = await this.repo.findCustomerIdsForUser(workspaceId, userId);
+      if (customerIds.length === 0) {
+        throw new AppError('Customer access is not linked to this workspace', 403);
+      }
+
+      return { isClient: true, customerIds };
+    }
+
+    if (!['OWNER', 'ADMIN'].includes(membership.role)) {
+      throw new AppError('Only workspace OWNER or ADMIN can manage billing connect settings', 403);
+    }
+
+    return { isClient: false, customerIds: [] };
   }
 
   private resolveApplicationFeeAmount(amount: number, explicitFee?: number): number {
@@ -1504,6 +1708,7 @@ export class BillingService {
     return {
       id: order.id,
       status: order.status,
+      customerStatus: this.mapCustomerFacingPaymentStatus(order.status),
       amount: order.amount,
       currency: order.currency,
       description: order.description,
@@ -1520,8 +1725,55 @@ export class BillingService {
       paidAt: order.paidAt,
       failedAt: order.failedAt,
       canceledAt: order.canceledAt,
-      refundedAt: order.refundedAt
+      refundedAt: order.refundedAt,
+      customerPortalUrl: this.resolveCustomerPortalUrl(order)
     };
+  }
+
+  private mapCustomerFacingPaymentStatus(status: ConnectPaymentOrderStatus): CustomerFacingPaymentStatus {
+    if (status === 'PAID') return 'paid';
+    if (status === 'OVERDUE') return 'overdue';
+    if (status === 'FAILED') return 'failed';
+    if (status === 'CANCELED') return 'canceled';
+    if (status === 'REFUNDED') return 'refunded';
+    if (status === 'SUBSCRIPTION_ACTIVE') return 'subscription_active';
+    if (status === 'SUBSCRIPTION_CANCELED') return 'subscription_canceled';
+    return 'pending';
+  }
+
+  private mapConnectSubscriptionStatus(stripeStatus: string): ConnectPaymentOrderStatus {
+    if (stripeStatus === 'active' || stripeStatus === 'trialing') {
+      return 'SUBSCRIPTION_ACTIVE';
+    }
+    if (stripeStatus === 'canceled' || stripeStatus === 'incomplete_expired') {
+      return 'SUBSCRIPTION_CANCELED';
+    }
+    if (stripeStatus === 'past_due' || stripeStatus === 'unpaid') {
+      return 'OVERDUE';
+    }
+    if (stripeStatus === 'incomplete') {
+      return 'PENDING';
+    }
+    return 'PENDING';
+  }
+
+  private buildCustomerPaymentPortalUrl(token: string): string {
+    return `${this.appPublicUrl}/portal/billing?token=${encodeURIComponent(token)}`;
+  }
+
+  private resolveCustomerPortalUrl(order: Pick<ConnectPaymentOrder, 'metadata'>): string | null {
+    const metadata = order.metadata;
+    if (!metadata || typeof metadata !== 'object') {
+      return null;
+    }
+    const explicitUrl = metadata.clientPortalUrl;
+    if (typeof explicitUrl === 'string' && explicitUrl.trim().length > 0) {
+      return explicitUrl;
+    }
+    const token = metadata.clientAccessToken;
+    return typeof token === 'string' && token.trim().length > 0
+      ? this.buildCustomerPaymentPortalUrl(token)
+      : null;
   }
 
   private mapConnectCatalogItem(item: ConnectCatalogItem): ConnectCatalogItemListItem {
@@ -1559,4 +1811,13 @@ export class BillingService {
   ): ConnectCatalogBillingType {
     return billingType === 'SUBSCRIPTION' ? 'ASSINATURA' : billingType;
   }
+}
+
+function normalizeCustomerEmail(email: string | null | undefined): string | null {
+  const normalized = email?.trim().toLowerCase();
+  return normalized && normalized.includes('@') ? normalized : null;
+}
+
+function createPublicAccessToken(): string {
+  return crypto.randomBytes(24).toString('base64url');
 }

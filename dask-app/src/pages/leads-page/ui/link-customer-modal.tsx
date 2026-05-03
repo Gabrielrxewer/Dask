@@ -34,7 +34,7 @@ export function LinkCustomerModal({
     >
       <FormField label="Selecionar cliente">
         <Select value={linkCustomerId} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Remover vÃ­nculo</option>
+          <option value="">Remover vínculo</option>
           {customers.map((c) => <option key={c.id} value={c.id}>{getCustomerDisplayName(c)}</option>)}
         </Select>
       </FormField>

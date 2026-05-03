@@ -114,7 +114,7 @@ export function WorkItemEditorProperties({
                 onClick={() => onSaveField()}
                 disabled={fieldSaving || !draft.name.trim()}
               >
-                {fieldSaving ? "..." : "âœ“"}
+                {fieldSaving ? "..." : "✓"}
               </button>
               {showDelete ? (
                 <button
@@ -227,7 +227,7 @@ export function WorkItemEditorProperties({
     return (
       <div className="wie__props-panel">
         <div className="wie__props-head">
-          <span className="wie__props-eyebrow">Novo campo Ã¢â‚¬â€ {activePendingTypeLabel}</span>
+          <span className="wie__props-eyebrow">Novo campo — {activePendingTypeLabel}</span>
           <h3 className="wie__props-title">Configurar campo</h3>
         </div>
         <div className="wie__props-scroll">
@@ -410,7 +410,7 @@ export function WorkItemEditorProperties({
                 onClick={() => onSaveField()}
                 disabled={fieldSaving || !fieldDraft.name.trim()}
               >
-                {fieldSaving ? "..." : "âœ“"}
+                {fieldSaving ? "..." : "✓"}
               </button>
               {selectedField.hasApiDefinition ? (
                 <button
@@ -542,7 +542,7 @@ export function WorkItemEditorProperties({
   return (
     <div className="wie__props-panel is-idle">
       <div className="wie__props-idle">
-        <div className="wie__props-idle-icon">â ¿</div>
+        <div className="wie__props-idle-icon">⠿</div>
         <strong>Nenhum campo selecionado</strong>
         <p>
           Clique em qualquer campo no canvas ou na biblioteca para ver e editar suas propriedades e posicao no layout.

@@ -182,6 +182,16 @@ export const rolePermissionPresets: Record<RoleTemplate, Permission[]> = {
     'marketing.analytics.view',
     'audit.read'
   ],
+  CLIENT: [
+    'workspace.read',
+    'board.read',
+    'item.read',
+    'item.transition',
+    'comment.read',
+    'file.read',
+    'billing.read',
+    'fiscal.read'
+  ],
   GUEST: [
     'project.read',
     'board.read',

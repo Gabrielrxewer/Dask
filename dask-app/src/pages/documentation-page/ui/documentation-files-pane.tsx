@@ -3,6 +3,7 @@ import {
   DOCUMENT_KIND_FILTERS,
   DOCUMENT_KIND_LABELS,
   formatRelativeDate,
+  getCommercialDocumentStatus,
   normalizeDocumentKind,
   renderDocumentKindIcon,
   type DocumentKindFilter
@@ -56,6 +57,7 @@ export function DocumentationFilesPane({
       <nav className="documentation-page__files-list">
         {filteredDocs.map((doc) => {
           const docKind = normalizeDocumentKind(doc.kind);
+          const status = docKind === "wiki" ? null : getCommercialDocumentStatus(doc);
 
           return (
             <button
@@ -75,6 +77,11 @@ export function DocumentationFilesPane({
                   </span>
                 </div>
                 <span>{`Atualizado em ${formatRelativeDate(doc.updatedAt)}`}</span>
+                {status ? (
+                  <span className={`documentation-page__commercial-status documentation-page__commercial-status--${status}`}>
+                    {status}
+                  </span>
+                ) : null}
               </div>
             </button>
           );
@@ -82,7 +89,7 @@ export function DocumentationFilesPane({
         {!isDocsLoading && filteredDocs.length === 0 ? (
           <div className="documentation-page__panel-empty documentation-page__panel-empty--compact shared-empty-panel">
             <h3>Nenhuma doc encontrada</h3>
-            <p>Clique em "Nova doc" para comeÃ§ar.</p>
+            <p>Clique em "Nova doc" para começar.</p>
           </div>
         ) : null}
       </nav>

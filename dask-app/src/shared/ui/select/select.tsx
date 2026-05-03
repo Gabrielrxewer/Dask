@@ -1,16 +1,19 @@
 import {
   Children,
   isValidElement,
+  useCallback,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ChangeEvent,
   type KeyboardEvent,
   type ReactElement,
   type SelectHTMLAttributes
 } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/shared/lib/cn";
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {}
@@ -37,8 +40,10 @@ export function Select({ autoFocus, className = "", children, disabled, onChange
   const id = useId();
   const listboxId = `${id}-listbox`;
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const nativeSelectRef = useRef<HTMLSelectElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null);
   const [internalValue, setInternalValue] = useState(() =>
     value !== undefined ? String(value) : defaultValue !== undefined ? String(defaultValue) : ""
   );
@@ -81,6 +86,34 @@ export function Select({ autoFocus, className = "", children, disabled, onChange
     }
   }, [autoFocus]);
 
+  const updateMenuPosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) {
+      setMenuStyle(null);
+      return;
+    }
+
+    const gap = 4;
+    const viewportPadding = 12;
+    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2);
+    const menuWidth = Math.min(Math.max(rect.width, 260), availableWidth);
+    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - viewportPadding - menuWidth);
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(280, openUp ? spaceAbove - gap : spaceBelow - gap));
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      top: openUp ? undefined : rect.bottom + gap,
+      bottom: openUp ? window.innerHeight - rect.top + gap : undefined,
+      width: menuWidth,
+      maxHeight,
+      zIndex: 10050
+    });
+  }, []);
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -88,14 +121,21 @@ export function Select({ autoFocus, className = "", children, disabled, onChange
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!buttonRef.current?.parentElement?.contains(target)) {
+      if (!buttonRef.current?.parentElement?.contains(target) && !menuRef.current?.contains(target)) {
         setIsOpen(false);
       }
     };
 
+    updateMenuPosition();
     document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [isOpen]);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
 
   function emitChange(nextValue: string) {
     if (nativeSelectRef.current) {
@@ -190,8 +230,14 @@ export function Select({ autoFocus, className = "", children, disabled, onChange
         <span className="shared-select__chevron" aria-hidden="true" />
       </button>
 
-      {isOpen ? (
-        <div className="shared-select__menu" id={listboxId} role="listbox">
+      {isOpen && menuStyle ? createPortal(
+        <div
+          ref={menuRef}
+          className="shared-select__menu shared-select__menu--portal"
+          id={listboxId}
+          role="listbox"
+          style={menuStyle}
+        >
           {options.map(option => (
             <button
               key={`${option.value}-${option.label}`}
@@ -208,7 +254,8 @@ export function Select({ autoFocus, className = "", children, disabled, onChange
               <span>{option.label}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

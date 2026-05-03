@@ -6,7 +6,7 @@ import {
   type PermissionOverrides
 } from '@/modules/identity/domain/permissions';
 
-export const workspaceModuleCatalog = ['board', 'automation', 'documentation', 'ai', 'settings', 'fiscal', 'leads', 'marketing'] as const;
+export const workspaceModuleCatalog = ['board', 'automation', 'documentation', 'billing', 'ai', 'settings', 'fiscal', 'leads', 'marketing'] as const;
 
 export type WorkspaceModuleKey = (typeof workspaceModuleCatalog)[number];
 
@@ -161,6 +161,7 @@ function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS'
       board: true,
       automation: true,
       documentation: true,
+      billing: true,
       ai: true,
       settings: true,
       fiscal: true,
@@ -172,6 +173,7 @@ function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS'
     board: true,
     automation: false,
     documentation: true,
+    billing: true,
     ai: false,
     settings: true,
     fiscal: false,
@@ -280,7 +282,9 @@ export function resolveWorkspaceAccessPolicy(input: {
 
   const membershipModules = overrides.allowedModules ?? [];
   const baseAllowedModules =
-    membershipModules.length > 0
+    input.role === 'CLIENT'
+      ? (['board', 'documentation', 'billing', 'fiscal'] satisfies WorkspaceModuleKey[])
+      : membershipModules.length > 0
       ? membershipModules
       : groupModulesUnion.length > 0
         ? groupModulesUnion
@@ -303,7 +307,7 @@ export function resolveWorkspaceAccessPolicy(input: {
     : null;
 
   const ownCardsOnlyFromGroups = matchedGroups.some((group) => group.ownCardsOnly === true);
-  const ownCardsOnly = overrides.ownCardsOnly === true || ownCardsOnlyFromGroups;
+  const ownCardsOnly = input.role === 'CLIENT' || overrides.ownCardsOnly === true || ownCardsOnlyFromGroups;
 
   return {
     permissions: Array.from(effectivePermissionSet),

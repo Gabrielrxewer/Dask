@@ -45,7 +45,7 @@ export function MembersListSection({
                 />
                 <div className="ms-member-row__info">
                   <strong>{member.name}</strong>
-                  <span>{member.email || "Sem e-mail visÃ­vel"}</span>
+                  <span>{member.email || "Sem e-mail visível"}</span>
                 </div>
                 <div className="ms-member-row__meta">
                   <StatusBadge tone={ROLE_TONES[member.role] ?? "default"}>
@@ -58,7 +58,7 @@ export function MembersListSection({
                   )}
                   {moduleCount > 0 && (
                     <span className="ms-badge">
-                      {moduleCount} mÃ³dulo{moduleCount !== 1 ? "s" : ""}
+                      {moduleCount} módulo{moduleCount !== 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
@@ -69,7 +69,7 @@ export function MembersListSection({
                   onClick={() => editableMember && onEditMember(editableMember)}
                   disabled={isOwner || !editableMember}
                 >
-                  {isOwner ? "ProprietÃ¡rio" : "Editar acesso"}
+                  {isOwner ? "Proprietário" : "Editar acesso"}
                 </Button>
               </div>
             );

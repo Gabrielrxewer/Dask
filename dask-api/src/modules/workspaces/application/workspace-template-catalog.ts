@@ -555,6 +555,40 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
       formVisible: false,
       readOnlyAfterCreate: true
     }
+  },
+  {
+    id: 'billingStatus',
+    label: 'Status da cobranca',
+    slug: 'billingStatus',
+    type: 'select',
+    scopeTypeIds: commercialIssueTypes,
+    options: [
+      { label: 'Gerada / pendente', value: 'pending', color: '#0369a1' },
+      { label: 'Paga', value: 'paid', color: '#15803d' },
+      { label: 'Em atraso', value: 'overdue', color: '#d97706' },
+      { label: 'Falhou', value: 'failed', color: '#dc2626' },
+      { label: 'Cancelada', value: 'canceled', color: '#64748b' },
+      { label: 'Estornada', value: 'refunded', color: '#7c3aed' },
+      { label: 'Assinatura ativa', value: 'subscription_active', color: '#15803d' },
+      { label: 'Assinatura cancelada', value: 'subscription_canceled', color: '#64748b' }
+    ],
+    config: {
+      semantic: 'billing_status',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
+  },
+  {
+    id: 'billingCheckoutUrl',
+    label: 'Link da cobranca',
+    slug: 'billingCheckoutUrl',
+    type: 'text',
+    scopeTypeIds: commercialIssueTypes,
+    config: {
+      semantic: 'url',
+      formVisible: false,
+      readOnlyAfterCreate: true
+    }
   }
 ];
 
@@ -562,7 +596,7 @@ const commercialFieldBindings = buildTemplateFieldBindings({
   typeIds: commercialIssueTypes,
   baseCardFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
   baseDetailFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
-  extraCardFieldIds: ['clientName', 'companyName', 'contactName', 'estimatedValue', 'source'],
+  extraCardFieldIds: ['clientName', 'companyName', 'contactName', 'estimatedValue', 'source', 'billingStatus'],
   extraDetailFieldIds: [
     'customerId',
     'contactName',
@@ -582,6 +616,9 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     'proposalValidity',
     'contractStartDate',
     'contractDuration',
+    'billingOrderId',
+    'billingStatus',
+    'billingCheckoutUrl',
     'paymentTerms',
     'outOfScope'
   ],
@@ -606,6 +643,9 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     proposalValidity: 'side',
     contractStartDate: 'side',
     contractDuration: 'side',
+    billingOrderId: 'side',
+    billingStatus: 'side',
+    billingCheckoutUrl: 'side',
     'sys:status': 'side',
     'sys:assignee': 'side'
   }
@@ -826,6 +866,14 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           actions: [{ type: 'update_document_status', kind: 'proposal', status: 'sent' }]
         },
         {
+          id: 'move_to_proposal_sent_on_proposal_sent',
+          name: 'Mover para Proposta enviada apos envio da proposta',
+          description: 'Quando a proposta vinculada for enviada pelo documento, move o WorkItem para Proposta enviada.',
+          enabled: true,
+          trigger: { type: 'proposal_status_changed', status: 'sent' },
+          actions: [{ type: 'set_work_item_state', stateSlug: 'proposal_sent' }]
+        },
+        {
           id: 'sync_draft_proposal_on_work_item_update',
           name: 'Sincronizar proposta em rascunho ao atualizar card',
           description: 'Quando dados do WorkItem comercial mudam, re-renderiza a proposta vinculada enquanto ela ainda estiver em rascunho.',
@@ -901,6 +949,14 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           actions: [{ type: 'update_document_status', kind: 'contract', status: 'sent' }]
         },
         {
+          id: 'move_to_contract_sent_on_contract_sent',
+          name: 'Mover para Contrato enviado apos envio do contrato',
+          description: 'Quando o contrato vinculado for enviado pelo documento, move o WorkItem para Contrato enviado.',
+          enabled: true,
+          trigger: { type: 'contract_status_changed', status: 'sent' },
+          actions: [{ type: 'set_work_item_state', stateSlug: 'contract_sent' }]
+        },
+        {
           id: 'sync_draft_contract_on_work_item_update',
           name: 'Sincronizar contrato em rascunho ao atualizar card',
           description: 'Quando dados do WorkItem comercial mudam, re-renderiza o contrato vinculado enquanto ele ainda estiver em rascunho.',
@@ -917,20 +973,40 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
         },
         {
           id: 'create_customer_on_contract_accepted',
-          name: 'Criar cliente e gerar cobranca ao aceitar contrato',
-          description: 'Quando o WorkItem comercial entra em Contrato aceito / assinado, cria ou vincula automaticamente o cliente mestre e avanca para Cobranca gerada.',
+          name: 'Criar cliente ao aceitar contrato',
+          description: 'Quando o WorkItem comercial entra em Contrato aceito / assinado, cria ou vincula automaticamente o cliente mestre sem avancar a etapa de cobranca.',
           enabled: true,
           trigger: { type: 'work_item_moved_to_column', column: 'contract_accepted' },
           actions: [
-            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
-            { type: 'set_work_item_state', stateSlug: 'billing_created' }
+            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' }
           ]
+        },
+        {
+          id: 'move_to_contract_accepted_on_contract_accepted',
+          name: 'Mover para Contrato aceito apos aceite do contrato',
+          description: 'Quando o contrato vinculado for aceito pelo cliente, move o WorkItem para Contrato aceito / assinado.',
+          enabled: true,
+          trigger: { type: 'contract_status_changed', status: 'accepted' },
+          actions: [{ type: 'set_work_item_state', stateSlug: 'contract_accepted' }]
         },
         {
           id: 'prepare_billing_on_contract_accepted',
           name: 'Preparar cobranca apos aceite do contrato',
-          description: 'Quando o contrato for aceito, move o WorkItem para Cobranca gerada e prepara a ordem de cobranca.',
-          enabled: false,
+          description: 'Quando o card entra em Contrato aceito / assinado, cria e envia a cobranca automaticamente.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'contract_accepted' },
+          actions: [
+            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
+            { type: 'set_work_item_state', stateSlug: 'billing_created' },
+            { type: 'create_billing_order', targetFieldSlug: 'billingOrderId' }
+          ],
+          validations: ['commercial.billing.required_fields']
+        },
+        {
+          id: 'prepare_billing_on_contract_document_accepted',
+          name: 'Preparar cobranca apos aceite do documento de contrato',
+          description: 'Quando o contrato vinculado for aceito pelo cliente, cria e envia a cobranca automaticamente.',
+          enabled: true,
           trigger: { type: 'contract_status_changed', status: 'accepted' },
           actions: [
             { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
@@ -942,8 +1018,8 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
         {
           id: 'move_to_paid_active_on_payment_confirmed',
           name: 'Mover para Pago / Ativo apos pagamento confirmado',
-          description: 'Ponto de extensao para confirmacao de pagamento mover o WorkItem comercial para Pago / Ativo.',
-          enabled: false,
+          description: 'Quando a cobranca vinculada for paga, move o WorkItem comercial para Pago / Ativo.',
+          enabled: true,
           trigger: { type: 'billing_payment_confirmed', status: 'paid' },
           actions: [{ type: 'set_work_item_state', stateSlug: 'paid_active' }]
         }

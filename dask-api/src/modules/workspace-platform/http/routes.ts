@@ -27,6 +27,7 @@ import {
   customFieldParamsDto,
   customerListQueryDto,
   customerParamsDto,
+  customerUserLinkParamsDto,
   fieldValueParamsDto,
   itemTypeParamsDto,
   moveWorkItemDto,
@@ -58,7 +59,8 @@ import {
   workspaceIdParamsDto,
   workspaceSnapshotQueryDto,
   createWorkspaceDocumentDto,
-  patchWorkspaceDocumentDto
+  patchWorkspaceDocumentDto,
+  sendWorkspaceDocumentDto
 } from '@/modules/workspace-platform/http/dto';
 import { permissionCatalog, rolePermissionPresets } from '@/modules/identity/domain/permissions';
 import {
@@ -493,6 +495,70 @@ export const buildWorkspacePlatformRoutes = (deps: {
       });
 
       res.status(200).json(updated);
+    })
+  );
+
+  router.put(
+    '/workspaces/:workspaceId/customers/:customerId/users/:memberUserId',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, customerId, memberUserId } = customerUserLinkParamsDto.parse(req.params);
+      const [customer, membership] = await Promise.all([
+        deps.prisma.customer.findFirst({
+          where: { id: customerId, workspaceId },
+          select: { id: true }
+        }),
+        deps.prisma.workspaceMembership.findFirst({
+          where: { workspaceId, userId: memberUserId },
+          select: { userId: true, role: true }
+        })
+      ]);
+
+      if (!customer || !membership) {
+        res.status(404).json({ message: 'Customer or workspace membership not found.' });
+        return;
+      }
+
+      const link = await deps.prisma.workspaceCustomerUser.upsert({
+        where: {
+          workspaceId_customerId_userId: {
+            workspaceId,
+            customerId,
+            userId: memberUserId
+          }
+        },
+        create: {
+          workspaceId,
+          customerId,
+          userId: memberUserId,
+          createdBy: req.auth!.userId
+        },
+        update: {},
+        select: {
+          id: true,
+          workspaceId: true,
+          customerId: true,
+          userId: true
+        }
+      });
+
+      res.status(200).json(link);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/customers/:customerId/users/:memberUserId',
+    ...requireConfigWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, customerId, memberUserId } = customerUserLinkParamsDto.parse(req.params);
+      await deps.prisma.workspaceCustomerUser.deleteMany({
+        where: {
+          workspaceId,
+          customerId,
+          userId: memberUserId
+        }
+      });
+      res.status(204).send();
     })
   );
 
@@ -977,6 +1043,23 @@ export const buildWorkspacePlatformRoutes = (deps: {
       const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
       const payload = patchWorkspaceDocumentDto.parse(req.body);
       const document = await deps.workspaceDocumentsService.updateDocument({
+        workspaceId,
+        documentId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(document);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/documents/:documentId/send',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
+      const payload = sendWorkspaceDocumentDto.parse(req.body);
+      const document = await deps.workspaceDocumentsService.sendCommercialDocument({
         workspaceId,
         documentId,
         userId: req.auth!.userId,

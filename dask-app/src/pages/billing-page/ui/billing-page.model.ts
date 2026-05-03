@@ -59,10 +59,13 @@ export const ORDER_STATUS_LABEL: Record<ConnectPaymentOrderStatus, string> = {
   CHECKOUT_OPEN: "Checkout aberto",
   CHECKOUT_COMPLETED: "Checkout concluído",
   PENDING: "Pendente",
+  OVERDUE: "Em atraso",
   PAID: "Pago",
   FAILED: "Falhou",
   CANCELED: "Cancelado",
-  REFUNDED: "Reembolsado"
+  REFUNDED: "Reembolsado",
+  SUBSCRIPTION_ACTIVE: "Assinatura ativa",
+  SUBSCRIPTION_CANCELED: "Assinatura cancelada"
 };
 
 export const CATALOG_KIND_LABEL: Record<ConnectCatalogItemKind, string> = {
@@ -114,7 +117,7 @@ export const BADGE_TONE_BY_STATUS: Record<StatusTone, "default" | "success" | "w
 };
 
 export function mapOrderStatusTone(status: ConnectPaymentOrderStatus): StatusTone {
-  if (status === "PAID") return "active";
+  if (status === "PAID" || status === "SUBSCRIPTION_ACTIVE") return "active";
   if (["PENDING", "CHECKOUT_OPEN", "CHECKOUT_COMPLETED", "DRAFT"].includes(status)) return "attention";
   return "blocked";
 }
@@ -133,7 +136,7 @@ export function formatAmount(amountInCents: number, currency: string): string {
 }
 
 function isTerminalOrderStatus(status: ConnectPaymentOrderStatus): boolean {
-  return ["PAID", "REFUNDED", "CANCELED"].includes(status);
+  return ["PAID", "REFUNDED", "CANCELED", "SUBSCRIPTION_ACTIVE", "SUBSCRIPTION_CANCELED"].includes(status);
 }
 
 export function canResendOrder(order: ConnectPaymentOrder): boolean {

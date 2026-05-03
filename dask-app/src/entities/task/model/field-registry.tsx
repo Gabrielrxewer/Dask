@@ -172,6 +172,18 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
     defaultCardArea: "badge",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
+  },
+  billing_summary: {
+    label: "Cobranças vinculadas",
+    defaultCardArea: "custom-field",
+    defaultDetailZone: "main",
+    normalize: value => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string" && value.trim().length > 0) {
+        try { return JSON.parse(value); } catch { return []; }
+      }
+      return [];
+    }
   }
 };
 

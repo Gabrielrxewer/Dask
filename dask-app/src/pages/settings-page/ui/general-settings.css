@@ -904,9 +904,9 @@
   gap: 16px;
   width: min(520px, 100%);
   padding: 20px;
-  border: 1px solid var(--builder-line);
+  border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--builder-surface);
+  background: var(--surface-overlay-strong);
   box-shadow: 0 28px 70px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
@@ -1075,8 +1075,7 @@
 .app-theme[data-theme="dark"] .general-settings__billing-status p,
 .app-theme[data-theme="dark"] .general-settings__billing-grid span,
 .app-theme[data-theme="dark"] .general-settings__billing-checklist li,
-.app-theme[data-theme="dark"] .general-settings__template-card,
-.app-theme[data-theme="dark"] .general-settings__template-modal {
+.app-theme[data-theme="dark"] .general-settings__template-card {
   border-color: var(--line) !important;
   background: var(--surface-raised) !important;
 }

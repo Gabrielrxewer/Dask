@@ -1,10 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectPaymentOrder } from "@/modules/billing";
-import {
-  Button,
-  ResourceTable,
-  StatusBadge
-} from "@/shared/ui";
+import { Button, ResourceTable, StatusBadge } from "@/shared/ui";
 import type { HistoryAction, PaymentOrdersLoadState } from "./billing-page.model";
 import {
   BADGE_TONE_BY_STATUS,
@@ -18,10 +14,12 @@ import {
 } from "./billing-page.model";
 
 interface BillingHistoryPanelProps {
+  customerMode: boolean;
   paymentOrders: ConnectPaymentOrder[];
   paginatedPaymentOrders: ConnectPaymentOrder[];
   paymentOrdersLoadState: PaymentOrdersLoadState;
   paymentOrdersError: string | null;
+  focusedOrderId: string | null;
   historyCopiedOrderId: string | null;
   historyActionOrderId: string | null;
   historyActionType: HistoryAction | null;
@@ -34,11 +32,21 @@ interface BillingHistoryPanelProps {
   onCancelOrder: (order: ConnectPaymentOrder) => void;
 }
 
+const CUSTOMER_TERMINAL_STATUSES = new Set([
+  "PAID",
+  "REFUNDED",
+  "CANCELED",
+  "SUBSCRIPTION_ACTIVE",
+  "SUBSCRIPTION_CANCELED"
+]);
+
 export function BillingHistoryPanel({
+  customerMode,
   paymentOrders,
   paginatedPaymentOrders,
   paymentOrdersLoadState,
   paymentOrdersError,
+  focusedOrderId,
   historyCopiedOrderId,
   historyActionOrderId,
   historyActionType,
@@ -54,8 +62,14 @@ export function BillingHistoryPanel({
     <div className="billing-view__panel" role="tabpanel">
       <div className="billing-view__panel-head">
         <div>
-          <h3 className="billing-view__panel-title">Histórico de cobranças</h3>
-          <p className="billing-view__panel-subtitle">Últimas 30 cobranças criadas neste workspace.</p>
+          <h3 className="billing-view__panel-title">
+            {customerMode ? "Portal do cliente" : "Historico de cobrancas"}
+          </h3>
+          <p className="billing-view__panel-subtitle">
+            {customerMode
+              ? "Acompanhe cobrancas, vencimentos, status de pagamento, assinatura e documentos fiscais."
+              : "Ultimas 30 cobrancas criadas neste workspace."}
+          </p>
         </div>
         <StatusBadge>{paymentOrders.length} itens</StatusBadge>
       </div>
@@ -65,10 +79,12 @@ export function BillingHistoryPanel({
       ) : null}
       {paymentOrdersLoadState === "loaded" && paymentOrders.length === 0 ? (
         <div className="billing-view__history-empty">
-          <p>Nenhuma cobrança criada ainda.</p>
-          <Button type="button" variant="outline" onClick={onCreateFirstCharge}>
-            Criar primeira cobrança →
-          </Button>
+          <p>{customerMode ? "Nenhuma cobranca vinculada ao seu e-mail ainda." : "Nenhuma cobranca criada ainda."}</p>
+          {!customerMode ? (
+            <Button type="button" variant="outline" onClick={onCreateFirstCharge}>
+              Criar primeira cobranca
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {paymentOrdersLoadState === "loaded" && paymentOrders.length > 0 ? (
@@ -77,6 +93,7 @@ export function BillingHistoryPanel({
             className="billing-view__table"
             data={paginatedPaymentOrders}
             rowKey="id"
+            rowClassName={(order) => (order.id === focusedOrderId ? "billing-view__table-row--focused" : undefined)}
             columns={[
               {
                 id: "status",
@@ -94,7 +111,7 @@ export function BillingHistoryPanel({
                 width: "0.9fr",
                 render: (order) => formatAmount(order.amount, order.currency)
               },
-              { id: "description", header: "Descrição", width: "1.1fr", accessor: "description" },
+              { id: "description", header: "Descricao", width: "1.1fr", accessor: "description" },
               {
                 id: "customer",
                 header: "Cliente",
@@ -106,11 +123,17 @@ export function BillingHistoryPanel({
                 header: "Criada em",
                 width: "0.95fr",
                 render: (order) => formatOrderDate(order.createdAt)
+              },
+              {
+                id: "due",
+                header: "Vencimento",
+                width: "0.9fr",
+                render: (order) => (order.paidAt ? "Pago" : order.canceledAt ? "Cancelado" : "Em aberto")
               }
             ]}
             actions={{
-              header: "Ações",
-              width: "1.35fr",
+              header: "Acoes",
+              width: customerMode ? "1fr" : "1.35fr",
               render: (order) => (
                 <div className="billing-view__table-actions">
                   <Button
@@ -119,40 +142,55 @@ export function BillingHistoryPanel({
                     size="sm"
                     className="billing-view__table-action"
                     onClick={() => onCopyHistoryLink(order)}
-                    disabled={!order.checkoutUrl}
+                    disabled={!order.customerPortalUrl && !order.checkoutUrl}
                   >
                     {historyCopiedOrderId === order.id ? "Copiado!" : "Copiar link"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="billing-view__table-action"
-                    onClick={() => onResendOrder(order)}
-                    disabled={
-                      !canResendOrder(order) ||
-                      (historyActionOrderId === order.id && historyActionType === "resend")
-                    }
-                  >
-                    {historyActionOrderId === order.id && historyActionType === "resend"
-                      ? "Reenviando..."
-                      : "Reenviar e-mail"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="billing-view__table-action billing-view__table-action--danger"
-                    onClick={() => onCancelOrder(order)}
-                    disabled={
-                      !canCancelOrder(order) ||
-                      (historyActionOrderId === order.id && historyActionType === "cancel")
-                    }
-                  >
-                    {historyActionOrderId === order.id && historyActionType === "cancel"
-                      ? "Cancelando..."
-                      : "Cancelar"}
-                  </Button>
+                  {customerMode && order.checkoutUrl && !CUSTOMER_TERMINAL_STATUSES.has(order.status) ? (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      className="billing-view__table-action"
+                      onClick={() => window.location.assign(order.checkoutUrl ?? "")}
+                    >
+                      Pagar
+                    </Button>
+                  ) : null}
+                  {!customerMode ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="billing-view__table-action"
+                        onClick={() => onResendOrder(order)}
+                        disabled={
+                          !canResendOrder(order) ||
+                          (historyActionOrderId === order.id && historyActionType === "resend")
+                        }
+                      >
+                        {historyActionOrderId === order.id && historyActionType === "resend"
+                          ? "Reenviando..."
+                          : "Reenviar e-mail"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="billing-view__table-action billing-view__table-action--danger"
+                        onClick={() => onCancelOrder(order)}
+                        disabled={
+                          !canCancelOrder(order) ||
+                          (historyActionOrderId === order.id && historyActionType === "cancel")
+                        }
+                      >
+                        {historyActionOrderId === order.id && historyActionType === "cancel"
+                          ? "Cancelando..."
+                          : "Cancelar"}
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
               )
             }}
@@ -161,7 +199,7 @@ export function BillingHistoryPanel({
           />
           <div className="billing-view__pagination">
             <span className="billing-view__pagination-label">
-              Página {historyPage} de {historyTotalPages}
+              Pagina {historyPage} de {historyTotalPages}
             </span>
             <div className="billing-view__pagination-actions">
               <Button
@@ -180,7 +218,7 @@ export function BillingHistoryPanel({
                 onClick={() => setHistoryPage((current) => Math.min(historyTotalPages, current + 1))}
                 disabled={historyPage === historyTotalPages}
               >
-                Próxima
+                Proxima
               </Button>
             </div>
           </div>

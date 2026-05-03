@@ -1439,6 +1439,11 @@
   background: var(--surface-tint-strong);
 }
 
+.billing-view__table .shared-data-table__row.billing-view__table-row--focused {
+  background: color-mix(in srgb, var(--success-soft) 68%, var(--billing-surface));
+  box-shadow: inset 3px 0 0 var(--success);
+}
+
 .billing-view__table .shared-data-table__row:hover .shared-data-table__cell {
   background: transparent;
 }

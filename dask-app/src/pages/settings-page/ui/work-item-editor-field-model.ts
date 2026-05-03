@@ -18,7 +18,8 @@ export const FIELD_TYPE_OPTIONS: Array<{
   { value: "catalog_select", label: "Selecao dinamica", caption: "Fonte das opcoes: Catalogo de cobranca." },
   { value: "multi_select", label: "Selecao multipla", caption: "Etiquetas e combinacoes." },
   { value: "user", label: "Usuario", caption: "Pessoa responsavel ou autora." },
-  { value: "checklist", label: "Checklist", caption: "Lista operacional com marcacao." }
+  { value: "checklist", label: "Checklist", caption: "Lista operacional com marcacao." },
+  { value: "billing_summary", label: "Cobranças vinculadas", caption: "Ordens de cobrança com status e valor." }
 ];
 
 
@@ -136,6 +137,7 @@ export function buildFieldSettings(input: {
   return {
     allowAiGeneration: supportsAiGeneration(input.type as TaskFieldDefinition["type"]) ? input.allowAiGeneration : false,
     ...(isCatalogSelectType(input.type) ? { entityType: "billing_catalog_item" } : {}),
+    ...(input.type === "billing_summary" ? { displayAs: "billing_summary" } : {}),
     ...(input.type === "checklist"
       ? {
           checklistDisplay: {
@@ -263,6 +265,9 @@ export function createEmptyOptionDraft(index: number): FieldOptionDraft {
 export function resolveApiFieldDraftType(raw: ApiCustomField): CustomFieldType {
   if (raw.settings?.entityType === "billing_catalog_item" || raw.config?.entityType === "billing_catalog_item") {
     return "catalog_select";
+  }
+  if (raw.settings?.displayAs === "billing_summary" || raw.config?.displayAs === "billing_summary") {
+    return "billing_summary";
   }
   return raw.type as CustomFieldType;
 }

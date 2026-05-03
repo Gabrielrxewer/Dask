@@ -108,22 +108,22 @@ export function resolvePendingFieldTargetLabel(
     if (pendingFieldSetup.targetScope === "card") {
       return "Card do board";
     }
-    return `Formulario Ã¢â‚¬â€ ${pendingFieldSetup.targetDetailZone === "main" ? "Coluna principal" : "Barra lateral"}`;
+    return `Formulario — ${pendingFieldSetup.targetDetailZone === "main" ? "Coluna principal" : "Barra lateral"}`;
   }
 
   if (target.surface === "card") {
     if (target.kind === "replace-field") {
-      return `Card do board Ã¢â‚¬â€ substitui ${fieldsById[target.targetFieldId]?.label ?? "campo"}`;
+      return `Card do board — substitui ${fieldsById[target.targetFieldId]?.label ?? "campo"}`;
     }
-    return `Card do board Ã¢â‚¬â€ ${CARD_SLOT_AREA_LABELS[target.area]}`;
+    return `Card do board — ${CARD_SLOT_AREA_LABELS[target.area]}`;
   }
 
   const zoneLabel = target.zone === "main" ? "Coluna principal" : "Barra lateral";
   if (target.kind === "replace-field") {
-    return `Formulario Ã¢â‚¬â€ ${zoneLabel} Ã¢â‚¬â€ substitui ${fieldsById[target.targetFieldId]?.label ?? "campo"}`;
+    return `Formulario — ${zoneLabel} — substitui ${fieldsById[target.targetFieldId]?.label ?? "campo"}`;
   }
 
-  return `Formulario Ã¢â‚¬â€ ${zoneLabel}`;
+  return `Formulario — ${zoneLabel}`;
 }
 
 export function removeFieldFromScope(draft: LayoutDraft, scope: LayoutScope, fieldId: string): LayoutDraft {

@@ -30,7 +30,7 @@ export function AgendaSlotModal({
           <div>
             <h2 id="agenda-slot-title">{slotInspection.rowLabel}</h2>
             <p>
-              {slotInspection.rowKind === "person" ? "Pessoa" : "Recurso"} â€¢ {toAgendaDayLabel(slotInspection.slotStart)} â€¢{" "}
+              {slotInspection.rowKind === "person" ? "Pessoa" : "Recurso"} • {toAgendaDayLabel(slotInspection.slotStart)} •{" "}
               {`${toHourLabel(slotInspection.slotStart)} - ${toHourLabel(slotInspection.slotEnd)}`}
             </p>
           </div>

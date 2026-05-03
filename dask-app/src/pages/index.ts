@@ -18,6 +18,7 @@ export { AgendaPage } from "@/pages/agenda-page";
 export { DocumentationPage } from "@/pages/documentation-page";
 export { AiAgentsPage } from "@/pages/ai-agents-page";
 export { BillingPage } from "@/pages/billing-page";
+export { BillingPublicPage } from "@/pages/billing-public-page";
 export { FiscalPage } from "@/pages/fiscal-page";
 export { LeadsPage } from "@/pages/leads-page";
 export { MarketingPage } from "@/pages/marketing-page";

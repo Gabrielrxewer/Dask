@@ -6,8 +6,11 @@ interface DocumentationTopNavigationProps {
   isAssistantOpen: boolean;
   hasActiveDoc: boolean;
   canDeleteDoc: boolean;
+  canSendCommercialDocument: boolean;
+  readOnly?: boolean;
   onBack: () => void;
   onCreate: () => void;
+  onSendCommercialDocument: () => void;
   onToggleAssistant: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -19,15 +22,18 @@ export function DocumentationTopNavigation({
   isAssistantOpen,
   hasActiveDoc,
   canDeleteDoc,
+  canSendCommercialDocument,
+  readOnly = false,
   onBack,
   onCreate,
+  onSendCommercialDocument,
   onToggleAssistant,
   onDuplicate,
   onDelete
 }: DocumentationTopNavigationProps) {
   return (
     <section className="docs-top-nav" aria-label="Acoes de documentacao">
-      {fromCard ? (
+      {fromCard || readOnly ? (
         <WorkspaceActionButton
           className="docs-top-nav__btn"
           label="Voltar"
@@ -46,28 +52,42 @@ export function DocumentationTopNavigation({
         />
       )}
       <div className="docs-top-nav__actions">
-        <WorkspaceActionButton
-          className={`docs-top-nav__btn${isAssistantOpen ? " docs-top-nav__btn--active" : ""}`}
-          label={isAssistantOpen ? "Ocultar chat" : "Chat IA"}
-          disabled={disabled}
-          onClick={onToggleAssistant}
-          icon={<AppIcon name="message" />}
-        />
-        <WorkspaceActionButton
-          className="docs-top-nav__btn"
-          label="Duplicar doc"
-          disabled={!hasActiveDoc || disabled}
-          onClick={onDuplicate}
-          icon={<AppIcon name="copy" />}
-        />
-        <WorkspaceActionButton
-          className="docs-top-nav__btn"
-          tone="danger"
-          label="Excluir doc"
-          disabled={!hasActiveDoc || !canDeleteDoc || disabled}
-          onClick={onDelete}
-          icon={<AppIcon name="trash" />}
-        />
+        {!readOnly && canSendCommercialDocument ? (
+          <WorkspaceActionButton
+            className="docs-top-nav__btn"
+            tone="accent"
+            label="Enviar para cliente"
+            disabled={disabled}
+            onClick={onSendCommercialDocument}
+            icon={<AppIcon name="send" />}
+          />
+        ) : null}
+        {!readOnly ? (
+          <>
+            <WorkspaceActionButton
+              className={`docs-top-nav__btn${isAssistantOpen ? " docs-top-nav__btn--active" : ""}`}
+              label={isAssistantOpen ? "Ocultar chat" : "Chat IA"}
+              disabled={disabled}
+              onClick={onToggleAssistant}
+              icon={<AppIcon name="message" />}
+            />
+            <WorkspaceActionButton
+              className="docs-top-nav__btn"
+              label="Duplicar doc"
+              disabled={!hasActiveDoc || disabled}
+              onClick={onDuplicate}
+              icon={<AppIcon name="copy" />}
+            />
+            <WorkspaceActionButton
+              className="docs-top-nav__btn"
+              tone="danger"
+              label="Excluir doc"
+              disabled={!hasActiveDoc || !canDeleteDoc || disabled}
+              onClick={onDelete}
+              icon={<AppIcon name="trash" />}
+            />
+          </>
+        ) : null}
       </div>
     </section>
   );

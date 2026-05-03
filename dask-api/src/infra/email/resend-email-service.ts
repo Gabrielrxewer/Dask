@@ -4,6 +4,7 @@ import { logger } from '@/core/logging/logger';
 import type { EmailService } from '@/infra/email/email-service';
 import {
   checkoutLinkTemplate,
+  commercialDocumentTemplate,
   emailVerificationTemplate,
   passwordChangedAlertTemplate,
   passwordResetTemplate,
@@ -80,7 +81,7 @@ export class ResendEmailService implements EmailService {
       workspaceName: string;
       inviterName: string;
       inviteUrl: string;
-      role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+      role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER' | 'CLIENT';
     }
   ): Promise<void> {
     const { html, text } = workspaceInviteTemplate(input);
@@ -99,6 +100,34 @@ export class ResendEmailService implements EmailService {
     }
 
     logger.info({ event: 'email.workspace_invite.sent', to });
+  }
+
+  public async sendCommercialDocumentEmail(
+    to: string,
+    input: {
+      workspaceName: string;
+      documentTitle: string;
+      documentType: 'proposal' | 'contract';
+      publicUrl: string;
+    }
+  ): Promise<void> {
+    const { html, text } = commercialDocumentTemplate(input);
+    const documentLabel = input.documentType === 'proposal' ? 'Proposta' : 'Contrato';
+
+    const { error } = await this.client.emails.send({
+      from: env.EMAIL_FROM,
+      to,
+      subject: `${documentLabel}: ${input.documentTitle} - ${input.workspaceName}`,
+      html,
+      text
+    });
+
+    if (error) {
+      logger.error({ event: 'email.commercial_document.failed', to, error });
+      throw new Error(`Failed to send commercial document email: ${error.message}`);
+    }
+
+    logger.info({ event: 'email.commercial_document.sent', to, documentType: input.documentType });
   }
 
   public async sendCheckoutLinkEmail(

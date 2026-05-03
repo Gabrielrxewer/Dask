@@ -8,11 +8,28 @@ import "./verify-email-page.css";
 type VerifyStatus = "idle" | "verifying" | "success" | "error";
 type ResendStatus = "idle" | "loading" | "sent" | "error";
 
+const verificationRequests = new Map<string, Promise<void>>();
+
+function verifyEmailOnce(token: string): Promise<void> {
+  const existingRequest = verificationRequests.get(token);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = authService.verifyEmail(token).catch((error) => {
+    verificationRequests.delete(token);
+    throw error;
+  });
+  verificationRequests.set(token, request);
+  return request;
+}
+
 export function VerifyEmailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const email = searchParams.get("email") ?? "";
+  const returnTo = searchParams.get("returnTo") ?? "";
 
   const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>("idle");
   const [resendStatus, setResendStatus] = useState<ResendStatus>("idle");
@@ -25,8 +42,7 @@ export function VerifyEmailPage() {
     let active = true;
     setVerifyStatus("verifying");
 
-    authService
-      .verifyEmail(token)
+    verifyEmailOnce(token)
       .then(() => {
         if (active) setVerifyStatus("success");
       })
@@ -84,7 +100,13 @@ export function VerifyEmailPage() {
             <Button
               variant="primary"
               className="verify-email-page__cta"
-              onClick={() => navigate(routePaths.login)}
+              onClick={() =>
+                navigate(
+                  returnTo
+                    ? `${routePaths.login}?returnTo=${encodeURIComponent(returnTo)}&email=${encodeURIComponent(email)}`
+                    : routePaths.login
+                )
+              }
             >
               Ir para o login
             </Button>

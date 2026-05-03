@@ -10,6 +10,7 @@ export const automationTriggerTypeSchema = z.enum([
   'proposal.sent',
   'proposal.approved',
   'contract.created',
+  'contract.sent',
   'contract.accepted',
   'billing.requested',
   'billing.payment.confirmed',

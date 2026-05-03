@@ -1,0 +1,42 @@
+.billing-public-page {
+  min-height: calc(100dvh - var(--global-header-height, 0px));
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: var(--surface-base);
+}
+
+.billing-public-page__panel {
+  width: min(100%, 440px);
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.billing-public-page__panel h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.billing-public-page__panel p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.billing-public-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.billing-public-page__actions a {
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+}

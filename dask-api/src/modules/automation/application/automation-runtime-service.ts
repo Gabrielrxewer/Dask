@@ -9,6 +9,7 @@ import {
   type AutomationRuleSpec
 } from '@/modules/automation/application/rule-schema';
 import { getCommercialDocumentTemplate } from '@/modules/automation/application/commercial-document-templates';
+import type { BillingService } from '@/modules/billing/application/billing-service';
 
 export type QueuedAutomationEvent = {
   eventId?: string;
@@ -319,7 +320,8 @@ function toContext(
 export class AutomationRuntimeService {
   public constructor(
     private readonly prisma: PrismaClient,
-    private readonly ensureDefaultViews?: (workspaceId: string) => Promise<void>
+    private readonly ensureDefaultViews?: (workspaceId: string) => Promise<void>,
+    private readonly billingService?: BillingService | null
   ) {}
 
   public async processEvent(event: QueuedAutomationEvent): Promise<void> {
@@ -696,6 +698,7 @@ export class AutomationRuntimeService {
       automationBinding: action.binding,
       automationGenerated: true,
       generatedFromWorkItemId: itemId,
+      ...(customer?.id ? { customerId: customer.id } : {}),
       ...(kind === 'proposal' ? { publicToken: randomUUID() } : {})
     };
 
@@ -703,7 +706,7 @@ export class AutomationRuntimeService {
       data: {
         workspaceId,
         title,
-        content: template.content,
+        content: interpolateDocumentContent(template.content, variables),
         kind,
         linkedEntityType: 'work_item',
         linkedEntityId: itemId,
@@ -835,6 +838,7 @@ export class AutomationRuntimeService {
     await this.prisma.workspaceDocument.update({
       where: { id: document.id },
       data: {
+        content: interpolateDocumentContent(template.content, variables),
         metadata: toJsonValue({
           ...(template.metadata ?? {}),
           ...currentMetadata,
@@ -844,7 +848,8 @@ export class AutomationRuntimeService {
           automationBinding: action.binding ?? currentMetadata.automationBinding,
           automationGenerated: true,
           generatedFromWorkItemId: itemId,
-          syncedFromWorkItemAt: new Date().toISOString()
+          syncedFromWorkItemAt: new Date().toISOString(),
+          ...(customer?.id ? { customerId: customer.id } : {})
         }),
         updatedBy
       }
@@ -863,6 +868,11 @@ export class AutomationRuntimeService {
     }
 
     const item = await this.loadItemForAutomation(workspaceId, itemId);
+    const existingBillingOrderId = this.readItemField(item, ['billingOrderId']);
+    if (existingBillingOrderId) {
+      return;
+    }
+
     const customer = await this.loadCustomerForItem(workspaceId, item);
     const catalogItem = await this.loadCatalogItemForItem(workspaceId, item);
     await this.validateCommercialRequirements({
@@ -872,14 +882,58 @@ export class AutomationRuntimeService {
       catalogItem
     });
 
-    const billingOrderId = `BILL-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
-    const updatedBy = readString(rawPayload.requestedBy) ?? item.updatedBy ?? item.createdBy;
+    if (!this.billingService) {
+      throw new AppError('Billing service is not configured for automation.', 503);
+    }
+
+    const updatedBy = item.createdBy;
+    const amountInCents = catalogItem?.amount ?? Math.round((this.readItemNumberField(item, ['estimatedValue', 'dealValue', 'value']) ?? 0) * 100);
+    const customerEmail = this.readItemField(item, ['financialEmail', 'contactEmail']) || customer?.email || undefined;
+    const customerName =
+      customer?.tradeName ??
+      customer?.legalName ??
+      customer?.name ??
+      this.readItemField(item, ['clientName', 'companyName', 'contactName']) ??
+      item.title;
+    const description = catalogItem?.name ?? item.title;
+
+    const result = await this.billingService.createConnectCheckoutSession(workspaceId, updatedBy, {
+      amount: catalogItem ? undefined : amountInCents,
+      currency: catalogItem?.currency ?? 'brl',
+      description: catalogItem ? undefined : description,
+      catalogItemId: catalogItem?.id,
+      customerId: customer?.id,
+      customerName,
+      customerEmail,
+      sendEmail: true,
+      metadata: {
+        ...(action.metadata ? Object.fromEntries(Object.entries(action.metadata).map(([key, value]) => [key, String(value)])) : {}),
+        sourceWorkItemId: itemId,
+        sourceAutomation: 'create_billing_order',
+        sourceContractId: this.readItemField(item, ['contractId']),
+        sourceProposalId: this.readItemField(item, ['proposalId'])
+      }
+    });
 
     await this.writeWorkItemField({
       workspaceId,
       itemId,
       fieldSlug: action.targetFieldSlug ?? 'billingOrderId',
-      value: billingOrderId,
+      value: result.orderId,
+      updatedBy
+    });
+    await this.writeWorkItemField({
+      workspaceId,
+      itemId,
+      fieldSlug: 'billingStatus',
+      value: 'pending',
+      updatedBy
+    });
+    await this.writeWorkItemField({
+      workspaceId,
+      itemId,
+      fieldSlug: 'billingCheckoutUrl',
+      value: result.url,
       updatedBy
     });
 
@@ -891,7 +945,9 @@ export class AutomationRuntimeService {
           ...currentMetadata,
           commercialBilling: {
             ...(isRecord(currentMetadata.commercialBilling) ? currentMetadata.commercialBilling : {}),
-            billingOrderId,
+            billingOrderId: result.orderId,
+            billingStatus: 'pending',
+            checkoutUrl: result.url,
             requestedAt: new Date().toISOString(),
             requestedBy: updatedBy,
             ...(action.metadata ?? {})
@@ -1504,8 +1560,6 @@ export class AutomationRuntimeService {
       if (!hasDealValue) {
         missing.add('Valor');
       }
-      if (!this.readItemField(input.item, ['billingType'])) missing.add('Tipo de cobranca');
-      if (!this.readItemField(input.item, ['dueDate', 'billingDueDate'])) missing.add('Vencimento');
     }
 
     if (missing.size > 0) {

@@ -12,6 +12,36 @@ type AuthTokenPayload = JwtPayload & {
   isPlatformAdmin?: boolean;
 };
 
+export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    next();
+    return;
+  }
+
+  const [, token] = authHeader.split(' ');
+  if (!token) {
+    next();
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as AuthTokenPayload;
+    if (payload.emailVerified === true) {
+      req.auth = {
+        userId: payload.sub,
+        email: payload.email,
+        roles: (payload.roles ?? []) as MembershipRole[],
+        isPlatformAdmin: payload.isPlatformAdmin === true
+      };
+    }
+  } catch {
+    // invalid token — proceed as unauthenticated
+  }
+
+  next();
+};
+
 export const authMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {

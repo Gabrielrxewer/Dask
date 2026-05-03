@@ -1,6 +1,7 @@
 ﻿import { Router } from 'express';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
+import { AppError } from '@/core/errors/app-error';
 import {
   requireWorkspaceModule,
   requireWorkspacePermission,
@@ -61,6 +62,28 @@ export const buildFiscalRoutes = (deps: {
   const requireFiscalRead = requireWorkspacePermission(deps.authorizationService, 'fiscal.read');
   const requireFiscalIssue = requireWorkspacePermission(deps.authorizationService, 'fiscal.issue');
   const requireFiscalConfig = requireWorkspacePermission(deps.authorizationService, 'fiscal.config');
+  const resolveClientCustomerIds = async (
+    req: { workspace?: { role?: string }; auth?: { userId?: string } },
+    workspaceId: string
+  ): Promise<string[] | undefined> => {
+    if (req.workspace?.role !== 'CLIENT') {
+      return undefined;
+    }
+
+    const links = await deps.prisma.workspaceCustomerUser.findMany({
+      where: {
+        workspaceId,
+        userId: req.auth?.userId
+      },
+      select: { customerId: true }
+    });
+
+    if (links.length === 0) {
+      throw new AppError('Customer access is not linked to this workspace', 403);
+    }
+
+    return links.map((link) => link.customerId);
+  };
 
   router.use(
     '/fiscal/workspaces/:workspaceId',
@@ -73,7 +96,8 @@ export const buildFiscalRoutes = (deps: {
     '/fiscal/workspaces/:workspaceId/dashboard',
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
-      const dashboard = await deps.fiscalService.getDashboard(workspaceId);
+      const customerIds = await resolveClientCustomerIds(req, workspaceId);
+      const dashboard = await deps.fiscalService.getDashboard(workspaceId, customerIds);
       res.status(200).json(dashboard);
     })
   );
@@ -84,7 +108,8 @@ export const buildFiscalRoutes = (deps: {
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
       const query = fiscalDraftsQueryDto.parse(req.query ?? {});
-      const items = await deps.fiscalService.listEmissionDrafts(workspaceId, query.limit);
+      const customerIds = await resolveClientCustomerIds(req, workspaceId);
+      const items = await deps.fiscalService.listEmissionDrafts(workspaceId, query.limit, customerIds);
       res.status(200).json({ items });
     })
   );
@@ -108,6 +133,7 @@ export const buildFiscalRoutes = (deps: {
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
       const query = fiscalDocumentsQueryDto.parse(req.query ?? {});
+      const customerIds = await resolveClientCustomerIds(req, workspaceId);
       const documents = await deps.fiscalService.listDocuments({
         workspaceId,
         workspaceBusinessId: query.workspaceBusinessId,
@@ -116,6 +142,7 @@ export const buildFiscalRoutes = (deps: {
         status: query.status,
         origin: query.origin,
         customerId: query.customerId,
+        customerIds,
         from: query.from ? new Date(query.from) : undefined,
         to: query.to ? new Date(query.to) : undefined,
         search: query.search,
@@ -170,7 +197,8 @@ export const buildFiscalRoutes = (deps: {
     '/fiscal/workspaces/:workspaceId/documents/:documentId',
     asyncHandler(async (req, res) => {
       const { workspaceId, documentId } = fiscalDocumentParamsDto.parse(req.params);
-      const details = await deps.fiscalService.getDocumentDetails(workspaceId, documentId);
+      const customerIds = await resolveClientCustomerIds(req, workspaceId);
+      const details = await deps.fiscalService.getDocumentDetails(workspaceId, documentId, customerIds);
       res.status(200).json(details);
     })
   );
@@ -226,6 +254,7 @@ export const buildFiscalRoutes = (deps: {
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
       const query = receivedQueryDto.parse(req.query ?? {});
+      const customerIds = await resolveClientCustomerIds(req, workspaceId);
       const items = await deps.fiscalService.listReceivedDocuments({
         workspaceId,
         workspaceBusinessId: query.workspaceBusinessId,
@@ -234,7 +263,8 @@ export const buildFiscalRoutes = (deps: {
         search: query.search,
         from: query.from ? new Date(query.from) : undefined,
         to: query.to ? new Date(query.to) : undefined,
-        limit: query.limit
+        limit: query.limit,
+        customerIds
       });
 
       res.status(200).json({ items });

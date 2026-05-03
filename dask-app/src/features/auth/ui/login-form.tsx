@@ -162,6 +162,7 @@ export function LoginForm() {
   const oauthErrorCode = searchParams.get("error");
   const inviteToken = searchParams.get("invite") ?? undefined;
   const invitedEmail = searchParams.get("email");
+  const returnTo = searchParams.get("returnTo") ?? "";
   const isRegisterStep = authStep === "register";
   const isForgotStep = authStep === "forgot-password";
 
@@ -198,13 +199,13 @@ export function LoginForm() {
   }, [inviteToken]);
 
   useEffect(() => {
-    if (!inviteToken || !invitedEmail) {
+    if (!invitedEmail) {
       return;
     }
     if (!email) {
       setEmail(invitedEmail);
     }
-  }, [inviteToken, invitedEmail, email]);
+  }, [invitedEmail, email]);
 
   const hintMessage = useMemo(() => {
     if (registerError) {
@@ -297,7 +298,11 @@ export function LoginForm() {
           },
           inviteToken
         });
-        navigate(`${routePaths.verifyEmail}?email=${encodeURIComponent(email.trim())}`);
+        const verifyParams = new URLSearchParams({ email: email.trim() });
+        if (returnTo) {
+          verifyParams.set("returnTo", returnTo);
+        }
+        navigate(`${routePaths.verifyEmail}?${verifyParams.toString()}`);
       } catch (error) {
         setRegisterError(mapRegisterError(error));
       }
@@ -317,7 +322,11 @@ export function LoginForm() {
         error.status === 403 &&
         hasErrorCode(error.details, EMAIL_NOT_VERIFIED_CODE)
       ) {
-        navigate(`${routePaths.verifyEmail}?email=${encodeURIComponent(email.trim())}`);
+        const verifyParams = new URLSearchParams({ email: email.trim() });
+        if (returnTo) {
+          verifyParams.set("returnTo", returnTo);
+        }
+        navigate(`${routePaths.verifyEmail}?${verifyParams.toString()}`);
       }
     }
   };

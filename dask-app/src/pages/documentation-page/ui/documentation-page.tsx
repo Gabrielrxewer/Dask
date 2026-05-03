@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { buildBoardMetrics } from "@/entities/task";
+import { buildBoardMetrics, type Task } from "@/entities/task";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
 import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentMetadata } from "@/modules/workspace";
 import { buildWorkspaceBoardPathWithTask } from "@/app/router";
 import { LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
+import { publicCommercialDocumentService } from "@/pages/proposal-public-page/api/public-commercial-document-service";
 import { DocumentationAssistantPanel } from "./documentation-assistant-panel";
 import { DocumentationCreateModal } from "./documentation-create-modal";
 import { DocumentationEditorPanel } from "./documentation-editor-panel";
 import { DocumentationFilesPane } from "./documentation-files-pane";
+import { DocumentationSendModal } from "./documentation-send-modal";
 import { DocumentationTopNavigation } from "./documentation-top-navigation";
 import {
   buildAssistantConversationHistory,
@@ -22,6 +24,7 @@ import {
   DEFAULT_INSTRUCTIONS,
   DOCUMENT_KIND_LABELS,
   createMessage,
+  getCommercialDocumentStatus,
   inferIntentMode,
   normalizeDocumentKind,
   type AssistantMessage,
@@ -30,14 +33,85 @@ import {
 } from "./documentation-page.local";
 import "./documentation-page.css";
 
+type DecisionState = "idle" | "submitting" | "success" | "error";
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function readString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeEmailCandidate(value: unknown): string {
+  return readString(value).toLowerCase();
+}
+
+function collectEmails(values: unknown[]): string[] {
+  return Array.from(
+    new Set(
+      values
+        .flatMap((value) => Array.isArray(value) ? value : [value])
+        .map(normalizeEmailCandidate)
+        .filter(Boolean)
+    )
+  );
+}
+
+function findLinkedTask(document: WorkspaceDocument, tasks: Task[]): Task | null {
+  const metadata = readRecord(document.metadata);
+  const candidateIds = [
+    document.linkedEntityType === "work_item" ? document.linkedEntityId : "",
+    metadata.workItemId,
+    metadata.sourceWorkItemId,
+    metadata.itemId,
+    metadata.taskId,
+    metadata.leadId
+  ].map(readString).filter(Boolean);
+
+  return tasks.find((task) => candidateIds.includes(task.id)) ?? null;
+}
+
+function readLinkedCustomerId(document: WorkspaceDocument, linkedTask: Task | null): string {
+  const metadata = readRecord(document.metadata);
+  const customer = readRecord(metadata.customer);
+  const fields = readRecord(linkedTask?.customFields);
+
+  return [
+    document.linkedEntityType === "customer" ? document.linkedEntityId : "",
+    metadata.customerId,
+    customer.id,
+    fields.customerId
+  ].map(readString).find(Boolean) ?? "";
+}
+
+function collectDocumentRecipientEmails(document: WorkspaceDocument, linkedTask: Task | null): string[] {
+  const metadata = readRecord(document.metadata);
+  const customer = readRecord(metadata.customer);
+  const fields = readRecord(linkedTask?.customFields);
+
+  return collectEmails([
+    metadata.sentToEmails,
+    metadata.sentToEmail,
+    metadata.clientEmail,
+    metadata.contactEmail,
+    customer.email,
+    fields.contactEmail,
+    fields.clientEmail,
+    fields.email
+  ]);
+}
+
 export function DocumentationPage() {
   const {
     snapshot,
     isLoading,
     runDocumentationAssistant,
     listWorkspaceDocuments,
+    listCustomers,
     createWorkspaceDocument,
     updateWorkspaceDocument,
+    sendWorkspaceDocument,
     deleteWorkspaceDocument
   } = useWorkspace();
   const navigate = useNavigate();
@@ -45,9 +119,12 @@ export function DocumentationPage() {
   const [searchParams] = useSearchParams();
   const initialDocId = searchParams.get("docId");
   const fromCard = searchParams.get("from") === "card";
+  const clientDocumentIntent = searchParams.get("intent");
+  const clientDocumentToken = searchParams.get("docToken") ?? "";
   const fromCardTaskId = searchParams.get("taskId") ?? "";
   const fromCardBoardMode = searchParams.get("boardMode") ?? "";
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
+  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -60,6 +137,8 @@ export function DocumentationPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [documentKindFilter, setDocumentKindFilter] = useState<DocumentKindFilter>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sendModalDocId, setSendModalDocId] = useState<string | null>(null);
+  const [sendModalCustomerEmails, setSendModalCustomerEmails] = useState<string[]>([]);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
@@ -74,12 +153,35 @@ export function DocumentationPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
+  const [clientDecisionState, setClientDecisionState] = useState<DecisionState>("idle");
+  const [clientDecisionError, setClientDecisionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isClient) {
+      setEditorViewMode("preview");
+      setIsAssistantOpen(false);
+      setIsCreateModalOpen(false);
+      setSendModalDocId(null);
+    }
+  }, [isClient]);
 
   const activeDoc = useMemo(() => {
     return docs.find((doc) => doc.id === activeDocId) ?? null;
   }, [docs, activeDocId]);
 
   const activeDocKind = normalizeDocumentKind(activeDoc?.kind);
+  const sendModalDoc = useMemo(
+    () => docs.find((doc) => doc.id === sendModalDocId) ?? null,
+    [docs, sendModalDocId]
+  );
+  const sendModalLinkedTask = useMemo(
+    () => sendModalDoc ? findLinkedTask(sendModalDoc, snapshot?.tasks ?? []) : null,
+    [sendModalDoc, snapshot?.tasks]
+  );
+  const sendModalInitialEmails = useMemo(
+    () => sendModalDoc ? collectEmails([...collectDocumentRecipientEmails(sendModalDoc, sendModalLinkedTask), ...sendModalCustomerEmails]) : [],
+    [sendModalCustomerEmails, sendModalDoc, sendModalLinkedTask]
+  );
 
   const filteredDocs = useMemo(
     () => filterDocumentationDocs({ docs, documentKindFilter, fromCard, initialDocId }),
@@ -108,6 +210,10 @@ export function DocumentationPage() {
   }, []);
 
   const updateDocDraft = useCallback((docId: string, patch: Partial<Pick<WorkspaceDocument, "title" | "content" | "kind" | "tags" | "metadata">>) => {
+    if (isClient) {
+      return;
+    }
+
     setDocs((previous) =>
       previous.map((doc) =>
         doc.id === docId
@@ -119,7 +225,7 @@ export function DocumentationPage() {
       )
     );
     dirtyDocIdsRef.current.add(docId);
-  }, []);
+  }, [isClient]);
 
   const appendDocDraft = useCallback((docId: string, chunk: string) => {
     setDocs((previous) =>
@@ -139,6 +245,37 @@ export function DocumentationPage() {
   const replaceDocWithServerVersion = useCallback((nextDoc: WorkspaceDocument) => {
     setDocs((previous) => previous.map((doc) => (doc.id === nextDoc.id ? nextDoc : doc)));
   }, []);
+
+  const persistDocImmediately = useCallback(
+    async (document: WorkspaceDocument) => {
+      const nextSequence = (saveSeqByDocRef.current[document.id] ?? 0) + 1;
+      saveSeqByDocRef.current[document.id] = nextSequence;
+      setIsSavingDocId(document.id);
+
+      try {
+        const updated = await updateWorkspaceDocument(document.id, {
+          title: document.title,
+          content: document.content,
+          kind: normalizeDocumentKind(document.kind),
+          tags: document.tags ?? [],
+          metadata: document.metadata ?? {}
+        });
+
+        dirtyDocIdsRef.current.delete(document.id);
+        replaceDocWithServerVersion(updated);
+        setSaveError(null);
+        return updated;
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : "Falha ao salvar esta doc.");
+        throw error;
+      } finally {
+        if (saveSeqByDocRef.current[document.id] === nextSequence) {
+          setIsSavingDocId((current) => (current === document.id ? null : current));
+        }
+      }
+    },
+    [replaceDocWithServerVersion, updateWorkspaceDocument]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -269,6 +406,56 @@ export function DocumentationPage() {
     },
     [replaceDocWithServerVersion, updateWorkspaceDocument]
   );
+
+  useEffect(() => {
+    let active = true;
+    setSendModalCustomerEmails([]);
+
+    if (!sendModalDoc) {
+      return;
+    }
+
+    const linkedTask = findLinkedTask(sendModalDoc, snapshot?.tasks ?? []);
+    const customerId = readLinkedCustomerId(sendModalDoc, linkedTask);
+    if (!customerId) {
+      return;
+    }
+
+    listCustomers()
+      .then((customers) => {
+        if (!active) {
+          return;
+        }
+
+        const customer = customers.find((entry) => entry.id === customerId);
+        setSendModalCustomerEmails(collectEmails([customer?.email]));
+      })
+      .catch(() => {
+        if (active) {
+          setSendModalCustomerEmails([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [listCustomers, sendModalDoc, snapshot?.tasks]);
+
+  async function sendActiveCommercialDocument(emails: string[]) {
+    if (!sendModalDoc) {
+      return;
+    }
+
+    setRunError(null);
+    setSaveError(null);
+
+    if (dirtyDocIdsRef.current.has(sendModalDoc.id)) {
+      await persistDocImmediately(sendModalDoc);
+    }
+
+    const sentDocument = await sendWorkspaceDocument(sendModalDoc.id, { emails });
+    replaceDocWithServerVersion(sentDocument);
+  }
 
   useEffect(() => {
     if (!activeDoc) {
@@ -583,6 +770,16 @@ export function DocumentationPage() {
   }
 
   const canDeleteDoc = docs.length > 0;
+  const canSendCommercialDocument = activeDocKind === "proposal" || activeDocKind === "contract";
+  const activeCommercialStatus = activeDoc ? getCommercialDocumentStatus(activeDoc) : "draft";
+  const canClientDecideDocument = Boolean(
+    isClient &&
+      activeDoc &&
+      clientDocumentIntent === "accept" &&
+      clientDocumentToken &&
+      (activeDocKind === "proposal" || activeDocKind === "contract") &&
+      (clientDecisionState === "success" || !["approved", "accepted", "signed", "rejected"].includes(activeCommercialStatus))
+  );
   const canSend = !isRunning && !isLoading && !isDocsLoading && Boolean(activeDoc);
   const { status: assistantStatus, tone: assistantTone } = resolveDocumentationAssistantStatus({
     isRunning,
@@ -610,6 +807,43 @@ export function DocumentationPage() {
         ...patch
       }
     });
+  }
+
+  async function submitClientDocumentDecision(decision: "approve" | "accept" | "reject") {
+    if (!activeDoc || !clientDocumentToken || clientDecisionState === "submitting") {
+      return;
+    }
+
+    setClientDecisionState("submitting");
+    setClientDecisionError(null);
+
+    try {
+      await publicCommercialDocumentService.decide(clientDocumentToken, decision);
+      const nextStatus =
+        decision === "reject"
+          ? "rejected"
+          : activeDocKind === "proposal"
+            ? "approved"
+            : "accepted";
+
+      setDocs((previous) =>
+        previous.map((doc) =>
+          doc.id === activeDoc.id
+            ? {
+                ...doc,
+                metadata: {
+                  ...(doc.metadata ?? {}),
+                  status: nextStatus
+                }
+              }
+            : doc
+        )
+      );
+      setClientDecisionState("success");
+    } catch (error) {
+      setClientDecisionState("error");
+      setClientDecisionError(error instanceof Error ? error.message : "Nao foi possivel registrar sua decisao.");
+    }
   }
 
   function removeClientLogo() {
@@ -652,8 +886,11 @@ export function DocumentationPage() {
       isAssistantOpen={isAssistantOpen}
       hasActiveDoc={Boolean(activeDoc)}
       canDeleteDoc={canDeleteDoc}
+      canSendCommercialDocument={!isClient && canSendCommercialDocument && Boolean(activeDoc)}
+      readOnly={isClient}
       onBack={() => navigate(buildWorkspaceBoardPathWithTask(workspaceSlug, fromCardTaskId, fromCardBoardMode))}
       onCreate={() => setIsCreateModalOpen(true)}
+      onSendCommercialDocument={() => setSendModalDocId(activeDoc?.id ?? null)}
       onToggleAssistant={() => setIsAssistantOpen((previous) => !previous)}
       onDuplicate={() => void duplicateActiveDoc()}
       onDelete={() => void removeActiveDoc()}
@@ -674,7 +911,15 @@ export function DocumentationPage() {
           onCreate={createNewDoc}
         />
       ) : null}
-      <WorkspaceFrame className={`documentation-page${isAssistantOpen ? " documentation-page--assistant-open" : ""}`}>
+      {!isClient && sendModalDoc ? (
+        <DocumentationSendModal
+          document={sendModalDoc}
+          initialEmails={sendModalInitialEmails}
+          onClose={() => setSendModalDocId(null)}
+          onSend={sendActiveCommercialDocument}
+        />
+      ) : null}
+      <WorkspaceFrame className={`documentation-page${!isClient && isAssistantOpen ? " documentation-page--assistant-open" : ""}`}>
         <LoadingState
           text="Carregando documentação..."
           animation="documentation"
@@ -701,6 +946,20 @@ export function DocumentationPage() {
           wordCount={wordCount}
           renderedMarkdown={renderedMarkdown}
           editorViewMode={editorViewMode}
+          readOnly={isClient}
+          clientDecision={
+            canClientDecideDocument
+              ? {
+                  positiveLabel: activeDocKind === "proposal" ? "Aprovar proposta" : "Aceitar contrato",
+                  isSubmitting: clientDecisionState === "submitting",
+                  error: clientDecisionError,
+                  success: clientDecisionState === "success",
+                  onAccept: () =>
+                    void submitClientDocumentDecision(activeDocKind === "proposal" ? "approve" : "accept"),
+                  onReject: () => void submitClientDocumentDecision("reject")
+                }
+              : undefined
+          }
           onUpdateDocDraft={updateDocDraft}
           onUpdateProposalMetadata={updateActiveProposalMetadata}
           onChooseClientLogoFile={() => logoFileInputRef.current?.click()}
@@ -711,6 +970,7 @@ export function DocumentationPage() {
           onEditorSelection={handleEditorSelection}
         />
 
+        {!isClient ? (
         <DocumentationAssistantPanel
           isAssistantOpen={isAssistantOpen}
           activeDoc={activeDoc}
@@ -738,6 +998,7 @@ export function DocumentationPage() {
           onRunAssistant={() => void handleRunAssistant()}
           onSemanticContextChange={setIncludeSemanticContext}
         />
+        ) : null}
       </WorkspaceFrame>
     </AppShell>
   );

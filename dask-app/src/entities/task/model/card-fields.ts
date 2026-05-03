@@ -204,7 +204,8 @@ export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "typ
     status: "Status",
     tag: "Tags",
     schedule: "Planejamento",
-    work_item_type: "Tipo de item"
+    work_item_type: "Tipo de item",
+    billing_summary: "Cobranças vinculadas"
   };
 
   return labels[definition.type] ?? definition.type;

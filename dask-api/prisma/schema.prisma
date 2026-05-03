@@ -12,6 +12,7 @@ enum MembershipRole {
   ADMIN
   MEMBER
   VIEWER
+  CLIENT
 }
 
 enum AuditSeverity {
@@ -69,10 +70,13 @@ enum ConnectPaymentOrderStatus {
   CHECKOUT_OPEN
   CHECKOUT_COMPLETED
   PENDING
+  OVERDUE
   PAID
   FAILED
   CANCELED
   REFUNDED
+  SUBSCRIPTION_ACTIVE
+  SUBSCRIPTION_CANCELED
 }
 
 enum ConnectCatalogItemKind {
@@ -460,6 +464,7 @@ model User {
   comments                 ItemComment[]
   updatedCustomFieldValues CustomFieldValue[]        @relation("CustomFieldValueUpdatedBy")
   updatedViewPlacements    WorkItemViewPlacement[]   @relation("WorkItemViewPlacementUpdatedBy")
+  customerWorkspaceLinks    WorkspaceCustomerUser[]
   refreshTokens            RefreshToken[]
   resetTokens              PasswordResetToken[]
   verificationTokens       EmailVerificationToken[]
@@ -646,6 +651,7 @@ model Workspace {
   fiscalCatalogProfiles  FiscalCatalogProfile[]
   fiscalOperationTemplates FiscalOperationTemplate[]
   customers              Customer[]
+  customerUserLinks      WorkspaceCustomerUser[]
   leads                  Lead[]
   leadActivities         LeadActivity[]
   leadAssignments        LeadAssignment[]
@@ -695,12 +701,30 @@ model Customer {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   leads       Lead[]
   connectPaymentOrders ConnectPaymentOrder[]
+  userLinks   WorkspaceCustomerUser[]
 
   @@index([workspaceId, status, updatedAt])
   @@index([workspaceId, name])
   @@index([workspaceId, email])
   @@index([workspaceId, phone])
   @@index([workspaceId, document])
+}
+
+model WorkspaceCustomerUser {
+  id          String    @id @default(uuid())
+  workspaceId String
+  customerId  String
+  userId      String
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, customerId, userId])
+  @@index([workspaceId, userId])
+  @@index([workspaceId, customerId])
 }
 
 model Lead {

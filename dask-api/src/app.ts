@@ -28,6 +28,7 @@ import { buildAutomationRoutes } from '@/modules/automation/http/routes';
 import { buildIntegrationRoutes } from '@/modules/integration/http/routes';
 import { buildAuditRoutes } from '@/modules/audit/http/routes';
 import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
+import { buildPublicDocumentRoutes } from '@/modules/workspace-platform/http/public-document-routes';
 import { buildBillingRoutes } from '@/modules/billing/http/routes';
 import { buildAdminRoutes } from '@/modules/admin/http/routes';
 import { buildFiscalRoutes } from '@/modules/fiscal/http/routes';
@@ -35,6 +36,7 @@ import { buildFiscalIntegrationRoutes } from '@/modules/fiscal/http/integration-
 import { buildCommercialIntakeRoutes } from '@/modules/commercial-intake/http/commercial-intake-routes';
 import { buildMarketingRoutes } from '@/modules/marketing/http/routes';
 import { buildMarketingIntegrationRoutes } from '@/modules/marketing/http/integration-routes';
+import { buildPortalRoutes } from '@/modules/portal/http/portal-routes';
 
 function parseAllowedOrigins(raw: string): string[] {
   const values = raw
@@ -257,6 +259,19 @@ export const createApp = (): Express => {
   app.use(
     env.API_PREFIX,
     buildIdentityRoutes({ authService, organizationService, workspaceInvitesService, allowedOrigins })
+  );
+
+  // Portal routes — auth required but NO subscription check (CLIENT users have no personal subscription)
+  app.use(
+    env.API_PREFIX,
+    buildPortalRoutes({ prisma, workspaceDocumentsService })
+  );
+  app.use(
+    env.API_PREFIX,
+    buildPublicDocumentRoutes({
+      authService,
+      workspaceDocumentsService
+    })
   );
   app.use(
     env.API_PREFIX,

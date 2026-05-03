@@ -216,7 +216,7 @@ export class ItemsService {
       throw new AppError('Workspace not found', 404);
     }
 
-    if (membership.role === MembershipRole.VIEWER) {
+    if (membership.role === MembershipRole.VIEWER || membership.role === MembershipRole.CLIENT) {
       throw new AppError('Forbidden', 403);
     }
   }

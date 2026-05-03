@@ -20,7 +20,7 @@ export function AccessGroupsSection({
   return (
     <Section
       title="Grupos de acesso"
-      subtitle="Conjuntos reutilizÃ¡veis de permissÃµes para aplicar a mÃºltiplos membros."
+      subtitle="Conjuntos reutilizáveis de permissões para aplicar a múltiplos membros."
       className="ms-section"
     >
       <div className="ms-section-top-action">
@@ -98,7 +98,7 @@ export function AccessGroupsSection({
                 {(group.allow ?? []).length === 0 &&
                   (group.deny ?? []).length === 0 &&
                   (group.allowedModules ?? []).length === 0 && (
-                    <span className="ms-hint">Sem restriÃ§Ãµes configuradas.</span>
+                    <span className="ms-hint">Sem restrições configuradas.</span>
                   )}
               </div>
             </div>

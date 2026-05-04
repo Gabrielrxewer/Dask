@@ -58,6 +58,9 @@ function makeDeps() {
     customFieldValue: {
       upsert: vi.fn()
     },
+    workItemType: {
+      findFirst: vi.fn()
+    },
     item: {
       findFirst: vi.fn(),
       update: vi.fn()
@@ -153,6 +156,58 @@ describe('AutomationRuntimeService', () => {
         data: expect.objectContaining({ status: 'succeeded' })
       })
     );
+  });
+
+  it('converts a prospect work item to commercial type', async () => {
+    const { prisma, service } = makeDeps();
+
+    prisma.automationRule.findMany.mockResolvedValue([
+      {
+        id: 'rule-1',
+        workspaceId: 'ws-1',
+        trigger: { type: 'item.moved' },
+        conditions: {
+          itemTypeSlugs: ['prospect'],
+          toColumnKeys: ['lead_new']
+        },
+        actions: [{ type: 'set_work_item_type', typeSlug: 'commercial' }]
+      }
+    ]);
+
+    prisma.automationExecution.findFirst.mockResolvedValue(null);
+    prisma.automationExecution.create.mockResolvedValue({ id: 'exec-1' });
+    prisma.workItemType.findFirst.mockResolvedValue({ id: 'type-commercial', slug: 'commercial' });
+    prisma.item.update.mockResolvedValue(undefined);
+    prisma.automationExecution.update.mockResolvedValue(undefined);
+
+    await service.processEvent({
+      eventName: 'item.moved',
+      workspaceId: 'ws-1',
+      payload: {
+        itemId: 'item-1',
+        workspaceId: 'ws-1',
+        itemTypeSlug: 'prospect',
+        toColumnKey: 'lead_new',
+        requestedBy: 'user-1'
+      }
+    });
+
+    expect(prisma.workItemType.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          workspaceId: 'ws-1',
+          slug: 'commercial'
+        })
+      })
+    );
+    expect(prisma.item.update).toHaveBeenCalledWith({
+      where: { id: 'item-1' },
+      data: {
+        typeId: 'type-commercial',
+        type: 'commercial',
+        updatedBy: 'user-1'
+      }
+    });
   });
 
   it('supports set_view_column action with metadata override and id references', async () => {

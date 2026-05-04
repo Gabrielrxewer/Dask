@@ -96,6 +96,21 @@ export const setWorkItemStateActionSchema = z
     }
   });
 
+export const setWorkItemTypeActionSchema = z
+  .object({
+    type: z.literal('set_work_item_type'),
+    typeId: z.string().uuid().optional(),
+    typeSlug: z.string().min(1).optional()
+  })
+  .superRefine((value, context) => {
+    if (!value.typeId && !value.typeSlug) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Either typeId or typeSlug is required.'
+      });
+    }
+  });
+
 export const createDocumentActionSchema = z.object({
   type: z.literal('create_document'),
   kind: z.enum(['wiki', 'proposal', 'contract']),
@@ -143,6 +158,7 @@ export const automationActionSchema = z.union([
   setViewColumnActionSchema,
   removeFromViewActionSchema,
   setWorkItemStateActionSchema,
+  setWorkItemTypeActionSchema,
   createDocumentActionSchema,
   updateDocumentStatusActionSchema,
   syncDocumentActionSchema,

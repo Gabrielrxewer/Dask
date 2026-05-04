@@ -605,6 +605,36 @@ export class AutomationRuntimeService {
         return;
       }
 
+      case 'set_work_item_type': {
+        const workItemType = await this.prisma.workItemType.findFirst({
+          where: {
+            workspaceId: context.workspaceId,
+            isActive: true,
+            ...(action.typeId
+              ? { id: action.typeId }
+              : { slug: toSlug(action.typeSlug) })
+          },
+          select: {
+            id: true,
+            slug: true
+          }
+        });
+
+        if (!workItemType) {
+          throw new AppError('Target work item type not found.', 404);
+        }
+
+        await this.prisma.item.update({
+          where: { id: itemId },
+          data: {
+            typeId: workItemType.id,
+            type: workItemType.slug,
+            updatedBy: typeof rawPayload.requestedBy === 'string' ? rawPayload.requestedBy : undefined
+          }
+        });
+        return;
+      }
+
       case 'create_document': {
         await this.createLinkedDocumentFromWorkItem(action, context, rawPayload);
         return;

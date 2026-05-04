@@ -254,9 +254,14 @@ const operationsFieldBindings = buildTemplateFieldBindings({
   extraDetailFieldIds: ['severity', 'sla-hours']
 });
 
-const commercialIssueTypes = ['commercial'];
+const prospectIssueTypes = ['prospect'];
+const commercialIssueTypes = ['prospect', 'commercial'];
+const leadIssueTypes = ['commercial'];
 
 const commercialStatuses = [
+  { id: 'prospect', label: 'Prospect', dot: '#2563eb' },
+  { id: 'contact_started', label: 'Contato iniciado', dot: '#0891b2' },
+  { id: 'follow_up', label: 'Follow-up', dot: '#f59e0b' },
   { id: 'lead_new', label: 'Novo lead', dot: '#0d8df7' },
   { id: 'lead_qualification', label: 'Qualificacao', dot: '#4f46e5' },
   { id: 'opportunity_open', label: 'Oportunidade aberta', dot: '#0891b2' },
@@ -592,8 +597,26 @@ const commercialFieldDefinitions: WorkspaceTemplateFieldDefinition[] = [
   }
 ];
 
-const commercialFieldBindings = buildTemplateFieldBindings({
-  typeIds: commercialIssueTypes,
+const prospectFieldBindings = buildTemplateFieldBindings({
+  typeIds: prospectIssueTypes,
+  baseCardFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
+  baseDetailFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
+  extraCardFieldIds: ['companyName', 'contactName', 'source'],
+  extraDetailFieldIds: ['contactName', 'contactEmail', 'contactPhone', 'companyName', 'source', 'expectedCloseDate'],
+  detailSectionByFieldId: {
+    contactName: 'main',
+    contactEmail: 'main',
+    contactPhone: 'main',
+    companyName: 'main',
+    source: 'main',
+    expectedCloseDate: 'side',
+    'sys:status': 'side',
+    'sys:assignee': 'side'
+  }
+});
+
+const leadFieldBindings = buildTemplateFieldBindings({
+  typeIds: leadIssueTypes,
   baseCardFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
   baseDetailFieldIds: ['sys:status', 'sys:title', 'sys:description', 'sys:assignee'],
   extraCardFieldIds: ['clientName', 'companyName', 'contactName', 'estimatedValue', 'source', 'billingStatus'],
@@ -650,6 +673,8 @@ const commercialFieldBindings = buildTemplateFieldBindings({
     'sys:assignee': 'side'
   }
 });
+
+const commercialFieldBindings = [...prospectFieldBindings, ...leadFieldBindings];
 
 export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
   {
@@ -778,6 +803,16 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
       issueTypes: commercialIssueTypes,
       perspectives: [
         {
+          key: 'prospeccao',
+          name: 'Prospecao',
+          caption: 'Contatos antes de virar lead',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['prospect', 'contact_started', 'follow_up', 'lead_new'],
+          createTaskColumnSlugs: ['prospect'],
+          allowedTaskTypes: prospectIssueTypes
+        },
+        {
           key: 'entrada',
           name: 'Entrada',
           caption: 'Captura e qualificacao comercial',
@@ -785,7 +820,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['lead_new', 'lead_qualification'],
           createTaskColumnSlugs: ['lead_new'],
-          allowedTaskTypes: commercialIssueTypes
+          allowedTaskTypes: leadIssueTypes
         },
         {
           key: 'venda',
@@ -795,7 +830,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved'],
           createTaskColumnSlugs: [],
-          allowedTaskTypes: commercialIssueTypes
+          allowedTaskTypes: leadIssueTypes
         },
         {
           key: 'formalizacao',
@@ -805,7 +840,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['contract_preparing', 'contract_sent', 'contract_accepted'],
           createTaskColumnSlugs: [],
-          allowedTaskTypes: commercialIssueTypes
+          allowedTaskTypes: leadIssueTypes
         },
         {
           key: 'financeiro',
@@ -815,7 +850,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'paid_active'],
           createTaskColumnSlugs: [],
-          allowedTaskTypes: commercialIssueTypes
+          allowedTaskTypes: leadIssueTypes
         },
         {
           key: 'finalizacao',
@@ -825,12 +860,20 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['lost', 'closed'],
           createTaskColumnSlugs: [],
-          allowedTaskTypes: commercialIssueTypes
+          allowedTaskTypes: leadIssueTypes
         }
       ],
       fieldDefinitions: commercialFieldDefinitions,
       fieldBindings: commercialFieldBindings,
       automations: [
+        {
+          id: 'convert_prospect_to_commercial_on_lead_new',
+          name: 'Converter prospect em lead comercial',
+          description: 'Quando um Prospect chega em Novo lead, transforma o WorkItem em Comercial para entrar no funil de leads.',
+          enabled: true,
+          trigger: { type: 'work_item_moved_to_column', column: 'lead_new', itemTypeSlugs: ['prospect'] },
+          actions: [{ type: 'set_work_item_type', typeSlug: 'commercial' }]
+        },
         {
           id: 'move_to_opportunity_on_qualification',
           name: 'Mover para Oportunidade aberta apos qualificacao',
@@ -1031,7 +1074,8 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
       ]
     },
     rules: {
-      defaultState: 'lead_new',
+      defaultState: 'prospect',
+      leadState: 'lead_new',
       doneState: 'paid_active',
       lostState: 'lost',
       documentBindings: {

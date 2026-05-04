@@ -9,6 +9,11 @@ describe('workspace-template-catalog', () => {
     expect(automations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          id: 'convert_prospect_to_commercial_on_lead_new',
+          trigger: { type: 'work_item_moved_to_column', column: 'lead_new', itemTypeSlugs: ['prospect'] },
+          actions: [{ type: 'set_work_item_type', typeSlug: 'commercial' }]
+        }),
+        expect.objectContaining({
           id: 'move_to_proposal_sent_on_proposal_sent',
           trigger: { type: 'proposal_status_changed', status: 'sent' },
           actions: [{ type: 'set_work_item_state', stateSlug: 'proposal_sent' }]

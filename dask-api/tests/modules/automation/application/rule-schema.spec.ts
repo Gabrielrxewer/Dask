@@ -94,6 +94,19 @@ describe('rule-schema', () => {
     ).toThrowError(AppError);
   });
 
+  it('parses set_work_item_type for prospect conversion', () => {
+    const spec = parseRuleSpec({
+      trigger: { type: 'item.moved' },
+      conditions: {
+        itemTypeSlugs: ['prospect'],
+        toColumnKeys: ['lead_new']
+      },
+      actions: [{ type: 'set_work_item_type', typeSlug: 'commercial' }]
+    });
+
+    expect(spec.actions[0]).toMatchObject({ type: 'set_work_item_type', typeSlug: 'commercial' });
+  });
+
   it('parses commercial document automation actions and triggers', () => {
     const spec = parseRuleSpec({
       trigger: { type: 'proposal.approved' },

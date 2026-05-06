@@ -22,28 +22,10 @@
   flex-shrink: 0;
 }
 
-.jb-toolbar__name {
-  border: none;
-  background: transparent;
-  color: var(--text-strong);
-  font-size: 14px;
-  font-weight: 860;
-  font-family: inherit;
-  padding: 4px 6px;
-  border-radius: 6px;
-  outline: none;
+.jb-toolbar__name.shared-input {
   min-width: 140px;
   max-width: 240px;
-  transition: background 0.13s ease;
-}
-
-.jb-toolbar__name:hover {
-  background: color-mix(in oklab, var(--line) 30%, transparent);
-}
-
-.jb-toolbar__name:focus {
-  background: color-mix(in oklab, var(--accent) 8%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 20%, transparent);
+  font-weight: 760;
 }
 
 .jb-toolbar__sep {
@@ -57,87 +39,10 @@
   flex: 1 1 auto;
 }
 
-.jb-toolbar__badge {
-  font-size: 11px;
-  font-weight: 760;
-  padding: 3px 10px;
-  border-radius: 20px;
-  border: 1.5px solid;
-  letter-spacing: 0.04em;
-}
-
-.jb-toolbar__badge--draft {
-  border-color: var(--line-contrast);
-  color: var(--text-muted);
-  background: transparent;
-}
-
-.jb-toolbar__badge--active {
-  border-color: color-mix(in oklab, var(--success) 40%, transparent);
-  color: color-mix(in oklab, var(--success) 76%, var(--text-strong));
-  background: color-mix(in oklab, var(--success) 10%, transparent);
-}
-
-.jb-toolbar__badge--paused {
-  border-color: color-mix(in oklab, var(--warning) 40%, transparent);
-  color: color-mix(in oklab, var(--warning) 76%, var(--text-strong));
-  background: color-mix(in oklab, var(--warning) 10%, transparent);
-}
-
-.jb-toolbar__btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border: 1.5px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-section-content);
-  color: var(--text-soft);
-  font-size: 12px;
-  font-weight: 760;
-  font-family: inherit;
-  padding: 5px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 0.13s ease, background 0.13s ease, color 0.13s ease;
-}
-
-.jb-toolbar__btn svg {
+.jb-toolbar .shared-button svg {
   width: 13px;
   height: 13px;
   flex-shrink: 0;
-}
-
-.jb-toolbar__btn:hover {
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
-  background: color-mix(in oklab, var(--accent) 6%, var(--surface-section-content));
-  color: var(--text-strong);
-}
-
-.jb-toolbar__btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--neutral-white);
-}
-
-.jb-toolbar__btn--primary:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: var(--neutral-white);
-}
-
-.jb-toolbar__btn--danger {
-  border-color: color-mix(in oklab, var(--danger) 30%, var(--line));
-  color: var(--danger);
-}
-
-.jb-toolbar__btn--danger:hover {
-  background: color-mix(in oklab, var(--danger) 8%, var(--surface-section-content));
-  border-color: color-mix(in oklab, var(--danger) 50%, var(--line));
-}
-
-.jb-toolbar__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* ── Canvas wrapper ──────────────────────────────────────────── */
@@ -235,20 +140,6 @@
   height: 24px;
 }
 
-.jb__empty-title {
-  font-size: 14px;
-  font-weight: 860;
-  color: var(--text-strong);
-  margin: 0;
-}
-
-.jb__empty-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 0;
-  text-align: center;
-  max-width: 240px;
-}
 
 /* ── Insert type picker dropdown ─────────────────────────────── */
 .jb-insert-picker {
@@ -273,7 +164,7 @@
   border: none;
   background: transparent;
   color: var(--text-strong);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 760;
   font-family: inherit;
   cursor: pointer;
@@ -294,28 +185,16 @@
 }
 
 /* ── Feedback toast ──────────────────────────────────────────── */
-.jb-toast {
+.jb-toast.shared-inline-alert {
   position: absolute;
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
-  background: var(--surface-overlay);
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 760;
-  color: var(--text-strong);
-  box-shadow: 0 8px 24px color-mix(in oklab, var(--text-strong) 10%, transparent);
-  white-space: nowrap;
+  width: max-content;
+  max-width: min(420px, calc(100% - 32px));
+  white-space: normal;
   animation: jb-toast-in 0.2s ease;
-}
-
-.jb-toast--ok {
-  border-color: color-mix(in oklab, var(--success) 30%, var(--line));
-  color: color-mix(in oklab, var(--success) 76%, var(--text-strong));
-  background: color-mix(in oklab, var(--success) 8%, var(--surface-overlay));
 }
 
 /* Premium canvas polish */
@@ -342,36 +221,9 @@
   box-shadow: 0 10px 26px color-mix(in oklab, var(--text-strong) 5%, transparent);
 }
 
-.jb-toolbar__name {
+.jb-toolbar__name.shared-input {
   min-height: 34px;
-  border: 1px solid transparent;
-  font-size: 14px;
-}
-
-.jb-toolbar__name:hover,
-.jb-toolbar__name:focus {
-  border-color: color-mix(in oklab, var(--accent) 20%, var(--line));
-}
-
-.jb-toolbar__badge {
-  min-height: 24px;
-  border-width: 1px;
-  border-radius: 999px;
-  padding-inline: 10px;
-  text-transform: uppercase;
-}
-
-.jb-toolbar__btn {
-  min-height: 34px;
-  border-width: 1px;
-  border-radius: 8px;
-  background: var(--jb-panel);
-  box-shadow: 0 1px 0 color-mix(in oklab, var(--neutral-white) 64%, transparent) inset;
-}
-
-.jb-toolbar__btn--primary {
-  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent-strong) 86%, var(--decorative-cyan)) 100%);
-  box-shadow: 0 10px 22px color-mix(in oklab, var(--accent) 20%, transparent);
+  font-size: var(--font-size-sm);
 }
 
 .jb__canvas {
@@ -391,8 +243,7 @@
 
 .jb__canvas .react-flow__controls,
 .jb__canvas .react-flow__minimap,
-.jb-insert-picker,
-.jb-toast {
+.jb-insert-picker {
   border-width: 1px;
   border-color: color-mix(in oklab, var(--line) 82%, transparent);
   background: var(--jb-panel);
@@ -413,32 +264,21 @@
   box-shadow: 0 12px 24px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
-.jb__empty-title {
-  font-size: 15px;
-}
 
 .jb-insert-picker__item {
   min-height: 34px;
 }
 
 .app-theme[data-theme="dark"] .jb {
-  --jb-surface:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 86%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 90%, var(--foreground)) 100%);
-  --jb-panel:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 88%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 90%, var(--foreground)) 100%);
+  --jb-surface: var(--surface-card);
+  --jb-panel: var(--surface-card);
   --jb-shadow:
     0 18px 38px color-mix(in oklab, var(--neutral-black) 30%, transparent),
-    0 1px 0 color-mix(in oklab, var(--neutral-white) 8%, transparent) inset;
+    0 1px 0 color-mix(in oklab, var(--neutral-white) 4%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .jb-toolbar {
   background: color-mix(in oklab, var(--surface-1) 86%, transparent);
-}
-
-.jb-toast--error {
-  border-color: color-mix(in oklab, var(--danger) 30%, var(--line));
-  color: color-mix(in oklab, var(--danger) 76%, var(--text-strong));
-  background: color-mix(in oklab, var(--danger) 8%, var(--surface-overlay));
 }
 
 @keyframes jb-toast-in {
@@ -456,8 +296,7 @@
   border-color: var(--line);
 }
 
-.app-theme[data-theme="dark"] .jb-insert-picker,
-.app-theme[data-theme="dark"] .jb-toast {
+.app-theme[data-theme="dark"] .jb-insert-picker {
   background: var(--surface-raised);
   border-color: var(--line);
 }
@@ -466,13 +305,12 @@
 
 .app-theme[data-theme="dark"] .jb {
   background:
-    linear-gradient(135deg, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 44%),
+    linear-gradient(135deg, color-mix(in oklab, var(--accent) 4%, transparent) 0%, transparent 44%),
     var(--jb-surface);
 }
 
 .app-theme[data-theme="dark"] .jb-toolbar,
-.app-theme[data-theme="dark"] .jb-insert-picker,
-.app-theme[data-theme="dark"] .jb-toast {
+.app-theme[data-theme="dark"] .jb-insert-picker {
   background: var(--jb-panel);
   border-color: var(--line);
   box-shadow: var(--jb-shadow);

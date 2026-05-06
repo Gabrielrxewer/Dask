@@ -83,7 +83,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   opacity: 0;
   transition: background 0.12s, color 0.12s, opacity 0.12s;
@@ -163,7 +163,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   cursor: pointer;
 }
 
@@ -303,7 +303,7 @@
 
 .board-editor__template-group-copy span {
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   line-height: 1.4;
 }
 
@@ -380,7 +380,7 @@
 
 .board-editor__template-feedback,
 .board-editor__template-error {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   line-height: 1.35;
 }
 
@@ -593,7 +593,7 @@
 
 .board-editor__col-slug {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 700;
   white-space: nowrap;
   font-family: var(--font-family-mono, monospace);
@@ -608,7 +608,7 @@
   border: 1px solid var(--info-border);
   background: var(--surface-tint);
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
@@ -626,7 +626,7 @@
   border-radius: 6px;
   background: var(--neutral-white);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -763,7 +763,7 @@
 
 .board-editor__edit-label {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -917,7 +917,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--font-size-md);
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
@@ -936,7 +936,7 @@
 .board-editor__picker-section-label {
   margin: 0 0 4px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -987,7 +987,7 @@
 
 .board-editor__picker-col-slug {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 700;
   font-family: var(--font-family-mono, monospace);
   white-space: nowrap;

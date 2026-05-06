@@ -1,6 +1,7 @@
 import type { DragEvent } from "react";
 import { getTaskFieldTypeLabel } from "@/entities/task";
 import type { CustomFieldType } from "@/modules/workspace/model";
+import { EmptyState, PanelMenu, PanelMenuGroup, PanelMenuItem } from "@/shared/ui";
 import {
   FIELD_TYPE_OPTIONS,
   type FieldLibraryItem
@@ -41,7 +42,7 @@ export function WorkItemFieldLibrary({
   onDragEnd,
   onOpenNewFieldPanel
 }: WorkItemFieldLibraryProps) {
-  const renderLibraryChip = (field: FieldLibraryItem) => {
+  const renderFieldChip = (field: FieldLibraryItem) => {
     const inCard = cardFieldSet.has(field.id);
     const inDetail = detailFieldSet.has(field.id);
     const isSelected = selectedFieldId === field.id;
@@ -52,79 +53,63 @@ export function WorkItemFieldLibrary({
     else if (inDetail) usageLabel = "form";
 
     return (
-      <div
+      <PanelMenuItem
         key={field.id}
-        className={`wie__lib-chip${isSelected ? " is-selected" : ""}${inCard || inDetail ? " is-used" : ""}`}
+        variant="chip"
+        selected={isSelected}
         draggable
         onDragStart={(e) => {
           e.stopPropagation();
-          onDragStartField(e, field.id, "library");
+          onDragStartField(e as DragEvent<HTMLElement>, field.id, "library");
         }}
         onDragEnd={onDragEnd}
         onClick={() => onSelectField(field.id)}
-      >
-        <div className="wie__lib-chip-info">
-          <span className="wie__lib-chip-label">{field.label}</span>
-          <span className="wie__lib-chip-type">{getTaskFieldTypeLabel(field)}</span>
-        </div>
-        {usageLabel ? <span className="wie__lib-chip-badge">{usageLabel}</span> : null}
-      </div>
+        label={field.label}
+        trailing={usageLabel ? <span className="wie__lib-usage">{usageLabel}</span> : undefined}
+      />
     );
   };
 
   return (
     <aside className="wie__library">
-      <div className="wie__lib-head">
-        <div className="wie__lib-title-row">
-          <span className="wie__lib-eyebrow">Biblioteca</span>
-          <strong className="wie__lib-title">Campos</strong>
-        </div>
-        <input
-          className="wie__lib-search"
-          type="search"
-          placeholder="Buscar campo..."
-          value={librarySearch}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </div>
-
-      <div className="wie__lib-scroll">
+      <PanelMenu
+        eyebrow="Biblioteca"
+        title="Campos"
+        search={librarySearch}
+        onSearchChange={onSearchChange}
+        searchPlaceholder="Buscar campo..."
+      >
         {libraryFieldsInCardOnly.length > 0 && (
-          <div className="wie__lib-group">
-            <p className="wie__lib-group-title is-card">No card</p>
-            {libraryFieldsInCardOnly.map(renderLibraryChip)}
-          </div>
+          <PanelMenuGroup label="No card" tone="card">
+            {libraryFieldsInCardOnly.map(renderFieldChip)}
+          </PanelMenuGroup>
         )}
         {libraryFieldsInBoth.length > 0 && (
-          <div className="wie__lib-group">
-            <p className="wie__lib-group-title is-both">Card + formulario</p>
-            {libraryFieldsInBoth.map(renderLibraryChip)}
-          </div>
+          <PanelMenuGroup label="Card + formulario" tone="both">
+            {libraryFieldsInBoth.map(renderFieldChip)}
+          </PanelMenuGroup>
         )}
         {libraryFieldsInDetailOnly.length > 0 && (
-          <div className="wie__lib-group">
-            <p className="wie__lib-group-title is-detail">No formulario</p>
-            {libraryFieldsInDetailOnly.map(renderLibraryChip)}
-          </div>
+          <PanelMenuGroup label="No formulario" tone="detail">
+            {libraryFieldsInDetailOnly.map(renderFieldChip)}
+          </PanelMenuGroup>
         )}
-        <div className="wie__lib-group">
-          <p className="wie__lib-group-title">Disponiveis</p>
+
+        <PanelMenuGroup label="Disponiveis">
           {libraryFieldsUnused.length === 0 ? (
-            <p className="wie__lib-empty">Todos os campos estao no layout.</p>
+            <EmptyState size="compact">Todos os campos estao no layout.</EmptyState>
           ) : (
-            libraryFieldsUnused.map(renderLibraryChip)
+            libraryFieldsUnused.map(renderFieldChip)
           )}
-        </div>
+        </PanelMenuGroup>
 
         {activeCanvasTab === "field" ? (
-          <div className="wie__lib-group wie__lib-group--new">
-            <p className="wie__lib-group-title">Novo campo</p>
-            <p className="wie__lib-hint">Clique para criar um novo campo.</p>
-            <div className="wie__type-tiles">
+          <PanelMenuGroup label="Novo campo" tone="new">
+            <div className="panel-menu-tile-grid">
               {FIELD_TYPE_OPTIONS.map((opt) => (
                 <div
                   key={opt.value}
-                  className="wie__type-tile"
+                  className="panel-menu-tile"
                   draggable
                   onDragStart={(e) => {
                     e.stopPropagation();
@@ -138,9 +123,9 @@ export function WorkItemFieldLibrary({
                 </div>
               ))}
             </div>
-          </div>
+          </PanelMenuGroup>
         ) : null}
-      </div>
+      </PanelMenu>
     </aside>
   );
 }

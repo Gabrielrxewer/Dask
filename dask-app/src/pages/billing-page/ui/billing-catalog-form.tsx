@@ -3,7 +3,7 @@ import type {
   ConnectCatalogItemKind,
   ConnectCatalogRecurringInterval
 } from "@/modules/billing";
-import { Button, FormField, Select, Textarea, TextInput } from "@/shared/ui";
+import { Button, FormField, InlineAlert, Select, Textarea, TextInput } from "@/shared/ui";
 import { isRecurringCatalogBillingType } from "./billing-page.model";
 
 export interface BillingCatalogFormProps {
@@ -287,7 +287,7 @@ export function BillingCatalogForm({
           {isCreatingCatalogItem ? "Salvando..." : "Adicionar ao catálogo"}
         </Button>
       </div>
-      {catalogError ? <p className="billing-view__error">{catalogError}</p> : null}
+      {catalogError ? <InlineAlert tone="danger">{catalogError}</InlineAlert> : null}
     </div>
   );
 }

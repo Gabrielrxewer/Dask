@@ -1,5 +1,6 @@
 import { cn } from "@/shared/lib/cn";
 import { isValidElement, type DragEventHandler, type MouseEventHandler, type ReactNode } from "react";
+import { ModuleTabs } from "@/shared/ui/module-tabs/module-tabs";
 
 export interface TabsItem<T extends string> {
   id: T;
@@ -118,8 +119,29 @@ export function WorkspaceTopNavigation<T extends string>({
 }: WorkspaceTopNavigationProps<T>) {
   return (
     <section className={cn("shared-top-navigation", className)} aria-label={tabsProps.ariaLabel}>
-      <Tabs {...tabsProps} className={tabsClassName} />
+      <ModuleTabs {...tabsProps} className={tabsClassName} variant="underline" />
       {actions ? <div className={cn("shared-top-navigation__actions", actionsClassName)}>{actions}</div> : null}
     </section>
+  );
+}
+
+export interface StudioNavHeaderProps {
+  title: ReactNode;
+  meta?: ReactNode;
+  status?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}
+
+export function StudioNavHeader({ title, meta, status, actions, className }: StudioNavHeaderProps) {
+  return (
+    <div className={cn("shared-top-navigation studio-nav-header", className)}>
+      <div className="studio-nav-header__identity">
+        <div className="studio-nav-header__title">{title}</div>
+        {meta ? <div className="studio-nav-header__meta">{meta}</div> : null}
+      </div>
+      {status ? <div className="studio-nav-header__status">{status}</div> : null}
+      {actions ? <div className="studio-nav-header__actions">{actions}</div> : null}
+    </div>
   );
 }

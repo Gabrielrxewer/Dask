@@ -1,10 +1,32 @@
 .shared-card {
+  --shared-card-accent: var(--accent);
   border: 1px solid var(--border-default);
   background: var(--surface-card);
   border-radius: 28px;
   box-shadow: var(--shadow-card);
   padding: 18px;
   backdrop-filter: blur(12px) saturate(112%);
+}
+
+.shared-card--compact {
+  border-radius: var(--radius-xs);
+  padding: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.shared-card--metric {
+  border-radius: 24px;
+  min-height: 78px;
+  padding: 16px 18px;
+  border-color: color-mix(in oklab, var(--shared-card-accent) 22%, var(--border-default));
+}
+
+.shared-card--featured {
+  border-color: color-mix(in oklab, var(--shared-card-accent) 30%, var(--border-default));
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in oklab, var(--shared-card-accent) 10%, transparent) 0%, transparent 36%),
+    var(--surface-card);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .shared-card--interactive {
@@ -16,6 +38,124 @@
   border-color: var(--selected-border);
   background: var(--surface-card-hover);
   box-shadow: var(--shadow-card-hover);
+}
+
+.shared-card--accent-blue {
+  --shared-card-accent: var(--brand-blue);
+}
+
+.shared-card--accent-green,
+.shared-card--accent-success {
+  --shared-card-accent: var(--success);
+}
+
+.shared-card--accent-purple {
+  --shared-card-accent: var(--decorative-purple);
+}
+
+.shared-card--accent-amber,
+.shared-card--accent-warning {
+  --shared-card-accent: var(--warning);
+}
+
+.shared-card--accent-danger {
+  --shared-card-accent: var(--danger);
+}
+
+.shared-card--accent-info {
+  --shared-card-accent: var(--info, var(--brand-blue));
+}
+
+.shared-section-card {
+  border: 1px solid color-mix(in oklab, var(--line) 76%, transparent);
+  border-radius: var(--radius-xs);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.shared-section-card--elevated {
+  box-shadow: var(--shadow-card);
+}
+
+.shared-section-card--muted {
+  background: var(--surface-section-content);
+  box-shadow: none;
+}
+
+.shared-section-card--selected {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+}
+
+.shared-section-card--interactive {
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.shared-section-card--interactive:hover {
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--line));
+  background: var(--surface-card-hover);
+  transform: translateY(-1px);
+}
+
+.shared-section-card__header,
+.shared-section-card__footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 14px 16px;
+}
+
+.shared-section-card__header {
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 58%, transparent);
+}
+
+.shared-section-card__heading {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.shared-section-card__heading h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--font-size-sm);
+  font-weight: 860;
+  letter-spacing: 0;
+}
+
+.shared-section-card__heading p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.shared-section-card__action {
+  flex: 0 0 auto;
+}
+
+.shared-section-card__content {
+  padding: 16px;
+}
+
+.shared-section-card__footer {
+  border-top: 1px solid color-mix(in oklab, var(--line) 58%, transparent);
+}
+
+.shared-section-card--compact .shared-section-card__header,
+.shared-section-card--compact .shared-section-card__footer,
+.shared-section-card--compact .shared-section-card__content {
+  padding: 12px;
+}
+
+.shared-section-card--spacious .shared-section-card__header,
+.shared-section-card--spacious .shared-section-card__footer,
+.shared-section-card--spacious .shared-section-card__content {
+  padding: 20px;
 }
 
 .shared-surface-panel {
@@ -44,6 +184,23 @@
   overflow: visible;
   isolation: isolate;
   z-index: 0;
+}
+
+.shared-metric-card--compact {
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: var(--radius-xs);
+}
+
+.shared-metric-card--empty {
+  opacity: 0.72;
+}
+
+.shared-metric-card--horizontal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .shared-metric-card--blue {

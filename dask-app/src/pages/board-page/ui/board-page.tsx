@@ -274,7 +274,7 @@ export function BoardPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="board-view">
+      <WorkspaceFrame className="board-view" variant="kanban" scroll="none">
         <LoadingState text="Carregando quadro..." animation="board" variant="frame" visible={isLoading && !snapshot} />
         <div className="board-view__canvas workspace-view__section">
           {isLoading && !snapshot ? (

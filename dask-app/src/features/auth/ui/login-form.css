@@ -779,24 +779,6 @@
   line-height: 1.35;
 }
 
-.app-theme[data-theme="dark"] .auth-login__consent-item {
-  color: var(--text-soft);
-}
-
-.app-theme[data-theme="dark"] .auth-login__consent-item--optional {
-  color: var(--text-muted);
-}
-
-.app-theme[data-theme="dark"] .auth-login__consent-item a,
-.app-theme[data-theme="dark"] .auth-login__legal a {
-  color: var(--accent-strong);
-}
-
-.app-theme[data-theme="dark"] .auth-login__consent-item input[type="checkbox"] {
-  background: var(--control-surface);
-  border-color: var(--line);
-}
-
 .auth-login-panel[aria-label="Recuperar senha"] .auth-login {
   align-content: start;
   gap: 24px;

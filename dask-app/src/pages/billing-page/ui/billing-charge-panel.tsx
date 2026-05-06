@@ -1,6 +1,6 @@
 import type { ConnectCatalogItem } from "@/modules/billing";
 import { formatCustomerOptionDetail, getCustomerDisplayName, type Customer } from "@/modules/workspace";
-import { Button, FormField, Select, TextInput } from "@/shared/ui";
+import { Button, FormField, InlineAlert, Select, TextInput } from "@/shared/ui";
 import { IconCheck, IconLock } from "./billing-page-icons";
 import { BillingOrderDetailsPanel } from "./billing-order-details-panel";
 import {
@@ -201,12 +201,12 @@ export function BillingChargePanel({
               </FormField>
             </div>
             {customersLoadState === "error" ? (
-              <p className="billing-view__error">Nao foi possivel carregar o cadastro de clientes.</p>
+              <InlineAlert tone="danger">Nao foi possivel carregar o cadastro de clientes.</InlineAlert>
             ) : null}
             {selectedCustomer && !selectedCustomer.document ? (
-              <p className="billing-view__error">
+              <InlineAlert tone="danger">
                 Complete CPF/CNPJ no cadastro do cliente antes de usar esta cobranca para fiscal.
-              </p>
+              </InlineAlert>
             ) : null}
 
             <div className="billing-view__email-row">
@@ -239,7 +239,7 @@ export function BillingChargePanel({
             </div>
           </fieldset>
 
-          {checkoutError ? <p className="billing-view__error">{checkoutError}</p> : null}
+          {checkoutError ? <InlineAlert tone="danger">{checkoutError}</InlineAlert> : null}
 
           <BillingOrderDetailsPanel
             reviewStep={reviewStep}

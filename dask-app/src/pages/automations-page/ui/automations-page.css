@@ -7,59 +7,14 @@
   background: var(--bg);
 }
 
-.automation-studio__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line, var(--border-blue-muted));
-  background: var(--panel, var(--neutral-white));
-}
+/* ── Version bar buttons shared styles ─────────────────────────────────────── */
 
-.automation-studio__header > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 180px;
-}
-
-.automation-studio__header span,
-.automation-studio__panel-header span,
-.automation-studio__version-bar small {
-  color: var(--text-muted, var(--text-secondary));
-  font-size: var(--font-size-2xs, 0.72rem);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.automation-studio__header strong {
-  color: var(--text-strong, var(--foreground));
-  font-size: var(--font-size-title-sm, 1.05rem);
-}
-
-.automation-studio__tabs,
-.automation-studio__actions,
-.automation-studio__version-bar,
-.automation-studio__panel-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.automation-studio__tabs {
-  min-width: 0;
-  overflow-x: auto;
-}
-
-.automation-studio__tabs button,
-.automation-studio__version-bar button,
-.automation-studio__workflow-list button,
-.automation-studio__create {
+.studio-layout__sub-bar button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-xs, 8px);
   background: transparent;
@@ -68,156 +23,87 @@
   font: inherit;
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 800;
-}
-
-.automation-studio__tabs button,
-.automation-studio__version-bar button {
-  min-height: 34px;
-  padding: 0 10px;
   white-space: nowrap;
 }
 
-.automation-studio__tabs button:hover,
-.automation-studio__version-bar button:hover,
-.automation-studio__workflow-list button:hover,
-.automation-studio__create:hover {
+.studio-layout__sub-bar button:hover {
   background: var(--panel-muted, var(--surface-3));
   color: var(--text, var(--text-primary));
 }
 
-.automation-studio__tabs button.is-active,
-.automation-studio__version-bar button.is-active,
-.automation-studio__workflow-list button.is-active {
+.studio-layout__sub-bar button.is-active {
   border-color: color-mix(in oklab, var(--accent, var(--brand-blue)) 24%, transparent);
   background: var(--accent-soft);
   color: var(--accent, var(--brand-blue));
 }
 
-.automation-studio__flows {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  flex: 1 1 auto;
-  min-height: 0;
+.studio-layout__sub-bar small {
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-2xs, 0.72rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.automation-studio__sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  padding: 14px;
-  border-right: 1px solid var(--line, var(--border-blue-muted));
-  background: var(--panel, var(--neutral-white));
-}
+/* ── Toolbar fields & actions ──────────────────────────────────────────────── */
 
-.automation-studio__create {
-  justify-content: center;
-  min-height: 38px;
-  border-style: dashed;
-  border-color: var(--line-strong, var(--border-strong));
-  color: var(--accent, var(--brand-blue));
-}
-
-.automation-studio__workflow-list,
-.automation-studio__list,
-.automation-studio__messages {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-  overflow: auto;
-}
-
-.automation-studio__workflow-list button,
-.automation-studio__list > button,
-.automation-studio__row {
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px;
-  text-align: left;
-}
-
-.automation-studio__workflow-list button,
-.automation-studio__list > button,
-.automation-studio__row,
-.automation-studio__empty-panel,
-.automation-studio__detail,
-.automation-studio__inspector {
-  border: 1px solid var(--line, var(--border-blue-muted));
-  border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
-}
-
-.automation-studio__editor {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.automation-studio__toolbar {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line, var(--border-blue-muted));
-  background: var(--panel, var(--neutral-white));
-}
-
-.automation-studio__fields {
+.ast__fields {
   display: grid;
   grid-template-columns: minmax(180px, 280px) minmax(220px, 1fr);
   gap: 8px;
   min-width: 0;
 }
 
-.automation-studio__actions {
-  justify-content: flex-end;
+.ast__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
-.automation-studio__version-bar {
-  min-height: 46px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--line, var(--border-blue-muted));
-  background: var(--panel-muted, var(--surface-3));
-  overflow-x: auto;
+/* ── Primary actions pushed to end of sub-bar ──────────────────────────────── */
+
+.ast__sub-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.automation-studio__feedback {
+/* ── Create button in sidebar header ───────────────────────────────────────── */
+
+.ast__create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+
+.ast__create-btn:hover {
+  background: var(--panel-muted, var(--surface-3));
+  color: var(--accent, var(--brand-blue));
+}
+
+/* ── Feedback text in sub-bar ──────────────────────────────────────────────── */
+
+.ast__feedback {
   color: var(--accent, var(--brand-blue));
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 800;
   white-space: nowrap;
 }
 
-.automation-studio__canvas-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
+/* ── Inspector helpers ─────────────────────────────────────────────────────── */
 
-.automation-studio__canvas-row .flow-canvas-ui {
-  height: 100%;
-  min-height: 0;
-}
-
-.automation-studio__inspector {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  padding: 14px;
-  border-width: 0 0 0 1px;
-  border-radius: 0;
-  overflow: auto;
-}
-
-.automation-studio__inspector label {
+.ast__inspector-label {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -226,8 +112,7 @@
   font-weight: 800;
 }
 
-.automation-studio__inspector textarea,
-.automation-studio__detail textarea {
+.ast__inspector-textarea {
   width: 100%;
   min-height: 150px;
   resize: vertical;
@@ -241,6 +126,8 @@
   padding: 10px;
 }
 
+/* ── Panel (non-flows tabs) ────────────────────────────────────────────────── */
+
 .automation-studio__panel {
   flex: 1 1 auto;
   min-height: 0;
@@ -250,15 +137,25 @@
 }
 
 .automation-studio__panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   justify-content: space-between;
   margin-bottom: 14px;
 }
 
-.automation-studio__panel-header h2,
-.automation-studio__detail h3 {
+.automation-studio__panel-header h2 {
   margin: 0;
   color: var(--text-strong, var(--foreground));
   font-size: var(--font-size-title-sm, 1.05rem);
+}
+
+.automation-studio__panel-header span {
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-2xs, 0.72rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .automation-studio__split {
@@ -268,12 +165,38 @@
   min-height: 0;
 }
 
-.automation-studio__list > button {
+.automation-studio__list,
+.automation-studio__messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.automation-studio__list > button,
+.automation-studio__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 8px;
-  color: inherit;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: var(--radius-xs, 8px);
+  background: var(--panel, var(--neutral-white));
+  color: var(--text-muted, var(--text-secondary));
   cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 800;
+}
+
+.automation-studio__list > button:hover {
+  background: var(--panel-muted, var(--surface-3));
+  color: var(--text, var(--text-primary));
 }
 
 .automation-studio__list > button small,
@@ -284,20 +207,36 @@
   font-size: var(--font-size-xs, 0.8rem);
 }
 
-.automation-studio__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 8px;
-  align-items: center;
-}
-
 .automation-studio__detail {
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 280px;
   padding: 14px;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: var(--radius-xs, 8px);
+  background: var(--panel, var(--neutral-white));
   overflow: auto;
+}
+
+.automation-studio__detail h3 {
+  margin: 0;
+  color: var(--text-strong, var(--foreground));
+  font-size: var(--font-size-title-sm, 1.05rem);
+}
+
+.automation-studio__detail textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: var(--radius-xs, 8px);
+  background: var(--panel, var(--neutral-white));
+  color: var(--text, var(--text-primary));
+  font: inherit;
+  font-size: var(--font-size-xs, 0.8rem);
+  line-height: 1.45;
+  padding: 10px;
 }
 
 .automation-studio__detail pre {
@@ -333,33 +272,19 @@
   font-weight: 700;
 }
 
-@media (max-width: 1100px) {
-  .automation-studio__flows,
-  .automation-studio__canvas-row,
-  .automation-studio__split,
-  .automation-studio__toolbar {
-    grid-template-columns: 1fr;
-  }
+/* ── FlowCanvas inside studio-layout__canvas ────────────────────────────────── */
 
-  .automation-studio__sidebar,
-  .automation-studio__inspector {
-    border: 0;
-    border-bottom: 1px solid var(--line, var(--border-blue-muted));
-  }
-
-  .automation-studio__workflow-list {
-    max-height: 220px;
-  }
+.studio-layout__canvas .flow-canvas-ui {
+  height: 100%;
+  min-height: 0;
 }
 
 @media (max-width: 720px) {
-  .automation-studio__header,
-  .automation-studio__fields {
+  .ast__fields {
     grid-template-columns: 1fr;
   }
 
-  .automation-studio__header {
-    align-items: stretch;
-    flex-direction: column;
+  .automation-studio__split {
+    grid-template-columns: 1fr;
   }
 }

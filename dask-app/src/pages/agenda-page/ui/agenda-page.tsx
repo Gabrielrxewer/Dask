@@ -435,7 +435,7 @@ export function AgendaPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="agenda-view">
+      <WorkspaceFrame className="agenda-view" variant="table" scroll="none">
         <LoadingState
           text="Carregando agenda..."
           animation="agenda"
@@ -557,24 +557,25 @@ export function AgendaPage() {
                   </div>
 
                   {availabilitySnapshots.length === 0 ? (
-                    <div className="agenda-view__empty-availability">
-                      <div className="agenda-view__empty-week">
-                        {weekDays.map((day, i) => (
-                          <div key={day} className={`agenda-view__empty-day${i === selectedDayIndex ? " is-selected" : ""}`}>
-                            <span>{new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(new Date(day))}</span>
-                            <strong>{new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(new Date(day))}</strong>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="agenda-view__empty-msg">
-                        {availabilityMode === "people"
+                    <EmptyState
+                      className="agenda-view__empty-availability"
+                      icon={
+                        <span className="agenda-view__empty-week">
+                          {weekDays.map((day, i) => (
+                            <span key={day} className={`agenda-view__empty-day${i === selectedDayIndex ? " is-selected" : ""}`}>
+                              <span>{new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(new Date(day))}</span>
+                              <strong>{new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(new Date(day))}</strong>
+                            </span>
+                          ))}
+                        </span>
+                      }
+                      title={
+                        availabilityMode === "people"
                           ? "Nenhuma atividade com horario definido esta semana."
-                          : "Nenhum recurso identificado nas atividades desta semana."}
-                      </p>
-                      <span className="agenda-view__empty-hint">
-                        Abra uma atividade e defina inicio e fim para que ela aparea aqui.
-                      </span>
-                    </div>
+                          : "Nenhum recurso identificado nas atividades desta semana."
+                      }
+                      description="Abra uma atividade e defina inicio e fim para que ela aparea aqui."
+                    />
                   ) : (
                     <>
                       <div className="agenda-view__mobile-list">

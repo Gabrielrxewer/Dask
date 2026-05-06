@@ -1,6 +1,6 @@
 import type { ConnectCatalogItem } from "@/modules/billing";
 import { getCustomerDisplayName, type Customer } from "@/modules/workspace";
-import { Button, StatusBadge } from "@/shared/ui";
+import { Button, LoadingState, StatusBadge } from "@/shared/ui";
 import { IconCheck } from "./billing-page-icons";
 import {
   CATALOG_BILLING_LABEL,
@@ -48,10 +48,11 @@ export function BillingOrderDetailsPanel({
       </div>
 
       {reviewStep === "preparing" ? (
-        <div className="billing-view__review-loading">
-          <span className="billing-view__review-spinner" />
-          Gerando link seguro via Stripe...
-        </div>
+        <LoadingState
+          className="billing-view__review-loading"
+          text="Gerando link seguro via Stripe"
+          animation="billing"
+        />
       ) : (
         <>
           <div className="billing-view__review-grid">

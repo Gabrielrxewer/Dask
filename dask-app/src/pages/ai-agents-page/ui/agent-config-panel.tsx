@@ -1,3 +1,5 @@
+import type { CSSProperties, ReactNode } from 'react';
+import { SidePanel } from '@/shared/ui';
 import type {
   AgentFlowNode,
   AgentNodeKind,
@@ -42,26 +44,19 @@ export function AgentConfigPanel({
 
   if (agent) {
     return (
-      <aside className="acp" style={{ '--acp-color': 'var(--primary)' } as React.CSSProperties}>
-        <header className="acp__header">
-          <div className="acp__header-left">
-            <span className="acp__type-dot" />
-            <div className="acp__title-group">
-              <span className="acp__type-label">{agent.isCreateMode ? 'Novo agente' : 'Agente'}</span>
-              <span className="acp__description">Identidade e disponibilidade do agente</span>
-            </div>
-          </div>
-          <button type="button" className="acp__close" onClick={onClose} aria-label="Fechar">
-            <svg viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
-        </header>
-
-        <div className="acp__body">
-          <AgentMetaConfig data={agent} patch={onAgentMetaChange} />
-        </div>
-      </aside>
+      <SidePanel
+        className="acp"
+        bodyClassName="acp__body"
+        variant="config"
+        titleId="ai-agent-meta-config"
+        title={agent.isCreateMode ? 'Novo agente' : 'Agente'}
+        description="Identidade e disponibilidade do agente"
+        leading={<span className="acp__type-dot" aria-hidden="true" />}
+        onClose={onClose}
+        style={{ '--acp-color': 'var(--primary)' } as CSSProperties}
+      >
+        <AgentMetaConfig data={agent} patch={onAgentMetaChange} />
+      </SidePanel>
     );
   }
 
@@ -75,49 +70,42 @@ export function AgentConfigPanel({
   }
 
   return (
-    <aside className="acp" style={{ '--acp-color': color } as React.CSSProperties}>
-      <header className="acp__header">
-        <div className="acp__header-left">
-          <span className="acp__type-dot" />
-          <div className="acp__title-group">
-            <span className="acp__type-label">{meta?.label ?? node.type}</span>
-            <span className="acp__description">{meta?.description ?? ''}</span>
-          </div>
-        </div>
-        <button type="button" className="acp__close" onClick={onClose} aria-label="Fechar">
-          <svg viewBox="0 0 16 16" fill="none">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
-      </header>
-
-      <div className="acp__body">
-        {activeNode.type === 'trigger' && (
-          <TriggerConfig data={activeNode.data as TriggerNodeData} patch={patch} />
-        )}
-        {activeNode.type === 'llm' && (
-          <LlmConfig data={activeNode.data as LlmNodeData} patch={patch} />
-        )}
-        {activeNode.type === 'rag' && (
-          <RagConfig data={activeNode.data as RagNodeData} patch={patch} />
-        )}
-        {activeNode.type === 'tool' && (
-          <ToolConfig data={activeNode.data as ToolNodeData} patch={patch} />
-        )}
-        {activeNode.type === 'condition' && (
-          <ConditionConfig data={activeNode.data as ConditionNodeData} patch={patch} />
-        )}
-        {activeNode.type === 'output' && (
-          <OutputConfig data={activeNode.data as OutputNodeData} patch={patch} />
-        )}
-      </div>
-    </aside>
+    <SidePanel
+      className="acp"
+      bodyClassName="acp__body"
+      variant="config"
+      titleId={`ai-agent-node-config-${activeNode.id}`}
+      title={meta?.label ?? node.type}
+      description={meta?.description ?? ''}
+      leading={<span className="acp__type-dot" aria-hidden="true" />}
+      onClose={onClose}
+      style={{ '--acp-color': color } as CSSProperties}
+    >
+      {activeNode.type === 'trigger' && (
+        <TriggerConfig data={activeNode.data as TriggerNodeData} patch={patch} />
+      )}
+      {activeNode.type === 'llm' && (
+        <LlmConfig data={activeNode.data as LlmNodeData} patch={patch} />
+      )}
+      {activeNode.type === 'rag' && (
+        <RagConfig data={activeNode.data as RagNodeData} patch={patch} />
+      )}
+      {activeNode.type === 'tool' && (
+        <ToolConfig data={activeNode.data as ToolNodeData} patch={patch} />
+      )}
+      {activeNode.type === 'condition' && (
+        <ConditionConfig data={activeNode.data as ConditionNodeData} patch={patch} />
+      )}
+      {activeNode.type === 'output' && (
+        <OutputConfig data={activeNode.data as OutputNodeData} patch={patch} />
+      )}
+    </SidePanel>
   );
 }
 
 // ── Field components ──────────────────────────────────────────────────────────
 
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <div className="acp__field">
       <label className="acp__field-label">{label}</label>

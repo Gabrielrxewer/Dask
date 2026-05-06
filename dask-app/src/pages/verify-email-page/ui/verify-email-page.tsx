@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/shared/ui";
+import { Button, LoadingState } from "@/shared/ui";
 import { authService } from "@/features/auth/api/auth-service";
 import { routePaths } from "@/app/router";
 import "./verify-email-page.css";
@@ -80,8 +80,11 @@ export function VerifyEmailPage() {
         <main className="verify-email-page">
           <div className="verify-email-page__backdrop" aria-hidden="true" />
           <div className="verify-email-page__card">
-            <div className="verify-email-page__spinner" aria-label="Verificando..." />
-            <p className="verify-email-page__text">Verificando seu e-mail...</p>
+            <LoadingState
+              className="verify-email-page__loading"
+              text="Verificando seu e-mail"
+              animation="workspace"
+            />
           </div>
         </main>
       );

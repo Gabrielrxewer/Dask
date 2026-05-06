@@ -39,36 +39,44 @@
   padding: 2px;
 }
 
-/* ── Top nav ─────────────────────────────────────────────────────────────────── */
+/* ── StudioLayout integration ────────────────────────────────────────────────── */
 
-.ab-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 4px 0;
+.ab-page .studio-layout {
+  border-radius: var(--radius-xs, 8px);
+  overflow: hidden;
 }
 
-.workspace__top-nav:has(.ab-nav) {
-  position: relative;
-  z-index: 2;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
+.ab-page .studio-layout__sidebar {
+  border-color: var(--ab-line);
+  background: var(--ab-surface);
 }
 
-.app-theme[data-theme="dark"] .workspace__top-nav:has(.ab-nav) {
-  border-bottom-color: color-mix(in srgb, var(--border-strong) 82%, transparent);
+.ab-page .studio-layout__inspector {
+  border-color: var(--ab-line);
+  background: var(--ab-surface);
+  box-shadow: var(--ab-shadow-strong);
 }
 
-.ab-nav__identity {
+/* ── Toolbar entity fields & actions ─────────────────────────────────────────── */
+
+.ab-entity-fields {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
   min-width: 0;
 }
 
-.ab-nav__name {
-  font-size: 14px;
+.ab-entity-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Nav header input ────────────────────────────────────────────────────────── */
+
+.ab-name-input {
+  font-size: var(--font-size-sm);
   font-weight: 800;
   color: var(--ab-text);
   background: transparent;
@@ -81,22 +89,24 @@
   transition: background 0.14s;
 }
 
-.ab-nav__name:hover {
+.ab-name-input:hover {
   background: color-mix(in oklab, var(--ab-accent) 6%, transparent);
 }
 
-.ab-nav__name:focus {
+.ab-name-input:focus {
   background: color-mix(in oklab, var(--ab-accent) 8%, var(--neutral-white));
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--ab-accent) 24%, transparent);
 }
 
-.ab-nav__name::placeholder {
+.ab-name-input::placeholder {
   color: var(--ab-text-muted);
   font-weight: 600;
 }
 
-.ab-nav__key {
-  font-size: 11px;
+/* ── Key badge ───────────────────────────────────────────────────────────────── */
+
+.ab-key-badge {
+  font-size: var(--font-size-xs);
   font-weight: 800;
   font-family: ui-monospace, monospace;
   color: var(--ab-text-muted);
@@ -108,12 +118,9 @@
   text-transform: lowercase;
 }
 
-.ab-nav__status {
-  display: flex;
-  align-items: center;
-}
+/* ── Status button ───────────────────────────────────────────────────────────── */
 
-.ab-nav__status-btn {
+.ab-status-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -122,23 +129,23 @@
   border: 1.5px solid color-mix(in oklab, var(--warning-border) 80%, transparent);
   background: var(--surface-warning-muted);
   color: var(--warning);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   cursor: pointer;
   transition: background 0.14s, border-color 0.14s, color 0.14s, transform 0.1s;
 }
 
-.ab-nav__status-btn:hover {
+.ab-status-btn:hover {
   transform: translateY(-1px);
 }
 
-.ab-nav__status-btn--active {
+.ab-status-btn--active {
   border-color: color-mix(in oklab, var(--success-border) 80%, transparent);
   background: var(--surface-success-muted);
   color: var(--success);
 }
 
-.ab-nav__status-dot {
+.ab-status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -146,12 +153,7 @@
   flex-shrink: 0;
 }
 
-.ab-nav__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
+/* ── Spinner animation ───────────────────────────────────────────────────────── */
 
 @keyframes ab-spin {
   to { transform: rotate(360deg); }
@@ -161,235 +163,77 @@
   animation: ab-spin 0.8s linear infinite;
 }
 
-/* ── Main layout ─────────────────────────────────────────────────────────────── */
+/* ── PanelMenu theming for AI Agents ─────────────────────────────────────────── */
 
-.ab-layout {
-  display: flex;
-  gap: 8px;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 8px;
-  overflow: hidden;
+.ab-page .panel-menu {
+  --pm-accent: var(--ab-accent);
+  --pm-line: var(--ab-line);
+  --pm-surface: var(--ab-surface);
+  --pm-surface-muted: color-mix(in oklab, var(--ab-surface-soft) 80%, var(--ab-surface));
+  --pm-text: var(--ab-text);
+  --pm-text-secondary: var(--ab-text-soft);
+  --pm-text-muted: var(--ab-text-muted);
+  --pm-hover-bg: color-mix(in oklab, var(--ab-accent) 6%, var(--ab-surface));
+  --pm-selected-bg: color-mix(in oklab, var(--ab-accent) 10%, var(--ab-surface));
+  --pm-selected-border: color-mix(in oklab, var(--ab-accent) 32%, var(--ab-line));
 }
 
-/* ── Sidebar ─────────────────────────────────────────────────────────────────── */
+/* ── New agent create button ──────────────────────────────────────────────────── */
 
-.ab-sidebar {
-  width: 280px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-radius: var(--radius-xs, 8px);
-  border: 1px solid var(--ab-line);
-  background: var(--ab-surface);
-  box-shadow: var(--ab-shadow);
-  overflow: hidden;
-}
-
-.ab-sidebar__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--ab-line);
-  flex-shrink: 0;
-}
-
-.ab-sidebar__title {
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--ab-text-muted);
-}
-
-.ab-sidebar__list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  display: grid;
-  gap: 6px;
-  align-content: start;
-  scrollbar-width: thin;
-}
-
-.ab-sidebar__empty {
-  padding: 16px 8px;
-  text-align: center;
-}
-
-.ab-sidebar__empty p {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ab-text);
-}
-
-.ab-sidebar__empty span {
-  font-size: 12px;
-  color: var(--ab-text-soft);
-}
-
-/* ── Agent cards ─────────────────────────────────────────────────────────────── */
-
-.ab-agent-card {
-  width: 100%;
-  position: relative;
-  border: 1px solid color-mix(in oklab, var(--ab-line) 90%, var(--neutral-white));
-  border-radius: 10px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--ab-surface) 78%, var(--neutral-white)) 0%,
-    color-mix(in oklab, var(--ab-surface-soft) 88%, var(--ab-surface)) 100%
-  );
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--primary) 5%, transparent);
-  text-align: left;
-  overflow: hidden;
-  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
-}
-
-.ab-agent-card:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--ab-accent) 22%, var(--ab-line));
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 8%, transparent);
-}
-
-.ab-agent-card--active {
-  border-color: color-mix(in oklab, var(--ab-accent) 32%, var(--ab-line));
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--selected-bg, var(--info-bg)) 36%, var(--neutral-white)) 0%,
-    color-mix(in oklab, var(--selected-bg, var(--info-bg)) 82%, var(--ab-surface-soft)) 100%
-  );
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ab-accent) 14%, transparent), 0 4px 12px color-mix(in srgb, var(--primary) 8%, transparent);
-}
-
-.ab-agent-card--new {
-  border-style: dashed;
-  padding: 10px 10px 9px;
-  display: grid;
-  gap: 5px;
-}
-
-.ab-agent-card__main {
-  width: 100%;
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-  padding: 10px 40px 9px 10px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-}
-
-.ab-agent-card__main:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--ab-accent) 42%, transparent);
-  outline-offset: -2px;
-}
-
-.ab-agent-card__edit {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+.ab-create-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  border: 1px solid color-mix(in oklab, var(--ab-line) 84%, transparent);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--ab-line) 80%, transparent);
+  background: color-mix(in oklab, var(--ab-surface-soft) 60%, transparent);
+  color: var(--ab-text-muted);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.ab-create-btn:hover {
+  background: color-mix(in oklab, var(--ab-accent) 8%, var(--ab-surface));
+  border-color: color-mix(in oklab, var(--ab-accent) 30%, var(--ab-line));
+  color: var(--ab-accent);
+}
+
+/* ── Agent edit action button ─────────────────────────────────────────────────── */
+
+.ab-agent-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--ab-line) 80%, transparent);
   background: color-mix(in oklab, var(--ab-surface) 88%, transparent);
   color: var(--ab-text-muted);
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(-2px);
-  transition: opacity 0.14s ease, transform 0.14s ease, background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.ab-agent-card:hover .ab-agent-card__edit,
-.ab-agent-card__edit:focus-visible,
-.ab-agent-card--active .ab-agent-card__edit {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.ab-agent-card__edit:hover,
-.ab-agent-card__edit:focus-visible {
+.ab-agent-edit-btn:hover {
   color: var(--ab-accent-strong);
   border-color: color-mix(in oklab, var(--ab-accent) 28%, var(--ab-line));
   background: color-mix(in oklab, var(--ab-accent) 8%, var(--ab-surface));
 }
 
-.ab-agent-card__edit svg {
-  width: 15px;
-  height: 15px;
+.ab-agent-edit-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
-.ab-agent-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+/* ── New agent placeholder item ───────────────────────────────────────────────── */
+
+.ab-agent-new-item {
+  border-style: dashed !important;
 }
 
-.ab-agent-card__name {
-  font-size: 12.5px;
-  font-weight: 900;
-  color: var(--ab-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ab-agent-card__desc {
-  margin: 0;
-  font-size: 11.5px;
-  color: var(--ab-text-soft);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ab-agent-card__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  font-size: 10.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ab-text-muted);
-}
-
-/* Status badge overrides inside agent card */
-.ab-agent-card .shared-status-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-}
-
-/* ── Canvas wrapper ─────────────────────────────────────────────────────────── */
-
-.ab-canvas-wrapper {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
-}
-
-.ab-canvas-wrapper .flow-canvas-ui {
-  flex: 1 1 auto;
-  min-height: 0;
-}
+/* ── Error banner ────────────────────────────────────────────────────────────── */
 
 .ab-error {
   padding: 8px 12px;
@@ -397,31 +241,36 @@
   background: var(--danger-bg);
   border: 1px solid var(--danger);
   color: var(--danger);
-  font-size: 12.5px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   flex-shrink: 0;
+  margin: 8px;
 }
 
-/* ── Config panel (right) ───────────────────────────────────────────────────── */
+/* ── Canvas area ─────────────────────────────────────────────────────────────── */
 
-.ab-config {
-  width: 0;
-  flex-shrink: 0;
+.ab-page .studio-layout__canvas {
+  position: relative;
+}
+
+.ab-page .studio-layout__canvas .flow-canvas-ui {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* ── Config panel inside inspector ─────────────────────────────────────────── */
+
+.ab-page .studio-layout__inspector {
+  padding: 0;
   overflow: hidden;
-  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: var(--radius-xs, 8px);
-  box-shadow: var(--ab-shadow-strong);
 }
 
-.ab-config--visible {
-  width: 300px;
-}
-
-.ab-config .acp {
-  width: 300px;
-  border-radius: var(--radius-xs, 8px);
-  overflow: hidden;
-  border: 1px solid var(--ab-line);
+.ab-page .studio-layout__inspector .acp {
+  border-radius: 0;
+  border: 0;
+  height: 100%;
+  overflow: auto;
 }
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────── */
@@ -440,52 +289,33 @@
     linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, var(--neutral-black)) 0%, color-mix(in oklab, var(--panel-soft) 82%, var(--neutral-black)) 100%);
 }
 
-.app-theme[data-theme="dark"] .ab-nav__name {
+.app-theme[data-theme="dark"] .ab-name-input {
   color: var(--text-primary);
 }
 
-.app-theme[data-theme="dark"] .ab-nav__name:focus {
+.app-theme[data-theme="dark"] .ab-name-input:focus {
   background: color-mix(in oklab, var(--accent) 10%, var(--surface-elevated));
 }
 
-.app-theme[data-theme="dark"] .ab-nav__status-btn {
+.app-theme[data-theme="dark"] .ab-status-btn {
   background: color-mix(in oklab, var(--warning) 14%, var(--panel));
   border-color: color-mix(in oklab, var(--warning) 30%, var(--line));
   color: var(--warning-border);
 }
 
-.app-theme[data-theme="dark"] .ab-nav__status-btn--active {
+.app-theme[data-theme="dark"] .ab-status-btn--active {
   background: color-mix(in oklab, var(--success) 14%, var(--panel));
   border-color: color-mix(in oklab, var(--success) 30%, var(--line));
   color: var(--success);
 }
 
-.app-theme[data-theme="dark"] .ab-sidebar {
-  border-color: var(--line);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .ab-agent-card {
-  border-color: var(--line);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .ab-agent-card__edit {
-  border-color: var(--line);
-  background: color-mix(in oklab, var(--surface-raised) 90%, transparent);
-  color: var(--text-muted);
-}
-
-.app-theme[data-theme="dark"] .ab-agent-card:hover,
-.app-theme[data-theme="dark"] .ab-agent-card--active {
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--accent) 12%, var(--panel)) 0%,
-    color-mix(in oklab, var(--selected-bg) 88%, var(--panel)) 100%
-  );
+.app-theme[data-theme="dark"] .ab-page .panel-menu {
+  --pm-surface: var(--surface-raised);
+  --pm-surface-muted: color-mix(in oklab, var(--panel-soft) 80%, var(--panel));
+  --pm-line: var(--line);
+  --pm-hover-bg: color-mix(in oklab, var(--accent) 8%, var(--surface-raised));
+  --pm-selected-bg: color-mix(in oklab, var(--accent) 12%, var(--panel));
+  --pm-selected-border: color-mix(in oklab, var(--accent) 34%, var(--line));
 }
 
 .app-theme[data-theme="dark"] .ab-error {
@@ -496,32 +326,14 @@
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 
-@media (min-width: 1141px) {
-  .app-shell--no-scroll .ab-layout {
-    height: 100%;
-  }
-}
-
 @media (max-width: 1100px) {
-  .ab-sidebar {
-    width: 240px;
-  }
-
-  .ab-config--visible {
-    width: 268px;
-  }
-
-  .ab-config .acp {
+  .ab-page .studio-layout__inspector {
     width: 268px;
   }
 }
 
 @media (max-width: 820px) {
-  .ab-sidebar {
+  .ab-page .studio-layout__sidebar {
     display: none;
-  }
-
-  .ab-config--visible {
-    width: 260px;
   }
 }

@@ -12,10 +12,11 @@ import {
   DataTableHeader,
   DataTableRow,
   EmptyState,
+  Button,
   LoadingState,
-  Section,
   Select,
-  WorkspaceFrame
+  StatusBadge,
+  ResourceListPageTemplate
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { CreateTaskButton } from "@/features/create-task";
@@ -172,17 +173,19 @@ export function ListPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="list-view">
-        <LoadingState
-          text="Carregando lista..."
-          animation="list"
-          variant="frame"
-          visible={isLoading && filteredTasks.length === 0}
-        />
-        <Section
-          title={`${filteredTasks.length} ${filteredTasks.length === 1 ? "item" : "itens"}`}
-          className="list-view__section workspace-view__section"
-        >
+      <ResourceListPageTemplate
+        frameClassName="list-view"
+        title={`${filteredTasks.length} ${filteredTasks.length === 1 ? "item" : "itens"}`}
+        sectionClassName="list-view__section workspace-view__section"
+        loading={
+          <LoadingState
+            text="Carregando lista..."
+            animation="list"
+            variant="frame"
+            visible={isLoading && filteredTasks.length === 0}
+          />
+        }
+      >
           <DataTable
             columns="minmax(200px, 2.4fr) minmax(140px, 1.2fr) minmax(120px, 1fr) minmax(80px, 0.65fr) minmax(76px, 0.5fr) 68px"
             className="list-view__table"
@@ -200,7 +203,25 @@ export function ListPage() {
 
             <DataTableBody>
               {filteredTasks.length === 0 ? (
-                <EmptyState>Nenhum item encontrado para o filtro atual.</EmptyState>
+                <DataTableRow className="shared-data-table__row--empty">
+                  <DataTableCell className="shared-data-table__cell--full">
+                    <EmptyState
+                      variant="table"
+                      title="Nenhum item encontrado."
+                      description="Ajuste o filtro atual ou crie um novo item para alimentar esta lista."
+                      primaryAction={
+                        <CreateTaskButton
+                          onCreate={input => void createTask(input)}
+                          initialStatusId={boardConfig.statuses[0]?.id ?? "backlog"}
+                          statuses={boardConfig.statuses}
+                          boardConfig={boardConfig}
+                          membersById={activeMembers}
+                          taskTypes={boardConfig.taskTypes}
+                        />
+                      }
+                    />
+                  </DataTableCell>
+                </DataTableRow>
               ) : (
                 orderedTasks.map(task => {
                   const done = task.checklist.items.filter(item => item.done).length;
@@ -218,7 +239,9 @@ export function ListPage() {
                             {task.title}
                           </button>
                           {type && (
-                            <span
+                            <StatusBadge
+                              size="sm"
+                              kind="tag"
                               className="list-view__type"
                               style={{
                                 "--list-type-background": type.background ?? "var(--info-bg)",
@@ -227,7 +250,7 @@ export function ListPage() {
                               } as CSSProperties}
                             >
                               {type.label}
-                            </span>
+                            </StatusBadge>
                           )}
                         </div>
                       </DataTableCell>
@@ -281,14 +304,16 @@ export function ListPage() {
 
                       <DataTableCell>
                         <div className="list-view__row-actions">
-                          <button
+                          <Button
                             type="button"
                             className="list-view__action-btn"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => selectTask(task.id)}
                             title="Abrir"
                           >
                             Abrir
-                          </button>
+                          </Button>
                         </div>
                       </DataTableCell>
                     </DataTableRow>
@@ -297,8 +322,7 @@ export function ListPage() {
               )}
             </DataTableBody>
           </DataTable>
-        </Section>
-      </WorkspaceFrame>
+      </ResourceListPageTemplate>
 
       {selectedTask && selectedStatus ? (
         <TaskDetailsModal

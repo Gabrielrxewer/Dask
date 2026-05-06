@@ -1,6 +1,6 @@
 import type { ComponentProps, KeyboardEvent, Ref } from "react";
 import type { DocumentationAssistantMode, WorkspaceDocument } from "@/modules/workspace";
-import { AppIcon, StatusBadge, Textarea } from "@/shared/ui";
+import { AppIcon, Button, EmptyState, StatusBadge, Textarea } from "@/shared/ui";
 import {
   formatRelativeDate,
   MODE_LABELS,
@@ -80,8 +80,10 @@ export function DocumentationAssistantPanel({
             <p>{activeDoc ? `ON: ${activeDoc.title}` : "Selecione uma doc"}</p>
           </div>
           <div className="documentation-page__assistant-tools">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               className="documentation-page__clear-chat-button"
               aria-label="Limpar chat"
               title="Limpar chat desta doc"
@@ -89,17 +91,19 @@ export function DocumentationAssistantPanel({
               onClick={onClearChat}
             >
               <AppIcon name="trash" />
-            </button>
+            </Button>
             <StatusBadge tone={assistantTone}>{assistantStatus}</StatusBadge>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               className="documentation-page__close-chat-button"
               aria-label="Fechar Chat IA"
               title="Fechar Chat IA"
               onClick={onClose}
             >
               <AppIcon name="x" />
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -150,16 +154,12 @@ export function DocumentationAssistantPanel({
 
         <div ref={messagesRef} className="documentation-page__messages">
           {activeMessages.length === 0 ? (
-            <div className="documentation-page__messages-empty-state">
-              <div className="documentation-page__messages-empty-avatar" aria-hidden="true">
-                AI
-              </div>
-              <h3>Vamos comecar esta doc?</h3>
-              <p>
-                Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu atualizo o conteudo da
-                doc automaticamente.
-              </p>
-            </div>
+            <EmptyState
+              className="documentation-page__messages-empty-state"
+              icon={<span className="documentation-page__messages-empty-avatar">AI</span>}
+              title="Vamos comecar esta doc?"
+              description="Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu atualizo o conteudo da doc automaticamente."
+            />
           ) : (
             activeMessages.map((message) => (
               <article
@@ -211,15 +211,17 @@ export function DocumentationAssistantPanel({
               placeholder="Converse com a IA sobre esta doc. Ex.: Reescreva de forma mais objetiva."
               className="documentation-page__composer-input"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               className="documentation-page__send-button"
               aria-label="Enviar mensagem"
               disabled={!canSend}
               onClick={onRunAssistant}
             >
               <AppIcon name="send" strokeWidth={2} />
-            </button>
+            </Button>
           </div>
           <p className="documentation-page__composer-hint">Enter envia - Shift + Enter quebra linha</p>
           {lastRunLatencyMs !== null ? (

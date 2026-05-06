@@ -35,7 +35,7 @@
 }
 
 .subscription-blocked__description {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   color: var(--text-soft, var(--primary));
   max-width: 400px;
   line-height: 1.6;
@@ -43,7 +43,7 @@
 }
 
 .subscription-blocked__status {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--danger);
   padding: 8px 14px;
   background: color-mix(in srgb, var(--danger) 8%, transparent);

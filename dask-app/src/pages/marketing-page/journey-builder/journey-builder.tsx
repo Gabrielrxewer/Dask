@@ -23,7 +23,7 @@ import type {
   JourneyNodeKind,
 } from './types';
 import { PALETTE_ITEMS, validateNode } from './types';
-import { FlowCanvas, type FlowCanvasPaletteItem } from '@/shared/ui';
+import { Button, EmptyState, FlowCanvas, InlineAlert, StatusBadge, TextInput, type FlowCanvasPaletteItem } from '@/shared/ui';
 import { TriggerNode } from './nodes/trigger-node';
 import { ActionNode } from './nodes/action-node';
 import { ConditionNode } from './nodes/condition-node';
@@ -87,6 +87,13 @@ const FLOW_STATUS_LABELS: Record<string, string> = {
 
 function flowStatusLabel(status: string | null | undefined) {
   return FLOW_STATUS_LABELS[status ?? 'DRAFT'] ?? status ?? 'Rascunho';
+}
+
+function flowStatusTone(status: string | null | undefined) {
+  if (status === 'ACTIVE') return 'success';
+  if (status === 'PAUSED') return 'warning';
+  if (status === 'ARCHIVED') return 'muted';
+  return 'neutral';
 }
 
 function makeNode(kind: JourneyNodeKind, position: { x: number; y: number }): JourneyNode {
@@ -287,20 +294,13 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
     }
   }
 
-  const statusBadgeClass =
-    flow?.status === 'ACTIVE'
-      ? 'jb-toolbar__badge--active'
-      : flow?.status === 'PAUSED'
-        ? 'jb-toolbar__badge--paused'
-        : 'jb-toolbar__badge--draft';
-
   const isEmpty = nodes.length === 0;
 
   return (
     <div className="jb">
       {/* Toolbar */}
       <div className="jb-toolbar">
-        <input
+        <TextInput
           className="jb-toolbar__name"
           value={flowName}
           onChange={(e) => setFlowName(e.target.value)}
@@ -309,16 +309,16 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
 
         <div className="jb-toolbar__sep" />
 
-        <span className={`jb-toolbar__badge ${statusBadgeClass}`}>
+        <StatusBadge tone={flowStatusTone(flow?.status)} size="sm">
           {flowStatusLabel(flow?.status)}
-        </span>
+        </StatusBadge>
 
         <div className="jb-toolbar__spacer" />
 
         {flow && (
-          <button
-            type="button"
-            className={`jb-toolbar__btn ${flow.status === 'ACTIVE' ? 'jb-toolbar__btn--danger' : ''}`}
+          <Button
+            size="sm"
+            variant={flow.status === 'ACTIVE' ? 'danger' : 'outline'}
             onClick={() => void handleToggleActive()}
           >
             {flow.status === 'ACTIVE' ? (
@@ -337,12 +337,12 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
                 Ativar
               </>
             )}
-          </button>
+          </Button>
         )}
 
-        <button
-          type="button"
-          className="jb-toolbar__btn jb-toolbar__btn--primary"
+        <Button
+          size="sm"
+          variant="primary"
           onClick={() => void handleSave()}
           disabled={isSaving}
         >
@@ -351,7 +351,7 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
             <path d="M5 2v3h4V2M4 8h6" stroke="var(--neutral-white)" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           {isSaving ? 'Salvando...' : 'Salvar'}
-        </button>
+        </Button>
       </div>
 
       {/* Canvas */}
@@ -387,15 +387,19 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
 
         {/* Empty state overlay */}
         {isEmpty && (
-          <div className="jb__empty" style={{ pointerEvents: 'none' }}>
-            <div className="jb__empty-icon">
+          <EmptyState
+            className="jb__empty"
+            style={{ pointerEvents: 'none' }}
+            icon={
+              <span className="jb__empty-icon">
               <svg viewBox="0 0 24 24" fill="none">
                 <path d="M13 4L6 13h7L10 20l8-9h-7L13 4Z" fill="currentColor" />
               </svg>
-            </div>
-            <p className="jb__empty-title">Canvas vazio</p>
-            <p className="jb__empty-hint">Arraste blocos da paleta esquerda ou conecte um gatilho para começar</p>
-          </div>
+              </span>
+            }
+            title="Canvas vazio"
+            description="Arraste blocos da paleta esquerda ou conecte um gatilho para começar"
+          />
         )}
 
         {/* Insert picker */}
@@ -429,9 +433,9 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
 
         {/* Toast */}
         {toast && (
-          <div className={`jb-toast jb-toast--${toast.kind}`}>
+          <InlineAlert className="jb-toast" tone={toast.kind === 'error' ? 'danger' : 'success'}>
             {toast.message}
-          </div>
+          </InlineAlert>
         )}
       </div>
     </div>

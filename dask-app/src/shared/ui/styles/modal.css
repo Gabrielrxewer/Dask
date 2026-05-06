@@ -106,6 +106,138 @@
   font-weight: 700;
 }
 
+.shared-confirm-modal {
+  width: min(100%, 480px);
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--surface-overlay-strong);
+  color: var(--text-strong);
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.shared-confirm-modal__frame {
+  display: grid;
+  gap: 0;
+}
+
+.shared-confirm-modal__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 24px 24px 20px;
+}
+
+.shared-confirm-modal__icon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--accent-soft) 72%, var(--surface-1));
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shared-confirm-modal__frame--danger .shared-confirm-modal__icon {
+  border-color: color-mix(in oklab, var(--danger) 24%, var(--line));
+  background: color-mix(in oklab, var(--danger-soft) 72%, var(--surface-1));
+  color: var(--danger);
+}
+
+.shared-confirm-modal__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.shared-confirm-modal__copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shared-confirm-modal__eyebrow {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--accent-soft) 72%, var(--surface-1));
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shared-confirm-modal__frame--danger .shared-confirm-modal__eyebrow {
+  background: color-mix(in oklab, var(--danger-soft) 72%, var(--surface-1));
+  color: var(--danger);
+}
+
+.shared-confirm-modal__copy h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--font-size-title-md);
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.shared-confirm-modal__copy p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.shared-confirm-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-muted);
+}
+
+.shared-confirm-modal__confirm.shared-button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--neutral-white);
+  box-shadow: none;
+}
+
+.shared-confirm-modal__confirm.shared-button:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: var(--neutral-white);
+}
+
+.shared-confirm-modal__frame--danger .shared-confirm-modal__confirm.shared-button {
+  border-color: transparent;
+  background: var(--danger);
+}
+
+.shared-confirm-modal__frame--danger .shared-confirm-modal__confirm.shared-button:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--danger) 86%, var(--neutral-black));
+}
+
+@media (max-width: 640px) {
+  .shared-confirm-modal__head {
+    padding: 20px 20px 16px;
+  }
+
+  .shared-confirm-modal__actions {
+    flex-direction: column-reverse;
+    padding: 14px 20px 18px;
+  }
+
+  .shared-confirm-modal__actions .shared-button {
+    width: 100%;
+  }
+}
+
 .shared-drawer-shell {
   width: min(560px, 96vw);
   display: grid;
@@ -163,4 +295,21 @@
 
 .shared-drawer-shell__footer {
   justify-content: flex-end;
+}
+
+.shared-side-panel {
+  width: var(--layout-inspector-width);
+  max-width: 100%;
+}
+
+.shared-side-panel--config {
+  width: var(--layout-inspector-width);
+}
+
+.shared-side-panel--details {
+  width: min(420px, 100%);
+}
+
+.shared-side-panel__body {
+  overflow: auto;
 }

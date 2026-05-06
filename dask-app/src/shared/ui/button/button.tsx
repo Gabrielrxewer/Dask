@@ -2,13 +2,14 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import "./button.css";
 
-export type ButtonVariant = "default" | "primary" | "outline";
-export type ButtonSize = "sm" | "md";
+export type ButtonVariant = "default" | "primary" | "secondary" | "outline" | "ghost" | "subtle" | "danger";
+export type ButtonSize = "sm" | "md" | "icon";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  loading?: boolean;
 }
 
 export function Button({
@@ -17,6 +18,7 @@ export function Button({
   type = "button",
   variant = "default",
   size = "md",
+  loading = false,
   className = "",
   ...props
 }: ButtonProps) {
@@ -25,7 +27,9 @@ export function Button({
       type={type}
       onClick={onClick}
       className={cn("shared-button", `shared-button--${variant}`, `shared-button--${size}`, className)}
+      aria-busy={loading || undefined}
       {...props}
+      disabled={props.disabled || loading}
     >
       {children}
     </button>

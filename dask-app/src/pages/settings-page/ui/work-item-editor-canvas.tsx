@@ -8,6 +8,7 @@ import type {
 } from "@/entities/task";
 import type { ApiItemType } from "@/modules/workspace/model";
 import type { DetailZone, EditorDropTarget, LayoutScope } from "@/pages/settings-page/model/work-item-layout-editor";
+import { EmptyState } from "@/shared/ui";
 import {
   PREVIEW_CARD_DESCRIPTION,
   PREVIEW_CARD_TITLE,
@@ -190,7 +191,7 @@ export function WorkItemEditorCanvas({
                 <strong>{detailMainFields.length} campo{detailMainFields.length !== 1 ? "s" : ""}</strong>
               </div>
               {detailMainFields.length === 0 ? (
-                isDragging ? renderDetailInsertTarget("main", 0) : <p className="wie__form-zone-empty">Arraste campos para a coluna principal.</p>
+                isDragging ? renderDetailInsertTarget("main", 0) : <EmptyState className="wie__form-zone-empty" size="compact">Arraste campos para a coluna principal.</EmptyState>
               ) : (
                 <>
                   {detailMainFields.map((field, index) => renderDetailFieldCard(field, "main", index))}
@@ -226,7 +227,7 @@ export function WorkItemEditorCanvas({
                 <strong>{detailSideFields.length} campo{detailSideFields.length !== 1 ? "s" : ""}</strong>
               </div>
               {detailSideFields.length === 0 ? (
-                isDragging ? renderDetailInsertTarget("side", 0) : <p className="wie__form-zone-empty">Arraste campos de apoio e metadados para a lateral.</p>
+                isDragging ? renderDetailInsertTarget("side", 0) : <EmptyState className="wie__form-zone-empty" size="compact">Arraste campos de apoio e metadados para a lateral.</EmptyState>
               ) : (
                 <>
                   {detailSideFields.map((field, index) => renderDetailFieldCard(field, "side", index))}
@@ -270,11 +271,11 @@ export function WorkItemEditorCanvas({
               </div>
             </div>
           ) : (
-            <div className="wie__field-editor-empty">
-              <span>Campos</span>
-              <strong>Selecione um campo para editar visualmente</strong>
-              <p>Clique em um campo na biblioteca, no card ou no formulario para abrir o preview e a edicao aqui.</p>
-            </div>
+            <EmptyState
+              className="wie__field-editor-empty"
+              title="Campos"
+              description="Selecione um campo para editar visualmente. Clique em um campo na biblioteca, no card ou no formulario para abrir o preview e a edicao aqui."
+            />
           )}
         </div>
       </section>

@@ -1,8 +1,8 @@
 :root {
-  --global-header-height: 48px;
+  --global-header-height: var(--layout-app-header-height, 48px);
   --global-footer-height: 48px;
-  --global-content-gap: 8px;
-  --global-sidebar-width: 280px;
+  --global-content-gap: var(--layout-page-gap, 8px);
+  --global-sidebar-width: var(--layout-sidebar-width, 280px);
   --global-chrome-border: var(--chrome-border);
   --global-chrome-surface:
     radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--neutral-white) 8%, transparent) 0%, transparent 24%),
@@ -1288,13 +1288,19 @@ body.shared-modal-open .global-footer {
   position: relative;
   z-index: 1;
   flex: 1 1 auto;
-  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  min-height: calc(100dvh - var(--global-header-height));
   padding:
     calc(var(--global-header-height) + var(--global-content-gap))
     var(--global-content-gap)
-    calc(var(--global-footer-height) + var(--global-content-gap));
+    var(--global-content-gap);
   overflow: auto;
   scroll-padding-top: var(--global-header-height);
+  scroll-padding-bottom: 28px;
+}
+
+.global-layout__main--public {
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
+  padding-bottom: calc(var(--global-footer-height) + var(--global-content-gap));
   scroll-padding-bottom: calc(var(--global-footer-height) + 28px);
 }
 

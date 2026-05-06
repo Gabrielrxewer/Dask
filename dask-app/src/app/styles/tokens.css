@@ -169,6 +169,22 @@
   --space-8: 32px;
   --space-9: 40px;
 
+  --layout-app-header-height: 48px;
+  --layout-sidebar-width: 280px;
+  --layout-page-padding: 8px;
+  --layout-page-gap: 8px;
+  --layout-content-frame-radius: 10px;
+  --layout-content-frame-border: color-mix(in oklab, var(--border-default) 78%, transparent);
+  --layout-content-frame-shadow: var(--shadow-card);
+  --layout-toolbar-height: 40px;
+  --layout-tab-height: 34px;
+  --layout-canvas-rail-width: 272px;
+  --layout-inspector-width: 320px;
+  --z-header: 40;
+  --z-sidebar: 70;
+  --z-popover: 80;
+  --z-modal: 10000;
+
   --radius-xl: 24px;
   --radius-lg: 16px;
   --radius-md: 12px;
@@ -178,6 +194,7 @@
 
   --font-family-heading: "Sora", "Segoe UI", sans-serif;
   --font-family-body: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-size-3xs: 0.65rem;
   --font-size-2xs: 0.72rem;
   --font-size-xs: 0.8rem;
   --font-size-sm: 0.9rem;
@@ -256,26 +273,26 @@
 .app-theme[data-theme="dark"] {
   --neutral-white: #ffffff;
   --neutral-black: #000000;
-  --surface-tint: #132131;
-  --surface-tint-strong: #182838;
-  --surface-blue-muted: #122336;
+  --surface-tint: #081522;
+  --surface-tint-strong: #0a1724;
+  --surface-blue-muted: #0b1b2b;
   --surface-cyan-muted: #102824;
   --surface-danger-muted: #34181c;
   --surface-warning-muted: #312312;
   --surface-success-muted: #10281d;
-  --border-blue-muted: #21364d;
-  --border-cyan-muted: #35506d;
+  --border-blue-muted: #1f3a55;
+  --border-cyan-muted: #31516e;
   --border-danger-muted: #6d3137;
   --border-warning-muted: #6b4a1d;
   --border-success-muted: #24523a;
-  --bg-app: #08111b;
-  --bg-subtle: #0b1520;
-  --surface-1: #0e1824;
-  --surface-2: #132131;
-  --surface-3: #182838;
-  --border-subtle: #1b2c3d;
-  --border-default: #21364d;
-  --border-strong: #35506d;
+  --bg-app: #06111d;
+  --bg-subtle: #081522;
+  --surface-1: #07131f;
+  --surface-2: #0a1724;
+  --surface-3: #0d1c2b;
+  --border-subtle: #162b41;
+  --border-default: #1f3a55;
+  --border-strong: #31516e;
   --text-primary: #eaf2fb;
   --text-secondary: #93a7bc;
   --text-muted: #71869b;
@@ -285,8 +302,8 @@
   --primary-active: #1d5aad;
   --primary-muted: var(--selected-bg);
   --primary-foreground: var(--neutral-white);
-  --secondary: #162534;
-  --secondary-hover: #1b2d40;
+  --secondary: #0b1a29;
+  --secondary-hover: #102235;
   --success: #52b788;
   --warning: #d4a048;
   --danger: #de7b7b;
@@ -335,10 +352,10 @@
 
   --bg: var(--bg-app);
   --bg-soft: var(--bg-subtle);
-  --bg-deep: #050b12;
+  --bg-deep: #040b13;
   --body-background:
-    radial-gradient(circle at 14% 0%, rgba(47, 128, 237, 0.08) 0%, transparent 26%),
-    linear-gradient(180deg, #08111b 0%, #09131f 54%, #060d15 100%);
+    radial-gradient(circle at 14% 0%, rgba(47, 128, 237, 0.055) 0%, transparent 24%),
+    linear-gradient(180deg, #06111d 0%, #07131f 54%, #050c15 100%);
   --panel: var(--surface-1);
   --panel-soft: var(--surface-2);
   --panel-muted: var(--surface-3);
@@ -354,40 +371,40 @@
   --accent-strong: #7fb3f4;
   --accent-soft: color-mix(in oklab, var(--primary) 13%, var(--surface-1));
   --accent-soft-strong: color-mix(in oklab, var(--primary) 18%, var(--surface-2));
-  --brand-gradient-soft: linear-gradient(135deg, color-mix(in oklab, var(--surface-2) 88%, var(--surface-1)) 0%, color-mix(in oklab, var(--surface-3) 82%, var(--surface-1)) 100%);
+  --brand-gradient-soft: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
   --brand-gradient-main: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   --brand-gradient-main-hover: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
   --button-gradient-main: linear-gradient(135deg, #071524 0%, #0c2c4a 34%, #0b3a61 100%);
   --button-gradient-main-hover: linear-gradient(135deg, #0a1b2b 0%, #103456 34%, #10426d 100%);
   --ambient-surface:
-    radial-gradient(circle at 14% 16%, rgba(47, 128, 237, 0.06) 0%, transparent 28%),
-    linear-gradient(180deg, #08111b 0%, #0a1420 56%, #070f18 100%);
-  --glass-surface: linear-gradient(180deg, rgba(16, 27, 39, 0.94) 0%, rgba(12, 21, 31, 0.92) 100%);
-  --glass-surface-strong: linear-gradient(180deg, rgba(18, 30, 43, 0.98) 0%, rgba(13, 22, 32, 0.96) 100%);
-  --glass-border: rgba(33, 54, 77, 0.82);
+    radial-gradient(circle at 14% 16%, rgba(47, 128, 237, 0.045) 0%, transparent 28%),
+    linear-gradient(180deg, #06111d 0%, #07131f 56%, #050c15 100%);
+  --glass-surface: linear-gradient(180deg, rgba(8, 19, 31, 0.96) 0%, rgba(7, 17, 28, 0.94) 100%);
+  --glass-surface-strong: linear-gradient(180deg, rgba(10, 23, 36, 0.99) 0%, rgba(7, 17, 28, 0.98) 100%);
+  --glass-border: rgba(31, 58, 85, 0.84);
   --glass-highlight: rgba(255, 255, 255, 0.08);
-  --chrome-surface: linear-gradient(180deg, rgba(9, 17, 27, 0.98) 0%, rgba(12, 22, 34, 0.98) 100%);
+  --chrome-surface: linear-gradient(180deg, rgba(6, 17, 29, 0.99) 0%, rgba(7, 19, 31, 0.99) 100%);
   --chrome-overlay: linear-gradient(125deg, rgba(47, 128, 237, 0.08), rgba(255, 255, 255, 0.02));
   --chrome-border: rgba(58, 85, 112, 0.34);
   --chrome-pill-border: rgba(58, 85, 112, 0.38);
   --chrome-text-strong: #edf4fb;
   --chrome-text-muted: rgba(210, 223, 236, 0.74);
-  --chrome-pill-bg: linear-gradient(180deg, rgba(19, 33, 49, 0.9) 0%, rgba(14, 24, 36, 0.86) 100%);
-  --chrome-pill-bg-hover: linear-gradient(180deg, rgba(24, 40, 58, 0.96) 0%, rgba(16, 29, 42, 0.92) 100%);
+  --chrome-pill-bg: linear-gradient(180deg, rgba(10, 23, 36, 0.92) 0%, rgba(7, 19, 31, 0.88) 100%);
+  --chrome-pill-bg-hover: linear-gradient(180deg, rgba(13, 30, 46, 0.96) 0%, rgba(8, 23, 37, 0.94) 100%);
   --shadow-1: 0 14px 30px rgba(0, 0, 0, 0.24);
   --shadow-2: 0 22px 46px rgba(0, 0, 0, 0.3);
   --shadow-3: 0 30px 64px rgba(0, 0, 0, 0.38);
-  --surface-card: linear-gradient(180deg, rgba(15, 25, 37, 0.98) 0%, rgba(13, 22, 32, 0.96) 100%);
-  --surface-card-hover: linear-gradient(180deg, rgba(18, 29, 42, 0.99) 0%, rgba(14, 24, 35, 0.98) 100%);
+  --surface-card: linear-gradient(180deg, rgba(8, 19, 31, 0.99) 0%, rgba(7, 17, 28, 0.98) 100%);
+  --surface-card-hover: linear-gradient(180deg, rgba(10, 23, 36, 0.995) 0%, rgba(8, 20, 32, 0.99) 100%);
   --surface-section: var(--surface-1);
-  --surface-section-header: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%);
-  --surface-section-content: linear-gradient(180deg, rgba(15, 25, 37, 0.98) 0%, rgba(13, 22, 32, 0.98) 100%);
-  --surface-elevated: linear-gradient(180deg, rgba(16, 27, 39, 0.98) 0%, rgba(12, 21, 31, 0.96) 100%);
-  --surface-overlay: linear-gradient(180deg, rgba(15, 25, 37, 0.985) 0%, rgba(11, 19, 28, 0.97) 100%);
-  --surface-overlay-strong: linear-gradient(180deg, rgba(18, 30, 43, 0.99) 0%, rgba(12, 21, 31, 0.985) 100%);
-  --surface-chip: color-mix(in oklab, var(--surface-2) 84%, var(--surface-1));
+  --surface-section-header: linear-gradient(180deg, rgba(10, 23, 36, 0.98) 0%, rgba(7, 19, 31, 0.98) 100%);
+  --surface-section-content: linear-gradient(180deg, rgba(8, 19, 31, 0.99) 0%, rgba(7, 17, 28, 0.99) 100%);
+  --surface-elevated: linear-gradient(180deg, rgba(8, 19, 31, 0.99) 0%, rgba(6, 16, 27, 0.98) 100%);
+  --surface-overlay: linear-gradient(180deg, rgba(8, 19, 31, 0.99) 0%, rgba(6, 16, 27, 0.98) 100%);
+  --surface-overlay-strong: linear-gradient(180deg, rgba(10, 23, 36, 0.995) 0%, rgba(7, 17, 28, 0.99) 100%);
+  --surface-chip: color-mix(in oklab, var(--surface-2) 70%, var(--surface-1));
   --surface-chip-active: var(--selected-bg);
-  --surface-table-header: color-mix(in oklab, var(--surface-2) 90%, var(--surface-1));
+  --surface-table-header: color-mix(in oklab, var(--surface-2) 54%, var(--surface-1));
   --surface-table-row-hover: color-mix(in oklab, var(--primary) 7%, var(--surface-1));
   --shadow-soft: 0 8px 18px rgba(0, 0, 0, 0.18);
   --shadow-card:
@@ -398,11 +415,11 @@
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
   --control-border: 1px solid var(--border-default);
   --control-border-strong: var(--selected-border);
-  --control-surface: linear-gradient(180deg, rgba(19, 33, 49, 0.94) 0%, rgba(14, 24, 36, 0.92) 100%);
-  --control-surface-hover: linear-gradient(180deg, rgba(23, 39, 58, 0.96) 0%, rgba(16, 29, 42, 0.94) 100%);
-  --control-surface-active: linear-gradient(180deg, rgba(26, 46, 68, 0.98) 0%, rgba(18, 33, 48, 0.96) 100%);
-  --surface-raised: linear-gradient(180deg, rgba(16, 27, 39, 0.98) 0%, rgba(12, 21, 31, 0.96) 100%);
-  --surface-muted: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.94) 100%);
+  --control-surface: linear-gradient(180deg, rgba(8, 19, 31, 0.98) 0%, rgba(7, 17, 28, 0.96) 100%);
+  --control-surface-hover: linear-gradient(180deg, rgba(10, 23, 36, 0.99) 0%, rgba(8, 20, 32, 0.98) 100%);
+  --control-surface-active: linear-gradient(180deg, rgba(12, 27, 42, 1) 0%, rgba(9, 22, 35, 0.99) 100%);
+  --surface-raised: linear-gradient(180deg, rgba(8, 19, 31, 0.99) 0%, rgba(7, 17, 28, 0.98) 100%);
+  --surface-muted: linear-gradient(180deg, rgba(10, 23, 36, 0.98) 0%, rgba(8, 20, 32, 0.96) 100%);
   --button-neutral-text: var(--text-primary);
   --button-neutral-border: var(--border-default);
   --button-neutral-bg: var(--surface-elevated);

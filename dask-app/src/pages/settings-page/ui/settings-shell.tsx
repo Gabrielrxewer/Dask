@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { workspaceService } from "@/modules/workspace/api";
-import { LoadingState, WorkspaceFrame } from "@/shared/ui";
+import { LoadingState, ModuleTabs, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import {
   buildWorkspaceSettingsItemTypesPath,
@@ -81,21 +81,18 @@ export function SettingsShell() {
 
   const topNavigation = (
     <nav className="settings-top-nav" aria-label="Configuracoes do workspace">
-      <div className="settings-top-nav__tabs shared-tabs" role="tablist" aria-label="Secoes de configuracao">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.label}
-            to={item.buildPath(workspaceSlug)}
-            end
-            role="tab"
-            className={({ isActive }) =>
-              `settings-top-nav__tab shared-tabs__item${isActive ? " shared-tabs__item--active" : ""}`
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
+      <ModuleTabs
+        items={navItems.map((item) => ({
+          id: item.label,
+          label: item.label,
+          to: item.buildPath(workspaceSlug),
+          end: true,
+          className: "settings-top-nav__tab"
+        }))}
+        ariaLabel="Secoes de configuracao"
+        className="settings-top-nav__tabs"
+        variant="underline"
+      />
     </nav>
   );
 
@@ -107,7 +104,7 @@ export function SettingsShell() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="settings-shell">
+      <WorkspaceFrame className="settings-shell" variant="editor" scroll="none">
         <LoadingState
           text="Carregando configuracoes..."
           animation="settings"

@@ -427,13 +427,20 @@ export function GlobalLayout() {
     documentElement.classList.remove("app-theme");
     delete documentElement.dataset.theme;
     delete documentElement.dataset.themePreference;
-    documentElement.style.removeProperty("color-scheme");
+    documentElement.dataset.publicTheme = "light";
+    documentElement.style.colorScheme = "light";
     body.classList.remove("app-theme");
     delete body.dataset.theme;
     delete body.dataset.themePreference;
-    body.style.removeProperty("color-scheme");
+    body.dataset.publicTheme = "light";
+    body.style.colorScheme = "light";
 
-    return undefined;
+    return () => {
+      delete documentElement.dataset.publicTheme;
+      documentElement.style.removeProperty("color-scheme");
+      delete body.dataset.publicTheme;
+      body.style.removeProperty("color-scheme");
+    };
   }, [isAuthenticatedArea, normalizedProfileTheme, resolvedProfileTheme]);
 
   useEffect(() => {
@@ -1051,17 +1058,19 @@ export function GlobalLayout() {
             <Outlet />
           </main>
 
-          <footer className="global-footer">
-            <div className="global-footer__inner">
-              <span className="global-footer__wordmark" aria-label="Dask">
-                Dask
-              </span>
-              <nav className="global-footer__links" aria-label="Links legais">
-                <Link to={routePaths.termsOfUse}>Termos de uso</Link>
-                <Link to={routePaths.privacyPolicy}>Privacidade</Link>
-              </nav>
-            </div>
-          </footer>
+          {isPublicRoute ? (
+            <footer className="global-footer">
+              <div className="global-footer__inner">
+                <span className="global-footer__wordmark" aria-label="Dask">
+                  Dask
+                </span>
+                <nav className="global-footer__links" aria-label="Links legais">
+                  <Link to={routePaths.termsOfUse}>Termos de uso</Link>
+                  <Link to={routePaths.privacyPolicy}>Privacidade</Link>
+                </nav>
+              </div>
+            </footer>
+          ) : null}
 
           {isUserProfileOpen ? (
             <ModalShell

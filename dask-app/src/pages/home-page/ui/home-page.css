@@ -25,15 +25,6 @@
   --color-text-secondary: #4f4f4f;
 }
 
-.app-theme[data-theme="dark"] .home-page {
-  --text-primary: #f4f4f4;
-  --text-secondary: #c9c9c9;
-  --text-muted: #9a9a9a;
-  --foreground: #ffffff;
-  --color-text-primary: #f4f4f4;
-  --color-text-secondary: #c9c9c9;
-}
-
 .global-layout:has(.home-page) .global-header {
   background: #08111b;
   border-color: rgba(58, 85, 112, 0.36);
@@ -1778,7 +1769,7 @@
   position: absolute;
   top: -11px;
   right: 18px;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1789,7 +1780,7 @@
 }
 
 .home-page__pricing-plan-name {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1804,19 +1795,19 @@
 }
 
 .home-page__pricing-price strong {
-  font-size: 34px;
+  font-size: var(--font-size-title-lg);
   font-weight: 800;
   color: var(--color-text-primary, var(--secondary));
   line-height: 1;
 }
 
 .home-page__pricing-price span {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary, var(--text-muted));
 }
 
 .home-page__pricing-description {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary, var(--text-muted));
   line-height: 1.5;
   margin: 0;
@@ -1831,7 +1822,7 @@
 }
 
 .home-page__pricing-features li {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary, var(--text-muted));
   display: flex;
   align-items: center;
@@ -1840,7 +1831,7 @@
 
 .home-page__pricing-features li::before {
   content: "✓";
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--success);
   flex-shrink: 0;
 }

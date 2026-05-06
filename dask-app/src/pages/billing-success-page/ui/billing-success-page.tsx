@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import { billingService, billingStore } from "@/modules/billing";
+import { LoadingState } from "@/shared/ui";
 import "./billing-success-page.css";
 
 type PageState = "loading" | "active" | "pending";
@@ -54,10 +55,7 @@ export function BillingSuccessPage() {
   if (state === "loading") {
     return (
       <main className="billing-success">
-        <div className="billing-success__loading">
-          <span className="billing-success__spinner" />
-          Confirmando seu pagamento...
-        </div>
+        <LoadingState text="Confirmando seu pagamento" animation="billing" />
       </main>
     );
   }

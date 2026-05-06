@@ -15,6 +15,62 @@
   overflow: hidden;
 }
 
+.workspace-page-shell {
+  --workspace-shell-padding: var(--layout-page-padding);
+  --workspace-shell-gap: var(--layout-page-gap);
+  --workspace-shell-radius: var(--layout-content-frame-radius);
+  --workspace-shell-border: var(--layout-content-frame-border);
+  --workspace-shell-shadow: var(--layout-content-frame-shadow);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--workspace-view-text, var(--text-strong));
+}
+
+.workspace-page-shell__header,
+.workspace-page-shell__tabs,
+.workspace-page-shell__toolbar {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.workspace-page-shell__header + .workspace-page-shell__tabs,
+.workspace-page-shell__tabs + .workspace-page-shell__toolbar,
+.workspace-page-shell__header + .workspace-page-shell__toolbar,
+.workspace-page-shell__toolbar + .workspace-page-shell__content {
+  margin-top: var(--workspace-shell-gap);
+}
+
+.workspace-page-shell__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-page-shell--scroll-content .workspace-page-shell__content {
+  overflow: auto;
+}
+
+.workspace-page-shell--scroll-page {
+  overflow: auto;
+}
+
+.workspace-page-shell--scroll-none,
+.workspace-page-shell--scroll-none .workspace-page-shell__content,
+.workspace-page-shell--canvas,
+.workspace-page-shell--editor,
+.workspace-page-shell--kanban {
+  overflow: hidden;
+}
+
+.workspace-page-shell--table .workspace-page-shell__content,
+.workspace-page-shell--dashboard .workspace-page-shell__content {
+  padding: var(--workspace-shell-padding);
+}
+
 .workspace:has(.workspace-view) {
   background:
     radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 7%, transparent) 0%, transparent 34%),
@@ -89,7 +145,9 @@
 }
 
 .workspace-view__section .shared-section__title,
-.workspace-view__panel .shared-section__title {
+.workspace-view__panel .shared-section__title,
+.workspace-view__section .shared-section-header__title,
+.workspace-view__panel .shared-section-header__title {
   color: var(--workspace-view-text);
   font-family: var(--font-family-heading);
   font-size: clamp(1.16rem, 1.04rem + 0.18vw, 1.28rem);
@@ -98,7 +156,9 @@
 }
 
 .workspace-view__section .shared-section__subtitle,
-.workspace-view__panel .shared-section__subtitle {
+.workspace-view__panel .shared-section__subtitle,
+.workspace-view__section .shared-section-header__description,
+.workspace-view__panel .shared-section-header__description {
   color: var(--workspace-view-text-soft);
   font-size: var(--font-size-sm);
   font-weight: 600;

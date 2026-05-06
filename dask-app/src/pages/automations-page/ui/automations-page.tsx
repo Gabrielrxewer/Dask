@@ -25,7 +25,7 @@ import type {
   CommunicationTemplate,
   WhatsAppConsent
 } from "@/modules/workspace/model";
-import { AppIcon, Button, FlowCanvas, FlowNodeCard, LoadingState, StatusBadge, TextInput, WorkspaceFrame } from "@/shared/ui";
+import { AppIcon, Button, EmptyState, FlowCanvas, FlowNodeCard, LoadingState, PanelMenu, PanelMenuItem, StatusBadge, StudioLayout, TextInput, WorkspaceActionButton, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./automations-page.css";
 
@@ -587,161 +587,160 @@ export function AutomationsPage() {
     return <LoadingState text="Carregando Automation Studio" animation="automation" />;
   }
 
+  const topNavigation = (
+    <WorkspaceTopNavigation<StudioTab>
+      value={activeTab}
+      items={studioTabs.map((t) => ({ id: t.id, label: t.label }))}
+      onChange={setActiveTab}
+      ariaLabel="Automacoes"
+      className="automations-top-nav"
+      actions={activeTab === "flows" && selectedWorkflow ? (
+        <>
+          <WorkspaceActionButton
+            label="Clonar versao"
+            icon={<AppIcon name="copy" />}
+            onClick={handleCloneVersion}
+            disabled={busy || !selectedVersion}
+          />
+          <WorkspaceActionButton
+            label="Executar teste"
+            icon={<AppIcon name="zap" />}
+            onClick={handleRun}
+            disabled={busy || selectedWorkflow.status !== "active" || !currentVersion}
+          />
+          <WorkspaceActionButton
+            label="Salvar draft"
+            icon={<AppIcon name="check" />}
+            onClick={handleSaveWorkflow}
+            disabled={busy || selectedVersion?.status !== "draft"}
+          />
+          <WorkspaceActionButton
+            tone="accent"
+            label="Publicar"
+            icon={<AppIcon name="send" />}
+            onClick={handlePublish}
+            disabled={busy || selectedVersion?.status !== "draft"}
+          />
+        </>
+      ) : undefined}
+    />
+  );
+
   return (
     <AppShell
       metrics={metrics}
       pageLabel="Automation Studio"
-      pageTitle="Automacoes"
+      pageTitle="Workflow versionado"
       noPageScroll
       hidePageHeader
+      hideSidebarBrandMark
+      topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="automation-studio">
-        <header className="automation-studio__header">
-          <div>
-            <span>Automation Studio</span>
-            <strong>Workflow versionado</strong>
-          </div>
-          <nav className="automation-studio__tabs" aria-label="Automation Studio">
-            {studioTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={activeTab === tab.id ? "is-active" : ""}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <AppIcon name={tab.icon} size={15} />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </header>
+      <WorkspaceFrame className="automation-studio" variant="editor" scroll="none">
 
         {activeTab === "flows" ? (
-          <section className="automation-studio__flows">
-            <aside className="automation-studio__sidebar">
-              <button className="automation-studio__create" type="button" onClick={handleCreateWorkflow} disabled={busy}>
-                <AppIcon name="plus" size={16} />
-                <span>Novo fluxo</span>
-              </button>
-              <div className="automation-studio__workflow-list">
-                {workflows.map((workflow) => (
-                  <button
-                    key={workflow.id}
-                    type="button"
-                    className={workflow.id === selectedWorkflowId ? "is-active" : ""}
-                    onClick={() => setSelectedWorkflowId(workflow.id)}
-                  >
-                    <span>{workflow.name}</span>
-                    <StatusBadge size="sm" tone={statusTone(workflow.status)}>{workflow.status}</StatusBadge>
+          <StudioLayout
+            sidebar={
+              <PanelMenu
+                title="Fluxos"
+                count={workflows.length}
+                action={
+                  <button className="ast__create-btn" type="button" onClick={() => void handleCreateWorkflow()} disabled={busy}>
+                    <AppIcon name="plus" size={14} />
                   </button>
+                }
+              >
+                {workflows.map((workflow) => (
+                  <PanelMenuItem
+                    key={workflow.id}
+                    selected={workflow.id === selectedWorkflowId}
+                    onClick={() => setSelectedWorkflowId(workflow.id)}
+                    label={workflow.name}
+                    trailing={
+                      <StatusBadge size="sm" tone={statusTone(workflow.status)}>
+                        {workflow.status}
+                      </StatusBadge>
+                    }
+                  />
                 ))}
-              </div>
-            </aside>
-
-            <main className="automation-studio__editor">
-              {selectedWorkflow ? (
+              </PanelMenu>
+            }
+            inspector={
+              selectedNode ? (
                 <>
-                  <div className="automation-studio__toolbar">
-                    <div className="automation-studio__fields">
-                      <TextInput value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} />
-                      <TextInput value={workflowDescription} onChange={(event) => setWorkflowDescription(event.target.value)} placeholder="Descricao" />
-                    </div>
-                    <div className="automation-studio__actions">
-                      <StatusBadge tone={statusTone(selectedWorkflow.status)}>{selectedWorkflow.status}</StatusBadge>
-                      <Button size="sm" variant="outline" onClick={() => handleStatusChange("active")} disabled={busy || !currentVersion}>Ativar</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleStatusChange("paused")} disabled={busy}>Pausar</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleStatusChange("archived")} disabled={busy}>Arquivar</Button>
-                      <Button size="sm" variant="outline" onClick={handleCloneVersion} disabled={busy || !selectedVersion}>Clonar</Button>
-                      <Button size="sm" variant="outline" onClick={handleRun} disabled={busy || selectedWorkflow.status !== "active" || !currentVersion}>Executar teste</Button>
-                      <Button size="sm" variant="outline" onClick={handleSaveWorkflow} disabled={busy || selectedVersion?.status !== "draft"}>Salvar draft</Button>
-                      <Button size="sm" variant="primary" onClick={handlePublish} disabled={busy || selectedVersion?.status !== "draft"}>Publicar</Button>
-                    </div>
-                  </div>
-
-                  <div className="automation-studio__version-bar">
-                    {versions.map((version) => (
-                      <button
-                        key={version.id}
-                        type="button"
-                        className={version.id === selectedVersionId ? "is-active" : ""}
-                        onClick={() => setSelectedVersionId(version.id)}
-                      >
-                        <span>v{version.version}</span>
-                        <StatusBadge size="sm" tone={statusTone(version.status)}>{version.status}</StatusBadge>
-                      </button>
-                    ))}
-                    {!hasDraft ? (
-                      <button type="button" onClick={() => void (async () => {
-                        const draft = await createAutomationWorkflowDraftVersion(selectedWorkflow.id, { graph: defaultGraph, definition: { graph: defaultGraph } });
-                        await loadVersions(selectedWorkflow.id);
-                        setSelectedVersionId(draft.id);
-                      })()}>
-                        <AppIcon name="plus" size={14} />
-                        <span>Draft</span>
-                      </button>
-                    ) : null}
-                    {feedback ? <span className="automation-studio__feedback">{feedback}</span> : null}
-                  </div>
-
-                  <div className="automation-studio__canvas-row">
-                    <FlowCanvas<AutomationCanvasData, AutomationNodeType>
-                      nodes={canvasNodes}
-                      edges={canvasEdges}
-                      nodeTypes={automationNodeTypes}
-                      paletteItems={nodeCatalog.map((node) => ({
-                        kind: node.type,
-                        label: node.label,
-                        description: node.description,
-                        color: node.color,
-                        buildData: () => ({
-                          nodeType: node.type,
-                          label: node.label,
-                          summary: "Sem configuracao",
-                          config: {}
-                        })
-                      }))}
-                      onNodesChange={onNodesChange}
-                      onEdgesChange={onEdgesChange}
-                      onEdgesAdd={setCanvasEdges}
-                      onNodesAdd={(nodes) => setCanvasNodes((current) => [...current, ...nodes])}
-                      onNodeSelect={setSelectedNodeId}
-                      fitViewKey={fitViewKey}
-                      paletteTitle="Adicionar no"
-                      paletteEyebrow="Workflow"
-                      sidebarDefaultOpen
+                  <label className="ast__inspector-label">
+                    <span>Rotulo</span>
+                    <TextInput
+                      value={selectedNode.data.label}
+                      onChange={(event) => setCanvasNodes((nodes) => nodes.map((node) => (
+                        node.id === selectedNode.id
+                          ? { ...node, data: { ...node.data, label: event.target.value } }
+                          : node
+                      )))}
                     />
-
-                    <aside className="automation-studio__inspector">
-                      {selectedNode ? (
-                        <>
-                          <label>
-                            <span>Rotulo</span>
-                            <TextInput
-                              value={selectedNode.data.label}
-                              onChange={(event) => setCanvasNodes((nodes) => nodes.map((node) => (
-                                node.id === selectedNode.id
-                                  ? { ...node, data: { ...node.data, label: event.target.value } }
-                                  : node
-                              )))}
-                            />
-                          </label>
-                          <label>
-                            <span>Config JSON</span>
-                            <textarea value={configText} onChange={(event) => setConfigText(event.target.value)} />
-                          </label>
-                          <Button size="sm" variant="outline" onClick={handleApplyConfig}>Aplicar</Button>
-                        </>
-                      ) : (
-                        <div className="automation-studio__empty-panel">Selecione um no.</div>
-                      )}
-                    </aside>
+                  </label>
+                  <label className="ast__inspector-label">
+                    <span>Config JSON</span>
+                    <textarea className="ast__inspector-textarea" value={configText} onChange={(event) => setConfigText(event.target.value)} />
+                  </label>
+                  <Button size="sm" variant="outline" onClick={handleApplyConfig}>Aplicar</Button>
+                </>
+              ) : selectedWorkflow ? (
+                <>
+                  <label className="ast__inspector-label">
+                    <span>Nome</span>
+                    <TextInput value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} />
+                  </label>
+                  <label className="ast__inspector-label">
+                    <span>Descricao</span>
+                    <TextInput value={workflowDescription} onChange={(event) => setWorkflowDescription(event.target.value)} placeholder="Descricao" />
+                  </label>
+                  <div className="ast__actions">
+                    <Button size="sm" variant="outline" onClick={() => handleStatusChange("active")} disabled={busy || !currentVersion}>Ativar</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleStatusChange("paused")} disabled={busy}>Pausar</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleStatusChange("archived")} disabled={busy}>Arquivar</Button>
+                    <Button size="sm" variant="outline" onClick={handleCloneVersion} disabled={busy || !selectedVersion}>Clonar</Button>
+                    <Button size="sm" variant="outline" onClick={handleRun} disabled={busy || selectedWorkflow.status !== "active" || !currentVersion}>Executar teste</Button>
                   </div>
                 </>
               ) : (
-                <div className="automation-studio__empty-panel">Nenhum fluxo criado.</div>
-              )}
-            </main>
-          </section>
+                <EmptyState className="automation-studio__empty-panel" size="compact">Selecione um fluxo.</EmptyState>
+              )
+            }
+            inspectorOpen={true}
+            inspectorWidth={320}
+          >
+            {selectedWorkflow ? (
+              <FlowCanvas<AutomationCanvasData, AutomationNodeType>
+                nodes={canvasNodes}
+                edges={canvasEdges}
+                nodeTypes={automationNodeTypes}
+                paletteItems={nodeCatalog.map((node) => ({
+                  kind: node.type,
+                  label: node.label,
+                  description: node.description,
+                  color: node.color,
+                  buildData: () => ({
+                    nodeType: node.type,
+                    label: node.label,
+                    summary: "Sem configuracao",
+                    config: {}
+                  })
+                }))}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onEdgesAdd={setCanvasEdges}
+                onNodesAdd={(nodes) => setCanvasNodes((current) => [...current, ...nodes])}
+                onNodeSelect={setSelectedNodeId}
+                fitViewKey={fitViewKey}
+                paletteTitle="Adicionar no"
+                paletteEyebrow="Workflow"
+                sidebarDefaultOpen
+              />
+            ) : (
+              <EmptyState className="automation-studio__empty-panel" size="compact">Nenhum fluxo criado.</EmptyState>
+            )}
+          </StudioLayout>
         ) : null}
 
         {activeTab === "runs" ? (
@@ -770,7 +769,7 @@ export function AutomationsPage() {
                     <pre>{JSON.stringify(selectedRun.steps.slice(0, 8), null, 2)}</pre>
                   </>
                 ) : (
-                  <div className="automation-studio__empty-panel">Abra uma execucao.</div>
+                  <EmptyState className="automation-studio__empty-panel" size="compact">Abra uma execucao.</EmptyState>
                 )}
               </div>
             </div>
@@ -825,7 +824,7 @@ export function AutomationsPage() {
                     <Button size="sm" variant="primary" onClick={() => void handleReply()}>Responder</Button>
                   </>
                 ) : (
-                  <div className="automation-studio__empty-panel">Abra uma conversa.</div>
+                  <EmptyState className="automation-studio__empty-panel" size="compact">Abra uma conversa.</EmptyState>
                 )}
               </div>
             </div>
@@ -904,7 +903,7 @@ function PanelHeader({ title, onRefresh }: { title: string; onRefresh: () => Pro
 
 function DataList<T>({ items, empty, render }: { items: T[]; empty: string; render: (item: T) => ReactNode }) {
   if (items.length === 0) {
-    return <div className="automation-studio__empty-panel">{empty}</div>;
+    return <EmptyState className="automation-studio__empty-panel" size="compact">{empty}</EmptyState>;
   }
 
   return <div className="automation-studio__list">{items.map(render)}</div>;

@@ -20,12 +20,7 @@
   .settings-shell,
   .platform-admin-page,
   .no-workspace-page,
-  .workspace-selector-page,
-  .choose-plan-page,
-  .subscription-blocked-page,
-  .billing-success-page,
-  .billing-cancel-page,
-  .home-page
+  .workspace-selector-page
 ) {
   color: var(--text);
 }

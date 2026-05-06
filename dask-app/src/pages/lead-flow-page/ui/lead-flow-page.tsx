@@ -5,7 +5,7 @@ import { buildBoardMetrics, type Task, type TaskStatus } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { formatMoneyCompact } from "@/shared/lib/money";
 import { cn } from "@/shared/lib/cn";
-import { AppIcon, FlowCanvas, FlowNodeCard, LoadingState, StatusBadge, TextInput, WorkspaceFrame } from "@/shared/ui";
+import { AppIcon, EmptyState, FlowCanvas, FlowNodeCard, LoadingState, PanelMenu, PanelMenuItem, StatusBadge, StudioLayout, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import "./lead-flow-page.css";
 
@@ -386,82 +386,77 @@ export function LeadFlowPage() {
   const currentStatus = selectedLead ? statusById.get(selectedLead.status) : null;
   const selectedLeadValue = selectedLead ? getNumberField(selectedLead, "estimatedValue") : 0;
 
+  const topNavigation = (
+    <WorkspaceTopNavigation<"flow">
+      value="flow"
+      items={[{ id: "flow", label: "Fluxo de Leads" }]}
+      onChange={() => undefined}
+      ariaLabel="Fluxo de Leads"
+    />
+  );
+
   return (
-    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader>
-      <WorkspaceFrame className="lead-flow-page">
+    <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
+      <WorkspaceFrame className="lead-flow-page" variant="canvas" scroll="none">
         <LoadingState text="Carregando fluxo de leads..." animation="leads" variant="frame" visible={isLoading && !snapshot} />
 
-        <div className="lead-flow-page__editor">
-          <div className="lead-flow-page__selection-summary">
-            <span>Lead selecionado</span>
-            <strong>{selectedLead?.title ?? "Sem lead selecionado"}</strong>
-            <small>{currentStatus?.label ?? selectedLead?.status ?? "Selecione um lead"}</small>
-          </div>
+        <StudioLayout
+          sidebar={
+            <PanelMenu
+              title="Leads"
+              count={filteredLeads.length}
+              search={search}
+              onSearchChange={handleSearchChange}
+              searchPlaceholder="Empresa, contato ou status..."
+              footer={
+                <div className="lf-sidebar-foot">
+                  <div>
+                    <span>Status atual</span>
+                    <strong>{currentStatus?.label ?? selectedLead?.status ?? "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Valor estimado</span>
+                    <strong>{formatMoneyCompact(selectedLeadValue)}</strong>
+                  </div>
+                </div>
+              }
+            >
+              {filteredLeads.map((task) => {
+                const status = statusById.get(task.status);
+                const isSelected = selectedLead?.id === task.id;
+                return (
+                  <PanelMenuItem
+                    key={task.id}
+                    selected={isSelected}
+                    onClick={() => handleSelectLead(task.id)}
+                    leading={
+                      <span className="lf-lead-avatar" style={{ borderColor: status?.dot ?? "var(--lead-flow-accent)" }}>
+                        {getInitials(task.title)}
+                      </span>
+                    }
+                    label={task.title}
+                    meta={
+                      <>
+                        <span className="lf-stage-dot" style={{ background: status?.dot ?? "var(--lead-flow-accent)" }} />
+                        {status?.label ?? task.status}
+                      </>
+                    }
+                  />
+                );
+              })}
 
+              {filteredLeads.length === 0 ? (
+                <EmptyState size="compact">Nenhum lead comercial encontrado.</EmptyState>
+              ) : null}
+            </PanelMenu>
+          }
+          sidebarWidth={280}
+        >
           <FlowCanvas<LeadFlowNodeData, LeadFlowNodeKind>
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
             paletteItems={[]}
-            paletteEyebrow="Planejamento"
-            paletteTitle="Fluxo de leads"
-            sidebarDefaultOpen
-            sidebarContent={
-              <>
-                <label className="lead-flow-page__search">
-                  <span>Buscar lead</span>
-                  <TextInput
-                    value={search}
-                    onChange={(event) => handleSearchChange(event.target.value)}
-                    placeholder="Empresa, contato ou status..."
-                  />
-                </label>
-
-                <div className="lead-flow-page__lead-list" aria-label="Leads comerciais">
-                  {filteredLeads.map((task) => {
-                    const status = statusById.get(task.status);
-                    const isSelected = selectedLead?.id === task.id;
-                    return (
-                      <button
-                        key={task.id}
-                        type="button"
-                        className={cn("lead-flow-page__lead-card", isSelected && "lead-flow-page__lead-card--selected")}
-                        onClick={() => handleSelectLead(task.id)}
-                      >
-                        <span className="lead-flow-page__lead-avatar" style={{ borderColor: status?.dot ?? "var(--lead-flow-accent)" }}>
-                          {getInitials(task.title)}
-                        </span>
-                        <span className="lead-flow-page__lead-copy">
-                          <strong>{task.title}</strong>
-                          <span>{getLeadSubtitle(task)}</span>
-                        </span>
-                        <span className="lead-flow-page__lead-meta">
-                          <span className="lead-flow-page__stage-dot" style={{ background: status?.dot ?? "var(--lead-flow-accent)" }} />
-                          {status?.label ?? task.status}
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  {filteredLeads.length === 0 ? (
-                    <p className="lead-flow-page__empty">Nenhum lead comercial encontrado.</p>
-                  ) : null}
-                </div>
-              </>
-            }
-            sidebarFooter={
-              <div className="lead-flow-page__sidebar-foot">
-                <div>
-                  <span>Status atual</span>
-                  <strong>{currentStatus?.label ?? selectedLead?.status ?? "-"}</strong>
-                </div>
-                <div>
-                  <span>Valor estimado</span>
-                  <strong>{formatMoneyCompact(selectedLeadValue)}</strong>
-                </div>
-                <StatusBadge size="sm">{commercialTasks.length} leads</StatusBadge>
-              </div>
-            }
             onNodesChange={noopNodesChange}
             onEdgesChange={noopEdgesChange}
             onEdgesAdd={() => undefined}
@@ -472,9 +467,9 @@ export function LeadFlowPage() {
             nodesDraggable={false}
             nodesConnectable={false}
             elementsSelectable={false}
-            className="lead-flow-page__flow-canvas"
+            className="lf-canvas"
           />
-        </div>
+        </StudioLayout>
       </WorkspaceFrame>
     </AppShell>
   );

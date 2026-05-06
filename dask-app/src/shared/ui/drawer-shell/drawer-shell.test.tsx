@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { DrawerShellFrame } from "@/shared/ui/drawer-shell";
@@ -23,6 +24,7 @@ describe("DrawerShellFrame", () => {
         footerClassName="demo-footer"
         closeButtonClassName="demo-close"
         closeButtonContent="x"
+        style={{ "--demo-color": "red" } as CSSProperties}
       >
         Conteudo
       </DrawerShellFrame>
@@ -37,6 +39,7 @@ describe("DrawerShellFrame", () => {
     expect(html).toContain("demo-error");
     expect(html).toContain("demo-footer");
     expect(html).toContain("demo-close");
+    expect(html).toContain("--demo-color:red");
     expect(html).toContain('id="drawer-title"');
     expect(html).toContain("Editar acesso");
     expect(html).toContain("Falha ao salvar");

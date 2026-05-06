@@ -354,7 +354,7 @@
 
 .marketing-page__stacked span {
   color: var(--marketing-text-soft);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
 }
 
@@ -419,7 +419,7 @@
 
 .marketing-page__history span {
   color: var(--marketing-text-soft);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 .marketing-page__chips {
@@ -434,7 +434,7 @@
   border-radius: 20px;
   background: transparent;
   color: var(--marketing-text-soft);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 760;
   padding: 4px 10px;
   cursor: pointer;
@@ -545,7 +545,7 @@
 .marketing-page__calendar-list li span,
 .marketing-page__template-list li span {
   color: var(--marketing-text-soft);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 .marketing-page__template-list li p {
@@ -564,7 +564,7 @@
 
 .marketing-page__calendar-list time {
   color: var(--marketing-text-soft);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 760;
 }
 
@@ -659,7 +659,7 @@
 
 .mkt-command__label {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 820;
   text-transform: uppercase;
 }
@@ -732,7 +732,7 @@
 .mkt-calendar-item span,
 .mkt-template-card__meta {
   color: var(--marketing-text-soft);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   line-height: 1.4;
 }
 
@@ -792,7 +792,7 @@
 .mkt-history__item span,
 .mkt-calendar-item time {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 .mkt-empty-inline {
@@ -805,10 +805,6 @@
   font-size: var(--font-size-xs);
 }
 
-.mkt-empty-inline strong {
-  color: var(--marketing-text);
-  font-size: var(--font-size-xs);
-}
 
 .mkt-preset-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -846,7 +842,7 @@
 
 .mkt-context-list span {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 760;
 }
 
@@ -1085,7 +1081,7 @@
 .mkt-kpi__sub {
   display: block;
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 /* Funil */
@@ -1190,7 +1186,7 @@
 .mkt-funnel__sub {
   display: block;
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 /* Main grid */
@@ -1232,7 +1228,7 @@
 
 .mkt-perf-table__head span {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 860;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1284,7 +1280,7 @@
 
 .mkt-perf-table__name span {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   text-transform: capitalize;
 }
 
@@ -1311,7 +1307,7 @@
   display: inline-block;
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 860;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1404,7 +1400,7 @@
 
 .mkt-attribution__count {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1649,39 +1645,16 @@
   flex-wrap: wrap;
 }
 
-.mkt-inbox__filter-group {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.mkt-inbox__filter-chip {
-  padding: 3px 10px;
-  border-radius: 20px;
-  border: 1px solid var(--marketing-line);
-  background: transparent;
-  color: var(--marketing-text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.mkt-inbox__filter-chip:hover {
-  background: color-mix(in oklab, var(--marketing-accent) 10%, transparent);
-  border-color: var(--marketing-accent);
-  color: var(--marketing-text);
-}
-.mkt-inbox__filter-chip--active {
-  background: var(--marketing-accent);
-  border-color: var(--marketing-accent);
-  color: var(--neutral-white);
+.mkt-inbox__filter-tabs {
+  flex: 1 1 280px;
+  min-width: min(100%, 280px);
 }
 
 .mkt-inbox__toggle {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-soft);
   cursor: pointer;
   user-select: none;
@@ -1693,30 +1666,6 @@
   align-items: center;
   gap: 10px;
 }
-
-.mkt-inbox__unread-badge {
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--status-error, var(--danger)) 14%, transparent);
-  color: var(--status-error, var(--danger));
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.mkt-inbox__refresh {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--marketing-line);
-  background: transparent;
-  color: var(--marketing-text-soft);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.mkt-inbox__refresh:hover:not(:disabled) {
-  background: var(--marketing-surface-soft);
-}
-.mkt-inbox__refresh:disabled { opacity: 0.5; cursor: wait; }
 
 /* Feed */
 .mkt-inbox__feed {
@@ -1735,14 +1684,14 @@
   padding: 64px 24px;
   text-align: center;
 }
-.mkt-inbox__empty-icon { font-size: 36px; }
+.mkt-inbox__empty-icon { font-size: var(--font-size-title-lg); }
 .mkt-inbox__empty-title {
   font-size: var(--font-size-sm, 14px);
   font-weight: 760;
   color: var(--marketing-text);
 }
 .mkt-inbox__empty-sub {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
 }
 
@@ -1796,7 +1745,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -1815,7 +1764,7 @@
 }
 
 .mkt-inbox__lead-company {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
 }
 
@@ -1848,18 +1797,18 @@
 }
 
 .mkt-inbox__event-label {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--marketing-text-soft);
 }
 
 .mkt-inbox__event-context {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
 }
 
 .mkt-inbox__headline {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-soft);
   line-height: 1.4;
   margin: 0;
@@ -1873,35 +1822,20 @@
 }
 
 .mkt-inbox__score-prev {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
   text-decoration: line-through;
 }
 
 .mkt-inbox__score-arrow {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
 }
 
 .mkt-inbox__score-next {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 800;
   color: var(--marketing-text);
-}
-
-.mkt-inbox__score-badge {
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.mkt-inbox__score-badge--up {
-  background: color-mix(in oklab, var(--status-success, var(--success)) 14%, transparent);
-  color: var(--status-success, var(--success));
-}
-.mkt-inbox__score-badge--down {
-  background: color-mix(in oklab, var(--status-error, var(--danger)) 14%, transparent);
-  color: var(--status-error, var(--danger));
 }
 
 /* Suggestion */
@@ -1913,12 +1847,12 @@
   border-radius: 6px;
   background: color-mix(in oklab, var(--marketing-accent) 7%, var(--marketing-surface-soft));
   border: 1px solid color-mix(in oklab, var(--marketing-accent) 18%, transparent);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-soft);
   line-height: 1.5;
 }
 
-.mkt-inbox__suggestion-icon { flex-shrink: 0; font-size: 13px; }
+.mkt-inbox__suggestion-icon { flex-shrink: 0; font-size: var(--font-size-sm); }
 
 /* Footer */
 .mkt-inbox__card-foot {
@@ -1931,7 +1865,7 @@
 }
 
 .mkt-inbox__time {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
   flex-shrink: 0;
 }
@@ -1940,62 +1874,6 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.mkt-inbox__action {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--marketing-line);
-  background: transparent;
-  color: var(--marketing-text-soft);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.1s, border-color 0.1s, color 0.1s;
-  font-family: inherit;
-}
-.mkt-inbox__action:hover {
-  background: var(--marketing-surface-soft);
-  border-color: var(--marketing-line-strong);
-  color: var(--marketing-text);
-}
-.mkt-inbox__action--primary {
-  background: var(--marketing-accent);
-  border-color: var(--marketing-accent);
-  color: var(--neutral-white);
-}
-.mkt-inbox__action--primary:hover {
-  background: var(--marketing-accent-strong);
-  border-color: var(--marketing-accent-strong);
-  color: var(--neutral-white);
-}
-.mkt-inbox__action--seen { color: var(--marketing-accent); border-color: var(--marketing-accent); }
-.mkt-inbox__action--dismiss { color: var(--marketing-text-muted); }
-
-/* Priority badge */
-.mkt-inbox__priority {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-.mkt-inbox__priority--urgent {
-  background: color-mix(in oklab, var(--status-error, var(--danger)) 14%, transparent);
-  color: var(--status-error, var(--danger));
-}
-.mkt-inbox__priority--high {
-  background: color-mix(in oklab, var(--status-warning, var(--warning)) 14%, transparent);
-  color: var(--status-warning, var(--warning));
-}
-.mkt-inbox__priority--medium {
-  background: color-mix(in oklab, var(--marketing-accent) 14%, transparent);
-  color: var(--marketing-accent-strong);
-}
-.mkt-inbox__priority--low {
-  background: color-mix(in oklab, var(--marketing-text-muted) 10%, transparent);
-  color: var(--marketing-text-muted);
 }
 
 /* Grouped view */
@@ -2039,13 +1917,13 @@
 }
 
 .mkt-inbox__lead-score {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--marketing-accent-strong);
 }
 
 .mkt-inbox__count {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
 }
 
@@ -2066,19 +1944,19 @@
 .mkt-inbox__group-event--seen { opacity: 0.6; }
 
 .mkt-inbox__event-type {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--marketing-text-soft);
 }
 
 .mkt-inbox__event-campaign {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
   flex: 1;
 }
 
 .mkt-inbox__event-time {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--marketing-text-muted);
 }
 
@@ -2093,32 +1971,6 @@
   gap: 8px;
   padding-left: 40px;
   flex-wrap: wrap;
-}
-
-.mkt-inbox__cta {
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--marketing-line);
-  background: transparent;
-  color: var(--marketing-text-soft);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.1s;
-}
-.mkt-inbox__cta:hover { background: var(--marketing-surface-soft); }
-.mkt-inbox__cta--primary {
-  background: var(--marketing-accent);
-  border-color: var(--marketing-accent);
-  color: var(--neutral-white);
-}
-.mkt-inbox__cta--primary:hover { background: var(--marketing-accent-strong); border-color: var(--marketing-accent-strong); }
-
-/* Group card-actions alias */
-.mkt-inbox__card-actions .mkt-inbox__cta {
-  padding: 4px 10px;
-  font-size: 11px;
 }
 
 /* Unified premium states and campaign operating surfaces */
@@ -2199,7 +2051,7 @@
 .mkt-overview-hero__metrics span,
 .mkt-campaign-hero__stats span {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 780;
 }
 
@@ -2231,7 +2083,7 @@
   border-radius: 7px;
   background: color-mix(in oklab, var(--marketing-accent) 14%, var(--surface-1));
   color: var(--marketing-accent-strong);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 900;
 }
 
@@ -2319,32 +2171,9 @@
   background: color-mix(in oklab, var(--marketing-accent) 10%, var(--surface-1));
   color: var(--marketing-accent-strong);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 820;
   cursor: pointer;
-}
-
-.mkt-skeleton-list {
-  display: grid;
-  gap: 8px;
-  width: min(520px, 100%);
-  margin-top: 4px;
-}
-
-.mkt-skeleton-list span {
-  height: 14px;
-  border-radius: 7px;
-  background: linear-gradient(90deg, color-mix(in oklab, var(--marketing-line) 42%, transparent), color-mix(in oklab, var(--surface-1) 84%, transparent), color-mix(in oklab, var(--marketing-line) 42%, transparent));
-  background-size: 220% 100%;
-  animation: mkt-skeleton 1.2s ease-in-out infinite;
-}
-
-.mkt-skeleton-list span:nth-child(2) { width: 84%; }
-.mkt-skeleton-list span:nth-child(3) { width: 62%; }
-
-@keyframes mkt-skeleton {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
 }
 
 .mkt-audience-note,
@@ -2360,10 +2189,6 @@
   line-height: 1.45;
 }
 
-.mkt-table-empty strong {
-  color: var(--marketing-text);
-  font-weight: 860;
-}
 
 .mkt-template-filters {
   display: flex;
@@ -2386,7 +2211,7 @@
   border-radius: 999px;
   background: color-mix(in oklab, var(--marketing-line) 42%, transparent);
   color: var(--marketing-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
 }
 
@@ -2580,7 +2405,7 @@
 
 .mkt-screen-hero__stats span {
   color: var(--marketing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 780;
 }
 
@@ -2685,27 +2510,6 @@
 .mkt-inbox__toolbar {
   padding: 12px;
   border-bottom: 1px solid color-mix(in oklab, var(--marketing-line) 74%, transparent);
-}
-
-.mkt-inbox__filter-chip,
-.mkt-inbox__refresh,
-.mkt-inbox__action,
-.mkt-inbox__cta {
-  border-radius: var(--radius-xs);
-  font-weight: 780;
-}
-
-.mkt-inbox__filter-chip {
-  min-height: 28px;
-  padding: 4px 10px;
-  background: color-mix(in oklab, var(--surface-1) 72%, transparent);
-}
-
-.mkt-inbox__filter-chip--active {
-  background: linear-gradient(135deg, color-mix(in oklab, var(--marketing-accent) 92%, var(--decorative-cyan)), var(--marketing-accent-strong));
-  border-color: transparent;
-  color: var(--neutral-white);
-  box-shadow: 0 8px 18px color-mix(in oklab, var(--marketing-accent) 18%, transparent);
 }
 
 .mkt-inbox__toggle {
@@ -2815,10 +2619,7 @@
   padding: 12px 14px;
 }
 
-.mkt-badge,
-.mkt-inbox__priority,
-.mkt-inbox__unread-badge,
-.jb-toolbar__badge {
+.mkt-badge {
   display: inline-flex;
   align-items: center;
   width: fit-content;
@@ -2827,7 +2628,7 @@
   padding: 2px 8px;
   border: 1px solid color-mix(in oklab, var(--marketing-line) 76%, transparent);
   background: color-mix(in oklab, var(--surface-1) 72%, transparent);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 860;
   letter-spacing: 0.035em;
   line-height: 1;
@@ -2835,30 +2636,26 @@
 }
 
 .mkt-badge--default,
-.mkt-badge--low,
-.mkt-inbox__priority--low {
+.mkt-badge--low {
   color: var(--marketing-text-soft);
 }
 
 .mkt-badge--success,
-.mkt-badge--active,
-.mkt-inbox__priority--medium {
+.mkt-badge--active {
   border-color: color-mix(in oklab, var(--success) 26%, transparent);
   background: color-mix(in oklab, var(--success-bg) 72%, transparent);
   color: color-mix(in oklab, var(--success) 78%, var(--marketing-text));
 }
 
 .mkt-badge--warning,
-.mkt-badge--high,
-.mkt-inbox__priority--high {
+.mkt-badge--high {
   border-color: color-mix(in oklab, var(--warning) 28%, transparent);
   background: color-mix(in oklab, var(--warning-bg) 72%, transparent);
   color: color-mix(in oklab, var(--warning) 82%, var(--marketing-text));
 }
 
 .mkt-badge--urgent,
-.mkt-badge--error,
-.mkt-inbox__priority--urgent {
+.mkt-badge--error {
   border-color: color-mix(in oklab, var(--danger) 28%, transparent);
   background: color-mix(in oklab, var(--danger-bg) 72%, transparent);
   color: color-mix(in oklab, var(--danger) 82%, var(--marketing-text));
@@ -3004,123 +2801,21 @@
   box-shadow: var(--marketing-shadow);
 }
 
-.mkt-journey-sidebar__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid color-mix(in oklab, var(--marketing-line) 78%, transparent);
-  flex-shrink: 0;
+.mkt-journey-sidebar .panel-menu {
+  --pm-accent: var(--marketing-accent);
+  --pm-line: color-mix(in oklab, var(--marketing-line) 80%, transparent);
+  --pm-surface: var(--marketing-card-bg);
+  --pm-surface-muted: color-mix(in oklab, var(--marketing-line) 14%, var(--marketing-card-bg));
+  --pm-text: var(--marketing-text);
+  --pm-text-secondary: var(--marketing-text-soft);
+  --pm-text-muted: var(--marketing-text-muted);
+  --pm-hover-bg: color-mix(in oklab, var(--marketing-accent) 6%, var(--marketing-card-bg));
+  --pm-selected-bg: color-mix(in oklab, var(--marketing-accent) 10%, var(--marketing-card-bg));
+  --pm-selected-border: color-mix(in oklab, var(--marketing-accent) 30%, var(--marketing-line));
 }
 
-.mkt-journey-sidebar__title {
-  color: var(--marketing-text-muted);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.mkt-journey-sidebar__count {
-  min-width: 22px;
-  min-height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  background: color-mix(in oklab, var(--marketing-accent) 10%, transparent);
-  color: var(--marketing-accent-strong);
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.mkt-journey-sidebar__list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  padding: 8px;
-}
-
-.mkt-journey-sidebar__empty {
-  display: grid;
-  gap: 4px;
-  padding: 14px 10px;
-  color: var(--marketing-text-soft);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.mkt-journey-sidebar__empty strong {
-  color: var(--marketing-text);
-  font-size: 13px;
-}
-
-.mkt-journey-card {
-  width: calc(100% - 16px);
-  margin: 8px 8px 0;
-  display: grid;
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid color-mix(in oklab, var(--marketing-line) 80%, transparent);
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--surface-1) 74%, transparent);
-  color: inherit;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
-}
-
-.mkt-journey-sidebar__list .mkt-journey-card {
-  width: 100%;
-  margin: 0;
-}
-
-.mkt-journey-card:hover,
-.mkt-journey-card--active {
-  border-color: color-mix(in oklab, var(--marketing-accent) 30%, var(--marketing-line));
-  background: color-mix(in oklab, var(--marketing-accent) 8%, var(--surface-1));
-  box-shadow: 0 4px 12px color-mix(in oklab, var(--text-strong) 7%, transparent);
-  transform: translateY(-1px);
-}
-
-.mkt-journey-card--new {
-  border-style: dashed;
-}
-
-.mkt-journey-card strong {
-  color: var(--marketing-text);
-  font-size: 12.5px;
-  font-weight: 900;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mkt-journey-card span {
-  color: var(--marketing-text-soft);
-  font-size: 11px;
-  line-height: 1.35;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mkt-journey-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.mkt-journey-card .shared-status-badge {
-  flex-shrink: 0;
-  font-size: 10px;
-  padding: 2px 6px;
+.mkt-journey-new-item {
+  border-style: dashed !important;
 }
 
 .mkt-journey-editor__canvas {
@@ -3134,15 +2829,13 @@
 }
 
 .app-theme[data-theme="dark"] .marketing-page {
-  --marketing-card-bg:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 92%, var(--primary)) 0%, color-mix(in oklab, var(--surface-1) 86%, var(--primary)) 100%);
-  --marketing-card-bg-hover:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 94%, var(--primary)) 0%, color-mix(in oklab, var(--accent) 8%, var(--surface-1)) 100%);
+  --marketing-card-bg: var(--surface-card);
+  --marketing-card-bg-hover: var(--surface-card-hover);
   --marketing-panel-bg: var(--marketing-card-bg);
-  --marketing-muted-panel: color-mix(in oklab, var(--surface-2) 72%, var(--surface-1));
+  --marketing-muted-panel: color-mix(in oklab, var(--surface-2) 38%, var(--surface-1));
   --marketing-elevated-shadow:
     0 18px 38px color-mix(in oklab, var(--neutral-black) 28%, transparent),
-    0 1px 0 color-mix(in oklab, var(--neutral-white) 8%, transparent) inset;
+    0 1px 0 color-mix(in oklab, var(--neutral-white) 4%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .marketing-page__tabs,
@@ -3151,7 +2844,7 @@
 .app-theme[data-theme="dark"] .mkt-screen-hero__stats > div,
 .app-theme[data-theme="dark"] .mkt-overview-hero__metrics > div,
 .app-theme[data-theme="dark"] .mkt-campaign-hero__stats > div {
-  background: color-mix(in oklab, var(--surface-2) 58%, transparent) !important;
+  background: color-mix(in oklab, var(--surface-1) 86%, transparent) !important;
   border-color: var(--line) !important;
 }
 

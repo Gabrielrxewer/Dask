@@ -1,5 +1,6 @@
 import type { Ref } from "react";
 import type { ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
+import { EmptyState } from "@/shared/ui";
 import { IconPlus } from "./board-editor-icons";
 import { BoardColumnForm } from "./board-column-form";
 import type { BoardAddColumnMode } from "./board-editor-settings.model";
@@ -86,7 +87,7 @@ export function BoardColumnPicker({
               </ul>
             </>
           ) : (
-            <p className="board-editor__picker-empty">Todas as colunas ja estao nesta perspectiva.</p>
+            <EmptyState className="board-editor__picker-empty" size="compact">Todas as colunas ja estao nesta perspectiva.</EmptyState>
           )}
           <div className="board-editor__picker-divider" />
           <button type="button" className="board-editor__picker-new-btn" onClick={onStartNewColumn}>

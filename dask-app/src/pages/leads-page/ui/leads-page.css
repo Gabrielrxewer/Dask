@@ -56,6 +56,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
   margin-bottom: 0;
 }
 
@@ -63,6 +64,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: auto;
+  min-width: auto;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -96,28 +99,6 @@
 .app-theme[data-theme="dark"] .leads-top-nav {
   padding: 5px 2px;
   border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
-}
-
-.leads-page__feedback {
-  border: 1px solid var(--leads-line);
-  border-radius: var(--radius-xs);
-  padding: 10px 12px;
-  font-size: var(--font-size-sm);
-  font-weight: 760;
-  background: var(--leads-surface);
-  box-shadow: var(--leads-shadow);
-}
-
-.leads-page__feedback--ok {
-  border-color: color-mix(in oklab, var(--success) 30%, var(--leads-line));
-  background: color-mix(in oklab, var(--success-soft) 76%, var(--surface-1));
-  color: color-mix(in oklab, var(--success) 84%, var(--text-strong));
-}
-
-.leads-page__feedback--error {
-  border-color: color-mix(in oklab, var(--danger) 32%, var(--leads-line));
-  background: color-mix(in oklab, var(--danger-soft) 78%, var(--surface-1));
-  color: color-mix(in oklab, var(--danger) 86%, var(--text-strong));
 }
 
 .leads-page__tabs.shared-tabs {
@@ -538,55 +519,6 @@
   gap: 10px;
 }
 
-.leads-kpi-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid color-mix(in oklab, var(--leads-line) 80%, transparent);
-  border-radius: var(--radius-xs);
-  background: var(--leads-field);
-  box-shadow: var(--leads-shadow);
-  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
-}
-
-.leads-kpi-card:hover {
-  box-shadow: var(--leads-shadow-hover);
-  transform: translateY(-1px);
-}
-
-.leads-kpi-card.shared-metric-card--blue  { border-color: color-mix(in oklab, var(--brand-blue) 22%, var(--leads-line)); }
-.leads-kpi-card.shared-metric-card--green  { border-color: color-mix(in oklab, var(--success) 22%, var(--leads-line)); }
-.leads-kpi-card.shared-metric-card--purple { border-color: color-mix(in oklab, var(--decorative-purple) 22%, var(--leads-line)); }
-.leads-kpi-card.shared-metric-card--amber  { border-color: color-mix(in oklab, var(--warning) 22%, var(--leads-line)); }
-
-.leads-kpi-card .shared-metric-card__icon {
-  border-radius: 10px;
-}
-
-.leads-kpi-card .shared-metric-card__label {
-  color: var(--leads-text-muted);
-  font-size: var(--font-size-2xs);
-  font-weight: 860;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.leads-kpi-card .shared-metric-card__value {
-  display: block;
-  color: var(--leads-text);
-  font-size: var(--font-size-title-sm);
-  font-weight: 900;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-.leads-kpi-card .shared-metric-card__subtitle {
-  color: var(--leads-text-soft);
-  font-size: var(--font-size-xs);
-}
-
 /* ── Section headers ─────────────────────────────────────────────────────── */
 
 .leads-section-header {
@@ -1001,7 +933,7 @@
 
 .leads-pending-urgency {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   line-height: 1.6;
 }
 
@@ -1404,7 +1336,6 @@
   --leads-shadow-hover: 0 18px 34px color-mix(in oklab, var(--neutral-black) 32%, transparent);
 }
 
-.app-theme[data-theme="dark"] .leads-page__feedback,
 .app-theme[data-theme="dark"] .leads-page__summary-card,
 .app-theme[data-theme="dark"] .leads-page__history li,
 .app-theme[data-theme="dark"] .leads-page__modal-header button,
@@ -1416,16 +1347,6 @@
   background: var(--surface-raised) !important;
   color: var(--text-strong) !important;
   box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .leads-page__feedback--ok {
-  background: color-mix(in oklab, var(--success) 16%, var(--panel)) !important;
-  color: color-mix(in oklab, var(--success) 72%, var(--text-strong)) !important;
-}
-
-.app-theme[data-theme="dark"] .leads-page__feedback--error {
-  background: color-mix(in oklab, var(--danger) 16%, var(--panel)) !important;
-  color: color-mix(in oklab, var(--danger) 72%, var(--text-strong)) !important;
 }
 
 .app-theme[data-theme="dark"] .leads-page__tabs.shared-tabs {
@@ -1488,7 +1409,6 @@
   background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
 }
 
-.app-theme[data-theme="dark"] .leads-kpi-card,
 .app-theme[data-theme="dark"] .leads-funnel-section,
 .app-theme[data-theme="dark"] .leads-chart-card,
 .app-theme[data-theme="dark"] .leads-pending-section {

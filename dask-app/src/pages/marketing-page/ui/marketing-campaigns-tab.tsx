@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, FormField, Select, StatusBadge, Textarea, TextInput } from "@/shared/ui";
+import { Button, EmptyState, FormField, Select, StatusBadge, Textarea, TextInput } from "@/shared/ui";
 import type {
   MarketingAudienceContact,
   MarketingCampaignDetails,
@@ -335,7 +335,9 @@ export function MarketingCampaignsTab({
                           <span className="mkt-perf-table__impact"><span className="mkt-badge mkt-badge--default">Abrir</span></span>
                         </button>
                       ))}
-                      {campaigns.length === 0 ?<div className="mkt-perf-table__empty">Nenhuma campanha no workspace.</div> : null}
+                      {campaigns.length === 0 ?(
+                        <EmptyState className="mkt-perf-table__empty" size="compact">Nenhuma campanha no workspace.</EmptyState>
+                      ) : null}
                     </div>
                   </article>
                 </section>
@@ -380,7 +382,9 @@ export function MarketingCampaignsTab({
                       </div>
 
                       <div className="mkt-history">
-                        {campaignDetails.recentEvents.length === 0 ?<p className="mkt-analytics__empty">Sem eventos ainda.</p> : null}
+                        {campaignDetails.recentEvents.length === 0 ?(
+                          <EmptyState className="mkt-analytics__empty" size="compact">Sem eventos ainda.</EmptyState>
+                        ) : null}
                         {campaignDetails.recentEvents.slice(0, 8).map((event, index) => (
                           <div key={`${safeString(event.id) || "event"}-${index}`} className="mkt-history__item">
                             <strong>{safeString(event.headline) || safeString(event.type)}</strong>
@@ -390,10 +394,12 @@ export function MarketingCampaignsTab({
                       </div>
                     </>
                   ) : (
-                    <div className="mkt-empty-inline">
-                      <strong>Selecione uma campanha</strong>
-                      <span>O historico, testes e ações de envio aparecem aqui.</span>
-                    </div>
+                    <EmptyState
+                      className="mkt-empty-inline"
+                      title="Selecione uma campanha"
+                      description="O historico, testes e ações de envio aparecem aqui."
+                      size="compact"
+                    />
                   )}
                 </article>
               </div>

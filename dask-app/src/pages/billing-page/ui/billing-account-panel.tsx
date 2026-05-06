@@ -1,5 +1,5 @@
 import type { ConnectAccountStatus } from "@/modules/billing";
-import { Button, StatusBadge } from "@/shared/ui";
+import { Button, InlineAlert, StatusBadge } from "@/shared/ui";
 import { IconAlertCircle, IconCheck, KPI_ICONS } from "./billing-page-icons";
 import {
   formatCapabilityStatus,
@@ -166,7 +166,7 @@ export function BillingAccountPanel({
             </Button>
           </div>
         </div>
-        {connectError ? <p className="billing-view__error">{connectError}</p> : null}
+        {connectError ? <InlineAlert tone="danger">{connectError}</InlineAlert> : null}
       </div>
 
       {pendingItems.length > 0 ? (

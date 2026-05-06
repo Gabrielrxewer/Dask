@@ -4,7 +4,7 @@ import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth";
 import { adminTelemetryService } from "@/pages/platform-admin-page/api/admin-telemetry-service";
 import type { AdminTelemetryOverview } from "@/pages/platform-admin-page/model/types";
-import { MetricCard } from "@/shared/ui";
+import { Button, EmptyState, InlineAlert, LoadingState, MetricCard, StatusBadge } from "@/shared/ui";
 import "./platform-admin-page.css";
 
 function formatPct(value: number): string {
@@ -58,10 +58,6 @@ function formatLatencyMs(value: number): string {
 
 function maxOf(values: number[]): number {
   return values.length > 0 ? Math.max(...values) : 0;
-}
-
-function EmptyState({ text }: { text: string }) {
-  return <div className="platform-admin-page__empty">{text}</div>;
 }
 
 function InfoHint({ label, detail }: { label: string; detail: string }) {
@@ -168,10 +164,7 @@ export function PlatformAdminPage() {
   if (isLoading) {
     return (
       <section className="platform-admin-page">
-        <div className="platform-admin-page__card">
-          <p className="platform-admin-page__badge">Admin da plataforma</p>
-          <h1>Carregando painel de telemetria...</h1>
-        </div>
+        <LoadingState text="Carregando painel de telemetria" animation="settings" />
       </section>
     );
   }
@@ -213,12 +206,12 @@ export function PlatformAdminPage() {
             </p>
           </div>
           <div className="platform-admin-page__hero-actions">
-            <span className={`platform-admin-page__status-chip platform-admin-page__status-chip--${authHealthTone}`}>
+            <StatusBadge tone={authHealthTone === "ok" ? "success" : authHealthTone === "warn" ? "warning" : "danger"}>
               {authHealthTone === "ok" ? "Auth estavel" : authHealthTone === "warn" ? "Auth em atencao" : "Auth critica"}
-            </span>
-            <button
-              type="button"
-              className="platform-admin-page__refresh"
+            </StatusBadge>
+            <Button
+              size="sm"
+              variant="primary"
               onClick={() => {
                 setIsRefreshing(true);
                 adminTelemetryService
@@ -230,7 +223,7 @@ export function PlatformAdminPage() {
               disabled={isRefreshing}
             >
               {isRefreshing ? "Atualizando..." : "Atualizar agora"}
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -325,7 +318,7 @@ export function PlatformAdminPage() {
               <p>Horas com maior volume de requests ({overview.traffic.timezone})</p>
             </header>
             {overview.traffic.peakHours24h.length === 0 ? (
-              <EmptyState text="Sem dados de pico nas ultimas 24h." />
+              <EmptyState className="platform-admin-page__empty" size="compact">Sem dados de pico nas ultimas 24h.</EmptyState>
             ) : (
               <div className="platform-admin-page__bar-list">
                 {overview.traffic.peakHours24h.map(item => {
@@ -399,7 +392,7 @@ export function PlatformAdminPage() {
               <p>Acoes de dominio mais executadas</p>
             </header>
             {overview.product.topDomainEvents7d.length === 0 ? (
-              <EmptyState text="Sem eventos de dominio no periodo." />
+              <EmptyState className="platform-admin-page__empty" size="compact">Sem eventos de dominio no periodo.</EmptyState>
             ) : (
               <div className="platform-admin-page__bar-list">
                 {overview.product.topDomainEvents7d.map(event => {
@@ -434,7 +427,7 @@ export function PlatformAdminPage() {
               <p>Top causas para reduzir friccao e risco</p>
             </header>
             {overview.auth.failedLoginReasons24h.length === 0 ? (
-              <EmptyState text="Nenhuma falha de login registrada no periodo." />
+              <EmptyState className="platform-admin-page__empty" size="compact">Nenhuma falha de login registrada no periodo.</EmptyState>
             ) : (
               <ul className="platform-admin-page__reason-list">
                 {overview.auth.failedLoginReasons24h.map(item => (
@@ -483,7 +476,7 @@ export function PlatformAdminPage() {
           </article>
         </section>
 
-        {errorMessage ? <p className="platform-admin-page__error">{errorMessage}</p> : null}
+        {errorMessage ? <InlineAlert tone="danger">{errorMessage}</InlineAlert> : null}
       </div>
     </section>
   );

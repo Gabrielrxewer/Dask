@@ -58,3 +58,12 @@
 .shared-data-table__cell {
   min-width: 0;
 }
+
+.shared-data-table__row--empty {
+  min-height: 160px;
+}
+
+.shared-data-table__cell--full {
+  grid-column: 1 / -1;
+  justify-content: center;
+}

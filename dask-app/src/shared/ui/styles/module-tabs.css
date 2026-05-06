@@ -1,0 +1,76 @@
+.module-tabs {
+  min-width: 0;
+  min-height: var(--layout-tab-height);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.module-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.module-tabs__item {
+  min-height: var(--layout-tab-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.module-tabs--underline {
+  gap: 2px;
+}
+
+.module-tabs--underline .module-tabs__item {
+  position: relative;
+  flex: 0 0 auto;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: 760;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: none;
+}
+
+.module-tabs--underline .module-tabs__item:hover {
+  border-color: color-mix(in oklab, var(--border-default) 72%, transparent);
+  background: color-mix(in oklab, var(--primary) 6%, transparent);
+  box-shadow: none;
+  color: var(--text-secondary);
+  transform: none;
+}
+
+.module-tabs--underline .module-tabs__item--active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  font-weight: 860;
+}
+
+.module-tabs--underline .module-tabs__item--active::before {
+  content: "";
+  position: absolute;
+  inset: auto 8px 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--decorative-cyan) 100%);
+}
+
+.module-tabs--pill .module-tabs__item {
+  border-radius: var(--radius-pill);
+}
+
+.module-tabs__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}

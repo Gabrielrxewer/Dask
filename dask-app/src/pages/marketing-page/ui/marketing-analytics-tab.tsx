@@ -5,6 +5,7 @@ import type {
   MarketingCampaignObjective,
   MarketingDashboard
 } from "@/modules/marketing";
+import { EmptyState } from "@/shared/ui";
 import {
   OBJECTIVE_OPTIONS,
   campaignObjectiveLabel,
@@ -100,12 +101,13 @@ export function MarketingAnalyticsTab({
                 </div>
 
                 {!isLoadingAnalytics && !hasEnoughAnalyticsData ?(
-                  <div className="mkt-state mkt-state--insufficient">
-                    <span className="mkt-state__icon" aria-hidden="true" />
-                    <strong>Dados insuficientes para análise</strong>
-                    <p>Execute pelo menos uma campanha e aguarde eventos de envio, abertura ou clique para gerar métricas e recomendações reais.</p>
-                    <button type="button" onClick={() => setTab("campaigns")}>Criar ou lançar campanha</button>
-                  </div>
+                  <EmptyState
+                    className="mkt-state mkt-state--insufficient"
+                    icon={<span className="mkt-state__icon" />}
+                    title="Dados insuficientes para análise"
+                    description="Execute pelo menos uma campanha e aguarde eventos de envio, abertura ou clique para gerar métricas e recomendações reais."
+                    action={<button type="button" onClick={() => setTab("campaigns")}>Criar ou lançar campanha</button>}
+                  />
                 ) : null}
 
                 {/* KPIs */}
@@ -180,7 +182,7 @@ export function MarketingAnalyticsTab({
                         <span>Impacto</span>
                       </div>
                       {enrichedCampaigns.length === 0 ?(
-                        <div className="mkt-perf-table__empty">Nenhuma campanha encontrada.</div>
+                        <EmptyState className="mkt-perf-table__empty" size="compact">Nenhuma campanha encontrada.</EmptyState>
                       ) : null}
                       {enrichedCampaigns.map((c) => (
                         <button
@@ -222,12 +224,14 @@ export function MarketingAnalyticsTab({
                     <div className="mkt-analytics__section">
                       <h3 className="mkt-analytics__section-title">Insights automáticos</h3>
                       {!hasEnoughAnalyticsData ?(
-                        <div className="mkt-empty-inline">
-                          <strong>Dados insuficientes</strong>
-                          <span>Ainda estamos coletando informações. Crie ou execute campanhas para gerar análises reais.</span>
-                        </div>
+                        <EmptyState
+                          className="mkt-empty-inline"
+                          title="Dados insuficientes"
+                          description="Ainda estamos coletando informações. Crie ou execute campanhas para gerar análises reais."
+                          size="compact"
+                        />
                       ) : analyticsInsights.length === 0 ?(
-                        <p className="mkt-analytics__empty">Nenhum insight relevante encontrado para o volume atual.</p>
+                        <EmptyState className="mkt-analytics__empty" size="compact">Nenhum insight relevante encontrado para o volume atual.</EmptyState>
                       ) : null}
                       {hasEnoughAnalyticsData ?(
                         <ul className="mkt-insights">
@@ -246,7 +250,7 @@ export function MarketingAnalyticsTab({
                       <h3 className="mkt-analytics__section-title">Atribuição por objetivo</h3>
                       <div className="mkt-attribution">
                         {!hasEnoughAnalyticsData ?(
-                          <p className="mkt-analytics__empty">Sem eventos suficientes para atribuição.</p>
+                          <EmptyState className="mkt-analytics__empty" size="compact">Sem eventos suficientes para atribuição.</EmptyState>
                         ) : Object.entries(
                           enrichedCampaigns.reduce<Record<string, { count: number; sent: number }>>((acc, c) => {
                             const key = c.objective;
@@ -272,7 +276,7 @@ export function MarketingAnalyticsTab({
                             );
                           })}
                         {hasEnoughAnalyticsData && enrichedCampaigns.length === 0 ?(
-                          <p className="mkt-analytics__empty">Sem dados de atribuição.</p>
+                          <EmptyState className="mkt-analytics__empty" size="compact">Sem dados de atribuição.</EmptyState>
                         ) : null}
                       </div>
                     </div>
@@ -281,10 +285,12 @@ export function MarketingAnalyticsTab({
                     <div className="mkt-analytics__section">
                       <h3 className="mkt-analytics__section-title">Engajamento geral</h3>
                       {!hasEnoughAnalyticsData ?(
-                        <div className="mkt-empty-inline">
-                          <strong>Aguardando volume</strong>
-                          <span>As taxas aparecem depois de envios e eventos reais.</span>
-                        </div>
+                        <EmptyState
+                          className="mkt-empty-inline"
+                          title="Aguardando volume"
+                          description="As taxas aparecem depois de envios e eventos reais."
+                          size="compact"
+                        />
                       ) : (
                       <div className="mkt-engagement">
                         {[

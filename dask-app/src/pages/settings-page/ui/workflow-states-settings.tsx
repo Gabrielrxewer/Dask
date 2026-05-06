@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { apiClient } from "@/shared/api/http-client";
 import { workspaceService } from "@/modules/workspace/api";
-import { Button, FormField, TextInput } from "@/shared/ui";
+import { Button, EmptyState, FormField, LoadingState, PanelMenu, PanelMenuGroup, PanelMenuItem, TextInput } from "@/shared/ui";
 import { resolveCssColorForInput, withCssColorAlpha } from "@/shared/lib/color/css-color";
 import "./workflow-states-settings.css";
 
@@ -382,60 +382,41 @@ export function WorkflowStatesSettings() {
 
       <section className="wse__body">
         <aside className="wse__library" aria-label="Biblioteca de estados">
-          <div className="wse__panel-head">
-            <span className="wse__eyebrow">Biblioteca</span>
-            <strong>Estados e presets</strong>
-            <p>Escolha um estado existente ou comece por um preset visual.</p>
-          </div>
-
-          <div className="wse__panel-scroll">
-            <section className="wse__group">
-              <h3 className="wse__group-title">Estados do workspace</h3>
+          <PanelMenu
+            eyebrow="Biblioteca"
+            title="Estados e presets"
+          >
+            <PanelMenuGroup label="Estados do workspace">
               {stateTabs.length === 0 ? (
-                <p className="wse__empty">Nenhum estado configurado ainda.</p>
+                <EmptyState size="compact">Nenhum estado configurado ainda.</EmptyState>
               ) : (
-                <div className="wse__chip-list">
-                  {stateTabs.map(state => (
-                    <button
-                      key={state.id}
-                      type="button"
-                      className={`wse__chip${selectedStateId === state.id ? " is-selected" : ""}`}
-                      onClick={() => setSelectedStateId(state.id)}
-                    >
-                      <span className="wse__chip-main">
-                        <i style={{ background: state.color || DEFAULT_COLOR }} />
-                        <strong>{state.name}</strong>
-                      </span>
-                      <span className="wse__chip-meta">
-                        <span>/{state.slug}</span>
-                        {!state.isActive ? <span>arquivado</span> : null}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                stateTabs.map(state => (
+                  <PanelMenuItem
+                    key={state.id}
+                    variant="chip"
+                    selected={selectedStateId === state.id}
+                    onClick={() => setSelectedStateId(state.id)}
+                    leading={<i className="wse__state-dot" style={{ background: state.color || DEFAULT_COLOR }} />}
+                    label={state.name}
+                    meta={`/${state.slug}${!state.isActive ? " · arquivado" : ""}`}
+                  />
+                ))
               )}
-            </section>
+            </PanelMenuGroup>
 
-            <section className="wse__group">
-              <h3 className="wse__group-title">Presets rapidos</h3>
-              <div className="wse__preset-grid">
-                {STATE_PRESETS.map(preset => (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    className="wse__preset"
-                    onClick={() => openNewDraft(preset)}
-                  >
-                    <span className="wse__preset-head">
-                      <i style={{ background: preset.color }} />
-                      <strong>{preset.label}</strong>
-                    </span>
-                    <span>{preset.category}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          </div>
+            <PanelMenuGroup label="Presets rapidos" tone="new">
+              {STATE_PRESETS.map(preset => (
+                <PanelMenuItem
+                  key={preset.key}
+                  variant="chip"
+                  onClick={() => openNewDraft(preset)}
+                  leading={<i className="wse__state-dot" style={{ background: preset.color }} />}
+                  label={preset.label}
+                  meta={preset.category}
+                />
+              ))}
+            </PanelMenuGroup>
+          </PanelMenu>
         </aside>
 
         <main className="wse__canvas">
@@ -684,13 +665,13 @@ export function WorkflowStatesSettings() {
                 </div>
               </div>
             ) : (
-              <p className="wse__empty">Selecione um estado para editar.</p>
+              <EmptyState className="wse__empty" size="compact">Selecione um estado para editar.</EmptyState>
             )}
           </div>
         </aside>
       </section>
 
-      {loading ? <p className="wse__footer-note">Carregando estados...</p> : null}
+      {loading ? <LoadingState className="wse__footer-note" text="Carregando estados" animation="settings" /> : null}
     </div>
   );
 }

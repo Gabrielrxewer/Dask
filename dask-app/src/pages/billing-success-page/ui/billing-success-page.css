@@ -79,7 +79,7 @@
 }
 
 .billing-success__description {
-  font-size: 15px;
+  font-size: var(--font-size-md);
   color: var(--text-soft, var(--primary));
   max-width: 440px;
   line-height: 1.6;
@@ -146,26 +146,4 @@
   box-shadow:
     0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
-}
-
-
-.billing-success__loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--text-soft, var(--primary));
-}
-
-.billing-success__spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
-  border-top-color: var(--text-muted);
-  border-radius: 50%;
-  animation: billing-spin 0.7s linear infinite;
-}
-
-@keyframes billing-spin {
-  to { transform: rotate(360deg); }
 }

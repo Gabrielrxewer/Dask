@@ -6,6 +6,7 @@ import {
   DataTableHeader,
   DataTableRow
 } from "@/shared/ui/data-table";
+import { EmptyState } from "@/shared/ui/empty-state";
 
 type ResourceTableClassName<T> = string | ((row: T, index: number) => string | undefined);
 
@@ -94,12 +95,18 @@ export function ResourceTable<T>({
     : columns;
   const gridColumns = visibleColumns.map((column) => column.width ?? "1fr").join(" ");
 
-  const fallbackCells = (content: ReactNode) => (
-    <DataTableRow>
-      <DataTableCell>{content}</DataTableCell>
-      {visibleColumns.slice(1).map((column) => (
-        <DataTableCell key={column.id}>-</DataTableCell>
-      ))}
+  const fallbackCells = (content: ReactNode, variant: "loading" | "empty") => (
+    <DataTableRow className="shared-data-table__row--empty">
+      <DataTableCell className="shared-data-table__cell--full">
+        {typeof content === "string" ? (
+          <EmptyState
+            variant={variant === "loading" ? "loading" : "table"}
+            size="compact"
+            title={content}
+            description={variant === "loading" ? "Os dados serao exibidos assim que o carregamento terminar." : undefined}
+          />
+        ) : content}
+      </DataTableCell>
     </DataTableRow>
   );
 
@@ -119,9 +126,9 @@ export function ResourceTable<T>({
       </DataTableHeader>
       <DataTableBody>
         {loading
-          ? fallbackCells(loadingState)
+          ? fallbackCells(loadingState, "loading")
           : data.length === 0
-            ? fallbackCells(emptyState)
+            ? fallbackCells(emptyState, "empty")
             : data.map((row, rowIndex) => (
                 <DataTableRow
                   key={resolveRowKey(rowKey, row, rowIndex)}

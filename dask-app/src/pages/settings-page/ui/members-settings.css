@@ -235,7 +235,7 @@
   border-radius: 999px;
   border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
   background: var(--surface-overlay);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--text-soft);
   font-weight: 600;
   white-space: nowrap;
@@ -246,7 +246,7 @@
 
 .ms-chips--sm .ms-chip {
   padding: 2px 7px;
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
 }
 
 .ms-chip--role {
@@ -297,7 +297,7 @@
   background: transparent;
   color: currentColor;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   line-height: 1;
   padding: 0;
   opacity: 0.6;
@@ -314,7 +314,7 @@
   justify-content: center;
   padding: 1px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   background: color-mix(in oklab, var(--line) 40%, var(--surface-overlay));
   color: var(--text-soft);
@@ -412,7 +412,7 @@
   border-radius: 999px;
   background: color-mix(in oklab, var(--accent) 18%, var(--surface-overlay));
   color: color-mix(in oklab, var(--accent) 86%, var(--text-strong));
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   font-weight: 800;
   display: grid;
   place-items: center;
@@ -499,7 +499,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 10px;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -699,7 +699,7 @@
 
 .ms-perm-picker__group-label {
   margin: 0 0 4px;
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -730,7 +730,7 @@
 }
 
 .ms-perm-picker__item span {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-soft);
   font-family: monospace;
 }
@@ -851,7 +851,7 @@
 
 .ms-perm-source__label {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.02em;
@@ -974,7 +974,7 @@
 
 .ms-group-preview__label {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1036,7 +1036,7 @@
   border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
   background: var(--surface-overlay);
   color: var(--text-soft);
-  font-size: 18px;
+  font-size: var(--font-size-lg);
   line-height: 1;
   cursor: pointer;
   display: grid;
@@ -1190,7 +1190,7 @@
   width: 100%;
   padding: 9px 12px;
   text-align: left;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1207,7 +1207,7 @@
 }
 
 .ms-matrix__group-chevron {
-  font-size: 9px;
+  font-size: var(--font-size-3xs);
   opacity: 0.6;
 }
 
@@ -1224,14 +1224,14 @@
 
 .ms-matrix__row .ms-matrix__perm-col {
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 400;
   color: var(--text-soft);
 }
 
 .ms-matrix__cell {
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
 }
 

@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { SectionHeader } from "@/shared/ui/section-header";
 
 export interface SectionProps extends Omit<HTMLAttributes<HTMLElement>, "title"> {
   title: ReactNode;
@@ -20,13 +21,7 @@ export function Section({
 }: SectionProps) {
   return (
     <section className={cn("shared-section", className)} {...props}>
-      <header className="shared-section__header">
-        <div>
-          <h2 className="shared-section__title">{title}</h2>
-          {subtitle ? <p className="shared-section__subtitle">{subtitle}</p> : null}
-        </div>
-        {actions ? <div>{actions}</div> : null}
-      </header>
+      <SectionHeader className="shared-section__header" title={title} description={subtitle} action={actions} />
       <div className={cn("shared-section__content", contentClassName)}>{children}</div>
     </section>
   );

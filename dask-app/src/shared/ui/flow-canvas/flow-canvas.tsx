@@ -20,6 +20,7 @@ import {
   type XYPosition,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { EmptyState } from "@/shared/ui/empty-state";
 import { AppIcon } from "@/shared/ui/icon";
 import './flow-canvas.css';
 
@@ -52,7 +53,7 @@ function FlowCanvasControls() {
         <AppIcon name="minus" size={16} strokeWidth={1.7} />
       </button>
       <div className="flow-canvas-ui__ctrl-sep" />
-      <button type="button" className="flow-canvas-ui__ctrl-btn" title="Ajustar tela" aria-label="Ajustar tela" onClick={() => fitView({ duration: 300, padding: 0.2 })}>
+      <button type="button" className="flow-canvas-ui__ctrl-btn" title="Ajustar tela" aria-label="Ajustar tela" onClick={() => fitView({ duration: 300, padding: 0.25, maxZoom: 0.85 })}>
         <AppIcon name="settings" size={16} strokeWidth={1.5} />
       </button>
     </div>
@@ -121,7 +122,7 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
   useEffect(() => {
     if (fitViewKey !== fitDoneRef.current) {
       fitDoneRef.current = fitViewKey;
-      const timer = setTimeout(() => reactFlow.fitView({ padding: 0.2, duration: 300 }), 60);
+      const timer = setTimeout(() => reactFlow.fitView({ padding: 0.25, maxZoom: 0.85, duration: 300 }), 60);
       return () => clearTimeout(timer);
     }
   }, [fitViewKey, reactFlow]);
@@ -299,7 +300,7 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
 
         {nodes.length === 0 && (
           <Panel position="top-center" className="flow-canvas-ui__empty-hint">
-            <span>{emptyHint}</span>
+            <EmptyState title={emptyHint} size="compact" />
           </Panel>
         )}
       </ReactFlow>

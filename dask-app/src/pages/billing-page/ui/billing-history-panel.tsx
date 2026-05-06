@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectPaymentOrder } from "@/modules/billing";
-import { Button, ResourceTable, StatusBadge } from "@/shared/ui";
+import { Button, EmptyState, InlineAlert, ResourceTable, SectionHeader, StatusBadge } from "@/shared/ui";
 import type { HistoryAction, PaymentOrdersLoadState } from "./billing-page.model";
 import {
   BADGE_TONE_BY_STATUS,
@@ -60,32 +60,28 @@ export function BillingHistoryPanel({
 }: BillingHistoryPanelProps) {
   return (
     <div className="billing-view__panel" role="tabpanel">
-      <div className="billing-view__panel-head">
-        <div>
-          <h3 className="billing-view__panel-title">
-            {customerMode ? "Portal do cliente" : "Historico de cobrancas"}
-          </h3>
-          <p className="billing-view__panel-subtitle">
-            {customerMode
-              ? "Acompanhe cobrancas, vencimentos, status de pagamento, assinatura e documentos fiscais."
-              : "Ultimas 30 cobrancas criadas neste workspace."}
-          </p>
-        </div>
-        <StatusBadge>{paymentOrders.length} itens</StatusBadge>
-      </div>
+      <SectionHeader
+        title={customerMode ? "Portal do cliente" : "Historico de cobrancas"}
+        description={
+          customerMode
+            ? "Acompanhe cobrancas, vencimentos, status de pagamento, assinatura e documentos fiscais."
+            : "Ultimas 30 cobrancas criadas neste workspace."
+        }
+        badge={<StatusBadge>{paymentOrders.length} itens</StatusBadge>}
+      />
 
       {paymentOrdersLoadState === "error" ? (
-        <p className="billing-view__error">{paymentOrdersError}</p>
+        <InlineAlert tone="danger">{paymentOrdersError}</InlineAlert>
       ) : null}
       {paymentOrdersLoadState === "loaded" && paymentOrders.length === 0 ? (
-        <div className="billing-view__history-empty">
-          <p>{customerMode ? "Nenhuma cobranca vinculada ao seu e-mail ainda." : "Nenhuma cobranca criada ainda."}</p>
-          {!customerMode ? (
+        <EmptyState
+          title={customerMode ? "Nenhuma cobranca vinculada ao seu e-mail ainda." : "Nenhuma cobranca criada ainda."}
+          action={!customerMode ? (
             <Button type="button" variant="outline" onClick={onCreateFirstCharge}>
               Criar primeira cobranca
             </Button>
           ) : null}
-        </div>
+        />
       ) : null}
       {paymentOrdersLoadState === "loaded" && paymentOrders.length > 0 ? (
         <>

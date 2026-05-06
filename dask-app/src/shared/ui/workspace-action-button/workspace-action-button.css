@@ -37,7 +37,7 @@
 }
 
 .workspace-action-button--accent .workspace-action-button__icon {
-  font-size: 18px;
+  font-size: var(--font-size-lg);
   font-weight: 300;
 }
 

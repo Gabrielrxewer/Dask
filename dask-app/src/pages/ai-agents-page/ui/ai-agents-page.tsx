@@ -8,7 +8,7 @@ import type {
   AiAgentSummary,
   CreateAiAgentInput,
 } from '@/modules/workspace/model';
-import { LoadingState, StatusBadge, WorkspaceActionButton, WorkspaceFrame } from '@/shared/ui';
+import { AppIcon, EmptyState, LoadingState, PanelMenu, PanelMenuItem, StatusBadge, StudioLayout, WorkspaceActionButton, WorkspaceFrame, WorkspaceTopNavigation } from '@/shared/ui';
 import { AppShell } from '@/widgets/app-shell';
 import { AgentFlowCanvas } from './agent-flow-canvas';
 import { AgentConfigPanel, type AgentMetaForm } from './agent-config-panel';
@@ -441,57 +441,37 @@ export function AiAgentsPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   const topNavigation = (
-    <div className="ab-nav">
-      <div className="ab-nav__identity">
-        <input
-          className="ab-nav__name"
-          value={agentName}
-          onChange={(e) => handleNameChange(e.target.value)}
-          placeholder="Nome do agente"
-          maxLength={80}
-        />
-        {agentKey ? (
-          <span className="ab-nav__key">{agentKey}</span>
-        ) : null}
-      </div>
-
-      <div className="ab-nav__status">
-        <button
-          type="button"
-          className={`ab-nav__status-btn${agentIsActive ? ' ab-nav__status-btn--active' : ''}`}
-          onClick={() => setAgentIsActive((v) => !v)}
-        >
-          <span className="ab-nav__status-dot" />
-          {agentIsActive ? 'Ativo' : 'Inativo'}
-        </button>
-      </div>
-
-      <div className="ab-nav__actions">
-        <WorkspaceActionButton
-          label="Novo agente"
-          onClick={handleCreateNew}
-          disabled={isSaving}
-          icon="+"
-        />
-        <WorkspaceActionButton
-          label={isCreateMode ? 'Criar agente' : 'Salvar alterações'}
-          onClick={() => void handleSave()}
-          disabled={!canSave}
-          icon={
-            isSaving ? (
-              <svg viewBox="0 0 16 16" fill="none" className="ab-nav__spin">
-                <path d="M8 2a6 6 0 1 1-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M5 4h12l2 2v14H5V4z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-                <path d="M8 4v6h8V4M8 20v-6h8v6" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-              </svg>
-            )
-          }
-        />
-      </div>
-    </div>
+    <WorkspaceTopNavigation<'agents'>
+      value="agents"
+      items={[{ id: 'agents', label: 'Agentes de IA' }]}
+      onChange={() => undefined}
+      ariaLabel="Agentes de IA"
+      actions={
+        <>
+          <WorkspaceActionButton
+            label="Novo agente"
+            icon={<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>}
+            onClick={handleCreateNew}
+            disabled={isSaving}
+          />
+          <WorkspaceActionButton
+            tone="accent"
+            label={isCreateMode ? 'Criar agente' : 'Salvar alteracoes'}
+            onClick={() => void handleSave()}
+            disabled={!canSave}
+            icon={
+              isSaving ? (
+                <svg viewBox="0 0 16 16" fill="none" className="ab-nav__spin">
+                  <path d="M8 2a6 6 0 1 1-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <AppIcon name="check" />
+              )
+            }
+          />
+        </>
+      }
+    />
   );
 
   return (
@@ -502,23 +482,34 @@ export function AiAgentsPage() {
       hideSidebarBrandMark
       topNavigation={topNavigation}
     >
-      <WorkspaceFrame className="ab-page">
+      <WorkspaceFrame className="ab-page" variant="editor" scroll="none">
         <LoadingState text="Carregando agentes..." animation="ai" variant="frame" visible={isLoadingAgents} />
 
-        <div className="ab-layout">
-          {/* ── Left sidebar: agent list ── */}
-          <aside className="ab-sidebar">
-            <div className="ab-sidebar__head">
-              <span className="ab-sidebar__title">
-                Agentes{agents.length > 0 ? ` · ${agents.length}` : ''}
-              </span>
-            </div>
-            <div className="ab-sidebar__list">
+        <StudioLayout
+          sidebar={
+            <PanelMenu
+              title="Agentes"
+              count={agents.length}
+              action={
+                <button
+                  type="button"
+                  className="ab-create-btn"
+                  onClick={handleCreateNew}
+                  disabled={isSaving}
+                  aria-label="Novo agente"
+                  title="Novo agente"
+                >
+                  <AppIcon name="plus" size={14} />
+                </button>
+              }
+            >
               {agents.length === 0 && !isLoadingAgents ? (
-                <div className="ab-sidebar__empty">
-                  <p>Nenhum agente ainda</p>
-                  <span>Clique em "Novo agente" para começar.</span>
-                </div>
+                <EmptyState
+                  title="Nenhum agente ainda"
+                  description='Clique em "Novo agente" para configurar contexto, modelo e saida.'
+                  size="compact"
+                  variant="card"
+                />
               ) : (
                 agents.map((agent) => {
                   const cfg = asConfig(agent.config);
@@ -526,82 +517,52 @@ export function AiAgentsPage() {
                   const src = rag.enabled === false ? 'none' : (rag.source ?? 'documentation');
                   const isSelected = agent.id === selectedAgentId;
                   return (
-                    <div
+                    <PanelMenuItem
                       key={agent.id}
-                      className={`ab-agent-card${isSelected ? ' ab-agent-card--active' : ''}`}
-                    >
-                      <button
-                        type="button"
-                        className="ab-agent-card__main"
-                        onClick={() => selectAgent(agent)}
-                      >
-                      <div className="ab-agent-card__row">
-                        <strong className="ab-agent-card__name">{agent.name}</strong>
-                        <StatusBadge tone={agent.isActive ? 'success' : 'warning'}>
+                      selected={isSelected}
+                      onClick={() => selectAgent(agent)}
+                      label={agent.name}
+                      meta={agent.key}
+                      trailing={
+                        <StatusBadge tone={agent.isActive ? 'success' : 'warning'} size="sm">
                           {agent.isActive ? 'Ativo' : 'Inativo'}
                         </StatusBadge>
-                      </div>
-                      <p className="ab-agent-card__desc">{agent.description || 'Sem descrição'}</p>
-                      <div className="ab-agent-card__meta">
-                        <span>{agent.key}</span>
-                        <span>{sourceLabel(src)}</span>
-                      </div>
-                      </button>
-                      <button
-                        type="button"
-                        className="ab-agent-card__edit"
-                        onClick={() => handleEditAgent(agent)}
-                        aria-label={`Editar ${agent.name}`}
-                        title="Editar agente"
-                      >
-                        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                          <path
-                            d="M9.8 3.1l3.1 3.1M3.5 12.5l2.7-.5 6.2-6.2a1.45 1.45 0 0 0-2.1-2.1L4.1 9.9l-.6 2.6z"
-                            stroke="currentColor"
-                            strokeWidth="1.4"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                      }
+                      actions={
+                        <button
+                          type="button"
+                          className="ab-agent-edit-btn"
+                          onClick={(e) => { e.stopPropagation(); handleEditAgent(agent); }}
+                          aria-label={`Editar ${agent.name}`}
+                          title="Editar agente"
+                        >
+                          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <path
+                              d="M9.8 3.1l3.1 3.1M3.5 12.5l2.7-.5 6.2-6.2a1.45 1.45 0 0 0-2.1-2.1L4.1 9.9l-.6 2.6z"
+                              stroke="currentColor"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      }
+                    />
                   );
                 })
               )}
-
-              {/* Create-mode ghost card */}
               {isCreateMode && (
-                <div className="ab-agent-card ab-agent-card--active ab-agent-card--new">
-                  <div className="ab-agent-card__row">
-                    <strong className="ab-agent-card__name">{agentName || 'Novo agente'}</strong>
-                    <StatusBadge tone="warning">Novo</StatusBadge>
-                  </div>
-                  <p className="ab-agent-card__desc">Ainda não salvo</p>
-                </div>
+                <PanelMenuItem
+                  selected
+                  label={agentName || 'Novo agente'}
+                  description="Ainda nao salvo"
+                  trailing={<StatusBadge tone="warning" size="sm">Novo</StatusBadge>}
+                  className="ab-agent-new-item"
+                />
               )}
-            </div>
-          </aside>
-
-          {/* ── Center: canvas ── */}
-          <div className="ab-canvas-wrapper">
-            {error ? (
-              <div className="ab-error">{error}</div>
-            ) : null}
-            <AgentFlowCanvas
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onEdgesAdd={handleEdgesAdd}
-              onNodesAdd={handleNodesAdd}
-              onNodeSelect={handleNodeSelect}
-              fitViewKey={fitViewKey}
-              selectedNodeId={selectedNodeId}
-            />
-          </div>
-
-          {/* ── Right: config panel ── */}
-          <div className={`ab-config${isConfigPanelVisible ? ' ab-config--visible' : ''}`}>
+            </PanelMenu>
+          }
+          inspector={
             <AgentConfigPanel
               node={selectedConfigNode}
               agent={agentMetaPanel}
@@ -609,8 +570,25 @@ export function AiAgentsPage() {
               onNodeDataChange={handleNodeDataChange}
               onAgentMetaChange={handleAgentMetaChange}
             />
-          </div>
-        </div>
+          }
+          inspectorOpen={isConfigPanelVisible}
+          inspectorWidth={340}
+        >
+          {error ? (
+            <div className="ab-error">{error}</div>
+          ) : null}
+          <AgentFlowCanvas
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onEdgesAdd={handleEdgesAdd}
+            onNodesAdd={handleNodesAdd}
+            onNodeSelect={handleNodeSelect}
+            fitViewKey={fitViewKey}
+            selectedNodeId={selectedNodeId}
+          />
+        </StudioLayout>
       </WorkspaceFrame>
     </AppShell>
   );

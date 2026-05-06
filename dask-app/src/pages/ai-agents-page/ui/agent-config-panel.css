@@ -15,19 +15,14 @@
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 
-.acp__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 14px 14px 13px;
-  border-bottom: 1px solid var(--acp-line);
-  background: color-mix(in oklab, var(--acp-color) 8%, var(--acp-surface));
-  flex-shrink: 0;
+.acp .shared-drawer-shell__header {
   position: relative;
+  padding: 14px 14px 13px;
+  border-bottom-color: var(--acp-line);
+  background: color-mix(in oklab, var(--acp-color) 8%, var(--acp-surface));
 }
 
-.acp__header::before {
+.acp .shared-drawer-shell__header::before {
   content: '';
   position: absolute;
   left: 0;
@@ -35,13 +30,6 @@
   bottom: 0;
   width: 3px;
   background: var(--acp-color);
-}
-
-.acp__header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
 }
 
 .acp__type-dot {
@@ -53,53 +41,16 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 20%, transparent);
 }
 
-.acp__title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.acp__type-label {
-  font-size: 13px;
-  font-weight: 800;
+.acp .shared-drawer-shell__title h2 {
   color: var(--acp-color);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.acp__description {
-  font-size: 11px;
-  color: var(--text-muted, var(--text-secondary));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.acp__close {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: 1px solid var(--acp-line);
-  background: transparent;
-  color: var(--text-muted, var(--text-secondary));
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
-}
-
-.acp__close:hover {
+.acp .shared-drawer-shell__close:hover {
   background: color-mix(in oklab, var(--acp-color) 10%, var(--acp-surface));
   color: var(--acp-color);
   border-color: color-mix(in oklab, var(--acp-color) 30%, var(--acp-line));
-}
-
-.acp__close svg {
-  width: 13px;
-  height: 13px;
 }
 
 /* ── Body ───────────────────────────────────────────────────────────────────── */
@@ -124,7 +75,7 @@
 }
 
 .acp__field-label {
-  font-size: 11.5px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   color: var(--text-soft, var(--text-secondary));
   text-transform: uppercase;
@@ -132,7 +83,7 @@
 }
 
 .acp__field-hint {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -148,7 +99,7 @@
   border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
   background: var(--surface-overlay, var(--neutral-white));
   color: var(--text-strong, var(--foreground));
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -195,7 +146,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12.5px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-soft, var(--text-secondary));
   cursor: pointer;
@@ -276,13 +227,13 @@
 }
 
 .acp__tool-label {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--text-strong, var(--foreground));
 }
 
 .acp__tool-group {
-  font-size: 10.5px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -300,7 +251,7 @@
   background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, var(--surface-tint)));
   border: 1px solid color-mix(in oklab, var(--acp-color) 20%, transparent);
   color: var(--text-soft, var(--text-secondary));
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 

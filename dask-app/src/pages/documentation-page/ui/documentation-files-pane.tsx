@@ -1,9 +1,8 @@
 import type { WorkspaceDocument } from "@/modules/workspace";
+import { EmptyState, PanelMenu, PanelMenuItem, StatusBadge } from "@/shared/ui";
 import {
   DOCUMENT_KIND_FILTERS,
   DOCUMENT_KIND_LABELS,
-  formatRelativeDate,
-  getCommercialDocumentStatus,
   normalizeDocumentKind,
   renderDocumentKindIcon,
   type DocumentKindFilter
@@ -32,67 +31,57 @@ export function DocumentationFilesPane({
 }: DocumentationFilesPaneProps) {
   return (
     <aside className="documentation-page__files-pane">
-      <header className="documentation-page__files-header">
-        <div>
-          <p>Documentos</p>
-          <span>{docsCount} docs</span>
-        </div>
-      </header>
-
-      {!fromCard && (
-        <div className="documentation-page__kind-filters" aria-label="Filtrar documentos por tipo">
-          {DOCUMENT_KIND_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              className={documentKindFilter === filter.value ? "is-active" : ""}
-              onClick={() => onFilterChange(filter.value)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <nav className="documentation-page__files-list">
+      <PanelMenu
+        title="Documentos"
+        count={docsCount}
+        filter={
+          !fromCard ? (
+            <>
+              {DOCUMENT_KIND_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  className={`panel-menu-filter-btn${documentKindFilter === filter.value ? " is-active" : ""}`}
+                  onClick={() => onFilterChange(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </>
+          ) : undefined
+        }
+      >
         {filteredDocs.map((doc) => {
           const docKind = normalizeDocumentKind(doc.kind);
-          const status = docKind === "wiki" ? null : getCommercialDocumentStatus(doc);
 
           return (
-            <button
+            <PanelMenuItem
               key={doc.id}
-              type="button"
-              className={`documentation-page__file-item${activeDocId === doc.id ? " documentation-page__file-item--active" : ""}`}
+              selected={activeDocId === doc.id}
               onClick={() => onSelectDoc(doc.id)}
-            >
-              <span className={`documentation-page__file-item-icon documentation-page__file-item-icon--${docKind}`}>
-                {renderDocumentKindIcon(docKind)}
-              </span>
-              <div className="documentation-page__file-item-content">
-                <div className="documentation-page__file-title-row">
-                  <strong>{doc.title}</strong>
-                  <span className={`documentation-page__kind-badge documentation-page__kind-badge--${docKind}`}>
-                    {DOCUMENT_KIND_LABELS[docKind]}
-                  </span>
-                </div>
-                <span>{`Atualizado em ${formatRelativeDate(doc.updatedAt)}`}</span>
-                {status ? (
-                  <span className={`documentation-page__commercial-status documentation-page__commercial-status--${status}`}>
-                    {status}
-                  </span>
-                ) : null}
-              </div>
-            </button>
+              leading={
+                <span className={`documentation-page__file-item-icon documentation-page__file-item-icon--${docKind}`}>
+                  {renderDocumentKindIcon(docKind)}
+                </span>
+              }
+              label={doc.title}
+              trailing={
+                <StatusBadge size="sm" kind="tag" className={`documentation-page__kind-badge documentation-page__kind-badge--${docKind}`}>
+                  {DOCUMENT_KIND_LABELS[docKind]}
+                </StatusBadge>
+              }
+            />
           );
         })}
         {!isDocsLoading && filteredDocs.length === 0 ? (
-          <div className="documentation-page__panel-empty documentation-page__panel-empty--compact shared-empty-panel">
-            <h3>Nenhuma doc encontrada</h3>
-            <p>Clique em "Nova doc" para começar.</p>
-          </div>
+          <EmptyState
+            title="Nenhuma doc encontrada"
+            description='Clique em "Nova doc" para criar a primeira referencia deste workspace.'
+            size="compact"
+            variant="card"
+          />
         ) : null}
-      </nav>
+      </PanelMenu>
     </aside>
   );
 }

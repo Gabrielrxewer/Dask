@@ -1,7 +1,7 @@
 import type { Task, TaskStatus } from "@/entities/task";
 import { getCustomerDisplayName, type Customer } from "@/modules/workspace";
 import { formatMoneyCompact } from "@/shared/lib/money";
-import { MetricCard } from "@/shared/ui";
+import { EmptyState, MetricCard } from "@/shared/ui";
 import { IconCheck, IconDoc, IconTrendUp, IconUsers } from "./leads-page-icons";
 import {
   CUSTOMER_STATUS_LABELS,
@@ -46,7 +46,6 @@ export function LeadsOverviewSection({
           subtitle={`${pipelineMetrics.activeLeads} oportunidades ativas`}
           accent="blue"
           icon={<IconTrendUp />}
-          className="leads-kpi-card"
         />
         <MetricCard
           label="Receita ganha"
@@ -54,7 +53,6 @@ export function LeadsOverviewSection({
           subtitle={`Ticket médio ${formatMoneyCompact(pipelineMetrics.avgDealSize)}`}
           accent="green"
           icon={<IconCheck />}
-          className="leads-kpi-card"
         />
         <MetricCard
           label="Taxa de conversão"
@@ -62,7 +60,6 @@ export function LeadsOverviewSection({
           subtitle={`${pipelineMetrics.linkedCount} de ${pipelineMetrics.totalLeads} leads vinculados`}
           accent="purple"
           icon={<IconUsers />}
-          className="leads-kpi-card"
         />
         <MetricCard
           label="Aprovação de propostas"
@@ -70,7 +67,6 @@ export function LeadsOverviewSection({
           subtitle={`${pipelineMetrics.approvedProposals} aprovadas de ${pipelineMetrics.proposals}`}
           accent="amber"
           icon={<IconDoc />}
-          className="leads-kpi-card"
         />
       </div>
 
@@ -118,7 +114,7 @@ export function LeadsOverviewSection({
             <span className="leads-page__eyebrow">Distribuição por status</span>
           </header>
           {statusDistribution.length === 0 ? (
-            <p className="leads-chart-card__empty">Nenhum lead registrado.</p>
+            <EmptyState className="leads-chart-card__empty" size="compact">Nenhum lead registrado.</EmptyState>
           ) : (
             <div className="leads-status-chart">
               {statusDistribution.map((status) => (
@@ -148,7 +144,7 @@ export function LeadsOverviewSection({
             <span className="leads-page__eyebrow">Origem dos leads</span>
           </header>
           {sourceBreakdown.length === 0 ? (
-            <p className="leads-chart-card__empty">Nenhuma origem registrada.</p>
+            <EmptyState className="leads-chart-card__empty" size="compact">Nenhuma origem registrada.</EmptyState>
           ) : (
             <div className="leads-status-chart">
               {sourceBreakdown.map((src) => (
@@ -199,7 +195,7 @@ export function LeadsOverviewSection({
             <span className="leads-page__eyebrow">Leads recentes</span>
           </header>
           {commercialTasks.length === 0 ? (
-            <p className="leads-chart-card__empty">Nenhum lead registrado.</p>
+            <EmptyState className="leads-chart-card__empty" size="compact">Nenhum lead registrado.</EmptyState>
           ) : (
             <ul className="leads-activity-list">
               {commercialTasks.slice(0, 6).map((task) => {
@@ -228,7 +224,7 @@ export function LeadsOverviewSection({
             <span className="leads-section-header__sub">{pipelineMetrics.activeCustomers} de {pipelineMetrics.customers}</span>
           </header>
           {customers.length === 0 ? (
-            <p className="leads-chart-card__empty">Nenhum cliente cadastrado.</p>
+            <EmptyState className="leads-chart-card__empty" size="compact">Nenhum cliente cadastrado.</EmptyState>
           ) : (
             <ul className="leads-activity-list">
               {customers.filter((c) => c.status === "active").concat(customers.filter((c) => c.status !== "active")).slice(0, 6).map((customer) => {

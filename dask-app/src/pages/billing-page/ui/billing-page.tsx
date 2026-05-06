@@ -1,4 +1,4 @@
-import { Section, WorkspaceFrame } from "@/shared/ui";
+import { InlineAlert, LoadingState, Section, WorkspaceFrame } from "@/shared/ui";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { AppShell } from "@/widgets/app-shell";
 import { BillingAccountPanel } from "./billing-account-panel";
@@ -6,7 +6,6 @@ import { BillingCatalogDeleteModal } from "./billing-catalog-delete-modal";
 import { BillingCatalogSection } from "./billing-catalog-section";
 import { BillingChargePanel } from "./billing-charge-panel";
 import { BillingHistoryPanel } from "./billing-history-panel";
-import { BillingLoader } from "./billing-loader";
 import { BillingStatusTabs, BillingTopNavigation } from "./billing-status-tabs";
 import { useBillingPageModel } from "./use-billing-page-model";
 import "./billing-page.css";
@@ -16,8 +15,13 @@ export function BillingPage() {
 
   return (
     <AppShell metrics={billing.metrics} hideSidebarBrandMark pageTitle="Cobrança" pageLabel="Financeiro">
-      <BillingLoader visible={billing.isBillingFrameLoading || billing.isOpeningOnboarding} />
-      <WorkspaceFrame className="billing-view workspace-view">
+      <WorkspaceFrame className="billing-view workspace-view" variant="dashboard" scroll="content">
+        <LoadingState
+          text="Carregando cobranca..."
+          animation="billing"
+          variant="frame"
+          visible={billing.isBillingFrameLoading || billing.isOpeningOnboarding}
+        />
         <BillingTopNavigation
           activeTab={billing.activeTab}
           pendingCount={billing.pendingItems.length}
@@ -34,14 +38,14 @@ export function BillingPage() {
         />
 
         {billing.checkoutResult === "success" ? (
-          <div className="billing-view__result billing-view__result--success">
+          <InlineAlert tone="success">
             Pagamento concluído. A Stripe confirmou o checkout com sucesso.
-          </div>
+          </InlineAlert>
         ) : null}
         {billing.checkoutResult === "cancel" ? (
-          <div className="billing-view__result billing-view__result--warning">
+          <InlineAlert tone="warning">
             Checkout cancelado. Revise os dados e tente novamente quando quiser.
-          </div>
+          </InlineAlert>
         ) : null}
 
         <Section

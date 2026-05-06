@@ -1,4 +1,4 @@
-import { StatusBadge, Tabs, WorkspaceTopNavigation, type TabsItem } from "@/shared/ui";
+import { ModuleTabs, StatusBadge, WorkspaceTopNavigation, type ModuleTabsItem } from "@/shared/ui";
 import type { ActiveTab } from "./billing-page.model";
 
 interface BillingNavigationProps {
@@ -24,8 +24,8 @@ function buildBillingTabs({
   badgeClassName: string;
   countClassName: string;
   lockedClassName?: string;
-}): Array<TabsItem<ActiveTab>> {
-  const items: Array<TabsItem<ActiveTab>> = [
+}): Array<ModuleTabsItem<ActiveTab>> {
+  const items: Array<ModuleTabsItem<ActiveTab>> = [
     {
       id: "conta",
       label: "Conta",
@@ -96,7 +96,7 @@ export function BillingStatusTabs({
   onTabChange
 }: BillingNavigationProps) {
   return (
-    <Tabs
+    <ModuleTabs
       value={activeTab}
       items={buildBillingTabs({
         pendingCount,
@@ -113,6 +113,7 @@ export function BillingStatusTabs({
       itemClassName="billing-view__tab"
       activeItemClassName="is-active"
       lockedItemClassName="is-locked"
+      variant="underline"
     />
   );
 }

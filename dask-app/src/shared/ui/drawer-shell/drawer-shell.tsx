@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import { AppIcon } from "@/shared/ui/icon";
 import { ModalShell } from "@/shared/ui/modal-shell";
@@ -24,6 +24,7 @@ export interface DrawerShellFrameProps {
   errorClassName?: string;
   footerClassName?: string;
   closeButtonContent?: ReactNode;
+  style?: CSSProperties;
 }
 
 export interface DrawerShellProps extends DrawerShellFrameProps {
@@ -50,10 +51,11 @@ export function DrawerShellFrame({
   bodyClassName,
   errorClassName,
   footerClassName,
-  closeButtonContent
+  closeButtonContent,
+  style
 }: DrawerShellFrameProps) {
   return (
-    <div className={cn("shared-drawer-shell__frame", className)}>
+    <div className={cn("shared-drawer-shell__frame", className)} style={style}>
       <div className={cn("shared-drawer-shell__header", headerClassName)}>
         {leading}
         <div className={cn("shared-drawer-shell__title", titleWrapperClassName)}>

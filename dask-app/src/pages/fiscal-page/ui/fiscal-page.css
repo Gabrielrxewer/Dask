@@ -60,6 +60,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
   margin-bottom: 0;
 }
 
@@ -67,6 +68,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: auto;
+  min-width: auto;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -143,29 +146,6 @@
   background: linear-gradient(90deg, var(--accent) 0%, var(--decorative-cyan) 100%);
 }
 
-.fiscal-view__feedback {
-  margin: 10px 10px 0;
-  border: 1px solid var(--fiscal-line);
-  border-radius: var(--radius-xs);
-  padding: 10px 12px;
-  font-size: var(--font-size-sm);
-  font-weight: 760;
-  background: var(--fiscal-surface);
-  box-shadow: var(--fiscal-shadow);
-}
-
-.fiscal-view__feedback--ok {
-  border-color: color-mix(in oklab, var(--success) 30%, var(--fiscal-line));
-  background: color-mix(in oklab, var(--success-soft) 76%, var(--surface-1));
-  color: color-mix(in oklab, var(--success) 84%, var(--text-strong));
-}
-
-.fiscal-view__feedback--error {
-  border-color: color-mix(in oklab, var(--danger) 32%, var(--fiscal-line));
-  background: color-mix(in oklab, var(--danger-soft) 78%, var(--surface-1));
-  color: color-mix(in oklab, var(--danger) 86%, var(--text-strong));
-}
-
 .fiscal-view__summary-grid,
 .fiscal-view__inline-grid {
   display: grid;
@@ -173,46 +153,19 @@
   gap: 10px;
 }
 
-.fiscal-view__summary-card {
-  border: 1px solid color-mix(in oklab, var(--fiscal-line) 86%, transparent);
-  border-radius: var(--radius-xs);
-  background:
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 18%, transparent) 0%, transparent 42%),
-    var(--fiscal-field);
+.fiscal-view__summary-grid .shared-metric-card {
+  border-color: color-mix(in oklab, var(--fiscal-line) 78%, transparent);
   box-shadow: var(--fiscal-shadow);
-  padding: 14px;
+}
+
+.fiscal-view__form-card {
   display: grid;
-  gap: 7px;
-  align-content: start;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  gap: 12px;
 }
 
-.fiscal-view__summary-card:hover {
-  border-color: color-mix(in oklab, var(--accent) 24%, var(--fiscal-line));
-  box-shadow: var(--fiscal-shadow-hover);
-  transform: translateY(-1px);
-}
-
-.fiscal-view__summary-label {
-  color: var(--fiscal-text-muted);
-  font-size: var(--font-size-2xs);
-  font-weight: 860;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.fiscal-view__summary-card strong {
-  color: var(--fiscal-text);
-  font-size: 1.42rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.fiscal-view__summary-card p {
-  margin: 0;
-  color: var(--fiscal-text-soft);
-  font-size: var(--font-size-sm);
-  line-height: 1.45;
+.fiscal-view__form-card .shared-section-card__content {
+  display: grid;
+  gap: 12px;
 }
 
 .fiscal-view__field {
@@ -313,30 +266,6 @@
   max-height: 100%;
 }
 
-.fiscal-view__modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.fiscal-view__modal-header h2 {
-  margin: 0;
-  color: var(--fiscal-text);
-  font-size: var(--font-size-title-sm);
-  font-weight: 900;
-}
-
-.fiscal-view__modal-header button {
-  border: 1px solid color-mix(in oklab, var(--fiscal-line) 76%, transparent);
-  background: var(--control-surface);
-  color: var(--fiscal-text-soft);
-  border-radius: 10px;
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-}
-
 .fiscal-view__modal-content {
   margin-top: 10px;
   display: grid;
@@ -350,8 +279,7 @@
   font-weight: 860;
 }
 
-.fiscal-view__modal-content p,
-.fiscal-view__empty {
+.fiscal-view__modal-content p {
   margin: 0;
   color: var(--fiscal-text-soft);
   font-size: var(--font-size-sm);
@@ -387,10 +315,8 @@
   border-color: transparent !important;
 }
 
-.app-theme[data-theme="dark"] .fiscal-view__feedback,
 .app-theme[data-theme="dark"] .fiscal-view__summary-card,
 .app-theme[data-theme="dark"] .fiscal-view__table,
-.app-theme[data-theme="dark"] .fiscal-view__modal-header button,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-input,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-select,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-textarea {
@@ -398,16 +324,6 @@
   background: var(--surface-raised) !important;
   color: var(--text-strong) !important;
   box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .fiscal-view__feedback--ok {
-  background: color-mix(in oklab, var(--success) 16%, var(--panel)) !important;
-  color: color-mix(in oklab, var(--success) 72%, var(--text-strong)) !important;
-}
-
-.app-theme[data-theme="dark"] .fiscal-view__feedback--error {
-  background: color-mix(in oklab, var(--danger) 16%, var(--panel)) !important;
-  color: color-mix(in oklab, var(--danger) 72%, var(--text-strong)) !important;
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__header {
@@ -478,36 +394,6 @@
   margin-top: 0;
 }
 
-.fiscal-view__portal-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 48px 24px;
-  border: 1px dashed color-mix(in oklab, var(--fiscal-line) 72%, transparent);
-  border-radius: var(--radius-xs);
-  background: color-mix(in oklab, var(--fiscal-surface) 60%, transparent);
-  text-align: center;
-}
-
-.fiscal-view__portal-empty-icon {
-  color: var(--fiscal-text-muted);
-  opacity: 0.7;
-}
-
-.fiscal-view__portal-empty p {
-  margin: 0;
-  color: var(--fiscal-text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-}
-
-.fiscal-view__portal-empty span {
-  color: var(--fiscal-text-muted);
-  font-size: var(--font-size-xs);
-}
-
 .fiscal-view__portal-no-file {
   color: var(--fiscal-text-muted);
   font-size: var(--font-size-xs);
@@ -519,11 +405,6 @@
   border-color: var(--line) !important;
   background: var(--surface-raised) !important;
   box-shadow: var(--shadow-1);
-}
-
-.app-theme[data-theme="dark"] .fiscal-view__portal-empty {
-  border-color: color-mix(in srgb, var(--border-default) 60%, transparent) !important;
-  background: color-mix(in oklab, var(--surface-muted) 60%, transparent) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */

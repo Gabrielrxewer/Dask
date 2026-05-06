@@ -15,15 +15,102 @@
   overflow: hidden;
 }
 
-.lead-flow-page__editor {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
+/* ── Nav header pill ─────────────────────────────────────────────────────────── */
+
+.lf-lead-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-default);
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
-.lead-flow-page__flow-canvas.flow-canvas-ui {
+/* ── StudioLayout integration ────────────────────────────────────────────────── */
+
+.lead-flow-page .studio-layout {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.lead-flow-page .studio-layout__sidebar {
+  background: var(--lead-flow-surface-soft);
+  border-color: var(--lead-flow-line);
+}
+
+/* ── PanelMenu theming for lead flow ─────────────────────────────────────────── */
+
+.lead-flow-page .panel-menu {
+  --pm-accent: var(--lead-flow-accent);
+  --pm-line: var(--lead-flow-line);
+  --pm-surface: var(--lead-flow-surface-soft);
+  --pm-surface-muted: color-mix(in oklab, var(--lead-flow-surface-soft) 60%, var(--lead-flow-surface));
+  --pm-hover-bg: color-mix(in oklab, var(--lead-flow-accent) 8%, var(--lead-flow-surface-soft));
+  --pm-selected-bg: color-mix(in oklab, var(--lead-flow-accent) 10%, var(--lead-flow-surface-soft));
+  --pm-selected-border: color-mix(in oklab, var(--lead-flow-accent) 34%, var(--lead-flow-line));
+}
+
+/* ── Lead avatar ─────────────────────────────────────────────────────────────── */
+
+.lf-lead-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--lead-flow-accent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--accent-soft) 42%, var(--surface-1));
+  color: color-mix(in oklab, var(--accent-strong) 84%, var(--lead-flow-text));
+  font-size: var(--font-size-3xs);
+  font-weight: 920;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* ── Stage dot ───────────────────────────────────────────────────────────────── */
+
+.lf-stage-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Sidebar footer ──────────────────────────────────────────────────────────── */
+
+.lf-sidebar-foot {
+  display: grid;
+  gap: 8px;
+}
+
+.lf-sidebar-foot > div {
+  display: grid;
+  gap: 2px;
+}
+
+.lf-sidebar-foot span {
+  color: var(--lead-flow-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.lf-sidebar-foot strong {
+  overflow: hidden;
+  color: var(--lead-flow-text);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Canvas ──────────────────────────────────────────────────────────────────── */
+
+.lf-canvas.flow-canvas-ui {
   --agents-accent: var(--lead-flow-accent);
   --agents-accent-strong: color-mix(in oklab, var(--lead-flow-accent) 78%, var(--lead-flow-text));
   height: 100%;
@@ -34,201 +121,7 @@
     color-mix(in oklab, var(--surface-section-content) 86%, var(--surface-1));
 }
 
-.lead-flow-page__flow-canvas .flow-canvas-ui__rail {
-  top: 12px;
-  bottom: 12px;
-}
-
-.lead-flow-page__flow-canvas .flow-canvas-ui__sidebar {
-  width: 258px;
-}
-
-.lead-flow-page__flow-canvas .flow-canvas-ui__rail {
-  width: 272px;
-  transform: translateX(calc(-100% + 24px));
-}
-
-.lead-flow-page__flow-canvas .flow-canvas-ui__rail--open {
-  transform: translateX(12px);
-}
-
-.lead-flow-page__selection-summary {
-  position: absolute;
-  z-index: 5;
-  top: 14px;
-  right: 16px;
-  display: grid;
-  gap: 3px;
-  min-width: 240px;
-  max-width: min(420px, calc(100% - 330px));
-  padding: 12px 14px;
-  border: 1px solid color-mix(in oklab, var(--lead-flow-line) 80%, transparent);
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
-  box-shadow: 0 14px 28px color-mix(in oklab, var(--text-strong) 8%, transparent);
-  backdrop-filter: blur(14px);
-  pointer-events: none;
-}
-
-.lead-flow-page__selection-summary span,
-.lead-flow-page__sidebar-foot span,
-.lead-flow-page__search span {
-  color: var(--lead-flow-muted);
-  font-size: var(--font-size-2xs);
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.lead-flow-page__selection-summary strong {
-  overflow: hidden;
-  color: var(--lead-flow-text);
-  font-size: var(--font-size-sm);
-  font-weight: 920;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lead-flow-page__selection-summary small {
-  color: var(--lead-flow-soft);
-  font-size: var(--font-size-xs);
-  font-weight: 760;
-}
-
-.lead-flow-page__search {
-  display: grid;
-  gap: 6px;
-}
-
-.lead-flow-page__search .shared-input {
-  min-height: 38px;
-  border-color: var(--lead-flow-line);
-  border-radius: 8px;
-  background: var(--lead-flow-surface-soft);
-  color: var(--lead-flow-text);
-  font-size: var(--font-size-xs);
-}
-
-.lead-flow-page__lead-list {
-  display: grid;
-  align-content: start;
-  gap: 7px;
-  min-height: 0;
-}
-
-.lead-flow-page__lead-card {
-  --lead-card-color: var(--lead-flow-accent);
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 8px;
-  width: 100%;
-  min-height: 74px;
-  padding: 9px;
-  border: 1px solid color-mix(in oklab, var(--lead-flow-line) 84%, transparent);
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 120ms ease;
-}
-
-.lead-flow-page__lead-card:hover,
-.lead-flow-page__lead-card--selected {
-  border-color: color-mix(in oklab, var(--lead-flow-accent) 34%, var(--lead-flow-line));
-  background: color-mix(in oklab, var(--lead-flow-accent) 8%, var(--surface-raised));
-}
-
-.lead-flow-page__lead-card:hover {
-  transform: translateY(-1px);
-}
-
-.lead-flow-page__lead-card--selected {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lead-flow-accent) 26%, transparent);
-}
-
-.lead-flow-page__lead-avatar {
-  display: grid;
-  place-items: center;
-  grid-row: span 2;
-  width: 34px;
-  height: 34px;
-  border: 2px solid var(--lead-flow-accent);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--accent-soft) 42%, var(--surface-1));
-  color: color-mix(in oklab, var(--accent-strong) 84%, var(--lead-flow-text));
-  font-size: 10px;
-  font-weight: 920;
-  letter-spacing: 0.04em;
-}
-
-.lead-flow-page__lead-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.lead-flow-page__lead-copy strong {
-  overflow: hidden;
-  color: var(--lead-flow-text);
-  font-size: var(--font-size-xs);
-  font-weight: 880;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lead-flow-page__lead-copy span,
-.lead-flow-page__lead-meta {
-  overflow: hidden;
-  color: var(--lead-flow-soft);
-  font-size: 11px;
-  font-weight: 680;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lead-flow-page__lead-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  grid-column: 2;
-  font-weight: 800;
-}
-
-.lead-flow-page__stage-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.lead-flow-page__empty {
-  margin: 0;
-  padding: 12px;
-  border: 1px dashed var(--lead-flow-line);
-  border-radius: 8px;
-  color: var(--lead-flow-soft);
-  font-size: var(--font-size-xs);
-}
-
-.lead-flow-page__sidebar-foot {
-  display: grid;
-  gap: 8px;
-}
-
-.lead-flow-page__sidebar-foot > div {
-  display: grid;
-  gap: 2px;
-}
-
-.lead-flow-page__sidebar-foot strong {
-  overflow: hidden;
-  color: var(--lead-flow-text);
-  font-size: var(--font-size-xs);
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* ── Lead flow nodes ─────────────────────────────────────────────────────────── */
 
 .lead-flow-node {
   position: relative;
@@ -266,31 +159,14 @@
   text-transform: uppercase;
 }
 
+/* ── Dark mode ───────────────────────────────────────────────────────────────── */
+
 .app-theme[data-theme="dark"] .lead-flow-page {
   --lead-flow-line: color-mix(in oklab, var(--line) 86%, transparent);
   --lead-flow-surface: var(--surface-raised);
   --lead-flow-surface-soft: var(--surface-muted);
 }
 
-.app-theme[data-theme="dark"] .lead-flow-page__flow-canvas.flow-canvas-ui {
+.app-theme[data-theme="dark"] .lf-canvas.flow-canvas-ui {
   background: color-mix(in oklab, var(--panel) 82%, var(--surface-raised));
-}
-
-.app-theme[data-theme="dark"] .lead-flow-page__selection-summary {
-  background: color-mix(in oklab, var(--surface-raised) 90%, transparent);
-  box-shadow: var(--shadow-1);
-}
-
-@media (max-width: 900px) {
-  .lead-flow-page__selection-summary {
-    display: none;
-  }
-
-  .lead-flow-page__flow-canvas .flow-canvas-ui__sidebar {
-    width: 232px;
-  }
-
-  .lead-flow-page__flow-canvas .flow-canvas-ui__rail {
-    width: 246px;
-  }
 }

@@ -67,3 +67,61 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ── Shared top navigation border — applies when inside workspace top nav bar ── */
+
+.workspace__top-nav:has(.shared-top-navigation) {
+  position: relative;
+  z-index: 2;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
+}
+
+.app-theme[data-theme="dark"] .workspace__top-nav:has(.shared-top-navigation) {
+  border-bottom-color: color-mix(in srgb, var(--border-strong) 82%, transparent);
+}
+
+.shared-top-navigation {
+  padding: 4px 0;
+}
+
+/* ── StudioNavHeader — entity editor / static title mode ────────────────────── */
+
+.studio-nav-header {
+  align-items: center;
+  gap: 10px;
+}
+
+.studio-nav-header__identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.studio-nav-header__title {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.studio-nav-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.studio-nav-header__status {
+  display: flex;
+  align-items: center;
+}
+
+.studio-nav-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}

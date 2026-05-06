@@ -1,5 +1,5 @@
 import type { ConnectCatalogItem } from "@/modules/billing";
-import { Button, EmptyState } from "@/shared/ui";
+import { Button, EmptyState, SectionHeader } from "@/shared/ui";
 import { BillingCatalogForm, type BillingCatalogFormProps } from "./billing-catalog-form";
 import {
   CATALOG_BILLING_LABEL,
@@ -35,17 +35,15 @@ export function BillingCatalogSection({
 }: BillingCatalogSectionProps) {
   return (
     <div className="billing-view__panel billing-view__panel--catalog" role="tabpanel">
-      <div className="billing-view__panel-head">
-        <div>
-          <h3 className="billing-view__panel-title">Catálogo</h3>
-          <p className="billing-view__panel-subtitle">
-            Produtos e serviços prontos para cobrar, orçar e contratar.
-          </p>
-        </div>
-        <Button type="button" variant="outline" onClick={onToggleCatalogForm}>
-          {isCatalogFormOpen ? "Cancelar" : "+ Novo item"}
-        </Button>
-      </div>
+      <SectionHeader
+        title="Catálogo"
+        description="Produtos e serviços prontos para cobrar, orçar e contratar."
+        action={
+          <Button type="button" variant="outline" onClick={onToggleCatalogForm}>
+            {isCatalogFormOpen ? "Cancelar" : "+ Novo item"}
+          </Button>
+        }
+      />
 
       {catalogCreatedNotice ? (
         <div className="billing-view__notice billing-view__notice--success">

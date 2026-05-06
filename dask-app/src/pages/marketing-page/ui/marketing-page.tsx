@@ -17,7 +17,7 @@ export function MarketingPage() {
 
   return (
     <AppShell metrics={marketing.metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
-      <WorkspaceFrame className="marketing-page">
+      <WorkspaceFrame className="marketing-page" variant="dashboard" scroll="none">
         <LoadingState
           text="Carregando marketing..."
           animation="marketing"

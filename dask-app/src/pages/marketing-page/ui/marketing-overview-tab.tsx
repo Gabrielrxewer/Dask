@@ -1,4 +1,4 @@
-import { Button, StatusBadge } from "@/shared/ui";
+import { Button, EmptyState, StatusBadge } from "@/shared/ui";
 import type {
   MarketingAudienceContact,
   MarketingAutomationFlow,
@@ -132,10 +132,12 @@ export function MarketingOverviewTab({
                           </div>
                         ))
                       ) : (
-                        <div className="mkt-empty-inline">
-                          <strong>Dados insuficientes</strong>
-                          <span>As leituras automáticas aparecem depois dos primeiros eventos de campanha.</span>
-                        </div>
+                        <EmptyState
+                          className="mkt-empty-inline"
+                          title="Dados insuficientes"
+                          description="As leituras automáticas aparecem depois dos primeiros eventos de campanha."
+                          size="compact"
+                        />
                       )}
                     </div>
                   </article>
@@ -165,10 +167,12 @@ export function MarketingOverviewTab({
                         </button>
                       ))}
                       {scheduledCampaigns.length === 0 ?(
-                        <div className="mkt-empty-inline">
-                          <strong>Sem campanhas agendadas</strong>
-                          <span>Quando houver uma data de envio, ela aparece aqui.</span>
-                        </div>
+                        <EmptyState
+                          className="mkt-empty-inline"
+                          title="Sem campanhas agendadas"
+                          description="Quando houver uma data de envio, ela aparece aqui."
+                          size="compact"
+                        />
                       ) : null}
                     </div>
                   </article>
@@ -192,10 +196,12 @@ export function MarketingOverviewTab({
                         </button>
                       ))}
                       {signals.length === 0 ?(
-                        <div className="mkt-empty-inline">
-                          <strong>Nenhum sinal recente</strong>
-                          <span>O radar mostra eventos quando houver atividade de campanhas.</span>
-                        </div>
+                        <EmptyState
+                          className="mkt-empty-inline"
+                          title="Nenhum sinal recente"
+                          description="O radar mostra eventos quando houver atividade de campanhas."
+                          size="compact"
+                        />
                       ) : null}
                     </div>
                   </article>
@@ -238,7 +244,9 @@ export function MarketingOverviewTab({
                         <span className="mkt-perf-table__impact"><span className="mkt-badge mkt-badge--default">Abrir</span></span>
                       </button>
                     ))}
-                    {campaigns.length === 0 ?<div className="mkt-perf-table__empty">Nenhuma campanha criada.</div> : null}
+                    {campaigns.length === 0 ?(
+                      <EmptyState className="mkt-perf-table__empty" size="compact">Nenhuma campanha criada.</EmptyState>
+                    ) : null}
                   </div>
                 </article>
               </div>

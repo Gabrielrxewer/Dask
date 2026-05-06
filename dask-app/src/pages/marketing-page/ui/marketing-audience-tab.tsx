@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
   Button,
+  EmptyState,
   FormField,
+  ModuleTabs,
   ResourceTable,
   Select,
   TextInput
@@ -16,6 +18,11 @@ import {
   type SegmentFormState,
   type SegmentPreviewState
 } from "./marketing-page.model";
+
+const SEGMENT_KIND_ITEMS: Array<{ id: SegmentFormState["kind"]; label: string }> = [
+  { id: "DYNAMIC", label: "Dinamico" },
+  { id: "STATIC", label: "Estatico" }
+];
 
 interface MarketingAudienceTabProps {
   audience: MarketingAudienceContact[];
@@ -93,10 +100,12 @@ export function MarketingAudienceTab({
                       rowKey={(entry) => entry.lead.id}
                       responsiveMinWidth="920px"
                       emptyState={
-                        <div className="mkt-table-empty">
-                          <strong>Nenhum contato encontrado</strong>
-                          <span>Conecte leads/clientes ao workspace ou ajuste a busca para criar segmentos de marketing.</span>
-                        </div>
+                        <EmptyState
+                          className="mkt-table-empty"
+                          title="Nenhum contato encontrado"
+                          description="Conecte leads/clientes ao workspace ou ajuste a busca para criar segmentos de marketing."
+                          size="compact"
+                        />
                       }
                       columns={[
                         {
@@ -163,22 +172,14 @@ export function MarketingAudienceTab({
                       <TextInput value={segmentFilterRule.value} onChange={(event) => updateSegmentFilterRule({ value: event.target.value })} />
                     </div>
 
-                    <div className="mkt-segment-builder__mode">
-                      <button
-                        type="button"
-                        className={`mkt-inbox__filter-chip${segmentForm.kind === "DYNAMIC" ?" mkt-inbox__filter-chip--active" : ""}`}
-                        onClick={() => setSegmentForm((current) => ({ ...current, kind: "DYNAMIC" }))}
-                      >
-                        Dinâmico
-                      </button>
-                      <button
-                        type="button"
-                        className={`mkt-inbox__filter-chip${segmentForm.kind === "STATIC" ?" mkt-inbox__filter-chip--active" : ""}`}
-                        onClick={() => setSegmentForm((current) => ({ ...current, kind: "STATIC" }))}
-                      >
-                        Estático
-                      </button>
-                    </div>
+                    <ModuleTabs
+                      value={segmentForm.kind}
+                      items={SEGMENT_KIND_ITEMS}
+                      onChange={(kind) => setSegmentForm((current) => ({ ...current, kind }))}
+                      className="mkt-segment-builder__mode"
+                      variant="pill"
+                      ariaLabel="Tipo de segmento"
+                    />
 
                     <Button onClick={() => void createSegment()} disabled={isSubmitting}>Criar segmento</Button>
 

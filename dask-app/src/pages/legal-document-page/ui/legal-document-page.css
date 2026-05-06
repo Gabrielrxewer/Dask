@@ -162,15 +162,6 @@
   grid-column: 1 / -1;
 }
 
-.app-theme[data-theme="dark"] .legal-page__updated {
-  border-color: color-mix(in srgb, var(--primary) 32%, transparent);
-  background: color-mix(in srgb, var(--primary) 72%, transparent);
-  color: var(--accent-strong);
-  box-shadow:
-    0 12px 24px color-mix(in srgb, var(--neutral-black) 16%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
-}
-
 @media (max-width: 1120px) {
   .legal-page__guide-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));

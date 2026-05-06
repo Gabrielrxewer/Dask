@@ -6,7 +6,11 @@
 @import "./styles/cards.css";
 @import "./styles/skeleton.css";
 @import "./styles/tabs.css";
+@import "./styles/module-tabs.css";
+@import "./styles/page-toolbar.css";
 @import "./styles/page-header.css";
 @import "./styles/data-table.css";
 @import "./styles/user-avatar.css";
 @import "./styles/workspace-view.css";
+@import "./styles/page-template.css";
+@import "./styles/studio-layout.css";

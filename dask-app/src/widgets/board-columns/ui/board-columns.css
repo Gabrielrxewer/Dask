@@ -114,14 +114,9 @@
 }
 
 .board-column__empty {
-  margin: 0;
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius-xs);
-  background: var(--surface-1);
-  color: var(--text-secondary);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  padding: 12px;
+  max-width: none;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .board-delete-dialog {
@@ -184,40 +179,6 @@
   justify-content: center;
   gap: 12px;
   margin-top: 24px;
-}
-
-.board-delete-dialog__confirm {
-  min-width: 138px;
-  height: 42px;
-  padding: 0 18px;
-  border: 1px solid var(--danger-border);
-  border-radius: 12px;
-  background: linear-gradient(180deg, var(--danger) 0%, color-mix(in oklab, var(--danger) 78%, var(--danger)) 100%);
-  color: var(--text-inverse);
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 12px 24px color-mix(in oklab, var(--danger) 24%, transparent);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
-}
-
-.board-delete-dialog__confirm:hover:not(:disabled),
-.board-delete-dialog__confirm:focus-visible {
-  transform: translateY(-1px);
-  filter: saturate(1.06);
-  box-shadow: 0 16px 28px color-mix(in oklab, var(--danger) 30%, transparent);
-}
-
-.board-delete-dialog__confirm:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--danger) 28%, transparent);
-  outline-offset: 2px;
-}
-
-.board-delete-dialog__confirm:disabled {
-  opacity: 0.62;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: 0 8px 18px color-mix(in oklab, var(--danger) 18%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-columns-wrap {
@@ -326,14 +287,10 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__empty {
-  padding: 11px 12px;
-  border: 0;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--neutral-white) 84%, transparent);
-  color: var(--text-secondary);
-  font-size: 0.74rem;
-  line-height: 1.42;
-  box-shadow: inset 0 0 0 1px var(--border-default);
+  --shared-empty-panel-bg: color-mix(in srgb, var(--neutral-white) 84%, transparent);
+  --shared-empty-panel-border: 1px solid var(--border-default);
+  --shared-empty-panel-radius: 14px;
+  --shared-empty-panel-padding: 11px 12px;
 }
 
 .app-theme[data-theme="dark"] .board-columns-wrap {
@@ -442,14 +399,10 @@
 }
 
 .app-theme[data-theme="dark"] .board-column__empty {
-  padding: 11px 12px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--surface-1);
-  color: var(--text-secondary);
-  font-size: 0.74rem;
-  line-height: 1.42;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 58%, transparent);
+  --shared-empty-panel-bg: var(--surface-1);
+  --shared-empty-panel-border: 1px solid color-mix(in srgb, var(--primary) 58%, transparent);
+  --shared-empty-panel-radius: 14px;
+  --shared-empty-panel-padding: 11px 12px;
 }
 
 .app-theme[data-theme="dark"] .board-delete-dialog {
@@ -505,8 +458,7 @@
     flex-direction: column-reverse;
   }
 
-  .board-delete-dialog__actions .shared-button,
-  .board-delete-dialog__confirm {
+  .board-delete-dialog__actions .shared-button {
     width: 100%;
   }
 }

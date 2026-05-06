@@ -2,7 +2,7 @@ import type { ChangeEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { DocumentKind, WorkspaceDocument, WorkspaceDocumentMetadata } from "@/modules/workspace";
-import { AppIcon, Button, TextInput, Textarea } from "@/shared/ui";
+import { AppIcon, Button, EmptyState, StatusBadge, TextInput, Textarea } from "@/shared/ui";
 import {
   DOCUMENT_KIND_DESCRIPTIONS,
   DOCUMENT_KIND_LABELS,
@@ -12,6 +12,13 @@ import {
   markdownUrlTransform,
   type EditorViewMode
 } from "./documentation-page.local";
+
+function commercialStatusKind(status: ReturnType<typeof getCommercialDocumentStatus>) {
+  if (status === "approved" || status === "accepted" || status === "signed") return "approved";
+  if (status === "sent" || status === "viewed") return "sent";
+  if (status === "rejected") return "error";
+  return "draft";
+}
 
 interface DocumentationEditorPanelProps {
   activeDoc: WorkspaceDocument | null;
@@ -70,13 +77,17 @@ export function DocumentationEditorPanel({
         <>
           <header className="documentation-page__editor-header">
             <div className="documentation-page__editor-kind-row">
-              <span className={`documentation-page__kind-badge documentation-page__kind-badge--${activeDocKind}`}>
+              <StatusBadge size="sm" kind="tag" className={`documentation-page__kind-badge documentation-page__kind-badge--${activeDocKind}`}>
                 {DOCUMENT_KIND_LABELS[activeDocKind]}
-              </span>
+              </StatusBadge>
               {activeDocKind !== "wiki" ? (
-                <span className={`documentation-page__commercial-status documentation-page__commercial-status--${getCommercialDocumentStatus(activeDoc)}`}>
+                <StatusBadge
+                  size="sm"
+                  kind={commercialStatusKind(getCommercialDocumentStatus(activeDoc))}
+                  className={`documentation-page__commercial-status documentation-page__commercial-status--${getCommercialDocumentStatus(activeDoc)}`}
+                >
                   {getCommercialDocumentStatus(activeDoc)}
-                </span>
+                </StatusBadge>
               ) : null}
               <p>{DOCUMENT_KIND_DESCRIPTIONS[activeDocKind]}</p>
             </div>
@@ -114,12 +125,12 @@ export function DocumentationEditorPanel({
                       onChange={(event) => onUpdateProposalMetadata({ clientLogoUrl: event.target.value })}
                       placeholder="Cole a URL da imagem ou envie um arquivo"
                     />
-                    <button type="button" onClick={onChooseClientLogoFile}>
+                    <Button type="button" variant="outline" size="sm" onClick={onChooseClientLogoFile}>
                       Adicionar/Substituir
-                    </button>
-                    <button type="button" onClick={onRemoveClientLogo} disabled={!activeDoc.metadata?.clientLogoUrl}>
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={onRemoveClientLogo} disabled={!activeDoc.metadata?.clientLogoUrl}>
                       Remover
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </section>
@@ -294,10 +305,11 @@ export function DocumentationEditorPanel({
           </footer>
         </>
       ) : (
-        <div className="documentation-page__panel-empty shared-empty-panel">
-          <h3>Selecione uma doc</h3>
-          <p>Crie uma nova doc ou selecione uma existente para começar a editar.</p>
-        </div>
+        <EmptyState
+          className="documentation-page__panel-empty"
+          title="Selecione uma doc"
+          description="Crie uma nova doc ou selecione uma existente para começar a editar."
+        />
       )}
     </section>
   );

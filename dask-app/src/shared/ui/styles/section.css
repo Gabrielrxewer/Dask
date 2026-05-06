@@ -51,10 +51,112 @@
 
 .shared-empty-state {
   margin: 0;
-  border: 1px dashed color-mix(in oklab, var(--line-contrast) 82%, transparent);
-  background: var(--surface-overlay);
+  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 34%),
+    var(--surface-overlay);
   color: var(--text-soft);
-  border-radius: 18px;
+  border-radius: var(--radius-xs);
   padding: var(--space-5);
   font-weight: 700;
+  box-shadow: var(--shadow-soft);
+}
+
+.shared-empty-state--structured {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.shared-empty-state--compact {
+  max-width: min(520px, calc(100vw - 80px));
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  box-shadow: none;
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  backdrop-filter: blur(8px);
+}
+
+.shared-empty-state--centered,
+.shared-empty-state--table,
+.shared-empty-state--canvas {
+  min-height: 180px;
+}
+
+.shared-empty-state--card {
+  background: var(--surface-card);
+}
+
+.shared-empty-state--table {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.shared-empty-state--canvas {
+  min-height: 280px;
+  border-style: dashed;
+}
+
+.shared-empty-state--error {
+  border-color: color-mix(in oklab, var(--danger) 24%, var(--line));
+  background: color-mix(in oklab, var(--danger-bg) 54%, var(--surface-overlay));
+}
+
+.shared-empty-state--permission {
+  border-color: color-mix(in oklab, var(--warning) 24%, var(--line));
+  background: color-mix(in oklab, var(--warning-bg) 58%, var(--surface-overlay));
+}
+
+.shared-empty-state--loading {
+  color: var(--text-muted);
+}
+
+.shared-empty-state__icon {
+  display: inline-flex;
+  color: var(--text-muted);
+  opacity: 0.72;
+}
+
+.shared-empty-state__title {
+  color: var(--text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.shared-empty-state__description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.shared-empty-state__actions,
+.shared-empty-state__action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.shared-empty-state--compact .shared-empty-state__title {
+  max-width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-empty-state--compact .shared-empty-state__description {
+  max-width: 100%;
 }

@@ -52,6 +52,41 @@
   color: var(--text-strong);
 }
 
+.shared-button--secondary {
+  border-color: var(--button-neutral-border);
+  background: var(--button-neutral-bg);
+  color: var(--button-neutral-text);
+}
+
+.shared-button--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.shared-button--ghost:hover {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.shared-button--subtle {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.shared-button--danger {
+  border-color: transparent;
+  background: var(--danger);
+  color: var(--neutral-white);
+}
+
+.shared-button--danger:hover {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--danger) 86%, var(--neutral-black));
+  color: var(--neutral-white);
+}
+
 .shared-button--outline.active {
   border-color: var(--selected-border);
   background: var(--selected-bg);
@@ -67,6 +102,16 @@
 
 .shared-button--md {
   min-height: 48px;
+}
+
+.shared-button--icon {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
 }
 
 .shared-button:disabled {

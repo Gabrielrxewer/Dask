@@ -182,7 +182,7 @@
 
 .list-view__type {
   border-radius: 5px;
-  border: 1px solid var(--list-type-border, transparent);
+  border-color: var(--list-type-border, transparent);
   background: var(--list-type-background, var(--info-bg));
   color: var(--list-type-text, var(--text-primary));
   font-size: 0.63rem;
@@ -318,17 +318,10 @@
 }
 
 .list-view__action-btn {
-  border: 1px solid color-mix(in oklab, var(--list-line) 60%, transparent);
-  background: var(--list-surface);
-  color: var(--list-text-soft);
   font-size: 0.68rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
+  min-height: 28px;
+  padding: 0 8px;
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-  letter-spacing: 0.01em;
 }
 
 .list-view__action-btn:hover {
@@ -341,40 +334,6 @@
   border-color: transparent !important;
   background: var(--surface-raised) !important;
   box-shadow: none;
-}
-
-.app-theme:not([data-theme="dark"]) .list-view {
-  position: relative;
-  isolation: isolate;
-}
-
-.app-theme:not([data-theme="dark"]) .list-view::before,
-.app-theme:not([data-theme="dark"]) .list-view::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  border-radius: 999px;
-  filter: blur(20px);
-  z-index: 0;
-}
-
-.app-theme:not([data-theme="dark"]) .list-view::before {
-  inset: 60px auto auto -42px;
-  width: 132px;
-  height: 132px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 14%, transparent) 0%, color-mix(in srgb, var(--primary) 3%, transparent) 58%, transparent 76%);
-}
-
-.app-theme:not([data-theme="dark"]) .list-view::after {
-  inset: auto -40px 15% auto;
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 12%, transparent) 0%, color-mix(in srgb, var(--brand-indigo) 3%, transparent) 56%, transparent 76%);
-}
-
-.app-theme:not([data-theme="dark"]) .list-view > * {
-  position: relative;
-  z-index: 1;
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav {
@@ -479,40 +438,6 @@
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__status .shared-select__control {
   background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
-}
-
-.app-theme[data-theme="dark"] .list-view {
-  position: relative;
-  isolation: isolate;
-}
-
-.app-theme[data-theme="dark"] .list-view::before,
-.app-theme[data-theme="dark"] .list-view::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  border-radius: 999px;
-  filter: blur(20px);
-  z-index: 0;
-}
-
-.app-theme[data-theme="dark"] .list-view::before {
-  inset: 60px auto auto -42px;
-  width: 132px;
-  height: 132px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 16%, transparent) 0%, color-mix(in srgb, var(--primary) 4%, transparent) 58%, transparent 76%);
-}
-
-.app-theme[data-theme="dark"] .list-view::after {
-  inset: auto -40px 15% auto;
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 12%, transparent) 0%, color-mix(in srgb, var(--primary) 4%, transparent) 56%, transparent 76%);
-}
-
-.app-theme[data-theme="dark"] .list-view > * {
-  position: relative;
-  z-index: 1;
 }
 
 .app-theme[data-theme="dark"] .list-top-nav {

@@ -16,4 +16,23 @@ describe("EmptyState", () => {
     expect(html).toContain('data-testid="empty"');
     expect(html).toContain("Nenhum registro encontrado.");
   });
+
+  it("renderiza estado estruturado com titulo, descricao, icone, acao e tamanho", () => {
+    const html = renderToStaticMarkup(
+      <EmptyState
+        title="Nenhum documento"
+        description="Os documentos aparecerao aqui."
+        icon={<span>doc</span>}
+        action={<button type="button">Criar</button>}
+        size="compact"
+      />
+    );
+
+    expect(html).toContain("shared-empty-state--structured");
+    expect(html).toContain("shared-empty-state--compact");
+    expect(html).toContain("shared-empty-state__icon");
+    expect(html).toContain("Nenhum documento");
+    expect(html).toContain("Os documentos aparecerao aqui.");
+    expect(html).toContain("Criar");
+  });
 });

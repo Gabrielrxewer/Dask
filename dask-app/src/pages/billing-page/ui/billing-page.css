@@ -1,259 +1,5 @@
 /* ─── Billing Page Loader ────────────────────────────────────────── */
 
-.billing-loader {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(12px) saturate(0.75) brightness(0.9);
-  background: linear-gradient(
-    140deg,
-    color-mix(in srgb, var(--ink-shadow-strong) 55%, transparent) 0%,
-    color-mix(in srgb, var(--primary) 30%, transparent) 50%,
-    color-mix(in srgb, var(--ink-shadow-strong) 55%, transparent) 100%
-  );
-  border-radius: inherit;
-  opacity: 1;
-  transition: opacity 0.5s ease, backdrop-filter 0.5s ease;
-  pointer-events: all;
-}
-
-.billing-loader--out {
-  opacity: 0;
-  pointer-events: none;
-  backdrop-filter: blur(0px) saturate(1) brightness(1);
-}
-
-.billing-loader__stage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-}
-
-.billing-loader__particle {
-  position: absolute;
-  font-size: 11px;
-  font-weight: 800;
-  color: color-mix(in srgb, var(--neutral-white) 45%, transparent);
-  animation: billing-particle-float linear infinite;
-  pointer-events: none;
-  user-select: none;
-}
-
-.billing-loader__particle--1 { left: -140px; top: -50px;   animation-duration: 2.9s; animation-delay: 0s;   }
-.billing-loader__particle--2 { right: -110px; top: 0px;    animation-duration: 3.3s; animation-delay: 0.6s; }
-.billing-loader__particle--3 { left: -90px;  bottom: 30px; animation-duration: 2.6s; animation-delay: 1.1s; }
-.billing-loader__particle--4 { right: -140px; bottom: 10px; animation-duration: 3.7s; animation-delay: 0.3s; }
-.billing-loader__particle--5 { left: 30px;   top: -90px;   animation-duration: 2.3s; animation-delay: 0.9s; }
-.billing-loader__particle--6 { right: 20px;  top: -70px;   animation-duration: 3.1s; animation-delay: 1.4s; }
-
-@keyframes billing-particle-float {
-  0%   { transform: translateY(0px)    rotate(-8deg); opacity: 0.25; }
-  50%  { transform: translateY(-14px)  rotate(8deg);  opacity: 0.65; }
-  100% { transform: translateY(0px)    rotate(-8deg); opacity: 0.25; }
-}
-
-.billing-loader__card {
-  position: relative;
-  width: 288px;
-  height: 180px;
-  border-radius: 18px;
-  animation: billing-card-drift 4s ease-in-out infinite;
-}
-
-@keyframes billing-card-drift {
-  0%   { transform: translateY(0px)  rotateX(0deg)  rotateY(0deg); }
-  25%  { transform: translateY(-7px) rotateX(4deg)  rotateY(-4deg); }
-  50%  { transform: translateY(-4px) rotateX(-2deg) rotateY(3deg); }
-  75%  { transform: translateY(-9px) rotateX(3deg)  rotateY(-2deg); }
-  100% { transform: translateY(0px)  rotateX(0deg)  rotateY(0deg); }
-}
-
-.billing-loader__card-face {
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 30%, var(--primary) 65%, var(--primary) 100%);
-  box-shadow:
-    0 24px 64px color-mix(in srgb, var(--ink-shadow-strong) 60%, transparent),
-    0 8px 20px color-mix(in srgb, var(--primary) 40%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 18%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--neutral-black) 20%, transparent);
-  overflow: hidden;
-  padding: 22px 26px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.billing-loader__card-face::before {
-  content: '';
-  position: absolute;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 22%, transparent) 0%, transparent 70%);
-  right: -40px;
-  top: -60px;
-  pointer-events: none;
-}
-
-.billing-loader__card-face::after {
-  content: '';
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--warning) 12%, transparent) 0%, transparent 70%);
-  left: -20px;
-  bottom: -40px;
-  pointer-events: none;
-}
-
-.billing-loader__card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.billing-loader__card-chip {
-  width: 38px;
-  height: 28px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--warning) 0%, var(--warning-border) 45%, var(--warning) 80%, var(--warning) 100%);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--neutral-black) 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 30%, transparent);
-  position: relative;
-  flex-shrink: 0;
-}
-
-.billing-loader__card-chip::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border-radius: 3px;
-  border: 1px solid color-mix(in srgb, var(--neutral-black) 18%, transparent);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 15%, transparent) 0%, transparent 100%);
-}
-
-.billing-loader__card-wifi {
-  width: 20px;
-  height: 16px;
-  opacity: 0.55;
-  background:
-    radial-gradient(circle at 50% 100%, transparent 26%, color-mix(in srgb, var(--neutral-white) 90%, transparent) 27%, color-mix(in srgb, var(--neutral-white) 90%, transparent) 35%, transparent 36%),
-    radial-gradient(circle at 50% 100%, transparent 45%, color-mix(in srgb, var(--neutral-white) 70%, transparent) 46%, color-mix(in srgb, var(--neutral-white) 70%, transparent) 56%, transparent 57%),
-    radial-gradient(circle at 50% 100%, transparent 64%, color-mix(in srgb, var(--neutral-white) 50%, transparent) 65%, color-mix(in srgb, var(--neutral-white) 50%, transparent) 77%, transparent 78%);
-  transform: rotate(180deg);
-  flex-shrink: 0;
-}
-
-.billing-loader__card-number {
-  margin-top: auto;
-  font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 3.5px;
-  color: color-mix(in srgb, var(--neutral-white) 88%, transparent);
-  text-shadow: 0 1px 4px color-mix(in srgb, var(--neutral-black) 40%, transparent);
-}
-
-.billing-loader__card-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.billing-loader__card-meta-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.billing-loader__card-label {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 1.8px;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--neutral-white) 42%, transparent);
-}
-
-.billing-loader__card-value {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  color: color-mix(in srgb, var(--neutral-white) 82%, transparent);
-}
-
-.billing-loader__card-shimmer {
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  background: linear-gradient(
-    108deg,
-    transparent 35%,
-    color-mix(in srgb, var(--neutral-white) 14%, transparent) 50%,
-    transparent 65%
-  );
-  background-size: 250% 100%;
-  animation: billing-shimmer 2.4s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes billing-shimmer {
-  0%   { background-position: -250% 0; }
-  100% { background-position: 250% 0; }
-}
-
-.billing-loader__bar-wrap {
-  width: 220px;
-  height: 3px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--neutral-white) 10%, transparent);
-  overflow: hidden;
-}
-
-.billing-loader__bar {
-  height: 100%;
-  width: 55%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, transparent, var(--info), var(--info-border), var(--info), transparent);
-  background-size: 200% 100%;
-  animation: billing-bar 1.8s ease-in-out infinite;
-}
-
-@keyframes billing-bar {
-  0%   { transform: translateX(-160%); opacity: 0.6; }
-  50%  { opacity: 1; }
-  100% { transform: translateX(320%);  opacity: 0.6; }
-}
-
-.billing-loader__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: color-mix(in srgb, var(--neutral-white) 65%, transparent);
-  letter-spacing: 0.4px;
-  margin: 0;
-}
-
-.billing-loader__dots::after {
-  content: '';
-  display: inline-block;
-  animation: billing-dots 1.6s steps(4, end) infinite;
-}
-
-@keyframes billing-dots {
-  0%   { content: ''; }
-  25%  { content: '.'; }
-  50%  { content: '..'; }
-  75%  { content: '...'; }
-  100% { content: ''; }
-}
-
 /* ─── Billing View ───────────────────────────────────────────────── */
 
 .billing-view {
@@ -304,27 +50,6 @@
 
 .billing-view__toolbar {
   align-items: center;
-}
-
-.billing-view__result {
-  border: 1px solid var(--border-blue-muted);
-  border-radius: var(--radius-xs);
-  padding: 10px 12px;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--ink-shadow) 3.5%, transparent);
-}
-
-.billing-view__result--success {
-  border-color: color-mix(in oklab, var(--success) 32%, var(--border-blue-muted));
-  background: color-mix(in oklab, var(--success-soft) 88%, var(--neutral-white));
-  color: var(--success);
-}
-
-.billing-view__result--warning {
-  border-color: color-mix(in oklab, var(--warn) 32%, var(--border-blue-muted));
-  background: color-mix(in oklab, var(--warn-soft) 88%, var(--neutral-white));
-  color: var(--warn);
 }
 
 /* ─── Tabs ──────────────────────────────────────────────────────── */
@@ -386,7 +111,7 @@
   border-radius: 999px;
   background: var(--danger);
   color: var(--neutral-white);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
 }
 
@@ -400,7 +125,7 @@
   border-radius: 999px;
   background: var(--info-bg);
   color: var(--billing-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   transition: background 0.13s ease, color 0.13s ease;
 }
@@ -415,26 +140,6 @@
 .billing-view__panel {
   display: grid;
   gap: 12px;
-}
-
-.billing-view__panel-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.billing-view__panel-title {
-  margin: 0;
-  color: var(--billing-text);
-  font-size: var(--font-size-title-sm);
-  font-weight: 900;
-}
-
-.billing-view__panel-subtitle {
-  margin: 3px 0 0;
-  color: var(--billing-text-soft);
-  font-size: var(--font-size-sm);
 }
 
 /* ─── KPI cards ──────────────────────────────────────────────────── */
@@ -491,7 +196,7 @@
 .billing-view__kpi-label {
   margin: 0;
   color: var(--billing-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -579,7 +284,7 @@
 .billing-view__progress-label {
   flex-shrink: 0;
   color: var(--billing-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   min-width: 28px;
   text-align: right;
@@ -828,7 +533,7 @@
   border: 1px solid var(--border-blue-muted);
   background: var(--surface-tint);
   color: var(--billing-text-soft);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -973,7 +678,7 @@
 .billing-view__charge-item-type {
   display: block;
   color: var(--billing-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1222,7 +927,7 @@
   border-radius: 999px;
   background: color-mix(in oklab, var(--success-soft) 72%, var(--neutral-white));
   color: var(--success);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
 }
 
@@ -1263,7 +968,7 @@
   border-radius: 999px;
   background: var(--success);
   color: var(--neutral-white);
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
   pointer-events: none;
 }
@@ -1285,14 +990,14 @@
   max-width: 100%;
   overflow-wrap: anywhere;
   color: var(--billing-text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
 .billing-view__checkout-link-feedback {
   max-width: 100%;
   color: var(--success);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
 }
 
@@ -1321,49 +1026,10 @@
 }
 
 .billing-view__review-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  color: var(--billing-text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.billing-view__review-spinner {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
-  border-top-color: var(--billing-accent);
-  border-radius: 50%;
-  animation: billing-review-spin 0.65s linear infinite;
-}
-
-@keyframes billing-review-spin {
-  to { transform: rotate(360deg); }
+  margin-top: 4px;
 }
 
 /* ─── History ────────────────────────────────────────────────────── */
-
-.billing-view__history-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 36px 24px;
-  text-align: center;
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius-xs);
-  background: var(--surface-tint);
-  color: var(--billing-text-soft);
-  font-size: var(--font-size-sm);
-}
-
-.billing-view__history-empty p {
-  margin: 0;
-  font-weight: 600;
-}
 
 .billing-view__table-actions {
   display: flex;
@@ -1473,113 +1139,6 @@
   padding: 0;
 }
 
-.billing-view__error {
-  margin: 0;
-  color: var(--danger);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-}
-
-.billing-view__delete-modal.shared-modal-shell {
-  --billing-delete-text: var(--text-strong);
-  --billing-delete-text-soft: var(--text-soft);
-  --billing-delete-border: var(--line);
-  --billing-delete-surface: var(--surface-overlay-strong);
-  --billing-delete-actions-surface: var(--surface-muted);
-  --billing-delete-danger-surface: color-mix(in oklab, var(--danger-soft) 72%, var(--surface-1));
-  --billing-delete-danger-border: color-mix(in oklab, var(--danger) 24%, var(--line));
-  --billing-delete-danger-hover: color-mix(in oklab, var(--danger) 92%, var(--danger));
-  width: min(100%, 480px);
-  padding: 0;
-  border: 1px solid var(--billing-delete-border);
-  background: var(--billing-delete-surface);
-  color: var(--billing-delete-text);
-  display: grid;
-  gap: 0;
-  overflow: hidden;
-  box-shadow: var(--shadow-3);
-}
-
-.billing-view__delete-modal-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 24px 24px 20px;
-}
-
-.billing-view__delete-modal-icon {
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--billing-delete-danger-border);
-  border-radius: var(--radius-md);
-  background: var(--billing-delete-danger-surface);
-  color: var(--danger);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.billing-view__delete-modal-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.billing-view__delete-modal-copy {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.billing-view__delete-modal-eyebrow {
-  width: fit-content;
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--billing-delete-danger-surface);
-  color: var(--danger);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.billing-view__delete-modal-copy h2 {
-  margin: 0;
-  color: var(--billing-delete-text);
-  font-size: var(--font-size-title-md);
-  line-height: 1.2;
-  font-weight: 900;
-}
-
-.billing-view__delete-modal-copy p {
-  margin: 0;
-  color: var(--billing-delete-text-soft);
-  font-size: var(--font-size-sm);
-  line-height: 1.55;
-}
-
-.billing-view__delete-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px 20px;
-  border-top: 1px solid var(--billing-delete-border);
-  background: var(--billing-delete-actions-surface);
-}
-
-.billing-view__delete-modal-confirm.shared-button {
-  border-color: transparent;
-  background: var(--danger);
-  color: var(--neutral-white);
-  box-shadow: none;
-}
-
-.billing-view__delete-modal-confirm.shared-button:hover:not(:disabled) {
-  border-color: transparent;
-  background: var(--billing-delete-danger-hover);
-  color: var(--neutral-white);
-}
-
 /* ─── Dark mode ──────────────────────────────────────────────────── */
 
 .app-theme[data-theme="dark"] .billing-view__tabs {
@@ -1663,8 +1222,7 @@
 }
 
 .app-theme[data-theme="dark"] .billing-view__catalog-create,
-.app-theme[data-theme="dark"] .billing-view__charge-blocked,
-.app-theme[data-theme="dark"] .billing-view__history-empty {
+.app-theme[data-theme="dark"] .billing-view__charge-blocked {
   border-color: var(--line) !important;
   background: var(--surface-muted) !important;
 }
@@ -1803,36 +1361,9 @@
   color: var(--success) !important;
 }
 
-.app-theme[data-theme="dark"] .billing-view__result {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
-}
 
-.app-theme[data-theme="dark"] .billing-view__delete-modal.shared-modal-shell {
-  --billing-delete-border: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  --billing-delete-surface:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--primary) 99%, transparent) 0%,
-      color-mix(in srgb, var(--primary) 97%, transparent) 50%,
-      color-mix(in srgb, var(--primary) 94%, transparent) 100%
-    );
-  --billing-delete-actions-surface: color-mix(in srgb, var(--primary) 74%, transparent);
-  --billing-delete-danger-surface: color-mix(in oklab, var(--danger-soft) 58%, color-mix(in srgb, var(--primary) 94%, transparent));
-  --billing-delete-danger-border: color-mix(in oklab, var(--danger) 34%, var(--line));
-  --billing-delete-danger-hover: color-mix(in oklab, var(--danger) 86%, var(--danger));
-  border-color: var(--billing-delete-border) !important;
-  background: var(--billing-delete-surface) !important;
-  box-shadow: var(--shadow-3) !important;
-}
 
-.app-theme[data-theme="dark"] .billing-view__delete-modal-copy h2 {
-  color: var(--billing-delete-text) !important;
-}
 
-.app-theme[data-theme="dark"] .billing-view__delete-modal-copy p {
-  color: var(--billing-delete-text-soft) !important;
-}
 
 /* ─── Responsive ─────────────────────────────────────────────────── */
 
@@ -1869,7 +1400,7 @@
     flex: 1;
     justify-content: center;
     padding: 7px 10px;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
   }
 
   .billing-view__pagination {
@@ -1879,26 +1410,6 @@
 
   .billing-view__pagination-actions {
     justify-content: space-between;
-  }
-
-  .billing-view__delete-modal.shared-modal-shell {
-    padding: 0;
-  }
-
-  .billing-view__delete-modal-head {
-    padding: 20px 20px 16px;
-  }
-
-  .billing-view__delete-modal-actions {
-    padding: 14px 20px 18px;
-  }
-
-  .billing-view__delete-modal-actions {
-    flex-direction: column-reverse;
-  }
-
-  .billing-view__delete-modal-actions .shared-button {
-    width: 100%;
   }
 
   .billing-view__capability-row {
@@ -2087,7 +1598,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--font-size-3xs);
   font-weight: 800;
 }
 
@@ -2126,7 +1637,6 @@
 
 .billing-view__stack,
 .billing-view__panel,
-.billing-view__panel-head,
 .billing-view__pagination,
 .billing-view__table,
 .billing-view__table .shared-data-table,
@@ -2250,29 +1760,12 @@
 .app-theme:not([data-theme="dark"]) .billing-view__catalog-card-meta,
 .app-theme:not([data-theme="dark"]) .billing-view__catalog-create,
 .app-theme:not([data-theme="dark"]) .billing-view__charge-blocked,
-.app-theme:not([data-theme="dark"]) .billing-view__history-empty,
 .app-theme:not([data-theme="dark"]) .billing-view__table {
   border-color: transparent;
   background: var(--billing-surface);
   box-shadow: 0 18px 36px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
-.app-theme:not([data-theme="dark"]) .billing-view__delete-modal.shared-modal-shell {
-  --billing-delete-border: color-mix(in srgb, var(--border-default) 78%, transparent);
-  --billing-delete-surface:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--neutral-white) 99.5%, transparent) 0%,
-      color-mix(in srgb, var(--surface-tint) 96%, transparent) 52%,
-      color-mix(in srgb, var(--surface-tint) 92%, transparent) 100%
-    );
-  --billing-delete-actions-surface: color-mix(in srgb, var(--surface-tint) 86%, transparent);
-  --billing-delete-danger-surface: color-mix(in oklab, var(--danger-soft) 82%, var(--neutral-white));
-  --billing-delete-danger-border: color-mix(in oklab, var(--danger) 24%, color-mix(in srgb, var(--border-default) 86%, transparent));
-  border-color: var(--billing-delete-border);
-  background: var(--billing-delete-surface);
-  box-shadow: 0 24px 50px color-mix(in srgb, var(--primary) 20%, transparent);
-}
 
 .app-theme:not([data-theme="dark"]) .billing-view__capability-row,
 .app-theme:not([data-theme="dark"]) .billing-view__pending-list li,
@@ -2410,7 +1903,6 @@
 .app-theme[data-theme="dark"] .billing-view__catalog-card-meta,
 .app-theme[data-theme="dark"] .billing-view__catalog-create,
 .app-theme[data-theme="dark"] .billing-view__charge-blocked,
-.app-theme[data-theme="dark"] .billing-view__history-empty,
 .app-theme[data-theme="dark"] .billing-view__review-grid span,
 .app-theme[data-theme="dark"] .billing-view__table {
   border-color: transparent !important;
@@ -2418,11 +1910,6 @@
   box-shadow: 0 20px 40px color-mix(in srgb, var(--neutral-black) 22%, transparent) !important;
 }
 
-.app-theme[data-theme="dark"] .billing-view__delete-modal.shared-modal-shell {
-  border-color: var(--billing-delete-border) !important;
-  background: var(--billing-delete-surface) !important;
-  box-shadow: 0 28px 58px color-mix(in srgb, var(--neutral-black) 36%, transparent) !important;
-}
 
 .app-theme[data-theme="dark"] .billing-view__source-toggle,
 .app-theme[data-theme="dark"] .billing-view__charge-item,
@@ -3228,7 +2715,7 @@
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  font-size: 9px;
+  font-size: var(--font-size-3xs);
 }
 
 .billing-top-nav__status .shared-status-badge,
@@ -4209,7 +3696,6 @@
   background: var(--surface-2) !important;
 }
 
-.app-theme[data-theme="dark"] .billing-view__panel-title,
 .app-theme[data-theme="dark"] .billing-view__kpi-value,
 .app-theme[data-theme="dark"] .billing-view__onboarding-title,
 .app-theme[data-theme="dark"] .billing-view__card-title,
@@ -4218,7 +3704,6 @@
   color: var(--text-primary) !important;
 }
 
-.app-theme[data-theme="dark"] .billing-view__panel-subtitle,
 .app-theme[data-theme="dark"] .billing-view__kpi-label,
 .app-theme[data-theme="dark"] .billing-view__onboarding-subtitle,
 .app-theme[data-theme="dark"] .billing-view__next-step,

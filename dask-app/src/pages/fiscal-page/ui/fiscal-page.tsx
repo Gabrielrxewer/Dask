@@ -16,14 +16,18 @@ import { formatDateTime as formatDate } from "@/shared/lib/date";
 import { formatMoney } from "@/shared/lib/money";
 import {
   Button,
+  DrawerShell,
   EmptyState,
   FormField,
+  InlineAlert,
   LoadingState,
-  ModalShell,
+  MetricCard,
+  ModuleTabs,
+  PageToolbar,
   ResourceTable,
+  SectionCard,
   Select,
   StatusBadge,
-  Tabs,
   TextInput,
   Textarea,
   WorkspaceActionButton,
@@ -498,37 +502,45 @@ export function FiscalPage() {
 
   const topNavigation = (
     <section className="fiscal-top-nav" aria-label="Navegacao fiscal">
-      <Tabs<FiscalTab>
+      <ModuleTabs<FiscalTab>
         value={tab}
         items={isClient ? TAB_ITEMS_CLIENT : TAB_ITEMS}
         onChange={setTab}
         className="fiscal-view__tabs"
+        variant="underline"
       />
       {!isClient ? (
-        <div className="fiscal-top-nav__actions">
-          <WorkspaceActionButton
-            className="fiscal-top-nav__btn"
-            label="Atualizar fiscal"
-            icon={REFRESH_ICON}
-            onClick={() => void loadAll()}
-            disabled={isLoading || isSubmitting}
-          />
-          <WorkspaceActionButton
-            className="fiscal-top-nav__btn"
-            tone="accent"
-            label="Nova emissao"
-            icon="+"
-            onClick={() => setTab("wizard")}
-            disabled={isSubmitting}
-          />
-        </div>
+        <PageToolbar
+          className="fiscal-top-nav__actions"
+          compact
+          ariaLabel="Acoes fiscais"
+          end={
+            <>
+              <WorkspaceActionButton
+                className="fiscal-top-nav__btn"
+                label="Atualizar fiscal"
+                icon={REFRESH_ICON}
+                onClick={() => void loadAll()}
+                disabled={isLoading || isSubmitting}
+              />
+              <WorkspaceActionButton
+                className="fiscal-top-nav__btn"
+                tone="accent"
+                label="Nova emissao"
+                icon="+"
+                onClick={() => setTab("wizard")}
+                disabled={isSubmitting}
+              />
+            </>
+          }
+        />
       ) : null}
     </section>
   );
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
-      <WorkspaceFrame className="fiscal-view">
+      <WorkspaceFrame className="fiscal-view" variant="table" scroll="none">
         <LoadingState
           text="Carregando painel fiscal..."
           animation="fiscal"
@@ -536,8 +548,8 @@ export function FiscalPage() {
           visible={isLoading && !dashboard}
         />
 
-        {message ? <div className="fiscal-view__feedback fiscal-view__feedback--ok">{message}</div> : null}
-        {error ? <div className="fiscal-view__feedback fiscal-view__feedback--error">{error}</div> : null}
+        {message ? <InlineAlert tone="success">{message}</InlineAlert> : null}
+        {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
         <div className="fiscal-view__content">
           <div className="fiscal-view__stack">
@@ -555,35 +567,23 @@ export function FiscalPage() {
 
                 {documents.length > 0 ? (
                   <div className="fiscal-view__summary-grid fiscal-view__portal-stats">
-                    <article className="fiscal-view__summary-card">
-                      <span className="fiscal-view__summary-label">Autorizadas</span>
-                      <strong>{portalStats.authorized}</strong>
-                      <p>Notas confirmadas e autorizadas pelo orgao emissor.</p>
-                    </article>
-                    <article className="fiscal-view__summary-card">
-                      <span className="fiscal-view__summary-label">Em processo</span>
-                      <strong>{portalStats.pending}</strong>
-                      <p>Notas em tramitacao ou aguardando autorizacao.</p>
-                    </article>
-                    <article className="fiscal-view__summary-card">
-                      <span className="fiscal-view__summary-label">Total faturado</span>
-                      <strong>{formatMoney(portalStats.total > 0 ? portalStats.total : 0)}</strong>
-                      <p>Soma das notas autorizadas emitidas para voce.</p>
-                    </article>
+                    <MetricCard label="Autorizadas" value={portalStats.authorized} subtitle="Notas confirmadas pelo orgao emissor." accent="success" compact />
+                    <MetricCard label="Em processo" value={portalStats.pending} subtitle="Notas em tramitacao ou aguardando autorizacao." accent="warning" compact />
+                    <MetricCard label="Total faturado" value={formatMoney(portalStats.total > 0 ? portalStats.total : 0)} subtitle="Soma das notas autorizadas emitidas para voce." accent="info" compact />
                   </div>
                 ) : null}
 
                 {documents.length === 0 && !isLoading ? (
-                  <div className="fiscal-view__portal-empty">
-                    <span className="fiscal-view__portal-empty-icon">
+                  <EmptyState
+                    title="Nenhum documento fiscal emitido para o seu cadastro ainda."
+                    description="Os documentos aparecerao aqui assim que forem emitidos."
+                    icon={
                       <svg viewBox="0 0 24 24" fill="none" width="32" height="32">
                         <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.6" />
                         <path d="M8 8h8M8 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                       </svg>
-                    </span>
-                    <p>Nenhum documento fiscal emitido para o seu cadastro ainda.</p>
-                    <span>Os documentos aparecerao aqui assim que forem emitidos.</span>
-                  </div>
+                    }
+                  />
                 ) : null}
 
                 {documents.length > 0 ? (
@@ -594,7 +594,13 @@ export function FiscalPage() {
                     columns={portalColumns}
                     responsiveMinWidth="100%"
                     responsiveMinWidthMobile="100%"
-                    emptyState="Nenhum documento encontrado."
+                    emptyState={
+                      <EmptyState
+                        variant="table"
+                        title="Nenhum documento fiscal encontrado."
+                        description="Quando uma nota for emitida para este cadastro, ela aparecera nesta lista."
+                      />
+                    }
                     actions={{
                       header: "Arquivos",
                       width: "1fr",
@@ -630,21 +636,9 @@ export function FiscalPage() {
             {tab === "dashboard" ? (
               dashboard ? (
                 <div className="fiscal-view__summary-grid">
-                  <article className="fiscal-view__summary-card">
-                    <span className="fiscal-view__summary-label">Em revisao</span>
-                    <strong>{dashboard?.counters.pendingReview ?? 0}</strong>
-                    <p>Notas que ainda exigem conferencia ou ajuste manual.</p>
-                  </article>
-                  <article className="fiscal-view__summary-card">
-                    <span className="fiscal-view__summary-label">Fila Stripe</span>
-                    <strong>{drafts.length}</strong>
-                    <p>Drafts aguardando emissao a partir de eventos financeiros.</p>
-                  </article>
-                  <article className="fiscal-view__summary-card">
-                    <span className="fiscal-view__summary-label">Empresas ativas</span>
-                    <strong>{companies.length}</strong>
-                    <p>Configuracoes fiscais disponiveis para emissao e sincronizacao.</p>
-                  </article>
+                  <MetricCard label="Em revisao" value={dashboard?.counters.pendingReview ?? 0} subtitle="Notas que exigem conferencia ou ajuste manual." accent="warning" />
+                  <MetricCard label="Fila Stripe" value={drafts.length} subtitle="Drafts aguardando emissao a partir de eventos financeiros." accent="info" />
+                  <MetricCard label="Empresas ativas" value={companies.length} subtitle="Configuracoes fiscais disponiveis para emissao e sincronizacao." accent="success" />
                 </div>
               ) : null
             ) : null}
@@ -660,7 +654,13 @@ export function FiscalPage() {
                   columns={issuedColumns}
                   rowKey="id"
                   responsiveMinWidth="960px"
-                  emptyState="Nenhum documento encontrado."
+                  emptyState={
+                    <EmptyState
+                      variant="table"
+                      title="Nenhum documento emitido."
+                      description="Use o wizard para emitir uma nota manual ou sincronize eventos financeiros."
+                    />
+                  }
                   actions={{
                     header: "Acoes",
                     width: "1.2fr",
@@ -709,7 +709,13 @@ export function FiscalPage() {
                   columns={receivedColumns}
                   rowKey="id"
                   responsiveMinWidth="920px"
-                  emptyState="Nenhuma nota recebida encontrada."
+                  emptyState={
+                    <EmptyState
+                      variant="table"
+                      title="Nenhuma nota recebida."
+                      description="Sincronize documentos recebidos por empresa para acompanhar entradas fiscais."
+                    />
+                  }
                 />
               </>
             ) : null}
@@ -721,7 +727,13 @@ export function FiscalPage() {
                 columns={stripeDraftColumns}
                 rowKey="id"
                 responsiveMinWidth="900px"
-                emptyState="Nenhum draft Stripe pendente."
+                emptyState={
+                  <EmptyState
+                    variant="table"
+                    title="Nenhum draft Stripe pendente."
+                    description="Novos drafts serao criados a partir de eventos financeiros elegiveis."
+                  />
+                }
                 actions={{
                   header: "Acoes",
                   width: "0.8fr",
@@ -736,6 +748,7 @@ export function FiscalPage() {
 
             {tab === "wizard" ? (
               <>
+                <SectionCard className="fiscal-view__form-card" title="Dados da emissao" subtitle="Configure empresa, cliente e item antes de emitir." density="compact">
                 <div className="fiscal-view__inline-grid">
                   <FormField label="Tipo" className="fiscal-view__field">
                 <Select value={wizard.documentType} onChange={(event) => setWizard((current) => ({ ...current, documentType: event.target.value as FiscalDocumentType }))}>
@@ -776,9 +789,9 @@ export function FiscalPage() {
               </FormField>
                 </div>
                 {selectedWizardCustomer && !selectedWizardCustomer.document ? (
-                  <div className="fiscal-view__feedback fiscal-view__feedback--error">
+                  <InlineAlert tone="danger">
                     Complete CPF/CNPJ no cadastro do cliente antes de emitir.
-                  </div>
+                  </InlineAlert>
                 ) : null}
                 <div className="fiscal-view__inline-grid">
                   <FormField label="Item" className="fiscal-view__field">
@@ -794,11 +807,13 @@ export function FiscalPage() {
               <Textarea value={wizard.notes} onChange={(event) => setWizard((current) => ({ ...current, notes: event.target.value }))} rows={3} />
             </FormField>
                 <Button onClick={() => void submitWizard()} disabled={isSubmitting}>Emitir documento</Button>
+                </SectionCard>
               </>
             ) : null}
 
             {tab === "settings" ? (
               <>
+                <SectionCard className="fiscal-view__form-card" title="Empresa fiscal" subtitle="Cadastre as credenciais fiscais usadas na emissao." density="compact">
                 <div className="fiscal-view__inline-grid">
                   <FormField label="Nome exibicao" className="fiscal-view__field"><TextInput value={companyForm.displayName} onChange={(event) => setCompanyForm((current) => ({ ...current, displayName: event.target.value }))} /></FormField>
                   <FormField label="Razao social" className="fiscal-view__field"><TextInput value={companyForm.legalName} onChange={(event) => setCompanyForm((current) => ({ ...current, legalName: event.target.value }))} /></FormField>
@@ -832,7 +847,13 @@ export function FiscalPage() {
                   columns={companyColumns}
                   rowKey="id"
                   responsiveMinWidth="880px"
-                  emptyState="Nenhuma empresa fiscal cadastrada."
+                  emptyState={
+                    <EmptyState
+                      variant="table"
+                      title="Nenhuma empresa fiscal cadastrada."
+                      description="Cadastre uma empresa para habilitar emissao e sincronizacao fiscal."
+                    />
+                  }
                   actions={{
                     header: "Validar",
                     width: "0.8fr",
@@ -843,6 +864,7 @@ export function FiscalPage() {
                     )
                   }}
                 />
+                </SectionCard>
               </>
             ) : null}
 
@@ -854,23 +876,20 @@ export function FiscalPage() {
       </WorkspaceFrame>
 
       {detailDocumentId ? (
-        <ModalShell
+        <DrawerShell
           titleId="fiscal-document-details"
-          className="fiscal-view__modal"
+          title="Detalhe da nota"
+          shellClassName="fiscal-view__modal"
+          bodyClassName="fiscal-view__modal-content"
           onClose={() => {
             setDetailDocumentId(null);
             setDetails(null);
           }}
         >
-          <header className="fiscal-view__modal-header">
-            <h2 id="fiscal-document-details">Detalhe da nota</h2>
-            <button type="button" onClick={() => setDetailDocumentId(null)}>x</button>
-          </header>
-
           {detailLoading || !details ? (
-            <p className="fiscal-view__empty">Carregando detalhes...</p>
+            <LoadingState text="Carregando detalhes" animation="fiscal" />
           ) : (
-            <div className="fiscal-view__modal-content">
+            <>
               <p><strong>Referencia:</strong> {details.document.internalReference}</p>
               <p><strong>Status:</strong> {STATUS_LABELS[details.document.status] ?? details.document.status}</p>
               <p><strong>Focus:</strong> {details.document.focusStatus ?? "-"}</p>
@@ -881,9 +900,9 @@ export function FiscalPage() {
 
               <h3>Payload retornado</h3>
               <Textarea value={safeJson(details.document.responsePayloadSnapshot)} rows={7} readOnly />
-            </div>
+            </>
           )}
-        </ModalShell>
+        </DrawerShell>
       ) : null}
     </AppShell>
   );

@@ -46,7 +46,9 @@ describe("ResourceTable", () => {
     );
 
     expect(html).toContain("Nenhuma nota encontrada.");
-    expect(html).toContain("<div class=\"shared-data-table__cell\">-</div>");
+    expect(html).toContain("shared-data-table__row--empty");
+    expect(html).toContain("shared-data-table__cell--full");
+    expect(html).toContain("shared-empty-state--table");
   });
 
   it("prioriza estado de carregamento opcional", () => {

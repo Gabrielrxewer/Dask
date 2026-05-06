@@ -10,7 +10,7 @@ import {
   type WorkspaceDocument
 } from "@/modules/workspace";
 import { billingService, type ConnectCatalogItem } from "@/modules/billing";
-import { FormModal, LoadingState, WorkspaceFrame } from "@/shared/ui";
+import { FormModal, InlineAlert, LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { CustomerDetailModal } from "./customer-detail-modal";
 import { CustomerForm } from "./customer-form";
@@ -362,11 +362,11 @@ export function LeadsPage() {
 
   return (
     <AppShell metrics={metrics} noPageScroll hideSidebarBrandMark hidePageHeader topNavigation={topNavigation}>
-      <WorkspaceFrame className="leads-page">
+      <WorkspaceFrame className="leads-page" variant="dashboard" scroll="none">
         <LoadingState text="Carregando central comercial..." animation="leads" variant="frame" visible={(isLoading && !snapshot) || isAuxLoading} />
 
-        {message ? <div className="leads-page__feedback leads-page__feedback--ok">{message}</div> : null}
-        {error ? <div className="leads-page__feedback leads-page__feedback--error">{error}</div> : null}
+        {message ? <InlineAlert tone="success">{message}</InlineAlert> : null}
+        {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
         <div className="leads-page__content">
           <div className="leads-page__stack">

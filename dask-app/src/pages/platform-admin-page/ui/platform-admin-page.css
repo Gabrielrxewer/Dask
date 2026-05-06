@@ -70,50 +70,6 @@
   justify-items: end;
 }
 
-.platform-admin-page__status-chip {
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 700;
-  border: 1px solid transparent;
-}
-
-.platform-admin-page__status-chip--ok {
-  color: var(--success);
-  background: var(--success-bg);
-  border-color: color-mix(in srgb, var(--success) 22%, transparent);
-}
-
-.platform-admin-page__status-chip--warn {
-  color: var(--warning);
-  background: var(--warning-bg);
-  border-color: color-mix(in srgb, var(--warning) 28%, transparent);
-}
-
-.platform-admin-page__status-chip--alert {
-  color: var(--danger);
-  background: color-mix(in oklab, var(--decorative-purple) 12%, var(--surface-1));
-  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
-}
-
-.platform-admin-page__refresh {
-  border: 0;
-  border-radius: 12px;
-  padding: 10px 14px;
-  background: linear-gradient(125deg, var(--primary) 0%, var(--primary-active) 55%, var(--primary) 100%);
-  color: var(--neutral-white);
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 28%, transparent);
-}
-
-.platform-admin-page__refresh:disabled {
-  opacity: 0.65;
-  cursor: default;
-}
-
 .platform-admin-page__kpi-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -133,7 +89,7 @@
 }
 
 .platform-admin-page__kpi-card .shared-metric-card__label {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-primary);
@@ -147,7 +103,7 @@
 }
 
 .platform-admin-page__kpi-card .shared-metric-card__subtitle {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-primary);
 }
 
@@ -205,7 +161,7 @@
 
 .platform-admin-page__panel header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--font-size-lg);
   color: var(--text-primary);
 }
 
@@ -218,7 +174,7 @@
 
 .platform-admin-page__panel header p {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-primary);
 }
 
@@ -235,12 +191,12 @@
 }
 
 .platform-admin-page__bar-row span {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-primary);
 }
 
 .platform-admin-page__bar-row strong {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-primary);
   font-weight: 700;
 }
@@ -267,7 +223,7 @@
 
 .platform-admin-page__mini-metrics p {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-primary);
 }
 
@@ -303,7 +259,7 @@
 
 .platform-admin-page__metric-pill span {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-primary);
@@ -311,7 +267,7 @@
 
 .platform-admin-page__metric-pill strong {
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--font-size-lg);
   line-height: 1;
 }
 
@@ -367,7 +323,7 @@
 }
 
 .platform-admin-page__reason-list span {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -375,7 +331,7 @@
 }
 
 .platform-admin-page__reason-list strong {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-primary);
 }
 
@@ -384,22 +340,12 @@
   padding: 12px;
   background: color-mix(in srgb, var(--info-bg) 86%, transparent);
   color: var(--text-primary);
-  font-size: 13px;
-}
-
-.platform-admin-page__error {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
-  background: color-mix(in srgb, var(--danger-bg) 90%, transparent);
-  color: var(--danger);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .platform-admin-page__badge {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
@@ -449,7 +395,7 @@
   border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
   background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 95%, transparent), color-mix(in srgb, var(--info-bg) 90%, transparent));
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1;
   font-weight: 800;
   display: grid;
@@ -474,7 +420,7 @@
   border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
   background: color-mix(in srgb, var(--primary) 95%, transparent);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
   box-shadow: 0 16px 40px color-mix(in srgb, var(--primary) 36%, transparent);
   opacity: 0;
@@ -584,28 +530,6 @@
   box-shadow: 0 18px 45px color-mix(in srgb, var(--neutral-black) 30%, transparent);
 }
 
-.app-theme[data-theme="dark"] .platform-admin-page__refresh {
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 42%, transparent);
-}
-
-.app-theme[data-theme="dark"] .platform-admin-page__status-chip--ok {
-  color: var(--success-border);
-  background: color-mix(in srgb, var(--success) 45%, transparent);
-  border-color: color-mix(in srgb, var(--success) 34%, transparent);
-}
-
-.app-theme[data-theme="dark"] .platform-admin-page__status-chip--warn {
-  color: var(--warning-border);
-  background: color-mix(in srgb, var(--warning) 46%, transparent);
-  border-color: color-mix(in srgb, var(--warning-border) 38%, transparent);
-}
-
-.app-theme[data-theme="dark"] .platform-admin-page__status-chip--alert {
-  color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 48%, transparent);
-  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
-}
-
 .app-theme[data-theme="dark"] .platform-admin-page__kpi-card {
   border-color: color-mix(in srgb, var(--primary) 32%, transparent);
   background:
@@ -664,12 +588,6 @@
 .app-theme[data-theme="dark"] .platform-admin-page__empty {
   background: color-mix(in srgb, var(--primary) 74%, transparent);
   color: var(--text-primary);
-}
-
-.app-theme[data-theme="dark"] .platform-admin-page__error {
-  border-color: color-mix(in srgb, var(--danger) 42%, transparent);
-  background: color-mix(in srgb, var(--danger) 72%, transparent);
-  color: var(--danger-border);
 }
 
 .app-theme[data-theme="dark"] .platform-admin-page__actions a {

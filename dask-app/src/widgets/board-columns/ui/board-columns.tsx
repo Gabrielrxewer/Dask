@@ -15,7 +15,7 @@ import type { AiAgentSummary, Customer, DocumentKind, WorkItemLinkedDocument, Wo
 import type { CreateTaskInput, TaskScheduleInput, UpdateTaskInput } from "@/modules/workspace";
 import { getTaskDragPayload, setTaskDragPayload } from "@/features/change-status";
 import { CreateTaskButton } from "@/features/create-task";
-import { Button, ModalShell } from "@/shared/ui";
+import { Button, EmptyState, ModalShell } from "@/shared/ui";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./board-columns.css";
 
@@ -105,14 +105,15 @@ function DeleteTaskDialog({ taskTitle, isDeleting, onCancel, onConfirm }: Delete
         <Button type="button" variant="outline" onClick={onCancel} disabled={isDeleting}>
           Nao
         </Button>
-        <button
+        <Button
           type="button"
-          className="board-delete-dialog__confirm"
+          variant="danger"
           onClick={onConfirm}
           disabled={isDeleting}
+          loading={isDeleting}
         >
           {isDeleting ? "Excluindo..." : "Sim, excluir"}
-        </button>
+        </Button>
       </div>
     </ModalShell>
   );
@@ -385,7 +386,13 @@ export function BoardColumns({
                 ) : null}
 
                 {statusTasks.length === 0 && !isTarget ? (
-                  <p className="board-column__empty">Sem itens nesta etapa.</p>
+                  <EmptyState
+                    className="board-column__empty"
+                    variant="card"
+                    size="compact"
+                    title="Nenhum item nesta etapa."
+                    description="Crie um item ou mova uma oportunidade para iniciar este fluxo."
+                  />
                 ) : null}
 
                 {statusTasks.map((task, index) => (

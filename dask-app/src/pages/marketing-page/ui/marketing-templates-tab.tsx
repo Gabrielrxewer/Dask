@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, FormField, Select, Textarea, TextInput } from "@/shared/ui";
+import { Button, EmptyState, FormField, ModuleTabs, Select, Textarea, TextInput } from "@/shared/ui";
 import type { MarketingTemplate } from "@/modules/marketing";
 import {
   OBJECTIVE_OPTIONS,
@@ -87,21 +87,24 @@ export function MarketingTemplatesTab({
                       </div>
                     </div>
 
-                    <div className="mkt-template-filters" aria-label="Filtrar templates por objetivo">
-                      {TEMPLATE_GOAL_FILTERS.map((goal) => (
-                        <button
-                          key={goal}
-                          type="button"
-                          className={`mkt-inbox__filter-chip${templateGoalFilter === goal ? " mkt-inbox__filter-chip--active" : ""}`}
-                          onClick={() => setTemplateGoalFilter(goal)}
-                        >
-                          {goal}
-                        </button>
-                      ))}
-                    </div>
+                    <ModuleTabs
+                      value={templateGoalFilter}
+                      items={TEMPLATE_GOAL_FILTERS.map((goal) => ({ id: goal, label: goal }))}
+                      onChange={setTemplateGoalFilter}
+                      className="mkt-template-filters"
+                      variant="pill"
+                      ariaLabel="Filtrar templates por objetivo"
+                    />
 
                     <div className="mkt-template-grid">
-                      {filteredTemplates.length === 0 ?<div className="mkt-empty-inline"><strong>Nenhum template</strong><span>Crie o primeiro modelo ou ajuste o filtro selecionado.</span></div> : null}
+                      {filteredTemplates.length === 0 ?(
+                        <EmptyState
+                          className="mkt-empty-inline"
+                          title="Nenhum template"
+                          description="Crie o primeiro modelo ou ajuste o filtro selecionado."
+                          size="compact"
+                        />
+                      ) : null}
                       {filteredTemplates.map((template) => (
                         <button
                           key={template.id}

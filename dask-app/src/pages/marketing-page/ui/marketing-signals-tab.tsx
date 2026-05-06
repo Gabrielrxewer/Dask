@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { MarketingSignal, MarketingSignalPriority } from "@/modules/marketing";
+import { Button, EmptyState, InlineAlert, LoadingState, ModuleTabs, StatusBadge } from "@/shared/ui";
 import {
   SIGNAL_INBOX_TYPES,
   SIGNAL_TYPE_FILTER_LABELS,
@@ -11,6 +12,18 @@ import {
   timeAgo,
   type MarketingTab
 } from "./marketing-page.model";
+
+const SIGNAL_FILTER_ITEMS = (["ALL", ...SIGNAL_INBOX_TYPES] as string[]).map((type) => ({
+  id: type,
+  label: SIGNAL_TYPE_FILTER_LABELS[type] ?? type
+}));
+
+function priorityBadgeTone(priority: MarketingSignalPriority) {
+  if (priority === "urgent") return "danger";
+  if (priority === "high") return "warning";
+  if (priority === "medium") return "info";
+  return "muted";
+}
 
 interface MarketingSignalsTabProps {
   signalUnreadCount: number;
@@ -62,18 +75,14 @@ export function MarketingSignalsTab({
                 {/* Toolbar */}
                 <div className="mkt-inbox__toolbar shared-surface-panel">
                   <div className="mkt-inbox__filters">
-                    <div className="mkt-inbox__filter-group">
-                      {(["ALL", ...SIGNAL_INBOX_TYPES] as string[]).map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          className={`mkt-inbox__filter-chip${signalTypeFilter === type ?" mkt-inbox__filter-chip--active" : ""}`}
-                          onClick={() => setSignalTypeFilter(type)}
-                        >
-                          {SIGNAL_TYPE_FILTER_LABELS[type] ?? type}
-                        </button>
-                      ))}
-                    </div>
+                    <ModuleTabs
+                      value={signalTypeFilter}
+                      items={SIGNAL_FILTER_ITEMS}
+                      onChange={setSignalTypeFilter}
+                      className="mkt-inbox__filter-tabs"
+                      variant="pill"
+                      ariaLabel="Filtrar sinais"
+                    />
                     <label className="mkt-inbox__toggle">
                       <input
                         type="checkbox"
@@ -95,25 +104,22 @@ export function MarketingSignalsTab({
                   </div>
                   <div className="mkt-inbox__meta">
                     {signalUnreadCount > 0 ?(
-                      <span className="mkt-inbox__unread-badge">{signalUnreadCount} não lidos</span>
+                      <StatusBadge tone="danger" size="sm">{signalUnreadCount} nao lidos</StatusBadge>
                     ) : null}
-                    <button
-                      type="button"
-                      className="mkt-inbox__refresh"
-                      onClick={() => void loadSignals()}
-                      disabled={isLoadingSignals}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => void loadSignals()} disabled={isLoadingSignals}>
                       {isLoadingSignals ?"Carregando..." : "Atualizar"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {signalsError && signals.length > 0 ?(
-                  <div className="mkt-state mkt-state--inline mkt-state--error">
-                    <strong>Falha ao atualizar sinais</strong>
-                    <span>{signalsError}</span>
-                    <button type="button" onClick={() => void loadSignals()}>Tentar novamente</button>
-                  </div>
+                  <InlineAlert
+                    tone="danger"
+                    title="Falha ao atualizar sinais"
+                    action={<Button size="sm" variant="outline" onClick={() => void loadSignals()}>Tentar novamente</Button>}
+                  >
+                    {signalsError}
+                  </InlineAlert>
                 ) : null}
 
                 {/* Feed */}
@@ -124,42 +130,40 @@ export function MarketingSignalsTab({
 
                   if (isLoadingSignals && signals.length === 0) {
                     return (
-                      <div className="mkt-state mkt-state--loading">
-                        <span className="mkt-state__icon" aria-hidden="true" />
-                        <strong>Carregando sinais</strong>
-                        <p>Buscando oportunidades, riscos e eventos acionáveis do workspace.</p>
-                        <div className="mkt-skeleton-list" aria-hidden="true">
-                          <span />
-                          <span />
-                          <span />
-                        </div>
-                      </div>
+                      <LoadingState
+                        className="mkt-state mkt-state--loading"
+                        text="Carregando sinais"
+                        animation="marketing"
+                      />
                     );
                   }
 
                   if (signalsError && signals.length === 0) {
                     return (
-                      <div className="mkt-state mkt-state--error">
-                        <span className="mkt-state__icon" aria-hidden="true" />
-                        <strong>Não foi possível carregar os sinais</strong>
-                        <p>A caixa de sinais encontrou uma falha. Isso não significa que o inbox esteja vazio.</p>
-                        <button type="button" onClick={() => void loadSignals()}>Tentar novamente</button>
+                      <EmptyState
+                        className="mkt-state mkt-state--error"
+                        icon={<span className="mkt-state__icon" />}
+                        title="Não foi possível carregar os sinais"
+                        description="A caixa de sinais encontrou uma falha. Isso não significa que o inbox esteja vazio."
+                        action={<Button size="sm" variant="outline" onClick={() => void loadSignals()}>Tentar novamente</Button>}
+                      >
                         <small>{signalsError}</small>
-                      </div>
+                      </EmptyState>
                     );
                   }
 
                   if (filtered.length === 0) {
                     return (
-                      <div className="mkt-state">
-                        <span className="mkt-state__icon" aria-hidden="true" />
-                        <strong>{signals.length === 0 ?"Nenhum sinal encontrado" : "Nenhum sinal neste filtro"}</strong>
-                        <p>
-                          {signals.length === 0
+                      <EmptyState
+                        className="mkt-state"
+                        icon={<span className="mkt-state__icon" />}
+                        title={signals.length === 0 ?"Nenhum sinal encontrado" : "Nenhum sinal neste filtro"}
+                        description={
+                          signals.length === 0
                             ?"Quando houver cliques, aberturas, bounces ou mudanças de score, eles aparecerão aqui."
-                            : "Ajuste os filtros para ver outros tipos de evento."}
-                        </p>
-                      </div>
+                            : "Ajuste os filtros para ver outros tipos de evento."
+                        }
+                      />
                     );
                   }
 
@@ -194,9 +198,9 @@ export function MarketingSignalsTab({
                                   </div>
                                 </div>
                                 <div className="mkt-inbox__group-meta">
-                                  <span className={`mkt-inbox__priority mkt-inbox__priority--${topPriority}`}>{signalPriorityLabel(topPriority)}</span>
-                                  <span className="mkt-inbox__lead-score">Score {lead?.score ?? "-"}</span>
-                                  <span className="mkt-inbox__count">{group.length} sinal{group.length > 1 ?"is" : ""}</span>
+                                  <StatusBadge tone={priorityBadgeTone(topPriority)} size="sm">{signalPriorityLabel(topPriority)}</StatusBadge>
+                                  <StatusBadge tone="info" size="sm">Score {lead?.score ?? "-"}</StatusBadge>
+                                  <StatusBadge tone="muted" size="sm">{group.length} sinal{group.length > 1 ?"is" : ""}</StatusBadge>
                                 </div>
                               </div>
                               <div className="mkt-inbox__group-events">
@@ -207,14 +211,14 @@ export function MarketingSignalsTab({
                                     <span className="mkt-inbox__event-time">{timeAgo(s.occurredAt)}</span>
                                     <div className="mkt-inbox__event-actions">
                                       {!s.seenAt ?(
-                                        <button type="button" className="mkt-inbox__action mkt-inbox__action--seen" onClick={() => void handleSignalAction(s, 'seen')}>
+                                        <Button size="sm" variant="outline" onClick={() => void handleSignalAction(s, 'seen')}>
                                           Marcar visto
-                                        </button>
+                                        </Button>
                                       ) : null}
                                       {!s.dismissedAt ?(
-                                        <button type="button" className="mkt-inbox__action mkt-inbox__action--dismiss" onClick={() => void handleSignalAction(s, 'dismissed')}>
+                                        <Button size="sm" variant="ghost" onClick={() => void handleSignalAction(s, 'dismissed')}>
                                           Ignorar
-                                        </button>
+                                        </Button>
                                       ) : null}
                                     </div>
                                   </div>
@@ -225,19 +229,19 @@ export function MarketingSignalsTab({
                                 <span>{signalSuggestion(topSignal)}</span>
                               </div>
                               <div className="mkt-inbox__card-actions">
-                                <button type="button" className="mkt-inbox__cta" onClick={() => setTab("audience")}>
+                                <Button size="sm" variant="outline" onClick={() => setTab("audience")}>
                                   Abrir lead
-                                </button>
-                                <button
-                                  type="button"
-                                  className="mkt-inbox__cta mkt-inbox__cta--primary"
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="primary"
                                   onClick={() => {
                                     setMessage(`Tarefa criada para ${lead?.fullName ?? "lead"} — acesse o board para gerenciar.`);
                                     setTab("overview");
                                   }}
                                 >
                                   Criar tarefa de follow-up
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           );
@@ -265,9 +269,9 @@ export function MarketingSignalsTab({
                                 </div>
                               </div>
                               <div className="mkt-inbox__card-meta">
-                                <span className={`mkt-inbox__priority mkt-inbox__priority--${priority}`}>
+                                <StatusBadge tone={priorityBadgeTone(priority)} size="sm">
                                   {signalPriorityLabel(priority)}
-                                </span>
+                                </StatusBadge>
                                 {!signal.seenAt ?<span className="mkt-inbox__unread-dot" aria-label="Não lido" /> : null}
                               </div>
                             </div>
@@ -287,9 +291,9 @@ export function MarketingSignalsTab({
                                   <span className="mkt-inbox__score-prev">{String(signal.payload.previousScore ?? "?")} pts</span>
                                   <span className="mkt-inbox__score-arrow" aria-hidden="true">?</span>
                                   <span className="mkt-inbox__score-next">{String(signal.payload.nextScore ?? "?")} pts</span>
-                                  <span className={`mkt-inbox__score-badge${Number(signal.payload.delta ?? 0) > 0 ?" mkt-inbox__score-badge--up" : " mkt-inbox__score-badge--down"}`}>
+                                  <StatusBadge tone={Number(signal.payload.delta ?? 0) > 0 ? "success" : "danger"} size="sm">
                                     {Number(signal.payload.delta ?? 0) > 0 ?"+" : ""}{String(signal.payload.delta ?? "?")}
-                                  </span>
+                                  </StatusBadge>
                                 </div>
                               ) : null}
                               <div className="mkt-inbox__suggestion">
@@ -302,18 +306,18 @@ export function MarketingSignalsTab({
                               <span className="mkt-inbox__time">{timeAgo(signal.occurredAt)}</span>
                               <div className="mkt-inbox__card-actions">
                                 {!signal.seenAt ?(
-                                  <button type="button" className="mkt-inbox__action" onClick={() => void handleSignalAction(signal, 'seen')}>
+                                  <Button size="sm" variant="outline" onClick={() => void handleSignalAction(signal, 'seen')}>
                                     Marcar visto
-                                  </button>
+                                  </Button>
                                 ) : null}
                                 {!signal.dismissedAt ?(
-                                  <button type="button" className="mkt-inbox__action" onClick={() => void handleSignalAction(signal, 'dismissed')}>
+                                  <Button size="sm" variant="ghost" onClick={() => void handleSignalAction(signal, 'dismissed')}>
                                     Ignorar
-                                  </button>
+                                  </Button>
                                 ) : null}
-                                <button
-                                  type="button"
-                                  className="mkt-inbox__action mkt-inbox__action--primary"
+                                <Button
+                                  size="sm"
+                                  variant="primary"
                                   onClick={() => {
                                     void handleSignalAction(signal, 'seen');
                                     setMessage(`Tarefa criada para ${signal.lead?.fullName ?? "lead"} — acesse o board para gerenciar.`);
@@ -321,17 +325,17 @@ export function MarketingSignalsTab({
                                   }}
                                 >
                                   Criar follow-up
-                                </button>
-                                <button
-                                  type="button"
-                                  className="mkt-inbox__action"
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => {
                                     void handleSignalAction(signal, 'seen');
                                     setTab("audience");
                                   }}
                                 >
                                   Abrir lead
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           </article>

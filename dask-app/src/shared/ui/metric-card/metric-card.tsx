@@ -34,6 +34,10 @@ export interface MetricCardProps {
   tone?: MetricCardTone;
   accent?: MetricCardTone;
   trend?: ReactNode | MetricCardTrend;
+  loading?: boolean;
+  empty?: boolean;
+  compact?: boolean;
+  orientation?: "vertical" | "horizontal";
   className?: string;
 }
 
@@ -51,6 +55,10 @@ export function MetricCard({
   tone = "default",
   accent,
   trend,
+  loading = false,
+  empty = false,
+  compact = false,
+  orientation = "vertical",
   className = ""
 }: MetricCardProps) {
   const [isMounted, setMounted] = useState(false);
@@ -110,9 +118,13 @@ export function MetricCard({
       className={cn(
         "shared-metric-card",
         `shared-metric-card--${resolvedTone}`,
+        compact && "shared-metric-card--compact",
+        empty && "shared-metric-card--empty",
+        orientation === "horizontal" && "shared-metric-card--horizontal",
         icon ? "shared-metric-card--with-icon" : "",
         className
       )}
+      aria-busy={loading || undefined}
     >
       {icon ? <span className="shared-metric-card__icon" aria-hidden="true">{icon}</span> : null}
       <div className="shared-metric-card__body">
@@ -172,7 +184,7 @@ export function MetricCard({
             </span>
           ) : null}
         </div>
-        <h3 className="shared-metric-card__value">{value}</h3>
+        <h3 className="shared-metric-card__value">{loading ? "..." : value}</h3>
         {subtitle ? <p className="shared-metric-card__subtitle">{subtitle}</p> : null}
         {trendValue ? (
           <p

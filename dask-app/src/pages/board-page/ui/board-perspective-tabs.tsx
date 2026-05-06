@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { cn } from "@/shared/lib/cn";
-import { AppIcon, Tabs, type TabsItem } from "@/shared/ui";
+import { AppIcon, ModuleTabs, type ModuleTabsItem } from "@/shared/ui";
 import type { WorkspaceBoardMode } from "@/modules/workspace";
 import "./board-perspective-tabs.css";
 
@@ -57,7 +57,7 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
     }
   };
 
-  const buildPerspectiveTabItems = (items: Perspective[]): Array<TabsItem<string>> =>
+  const buildPerspectiveTabItems = (items: Perspective[]): Array<ModuleTabsItem<string>> =>
     items.map((perspective) => ({
       id: perspective.id,
       label: perspective.label,
@@ -107,12 +107,13 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
   if (perspectives.length <= MAX_VISIBLE) {
     return (
       <div className="board-perspective-tabs">
-        <Tabs
+        <ModuleTabs
           value={value}
           items={buildPerspectiveTabItems(perspectives)}
           onChange={changePerspective}
           ariaLabel="Perspectivas do board"
           className="board-top-nav__tabs"
+          variant="underline"
         />
         {navigationControls}
       </div>
@@ -139,7 +140,7 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
         <button
           type="button"
           className={cn(
-            "shared-tabs__item board-perspective-tabs__more-btn",
+            "module-tabs__item shared-tabs__item board-perspective-tabs__more-btn",
             (open || overflowHasActive) && "board-perspective-tabs__more-btn--active"
           )}
           onClick={() => setOpen(v => !v)}
@@ -195,12 +196,13 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
 
   return (
     <div className="board-perspective-tabs">
-      <Tabs
+      <ModuleTabs
         value={value}
         items={buildPerspectiveTabItems(visibleItems)}
         onChange={changePerspective}
         ariaLabel="Perspectivas do board"
         className="board-top-nav__tabs"
+        variant="underline"
         afterItems={overflowMenu}
       />
       {navigationControls}

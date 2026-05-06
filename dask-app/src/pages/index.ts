@@ -7,6 +7,7 @@ export { PlatformAdminPage } from "@/pages/platform-admin-page";
 export { ResetPasswordPage } from "@/pages/reset-password-page";
 export { VerifyEmailPage } from "@/pages/verify-email-page";
 export { BoardPage } from "@/pages/board-page";
+export { LeadFlowPage } from "@/pages/lead-flow-page";
 export { HomePage } from "@/pages/home-page";
 export { ListPage } from "@/pages/list-page";
 export { LoginPage } from "@/pages/login-page";

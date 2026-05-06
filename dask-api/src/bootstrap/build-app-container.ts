@@ -20,8 +20,20 @@ import { AIAgentService } from '@/modules/ai/application/ai-agent-service';
 import { PrismaAIAgentRepository } from '@/modules/ai/repositories/prisma-ai-agent-repository';
 import { IndexingRequestService } from '@/modules/search/application/indexing-request-service';
 import { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
-import { AutomationService } from '@/modules/automation/application/automation-service';
+import { AutomationAIService } from '@/modules/automation/application/automation-ai-service';
+import { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
+import { AutomationRunService } from '@/modules/automation/application/automation-run-service';
+import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
+import { AutomationRunObservabilityService } from '@/modules/automation/application/automation-run-observability-service';
+import { AutomationScheduledStepService } from '@/modules/automation/application/automation-scheduled-step-service';
+import { AutomationSideEffectService } from '@/modules/automation/application/automation-side-effect-service';
+import { AutomationStepRunService } from '@/modules/automation/application/automation-step-run-service';
 import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
+import { AutomationWorkflowRunnerService } from '@/modules/automation/application/automation-workflow-runner-service';
+import { AutomationWorkflowService } from '@/modules/automation/application/workflow-service';
+import { AutomationWorkflowVersionService } from '@/modules/automation/application/workflow-version-service';
+import { AutomationScheduledStepProcessor } from '@/modules/automation/runtime/automation-scheduled-step-processor';
+import { AutomationWorkflowExecutor } from '@/modules/automation/runtime/automation-workflow-executor';
 import { IntegrationService } from '@/modules/integration/application/integration-service';
 import { AuditService } from '@/modules/audit/application/audit-service';
 import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
@@ -52,7 +64,19 @@ export type AppContainer = {
   aiAgentService: AIAgentService;
   indexingRequestService: IndexingRequestService;
   hybridSearchService: HybridSearchService;
-  automationService: AutomationService;
+  automationAIService: AutomationAIService;
+  automationApprovalRequestService: AutomationApprovalRequestService;
+  automationWorkflowService: AutomationWorkflowService;
+  automationWorkflowVersionService: AutomationWorkflowVersionService;
+  automationRunService: AutomationRunService;
+  automationRunObservabilityService: AutomationRunObservabilityService;
+  automationRunEventService: AutomationRunEventService;
+  automationSideEffectService: AutomationSideEffectService;
+  automationWorkflowRunnerService: AutomationWorkflowRunnerService;
+  automationStepRunService: AutomationStepRunService;
+  automationScheduledStepService: AutomationScheduledStepService;
+  automationWorkflowExecutor: AutomationWorkflowExecutor;
+  automationScheduledStepProcessor: AutomationScheduledStepProcessor;
   automationViewService: AutomationViewService;
   integrationService: IntegrationService;
   auditService: AuditService;
@@ -116,12 +140,34 @@ export function buildAppContainer(): AppContainer {
     roleAuthorizationService,
     eventPublisher
   );
-  const automationService = new AutomationService(
-    prisma,
-    eventPublisher,
-    jobQueue,
-    workspaceConfigService
-  );
+  const automationAIService = new AutomationAIService(prisma, aiProvider);
+  const automationWorkflowService = new AutomationWorkflowService(prisma);
+  const automationWorkflowVersionService = new AutomationWorkflowVersionService(prisma);
+  const automationRunEventService = new AutomationRunEventService(prisma);
+  const automationApprovalRequestService = new AutomationApprovalRequestService(prisma, {
+    eventService: automationRunEventService
+  });
+  const automationSideEffectService = new AutomationSideEffectService(prisma, {
+    eventService: automationRunEventService
+  });
+  const automationRunService = new AutomationRunService(prisma, automationRunEventService);
+  const automationRunObservabilityService = new AutomationRunObservabilityService(prisma);
+  const automationStepRunService = new AutomationStepRunService(prisma);
+  const automationScheduledStepService = new AutomationScheduledStepService(prisma);
+  const automationWorkflowExecutor = new AutomationWorkflowExecutor(prisma, {
+    eventService: automationRunEventService,
+    sideEffectService: automationSideEffectService,
+    aiService: automationAIService,
+    approvalRequestService: automationApprovalRequestService
+  });
+  const automationScheduledStepProcessor = new AutomationScheduledStepProcessor(prisma, {
+    eventService: automationRunEventService,
+    workflowExecutor: automationWorkflowExecutor
+  });
+  const automationWorkflowRunnerService = new AutomationWorkflowRunnerService(prisma, {
+    eventService: automationRunEventService,
+    workflowExecutor: automationWorkflowExecutor
+  });
   const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
   const integrationService = new IntegrationService(eventPublisher);
   const auditService = new AuditService(prisma);
@@ -182,7 +228,19 @@ export function buildAppContainer(): AppContainer {
     aiAgentService,
     indexingRequestService,
     hybridSearchService,
-    automationService,
+    automationAIService,
+    automationApprovalRequestService,
+    automationWorkflowService,
+    automationWorkflowVersionService,
+    automationRunService,
+    automationRunObservabilityService,
+    automationRunEventService,
+    automationSideEffectService,
+    automationWorkflowRunnerService,
+    automationStepRunService,
+    automationScheduledStepService,
+    automationWorkflowExecutor,
+    automationScheduledStepProcessor,
     automationViewService,
     integrationService,
     auditService,

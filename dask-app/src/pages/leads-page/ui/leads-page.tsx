@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { buildWorkspaceBoardPath, buildWorkspaceDocumentationPath } from "@/app/router";
+import { buildWorkspaceBoardPath, buildWorkspaceDocumentationPath, buildWorkspaceLeadFlowPath } from "@/app/router";
 import { buildBoardMetrics, type Task } from "@/entities/task";
 import {
   getCustomerDisplayName,
@@ -399,6 +399,7 @@ export function LeadsPage() {
                 onOpenCustomerDetails={(customerId) => { setSelectedCustomerId(customerId); setModalMode("customer-detail"); }}
                 onOpenCustomerFromLead={openCustomerFromLeadModal}
                 onOpenLinkCustomer={openLinkCustomerModal}
+                onOpenFlow={(task) => workspaceSlug && navigate(buildWorkspaceLeadFlowPath(workspaceSlug, task.id))}
                 onCreateCharge={(task) => void runAction(
                   async () => { await createChargeFromLead(task); },
                   "Cobranca gerada e enviada para o email do lead."

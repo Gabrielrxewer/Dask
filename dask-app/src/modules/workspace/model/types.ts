@@ -341,11 +341,25 @@ export type WorkspacePermissionKey =
   | "file.read"
   | "file.upload"
   | "file.delete"
-  | "automation.read"
-  | "automation.create"
-  | "automation.update"
-  | "automation.delete"
-  | "automation.run"
+  | "automation.workflows.read"
+  | "automation.workflows.create"
+  | "automation.workflows.update"
+  | "automation.workflows.publish"
+  | "automation.workflows.run"
+  | "automation.workflows.archive"
+  | "automation.runs.read"
+  | "automation.runs.cancel"
+  | "automation.approvals.read"
+  | "automation.approvals.approve"
+  | "automation.approvals.reject"
+  | "automation.approvals.cancel"
+  | "communication.inbox.read"
+  | "communication.inbox.reply"
+  | "communication.conversation.read"
+  | "communication.conversation.reply"
+  | "communication.conversation.resolve"
+  | "communication.conversation.archive"
+  | "communication.conversation.assign"
   | "integration.read"
   | "integration.manage"
   | "billing.read"
@@ -732,17 +746,161 @@ export interface WorkspaceService {
   updateCustomField: (workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) => Promise<WorkspaceSnapshot>;
   deleteCustomField: (workspaceSlug: string, fieldId: string) => Promise<WorkspaceSnapshot>;
 
-  listAutomationRules: (workspaceSlug: string, options?: { includeDisabled?: boolean }) => Promise<AutomationRule[]>;
-  listAutomationExecutions: (workspaceSlug: string, options?: { limit?: number }) => Promise<AutomationExecution[]>;
-  listAutomationViews: (workspaceSlug: string) => Promise<AutomationView[]>;
-  runAutomationRule: (workspaceSlug: string, ruleId: string, context?: Record<string, unknown>) => Promise<void>;
-  createAutomationRule: (workspaceSlug: string, input: CreateAutomationRuleInput) => Promise<AutomationRule>;
-  updateAutomationRule: (
+  listAutomationWorkflows: (
     workspaceSlug: string,
-    ruleId: string,
-    input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
-  ) => Promise<AutomationRule>;
-  deleteAutomationRule: (workspaceSlug: string, ruleId: string) => Promise<void>;
+    options?: { status?: AutomationWorkflowStatus; limit?: number }
+  ) => Promise<{ items: AutomationWorkflow[] }>;
+  createAutomationWorkflow: (
+    workspaceSlug: string,
+    input: CreateAutomationWorkflowInput
+  ) => Promise<AutomationWorkflow>;
+  getAutomationWorkflow: (workspaceSlug: string, workflowId: string) => Promise<AutomationWorkflow>;
+  updateAutomationWorkflow: (
+    workspaceSlug: string,
+    workflowId: string,
+    input: UpdateAutomationWorkflowInput
+  ) => Promise<AutomationWorkflow>;
+  activateAutomationWorkflow: (workspaceSlug: string, workflowId: string) => Promise<AutomationWorkflow>;
+  pauseAutomationWorkflow: (workspaceSlug: string, workflowId: string) => Promise<AutomationWorkflow>;
+  archiveAutomationWorkflow: (workspaceSlug: string, workflowId: string) => Promise<AutomationWorkflow>;
+  listAutomationWorkflowVersions: (
+    workspaceSlug: string,
+    workflowId: string,
+    options?: { status?: AutomationWorkflowVersionStatus; limit?: number }
+  ) => Promise<{ items: AutomationWorkflowVersion[] }>;
+  createAutomationWorkflowDraftVersion: (
+    workspaceSlug: string,
+    workflowId: string,
+    input?: SaveAutomationWorkflowVersionInput
+  ) => Promise<AutomationWorkflowVersion>;
+  getAutomationWorkflowVersion: (
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string
+  ) => Promise<AutomationWorkflowVersion>;
+  updateAutomationWorkflowVersion: (
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string,
+    input: SaveAutomationWorkflowVersionInput
+  ) => Promise<AutomationWorkflowVersion>;
+  publishAutomationWorkflowVersion: (
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string,
+    input?: { activateWorkflow?: boolean }
+  ) => Promise<AutomationWorkflowVersion>;
+  cloneAutomationWorkflowVersion: (
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string
+  ) => Promise<AutomationWorkflowVersion>;
+  runAutomationWorkflow: (
+    workspaceSlug: string,
+    workflowId: string,
+    input?: RunAutomationWorkflowInput
+  ) => Promise<RunAutomationWorkflowResult>;
+  listAutomationRuns: (
+    workspaceSlug: string,
+    options?: {
+      workflowId?: string;
+      status?: string;
+      triggerType?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      search?: string;
+      limit?: number;
+    }
+  ) => Promise<{ items: AutomationRunListItem[] }>;
+  getAutomationRunDetail: (workspaceSlug: string, runId: string) => Promise<AutomationRunDetail>;
+  cancelAutomationRun: (workspaceSlug: string, runId: string, reason?: string) => Promise<AutomationRunDetail>;
+  listAutomationApprovals: (
+    workspaceSlug: string,
+    options?: ListAutomationApprovalsOptions
+  ) => Promise<{ items: AutomationApprovalSummary[] }>;
+  listCommunicationInbox: (
+    workspaceSlug: string,
+    options?: ListCommunicationInboxOptions
+  ) => Promise<{ items: CommunicationConversationSummary[] }>;
+  getCommunicationConversation: (
+    workspaceSlug: string,
+    conversationId: string
+  ) => Promise<CommunicationConversationDetail>;
+  markCommunicationConversationRead: (workspaceSlug: string, conversationId: string) => Promise<void>;
+  resolveCommunicationConversation: (workspaceSlug: string, conversationId: string) => Promise<void>;
+  archiveCommunicationConversation: (workspaceSlug: string, conversationId: string) => Promise<void>;
+  assignCommunicationConversation: (
+    workspaceSlug: string,
+    conversationId: string,
+    assignedToId?: string | null
+  ) => Promise<void>;
+  linkCommunicationConversationWorkItem: (
+    workspaceSlug: string,
+    conversationId: string,
+    workItemId?: string | null
+  ) => Promise<void>;
+  replyCommunicationConversation: (
+    workspaceSlug: string,
+    conversationId: string,
+    input: { channel: "email" | "whatsapp"; text: string; sendMode: "manual" }
+  ) => Promise<{ sideEffect: AutomationSideEffectSummary; message: CommunicationMessageSummary }>;
+  getAutomationApproval: (workspaceSlug: string, approvalId: string) => Promise<AutomationApprovalDetail>;
+  approveAutomationApproval: (
+    workspaceSlug: string,
+    approvalId: string,
+    input: ReviewAutomationApprovalInput
+  ) => Promise<AutomationApprovalRecord>;
+  rejectAutomationApproval: (
+    workspaceSlug: string,
+    approvalId: string,
+    input: ReviewAutomationApprovalInput
+  ) => Promise<AutomationApprovalRecord>;
+  cancelAutomationApproval: (workspaceSlug: string, approvalId: string, reason?: string) => Promise<AutomationApprovalRecord>;
+  listCommunicationTemplates: (
+    workspaceSlug: string,
+    options?: { channel?: string; status?: string; limit?: number }
+  ) => Promise<{ items: CommunicationTemplate[] }>;
+  createWhatsAppTemplate: (
+    workspaceSlug: string,
+    input: CreateWhatsAppTemplateInput
+  ) => Promise<CommunicationTemplate>;
+  updateCommunicationTemplateVersion: (
+    workspaceSlug: string,
+    versionId: string,
+    input: UpdateCommunicationTemplateVersionInput
+  ) => Promise<CommunicationTemplateVersion>;
+  publishCommunicationTemplateVersion: (
+    workspaceSlug: string,
+    versionId: string
+  ) => Promise<CommunicationTemplateVersion>;
+  markWhatsAppTemplateApprovalStatus: (
+    workspaceSlug: string,
+    versionId: string,
+    input: {
+      approvalStatus: Exclude<WhatsAppTemplateApprovalStatus, "draft">;
+      providerTemplateName?: string | null;
+      providerTemplateId?: string | null;
+    }
+  ) => Promise<CommunicationTemplateVersion>;
+  listWhatsAppConsents: (
+    workspaceSlug: string,
+    options?: { status?: string; limit?: number }
+  ) => Promise<{ items: WhatsAppConsent[] }>;
+  upsertWhatsAppConsent: (
+    workspaceSlug: string,
+    input: {
+      address: string;
+      status: "unknown" | "opted_in" | "opted_out" | "suppressed" | "bounced" | "complained" | "invalid";
+      source?: string | null;
+      reason?: string | null;
+    }
+  ) => Promise<WhatsAppConsent>;
+  simulateWhatsAppMockEvent: (
+    workspaceSlug: string,
+    sideEffectId: string,
+    input: { eventType: "delivered" | "read" | "failed" | "replied"; messageText?: string }
+  ) => Promise<AutomationSideEffectSummary>;
+  listAutomationViews: (workspaceSlug: string) => Promise<AutomationView[]>;
   listWorkspaceDocuments: (workspaceSlug: string) => Promise<WorkspaceDocument[]>;
   listCustomers: (workspaceSlug: string, input?: { search?: string; status?: CustomerStatus }) => Promise<Customer[]>;
   createCustomer: (workspaceSlug: string, input: CreateCustomerInput) => Promise<Customer>;
@@ -880,42 +1038,550 @@ export interface WorkspaceService {
   ) => Promise<WorkspaceProfile>;
 }
 
-export interface AutomationRule {
+export type AutomationWorkflowStatus = "draft" | "active" | "paused" | "archived";
+export type AutomationWorkflowVersionStatus = "draft" | "published" | "archived";
+
+export interface AutomationWorkflowGraphNode {
+  id: string;
+  type: string;
+  label?: string;
+  config: Record<string, unknown>;
+  position?: { x: number; y: number };
+}
+
+export interface AutomationWorkflowGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  condition?: Record<string, unknown>;
+}
+
+export interface AutomationWorkflowGraph {
+  version: 1;
+  nodes: AutomationWorkflowGraphNode[];
+  edges: AutomationWorkflowGraphEdge[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface AutomationWorkflowVersion {
+  id: string;
+  workflowId: string;
+  workspaceId: string;
+  version: number;
+  status: AutomationWorkflowVersionStatus;
+  definitionJson: Record<string, unknown>;
+  graphNodesJson: AutomationWorkflowGraphNode[];
+  graphEdgesJson: AutomationWorkflowGraphEdge[];
+  publishedAt: string | null;
+  publishedById: string | null;
+  createdAt: string;
+}
+
+export interface AutomationWorkflow {
   id: string;
   workspaceId: string;
   name: string;
   description: string | null;
+  status: AutomationWorkflowStatus;
+  currentVersionId: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentVersion?: AutomationWorkflowVersion | null;
+}
+
+export interface CreateAutomationWorkflowInput {
+  name: string;
+  description?: string | null;
+  status?: Extract<AutomationWorkflowStatus, "draft" | "active" | "paused">;
+}
+
+export interface UpdateAutomationWorkflowInput {
+  name?: string;
+  description?: string | null;
+  status?: AutomationWorkflowStatus;
+}
+
+export interface SaveAutomationWorkflowVersionInput {
+  definition?: Record<string, unknown>;
+  graph?: AutomationWorkflowGraph;
+  graphNodes?: AutomationWorkflowGraphNode[];
+  graphEdges?: AutomationWorkflowGraphEdge[];
+}
+
+export interface RunAutomationWorkflowInput {
+  triggerType?: "manual";
+  context?: Record<string, unknown>;
+}
+
+export interface RunAutomationWorkflowResult {
+  runId: string;
+  status: string;
+  executionStatus: string;
+  executedNodeIds: string[];
+}
+
+export interface AutomationRunEventSummary {
+  id: string;
+  runId: string;
+  stepRunId: string | null;
+  eventType: string;
+  level: string;
+  message: string;
+  payload: unknown;
+  createdAt: string;
+}
+
+export interface AutomationRunListItem {
+  runId: string;
+  workspaceId: string;
+  workflowId: string;
+  workflowName: string;
+  workflowStatus: string;
+  workflowVersionId: string;
+  workflowVersion: number;
+  workflowVersionStatus: string;
+  status: string;
   triggerType: string;
-  trigger: unknown;
-  conditions: unknown;
-  actions: unknown;
-  enabled: boolean;
-  priority: number;
-  version: number;
+  triggerRefId: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  durationMs: number | null;
+  stepsCount: number;
+  failedStepsCount: number;
+  sideEffectsCount: number;
+  eventsCount: number;
+  lastEvent: AutomationRunEventSummary | null;
+  error: unknown;
+}
+
+export type AutomationApprovalStatus = "pending" | "approved" | "rejected" | "expired" | "cancelled";
+export type AutomationApprovalType = "send_message" | "move_card" | "create_task" | "apply_ai_recommendation";
+
+export interface ListAutomationApprovalsOptions {
+  status?: AutomationApprovalStatus;
+  type?: AutomationApprovalType;
+  channel?: string;
+  workflowId?: string;
+  contactId?: string;
+  workItemId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  limit?: number;
+}
+
+export interface AutomationApprovalRecord {
+  id: string;
+  workspaceId: string;
+  runId: string;
+  stepRunId: string;
+  contactId: string | null;
+  workItemId: string | null;
+  type: AutomationApprovalType;
+  status: AutomationApprovalStatus;
+  title: string;
+  description: string | null;
+  payloadJson: unknown;
+  decisionJson: unknown;
+  requestedBy: string | null;
+  reviewedBy: string | null;
+  requestedAt: string;
+  reviewedAt: string | null;
+  expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AutomationExecution {
+export interface AutomationApprovalSummary {
+  approvalId: string;
+  type: AutomationApprovalType;
+  status: AutomationApprovalStatus;
+  title: string;
+  channel: string | null;
+  contactMasked: string | null;
+  contactName: string | null;
+  workflowId: string;
+  workflowName: string;
+  runId: string;
+  stepRunId: string;
+  createdAt: string;
+  requestedAt: string;
+  expiresAt: string | null;
+  lastEvent: {
+    id: string;
+    eventType: string;
+    message: string;
+    createdAt: string;
+  } | null;
+}
+
+export interface ReviewAutomationApprovalInput {
+  editedPayload?: Record<string, unknown>;
+  decisionReason?: string;
+  decision?: Record<string, unknown>;
+}
+
+export interface ListCommunicationInboxOptions {
+  status?: "open" | "pending" | "waiting_customer" | "waiting_internal" | "resolved" | "archived" | "blocked";
+  channel?: "email" | "whatsapp";
+  assignedTo?: string;
+  workItemId?: string;
+  contactId?: string;
+  hasUnread?: boolean;
+  hasPendingApproval?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  limit?: number;
+}
+
+export interface CommunicationConversationSummary {
+  conversationId: string;
+  contactName: string;
+  contactMasked: string | null;
+  channel: "email" | "whatsapp" | string;
+  status: string;
+  priority: string;
+  assignedTo: { id: string; name: string | null; email: string } | null;
+  workItemTitle: string | null;
+  workItemId: string | null;
+  lastMessagePreview: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+  hasPendingApproval: boolean;
+  hasFailedMessage: boolean;
+}
+
+export interface CommunicationMessageSummary {
   id: string;
-  workspaceId: string;
-  ruleId: string;
-  eventName: string | null;
-  eventId: string | null;
+  direction: "inbound" | "outbound" | "system" | string;
+  channel: string;
+  provider: string | null;
+  type: string;
+  status: string | null;
+  textPreview: string | null;
+  body: unknown;
+  occurredAt: string;
+  sideEffect: unknown;
+  providerEvent: unknown;
+  approvalRequest: { id: string; type: string; status: string; title: string; requestedAt: string } | null;
+  run: { runId: string; status: string; workflowId: string; workflowName: string; triggerType: string; createdAt: string } | null;
+  metadata: unknown;
+}
+
+export interface CommunicationConversationDetail {
+  conversation: {
+    id: string;
+    workspaceId: string;
+    channel: string;
+    status: string;
+    priority: string;
+    assignedTo: { id: string; name: string | null; email: string } | null;
+    workItemId: string | null;
+    lastMessageAt: string | null;
+    unreadCount: number;
+    archivedAt: string | null;
+    resolvedAt: string | null;
+  };
+  contact: {
+    id: string;
+    displayName: string | null;
+    companyName: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    status: string;
+    preferredChannel: string | null;
+  };
+  channels: Array<{ id: string; channel: string; address: string | null; status: string; isPrimary: boolean }>;
+  workItem: { id: string; title: string; description: string | null; status: string; type: string | null; updatedAt: string } | null;
+  messages: CommunicationMessageSummary[];
+  pendingApprovals: Array<{ approvalId: string; type: string; status: string; title: string; requestedAt: string }>;
+  recentAutomationRuns: Array<{ runId: string; status: string; workflowId: string; workflowName: string; triggerType: string; createdAt: string }>;
+  timelineEvents: Array<{ id: string; type: string; status: string | null; direction: string; occurredAt: string }>;
+}
+
+export interface AutomationApprovalDetail {
+  approval: AutomationApprovalRecord;
+  run: {
+    runId: string;
+    status: string;
+    triggerType: string;
+    workflowId: string;
+    workflowName: string;
+    workflowVersion: number;
+    createdAt: string;
+  };
+  stepRun: {
+    id: string;
+    nodeId: string;
+    nodeType: string;
+    status: string;
+    output: unknown;
+  };
+  contact: {
+    id: string;
+    displayName: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    status: string;
+  } | null;
+  contactChannel: {
+    id: string;
+    channel: string;
+    address: string | null;
+    status: string;
+  } | null;
+  workItem: {
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    type: string;
+    updatedAt: string;
+  } | null;
+  aiOutput: unknown;
+  draft: {
+    channel: string | null;
+    text: string;
+    subject: string | null;
+    templateKey: string | null;
+  };
+  timeline: Array<{
+    id: string;
+    eventType: string;
+    level: string;
+    message: string;
+    payload: unknown;
+    createdAt: string;
+  }>;
+  decision: unknown;
+  sideEffects: Array<{
+    id: string;
+    status: string;
+    sideEffectType: string;
+    channel: string | null;
+    provider: string | null;
+    createdAt: string;
+  }>;
+}
+
+export interface AutomationScheduledStepSummary {
+  id: string;
+  nodeId: string;
+  purpose: string;
+  executeAt: string;
   status: string;
   attempts: number;
-  context: unknown;
-  error: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationStepRunSummary {
+  id: string;
+  runId: string;
+  nodeId: string;
+  nodeType: string;
+  stepStatus: string;
+  status: string;
+  attempt: number;
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  rule: {
+  durationMs: number | null;
+  input: unknown;
+  output: unknown;
+  error: unknown;
+  idempotencyKey: string | null;
+  scheduledSteps: AutomationScheduledStepSummary[];
+}
+
+export interface AutomationSideEffectSummary {
+  id: string;
+  runId: string;
+  stepRunId: string;
+  sideEffectType: string;
+  channel: string | null;
+  provider: string | null;
+  status: string;
+  providerMessageId: string | null;
+  attempts: number;
+  maxAttempts: number;
+  nextAttemptAt: string;
+  processedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  locked: boolean;
+  idempotencyKey: string;
+  templateVersionId: string | null;
+  contact: {
+    id: string;
+    displayName: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    companyName: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    status: string;
+  } | null;
+  contactChannel: {
+    id: string;
+    channel: string;
+    label: string | null;
+    address: string | null;
+    normalizedAddress: string | null;
+    status: string;
+  } | null;
+  payload: unknown;
+  result: unknown;
+  error: unknown;
+  providerEvents: Array<{
+    id: string;
+    provider: string;
+    channel: string;
+    providerEventId: string;
+    providerMessageId: string | null;
+    eventType: string;
+    status: string;
+    payload: unknown;
+    normalized: unknown;
+    error: unknown;
+    receivedAt: string;
+    processedAt: string | null;
+  }>;
+}
+
+export type WhatsAppTemplateApprovalStatus = "draft" | "pending_review" | "approved" | "rejected" | "paused" | "disabled";
+
+export interface CommunicationTemplateVersion {
+  id: string;
+  workspaceId: string;
+  templateId: string;
+  version: number;
+  status: string;
+  approvalStatus: WhatsAppTemplateApprovalStatus;
+  providerTemplateName: string | null;
+  providerTemplateId: string | null;
+  language: string | null;
+  componentsJson: unknown;
+  subject: string | null;
+  textBody: string | null;
+  htmlBody: string | null;
+  variablesJson: unknown;
+  metadataJson: unknown;
+  publishedAt: string | null;
+  publishedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunicationTemplate {
+  id: string;
+  workspaceId: string;
+  name: string;
+  key: string;
+  channel: string;
+  category: string;
+  status: string;
+  description: string | null;
+  providerTemplateName: string | null;
+  providerTemplateId: string | null;
+  language: string | null;
+  approvalStatus: WhatsAppTemplateApprovalStatus;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  versions: CommunicationTemplateVersion[];
+}
+
+export interface WhatsAppConsent {
+  id: string;
+  workspaceId: string;
+  contactType: string | null;
+  contactId: string | null;
+  channel: "whatsapp";
+  address: string;
+  status: string;
+  source: string | null;
+  reason: string | null;
+  optInAt: string | null;
+  optOutAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWhatsAppTemplateInput {
+  name: string;
+  key: string;
+  body: string;
+  category?: string;
+  language?: string;
+  variables?: string[];
+  providerTemplateName?: string;
+}
+
+export interface UpdateCommunicationTemplateVersionInput {
+  textBody?: string | null;
+  variables?: string[];
+  approvalStatus?: WhatsAppTemplateApprovalStatus;
+  providerTemplateName?: string | null;
+  providerTemplateId?: string | null;
+  language?: string | null;
+}
+
+export interface AutomationRunDetail {
+  run: {
+    runId: string;
+    workspaceId: string;
+    workflowId: string;
+    workflowVersionId: string;
+    status: string;
+    triggerType: string;
+    triggerRefId: string | null;
+    startedAt: string | null;
+    finishedAt: string | null;
+    cancelledAt: string | null;
+    cancelReason: string | null;
+    createdAt: string;
+    updatedAt: string;
+    durationMs: number | null;
+    context: unknown;
+    error: unknown;
+    canCancel: boolean;
+    canRetry: boolean;
+  };
+  workflow: {
     id: string;
     name: string;
-    triggerType: string;
-    enabled: boolean;
-  } | null;
+    status: string;
+  };
+  workflowVersion: {
+    id: string;
+    version: number;
+    status: string;
+  };
+  summary: {
+    stepsCount: number;
+    failedStepsCount: number;
+    sideEffectsCount: number;
+    sentEmailsCount: number;
+    retriesCount: number;
+    eventsCount: number;
+  };
+  steps: AutomationStepRunSummary[];
+  events: AutomationRunEventSummary[];
+  sideEffects: AutomationSideEffectSummary[];
 }
 
 export interface AutomationViewColumn {
@@ -948,16 +1614,6 @@ export interface AutomationView {
   columns: AutomationViewColumn[];
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CreateAutomationRuleInput {
-  name: string;
-  description?: string;
-  trigger: { type: string; [key: string]: unknown };
-  conditions?: Record<string, unknown>;
-  actions: Array<{ type: string; [key: string]: unknown }>;
-  enabled?: boolean;
-  priority?: number;
 }
 
 export interface AiAgentSummary {

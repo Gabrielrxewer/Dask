@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -78,6 +78,12 @@ interface FlowCanvasInnerProps<TData extends Record<string, unknown>, TKind exte
   paletteTitle?: string;
   paletteEyebrow?: string;
   className?: string;
+  nodesDraggable?: boolean;
+  nodesConnectable?: boolean;
+  elementsSelectable?: boolean;
+  sidebarContent?: ReactNode;
+  sidebarFooter?: ReactNode;
+  sidebarDefaultOpen?: boolean;
 }
 
 function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends string>({
@@ -99,11 +105,18 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
   paletteTitle = 'Adicionar no',
   paletteEyebrow = 'Canvas',
   className,
+  nodesDraggable = true,
+  nodesConnectable = true,
+  elementsSelectable = true,
+  sidebarContent,
+  sidebarFooter,
+  sidebarDefaultOpen = false,
 }: FlowCanvasInnerProps<TData, TKind>) {
   const reactFlow = useReactFlow<Node<TData, TKind>, Edge>();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fitDoneRef = useRef(0);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(sidebarDefaultOpen);
+  const hasSidebar = paletteItems.length > 0 || Boolean(sidebarContent);
 
   useEffect(() => {
     if (fitViewKey !== fitDoneRef.current) {
@@ -185,7 +198,7 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
 
   return (
     <div className={`flow-canvas-ui${className ? ` ${className}` : ''}`} ref={canvasRef}>
-      {paletteItems.length > 0 && (
+      {hasSidebar && (
         <div className={`flow-canvas-ui__rail${paletteOpen ? ' flow-canvas-ui__rail--open' : ''}`}>
           <div className="flow-canvas-ui__sidebar">
             <div className="flow-canvas-ui__sidebar-head">
@@ -200,40 +213,50 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
               </button>
             </div>
 
-            <div className="flow-canvas-ui__sidebar-list">
-              {paletteItems.map((item) => (
-                <div
-                  key={item.kind}
-                  className="flow-canvas-ui__sidebar-item"
-                  style={{ '--item-color': item.color } as React.CSSProperties}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('application/reactflow', item.kind);
-                    event.dataTransfer.effectAllowed = 'move';
-                  }}
-                  onClick={() => spawnNode(item)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      spawnNode(item);
-                    }
-                  }}
-                  title={item.description}
-                >
-                  <span className="flow-canvas-ui__sidebar-dot" />
-                  <div className="flow-canvas-ui__sidebar-text">
-                    <span className="flow-canvas-ui__sidebar-label">{item.label}</span>
-                    <span className="flow-canvas-ui__sidebar-desc">{item.description}</span>
+            {sidebarContent ? (
+              <div className="flow-canvas-ui__sidebar-list flow-canvas-ui__sidebar-list--custom">
+                {sidebarContent}
+              </div>
+            ) : (
+              <div className="flow-canvas-ui__sidebar-list">
+                {paletteItems.map((item) => (
+                  <div
+                    key={item.kind}
+                    className="flow-canvas-ui__sidebar-item"
+                    style={{ '--item-color': item.color } as React.CSSProperties}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData('application/reactflow', item.kind);
+                      event.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onClick={() => spawnNode(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        spawnNode(item);
+                      }
+                    }}
+                    title={item.description}
+                  >
+                    <span className="flow-canvas-ui__sidebar-dot" />
+                    <div className="flow-canvas-ui__sidebar-text">
+                      <span className="flow-canvas-ui__sidebar-label">{item.label}</span>
+                      <span className="flow-canvas-ui__sidebar-desc">{item.description}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             <div className="flow-canvas-ui__sidebar-foot">
-              <span className="flow-canvas-ui__sidebar-foot-label">Visualizacao</span>
-              <FlowCanvasControls />
+              {sidebarFooter ?? (
+                <>
+                  <span className="flow-canvas-ui__sidebar-foot-label">Visualizacao</span>
+                  <FlowCanvasControls />
+                </>
+              )}
             </div>
           </div>
 
@@ -263,6 +286,9 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         onInit={onInit}
+        nodesDraggable={nodesDraggable}
+        nodesConnectable={nodesConnectable}
+        elementsSelectable={elementsSelectable}
         fitView
         proOptions={{ hideAttribution: true }}
         minZoom={0.2}

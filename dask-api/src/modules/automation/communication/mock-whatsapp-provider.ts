@@ -1,0 +1,56 @@
+import { randomUUID } from 'crypto';
+import {
+  CommunicationProviderError,
+  type CommunicationProvider,
+  type CommunicationSendInput,
+  type CommunicationSendResult
+} from '@/modules/automation/communication/communication-provider';
+
+function readSimulation(metadata: Record<string, unknown> | undefined): {
+  shouldFail: boolean;
+  retryable: boolean;
+} {
+  const simulate = metadata?.simulateProviderError;
+  if (simulate === 'retryable') {
+    return { shouldFail: true, retryable: true };
+  }
+  if (simulate === 'permanent' || simulate === 'non_retryable') {
+    return { shouldFail: true, retryable: false };
+  }
+
+  return {
+    shouldFail: metadata?.mockShouldFail === true,
+    retryable: metadata?.mockRetryable !== false
+  };
+}
+
+export class MockWhatsAppProvider implements CommunicationProvider {
+  public readonly channel = 'whatsapp' as const;
+  public readonly provider = 'mock';
+
+  public async send(input: CommunicationSendInput): Promise<CommunicationSendResult> {
+    const simulation = readSimulation(input.metadata);
+    if (simulation.shouldFail) {
+      throw new CommunicationProviderError({
+        message: 'Mock WhatsApp provider simulated a failure.',
+        code: 'MOCK_WHATSAPP_PROVIDER_FAILURE',
+        retryable: simulation.retryable,
+        details: {
+          channel: input.channel,
+          to: input.to
+        }
+      });
+    }
+
+    return {
+      providerMessageId: `mock_whatsapp_${randomUUID()}`,
+      status: 'mock_sent',
+      raw: {
+        channel: input.channel,
+        provider: this.provider,
+        to: input.to,
+        bodyLength: input.body.length
+      }
+    };
+  }
+}

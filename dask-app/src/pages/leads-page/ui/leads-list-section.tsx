@@ -46,6 +46,7 @@ export function LeadsListSection({
   onOpenCustomerFromLead,
   onOpenLinkCustomer,
   onCreateCharge,
+  onOpenFlow,
   onOpenDocs,
   onOpenBoard
 }: {
@@ -62,6 +63,7 @@ export function LeadsListSection({
   onOpenCustomerFromLead: (task: Task) => void;
   onOpenLinkCustomer: (task: Task) => void;
   onCreateCharge: (task: Task) => void;
+  onOpenFlow: (task: Task) => void;
   onOpenDocs: () => void;
   onOpenBoard: () => void;
 }) {
@@ -275,6 +277,9 @@ export function LeadsListSection({
               ) : null}
               <Button size="sm" variant="outline" onClick={() => onCreateCharge(task)}>
                 Cobrar
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onOpenFlow(task)}>
+                Fluxo
               </Button>
               <Button size="sm" className="leads-page__board-button" onClick={onOpenBoard}>
                 Board

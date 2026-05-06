@@ -472,6 +472,11 @@ model User {
   subscriptions            Subscription[]
   sentWorkspaceInvites     WorkspaceInvite[]        @relation("WorkspaceInviteSentBy")
   acceptedWorkspaceInvites WorkspaceInvite[]        @relation("WorkspaceInviteAcceptedBy")
+  createdAutomationWorkflows AutomationWorkflow[]   @relation("AutomationWorkflowCreatedBy")
+  publishedAutomationWorkflowVersions AutomationWorkflowVersion[] @relation("AutomationWorkflowVersionPublishedBy")
+  createdCommunicationTemplates CommunicationTemplate[] @relation("CommunicationTemplateCreatedBy")
+  publishedCommunicationTemplateVersions CommunicationTemplateVersion[] @relation("CommunicationTemplateVersionPublishedBy")
+  assignedCommunicationConversations CommunicationConversation[] @relation("CommunicationConversationAssignedTo")
   ownedLeads               Lead[]                  @relation("LeadOwner")
   leadActivities           LeadActivity[]          @relation("LeadActivityActor")
   leadAssignments          LeadAssignment[]        @relation("LeadAssignmentActor")
@@ -629,11 +634,28 @@ model Workspace {
   fieldBindings          WorkItemFieldBinding[]
   preferences            WorkspacePreferences?
   workItems              Item[]
-  automationRules        AutomationRule[]
   automationViews        AutomationView[]
   automationViewColumns  AutomationViewColumn[]
   itemViewPlacements     WorkItemViewPlacement[]
-  automationExecutions   AutomationExecution[]
+  automationWorkflows    AutomationWorkflow[]
+  automationWorkflowVersions AutomationWorkflowVersion[]
+  automationRuns         AutomationRun[]
+  automationStepRuns     AutomationStepRun[]
+  automationScheduledSteps AutomationScheduledStep[]
+  automationRunEvents    AutomationRunEvent[]
+  automationSideEffects  AutomationSideEffect[]
+  automationApprovalRequests AutomationApprovalRequest[]
+  communicationTemplates CommunicationTemplate[]
+  communicationTemplateVersions CommunicationTemplateVersion[]
+  contactConsents        ContactConsent[]
+  communicationSuppressions CommunicationSuppression[]
+  communicationUnsubscribeTokens CommunicationUnsubscribeToken[]
+  communicationProviderEvents CommunicationProviderEvent[]
+  communicationContacts CommunicationContact[]
+  communicationContactChannels CommunicationContactChannel[]
+  communicationConversations CommunicationConversation[]
+  communicationInteractions CommunicationInteraction[]
+  communicationConversationWindows CommunicationConversationWindow[]
   aiAgents               AIAgent[]
   aiAgentRuns            AIAgentRun[]
   invites                WorkspaceInvite[]
@@ -2049,6 +2071,9 @@ model Item {
   tags              WorkItemTag[]
   viewPlacements    WorkItemViewPlacement[]
   aiAgentRuns       AIAgentRun[]
+  automationApprovalRequests AutomationApprovalRequest[]
+  communicationConversations CommunicationConversation[]
+  communicationInteractions CommunicationInteraction[]
 
   @@index([workspaceId, typeId])
   @@index([workspaceId, stateId])
@@ -2115,45 +2140,558 @@ model ItemHistory {
   item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
-model AutomationRule {
+model AutomationWorkflow {
+  id               String                      @id @default(uuid())
+  workspaceId      String
+  name             String
+  description      String?
+  status           String                      @default("draft")
+  currentVersionId String?                     @unique
+  createdById      String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  workspace        Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  currentVersion   AutomationWorkflowVersion?  @relation("AutomationWorkflowCurrentVersion", fields: [currentVersionId], references: [id], onDelete: NoAction)
+  createdBy        User?                       @relation("AutomationWorkflowCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  versions         AutomationWorkflowVersion[] @relation("AutomationWorkflowVersions")
+  runs             AutomationRun[]
+
+  @@index([workspaceId, status, updatedAt])
+}
+
+model AutomationWorkflowVersion {
+  id                    String               @id @default(uuid())
+  workflowId            String
+  workspaceId           String
+  version               Int
+  status                String               @default("draft")
+  definitionJson        Json
+  graphNodesJson        Json
+  graphEdgesJson        Json
+  publishedAt           DateTime?
+  publishedById         String?
+  createdAt             DateTime             @default(now())
+  workspace             Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflow              AutomationWorkflow    @relation("AutomationWorkflowVersions", fields: [workflowId], references: [id], onDelete: Cascade)
+  currentForWorkflow    AutomationWorkflow?   @relation("AutomationWorkflowCurrentVersion")
+  publishedBy           User?                 @relation("AutomationWorkflowVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  runs                  AutomationRun[]
+
+  @@unique([workflowId, version])
+  @@index([workspaceId, status, createdAt])
+  @@index([workflowId, status, version])
+  @@index([workspaceId, publishedAt])
+}
+
+model AutomationRun {
+  id                String                    @id @default(uuid())
+  workspaceId       String
+  workflowId        String
+  workflowVersionId String
+  triggerType       String
+  triggerRefId      String?
+  status            String                    @default("queued")
+  contextJson       Json?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  errorJson         Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  workspace         Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflow          AutomationWorkflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowVersion   AutomationWorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  stepRuns          AutomationStepRun[]
+  scheduledSteps    AutomationScheduledStep[]
+  events            AutomationRunEvent[]
+  sideEffects       AutomationSideEffect[]
+  approvalRequests  AutomationApprovalRequest[]
+  communicationInteractions CommunicationInteraction[]
+
+  @@index([workspaceId, status, createdAt])
+  @@index([workflowId, createdAt])
+  @@index([workflowVersionId, createdAt])
+  @@index([workspaceId, triggerType, triggerRefId])
+}
+
+model AutomationStepRun {
   id              String                    @id @default(uuid())
   workspaceId     String
-  name            String
-  description     String?
-  triggerType     String
-  trigger         Json
-  conditions      Json?
-  actions         Json
-  priority        Int                       @default(100)
-  version         Int                       @default(1)
-  enabled         Boolean                   @default(true)
+  runId           String
+  nodeId          String
+  nodeType        String
+  status          String                    @default("queued")
+  inputJson       Json?
+  outputJson      Json?
+  errorJson       Json?
+  attempt         Int                       @default(1)
+  idempotencyKey  String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
   workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  executions      AutomationExecution[]
+  run             AutomationRun             @relation(fields: [runId], references: [id], onDelete: Cascade)
+  scheduledSteps  AutomationScheduledStep[]
+  events          AutomationRunEvent[]
+  sideEffects     AutomationSideEffect[]
+  approvalRequests AutomationApprovalRequest[]
+  communicationInteractions CommunicationInteraction[]
 
-  @@index([workspaceId, enabled, triggerType, priority])
+  @@unique([runId, nodeId, attempt])
+  @@unique([workspaceId, idempotencyKey])
+  @@index([workspaceId, status, createdAt])
+  @@index([runId, status, createdAt])
+  @@index([runId, nodeId])
 }
 
-model AutomationExecution {
-  id          String         @id @default(uuid())
-  workspaceId String
-  ruleId      String?
-  eventName   String
-  eventId     String?
-  status      String
-  attempts    Int            @default(0)
-  context     Json?
-  error       String?
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  rule        AutomationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+model AutomationScheduledStep {
+  id            String            @id @default(uuid())
+  workspaceId   String
+  runId         String
+  stepRunId     String
+  nodeId        String
+  purpose       String            @default("resume")
+  executeAt     DateTime
+  status        String            @default("scheduled")
+  lockedAt      DateTime?
+  lockedBy      String?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  attempts      Int               @default(0)
+  idempotencyKey String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run           AutomationRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun       AutomationStepRun @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
 
-  @@index([workspaceId, createdAt])
-  @@index([ruleId, createdAt])
+  @@unique([workspaceId, idempotencyKey])
+  @@index([workspaceId, status, executeAt])
+  @@index([workspaceId, purpose, status, executeAt])
+  @@index([status, executeAt])
+  @@index([runId, status])
+  @@index([stepRunId])
+}
+
+model AutomationRunEvent {
+  id          String             @id @default(uuid())
+  workspaceId String
+  runId       String
+  stepRunId   String?
+  eventType   String
+  level       String             @default("info")
+  message     String
+  payloadJson Json?
+  createdAt   DateTime           @default(now())
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run         AutomationRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun     AutomationStepRun? @relation(fields: [stepRunId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, runId, createdAt])
+  @@index([runId, eventType, createdAt])
+  @@index([stepRunId, createdAt])
+  @@index([workspaceId, eventType, createdAt])
+}
+
+model AutomationSideEffect {
+  id             String             @id @default(uuid())
+  workspaceId    String
+  runId          String
+  stepRunId      String
+  sideEffectType String
+  channel        String?
+  provider       String?
+  status         String             @default("queued")
+  idempotencyKey String
+  payloadJson    Json
+  resultJson     Json?
+  errorJson      Json?
+  templateVersionId String?
+  contactId      String?
+  contactChannelId String?
+  approvalRequestId String?
+  conversationId String?
+  attempts       Int                @default(0)
+  maxAttempts    Int                @default(3)
+  nextAttemptAt  DateTime           @default(now())
+  lockedAt       DateTime?
+  lockedBy       String?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  processedAt    DateTime?
+  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run            AutomationRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun        AutomationStepRun  @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  templateVersion CommunicationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
+  providerEvents CommunicationProviderEvent[]
+  contact        CommunicationContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactChannel CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  approvalRequest AutomationApprovalRequest? @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  conversation    CommunicationConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  interactions   CommunicationInteraction[]
+
+  @@unique([workspaceId, idempotencyKey])
+  @@index([workspaceId, status, nextAttemptAt])
+  @@index([status, nextAttemptAt])
+  @@index([runId, status])
+  @@index([stepRunId])
+  @@index([templateVersionId])
+  @@index([contactId])
+  @@index([contactChannelId])
+  @@index([approvalRequestId])
+  @@index([conversationId])
+}
+
+model AutomationApprovalRequest {
+  id            String             @id @default(uuid())
+  workspaceId   String
+  runId         String
+  stepRunId     String
+  contactId     String?
+  workItemId    String?
+  conversationId String?
+  type          String
+  status        String             @default("pending")
+  title         String
+  description   String?
+  payloadJson   Json?
+  decisionJson  Json?
+  requestedBy   String?
+  reviewedBy    String?
+  requestedAt   DateTime           @default(now())
+  reviewedAt    DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run           AutomationRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun       AutomationStepRun  @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  contact       CommunicationContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  workItem      Item?              @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  conversation  CommunicationConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  sideEffects   AutomationSideEffect[]
+  interactions  CommunicationInteraction[]
+
+  @@index([workspaceId, status, requestedAt])
+  @@index([workspaceId, runId, status])
+  @@index([stepRunId])
+  @@index([contactId])
+  @@index([workItemId])
+  @@index([conversationId])
+}
+
+model CommunicationContact {
+  id               String                       @id @default(uuid())
+  workspaceId      String
+  displayName      String?
+  firstName        String?
+  lastName         String?
+  companyName      String?
+  sourceType       String                       @default("manual")
+  sourceId         String?
+  primaryEmail     String?
+  primaryPhone     String?
+  preferredChannel String?
+  status           String                       @default("active")
+  metadataJson     Json?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+  archivedAt       DateTime?
+  workspace        Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channels         CommunicationContactChannel[]
+  sideEffects      AutomationSideEffect[]
+  interactions     CommunicationInteraction[]
+  conversations    CommunicationConversation[]
+  conversationWindows CommunicationConversationWindow[]
+  providerEvents   CommunicationProviderEvent[]
+  approvalRequests AutomationApprovalRequest[]
+
+  @@index([workspaceId, status, updatedAt])
+  @@index([workspaceId, sourceType, sourceId])
+  @@index([workspaceId, primaryEmail])
+  @@index([workspaceId, primaryPhone])
+}
+
+model CommunicationContactChannel {
+  id                String                     @id @default(uuid())
+  workspaceId       String
+  contactId         String
+  channel           String
+  address           String
+  normalizedAddress String
+  label             String?
+  isPrimary         Boolean                    @default(false)
+  status            String                     @default("active")
+  verifiedAt        DateTime?
+  lastUsedAt        DateTime?
+  metadataJson      Json?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  workspace         Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact           CommunicationContact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sideEffects       AutomationSideEffect[]
+  interactions      CommunicationInteraction[]
+  conversations     CommunicationConversation[]
+  conversationWindows CommunicationConversationWindow[]
+  providerEvents    CommunicationProviderEvent[]
+
+  @@unique([workspaceId, channel, normalizedAddress])
+  @@index([workspaceId, contactId, channel])
+  @@index([workspaceId, channel, status])
+}
+
+model CommunicationConversation {
+  id                 String                       @id @default(uuid())
+  workspaceId        String
+  contactId          String
+  contactChannelId   String?
+  primaryChannel     String
+  status             String                       @default("open")
+  priority           String                       @default("normal")
+  assignedToId       String?
+  workItemId         String?
+  lastMessageAt      DateTime?
+  lastInboundAt      DateTime?
+  lastOutboundAt     DateTime?
+  lastMessagePreview String?
+  unreadCount        Int                          @default(0)
+  metadataJson       Json?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  archivedAt         DateTime?
+  resolvedAt         DateTime?
+  workspace          Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact            CommunicationContact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactChannel     CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  assignedTo         User?                        @relation("CommunicationConversationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  workItem           Item?                        @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  interactions       CommunicationInteraction[]
+  sideEffects        AutomationSideEffect[]
+  approvalRequests   AutomationApprovalRequest[]
+
+  @@index([workspaceId, status, lastMessageAt])
+  @@index([workspaceId, contactId, primaryChannel, status])
+  @@index([workspaceId, contactChannelId, status])
+  @@index([workspaceId, workItemId, status])
+  @@index([workspaceId, assignedToId, status])
+  @@index([workspaceId, lastInboundAt])
+}
+
+model CommunicationInteraction {
+  id                String                       @id @default(uuid())
+  workspaceId       String
+  conversationId    String?
+  contactId         String?
+  contactChannelId  String?
+  sideEffectId      String?
+  providerEventId   String?
+  approvalRequestId String?
+  runId             String?
+  stepRunId         String?
+  workItemId        String?
+  direction         String
+  channel           String
+  type              String
+  status            String?
+  provider          String?
+  textPreview       String?
+  bodyJson          Json?
+  occurredAt        DateTime                     @default(now())
+  metadataJson      Json?
+  createdAt         DateTime                     @default(now())
+  workspace         Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversation      CommunicationConversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  contact           CommunicationContact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactChannel    CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  sideEffect         AutomationSideEffect?        @relation(fields: [sideEffectId], references: [id], onDelete: SetNull)
+  providerEvent      CommunicationProviderEvent?  @relation(fields: [providerEventId], references: [id], onDelete: SetNull)
+  approvalRequest    AutomationApprovalRequest?   @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  run                AutomationRun?               @relation(fields: [runId], references: [id], onDelete: SetNull)
+  stepRun            AutomationStepRun?           @relation(fields: [stepRunId], references: [id], onDelete: SetNull)
+  workItem           Item?                        @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, contactId, occurredAt])
+  @@index([workspaceId, conversationId, occurredAt])
+  @@index([workspaceId, sideEffectId])
+  @@index([workspaceId, providerEventId])
+  @@index([workspaceId, approvalRequestId])
+  @@index([workspaceId, runId])
+  @@index([workspaceId, workItemId])
+}
+
+model CommunicationTemplate {
+  id          String                         @id @default(uuid())
+  workspaceId String
+  name        String
+  key         String
+  channel     String
+  category    String                        @default("follow_up")
+  status      String                        @default("draft")
+  description String?
+  providerTemplateName String?
+  providerTemplateId String?
+  language    String?
+  approvalStatus String                     @default("draft")
+  createdById String?
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  archivedAt  DateTime?
+  workspace   Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User?                         @relation("CommunicationTemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  versions    CommunicationTemplateVersion[]
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, channel, status, updatedAt])
+  @@index([workspaceId, category, status])
+}
+
+model CommunicationTemplateVersion {
+  id            String                     @id @default(uuid())
+  workspaceId   String
+  templateId    String
+  version       Int
+  status        String                     @default("draft")
+  approvalStatus String                    @default("draft")
+  providerTemplateName String?
+  providerTemplateId String?
+  language      String?
+  componentsJson Json?
+  subject       String?
+  textBody      String?
+  htmlBody      String?
+  variablesJson Json?
+  metadataJson  Json?
+  publishedAt   DateTime?
+  publishedById String?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  workspace     Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  template      CommunicationTemplate      @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  publishedBy   User?                      @relation("CommunicationTemplateVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  sideEffects   AutomationSideEffect[]
+
+  @@unique([templateId, version])
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, approvalStatus, updatedAt])
+  @@index([workspaceId, templateId, status, version])
+}
+
+model CommunicationConversationWindow {
+  id          String    @id @default(uuid())
+  workspaceId String
+  contactId   String
+  contactChannelId String?
+  channel     String
+  provider    String?
+  openedAt    DateTime
+  expiresAt   DateTime
+  lastInboundAt DateTime?
+  lastOutboundAt DateTime?
+  source      String
+  status      String    @default("open")
+  metadataJson Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact     CommunicationContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactChannel CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, contactId, channel, status])
+  @@index([workspaceId, contactChannelId, channel, status])
+  @@index([workspaceId, channel, expiresAt])
+}
+
+model ContactConsent {
+  id          String    @id @default(uuid())
+  workspaceId String
+  contactType String?
+  contactId   String?
+  channel     String
+  address     String
+  status      String    @default("unknown")
+  source      String?
+  reason      String?
+  optInAt     DateTime?
+  optOutAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, channel, address])
+  @@index([workspaceId, channel, status, updatedAt])
+  @@index([workspaceId, contactType, contactId])
+}
+
+model CommunicationSuppression {
+  id          String    @id @default(uuid())
+  workspaceId String
+  channel     String
+  address     String
+  reason      String
+  source      String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  metadataJson Json?
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, channel, address])
+  @@index([workspaceId, channel, createdAt])
+  @@index([workspaceId, channel, reason])
+}
+
+model CommunicationUnsubscribeToken {
+  id          String    @id @default(uuid())
+  workspaceId String
+  channel     String
+  address     String
+  tokenHash   String    @unique
+  category    String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, channel, address])
+  @@index([expiresAt, usedAt])
+}
+
+model CommunicationProviderEvent {
+  id                String                       @id @default(uuid())
+  workspaceId       String?
+  provider          String
+  channel           String
+  providerEventId   String
+  providerMessageId String?
+  eventType         String
+  status            String                       @default("received")
+  sideEffectId      String?
+  contactId         String?
+  contactChannelId  String?
+  payloadJson       Json?
+  normalizedJson    Json?
+  errorJson         Json?
+  receivedAt        DateTime                     @default(now())
+  processedAt       DateTime?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  workspace         Workspace?                   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  sideEffect        AutomationSideEffect?        @relation(fields: [sideEffectId], references: [id], onDelete: SetNull)
+  contact           CommunicationContact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactChannel    CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  interactions      CommunicationInteraction[]
+
+  @@unique([provider, providerEventId])
+  @@index([workspaceId, receivedAt])
+  @@index([provider, channel, providerMessageId])
+  @@index([sideEffectId])
+  @@index([contactId])
+  @@index([contactChannelId])
+  @@index([eventType, receivedAt])
+  @@index([status, receivedAt])
 }
 
 model AutomationView {

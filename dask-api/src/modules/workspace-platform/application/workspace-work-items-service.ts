@@ -18,7 +18,6 @@ import {
   isRecord,
   parseChecklist,
   parsePriority,
-  summarizeAutomationPart,
   toJsonValue,
   toSlug,
   type JsonRecord
@@ -116,8 +115,17 @@ export class WorkspaceWorkItemsService {
         },
         orderBy: { createdAt: 'asc' }
       }),
-      this.prisma.automationRule.findMany({
+      this.prisma.automationWorkflow.findMany({
         where: customerScope.isClient ? { id: { in: [] } } : { workspaceId: input.workspaceId },
+        include: {
+          currentVersion: {
+            select: {
+              id: true,
+              version: true,
+              status: true
+            }
+          }
+        },
         orderBy: { updatedAt: 'desc' }
       }),
       this.prisma.item.findMany({
@@ -257,12 +265,12 @@ export class WorkspaceWorkItemsService {
       },
       preferences: config.preferences,
       boardConfig,
-      automations: automations.map((rule) => ({
-        id: rule.id,
-        title: rule.name,
-        status: rule.enabled ? 'active' : 'paused',
-        trigger: summarizeAutomationPart(rule.trigger),
-        action: summarizeAutomationPart(rule.actions)
+      automations: automations.map((workflow) => ({
+        id: workflow.id,
+        title: workflow.name,
+        status: workflow.status === 'active' ? 'active' : 'paused',
+        trigger: workflow.currentVersion ? `Versao ${workflow.currentVersion.version}` : 'Sem versao publicada',
+        action: 'Workflow versionado'
       })),
       tasks,
       workspace: access.workspace,
@@ -272,11 +280,12 @@ export class WorkspaceWorkItemsService {
       tags: config.tags,
       customFieldDefinitions: config.customFieldDefinitions,
       workItems: serializedWorkItems,
-      automationsSummary: automations.map((rule) => ({
-        id: rule.id,
-        name: rule.name,
-        enabled: rule.enabled,
-        updatedAt: rule.updatedAt
+      automationsSummary: automations.map((workflow) => ({
+        id: workflow.id,
+        name: workflow.name,
+        status: workflow.status,
+        currentVersion: workflow.currentVersion?.version ?? null,
+        updatedAt: workflow.updatedAt
       }))
     };
   }

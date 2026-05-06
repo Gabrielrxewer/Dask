@@ -25,6 +25,9 @@ import { buildItemsRoutes } from '@/modules/items/http/routes';
 import { buildAiRoutes } from '@/modules/ai/http/routes';
 import { buildSearchRoutes } from '@/modules/search/http/routes';
 import { buildAutomationRoutes } from '@/modules/automation/http/routes';
+import { buildCommunicationPublicRoutes } from '@/modules/automation/communication/communication-public-routes';
+import { buildMetaWhatsAppWebhookRoutes } from '@/modules/automation/communication/meta-whatsapp-webhook-routes';
+import { buildResendWebhookRoutes } from '@/modules/automation/communication/resend-webhook-routes';
 import { buildIntegrationRoutes } from '@/modules/integration/http/routes';
 import { buildAuditRoutes } from '@/modules/audit/http/routes';
 import { buildWorkspacePlatformRoutes } from '@/modules/workspace-platform/http/routes';
@@ -159,7 +162,12 @@ export const createApp = (): Express => {
   app.use(`${env.API_PREFIX}/billing/webhook`, express.raw({ type: 'application/json' }));
   app.use(`${env.API_PREFIX}/integrations/stripe/webhook/fiscal`, express.raw({ type: 'application/json' }));
 
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({
+    limit: '2mb',
+    verify: (req, _res, buf) => {
+      (req as typeof req & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+    }
+  }));
   app.use(cookieParser());
 
   const {
@@ -172,7 +180,12 @@ export const createApp = (): Express => {
     aiAgentService,
     indexingRequestService,
     hybridSearchService,
-    automationService,
+    automationApprovalRequestService,
+    automationWorkflowService,
+    automationWorkflowVersionService,
+    automationRunService,
+    automationRunObservabilityService,
+    automationWorkflowRunnerService,
     automationViewService,
     integrationService,
     auditService,
@@ -255,6 +268,9 @@ export const createApp = (): Express => {
   app.use(env.API_PREFIX, buildFiscalIntegrationRoutes({ fiscalService }));
   app.use(env.API_PREFIX, buildCommercialIntakeRoutes({ commercialIntakeService }));
   app.use(env.API_PREFIX, buildMarketingIntegrationRoutes({ marketingService }));
+  app.use(env.API_PREFIX, buildResendWebhookRoutes({ prisma }));
+  app.use(env.API_PREFIX, buildMetaWhatsAppWebhookRoutes({ prisma }));
+  app.use(env.API_PREFIX, buildCommunicationPublicRoutes({ prisma }));
 
   app.use(
     env.API_PREFIX,
@@ -318,7 +334,12 @@ export const createApp = (): Express => {
     buildAutomationRoutes({
       prisma,
       authorizationService: roleAuthorizationService,
-      automationService,
+      automationApprovalRequestService,
+      automationWorkflowService,
+      automationWorkflowVersionService,
+      automationRunService,
+      automationRunObservabilityService,
+      automationWorkflowRunnerService,
       automationViewService
     })
   );

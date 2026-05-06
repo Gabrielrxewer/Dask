@@ -10,23 +10,44 @@ import type {
   ApiItemType,
   ApiWorkflowState,
   AutomationView,
-  AutomationExecution,
-  AutomationRule,
+  AutomationApprovalDetail,
+  AutomationApprovalRecord,
+  AutomationApprovalSummary,
+  AutomationRunDetail,
+  AutomationRunListItem,
+  AutomationSideEffectSummary,
+  AutomationWorkflow,
+  AutomationWorkflowStatus,
+  AutomationWorkflowVersion,
+  AutomationWorkflowVersionStatus,
+  CommunicationConversationDetail,
+  CommunicationConversationSummary,
+  CommunicationMessageSummary,
+  CommunicationTemplate,
+  CommunicationTemplateVersion,
   CreateCustomerInput,
   CreateAiAgentInput,
+  CreateWhatsAppTemplateInput,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
-  CreateAutomationRuleInput,
+  RunAutomationWorkflowInput,
+  RunAutomationWorkflowResult,
+  SaveAutomationWorkflowVersionInput,
+  CreateAutomationWorkflowInput,
   CreateBoardColumnInput,
+  ListCommunicationInboxOptions,
   CreateCustomFieldInput,
   CreateItemTypeInput,
   UpdateBoardColumnInput,
+  UpdateAutomationWorkflowInput,
+  UpdateCommunicationTemplateVersionInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
   WorkItemFieldBindingInput,
   TaskScheduleInput,
   UpdateTaskInput,
   WorkspaceDocument,
+  WhatsAppConsent,
   Customer,
   CustomerStatus,
   WorkItemLinkedDocument,
@@ -515,9 +536,7 @@ export const workspaceService: WorkspaceService = {
 
   async setAutomationStatus(workspaceSlug, automationId, status) {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    await apiClient.patch(`/automation/workspaces/${workspaceId}/rules/${automationId}`, {
-      enabled: status === "active"
-    }, {
+    await apiClient.post(`/workspaces/${workspaceId}/automation-workflows/${automationId}/${status === "active" ? "activate" : "pause"}`, undefined, {
       authMode: "required",
       retryOnUnauthorized: true
     });
@@ -687,69 +706,590 @@ export const workspaceService: WorkspaceService = {
     return fetchSnapshot(workspaceSlug);
   },
 
-  async listAutomationRules(workspaceSlug: string, options?: { includeDisabled?: boolean }): Promise<AutomationRule[]> {
+  async listAutomationWorkflows(
+    workspaceSlug: string,
+    options?: { status?: AutomationWorkflowStatus; limit?: number }
+  ): Promise<{ items: AutomationWorkflow[] }> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    const qs = options?.includeDisabled ? "?includeDisabled=true" : "";
-    return apiClient.get<AutomationRule[]>(`/automation/workspaces/${workspaceId}/rules${qs}`, {
+    const query = new URLSearchParams();
+    if (options?.status) query.set("status", options.status);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: AutomationWorkflow[] }>(
+      `/workspaces/${workspaceId}/automation-workflows${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async createAutomationWorkflow(
+    workspaceSlug: string,
+    input: CreateAutomationWorkflowInput
+  ): Promise<AutomationWorkflow> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflow>(`/workspaces/${workspaceId}/automation-workflows`, input, {
       authMode: "required",
       retryOnUnauthorized: true
     });
   },
 
-  async listAutomationExecutions(workspaceSlug: string, options?: { limit?: number }): Promise<AutomationExecution[]> {
+  async getAutomationWorkflow(workspaceSlug: string, workflowId: string): Promise<AutomationWorkflow> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    const qs = typeof options?.limit === "number" ? `?limit=${options.limit}` : "";
-    return apiClient.get<AutomationExecution[]>(`/automation/workspaces/${workspaceId}/executions${qs}`, {
+    return apiClient.get<AutomationWorkflow>(`/workspaces/${workspaceId}/automation-workflows/${workflowId}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });
+  },
+
+  async updateAutomationWorkflow(
+    workspaceSlug: string,
+    workflowId: string,
+    input: UpdateAutomationWorkflowInput
+  ): Promise<AutomationWorkflow> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<AutomationWorkflow>(`/workspaces/${workspaceId}/automation-workflows/${workflowId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async activateAutomationWorkflow(workspaceSlug: string, workflowId: string): Promise<AutomationWorkflow> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflow>(`/workspaces/${workspaceId}/automation-workflows/${workflowId}/activate`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async pauseAutomationWorkflow(workspaceSlug: string, workflowId: string): Promise<AutomationWorkflow> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflow>(`/workspaces/${workspaceId}/automation-workflows/${workflowId}/pause`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async archiveAutomationWorkflow(workspaceSlug: string, workflowId: string): Promise<AutomationWorkflow> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflow>(`/workspaces/${workspaceId}/automation-workflows/${workflowId}/archive`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listAutomationWorkflowVersions(
+    workspaceSlug: string,
+    workflowId: string,
+    options?: { status?: AutomationWorkflowVersionStatus; limit?: number }
+  ): Promise<{ items: AutomationWorkflowVersion[] }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (options?.status) query.set("status", options.status);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: AutomationWorkflowVersion[] }>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/versions${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async createAutomationWorkflowDraftVersion(
+    workspaceSlug: string,
+    workflowId: string,
+    input?: SaveAutomationWorkflowVersionInput
+  ): Promise<AutomationWorkflowVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflowVersion>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/versions/draft`,
+      input ?? {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async getAutomationWorkflowVersion(
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string
+  ): Promise<AutomationWorkflowVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AutomationWorkflowVersion>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/versions/${versionId}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async updateAutomationWorkflowVersion(
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string,
+    input: SaveAutomationWorkflowVersionInput
+  ): Promise<AutomationWorkflowVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<AutomationWorkflowVersion>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/versions/${versionId}`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async publishAutomationWorkflowVersion(
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string,
+    input?: { activateWorkflow?: boolean }
+  ): Promise<AutomationWorkflowVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflowVersion>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/versions/${versionId}/publish`,
+      input ?? {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async cloneAutomationWorkflowVersion(
+    workspaceSlug: string,
+    workflowId: string,
+    versionId: string
+  ): Promise<AutomationWorkflowVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationWorkflowVersion>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/versions/${versionId}/clone`,
+      undefined,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async runAutomationWorkflow(
+    workspaceSlug: string,
+    workflowId: string,
+    input?: RunAutomationWorkflowInput
+  ): Promise<RunAutomationWorkflowResult> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<RunAutomationWorkflowResult>(
+      `/workspaces/${workspaceId}/automation-workflows/${workflowId}/run`,
+      {
+        triggerType: input?.triggerType ?? "manual",
+        context: input?.context ?? {}
+      },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async listAutomationRuns(
+    workspaceSlug: string,
+    options?: {
+      workflowId?: string;
+      status?: string;
+      triggerType?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      search?: string;
+      limit?: number;
+    }
+  ): Promise<{ items: AutomationRunListItem[] }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (options?.workflowId) query.set("workflowId", options.workflowId);
+    if (options?.status) query.set("status", options.status);
+    if (options?.triggerType) query.set("triggerType", options.triggerType);
+    if (options?.dateFrom) query.set("dateFrom", options.dateFrom);
+    if (options?.dateTo) query.set("dateTo", options.dateTo);
+    if (options?.search) query.set("search", options.search);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: AutomationRunListItem[] }>(
+      `/automation/workspaces/${workspaceId}/runs${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async getAutomationRunDetail(workspaceSlug: string, runId: string): Promise<AutomationRunDetail> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AutomationRunDetail>(`/automation/workspaces/${workspaceId}/runs/${runId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async cancelAutomationRun(workspaceSlug: string, runId: string, reason?: string): Promise<AutomationRunDetail> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationRunDetail>(
+      `/automation/workspaces/${workspaceId}/runs/${runId}/cancel`,
+      reason ? { reason } : {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async listAutomationApprovals(
+    workspaceSlug: string,
+    options?: {
+      status?: string;
+      type?: string;
+      channel?: string;
+      workflowId?: string;
+      contactId?: string;
+      workItemId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      search?: string;
+      limit?: number;
+    }
+  ): Promise<{ items: AutomationApprovalSummary[] }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (options?.status) query.set("status", options.status);
+    if (options?.type) query.set("type", options.type);
+    if (options?.channel) query.set("channel", options.channel);
+    if (options?.workflowId) query.set("workflowId", options.workflowId);
+    if (options?.contactId) query.set("contactId", options.contactId);
+    if (options?.workItemId) query.set("workItemId", options.workItemId);
+    if (options?.dateFrom) query.set("dateFrom", options.dateFrom);
+    if (options?.dateTo) query.set("dateTo", options.dateTo);
+    if (options?.search) query.set("search", options.search);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: AutomationApprovalSummary[] }>(
+      `/workspaces/${workspaceId}/automation-approvals${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async listCommunicationInbox(
+    workspaceSlug: string,
+    options?: ListCommunicationInboxOptions
+  ): Promise<{ items: CommunicationConversationSummary[] }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (options?.status) query.set("status", options.status);
+    if (options?.channel) query.set("channel", options.channel);
+    if (options?.assignedTo) query.set("assignedTo", options.assignedTo);
+    if (options?.workItemId) query.set("workItemId", options.workItemId);
+    if (options?.contactId) query.set("contactId", options.contactId);
+    if (typeof options?.hasUnread === "boolean") query.set("hasUnread", String(options.hasUnread));
+    if (typeof options?.hasPendingApproval === "boolean") query.set("hasPendingApproval", String(options.hasPendingApproval));
+    if (options?.dateFrom) query.set("dateFrom", options.dateFrom);
+    if (options?.dateTo) query.set("dateTo", options.dateTo);
+    if (options?.search) query.set("search", options.search);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: CommunicationConversationSummary[] }>(
+      `/workspaces/${workspaceId}/communication/inbox${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async getCommunicationConversation(
+    workspaceSlug: string,
+    conversationId: string
+  ): Promise<CommunicationConversationDetail> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<CommunicationConversationDetail>(
+      `/workspaces/${workspaceId}/communication/conversations/${conversationId}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async markCommunicationConversationRead(workspaceSlug: string, conversationId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/communication/conversations/${conversationId}/read`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async resolveCommunicationConversation(workspaceSlug: string, conversationId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/communication/conversations/${conversationId}/resolve`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async archiveCommunicationConversation(workspaceSlug: string, conversationId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/communication/conversations/${conversationId}/archive`, undefined, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async assignCommunicationConversation(
+    workspaceSlug: string,
+    conversationId: string,
+    assignedToId?: string | null
+  ): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(
+      `/workspaces/${workspaceId}/communication/conversations/${conversationId}/assign`,
+      { assignedToId: assignedToId ?? null },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async linkCommunicationConversationWorkItem(
+    workspaceSlug: string,
+    conversationId: string,
+    workItemId?: string | null
+  ): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(
+      `/workspaces/${workspaceId}/communication/conversations/${conversationId}/link-work-item`,
+      { workItemId: workItemId ?? null },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async replyCommunicationConversation(
+    workspaceSlug: string,
+    conversationId: string,
+    input: { channel: "email" | "whatsapp"; text: string; sendMode: "manual" }
+  ): Promise<{ sideEffect: AutomationSideEffectSummary; message: CommunicationMessageSummary }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<{ sideEffect: AutomationSideEffectSummary; message: CommunicationMessageSummary }>(
+      `/workspaces/${workspaceId}/communication/conversations/${conversationId}/reply`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async getAutomationApproval(workspaceSlug: string, approvalId: string): Promise<AutomationApprovalDetail> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AutomationApprovalDetail>(
+      `/workspaces/${workspaceId}/automation-approvals/${approvalId}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async approveAutomationApproval(
+    workspaceSlug: string,
+    approvalId: string,
+    input: { editedPayload?: Record<string, unknown>; decisionReason?: string; decision?: Record<string, unknown> }
+  ): Promise<AutomationApprovalRecord> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationApprovalRecord>(
+      `/workspaces/${workspaceId}/automation-approvals/${approvalId}/approve`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async rejectAutomationApproval(
+    workspaceSlug: string,
+    approvalId: string,
+    input: { editedPayload?: Record<string, unknown>; decisionReason?: string; decision?: Record<string, unknown> }
+  ): Promise<AutomationApprovalRecord> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationApprovalRecord>(
+      `/workspaces/${workspaceId}/automation-approvals/${approvalId}/reject`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async cancelAutomationApproval(workspaceSlug: string, approvalId: string, reason?: string): Promise<AutomationApprovalRecord> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationApprovalRecord>(
+      `/workspaces/${workspaceId}/automation-approvals/${approvalId}/cancel`,
+      reason ? { reason } : {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async listCommunicationTemplates(
+    workspaceSlug: string,
+    options?: { channel?: string; status?: string; limit?: number }
+  ): Promise<{ items: CommunicationTemplate[] }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (options?.channel) query.set("channel", options.channel);
+    if (options?.status) query.set("status", options.status);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: CommunicationTemplate[] }>(
+      `/automation/workspaces/${workspaceId}/communication/templates${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async createWhatsAppTemplate(workspaceSlug: string, input: CreateWhatsAppTemplateInput): Promise<CommunicationTemplate> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<CommunicationTemplate>(
+      `/automation/workspaces/${workspaceId}/communication/templates/whatsapp`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async updateCommunicationTemplateVersion(
+    workspaceSlug: string,
+    versionId: string,
+    input: UpdateCommunicationTemplateVersionInput
+  ): Promise<CommunicationTemplateVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<CommunicationTemplateVersion>(
+      `/automation/workspaces/${workspaceId}/communication/templates/versions/${versionId}`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async publishCommunicationTemplateVersion(workspaceSlug: string, versionId: string): Promise<CommunicationTemplateVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<CommunicationTemplateVersion>(
+      `/automation/workspaces/${workspaceId}/communication/templates/versions/${versionId}/publish`,
+      {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async markWhatsAppTemplateApprovalStatus(
+    workspaceSlug: string,
+    versionId: string,
+    input: {
+      approvalStatus: "pending_review" | "approved" | "rejected" | "paused" | "disabled";
+      providerTemplateName?: string | null;
+      providerTemplateId?: string | null;
+    }
+  ): Promise<CommunicationTemplateVersion> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<CommunicationTemplateVersion>(
+      `/automation/workspaces/${workspaceId}/communication/templates/versions/${versionId}/approval-status`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async listWhatsAppConsents(
+    workspaceSlug: string,
+    options?: { status?: string; limit?: number }
+  ): Promise<{ items: WhatsAppConsent[] }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    if (options?.status) query.set("status", options.status);
+    if (typeof options?.limit === "number") query.set("limit", String(options.limit));
+    const qs = query.toString();
+    return apiClient.get<{ items: WhatsAppConsent[] }>(
+      `/automation/workspaces/${workspaceId}/communication/whatsapp/consents${qs ? `?${qs}` : ""}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async upsertWhatsAppConsent(
+    workspaceSlug: string,
+    input: {
+      address: string;
+      status: "unknown" | "opted_in" | "opted_out" | "suppressed" | "bounced" | "complained" | "invalid";
+      source?: string | null;
+      reason?: string | null;
+    }
+  ): Promise<WhatsAppConsent> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.put<WhatsAppConsent>(
+      `/automation/workspaces/${workspaceId}/communication/whatsapp/consents`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async simulateWhatsAppMockEvent(
+    workspaceSlug: string,
+    sideEffectId: string,
+    input: { eventType: "delivered" | "read" | "failed" | "replied"; messageText?: string }
+  ): Promise<AutomationSideEffectSummary> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AutomationSideEffectSummary>(
+      `/automation/workspaces/${workspaceId}/side-effects/${sideEffectId}/whatsapp-mock-events`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
   },
 
   async listAutomationViews(workspaceSlug: string): Promise<AutomationView[]> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.get<AutomationView[]>(`/automation/workspaces/${workspaceId}/views`, {
-      authMode: "required",
-      retryOnUnauthorized: true
-    });
-  },
-
-  async runAutomationRule(workspaceSlug: string, ruleId: string, context?: Record<string, unknown>): Promise<void> {
-    const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    await apiClient.post(`/automation/rules/${ruleId}/run`, {
-      workspaceId,
-      context: context ?? {}
-    }, {
-      authMode: "required",
-      retryOnUnauthorized: true
-    });
-  },
-
-  async createAutomationRule(workspaceSlug: string, input: CreateAutomationRuleInput): Promise<AutomationRule> {
-    const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    return apiClient.post<AutomationRule>("/automation/rules", {
-      workspaceId,
-      ...input
-    }, {
-      authMode: "required",
-      retryOnUnauthorized: true
-    });
-  },
-
-  async updateAutomationRule(
-    workspaceSlug: string,
-    ruleId: string,
-    input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
-  ): Promise<AutomationRule> {
-    const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    return apiClient.patch<AutomationRule>(`/automation/workspaces/${workspaceId}/rules/${ruleId}`, input, {
-      authMode: "required",
-      retryOnUnauthorized: true
-    });
-  },
-
-  async deleteAutomationRule(workspaceSlug: string, ruleId: string): Promise<void> {
-    const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    await apiClient.delete(`/automation/workspaces/${workspaceId}/rules/${ruleId}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });

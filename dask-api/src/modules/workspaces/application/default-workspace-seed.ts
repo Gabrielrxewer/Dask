@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { SYSTEM_FIELD_SEEDS } from '@/modules/workspace-platform/application/field-platform';
 import { isRecord, mapInputTypeToPrisma } from '@/modules/workspace-platform/application/shared';
 import {
@@ -81,28 +81,6 @@ type DefaultBoardViewSeed = {
   statuses: Array<{ id: string; label: string; dot: string }>;
 };
 
-type TemplateAutomationSeed = {
-  id: string;
-  name?: string;
-  description?: string;
-  enabled?: boolean;
-  trigger?: Record<string, unknown>;
-  action?: Record<string, unknown>;
-  actions?: Array<Record<string, unknown>>;
-  validations?: string[];
-};
-
-type SeededAutomationRuleSpec = {
-  automationId: string;
-  name: string;
-  description?: string;
-  enabled: boolean;
-  trigger: Record<string, unknown>;
-  conditions?: Record<string, unknown>;
-  actions: Array<Record<string, unknown>>;
-  priority: number;
-};
-
 type TemplateSeedPreset = {
   templateKey: WorkspaceTemplateKey;
   itemTypes: DefaultTypeSeed[];
@@ -116,7 +94,6 @@ type TemplateSeedPreset = {
 };
 
 const CARD_FIELDS_SCHEMA_VERSION = 4;
-const TEMPLATE_AUTOMATION_SCHEMA_VERSION = 11;
 
 const defaultSystemCardFieldIds = [
   'sys:type',
@@ -1370,250 +1347,6 @@ function getSeededBoardViews(
   return fallbackBoardViews;
 }
 
-function getTemplateAutomations(templateKey: WorkspaceTemplateKey | undefined): TemplateAutomationSeed[] {
-  const selectedTemplate = getWorkspaceTemplateByKey(templateKey);
-  const schema = selectedTemplate?.schema;
-
-  if (!isRecord(schema) || !Array.isArray(schema.automations)) {
-    return [];
-  }
-
-  return schema.automations.reduce<TemplateAutomationSeed[]>((acc, rawAutomation) => {
-    if (!isRecord(rawAutomation) || typeof rawAutomation.id !== 'string' || rawAutomation.id.trim().length === 0) {
-      return acc;
-    }
-
-    const actions = Array.isArray(rawAutomation.actions)
-      ? rawAutomation.actions.filter((action): action is Record<string, unknown> => isRecord(action))
-      : undefined;
-
-    acc.push({
-      id: rawAutomation.id.trim(),
-      name: typeof rawAutomation.name === 'string' ? rawAutomation.name : undefined,
-      description: typeof rawAutomation.description === 'string' ? rawAutomation.description : undefined,
-      enabled: typeof rawAutomation.enabled === 'boolean' ? rawAutomation.enabled : false,
-      trigger: isRecord(rawAutomation.trigger) ? rawAutomation.trigger : undefined,
-      action: isRecord(rawAutomation.action) ? rawAutomation.action : undefined,
-      actions,
-      validations: Array.isArray(rawAutomation.validations)
-        ? rawAutomation.validations.filter((validation): validation is string => typeof validation === 'string')
-        : undefined
-    });
-    return acc;
-  }, []);
-}
-
-function readAutomationString(source: Record<string, unknown> | undefined, keys: string[]): string | undefined {
-  if (!source) {
-    return undefined;
-  }
-
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-
-  return undefined;
-}
-
-function getAutomationName(automationId: string): string {
-  switch (automationId) {
-    case 'convert_prospect_to_commercial_on_lead_new':
-      return 'Converter prospect em lead comercial';
-    case 'move_to_opportunity_on_qualification':
-      return 'Mover para Oportunidade aberta apos qualificacao';
-    case 'generate_proposal_on_proposal_preparing':
-      return 'Gerar proposta ao mover para Proposta em preparacao';
-    case 'mark_proposal_sent':
-      return 'Marcar proposta como enviada';
-    case 'generate_contract_on_proposal_approved':
-      return 'Gerar contrato apos aprovacao da proposta';
-    case 'mark_contract_sent':
-      return 'Marcar contrato como enviado';
-    case 'prepare_billing_on_contract_accepted':
-      return 'Preparar cobranca apos aceite do contrato';
-    case 'prepare_billing_on_contract_document_accepted':
-      return 'Preparar cobranca apos aceite do documento de contrato';
-    case 'move_to_paid_active_on_payment_confirmed':
-      return 'Mover para Pago / Ativo apos pagamento confirmado';
-    default:
-      return automationId.replace(/[_-]+/g, ' ');
-  }
-}
-
-function normalizeTemplateAutomationActions(automation: TemplateAutomationSeed): Array<Record<string, unknown>> {
-  const rawActions = automation.actions ?? (automation.action ? [automation.action] : []);
-
-  return rawActions
-    .filter((action) => typeof action.type === 'string')
-    .map((action) => {
-      const actionType = String(action.type);
-      const nextAction: Record<string, unknown> = { ...action };
-      if (
-        automation.validations &&
-        automation.validations.length > 0 &&
-        (actionType === 'create_document' || actionType === 'update_document_status' || actionType === 'sync_document' || actionType === 'create_billing_order') &&
-        !Array.isArray(nextAction.validations)
-      ) {
-        nextAction.validations = automation.validations;
-      }
-      return nextAction;
-    });
-}
-
-function buildSeededAutomationRuleSpec(
-  automation: TemplateAutomationSeed,
-  index: number
-): SeededAutomationRuleSpec | null {
-  const trigger = automation.trigger;
-  if (!trigger) {
-    return null;
-  }
-
-  const rawTriggerType = readAutomationString(trigger, ['type']);
-  const triggerSettings = {
-    templateAutomationId: automation.id,
-    templateAutomationVersion: TEMPLATE_AUTOMATION_SCHEMA_VERSION,
-    templateTrigger: trigger
-  };
-  let normalizedTriggerType: string | null = null;
-  let conditions: Record<string, unknown> | undefined;
-
-  if (rawTriggerType === 'work_item_moved_to_column' || rawTriggerType === 'work_item_moved') {
-    const column = readAutomationString(trigger, ['column', 'toColumn', 'toState']);
-    const itemTypeSlug = readAutomationString(trigger, ['itemTypeSlug', 'typeSlug']);
-    const itemTypeSlugs = Array.isArray(trigger.itemTypeSlugs)
-      ? trigger.itemTypeSlugs.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      : itemTypeSlug
-        ? [itemTypeSlug]
-        : ['commercial'];
-    normalizedTriggerType = 'item.moved';
-    conditions = {
-      itemTypeSlugs,
-      ...(column ? { toColumnKeys: [column], statuses: [column] } : {})
-    };
-  } else if (rawTriggerType === 'work_item_updated') {
-    normalizedTriggerType = 'item.updated';
-    conditions = {
-      itemTypeSlugs: ['commercial']
-    };
-  } else if (rawTriggerType === 'proposal_status_changed') {
-    const status = readAutomationString(trigger, ['status']);
-    normalizedTriggerType = status === 'sent' ? 'proposal.sent' : status === 'approved' ? 'proposal.approved' : null;
-  } else if (rawTriggerType === 'contract_status_changed') {
-    const status = readAutomationString(trigger, ['status']);
-    normalizedTriggerType =
-      status === 'sent'
-        ? 'contract.sent'
-        : status === 'accepted' || status === 'signed'
-          ? 'contract.accepted'
-          : null;
-  } else if (rawTriggerType === 'billing_payment_confirmed') {
-    normalizedTriggerType = 'billing.payment.confirmed';
-  }
-
-  const actions = normalizeTemplateAutomationActions(automation);
-  if (!normalizedTriggerType || actions.length === 0) {
-    return null;
-  }
-
-  return {
-    automationId: automation.id,
-    name: automation.name ?? getAutomationName(automation.id),
-    description: automation.description,
-    enabled: Boolean(automation.enabled),
-    trigger: {
-      type: normalizedTriggerType,
-      settings: triggerSettings
-    },
-    conditions,
-    actions,
-    priority: 500 + index
-  };
-}
-
-function extractTemplateAutomationId(trigger: Prisma.JsonValue): string | null {
-  if (!isRecord(trigger) || !isRecord(trigger.settings)) {
-    return null;
-  }
-
-  const automationId = trigger.settings.templateAutomationId;
-  return typeof automationId === 'string' && automationId.length > 0 ? automationId : null;
-}
-
-function extractTemplateAutomationVersion(trigger: Prisma.JsonValue): number {
-  if (!isRecord(trigger) || !isRecord(trigger.settings)) {
-    return 0;
-  }
-
-  const version = trigger.settings.templateAutomationVersion;
-  return typeof version === 'number' && Number.isFinite(version) ? version : 0;
-}
-
-async function seedTemplateAutomationRules(input: {
-  prisma: PrismaExecutor;
-  workspaceId: string;
-  templateKey: WorkspaceTemplateKey;
-}): Promise<void> {
-  const automations = getTemplateAutomations(input.templateKey);
-  if (automations.length === 0) {
-    return;
-  }
-
-  const ruleSpecs = automations
-    .map((automation, index) => buildSeededAutomationRuleSpec(automation, index))
-    .filter((spec): spec is SeededAutomationRuleSpec => spec !== null);
-
-  if (ruleSpecs.length === 0) {
-    return;
-  }
-
-  const existingRules = await input.prisma.automationRule.findMany({
-    where: { workspaceId: input.workspaceId },
-    select: {
-      id: true,
-      name: true,
-      trigger: true
-    }
-  });
-
-  for (const spec of ruleSpecs) {
-    const existing = existingRules.find((rule) => extractTemplateAutomationId(rule.trigger) === spec.automationId);
-    const data = {
-      name: spec.name,
-      description: spec.description,
-      triggerType: String(spec.trigger.type),
-      trigger: toPrismaJson(spec.trigger),
-      conditions: spec.conditions ? toPrismaJson(spec.conditions) : Prisma.JsonNull,
-      actions: toPrismaJson(spec.actions),
-      priority: spec.priority,
-      version: 1
-    };
-
-    if (existing) {
-      if (extractTemplateAutomationVersion(existing.trigger) >= TEMPLATE_AUTOMATION_SCHEMA_VERSION) {
-        continue;
-      }
-
-      await input.prisma.automationRule.update({
-        where: { id: existing.id },
-        data
-      });
-      continue;
-    }
-
-    await input.prisma.automationRule.create({
-      data: {
-        workspaceId: input.workspaceId,
-        ...data,
-        enabled: spec.enabled
-      }
-    });
-  }
-}
-
 export async function ensureWorkspaceDefaultConfiguration(
   prisma: PrismaExecutor,
   input: {
@@ -1828,10 +1561,7 @@ export async function seedWorkspaceConfigurationDefaults(
             .map((slug) => columnBySlug.get(slug))
             .filter((value): value is string => Boolean(value)),
           statusSource: view.statusSource,
-          statuses: view.statuses,
-          automations: {
-            ruleIds: []
-          }
+          statuses: view.statuses
         }))
       })
     },
@@ -2012,12 +1742,6 @@ export async function seedWorkspaceConfigurationDefaults(
       visibleCardFieldIds: preferences.visibleCardFieldIds,
       settings: preferences.settings
     }
-  });
-
-  await seedTemplateAutomationRules({
-    prisma,
-    workspaceId,
-    templateKey: preset.templateKey
   });
 
   return {

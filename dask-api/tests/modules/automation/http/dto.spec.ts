@@ -1,45 +1,118 @@
 import { describe, expect, it } from 'vitest';
 import {
-  automationRuleParamsDto,
+  automationWorkflowParamsDto,
+  automationWorkflowVersionParamsDto,
   automationViewColumnParamsDto,
   automationViewParamsDto,
-  createAutomationRuleDto,
+  createAutomationWorkflowDto,
+  createAutomationWorkflowDraftVersionDto,
   createAutomationViewColumnDto,
   createAutomationViewDto,
   itemPlacementParamsDto,
-  listAutomationExecutionsQueryDto,
-  listAutomationRulesQueryDto,
+  listAutomationRunArtifactsQueryDto,
+  listAutomationRunsQueryDto,
+  listAutomationWorkflowsQueryDto,
+  listAutomationWorkflowVersionsQueryDto,
   listItemPlacementsParamsDto,
-  patchAutomationRuleDto,
+  patchAutomationWorkflowDto,
   patchAutomationViewColumnDto,
   patchAutomationViewDto,
-  runAutomationRuleDto,
+  publishAutomationWorkflowVersionDto,
+  runAutomationWorkflowDto,
+  updateAutomationWorkflowVersionDto,
   upsertItemPlacementDto,
   workspaceIdParamsDto
 } from '@/modules/automation/http/dto';
 
 const UUIDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
-  ruleId: '22222222-2222-4222-8222-222222222222',
+  workflowId: '22222222-2222-4222-8222-222222222222',
+  versionId: '66666666-6666-4666-8666-666666666666',
   viewId: '33333333-3333-4333-8333-333333333333',
   columnId: '44444444-4444-4444-8444-444444444444',
   itemId: '55555555-5555-4555-8555-555555555555'
 };
 
+const graph = {
+  version: 1,
+  nodes: [
+    { id: 'trigger-manual', type: 'trigger', config: { triggerType: 'manual' } },
+    { id: 'end', type: 'end', config: {} }
+  ],
+  edges: [{ id: 'edge-trigger-end', source: 'trigger-manual', target: 'end' }],
+  metadata: { source: 'test' }
+} as const;
+
 describe('automation/http dto', () => {
-  it('parses params and query dtos', () => {
+  it('parses workflow params and list queries', () => {
     expect(workspaceIdParamsDto.parse({ workspaceId: UUIDS.workspaceId })).toEqual({
       workspaceId: UUIDS.workspaceId
     });
     expect(
-      automationRuleParamsDto.parse({
+      automationWorkflowParamsDto.parse({
         workspaceId: UUIDS.workspaceId,
-        ruleId: UUIDS.ruleId
+        workflowId: UUIDS.workflowId
       })
     ).toEqual({
       workspaceId: UUIDS.workspaceId,
-      ruleId: UUIDS.ruleId
+      workflowId: UUIDS.workflowId
     });
+    expect(
+      automationWorkflowVersionParamsDto.parse({
+        workspaceId: UUIDS.workspaceId,
+        workflowId: UUIDS.workflowId,
+        versionId: UUIDS.versionId
+      })
+    ).toEqual({
+      workspaceId: UUIDS.workspaceId,
+      workflowId: UUIDS.workflowId,
+      versionId: UUIDS.versionId
+    });
+
+    expect(listAutomationWorkflowsQueryDto.parse({ status: 'active', limit: '15' })).toEqual({
+      status: 'active',
+      limit: 15
+    });
+    expect(listAutomationWorkflowVersionsQueryDto.parse({ status: 'draft', limit: '10' })).toEqual({
+      status: 'draft',
+      limit: 10
+    });
+    expect(listAutomationRunsQueryDto.parse({ workflowId: UUIDS.workflowId, limit: '25' })).toEqual({
+      workflowId: UUIDS.workflowId,
+      limit: 25
+    });
+    expect(listAutomationRunArtifactsQueryDto.parse({ limit: '20' })).toEqual({ limit: 20 });
+  });
+
+  it('parses workflow and version payloads', () => {
+    expect(
+      createAutomationWorkflowDto.parse({
+        name: 'Follow-up de proposta',
+        description: 'Operacao comercial',
+        status: 'draft'
+      })
+    ).toEqual({
+      name: 'Follow-up de proposta',
+      description: 'Operacao comercial',
+      status: 'draft'
+    });
+
+    expect(patchAutomationWorkflowDto.parse({ status: 'paused' })).toEqual({ status: 'paused' });
+    expect(() => patchAutomationWorkflowDto.parse({})).toThrowError();
+
+    expect(createAutomationWorkflowDraftVersionDto.parse({ graph })).toEqual({ graph });
+    expect(updateAutomationWorkflowVersionDto.parse({ graph })).toEqual({ graph });
+    expect(() => updateAutomationWorkflowVersionDto.parse({})).toThrowError();
+    expect(publishAutomationWorkflowVersionDto.parse({ activateWorkflow: true })).toEqual({
+      activateWorkflow: true
+    });
+    expect(runAutomationWorkflowDto.parse({ context: { contactId: UUIDS.itemId } })).toEqual({
+      triggerType: 'manual',
+      context: { contactId: UUIDS.itemId }
+    });
+  });
+
+  it('parses view and column payload dtos and validates non-empty patches', () => {
     expect(
       automationViewParamsDto.parse({
         workspaceId: UUIDS.workspaceId,
@@ -61,79 +134,26 @@ describe('automation/http dto', () => {
       columnId: UUIDS.columnId
     });
 
-    expect(listAutomationRulesQueryDto.parse({ includeDisabled: 'true' }).includeDisabled).toBe(true);
-    expect(listAutomationExecutionsQueryDto.parse({ limit: '15' }).limit).toBe(15);
-  });
-
-  it('parses rule payload dtos and validates non-empty patch', () => {
-    const rule = createAutomationRuleDto.parse({
-      workspaceId: UUIDS.workspaceId,
-      name: 'Sync done to QA',
-      trigger: { type: 'item.moved' },
-      conditions: { sourceViewKeys: ['dev'] },
-      actions: [{ type: 'set_view_column', targetViewKey: 'qa' }],
-      enabled: true,
-      priority: 10
-    });
-    expect(rule.name).toBe('Sync done to QA');
-
-    expect(
-      patchAutomationRuleDto.parse({
-        enabled: false
-      })
-    ).toEqual({ enabled: false });
-
-    expect(() => patchAutomationRuleDto.parse({})).toThrowError();
-
-    expect(runAutomationRuleDto.parse({ workspaceId: UUIDS.workspaceId })).toEqual({
-      workspaceId: UUIDS.workspaceId,
-      context: {}
-    });
-  });
-
-  it('parses view and column payload dtos and validates non-empty patches', () => {
     const view = createAutomationViewDto.parse({
       key: 'qa',
       name: 'QA',
-      columns: [
-        {
-          key: 'ready',
-          name: 'Ready',
-          color: '#0d8df7'
-        }
-      ]
+      columns: [{ key: 'ready', name: 'Ready', color: '#0d8df7' }]
     });
     expect(view.columns?.[0]?.key).toBe('ready');
 
-    expect(
-      patchAutomationViewDto.parse({
-        name: 'Quality Assurance',
-        isActive: true
-      })
-    ).toEqual({
+    expect(patchAutomationViewDto.parse({ name: 'Quality Assurance', isActive: true })).toEqual({
       name: 'Quality Assurance',
       isActive: true
     });
     expect(() => patchAutomationViewDto.parse({})).toThrowError();
 
-    expect(
-      createAutomationViewColumnDto.parse({
-        key: 'doing',
-        name: 'Doing',
-        position: 1
-      })
-    ).toEqual({
+    expect(createAutomationViewColumnDto.parse({ key: 'doing', name: 'Doing', position: 1 })).toEqual({
       key: 'doing',
       name: 'Doing',
       position: 1
     });
 
-    expect(
-      patchAutomationViewColumnDto.parse({
-        color: '#22c55e',
-        isTerminal: true
-      })
-    ).toEqual({
+    expect(patchAutomationViewColumnDto.parse({ color: '#22c55e', isTerminal: true })).toEqual({
       color: '#22c55e',
       isTerminal: true
     });

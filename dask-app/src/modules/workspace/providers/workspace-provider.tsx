@@ -12,9 +12,23 @@ import type {
   ApiWorkflowState,
   BoardTemplateSummary,
   AutomationView,
-  AutomationExecution,
-  AutomationRule,
+  AutomationApprovalDetail,
+  AutomationApprovalRecord,
+  AutomationApprovalSummary,
+  AutomationRunDetail,
+  AutomationRunListItem,
+  AutomationSideEffectSummary,
+  AutomationWorkflow,
+  AutomationWorkflowStatus,
+  AutomationWorkflowVersion,
+  AutomationWorkflowVersionStatus,
+  CommunicationConversationDetail,
+  CommunicationConversationSummary,
+  CommunicationMessageSummary,
   CreateAiAgentInput,
+  CreateWhatsAppTemplateInput,
+  CommunicationTemplate,
+  CommunicationTemplateVersion,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
   DocumentLinkedEntityType,
@@ -22,14 +36,22 @@ import type {
   Customer,
   CustomerStatus,
   CreateCustomerInput,
-  CreateAutomationRuleInput,
+  CreateAutomationWorkflowInput,
+  ListCommunicationInboxOptions,
+  ListAutomationApprovalsOptions,
+  ReviewAutomationApprovalInput,
+  RunAutomationWorkflowInput,
+  RunAutomationWorkflowResult,
+  SaveAutomationWorkflowVersionInput,
   CreateBoardColumnInput,
   CreateCustomFieldInput,
   CreateItemTypeInput,
   CreateTaskInput,
   TaskScheduleInput,
+  UpdateAutomationWorkflowInput,
   UpdateTaskInput,
   UpdateBoardColumnInput,
+  UpdateCommunicationTemplateVersionInput,
   UpdateCustomFieldInput,
   UpdateItemTypeInput,
   WorkItemFieldBindingInput,
@@ -37,6 +59,7 @@ import type {
   WorkspaceDocument,
   WorkspaceDocumentMetadata,
   WorkItemLinkedDocument,
+  WhatsAppConsent,
   WorkspacePreferences,
   WorkspaceSnapshot,
   WorkspaceTemplateKey
@@ -87,16 +110,81 @@ interface WorkspaceContextValue {
   createCustomField: (input: CreateCustomFieldInput) => Promise<void>;
   updateCustomField: (fieldId: string, input: UpdateCustomFieldInput) => Promise<void>;
   deleteCustomField: (fieldId: string) => Promise<void>;
-  listAutomationRules: (options?: { includeDisabled?: boolean }) => Promise<AutomationRule[]>;
-  listAutomationExecutions: (options?: { limit?: number }) => Promise<AutomationExecution[]>;
+  listAutomationWorkflows: (options?: { status?: AutomationWorkflowStatus; limit?: number }) => Promise<{ items: AutomationWorkflow[] }>;
+  createAutomationWorkflow: (input: CreateAutomationWorkflowInput) => Promise<AutomationWorkflow>;
+  getAutomationWorkflow: (workflowId: string) => Promise<AutomationWorkflow>;
+  updateAutomationWorkflow: (workflowId: string, input: UpdateAutomationWorkflowInput) => Promise<AutomationWorkflow>;
+  activateAutomationWorkflow: (workflowId: string) => Promise<AutomationWorkflow>;
+  pauseAutomationWorkflow: (workflowId: string) => Promise<AutomationWorkflow>;
+  archiveAutomationWorkflow: (workflowId: string) => Promise<AutomationWorkflow>;
+  listAutomationWorkflowVersions: (
+    workflowId: string,
+    options?: { status?: AutomationWorkflowVersionStatus; limit?: number }
+  ) => Promise<{ items: AutomationWorkflowVersion[] }>;
+  createAutomationWorkflowDraftVersion: (
+    workflowId: string,
+    input?: SaveAutomationWorkflowVersionInput
+  ) => Promise<AutomationWorkflowVersion>;
+  getAutomationWorkflowVersion: (workflowId: string, versionId: string) => Promise<AutomationWorkflowVersion>;
+  updateAutomationWorkflowVersion: (
+    workflowId: string,
+    versionId: string,
+    input: SaveAutomationWorkflowVersionInput
+  ) => Promise<AutomationWorkflowVersion>;
+  publishAutomationWorkflowVersion: (
+    workflowId: string,
+    versionId: string,
+    input?: { activateWorkflow?: boolean }
+  ) => Promise<AutomationWorkflowVersion>;
+  cloneAutomationWorkflowVersion: (workflowId: string, versionId: string) => Promise<AutomationWorkflowVersion>;
+  runAutomationWorkflow: (workflowId: string, input?: RunAutomationWorkflowInput) => Promise<RunAutomationWorkflowResult>;
+  listAutomationRuns: (options?: {
+    workflowId?: string;
+    status?: string;
+    triggerType?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+    limit?: number;
+  }) => Promise<{ items: AutomationRunListItem[] }>;
+  getAutomationRunDetail: (runId: string) => Promise<AutomationRunDetail>;
+  cancelAutomationRun: (runId: string, reason?: string) => Promise<AutomationRunDetail>;
+  listAutomationApprovals: (options?: ListAutomationApprovalsOptions) => Promise<{ items: AutomationApprovalSummary[] }>;
+  listCommunicationInbox: (options?: ListCommunicationInboxOptions) => Promise<{ items: CommunicationConversationSummary[] }>;
+  getCommunicationConversation: (conversationId: string) => Promise<CommunicationConversationDetail>;
+  markCommunicationConversationRead: (conversationId: string) => Promise<void>;
+  resolveCommunicationConversation: (conversationId: string) => Promise<void>;
+  archiveCommunicationConversation: (conversationId: string) => Promise<void>;
+  assignCommunicationConversation: (conversationId: string, assignedToId?: string | null) => Promise<void>;
+  linkCommunicationConversationWorkItem: (conversationId: string, workItemId?: string | null) => Promise<void>;
+  replyCommunicationConversation: (
+    conversationId: string,
+    input: { channel: "email" | "whatsapp"; text: string; sendMode: "manual" }
+  ) => Promise<{ sideEffect: AutomationSideEffectSummary; message: CommunicationMessageSummary }>;
+  getAutomationApproval: (approvalId: string) => Promise<AutomationApprovalDetail>;
+  approveAutomationApproval: (approvalId: string, input: ReviewAutomationApprovalInput) => Promise<AutomationApprovalRecord>;
+  rejectAutomationApproval: (approvalId: string, input: ReviewAutomationApprovalInput) => Promise<AutomationApprovalRecord>;
+  cancelAutomationApproval: (approvalId: string, reason?: string) => Promise<AutomationApprovalRecord>;
+  listCommunicationTemplates: (options?: { channel?: string; status?: string; limit?: number }) => Promise<{ items: CommunicationTemplate[] }>;
+  createWhatsAppTemplate: (input: CreateWhatsAppTemplateInput) => Promise<CommunicationTemplate>;
+  updateCommunicationTemplateVersion: (versionId: string, input: UpdateCommunicationTemplateVersionInput) => Promise<CommunicationTemplateVersion>;
+  publishCommunicationTemplateVersion: (versionId: string) => Promise<CommunicationTemplateVersion>;
+  markWhatsAppTemplateApprovalStatus: (
+    versionId: string,
+    input: { approvalStatus: "pending_review" | "approved" | "rejected" | "paused" | "disabled"; providerTemplateName?: string | null; providerTemplateId?: string | null }
+  ) => Promise<CommunicationTemplateVersion>;
+  listWhatsAppConsents: (options?: { status?: string; limit?: number }) => Promise<{ items: WhatsAppConsent[] }>;
+  upsertWhatsAppConsent: (input: {
+    address: string;
+    status: "unknown" | "opted_in" | "opted_out" | "suppressed" | "bounced" | "complained" | "invalid";
+    source?: string | null;
+    reason?: string | null;
+  }) => Promise<WhatsAppConsent>;
+  simulateWhatsAppMockEvent: (
+    sideEffectId: string,
+    input: { eventType: "delivered" | "read" | "failed" | "replied"; messageText?: string }
+  ) => Promise<AutomationSideEffectSummary>;
   listAutomationViews: () => Promise<AutomationView[]>;
-  runAutomationRule: (ruleId: string, context?: Record<string, unknown>) => Promise<void>;
-  createAutomationRule: (input: CreateAutomationRuleInput) => Promise<AutomationRule>;
-  updateAutomationRule: (
-    ruleId: string,
-    input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
-  ) => Promise<AutomationRule>;
-  deleteAutomationRule: (ruleId: string) => Promise<void>;
   listAiAgents: () => Promise<AiAgentSummary[]>;
   listAiRuns: (input?: { itemId?: string; limit?: number }) => Promise<AiRunSummary[]>;
   getAiObservability: () => Promise<AiObservability>;
@@ -462,18 +550,339 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setSnapshot(nextSnapshot);
   }, [workspaceSlug]);
 
-  const listAutomationRules = useCallback(
-    async (options?: { includeDisabled?: boolean }): Promise<AutomationRule[]> => {
-      if (!workspaceSlug) return [];
-      return workspaceService.listAutomationRules(workspaceSlug, options);
+  const listAutomationWorkflows = useCallback(
+    async (options?: { status?: AutomationWorkflowStatus; limit?: number }): Promise<{ items: AutomationWorkflow[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listAutomationWorkflows(workspaceSlug, options);
     },
     [workspaceSlug]
   );
 
-  const listAutomationExecutions = useCallback(
-    async (options?: { limit?: number }): Promise<AutomationExecution[]> => {
-      if (!workspaceSlug) return [];
-      return workspaceService.listAutomationExecutions(workspaceSlug, options);
+  const createAutomationWorkflow = useCallback(
+    async (input: CreateAutomationWorkflowInput): Promise<AutomationWorkflow> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.createAutomationWorkflow(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const getAutomationWorkflow = useCallback(
+    async (workflowId: string): Promise<AutomationWorkflow> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.getAutomationWorkflow(workspaceSlug, workflowId);
+    },
+    [workspaceSlug]
+  );
+
+  const updateAutomationWorkflow = useCallback(
+    async (workflowId: string, input: UpdateAutomationWorkflowInput): Promise<AutomationWorkflow> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.updateAutomationWorkflow(workspaceSlug, workflowId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const activateAutomationWorkflow = useCallback(
+    async (workflowId: string): Promise<AutomationWorkflow> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.activateAutomationWorkflow(workspaceSlug, workflowId);
+    },
+    [workspaceSlug]
+  );
+
+  const pauseAutomationWorkflow = useCallback(
+    async (workflowId: string): Promise<AutomationWorkflow> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.pauseAutomationWorkflow(workspaceSlug, workflowId);
+    },
+    [workspaceSlug]
+  );
+
+  const archiveAutomationWorkflow = useCallback(
+    async (workflowId: string): Promise<AutomationWorkflow> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.archiveAutomationWorkflow(workspaceSlug, workflowId);
+    },
+    [workspaceSlug]
+  );
+
+  const listAutomationWorkflowVersions = useCallback(
+    async (
+      workflowId: string,
+      options?: { status?: AutomationWorkflowVersionStatus; limit?: number }
+    ): Promise<{ items: AutomationWorkflowVersion[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listAutomationWorkflowVersions(workspaceSlug, workflowId, options);
+    },
+    [workspaceSlug]
+  );
+
+  const createAutomationWorkflowDraftVersion = useCallback(
+    async (workflowId: string, input?: SaveAutomationWorkflowVersionInput): Promise<AutomationWorkflowVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.createAutomationWorkflowDraftVersion(workspaceSlug, workflowId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const getAutomationWorkflowVersion = useCallback(
+    async (workflowId: string, versionId: string): Promise<AutomationWorkflowVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.getAutomationWorkflowVersion(workspaceSlug, workflowId, versionId);
+    },
+    [workspaceSlug]
+  );
+
+  const updateAutomationWorkflowVersion = useCallback(
+    async (
+      workflowId: string,
+      versionId: string,
+      input: SaveAutomationWorkflowVersionInput
+    ): Promise<AutomationWorkflowVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.updateAutomationWorkflowVersion(workspaceSlug, workflowId, versionId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const publishAutomationWorkflowVersion = useCallback(
+    async (
+      workflowId: string,
+      versionId: string,
+      input?: { activateWorkflow?: boolean }
+    ): Promise<AutomationWorkflowVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.publishAutomationWorkflowVersion(workspaceSlug, workflowId, versionId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const cloneAutomationWorkflowVersion = useCallback(
+    async (workflowId: string, versionId: string): Promise<AutomationWorkflowVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.cloneAutomationWorkflowVersion(workspaceSlug, workflowId, versionId);
+    },
+    [workspaceSlug]
+  );
+
+  const runAutomationWorkflow = useCallback(
+    async (workflowId: string, input?: RunAutomationWorkflowInput): Promise<RunAutomationWorkflowResult> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.runAutomationWorkflow(workspaceSlug, workflowId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const listAutomationRuns = useCallback(
+    async (options?: {
+      workflowId?: string;
+      status?: string;
+      triggerType?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      search?: string;
+      limit?: number;
+    }): Promise<{ items: AutomationRunListItem[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listAutomationRuns(workspaceSlug, options);
+    },
+    [workspaceSlug]
+  );
+
+  const getAutomationRunDetail = useCallback(
+    async (runId: string): Promise<AutomationRunDetail> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.getAutomationRunDetail(workspaceSlug, runId);
+    },
+    [workspaceSlug]
+  );
+
+  const cancelAutomationRun = useCallback(
+    async (runId: string, reason?: string): Promise<AutomationRunDetail> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.cancelAutomationRun(workspaceSlug, runId, reason);
+    },
+    [workspaceSlug]
+  );
+
+  const listAutomationApprovals = useCallback(
+    async (options?: ListAutomationApprovalsOptions): Promise<{ items: AutomationApprovalSummary[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listAutomationApprovals(workspaceSlug, options);
+    },
+    [workspaceSlug]
+  );
+
+  const listCommunicationInbox = useCallback(
+    async (options?: ListCommunicationInboxOptions): Promise<{ items: CommunicationConversationSummary[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listCommunicationInbox(workspaceSlug, options);
+    },
+    [workspaceSlug]
+  );
+
+  const getCommunicationConversation = useCallback(
+    async (conversationId: string): Promise<CommunicationConversationDetail> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.getCommunicationConversation(workspaceSlug, conversationId);
+    },
+    [workspaceSlug]
+  );
+
+  const markCommunicationConversationRead = useCallback(
+    async (conversationId: string): Promise<void> => {
+      if (!workspaceSlug) return;
+      await workspaceService.markCommunicationConversationRead(workspaceSlug, conversationId);
+    },
+    [workspaceSlug]
+  );
+
+  const resolveCommunicationConversation = useCallback(
+    async (conversationId: string): Promise<void> => {
+      if (!workspaceSlug) return;
+      await workspaceService.resolveCommunicationConversation(workspaceSlug, conversationId);
+    },
+    [workspaceSlug]
+  );
+
+  const archiveCommunicationConversation = useCallback(
+    async (conversationId: string): Promise<void> => {
+      if (!workspaceSlug) return;
+      await workspaceService.archiveCommunicationConversation(workspaceSlug, conversationId);
+    },
+    [workspaceSlug]
+  );
+
+  const assignCommunicationConversation = useCallback(
+    async (conversationId: string, assignedToId?: string | null): Promise<void> => {
+      if (!workspaceSlug) return;
+      await workspaceService.assignCommunicationConversation(workspaceSlug, conversationId, assignedToId);
+    },
+    [workspaceSlug]
+  );
+
+  const linkCommunicationConversationWorkItem = useCallback(
+    async (conversationId: string, workItemId?: string | null): Promise<void> => {
+      if (!workspaceSlug) return;
+      await workspaceService.linkCommunicationConversationWorkItem(workspaceSlug, conversationId, workItemId);
+    },
+    [workspaceSlug]
+  );
+
+  const replyCommunicationConversation = useCallback(
+    async (
+      conversationId: string,
+      input: { channel: "email" | "whatsapp"; text: string; sendMode: "manual" }
+    ): Promise<{ sideEffect: AutomationSideEffectSummary; message: CommunicationMessageSummary }> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.replyCommunicationConversation(workspaceSlug, conversationId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const getAutomationApproval = useCallback(
+    async (approvalId: string): Promise<AutomationApprovalDetail> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.getAutomationApproval(workspaceSlug, approvalId);
+    },
+    [workspaceSlug]
+  );
+
+  const approveAutomationApproval = useCallback(
+    async (approvalId: string, input: ReviewAutomationApprovalInput): Promise<AutomationApprovalRecord> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.approveAutomationApproval(workspaceSlug, approvalId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const rejectAutomationApproval = useCallback(
+    async (approvalId: string, input: ReviewAutomationApprovalInput): Promise<AutomationApprovalRecord> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.rejectAutomationApproval(workspaceSlug, approvalId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const cancelAutomationApproval = useCallback(
+    async (approvalId: string, reason?: string): Promise<AutomationApprovalRecord> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.cancelAutomationApproval(workspaceSlug, approvalId, reason);
+    },
+    [workspaceSlug]
+  );
+
+  const listCommunicationTemplates = useCallback(
+    async (options?: { channel?: string; status?: string; limit?: number }): Promise<{ items: CommunicationTemplate[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listCommunicationTemplates(workspaceSlug, options);
+    },
+    [workspaceSlug]
+  );
+
+  const createWhatsAppTemplate = useCallback(
+    async (input: CreateWhatsAppTemplateInput): Promise<CommunicationTemplate> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.createWhatsAppTemplate(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const updateCommunicationTemplateVersion = useCallback(
+    async (versionId: string, input: UpdateCommunicationTemplateVersionInput): Promise<CommunicationTemplateVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.updateCommunicationTemplateVersion(workspaceSlug, versionId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const publishCommunicationTemplateVersion = useCallback(
+    async (versionId: string): Promise<CommunicationTemplateVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.publishCommunicationTemplateVersion(workspaceSlug, versionId);
+    },
+    [workspaceSlug]
+  );
+
+  const markWhatsAppTemplateApprovalStatus = useCallback(
+    async (
+      versionId: string,
+      input: { approvalStatus: "pending_review" | "approved" | "rejected" | "paused" | "disabled"; providerTemplateName?: string | null; providerTemplateId?: string | null }
+    ): Promise<CommunicationTemplateVersion> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.markWhatsAppTemplateApprovalStatus(workspaceSlug, versionId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const listWhatsAppConsents = useCallback(
+    async (options?: { status?: string; limit?: number }): Promise<{ items: WhatsAppConsent[] }> => {
+      if (!workspaceSlug) return { items: [] };
+      return workspaceService.listWhatsAppConsents(workspaceSlug, options);
+    },
+    [workspaceSlug]
+  );
+
+  const upsertWhatsAppConsent = useCallback(
+    async (input: {
+      address: string;
+      status: "unknown" | "opted_in" | "opted_out" | "suppressed" | "bounced" | "complained" | "invalid";
+      source?: string | null;
+      reason?: string | null;
+    }): Promise<WhatsAppConsent> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.upsertWhatsAppConsent(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const simulateWhatsAppMockEvent = useCallback(
+    async (
+      sideEffectId: string,
+      input: { eventType: "delivered" | "read" | "failed" | "replied"; messageText?: string }
+    ): Promise<AutomationSideEffectSummary> => {
+      if (!workspaceSlug) throw new Error("No workspace");
+      return workspaceService.simulateWhatsAppMockEvent(workspaceSlug, sideEffectId, input);
     },
     [workspaceSlug]
   );
@@ -482,41 +891,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     if (!workspaceSlug) return [];
     return workspaceService.listAutomationViews(workspaceSlug);
   }, [workspaceSlug]);
-
-  const runAutomationRule = useCallback(
-    async (ruleId: string, context?: Record<string, unknown>): Promise<void> => {
-      if (!workspaceSlug) return;
-      return workspaceService.runAutomationRule(workspaceSlug, ruleId, context);
-    },
-    [workspaceSlug]
-  );
-
-  const createAutomationRule = useCallback(
-    async (input: CreateAutomationRuleInput): Promise<AutomationRule> => {
-      if (!workspaceSlug) throw new Error("No workspace");
-      return workspaceService.createAutomationRule(workspaceSlug, input);
-    },
-    [workspaceSlug]
-  );
-
-  const updateAutomationRule = useCallback(
-    async (
-      ruleId: string,
-      input: Partial<CreateAutomationRuleInput> & { enabled?: boolean }
-    ): Promise<AutomationRule> => {
-      if (!workspaceSlug) throw new Error("No workspace");
-      return workspaceService.updateAutomationRule(workspaceSlug, ruleId, input);
-    },
-    [workspaceSlug]
-  );
-
-  const deleteAutomationRule = useCallback(
-    async (ruleId: string): Promise<void> => {
-      if (!workspaceSlug) return;
-      await workspaceService.deleteAutomationRule(workspaceSlug, ruleId);
-    },
-    [workspaceSlug]
-  );
 
   const listAiAgents = useCallback(async (): Promise<AiAgentSummary[]> => {
     if (!workspaceSlug) return [];
@@ -767,13 +1141,45 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createCustomField,
       updateCustomField,
       deleteCustomField,
-      listAutomationRules,
-      listAutomationExecutions,
+      listAutomationWorkflows,
+      createAutomationWorkflow,
+      getAutomationWorkflow,
+      updateAutomationWorkflow,
+      activateAutomationWorkflow,
+      pauseAutomationWorkflow,
+      archiveAutomationWorkflow,
+      listAutomationWorkflowVersions,
+      createAutomationWorkflowDraftVersion,
+      getAutomationWorkflowVersion,
+      updateAutomationWorkflowVersion,
+      publishAutomationWorkflowVersion,
+      cloneAutomationWorkflowVersion,
+      runAutomationWorkflow,
+      listAutomationRuns,
+      getAutomationRunDetail,
+      cancelAutomationRun,
+      listAutomationApprovals,
+      listCommunicationInbox,
+      getCommunicationConversation,
+      markCommunicationConversationRead,
+      resolveCommunicationConversation,
+      archiveCommunicationConversation,
+      assignCommunicationConversation,
+      linkCommunicationConversationWorkItem,
+      replyCommunicationConversation,
+      getAutomationApproval,
+      approveAutomationApproval,
+      rejectAutomationApproval,
+      cancelAutomationApproval,
+      listCommunicationTemplates,
+      createWhatsAppTemplate,
+      updateCommunicationTemplateVersion,
+      publishCommunicationTemplateVersion,
+      markWhatsAppTemplateApprovalStatus,
+      listWhatsAppConsents,
+      upsertWhatsAppConsent,
+      simulateWhatsAppMockEvent,
       listAutomationViews,
-      runAutomationRule,
-      createAutomationRule,
-      updateAutomationRule,
-      deleteAutomationRule,
       listAiAgents,
       listAiRuns,
       getAiObservability,
@@ -830,13 +1236,45 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       createCustomField,
       updateCustomField,
       deleteCustomField,
-      listAutomationRules,
-      listAutomationExecutions,
+      listAutomationWorkflows,
+      createAutomationWorkflow,
+      getAutomationWorkflow,
+      updateAutomationWorkflow,
+      activateAutomationWorkflow,
+      pauseAutomationWorkflow,
+      archiveAutomationWorkflow,
+      listAutomationWorkflowVersions,
+      createAutomationWorkflowDraftVersion,
+      getAutomationWorkflowVersion,
+      updateAutomationWorkflowVersion,
+      publishAutomationWorkflowVersion,
+      cloneAutomationWorkflowVersion,
+      runAutomationWorkflow,
+      listAutomationRuns,
+      getAutomationRunDetail,
+      cancelAutomationRun,
+      listAutomationApprovals,
+      listCommunicationInbox,
+      getCommunicationConversation,
+      markCommunicationConversationRead,
+      resolveCommunicationConversation,
+      archiveCommunicationConversation,
+      assignCommunicationConversation,
+      linkCommunicationConversationWorkItem,
+      replyCommunicationConversation,
+      getAutomationApproval,
+      approveAutomationApproval,
+      rejectAutomationApproval,
+      cancelAutomationApproval,
+      listCommunicationTemplates,
+      createWhatsAppTemplate,
+      updateCommunicationTemplateVersion,
+      publishCommunicationTemplateVersion,
+      markWhatsAppTemplateApprovalStatus,
+      listWhatsAppConsents,
+      upsertWhatsAppConsent,
+      simulateWhatsAppMockEvent,
       listAutomationViews,
-      runAutomationRule,
-      createAutomationRule,
-      updateAutomationRule,
-      deleteAutomationRule,
       listAiAgents,
       listAiRuns,
       getAiObservability,

@@ -122,6 +122,18 @@ function storeGlobalThemePreference(theme: string): void {
   }
 }
 
+function getStoredGlobalThemePreference(): UserProfileTheme {
+  if (typeof window === "undefined") {
+    return defaultUserProfilePreferences.theme;
+  }
+
+  try {
+    return normalizeUserProfileTheme(window.localStorage.getItem(globalThemeStorageKey));
+  } catch {
+    return defaultUserProfilePreferences.theme;
+  }
+}
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -317,7 +329,7 @@ export function GlobalLayout() {
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
   const [activeLegalSection, setActiveLegalSection] = useState(() => getLegalSectionFromHash(location.hash));
-  const [profileTheme, setProfileTheme] = useState<UserProfileTheme>(defaultUserProfilePreferences.theme);
+  const [profileTheme, setProfileTheme] = useState<UserProfileTheme>(() => getStoredGlobalThemePreference());
   const [profileNameDraft, setProfileNameDraft] = useState("");
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => getSystemResolvedTheme());
   const [profileSaveState, setProfileSaveState] = useState<"idle" | "saving" | "error">("idle");
@@ -356,7 +368,7 @@ export function GlobalLayout() {
 
   useEffect(() => {
     if (!user?.id) {
-      setProfileTheme(defaultUserProfilePreferences.theme);
+      setProfileTheme(getStoredGlobalThemePreference());
       setProfileNameDraft("");
       return;
     }
@@ -793,10 +805,10 @@ export function GlobalLayout() {
   return (
     <GlobalChromeProvider value={chromeValue}>
       <div
-        className={cn("global-layout", isAuthenticatedArea && "app-theme")}
-        data-theme={isAuthenticatedArea ? resolvedProfileTheme : undefined}
-        data-theme-preference={isAuthenticatedArea ? normalizedProfileTheme : undefined}
-        style={isAuthenticatedArea ? { colorScheme: resolvedProfileTheme } : undefined}
+        className="global-layout app-theme"
+        data-theme={resolvedProfileTheme}
+        data-theme-preference={normalizedProfileTheme}
+        style={{ colorScheme: resolvedProfileTheme }}
       >
         <div className="global-layout__surface">
           <header className={cn("global-header", hasPublicHeaderNavigation && "global-header--home")}>

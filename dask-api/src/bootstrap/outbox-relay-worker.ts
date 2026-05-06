@@ -7,7 +7,6 @@ import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
 import { AiEventDispatcher } from '@/modules/ai/application/ai-event-dispatcher';
-import { AutomationEventDispatcher } from '@/modules/automation/application/automation-event-dispatcher';
 import { SearchEventDispatcher } from '@/modules/search/application/search-event-dispatcher';
 
 function sleep(ms: number): Promise<void> {
@@ -87,7 +86,6 @@ export type RelayWorkerHandle = {
 export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle {
   const outboxRepository = new PrismaOutboxRepository(prisma);
   const jobQueue = new BullMqJobQueue();
-  const automationDispatcher = new AutomationEventDispatcher(jobQueue);
   const aiDispatcher = new AiEventDispatcher(jobQueue);
   const searchDispatcher = new SearchEventDispatcher(jobQueue);
   let running = false;
@@ -125,7 +123,6 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
           }
         });
         await recordAuditEvent(db, event);
-        await automationDispatcher.dispatch(event, row.id);
         await aiDispatcher.dispatch(event, row.id);
         await searchDispatcher.dispatch(event, row.id);
         await outboxRepository.markProcessed(row.id, db);

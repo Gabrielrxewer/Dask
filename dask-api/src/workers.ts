@@ -1,5 +1,4 @@
 import { type Job, Worker } from 'bullmq';
-import Stripe from 'stripe';
 import { startOutboxRelayWorker, type RelayWorkerHandle } from '@/bootstrap/outbox-relay-worker';
 import { env } from '@/core/config/env';
 import { EventPublisher } from '@/core/events/event-publisher';
@@ -9,8 +8,8 @@ import { prisma } from '@/infra/db/prisma';
 import { queueConnection } from '@/infra/queue/bullmq-job-queue';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 import { PromptOrchestrationService } from '@/modules/ai/application/prompt-orchestration-service';
-import { AutomationRuntimeService } from '@/modules/automation/application/automation-runtime-service';
-import { AutomationViewService } from '@/modules/automation/application/automation-view-service';
+import { startAutomationScheduledStepWorker } from '@/modules/automation/runtime/automation-scheduled-step-worker';
+import { startAutomationSideEffectWorker } from '@/modules/automation/runtime/automation-side-effect-worker';
 import { FiscalService } from '@/modules/fiscal/application/fiscal-service';
 import { FocusFiscalProvider } from '@/modules/fiscal/providers/focus/focus-fiscal-provider';
 import { PrismaFiscalRepository } from '@/modules/fiscal/repositories/prisma-fiscal-repository';
@@ -18,12 +17,7 @@ import { MarketingService } from '@/modules/marketing/application/marketing-serv
 import { MockMarketingEmailProvider } from '@/modules/marketing/providers/mock-marketing-email-provider';
 import { ResendMarketingEmailProvider } from '@/modules/marketing/providers/resend-marketing-email-provider';
 import { PrismaMarketingRepository } from '@/modules/marketing/repositories/prisma-marketing-repository';
-import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
-import { MockEmailService } from '@/infra/email/mock-email-service';
-import { ResendEmailService } from '@/infra/email/resend-email-service';
-import { BillingService } from '@/modules/billing/application/billing-service';
-import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
 
 type WorkerHandle = Pick<Worker, 'close'> | RelayWorkerHandle;
 const workerLogger = getLogger('worker');
@@ -56,32 +50,8 @@ export const startWorkers = (): WorkerHandle[] => {
 
   const { aiProvider, embeddingProvider } = buildAIProviderStack();
   const promptService = new PromptOrchestrationService();
-  const workspaceConfigService = new WorkspaceConfigService(prisma);
-  const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
   const outboxRepository = new PrismaOutboxRepository(prisma);
   const workerEventPublisher = new EventPublisher(outboxRepository, prisma);
-  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : new MockEmailService();
-  const stripeClient = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
-  const billingService = stripeClient
-    ? new BillingService({
-        repo: new PrismaBillingRepository(prisma),
-        stripe: stripeClient,
-        appPublicUrl: env.APP_PUBLIC_URL,
-        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
-        emailService,
-        eventPublisher: workerEventPublisher,
-        priceIds: {
-          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
-          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
-        },
-        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
-      })
-    : null;
-  const automationRuntimeService = new AutomationRuntimeService(
-    prisma,
-    async (workspaceId: string) => automationViewService.ensureDefaultViews(workspaceId),
-    billingService
-  );
   const fiscalRepository = new PrismaFiscalRepository(prisma);
   const fiscalProvider = new FocusFiscalProvider();
   const sharedJobQueue = new BullMqJobQueue();
@@ -220,23 +190,6 @@ export const startWorkers = (): WorkerHandle[] => {
         });
       }
 
-      if (job.name === 'automation.process-event') {
-        await automationRuntimeService.processEvent({
-          eventId: job.data.eventId as string | undefined,
-          eventName: job.data.eventName as string,
-          workspaceId: job.data.workspaceId as string,
-          payload: (job.data.payload as Record<string, unknown>) ?? {}
-        });
-      }
-
-      if (job.name === 'automation.run-rule') {
-        await automationRuntimeService.runRule({
-          ruleId: job.data.ruleId as string,
-          context: (job.data.context as Record<string, unknown>) ?? {},
-          requestedBy: job.data.requestedBy as string | undefined
-        });
-      }
-
       if (job.name === 'fiscal.reconcile-pending') {
         await fiscalService.processPendingDocumentStatus({
           workspaceId: job.data.workspaceId as string,
@@ -272,6 +225,8 @@ export const startWorkers = (): WorkerHandle[] => {
   });
 
   const outboxRelayWorker = startOutboxRelayWorker(prisma);
+  const automationScheduledStepWorker = startAutomationScheduledStepWorker(prisma);
+  const automationSideEffectWorker = startAutomationSideEffectWorker(prisma);
 
-  return [worker, outboxRelayWorker];
+  return [worker, outboxRelayWorker, automationScheduledStepWorker, automationSideEffectWorker];
 };

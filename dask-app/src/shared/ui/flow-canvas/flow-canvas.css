@@ -160,6 +160,11 @@
   scrollbar-width: thin;
 }
 
+.flow-canvas-ui__sidebar-list--custom {
+  gap: 8px;
+  padding: 10px;
+}
+
 .flow-canvas-ui__sidebar-item {
   --item-color: var(--text-primary);
   display: grid;

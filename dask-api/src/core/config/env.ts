@@ -65,6 +65,23 @@ const envSchema = z.object({
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('Dask <noreply@dask.app>'),
+  RESEND_DEFAULT_FROM: z.string().optional(),
+  RESEND_REPLY_TO: z.string().optional(),
+  RESEND_WEBHOOK_SECRET: z.string().optional(),
+  RESEND_WEBHOOK_ENABLED: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
+  COMMUNICATION_DEFAULT_PHONE_COUNTRY: z.string().default('BR'),
+  COMMUNICATION_DEFAULT_PHONE_DDI: z.string().default('55'),
+  AUTOMATION_EMAIL_SEND_MODE: z.enum(['mock', 'real']).default('mock'),
+  AUTOMATION_EMAIL_PROVIDER: z.enum(['mock', 'resend']).default('mock'),
+  META_WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
+  META_WHATSAPP_WEBHOOK_APP_SECRET: z.string().optional(),
+  META_WHATSAPP_WEBHOOK_ENABLED: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
   APP_URL: z.string().default('http://localhost:5173'),
 
   LOG_LEVEL: logLevelSchema,
@@ -86,6 +103,10 @@ const envSchema = z.object({
   OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().min(100).default(1000),
   OUTBOX_RELAY_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
   OUTBOX_RELAY_MAX_RETRIES: z.coerce.number().int().min(1).max(1000).default(20),
+  AUTOMATION_SCHEDULED_STEP_INTERVAL_MS: z.coerce.number().int().min(250).default(5000),
+  AUTOMATION_SCHEDULED_STEP_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
+  AUTOMATION_SIDE_EFFECT_POLL_INTERVAL_MS: z.coerce.number().int().min(250).default(5000),
+  AUTOMATION_SIDE_EFFECT_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
 
   // Stripe Billing
   STRIPE_SECRET_KEY: z.string().optional(),

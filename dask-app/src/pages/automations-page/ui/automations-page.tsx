@@ -1,967 +1,911 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { type OnEdgesChange, type OnNodesChange, type XYPosition } from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  applyEdgeChanges,
+  applyNodeChanges,
+  type Edge,
+  type Node,
+  type NodeProps,
+  type OnEdgesChange,
+  type OnNodesChange
+} from "@xyflow/react";
+import { buildBoardMetrics } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import type {
-  ApiBoardColumn,
-  AutomationExecution,
-  AutomationRule,
-  AutomationView
+  AutomationApprovalSummary,
+  AutomationRunDetail,
+  AutomationRunListItem,
+  AutomationWorkflow,
+  AutomationWorkflowGraph,
+  AutomationWorkflowGraphEdge,
+  AutomationWorkflowGraphNode,
+  AutomationWorkflowStatus,
+  AutomationWorkflowVersion,
+  CommunicationConversationDetail,
+  CommunicationConversationSummary,
+  CommunicationTemplate,
+  WhatsAppConsent
 } from "@/modules/workspace/model";
-import { Button, FlowCanvas, LoadingState, StatusBadge, TextInput, WorkspaceFrame } from "@/shared/ui";
+import { AppIcon, Button, FlowCanvas, FlowNodeCard, LoadingState, StatusBadge, TextInput, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { buildBoardMetrics } from "@/entities/task";
-import {
-  ACTION_LABELS,
-  AUTOMATION_NODE_TYPES,
-  AUTOMATION_PALETTE,
-  ActionConfig,
-  AutomationIcon,
-  CloseIcon,
-  ConditionConfig,
-  ConfirmDialog,
-  OutputConfig,
-  PlusIcon,
-  RecentExecutions,
-  TRIGGER_LABELS,
-  TrashIcon,
-  TriggerConfig,
-  WarningTriangleIcon,
-  asString,
-  buildFallbackColumnsFromPerspectiveStatus,
-  buildVisualFlowFromState,
-  draftToRuleInput,
-  emptyFlowDraft,
-  extractVisualFlowFromRule,
-  isAdvancedFlow,
-  normalizeColumnKeyFromSlug,
-  normalizeKey,
-  restoreStateFromVisualFlow,
-  ruleToFlowDraft,
-  summarizeAction,
-  summarizeTrigger,
-  validateAutomationDraft,
-  type AutomationCanvasEdge,
-  type AutomationCanvasNode,
-  type AutomationCanvasNodeData,
-  type AutomationCanvasNodeKind,
-  type AutomationValidationResult,
-  type FlowDraft,
-  type SelectedNode
-} from "./automations-page.local";
 import "./automations-page.css";
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+type StudioTab = "flows" | "runs" | "approvals" | "inbox" | "templates" | "contacts" | "settings";
+type AutomationNodeType =
+  | "trigger"
+  | "condition"
+  | "delay"
+  | "noop"
+  | "end"
+  | "communication_send"
+  | "human_approval"
+  | "ai_summarize_context"
+  | "ai_classify_reply"
+  | "ai_extract_intent"
+  | "ai_generate_message_draft"
+  | "ai_recommend_next_action"
+  | "ai_fill_template_variables";
+
+type AutomationCanvasData = Record<string, unknown> & {
+  nodeType: AutomationNodeType;
+  label: string;
+  summary: string;
+  config: Record<string, unknown>;
+};
+
+type AutomationCanvasNode = Node<AutomationCanvasData, AutomationNodeType>;
+
+const studioTabs: Array<{ id: StudioTab; label: string; icon: Parameters<typeof AppIcon>[0]["name"] }> = [
+  { id: "flows", label: "Fluxos", icon: "automation" },
+  { id: "runs", label: "Execucoes", icon: "list-ordered" },
+  { id: "approvals", label: "Aprovacoes", icon: "square-check" },
+  { id: "inbox", label: "Inbox", icon: "message" },
+  { id: "templates", label: "Templates", icon: "template" },
+  { id: "contacts", label: "Contatos", icon: "users" },
+  { id: "settings", label: "Configuracoes", icon: "settings" }
+];
+
+const nodeCatalog: Array<{
+  type: AutomationNodeType;
+  label: string;
+  description: string;
+  color: string;
+  icon: Parameters<typeof AppIcon>[0]["name"];
+}> = [
+  { type: "trigger", label: "Gatilho", description: "Entrada do workflow", color: "#2563eb", icon: "zap" },
+  { type: "condition", label: "Condicao", description: "Roteamento por regra", color: "#ca8a04", icon: "list-checks" },
+  { type: "delay", label: "Delay", description: "Espera duravel", color: "#7c3aed", icon: "calendar-check" },
+  { type: "communication_send", label: "Enviar mensagem", description: "E-mail ou WhatsApp", color: "#059669", icon: "send" },
+  { type: "human_approval", label: "Aprovacao humana", description: "Aprovar antes do efeito", color: "#dc2626", icon: "square-check" },
+  { type: "ai_classify_reply", label: "IA: classificar", description: "Classifica resposta", color: "#4f46e5", icon: "bot" },
+  { type: "ai_generate_message_draft", label: "IA: rascunho", description: "Gera rascunho", color: "#0891b2", icon: "bot" },
+  { type: "noop", label: "Sem operacao", description: "Passo tecnico", color: "#64748b", icon: "code" },
+  { type: "end", label: "Fim", description: "Finaliza o caminho", color: "#475569", icon: "check" }
+];
+
+const nodeMeta = new Map(nodeCatalog.map((node) => [node.type, node]));
+
+const defaultGraph: AutomationWorkflowGraph = {
+  version: 1,
+  nodes: [
+    {
+      id: "trigger-manual",
+      type: "trigger",
+      label: "Execucao manual",
+      config: { triggerType: "manual" },
+      position: { x: 120, y: 120 }
+    },
+    {
+      id: "end",
+      type: "end",
+      label: "Fim",
+      config: {},
+      position: { x: 120, y: 320 }
+    }
+  ],
+  edges: [{ id: "edge-trigger-end", source: "trigger-manual", target: "end" }],
+  metadata: {}
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function statusTone(status: string): "default" | "muted" | "success" | "warning" | "danger" | "info" {
+  if (["active", "published", "completed", "approved", "sent", "delivered"].includes(status)) return "success";
+  if (["paused", "waiting", "pending", "draft", "queued", "running"].includes(status)) return "warning";
+  if (["archived", "cancelled", "rejected"].includes(status)) return "muted";
+  if (["failed", "expired", "blocked"].includes(status)) return "danger";
+  return "default";
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function summarizeConfig(config: Record<string, unknown>) {
+  const entries = Object.entries(config).filter(([, value]) => value !== undefined && value !== null && value !== "");
+  if (entries.length === 0) return "Sem configuracao";
+  return entries
+    .slice(0, 2)
+    .map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
+    .join(" | ");
+}
+
+function readVersionGraph(version: AutomationWorkflowVersion | null): AutomationWorkflowGraph {
+  if (!version) return defaultGraph;
+  const definitionGraph = isRecord(version.definitionJson.graph) ? version.definitionJson.graph : null;
+  const nodes = Array.isArray(definitionGraph?.nodes) ? definitionGraph.nodes : version.graphNodesJson;
+  const edges = Array.isArray(definitionGraph?.edges) ? definitionGraph.edges : version.graphEdgesJson;
+  return {
+    version: 1,
+    nodes: (Array.isArray(nodes) ? nodes : []).map((node, index) => normalizeGraphNode(node, index)),
+    edges: (Array.isArray(edges) ? edges : []).map((edge, index) => normalizeGraphEdge(edge, index)),
+    metadata: isRecord(definitionGraph?.metadata) ? definitionGraph.metadata : {}
+  };
+}
+
+function normalizeGraphNode(value: unknown, index: number): AutomationWorkflowGraphNode {
+  const raw = isRecord(value) ? value : {};
+  const type = typeof raw.type === "string" && nodeMeta.has(raw.type as AutomationNodeType)
+    ? raw.type as AutomationNodeType
+    : "noop";
+  const meta = nodeMeta.get(type);
+  const position = isRecord(raw.position) && typeof raw.position.x === "number" && typeof raw.position.y === "number"
+    ? { x: raw.position.x, y: raw.position.y }
+    : { x: 120 + index * 220, y: 120 };
+
+  return {
+    id: typeof raw.id === "string" && raw.id.trim() ? raw.id : `${type}-${index + 1}`,
+    type,
+    label: typeof raw.label === "string" && raw.label.trim() ? raw.label : meta?.label ?? type,
+    config: isRecord(raw.config) ? raw.config : {},
+    position
+  };
+}
+
+function normalizeGraphEdge(value: unknown, index: number): AutomationWorkflowGraphEdge {
+  const raw = isRecord(value) ? value : {};
+  return {
+    id: typeof raw.id === "string" && raw.id.trim() ? raw.id : `edge-${index + 1}`,
+    source: typeof raw.source === "string" ? raw.source : "",
+    target: typeof raw.target === "string" ? raw.target : "",
+    sourceHandle: typeof raw.sourceHandle === "string" ? raw.sourceHandle : null,
+    targetHandle: typeof raw.targetHandle === "string" ? raw.targetHandle : null,
+    condition: isRecord(raw.condition) ? raw.condition : undefined
+  };
+}
+
+function graphToCanvas(graph: AutomationWorkflowGraph): { nodes: AutomationCanvasNode[]; edges: Edge[] } {
+  return {
+    nodes: graph.nodes.map((node, index) => {
+      const type = node.type as AutomationNodeType;
+      const meta = nodeMeta.get(type) ?? nodeMeta.get("noop")!;
+      return {
+        id: node.id,
+        type,
+        position: node.position ?? { x: 120 + index * 220, y: 120 },
+        data: {
+          nodeType: type,
+          label: node.label ?? meta.label,
+          summary: summarizeConfig(node.config),
+          config: node.config ?? {}
+        }
+      };
+    }),
+    edges: graph.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null,
+      type: "smoothstep"
+    }))
+  };
+}
+
+function canvasToGraph(nodes: AutomationCanvasNode[], edges: Edge[]): AutomationWorkflowGraph {
+  return {
+    version: 1,
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      type: node.type ?? node.data.nodeType,
+      label: node.data.label,
+      config: node.data.config,
+      position: node.position
+    })),
+    edges: edges.map((edge, index) => ({
+      id: edge.id || `edge-${index + 1}`,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null
+    })),
+    metadata: { editor: "automation-studio" }
+  };
+}
+
+function AutomationNode({ data, selected }: NodeProps) {
+  const nodeData = data as AutomationCanvasData;
+  const meta = nodeMeta.get(nodeData.nodeType) ?? nodeMeta.get("noop")!;
+  return (
+    <FlowNodeCard
+      kind={nodeData.nodeType}
+      typeLabel={meta.label}
+      label={nodeData.label}
+      meta={nodeData.summary}
+      icon={<AppIcon name={meta.icon} size={14} />}
+      selected={selected}
+      target={nodeData.nodeType !== "trigger"}
+      source={nodeData.nodeType !== "end"}
+      branches={nodeData.nodeType === "condition" ? [
+        { id: "true", label: "Sim", tone: "true" },
+        { id: "false", label: "Nao", tone: "false" }
+      ] : undefined}
+    />
+  );
+}
+
+const automationNodeTypes = nodeCatalog.reduce<Record<string, typeof AutomationNode>>((acc, node) => {
+  acc[node.type] = AutomationNode;
+  return acc;
+}, {});
+
+function useAsyncReload(callback: () => Promise<void>) {
+  const [loading, setLoading] = useState(false);
+  return useCallback(async () => {
+    setLoading(true);
+    try {
+      await callback();
+    } finally {
+      setLoading(false);
+    }
+  }, [callback, setLoading]) as (() => Promise<void>) & { loading?: boolean };
+}
 
 export function AutomationsPage() {
   const {
     snapshot,
     isLoading,
-    setAutomationStatus,
-    fetchBoardColumns,
-    listAutomationRules,
-    listAutomationExecutions,
-    listAutomationViews,
-    runAutomationRule,
-    createAutomationRule,
-    updateAutomationRule,
-    deleteAutomationRule
+    listAutomationWorkflows,
+    createAutomationWorkflow,
+    updateAutomationWorkflow,
+    activateAutomationWorkflow,
+    pauseAutomationWorkflow,
+    archiveAutomationWorkflow,
+    listAutomationWorkflowVersions,
+    createAutomationWorkflowDraftVersion,
+    updateAutomationWorkflowVersion,
+    publishAutomationWorkflowVersion,
+    cloneAutomationWorkflowVersion,
+    runAutomationWorkflow,
+    listAutomationRuns,
+    getAutomationRunDetail,
+    cancelAutomationRun,
+    listAutomationApprovals,
+    listCommunicationInbox,
+    getCommunicationConversation,
+    replyCommunicationConversation,
+    listCommunicationTemplates,
+    listWhatsAppConsents,
+    upsertWhatsAppConsent
   } = useWorkspace();
 
-  const [rules, setRules] = useState<AutomationRule[]>([]);
-  const [rulesLoading, setRulesLoading] = useState(true);
-  const [executions, setExecutions] = useState<AutomationExecution[]>([]);
-  const [executionsLoading, setExecutionsLoading] = useState(true);
-  const [views, setViews] = useState<AutomationView[]>([]);
-  const [viewsLoading, setViewsLoading] = useState(true);
-  const [boardColumns, setBoardColumns] = useState<ApiBoardColumn[]>([]);
+  const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot]);
+  const [activeTab, setActiveTab] = useState<StudioTab>("flows");
+  const [workflows, setWorkflows] = useState<AutomationWorkflow[]>([]);
+  const [versions, setVersions] = useState<AutomationWorkflowVersion[]>([]);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [workflowName, setWorkflowName] = useState("");
+  const [workflowDescription, setWorkflowDescription] = useState("");
+  const [canvasNodes, setCanvasNodes] = useState<AutomationCanvasNode[]>([]);
+  const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [configText, setConfigText] = useState("{}");
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [fitViewKey, setFitViewKey] = useState(0);
+  const [runs, setRuns] = useState<AutomationRunListItem[]>([]);
+  const [selectedRun, setSelectedRun] = useState<AutomationRunDetail | null>(null);
+  const [approvals, setApprovals] = useState<AutomationApprovalSummary[]>([]);
+  const [conversations, setConversations] = useState<CommunicationConversationSummary[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<CommunicationConversationDetail | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [templates, setTemplates] = useState<CommunicationTemplate[]>([]);
+  const [consents, setConsents] = useState<WhatsAppConsent[]>([]);
 
-  // Editor state
-  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [draft, setDraft] = useState<FlowDraft | null>(null);
-  const [originalDraft, setOriginalDraft] = useState<FlowDraft | null>(null);
-  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
-  const [nodePositions, setNodePositions] = useState<Record<string, XYPosition>>({});
-  const [extraNodes, setExtraNodes] = useState<AutomationCanvasNode[]>([]);
-  const [extraEdges, setExtraEdges] = useState<AutomationCanvasEdge[]>([]);
+  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedWorkflowId) ?? null;
+  const selectedVersion = versions.find((version) => version.id === selectedVersionId) ?? null;
+  const selectedNode = canvasNodes.find((node) => node.id === selectedNodeId) ?? null;
+  const hasDraft = versions.some((version) => version.status === "draft");
+  const currentVersion = versions.find((version) => version.id === selectedWorkflow?.currentVersionId) ?? null;
 
-  // Action states
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [runningId, setRunningId] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const loadWorkflows = useCallback(async () => {
+    const result = await listAutomationWorkflows({ limit: 200 });
+    setWorkflows(result.items);
+    setSelectedWorkflowId((current) => current ?? result.items[0]?.id ?? null);
+  }, [listAutomationWorkflows]);
 
-  // Dialog state
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [pendingNavigate, setPendingNavigate] = useState<(() => void) | null>(null);
-
-  // ─── Data loading ───────────────────────────────────────────────────────────
-
-  const loadRules = useCallback(() => {
-    setRulesLoading(true);
-    listAutomationRules({ includeDisabled: true })
-      .then(setRules)
-      .catch(() => {})
-      .finally(() => setRulesLoading(false));
-  }, [listAutomationRules]);
-
-  useEffect(() => { loadRules(); }, [loadRules]);
-
-  useEffect(() => {
-    listAutomationExecutions({ limit: 500 })
-      .then(setExecutions)
-      .catch(() => {})
-      .finally(() => setExecutionsLoading(false));
-  }, [listAutomationExecutions]);
-
-  useEffect(() => {
-    listAutomationViews()
-      .then(setViews)
-      .catch(() => setViews([]))
-      .finally(() => setViewsLoading(false));
-  }, [listAutomationViews]);
-
-  useEffect(() => {
-    fetchBoardColumns()
-      .then((cols) => setBoardColumns(cols.filter((c) => c.isActive).sort((a, b) => a.order - b.order)))
-      .catch(() => setBoardColumns([]));
-  }, [fetchBoardColumns]);
-
-  // ─── Views enrichment ───────────────────────────────────────────────────────
-
-  const availableViews = useMemo<AutomationView[]>(() => {
-    const activeViews = views.filter((v) => v.isActive);
-    const byKey = new Map<string, AutomationView>();
-    for (const view of activeViews) {
-      const normalized = normalizeKey(view.key || view.name);
-      if (!normalized) continue;
-      const prev = byKey.get(normalized);
-      if (!prev || prev.columns.length < view.columns.length) byKey.set(normalized, view);
-    }
-
-    const boardColumnById = new Map(boardColumns.map((c) => [c.id, c]));
-    const perspectives = Array.isArray(snapshot?.boardConfig.perspectives)
-      ? snapshot.boardConfig.perspectives
-      : [];
-    const boardColsByPerspKey = new Map<string, Array<{ id: string; key: string; name: string }>>();
-    const fallbackColsByPerspKey = new Map<string, Array<{ id: string; key: string; name: string }>>();
-
-    for (const perspective of perspectives) {
-      if (!perspective || typeof perspective !== "object") continue;
-      const entry = perspective as unknown as Record<string, unknown>;
-      const perspKey = (typeof entry.id === "string" && entry.id) || (typeof entry.label === "string" && entry.label) || "";
-      const normalized = normalizeKey(perspKey);
-      if (!normalized) continue;
-
-      const visibleIds = Array.isArray(entry.visibleBoardColumnIds)
-        ? entry.visibleBoardColumnIds.filter((id): id is string => typeof id === "string")
-        : [];
-      const visibleCols = visibleIds
-        .map((id) => boardColumnById.get(id))
-        .filter((c): c is ApiBoardColumn => Boolean(c))
-        .map((c) => ({ id: c.id, key: normalizeColumnKeyFromSlug(c.slug, c.name), name: c.name }))
-        .filter((c) => c.key.length > 0);
-
-      if (visibleCols.length > 0) boardColsByPerspKey.set(normalized, visibleCols);
-      const fallback = buildFallbackColumnsFromPerspectiveStatus(entry);
-      if (fallback.length > 0) fallbackColsByPerspKey.set(normalized, fallback);
-    }
-
-    return Array.from(byKey.values())
-      .map((view) => {
-        const nk = normalizeKey(view.key || view.name);
-        const boardCols = boardColsByPerspKey.get(nk);
-        if (boardCols && boardCols.length > 0) {
-          return {
-            ...view,
-            columns: boardCols.map((c, i) => ({
-              id: c.id, workspaceId: view.workspaceId, viewId: view.id, key: c.key,
-              name: c.name, description: null, color: "var(--text-secondary)", position: i,
-              isActive: true, isTerminal: i === boardCols.length - 1, settings: null,
-              createdAt: view.createdAt, updatedAt: view.updatedAt
-            }))
-          };
-        }
-        if (view.columns.length > 0) return view;
-        const fallback = fallbackColsByPerspKey.get(nk);
-        if (!fallback || fallback.length === 0) return view;
-        return {
-          ...view,
-          columns: fallback.map((c, i) => ({
-            id: c.id, workspaceId: view.workspaceId, viewId: view.id, key: c.key,
-            name: c.name, description: null, color: "var(--text-secondary)", position: i,
-            isActive: true, isTerminal: i === fallback.length - 1, settings: null,
-            createdAt: view.createdAt, updatedAt: view.updatedAt
-          }))
-        };
-      })
-      .sort((a, b) => a.position - b.position);
-  }, [views, snapshot?.boardConfig.perspectives, boardColumns]);
-
-  // ─── State options ──────────────────────────────────────────────────────────
-
-  const stateOptions = useMemo(
-    () => snapshot?.boardConfig.statuses.map((s) => ({ value: s.id, label: s.label })) ?? [],
-    [snapshot]
-  );
-
-  // ─── Editor helpers ──────────────────────────────────────────────────────────
-
-  const isDirty = useMemo(() => {
-    if (!draft || !originalDraft) return false;
-    return JSON.stringify(draft) !== JSON.stringify(originalDraft);
-  }, [draft, originalDraft]);
-
-  function doOpenRule(rule: AutomationRule) {
-    const d = ruleToFlowDraft(rule);
-    if (d.triggerType === "item.moved" && !d.triggerConfig.toViewKey && availableViews[0]) {
-      const currentColumnKey = asString(d.triggerConfig.toColumnKey);
-      const matchingView = availableViews.find((view) =>
-        view.columns.some((column) => column.key === currentColumnKey)
-      );
-      const fallbackView = matchingView ?? availableViews[0];
-      d.triggerConfig = {
-        ...d.triggerConfig,
-        toViewKey: fallbackView.key,
-        toColumnKey: currentColumnKey || (fallbackView.columns[0]?.key ?? "")
-      };
-    }
-
-    // Restore visual flow if persisted, otherwise start fresh
-    const savedFlow = extractVisualFlowFromRule(rule);
-    if (savedFlow) {
-      const restored = restoreStateFromVisualFlow(savedFlow);
-      setExtraNodes(restored.extraNodes);
-      setExtraEdges(restored.extraEdges);
-      setNodePositions(restored.nodePositions);
-    } else {
-      setExtraNodes([]);
-      setExtraEdges([]);
-      setNodePositions({});
-    }
-
-    setDraft(d);
-    setOriginalDraft(JSON.parse(JSON.stringify(d)) as FlowDraft);
-    setSelectedRuleId(rule.id);
-    setIsCreating(false);
-    setSelectedNode(null);
-    setSaveError(null);
-  }
-
-  function openRule(rule: AutomationRule) {
-    if (isDirty) {
-      setPendingNavigate(() => () => doOpenRule(rule));
+  const loadVersions = useCallback(async (workflowId: string | null) => {
+    if (!workflowId) {
+      setVersions([]);
+      setSelectedVersionId(null);
       return;
     }
-    doOpenRule(rule);
-  }
+    const result = await listAutomationWorkflowVersions(workflowId, { limit: 100 });
+    setVersions(result.items);
+    const preferred = result.items.find((version) => version.status === "draft")
+      ?? result.items.find((version) => version.id === workflows.find((workflow) => workflow.id === workflowId)?.currentVersionId)
+      ?? result.items[0]
+      ?? null;
+    setSelectedVersionId(preferred?.id ?? null);
+  }, [listAutomationWorkflowVersions, workflows]);
 
-  function startCreate() {
-    const d = emptyFlowDraft();
-    if (availableViews[0]) {
-      d.triggerConfig = {
-        type: d.triggerType,
-        toViewKey: availableViews[0].key,
-        toColumnKey: availableViews[0].columns[0]?.key ?? ""
-      };
-      const firstAction = d.actions[0];
-      if (firstAction) {
-        d.actions = [{
-          ...firstAction,
-          targetViewKey: availableViews[0].key,
-          targetColumnKey: availableViews[0].columns[0]?.key ?? ""
-        }];
-      }
-    }
-    if (stateOptions[0] && d.actions[0]?.type === "set_work_item_state") {
-      d.actions[0] = { ...d.actions[0], stateSlug: stateOptions[0].value };
-    }
-    setDraft(d);
-    setOriginalDraft(null);
-    setSelectedRuleId(null);
-    setIsCreating(true);
-    setSelectedNode({ kind: "trigger" });
-    setExtraNodes([]);
-    setExtraEdges([]);
-    setSaveError(null);
-  }
-
-  function updateDraft(updates: Partial<FlowDraft>) {
-    setDraft((prev) => prev ? { ...prev, ...updates } : prev);
-  }
-
-  function updateAction(index: number, updated: { type: string; [key: string]: unknown }) {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const actions = [...prev.actions];
-      actions[index] = updated;
-      return { ...prev, actions };
+  const loadRuns = useCallback(async () => {
+    const result = await listAutomationRuns({
+      workflowId: selectedWorkflowId ?? undefined,
+      limit: 100
     });
-  }
+    setRuns(result.items);
+  }, [listAutomationRuns, selectedWorkflowId]);
 
-  function addAction(position?: XYPosition) {
-    const defaultAction: { type: string; [key: string]: unknown } = { type: "set_view_column" };
-    if (availableViews[0]) {
-      defaultAction.targetViewKey = availableViews[0].key;
-      defaultAction.targetColumnKey = availableViews[0].columns[0]?.key ?? "";
-    }
-    const nextIndex = draft?.actions.length ?? 0;
-    if (position) {
-      setNodePositions((prev) => ({ ...prev, [`action-${nextIndex}`]: position }));
-    }
-    setDraft((prev) => prev ? { ...prev, actions: [...prev.actions, defaultAction] } : prev);
-    setSelectedNode({ kind: "action", index: nextIndex });
-  }
+  const loadOperations = useCallback(async () => {
+    const [approvalResult, inboxResult, templateResult, consentResult] = await Promise.all([
+      listAutomationApprovals({ limit: 100 }),
+      listCommunicationInbox({ limit: 100 }),
+      listCommunicationTemplates({ limit: 100 }),
+      listWhatsAppConsents({ limit: 100 })
+    ]);
+    setApprovals(approvalResult.items);
+    setConversations(inboxResult.items);
+    setTemplates(templateResult.items);
+    setConsents(consentResult.items);
+  }, [listAutomationApprovals, listCommunicationInbox, listCommunicationTemplates, listWhatsAppConsents]);
 
-  function removeAction(index: number) {
-    setDraft((prev) => {
-      if (!prev || prev.actions.length <= 1) return prev;
-      const actions = prev.actions.filter((_, i) => i !== index);
-      return { ...prev, actions };
-    });
-    setNodePositions((prev) => {
-      const next: Record<string, XYPosition> = {};
-      Object.entries(prev).forEach(([id, position]) => {
-        if (!id.startsWith("action-")) {
-          next[id] = position;
-          return;
-        }
-        const currentIndex = Number(id.slice("action-".length));
-        if (Number.isNaN(currentIndex) || currentIndex === index) return;
-        const nextIndex = currentIndex > index ? currentIndex - 1 : currentIndex;
-        next[`action-${nextIndex}`] = position;
-      });
-      return next;
-    });
-    setSelectedNode(null);
-  }
+  const reloadWorkflows = useAsyncReload(loadWorkflows);
 
-  // ─── Save / Delete / Toggle / Run ──────────────────────────────────────────
+  useEffect(() => {
+    void reloadWorkflows();
+  }, [reloadWorkflows]);
 
-  async function handleSave() {
-    if (!draft) return;
+  useEffect(() => {
+    void loadVersions(selectedWorkflowId);
+  }, [loadVersions, selectedWorkflowId]);
 
-    const validation = validateAutomationDraft(draft, extraNodes);
-
-    if (!validation.canSaveDraft) {
-      setSaveError(validation.errors[0] ?? "Corrija os erros antes de salvar.");
+  useEffect(() => {
+    if (!selectedWorkflow) {
+      setWorkflowName("");
+      setWorkflowDescription("");
       return;
     }
-    if (!validation.canPublish && draft.enabled) {
-      setSaveError(
-        validation.errors.length > 0
-          ? validation.errors[0]
-          : "Fluxo com nós avançados não pode ser ativado. Salve como rascunho primeiro."
-      );
+    setWorkflowName(selectedWorkflow.name);
+    setWorkflowDescription(selectedWorkflow.description ?? "");
+  }, [selectedWorkflow]);
+
+  useEffect(() => {
+    const graph = readVersionGraph(selectedVersion);
+    const next = graphToCanvas(graph);
+    setCanvasNodes(next.nodes);
+    setCanvasEdges(next.edges);
+    setSelectedNodeId(null);
+    setFitViewKey((value) => value + 1);
+  }, [selectedVersion]);
+
+  useEffect(() => {
+    if (!selectedNode) {
+      setConfigText("{}");
       return;
     }
+    setConfigText(JSON.stringify(selectedNode.data.config, null, 2));
+  }, [selectedNode]);
 
-    const visualFlow = buildVisualFlowFromState(draft, nodePositions, extraNodes, extraEdges);
+  useEffect(() => {
+    if (activeTab === "runs") {
+      void loadRuns();
+    }
+    if (activeTab === "approvals" || activeTab === "inbox" || activeTab === "templates" || activeTab === "contacts" || activeTab === "settings") {
+      void loadOperations();
+    }
+  }, [activeTab, loadRuns, loadOperations]);
 
-    setSaving(true);
-    setSaveError(null);
+  const onNodesChange: OnNodesChange<AutomationCanvasNode> = useCallback((changes) => {
+    setCanvasNodes((nodes) => applyNodeChanges(changes, nodes) as AutomationCanvasNode[]);
+  }, []);
+
+  const onEdgesChange: OnEdgesChange<Edge> = useCallback((changes) => {
+    setCanvasEdges((edges) => applyEdgeChanges(changes, edges));
+  }, []);
+
+  const handleCreateWorkflow = useCallback(async () => {
+    setBusy(true);
+    setFeedback(null);
     try {
-      const input = draftToRuleInput(draft, visualFlow);
-      if (isCreating) {
-        const created = await createAutomationRule(input);
-        setRules((prev) => [created, ...prev]);
-        setSelectedRuleId(created.id);
-        setIsCreating(false);
-        setOriginalDraft(JSON.parse(JSON.stringify(draft)) as FlowDraft);
-      } else if (selectedRuleId) {
-        const rule = rules.find((r) => r.id === selectedRuleId);
-        const updated = await updateAutomationRule(selectedRuleId, {
-          ...input,
-          enabled: draft.enabled,
-          priority: rule?.priority ?? draft.priority
-        });
-        setRules((prev) => prev.map((r) => (r.id === selectedRuleId ? updated : r)));
-        setOriginalDraft(JSON.parse(JSON.stringify(draft)) as FlowDraft);
-      }
-    } catch {
-      setSaveError("Erro ao salvar. Verifique os dados e tente novamente.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggle() {
-    if (!draft || !selectedRuleId) return;
-    const next = draft.enabled ? "paused" : "active";
-    const nextEnabled = !draft.enabled;
-    setDraft((prev) => prev ? { ...prev, enabled: nextEnabled } : prev);
-    setOriginalDraft((prev) => prev ? { ...prev, enabled: nextEnabled } : prev);
-    setRules((prev) => prev.map((r) => r.id === selectedRuleId ? { ...r, enabled: nextEnabled } : r));
-    try {
-      await setAutomationStatus(selectedRuleId, next);
-    } catch {
-      setDraft((prev) => prev ? { ...prev, enabled: !nextEnabled } : prev);
-      setRules((prev) => prev.map((r) => r.id === selectedRuleId ? { ...r, enabled: !nextEnabled } : r));
-    }
-  }
-
-  async function confirmDelete() {
-    if (!selectedRuleId) return;
-    setDeleting(true);
-    try {
-      await deleteAutomationRule(selectedRuleId);
-      setRules((prev) => prev.filter((r) => r.id !== selectedRuleId));
-      setSelectedRuleId(null);
-      setIsCreating(false);
-      setDraft(null);
-      setOriginalDraft(null);
-      setSelectedNode(null);
-      setShowDeleteConfirm(false);
-    } catch {
-      setSaveError("Não foi possível remover a automação.");
-      setShowDeleteConfirm(false);
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function handleRunTest() {
-    if (!selectedRuleId) return;
-    setRunningId(selectedRuleId);
-    try {
-      await runAutomationRule(selectedRuleId);
-    } finally {
-      setRunningId(null);
-    }
-  }
-
-  async function handleSidebarToggle(rule: AutomationRule, e: React.MouseEvent) {
-    e.stopPropagation();
-    const next = rule.enabled ? "paused" : "active";
-    setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: !rule.enabled } : r));
-    if (selectedRuleId === rule.id && draft) {
-      setDraft((prev) => prev ? { ...prev, enabled: !rule.enabled } : prev);
-      setOriginalDraft((prev) => prev ? { ...prev, enabled: !rule.enabled } : prev);
-    }
-    try {
-      await setAutomationStatus(rule.id, next);
-    } catch {
-      setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: rule.enabled } : r));
-    }
-  }
-
-  // ─── Derived ────────────────────────────────────────────────────────────────
-
-  const metrics = buildBoardMetrics(snapshot?.tasks ?? []);
-  const pageLoading = isLoading || rulesLoading || viewsLoading;
-  const selectedRule = rules.find((r) => r.id === selectedRuleId) ?? null;
-  const advanced = isAdvancedFlow(extraNodes);
-  const validation: AutomationValidationResult | null = draft
-    ? validateAutomationDraft(draft, extraNodes)
-    : null;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const executionsToday = executions.filter((e) => new Date(e.createdAt) >= today).length;
-  const failuresToday = executions.filter((e) => new Date(e.createdAt) >= today && e.status === "failed").length;
-
-  const isNodeConfigured = (node: SelectedNode): boolean => {
-    if (!draft) return false;
-    if (node.kind === "trigger") {
-      if (draft.triggerType === "item.moved") {
-        return !!(draft.triggerConfig.toViewKey && draft.triggerConfig.toColumnKey);
-      }
-      return true;
-    }
-    if (node.kind === "condition" || node.kind === "output") return true;
-    const action = draft.actions[node.index];
-    if (!action) return false;
-    const type = asString(action.type);
-    if (type === "set_work_item_state") return !!(asString(action.stateSlug) || asString(action.status));
-    if (type === "set_view_column") return !!(asString(action.targetViewKey) && asString(action.targetColumnKey));
-    if (type === "remove_from_view") return !!asString(action.targetViewKey);
-    if (type === "create_document") return !!asString(action.kind);
-    if (type === "update_document_status") return !!(asString(action.kind) && asString(action.status));
-    if (type === "create_billing_order") return true;
-    return false;
-  };
-
-  const selectedNodeId = !selectedNode
-    ? null
-    : selectedNode.kind === "trigger"
-      ? "trigger"
-      : selectedNode.kind === "action"
-        ? `action-${selectedNode.index}`
-        : null;
-
-  const automationNodes = useMemo<AutomationCanvasNode[]>(() => {
-    if (!draft) return [];
-
-    const triggerSelected = selectedNodeId === "trigger";
-    const nodes: AutomationCanvasNode[] = [
-      {
-        id: "trigger",
-        type: "trigger",
-        position: nodePositions.trigger ?? { x: 180, y: 40 },
-        data: {
-          kind: "trigger",
-          label: TRIGGER_LABELS[draft.triggerType] ?? "Gatilho",
-          summary: summarizeTrigger(draft, availableViews),
-          configured: isNodeConfigured({ kind: "trigger" })
-        },
-        selected: triggerSelected,
-        deletable: false
-      }
-    ];
-
-    draft.actions.forEach((action, index) => {
-      const id = `action-${index}`;
-      nodes.push({
-        id,
-        type: "action",
-        position: nodePositions[id] ?? { x: 180, y: 220 + index * 180 },
-        data: {
-          kind: "action",
-          index,
-          label: ACTION_LABELS[asString(action.type)] ?? "Acao",
-          summary: summarizeAction(action, availableViews, stateOptions),
-          configured: isNodeConfigured({ kind: "action", index })
-        },
-        selected: selectedNodeId === id,
-        deletable: false
+      const workflow = await createAutomationWorkflow({
+        name: `Novo fluxo ${workflows.length + 1}`,
+        status: "draft"
       });
-    });
-
-    const selectedExtraId =
-      selectedNode?.kind === "condition" || selectedNode?.kind === "output"
-        ? selectedNode.nodeId
-        : null;
-
-    for (const extra of extraNodes) {
-      nodes.push({
-        ...extra,
-        selected: extra.id === selectedExtraId,
-        position: nodePositions[extra.id] ?? extra.position
+      await createAutomationWorkflowDraftVersion(workflow.id, {
+        graph: defaultGraph,
+        definition: { graph: defaultGraph }
       });
+      await loadWorkflows();
+      setSelectedWorkflowId(workflow.id);
+      setFeedback("Fluxo criado.");
+    } finally {
+      setBusy(false);
     }
+  }, [createAutomationWorkflow, createAutomationWorkflowDraftVersion, loadWorkflows, workflows.length]);
 
-    return nodes;
-  }, [availableViews, draft, extraNodes, nodePositions, selectedNode, selectedNodeId, stateOptions]);
+  const handleSaveWorkflow = useCallback(async () => {
+    if (!selectedWorkflow || !selectedVersion || selectedVersion.status !== "draft") return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const graph = canvasToGraph(canvasNodes, canvasEdges);
+      await Promise.all([
+        updateAutomationWorkflow(selectedWorkflow.id, {
+          name: workflowName,
+          description: workflowDescription || null
+        }),
+        updateAutomationWorkflowVersion(selectedWorkflow.id, selectedVersion.id, {
+          graph,
+          definition: { graph }
+        })
+      ]);
+      await loadWorkflows();
+      await loadVersions(selectedWorkflow.id);
+      setFeedback("Draft salvo.");
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    canvasEdges,
+    canvasNodes,
+    loadVersions,
+    loadWorkflows,
+    selectedVersion,
+    selectedWorkflow,
+    updateAutomationWorkflow,
+    updateAutomationWorkflowVersion,
+    workflowDescription,
+    workflowName
+  ]);
 
-  const linearEdges = useMemo<AutomationCanvasEdge[]>(() => {
-    if (!draft) return [];
-    return draft.actions.map((_, index) => {
-      const source = index === 0 ? "trigger" : `action-${index - 1}`;
-      const target = `action-${index}`;
+  const handlePublish = useCallback(async () => {
+    if (!selectedWorkflow || !selectedVersion || selectedVersion.status !== "draft") return;
+    await handleSaveWorkflow();
+    setBusy(true);
+    try {
+      await publishAutomationWorkflowVersion(selectedWorkflow.id, selectedVersion.id, { activateWorkflow: true });
+      await loadWorkflows();
+      await loadVersions(selectedWorkflow.id);
+      setFeedback("Versao publicada.");
+    } finally {
+      setBusy(false);
+    }
+  }, [handleSaveWorkflow, loadVersions, loadWorkflows, publishAutomationWorkflowVersion, selectedVersion, selectedWorkflow]);
+
+  const handleCloneVersion = useCallback(async () => {
+    if (!selectedWorkflow || !selectedVersion) return;
+    setBusy(true);
+    try {
+      const draft = await cloneAutomationWorkflowVersion(selectedWorkflow.id, selectedVersion.id);
+      await loadVersions(selectedWorkflow.id);
+      setSelectedVersionId(draft.id);
+      setFeedback("Draft criado a partir da versao selecionada.");
+    } finally {
+      setBusy(false);
+    }
+  }, [cloneAutomationWorkflowVersion, loadVersions, selectedVersion, selectedWorkflow]);
+
+  const handleStatusChange = useCallback(async (status: Extract<AutomationWorkflowStatus, "active" | "paused" | "archived">) => {
+    if (!selectedWorkflow) return;
+    setBusy(true);
+    try {
+      if (status === "active") await activateAutomationWorkflow(selectedWorkflow.id);
+      if (status === "paused") await pauseAutomationWorkflow(selectedWorkflow.id);
+      if (status === "archived") await archiveAutomationWorkflow(selectedWorkflow.id);
+      await loadWorkflows();
+    } finally {
+      setBusy(false);
+    }
+  }, [activateAutomationWorkflow, archiveAutomationWorkflow, loadWorkflows, pauseAutomationWorkflow, selectedWorkflow]);
+
+  const handleRun = useCallback(async () => {
+    if (!selectedWorkflow) return;
+    setBusy(true);
+    try {
+      const result = await runAutomationWorkflow(selectedWorkflow.id, {
+        triggerType: "manual",
+        context: { source: "automation_studio_test" }
+      });
+      setFeedback(`Run criada: ${result.runId}`);
+      await loadRuns();
+      setActiveTab("runs");
+    } finally {
+      setBusy(false);
+    }
+  }, [loadRuns, runAutomationWorkflow, selectedWorkflow]);
+
+  const handleApplyConfig = useCallback(() => {
+    if (!selectedNode) return;
+    const parsed = JSON.parse(configText) as Record<string, unknown>;
+    setCanvasNodes((nodes) => nodes.map((node) => {
+      if (node.id !== selectedNode.id) return node;
       return {
-        id: `edge-${source}-${target}`,
-        source,
-        target,
-        type: "smoothstep",
-        animated: true,
-        markerEnd: { type: "arrowclosed" as const, width: 14, height: 14 },
-        deletable: false
+        ...node,
+        data: {
+          ...node.data,
+          config: parsed,
+          summary: summarizeConfig(parsed)
+        }
       };
+    }));
+  }, [configText, selectedNode]);
+
+  const handleLoadRunDetail = useCallback(async (runId: string) => {
+    const detail = await getAutomationRunDetail(runId);
+    setSelectedRun(detail);
+  }, [getAutomationRunDetail]);
+
+  const handleCancelRun = useCallback(async (runId: string) => {
+    await cancelAutomationRun(runId, "Cancelado pelo Automation Studio");
+    await loadRuns();
+  }, [cancelAutomationRun, loadRuns]);
+
+  const handleOpenConversation = useCallback(async (conversationId: string) => {
+    const detail = await getCommunicationConversation(conversationId);
+    setSelectedConversation(detail);
+  }, [getCommunicationConversation]);
+
+  const handleReply = useCallback(async () => {
+    if (!selectedConversation || !replyText.trim()) return;
+    await replyCommunicationConversation(selectedConversation.conversation.id, {
+      channel: selectedConversation.conversation.channel === "email" ? "email" : "whatsapp",
+      text: replyText,
+      sendMode: "manual"
     });
-  }, [draft]);
+    setReplyText("");
+    await handleOpenConversation(selectedConversation.conversation.id);
+  }, [handleOpenConversation, replyCommunicationConversation, replyText, selectedConversation]);
 
-  const allEdges = useMemo<AutomationCanvasEdge[]>(
-    () => [...linearEdges, ...extraEdges],
-    [linearEdges, extraEdges]
-  );
+  const handleOptOutFirstConsent = useCallback(async () => {
+    const first = consents[0];
+    if (!first) return;
+    await upsertWhatsAppConsent({ address: first.address, status: "opted_out", source: "automation_studio" });
+    await loadOperations();
+  }, [consents, loadOperations, upsertWhatsAppConsent]);
 
-  const handleAutomationNodesChange: OnNodesChange<AutomationCanvasNode> = useCallback((changes) => {
-    setNodePositions((prev) => {
-      let next = prev;
-      for (const change of changes) {
-        if (change.type !== "position" || !change.position) continue;
-        if (next === prev) next = { ...prev };
-        next[change.id] = change.position;
-      }
-      return next;
-    });
-    const removals = changes.filter((c) => c.type === "remove");
-    if (removals.length > 0) {
-      const removedIds = new Set(removals.map((c) => c.id));
-      setExtraNodes((prev) => prev.filter((n) => !removedIds.has(n.id)));
-    }
-  }, []);
-
-  const handleAutomationEdgesChange: OnEdgesChange<AutomationCanvasEdge> = useCallback((changes) => {
-    const removals = changes.filter((c) => c.type === "remove");
-    if (removals.length > 0) {
-      const removedIds = new Set(removals.map((c) => c.id));
-      setExtraEdges((prev) => prev.filter((e) => !removedIds.has(e.id)));
-    }
-  }, []);
-
-  const handleAutomationEdgesAdd = useCallback((newEdges: AutomationCanvasEdge[]) => {
-    const linearIds = new Set(linearEdges.map((e) => e.id));
-    setExtraEdges(newEdges.filter((e) => !linearIds.has(e.id)));
-  }, [linearEdges]);
-
-  const handleAutomationNodesAdd = useCallback((nodes: AutomationCanvasNode[]) => {
-    for (const node of nodes) {
-      if (node.type === "action") {
-        addAction(node.position);
-      } else if (node.type === "condition" || node.type === "output") {
-        setExtraNodes((prev) => [...prev, node]);
-      }
-    }
-  }, [addAction]);
-
-  const updateExtraNode = useCallback((nodeId: string, updates: Partial<AutomationCanvasNodeData>) => {
-    setExtraNodes((prev) =>
-      prev.map((n) =>
-        n.id === nodeId ? { ...n, data: { ...n.data, ...updates } } : n
-      )
-    );
-  }, []);
-
-  const removeExtraNode = useCallback((nodeId: string) => {
-    setExtraNodes((prev) => prev.filter((n) => n.id !== nodeId));
-    setExtraEdges((prev) => prev.filter((e) => e.source !== nodeId && e.target !== nodeId));
-    setSelectedNode(null);
-  }, []);
-
-  const handleAutomationNodeSelect = useCallback((nodeId: string | null) => {
-    if (!nodeId) {
-      setSelectedNode(null);
-      return;
-    }
-    if (nodeId === "trigger") {
-      setSelectedNode({ kind: "trigger" });
-      return;
-    }
-    if (nodeId.startsWith("action-")) {
-      const index = Number(nodeId.slice("action-".length));
-      if (!Number.isNaN(index)) setSelectedNode({ kind: "action", index });
-      return;
-    }
-    if (nodeId.startsWith("condition-")) {
-      setSelectedNode({ kind: "condition", nodeId });
-      return;
-    }
-    if (nodeId.startsWith("output-")) {
-      setSelectedNode({ kind: "output", nodeId });
-    }
-  }, []);
-
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return <LoadingState text="Carregando Automation Studio" animation="automation" />;
+  }
 
   return (
     <AppShell
       metrics={metrics}
+      pageLabel="Automation Studio"
+      pageTitle="Automacoes"
       noPageScroll
-      hideSidebarBrandMark
       hidePageHeader
     >
-      <WorkspaceFrame className="flow-editor">
-        <LoadingState
-          text="Carregando automações..."
-          animation="automation"
-          variant="frame"
-          visible={pageLoading}
-        />
-        {/* ── Sidebar ── */}
-        <aside className="flow-sidebar">
-          <div className="flow-sidebar__header">
-            <span className="flow-sidebar__title">
-              <AutomationIcon size={14} />
-              Automações
-            </span>
-            <div className="flow-sidebar__meta">
-              <span className="flow-sidebar__stat">
-                {rules.filter((r) => r.enabled).length} ativas
-              </span>
-            </div>
+      <WorkspaceFrame className="automation-studio">
+        <header className="automation-studio__header">
+          <div>
+            <span>Automation Studio</span>
+            <strong>Workflow versionado</strong>
           </div>
+          <nav className="automation-studio__tabs" aria-label="Automation Studio">
+            {studioTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={activeTab === tab.id ? "is-active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <AppIcon name={tab.icon} size={15} />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        </header>
 
-          <button
-            className="flow-sidebar__create-btn"
-            type="button"
-            onClick={startCreate}
-          >
-            <PlusIcon size={14} />
-            Nova automação
-          </button>
-
-          <div className="flow-sidebar__list">
-            {rules.length === 0 ? (
-              <div className="flow-sidebar__empty">
-                Nenhuma automação. Crie a primeira!
-              </div>
-            ) : (
-              rules.map((rule) => {
-                const isActive = rule.id === selectedRuleId || (isCreating && !rule.id);
-                return (
-                  <div
-                    key={rule.id}
-                    className={`flow-sidebar__item${isActive ? " flow-sidebar__item--active" : ""}`}
-                    onClick={() => openRule(rule)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && openRule(rule)}
-                  >
-                    <div className="flow-sidebar__item-main">
-                      <span className="flow-sidebar__item-name">{rule.name}</span>
-                      <span className="flow-sidebar__item-trigger">
-                        {TRIGGER_LABELS[rule.triggerType] ?? rule.triggerType}
-                      </span>
-                    </div>
-                    <button
-                      className={`flow-sidebar__toggle${rule.enabled ? " flow-sidebar__toggle--on" : ""}`}
-                      type="button"
-                      onClick={(e) => void handleSidebarToggle(rule, e)}
-                      aria-label={rule.enabled ? "Pausar" : "Ativar"}
-                      title={rule.enabled ? "Pausar" : "Ativar"}
-                    >
-                      <span className="flow-sidebar__toggle-knob" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {!executionsLoading && (
-            <RecentExecutions executions={executions} rules={rules} />
-          )}
-
-          <div className="flow-sidebar__stats">
-            <div className="flow-sidebar__stat-row">
-              <span>Execuções hoje</span>
-              <strong>{executionsLoading ? "—" : executionsToday}</strong>
-            </div>
-            <div className="flow-sidebar__stat-row">
-              <span>Falhas hoje</span>
-              <strong className={failuresToday > 0 ? "flow-sidebar__stat--warn" : ""}>{executionsLoading ? "—" : failuresToday}</strong>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Canvas ── */}
-        <div className="flow-canvas">
-          {!draft ? (
-            <div className="flow-canvas__empty">
-              <div className="flow-canvas__empty-icon">
-                <AutomationIcon size={40} />
-              </div>
-              <h2 className="flow-canvas__empty-title">Editor de fluxo</h2>
-              <p className="flow-canvas__empty-desc">
-                Selecione uma automação na lista ou crie uma nova para começar.
-              </p>
-              <Button type="button" onClick={startCreate}>
-                <PlusIcon size={14} />
-                Nova automação
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Canvas header */}
-              <div className="flow-canvas__header">
-                <div className="flow-canvas__header-left">
-                  {isCreating ? (
-                    <TextInput
-                      className="flow-canvas__name-input"
-                      value={draft.name}
-                      onChange={(e) => updateDraft({ name: e.target.value })}
-                      placeholder="Nome da automação..."
-                    />
-                  ) : (
-                    <h2 className="flow-canvas__name">{draft.name}</h2>
-                  )}
-                  {!isCreating && (
-                    <StatusBadge tone={draft.enabled ? "success" : "warning"}>
-                      {draft.enabled ? "Ativa" : "Pausada"}
-                    </StatusBadge>
-                  )}
-                  {advanced && (
-                    <StatusBadge tone="warning">Rascunho visual</StatusBadge>
-                  )}
-                </div>
-                <div className="flow-canvas__header-actions">
-                  {saveError && <span className="flow-canvas__error">{saveError}</span>}
-                  {!isCreating && selectedRuleId && (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void handleToggle()}
-                        disabled={saving || deleting || (advanced && !draft.enabled)}
-                        title={advanced && !draft.enabled ? "Fluxo com nós avançados não pode ser ativado" : undefined}
-                      >
-                        {draft.enabled ? "Pausar" : "Ativar"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={runningId === selectedRuleId}
-                        onClick={() => void handleRunTest()}
-                      >
-                        {runningId === selectedRuleId ? "Executando..." : "Testar"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowDeleteConfirm(true)}
-                        disabled={saving || deleting}
-                      >
-                        <TrashIcon size={14} />
-                      </Button>
-                    </>
-                  )}
-                  {(isCreating || isDirty) && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void handleSave()}
-                      disabled={saving || deleting}
-                    >
-                      {saving ? "Salvando..." : isCreating ? "Criar automação" : advanced ? "Salvar rascunho" : "Salvar"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {/* Validation / advanced flow banner */}
-              {validation && (validation.warnings.length > 0 || validation.errors.filter((e) => !saveError?.includes(e)).length > 0) && (
-                <div className={`flow-canvas__advanced-banner${!advanced && validation.errors.length > 0 ? " flow-canvas__advanced-banner--error" : ""}`}>
-                  <WarningTriangleIcon size={13} />
-                  <div className="flow-canvas__advanced-banner-content">
-                    {validation.warnings.map((w, i) => (
-                      <span key={`w-${i}`}>{w}</span>
-                    ))}
-                    {validation.errors.filter((e) => !saveError?.includes(e)).map((e, i) => (
-                      <span key={`e-${i}`} className="flow-canvas__advanced-banner-error">{e}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Flow nodes */}
-              <div className="flow-canvas__body">
-                <FlowCanvas<AutomationCanvasNodeData, AutomationCanvasNodeKind>
-                  nodes={automationNodes}
-                  edges={allEdges}
-                  nodeTypes={AUTOMATION_NODE_TYPES}
-                  paletteItems={AUTOMATION_PALETTE}
-                  onNodesChange={handleAutomationNodesChange}
-                  onEdgesChange={handleAutomationEdgesChange}
-                  onEdgesAdd={handleAutomationEdgesAdd}
-                  onNodesAdd={handleAutomationNodesAdd}
-                  onNodeSelect={handleAutomationNodeSelect}
-                  fitViewKey={draft.actions.length + extraNodes.length}
-                  emptyHint="Use o painel a esquerda para adicionar etapas na automacao"
-                  paletteTitle="Adicionar etapa"
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* ── Config Panel ── */}
-        {draft && selectedNode && (
-          <div className="flow-config-panel">
-            <div className="config-panel__header">
-              <span className="config-panel__title">
-                {selectedNode.kind === "trigger" && "Configurar gatilho"}
-                {selectedNode.kind === "action" && "Configurar ação"}
-                {selectedNode.kind === "condition" && "Configurar condição"}
-                {selectedNode.kind === "output" && "Configurar saída"}
-              </span>
-              <div className="config-panel__actions">
-                {selectedNode.kind === "action" && draft.actions.length > 1 && (
+        {activeTab === "flows" ? (
+          <section className="automation-studio__flows">
+            <aside className="automation-studio__sidebar">
+              <button className="automation-studio__create" type="button" onClick={handleCreateWorkflow} disabled={busy}>
+                <AppIcon name="plus" size={16} />
+                <span>Novo fluxo</span>
+              </button>
+              <div className="automation-studio__workflow-list">
+                {workflows.map((workflow) => (
                   <button
+                    key={workflow.id}
                     type="button"
-                    className="config-panel__close config-panel__close--danger"
-                    onClick={() => removeAction(selectedNode.index)}
-                    aria-label="Remover acao"
-                    title="Remover acao"
+                    className={workflow.id === selectedWorkflowId ? "is-active" : ""}
+                    onClick={() => setSelectedWorkflowId(workflow.id)}
                   >
-                    <TrashIcon size={14} />
+                    <span>{workflow.name}</span>
+                    <StatusBadge size="sm" tone={statusTone(workflow.status)}>{workflow.status}</StatusBadge>
+                  </button>
+                ))}
+              </div>
+            </aside>
+
+            <main className="automation-studio__editor">
+              {selectedWorkflow ? (
+                <>
+                  <div className="automation-studio__toolbar">
+                    <div className="automation-studio__fields">
+                      <TextInput value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} />
+                      <TextInput value={workflowDescription} onChange={(event) => setWorkflowDescription(event.target.value)} placeholder="Descricao" />
+                    </div>
+                    <div className="automation-studio__actions">
+                      <StatusBadge tone={statusTone(selectedWorkflow.status)}>{selectedWorkflow.status}</StatusBadge>
+                      <Button size="sm" variant="outline" onClick={() => handleStatusChange("active")} disabled={busy || !currentVersion}>Ativar</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleStatusChange("paused")} disabled={busy}>Pausar</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleStatusChange("archived")} disabled={busy}>Arquivar</Button>
+                      <Button size="sm" variant="outline" onClick={handleCloneVersion} disabled={busy || !selectedVersion}>Clonar</Button>
+                      <Button size="sm" variant="outline" onClick={handleRun} disabled={busy || selectedWorkflow.status !== "active" || !currentVersion}>Executar teste</Button>
+                      <Button size="sm" variant="outline" onClick={handleSaveWorkflow} disabled={busy || selectedVersion?.status !== "draft"}>Salvar draft</Button>
+                      <Button size="sm" variant="primary" onClick={handlePublish} disabled={busy || selectedVersion?.status !== "draft"}>Publicar</Button>
+                    </div>
+                  </div>
+
+                  <div className="automation-studio__version-bar">
+                    {versions.map((version) => (
+                      <button
+                        key={version.id}
+                        type="button"
+                        className={version.id === selectedVersionId ? "is-active" : ""}
+                        onClick={() => setSelectedVersionId(version.id)}
+                      >
+                        <span>v{version.version}</span>
+                        <StatusBadge size="sm" tone={statusTone(version.status)}>{version.status}</StatusBadge>
+                      </button>
+                    ))}
+                    {!hasDraft ? (
+                      <button type="button" onClick={() => void (async () => {
+                        const draft = await createAutomationWorkflowDraftVersion(selectedWorkflow.id, { graph: defaultGraph, definition: { graph: defaultGraph } });
+                        await loadVersions(selectedWorkflow.id);
+                        setSelectedVersionId(draft.id);
+                      })()}>
+                        <AppIcon name="plus" size={14} />
+                        <span>Draft</span>
+                      </button>
+                    ) : null}
+                    {feedback ? <span className="automation-studio__feedback">{feedback}</span> : null}
+                  </div>
+
+                  <div className="automation-studio__canvas-row">
+                    <FlowCanvas<AutomationCanvasData, AutomationNodeType>
+                      nodes={canvasNodes}
+                      edges={canvasEdges}
+                      nodeTypes={automationNodeTypes}
+                      paletteItems={nodeCatalog.map((node) => ({
+                        kind: node.type,
+                        label: node.label,
+                        description: node.description,
+                        color: node.color,
+                        buildData: () => ({
+                          nodeType: node.type,
+                          label: node.label,
+                          summary: "Sem configuracao",
+                          config: {}
+                        })
+                      }))}
+                      onNodesChange={onNodesChange}
+                      onEdgesChange={onEdgesChange}
+                      onEdgesAdd={setCanvasEdges}
+                      onNodesAdd={(nodes) => setCanvasNodes((current) => [...current, ...nodes])}
+                      onNodeSelect={setSelectedNodeId}
+                      fitViewKey={fitViewKey}
+                      paletteTitle="Adicionar no"
+                      paletteEyebrow="Workflow"
+                      sidebarDefaultOpen
+                    />
+
+                    <aside className="automation-studio__inspector">
+                      {selectedNode ? (
+                        <>
+                          <label>
+                            <span>Rotulo</span>
+                            <TextInput
+                              value={selectedNode.data.label}
+                              onChange={(event) => setCanvasNodes((nodes) => nodes.map((node) => (
+                                node.id === selectedNode.id
+                                  ? { ...node, data: { ...node.data, label: event.target.value } }
+                                  : node
+                              )))}
+                            />
+                          </label>
+                          <label>
+                            <span>Config JSON</span>
+                            <textarea value={configText} onChange={(event) => setConfigText(event.target.value)} />
+                          </label>
+                          <Button size="sm" variant="outline" onClick={handleApplyConfig}>Aplicar</Button>
+                        </>
+                      ) : (
+                        <div className="automation-studio__empty-panel">Selecione um no.</div>
+                      )}
+                    </aside>
+                  </div>
+                </>
+              ) : (
+                <div className="automation-studio__empty-panel">Nenhum fluxo criado.</div>
+              )}
+            </main>
+          </section>
+        ) : null}
+
+        {activeTab === "runs" ? (
+          <section className="automation-studio__panel">
+            <PanelHeader title="Execucoes" onRefresh={loadRuns} />
+            <div className="automation-studio__split">
+              <DataList
+                items={runs}
+                empty="Sem execucoes."
+                render={(run) => (
+                  <button key={run.runId} type="button" onClick={() => void handleLoadRunDetail(run.runId)}>
+                    <span>{run.workflowName}</span>
+                    <StatusBadge size="sm" tone={statusTone(run.status)}>{run.status}</StatusBadge>
+                    <small>{formatDate(run.createdAt)}</small>
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="config-panel__close"
-                  onClick={() => setSelectedNode(null)}
-                  aria-label="Fechar painel"
-                >
-                  <CloseIcon size={15} />
-                </button>
+              />
+              <div className="automation-studio__detail">
+                {selectedRun ? (
+                  <>
+                    <h3>{selectedRun.workflow.name}</h3>
+                    <p>{selectedRun.run.triggerType} | {selectedRun.summary.stepsCount} passos | {selectedRun.summary.eventsCount} eventos</p>
+                    <Button size="sm" variant="outline" disabled={!selectedRun.run.canCancel} onClick={() => void handleCancelRun(selectedRun.run.runId)}>
+                      Cancelar
+                    </Button>
+                    <pre>{JSON.stringify(selectedRun.steps.slice(0, 8), null, 2)}</pre>
+                  </>
+                ) : (
+                  <div className="automation-studio__empty-panel">Abra uma execucao.</div>
+                )}
               </div>
             </div>
+          </section>
+        ) : null}
 
-            <div className="config-panel__section">
-              {selectedNode.kind === "trigger" && (
-                <TriggerConfig
-                  draft={draft}
-                  views={availableViews}
-                  onChange={updateDraft}
-                />
+        {activeTab === "approvals" ? (
+          <section className="automation-studio__panel">
+            <PanelHeader title="Aprovacoes" onRefresh={loadOperations} />
+            <DataList
+              items={approvals}
+              empty="Sem aprovacoes."
+              render={(approval) => (
+                <div key={approval.approvalId} className="automation-studio__row">
+                  <span>{approval.title}</span>
+                  <StatusBadge size="sm" tone={statusTone(approval.status)}>{approval.status}</StatusBadge>
+                  <small>{approval.workflowName}</small>
+                </div>
               )}
-              {selectedNode.kind === "action" && (
-                <ActionConfig
-                  action={draft.actions[selectedNode.index] ?? { type: "set_view_column" }}
-                  views={availableViews}
-                  stateOptions={stateOptions}
-                  onChange={(updated) => updateAction(selectedNode.index, updated)}
-                />
-              )}
-              {selectedNode.kind === "condition" && (() => {
-                const node = extraNodes.find((n) => n.id === selectedNode.nodeId);
-                return node ? (
-                  <ConditionConfig
-                    nodeId={selectedNode.nodeId}
-                    data={node.data}
-                    onChange={updateExtraNode}
-                    onRemove={removeExtraNode}
-                  />
-                ) : null;
-              })()}
-              {selectedNode.kind === "output" && (() => {
-                const node = extraNodes.find((n) => n.id === selectedNode.nodeId);
-                return node ? (
-                  <OutputConfig
-                    nodeId={selectedNode.nodeId}
-                    data={node.data}
-                    onChange={updateExtraNode}
-                    onRemove={removeExtraNode}
-                  />
-                ) : null;
-              })()}
+            />
+          </section>
+        ) : null}
+
+        {activeTab === "inbox" ? (
+          <section className="automation-studio__panel">
+            <PanelHeader title="Inbox" onRefresh={loadOperations} />
+            <div className="automation-studio__split">
+              <DataList
+                items={conversations}
+                empty="Sem conversas."
+                render={(conversation) => (
+                  <button key={conversation.conversationId} type="button" onClick={() => void handleOpenConversation(conversation.conversationId)}>
+                    <span>{conversation.contactName}</span>
+                    <StatusBadge size="sm" tone={statusTone(conversation.status)}>{conversation.status}</StatusBadge>
+                    <small>{conversation.lastMessagePreview ?? conversation.contactMasked}</small>
+                  </button>
+                )}
+              />
+              <div className="automation-studio__detail">
+                {selectedConversation ? (
+                  <>
+                    <h3>{selectedConversation.contact.displayName ?? selectedConversation.contact.companyName ?? "Contato"}</h3>
+                    <div className="automation-studio__messages">
+                      {selectedConversation.messages.map((message) => (
+                        <div key={message.id}>
+                          <strong>{message.direction}</strong>
+                          <span>{message.textPreview}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <textarea value={replyText} onChange={(event) => setReplyText(event.target.value)} />
+                    <Button size="sm" variant="primary" onClick={() => void handleReply()}>Responder</Button>
+                  </>
+                ) : (
+                  <div className="automation-studio__empty-panel">Abra uma conversa.</div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          </section>
+        ) : null}
+
+        {activeTab === "templates" ? (
+          <section className="automation-studio__panel">
+            <PanelHeader title="Templates" onRefresh={loadOperations} />
+            <DataList
+              items={templates}
+              empty="Sem templates."
+              render={(template) => (
+                <div key={template.id} className="automation-studio__row">
+                  <span>{template.name}</span>
+                  <StatusBadge size="sm" tone={statusTone(template.status)}>{template.status}</StatusBadge>
+                  <small>{template.channel}</small>
+                </div>
+              )}
+            />
+          </section>
+        ) : null}
+
+        {activeTab === "contacts" ? (
+          <section className="automation-studio__panel">
+            <PanelHeader title="Contatos" onRefresh={loadOperations} />
+            <DataList
+              items={conversations}
+              empty="Sem contatos."
+              render={(conversation) => (
+                <div key={conversation.conversationId} className="automation-studio__row">
+                  <span>{conversation.contactName}</span>
+                  <StatusBadge size="sm" tone="info">{conversation.channel}</StatusBadge>
+                  <small>{conversation.contactMasked}</small>
+                </div>
+              )}
+            />
+          </section>
+        ) : null}
+
+        {activeTab === "settings" ? (
+          <section className="automation-studio__panel">
+            <PanelHeader title="Configuracoes" onRefresh={loadOperations} />
+            <DataList
+              items={consents}
+              empty="Sem consentimentos."
+              render={(consent) => (
+                <div key={consent.id} className="automation-studio__row">
+                  <span>{consent.address}</span>
+                  <StatusBadge size="sm" tone={statusTone(consent.status)}>{consent.status}</StatusBadge>
+                  <small>{formatDate(consent.updatedAt)}</small>
+                </div>
+              )}
+            />
+            <Button size="sm" variant="outline" disabled={consents.length === 0} onClick={() => void handleOptOutFirstConsent()}>
+              Aplicar opt-out no primeiro item
+            </Button>
+          </section>
+        ) : null}
       </WorkspaceFrame>
-
-      {/* ── Delete confirmation dialog ── */}
-      {showDeleteConfirm && draft && (
-        <ConfirmDialog
-          variant="danger"
-          title="Remover automação"
-          description={`"${draft.name}" será removida permanentemente. Esta ação não pode ser desfeita.`}
-          confirmLabel="Remover automação"
-          loading={deleting}
-          onConfirm={() => void confirmDelete()}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />
-      )}
-
-      {/* ── Unsaved changes dialog ── */}
-      {pendingNavigate && (
-        <ConfirmDialog
-          variant="warning"
-          title="Alterações não salvas"
-          description="Você tem mudanças que ainda não foram salvas. Deseja descartá-las e continuar?"
-          confirmLabel="Descartar e continuar"
-          cancelLabel="Ficar e salvar"
-          onConfirm={() => {
-            const navigate = pendingNavigate;
-            setPendingNavigate(null);
-            navigate();
-          }}
-          onCancel={() => setPendingNavigate(null)}
-        />
-      )}
     </AppShell>
   );
+}
+
+function PanelHeader({ title, onRefresh }: { title: string; onRefresh: () => Promise<void> }) {
+  return (
+    <div className="automation-studio__panel-header">
+      <h2>{title}</h2>
+      <Button size="sm" variant="outline" onClick={() => void onRefresh()}>
+        <AppIcon name="refresh" size={14} />
+        Atualizar
+      </Button>
+    </div>
+  );
+}
+
+function DataList<T>({ items, empty, render }: { items: T[]; empty: string; render: (item: T) => ReactNode }) {
+  if (items.length === 0) {
+    return <div className="automation-studio__empty-panel">{empty}</div>;
+  }
+
+  return <div className="automation-studio__list">{items.map(render)}</div>;
 }

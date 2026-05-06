@@ -20,6 +20,7 @@ import {
   DocumentationPage,
   GeneralSettingsPage,
   HomePage,
+  LeadFlowPage,
   LeadsPage,
   MarketingPage,
   ListPage,
@@ -249,6 +250,16 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="board">
                   <BoardPage />
+                </ModuleRoute>
+              }
+            />
+            <Route
+              path={routePaths.leadFlow}
+              element={
+                <ModuleRoute module="board">
+                  <NonClientRoute>
+                    <LeadFlowPage />
+                  </NonClientRoute>
                 </ModuleRoute>
               }
             />

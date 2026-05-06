@@ -8,6 +8,7 @@ import {
   buildWorkspaceBoardPath,
   buildWorkspaceDocumentationPath,
   buildWorkspaceFiscalPath,
+  buildWorkspaceLeadFlowPath,
   buildWorkspaceLeadsPath,
   buildWorkspaceMarketingPath,
   buildWorkspaceListPath,
@@ -23,7 +24,7 @@ import { cn } from "@/shared/lib/cn";
 import { AppIcon, PageHeader, type AppIconName } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
+type SidebarIconName = "board" | "list" | "agenda" | "lead-flow" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
 type AppModuleKey = "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
@@ -46,6 +47,7 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     board: "board",
     list: "list",
     agenda: "calendar-check",
+    "lead-flow": "trend-up",
     documentation: "documentation",
     ai: "bot",
     automation: "automation",
@@ -103,6 +105,14 @@ export function AppShell({
           icon: "agenda" as const,
           tone: "cyan" as const,
           module: "board" as AppModuleKey
+        },
+        {
+          to: buildWorkspaceLeadFlowPath(workspaceSlug),
+          label: "Fluxo Leads",
+          icon: "lead-flow" as const,
+          tone: "cyan" as const,
+          module: "board" as AppModuleKey,
+          hideForClient: true
         }
       ]
     },

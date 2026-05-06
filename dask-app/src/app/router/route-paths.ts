@@ -18,6 +18,7 @@ export const routePaths = {
   noWorkspace: "/w/no-workspace",
   workspaceBase: "/w/:workspaceSlug",
   board: "/w/:workspaceSlug/board",
+  leadFlow: "/w/:workspaceSlug/lead-flow",
   list: "/w/:workspaceSlug/list",
   agenda: "/w/:workspaceSlug/agenda",
   documentation: "/w/:workspaceSlug/documentation",
@@ -47,6 +48,16 @@ export function buildWorkspacePath(workspaceSlug: string, path: string): string 
 
 export function buildWorkspaceBoardPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/board");
+}
+
+export function buildWorkspaceLeadFlowPath(workspaceSlug: string, leadId?: string): string {
+  const path = buildWorkspacePath(workspaceSlug, "/lead-flow");
+  if (!leadId) {
+    return path;
+  }
+
+  const params = new URLSearchParams({ leadId });
+  return `${path}?${params.toString()}`;
 }
 
 export function buildWorkspaceSelectorPath(): string {

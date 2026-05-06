@@ -19,8 +19,6 @@ export const DomainEventNames = {
   ContractAccepted: 'contract.accepted',
   BillingRequested: 'billing.requested',
   BillingPaymentConfirmed: 'billing.payment.confirmed',
-  AutomationRuleCreated: 'automation.rule.created',
-  AutomationRuleUpdated: 'automation.rule.updated',
   LeadCaptured: 'lead.captured',
   LeadQualified: 'lead.qualified',
   LeadDistributed: 'lead.distributed',

@@ -2,8 +2,6 @@ export type JobName =
   | 'ai.improve-description'
   | 'ai.generate-embedding'
   | 'search.index-item'
-  | 'automation.run-rule'
-  | 'automation.process-event'
   | 'fiscal.reconcile-pending'
   | 'fiscal.sync-received'
   | 'marketing.send-email';

@@ -76,13 +76,6 @@ const RAG_SOURCE_LABELS: Record<string, string> = {
   card_and_documentation: 'Doc + Cards',
 };
 
-const TOOL_LABELS: Record<string, string> = {
-  web_search: 'Web Search',
-  update_item_description: 'Atualizar descricao',
-  set_item_status: 'Alterar status',
-  set_item_priority: 'Alterar prioridade',
-};
-
 const OUTPUT_TYPE_LABELS: Record<string, string> = {
   text_response: 'Texto ao usuario',
   update_card: 'Atualizar card',
@@ -143,7 +136,7 @@ export function ToolNode({ data, selected }: NodeProps) {
       kind="tool"
       typeLabel="Tool"
       label={d.label}
-      meta={TOOL_LABELS[d.toolId] ?? d.toolId}
+      meta={d.toolId}
       icon={<IconTool />}
       selected={selected}
     />

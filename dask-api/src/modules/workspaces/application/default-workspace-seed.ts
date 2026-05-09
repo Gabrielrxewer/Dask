@@ -71,6 +71,7 @@ type DefaultBoardViewSeed = {
   key: string;
   name: string;
   caption: string;
+  analyticsRole?: 'prospecting' | 'funnel' | 'terminal' | 'client';
   compactCards?: boolean;
   allowedTaskTypes?: string[];
   visibleBoardColumnSlugs?: string[];
@@ -562,6 +563,7 @@ const commercialStates: DefaultStateSeed[] = [
   { name: 'Contrato aceito / assinado', slug: 'contract_accepted', category: 'formalizacao', color: '#22c55e' },
   { name: 'Cobranca gerada', slug: 'billing_created', category: 'financeiro', color: '#0369a1' },
   { name: 'Aguardando pagamento', slug: 'payment_waiting', category: 'financeiro', color: '#0f766e' },
+  { name: 'Pagamento em atraso', slug: 'payment_overdue', category: 'financeiro', color: '#dc2626' },
   { name: 'Pago / Ativo', slug: 'paid_active', category: 'financeiro', color: '#15803d', isTerminal: true },
   { name: 'Perdido', slug: 'lost', category: 'finalizacao', color: '#dc2626', isTerminal: true },
   { name: 'Encerrado', slug: 'closed', category: 'finalizacao', color: '#64748b', isTerminal: true }
@@ -611,6 +613,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'prospeccao',
     name: 'Prospecao',
     caption: 'Contatos antes de virar lead',
+    analyticsRole: 'prospecting',
     visibleBoardColumnSlugs: ['prospect', 'contact_started', 'follow_up', 'lead_new'],
     createTaskColumnSlugs: ['prospect'],
     allowedTaskTypes: prospectTypeSlugs,
@@ -626,6 +629,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'entrada',
     name: 'Entrada',
     caption: 'Captura e qualificacao comercial',
+    analyticsRole: 'funnel',
     visibleBoardColumnSlugs: ['lead_new', 'lead_qualification'],
     createTaskColumnSlugs: ['lead_new'],
     allowedTaskTypes: commercialLeadTypeSlugs,
@@ -639,6 +643,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'venda',
     name: 'Venda',
     caption: 'Oportunidade e proposta comercial',
+    analyticsRole: 'funnel',
     visibleBoardColumnSlugs: ['opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved'],
     createTaskColumnSlugs: [],
     allowedTaskTypes: commercialLeadTypeSlugs,
@@ -654,6 +659,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'formalizacao',
     name: 'Formalizacao',
     caption: 'Contrato e aceite',
+    analyticsRole: 'funnel',
     visibleBoardColumnSlugs: ['contract_preparing', 'contract_sent', 'contract_accepted'],
     createTaskColumnSlugs: [],
     allowedTaskTypes: commercialLeadTypeSlugs,
@@ -668,13 +674,15 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'financeiro',
     name: 'Financeiro',
     caption: 'Cobranca e pagamento',
-    visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'paid_active'],
+    analyticsRole: 'funnel',
+    visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'payment_overdue', 'paid_active'],
     createTaskColumnSlugs: [],
     allowedTaskTypes: commercialLeadTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
       { id: 'payment_waiting', label: 'Aguardando pagamento', dot: '#0f766e' },
+      { id: 'payment_overdue', label: 'Pagamento em atraso', dot: '#dc2626' },
       { id: 'paid_active', label: 'Pago / Ativo', dot: '#15803d' }
     ]
   },
@@ -682,6 +690,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'finalizacao',
     name: 'Finalizacao',
     caption: 'Perdas e encerramentos',
+    analyticsRole: 'terminal',
     visibleBoardColumnSlugs: ['lost', 'closed'],
     createTaskColumnSlugs: [],
     allowedTaskTypes: commercialLeadTypeSlugs,
@@ -695,7 +704,8 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     key: 'cliente',
     name: 'Cliente',
     caption: 'Visao do cliente',
-    visibleBoardColumnSlugs: ['contract_sent', 'contract_accepted', 'billing_created', 'payment_waiting', 'paid_active'],
+    analyticsRole: 'client',
+    visibleBoardColumnSlugs: ['contract_sent', 'contract_accepted', 'billing_created', 'payment_waiting', 'payment_overdue', 'paid_active'],
     createTaskColumnSlugs: [],
     allowedTaskTypes: commercialLeadTypeSlugs,
     statusSource: { kind: 'workflow_state' },
@@ -704,6 +714,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
       { id: 'contract_accepted', label: 'Contrato aceito', dot: '#22c55e' },
       { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
       { id: 'payment_waiting', label: 'Aguardando pagamento', dot: '#0f766e' },
+      { id: 'payment_overdue', label: 'Pagamento em atraso', dot: '#dc2626' },
       { id: 'paid_active', label: 'Pago / Ativo', dot: '#15803d' }
     ]
   }
@@ -1552,6 +1563,7 @@ export async function seedWorkspaceConfigurationDefaults(
           name: view.name,
           caption: view.caption,
           compactCards: Boolean(view.compactCards),
+          analyticsRole: view.analyticsRole,
           position,
           allowedTaskTypes: view.allowedTaskTypes ?? [],
           visibleBoardColumnIds: (view.visibleBoardColumnSlugs ?? preset.columns.map((column) => column.slug))

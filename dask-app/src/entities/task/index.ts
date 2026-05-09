@@ -1,5 +1,5 @@
 export { priorityMeta, taskPriorityOptions } from "@/entities/task/model/task-statuses";
-export { factoryBoardConfig, buildTaskTypeMetaMap } from "@/entities/task/model/board-config";
+export { buildTaskTypeMetaMap } from "@/entities/task/model/task-type-meta";
 export {
   applyFieldDefinitionOverrides,
   applyFieldCapabilityOverrides,
@@ -57,7 +57,10 @@ export {
 } from "@/entities/task/ui/field-presentation";
 export type {
   BoardConfig,
+  BoardLeadOperationalMetadata,
   BoardMetrics,
+  BoardOperationalFunnelStage,
+  BoardOperationalMetadata,
   Task,
   TaskChecklist,
   TaskFieldBinding,

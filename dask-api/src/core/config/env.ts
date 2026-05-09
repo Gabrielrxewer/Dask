@@ -124,6 +124,19 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
   AI_CHAT_MODEL: z.string().default('gpt-4.1-mini'),
+  AI_CHAT_MODEL_OPTIONS: z
+    .string()
+    .default('')
+    .transform((raw) =>
+      Array.from(
+        new Set(
+          raw
+            .split(',')
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+        )
+      )
+    ),
   AI_EMBEDDING_MODEL: z.string().default('text-embedding-3-large'),
   AI_MAX_REQUESTS_PER_MIN_WORKSPACE: z.coerce.number().int().min(1).default(120),
   AI_MAX_REQUESTS_PER_MIN_AGENT: z.coerce.number().int().min(1).default(40),

@@ -1,4 +1,10 @@
-import type { Task, TaskCustomFieldValue, TaskFieldDefinition, TaskStatus } from "@/entities/task";
+import type {
+  BoardLeadOperationalMetadata,
+  Task,
+  TaskCustomFieldValue,
+  TaskFieldDefinition,
+  TaskStatus
+} from "@/entities/task";
 import type { Customer, CustomerStatus, CreateCustomerInput, WorkspaceDocument } from "@/modules/workspace";
 
 export type LeadsTab = "overview" | "leads" | "customers";
@@ -23,21 +29,12 @@ export const TABS: Array<{ id: LeadsTab; label: string }> = [
   { id: "customers", label: "Clientes" }
 ];
 
-export const COMMERCIAL_TYPE_ID = "commercial";
-
 export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
   prospect: "Prospect",
   active: "Ativo",
   inactive: "Inativo",
   archived: "Arquivado"
 };
-
-export const FUNNEL_STAGES = [
-  { key: "entrada", label: "Entrada", statuses: ["lead_new", "lead_qualification"], color: "var(--text-secondary)" },
-  { key: "venda", label: "Venda", statuses: ["opportunity_open", "proposal_preparing", "proposal_sent", "proposal_approved"], color: "var(--warning)" },
-  { key: "formalizacao", label: "Formalização", statuses: ["contract_preparing", "contract_sent", "contract_accepted"], color: "var(--decorative-purple)" },
-  { key: "financeiro", label: "Financeiro", statuses: ["billing_created", "payment_waiting", "paid_active"], color: "var(--success)" }
-];
 
 export function emptyLeadForm(): LeadFormState {
   return {
@@ -164,14 +161,22 @@ export function isApprovedProposal(document: WorkspaceDocument | undefined): boo
   return document?.kind === "proposal" && document.metadata?.status === "approved";
 }
 
+export function isOpenBillingStatus(status: string): boolean {
+  return Boolean(status) && !["paid", "subscription_active", "canceled", "refunded"].includes(status);
+}
+
 export function buildPipelineMetrics(
   commercialTasks: Task[],
   customers: Customer[],
-  documents: WorkspaceDocument[]
+  documents: WorkspaceDocument[],
+  metadata: BoardLeadOperationalMetadata | null
 ) {
-  const activeTasks = commercialTasks.filter((t) => !["lost", "closed"].includes(t.status));
-  const wonTasks = commercialTasks.filter((t) => t.status === "paid_active");
-  const lostTasks = commercialTasks.filter((t) => t.status === "lost");
+  const activeStatusIds = new Set(metadata?.activeStatusIds ?? []);
+  const wonStatusIds = new Set(metadata?.wonStatusIds ?? []);
+  const lostStatusIds = new Set(metadata?.lostStatusIds ?? []);
+  const activeTasks = commercialTasks.filter((task) => activeStatusIds.has(task.status));
+  const wonTasks = commercialTasks.filter((task) => wonStatusIds.has(task.status));
+  const lostTasks = commercialTasks.filter((task) => lostStatusIds.has(task.status));
   const proposalDocs = documents.filter((d) => d.kind === "proposal");
   const approvedProposals = proposalDocs.filter((d) => d.metadata?.status === "approved");
   const linkedCount = commercialTasks.filter((t) => getTextField(t, "customerId")).length;
@@ -201,16 +206,20 @@ export function buildPipelineMetrics(
 
 export type PipelineMetrics = ReturnType<typeof buildPipelineMetrics>;
 
-export function buildFunnelData(commercialTasks: Task[]) {
-  const firstCount = FUNNEL_STAGES[0]
-    ? commercialTasks.filter((t) => FUNNEL_STAGES[0].statuses.includes(t.status)).length
+export function buildFunnelData(commercialTasks: Task[], metadata: BoardLeadOperationalMetadata | null) {
+  const stages = metadata?.funnel ?? [];
+  const firstStageStatusIds = new Set(stages[0]?.statusIds ?? []);
+  const firstCount = stages[0]
+    ? commercialTasks.filter((task) => firstStageStatusIds.has(task.status)).length
     : 1;
   const maxCount = Math.max(1, firstCount);
 
-  return FUNNEL_STAGES.map((stage, i) => {
-    const tasks = commercialTasks.filter((t) => stage.statuses.includes(t.status));
+  return stages.map((stage, i) => {
+    const stageStatusIds = new Set(stage.statusIds);
+    const previousStatusIds = new Set(stages[i - 1]?.statusIds ?? []);
+    const tasks = commercialTasks.filter((task) => stageStatusIds.has(task.status));
     const prevTasks = i > 0
-      ? commercialTasks.filter((t) => FUNNEL_STAGES[i - 1].statuses.includes(t.status))
+      ? commercialTasks.filter((task) => previousStatusIds.has(task.status))
       : tasks;
     return {
       ...stage,
@@ -251,7 +260,7 @@ export type StatusDistribution = ReturnType<typeof buildStatusDistribution>;
 export function buildSourceBreakdown(commercialTasks: Task[]) {
   const counts: Record<string, { count: number; value: number }> = {};
   for (const task of commercialTasks) {
-    const src = getTextField(task, "source").trim() || "Não informada";
+    const src = getTextField(task, "source").trim() || "Nao informada";
     if (!counts[src]) counts[src] = { count: 0, value: 0 };
     counts[src].count += 1;
     counts[src].value += getNumberField(task, "estimatedValue") ?? 0;
@@ -265,10 +274,15 @@ export function buildSourceBreakdown(commercialTasks: Task[]) {
 
 export type SourceBreakdown = ReturnType<typeof buildSourceBreakdown>;
 
-export function buildPendingItems(commercialTasks: Task[], documents: WorkspaceDocument[]) {
+export function buildPendingItems(
+  commercialTasks: Task[],
+  documents: WorkspaceDocument[],
+  metadata: BoardLeadOperationalMetadata | null
+) {
+  const proposalRequiredStatusIds = new Set(metadata?.proposalRequiredStatusIds ?? []);
   const withoutCustomer = commercialTasks.filter((t) => !getTextField(t, "customerId"));
   const withoutProposal = commercialTasks.filter((t) => !getTextField(t, "proposalId") &&
-    ["opportunity_open", "proposal_preparing"].includes(t.status));
+    proposalRequiredStatusIds.has(t.status));
   const draftProposals = documents.filter((d) => d.kind === "proposal" && d.metadata?.status === "draft");
   const sentProposals = documents.filter((d) => d.kind === "proposal" && d.metadata?.status === "sent");
   const contractDrafts = documents.filter((d) => d.kind === "contract" && d.metadata?.status === "draft");
@@ -277,22 +291,41 @@ export function buildPendingItems(commercialTasks: Task[], documents: WorkspaceD
     ...withoutProposal.slice(0, 2).map((t) => ({ id: `np-${t.id}`, label: t.title, detail: "Oportunidade sem proposta", urgency: "medium" as const })),
     ...draftProposals.slice(0, 2).map((d) => ({ id: `dp-${d.id}`, label: d.title, detail: "Proposta em rascunho", urgency: "medium" as const })),
     ...sentProposals.slice(0, 2).map((d) => ({ id: `sp-${d.id}`, label: d.title, detail: "Aguardando resposta do cliente", urgency: "low" as const })),
-    ...contractDrafts.slice(0, 2).map((d) => ({ id: `cd-${d.id}`, label: d.title, detail: "Contrato em preparação", urgency: "medium" as const }))
+    ...contractDrafts.slice(0, 2).map((d) => ({ id: `cd-${d.id}`, label: d.title, detail: "Contrato em preparacao", urgency: "medium" as const }))
   ].slice(0, 8);
 }
 
 export type PendingItems = ReturnType<typeof buildPendingItems>;
 
-export function buildFilteredLeadMetrics(filteredTasks: Task[]) {
+export function buildFilteredLeadMetrics(filteredTasks: Task[], metadata: BoardLeadOperationalMetadata | null) {
+  const activeStatusIds = new Set(metadata?.activeStatusIds ?? []);
   const totalValue = filteredTasks.reduce((sum, task) => sum + (getNumberField(task, "estimatedValue") ?? 0), 0);
-  const activeCount = filteredTasks.filter((task) => !["lost", "closed"].includes(task.status)).length;
+  const activeCount = filteredTasks.filter((task) => activeStatusIds.has(task.status)).length;
   const unlinkedCount = filteredTasks.filter((task) => !getTextField(task, "customerId")).length;
   const proposalCount = filteredTasks.filter((task) => getTextField(task, "proposalId")).length;
+  const billingCount = filteredTasks.filter((task) => getTextField(task, "billingOrderId") || getTextField(task, "billingStatus")).length;
+  const openValue = filteredTasks.reduce((sum, task) => {
+    const billingStatus = getTextField(task, "billingStatus");
+    const hasBillingOrder = Boolean(getTextField(task, "billingOrderId"));
+    const isOpen = isOpenBillingStatus(billingStatus) || (hasBillingOrder && !billingStatus);
+    return isOpen ? sum + (getNumberField(task, "estimatedValue") ?? 0) : sum;
+  }, 0);
+  const nextStepsCount = filteredTasks.filter((task) => {
+    if (!getTextField(task, "customerId")) return true;
+    if (!getTextField(task, "proposalId")) return true;
+    if (!getTextField(task, "contractId")) return true;
+    if (!getTextField(task, "billingOrderId") && !getTextField(task, "billingStatus")) return true;
+    return false;
+  }).length;
+
   return {
     totalValue,
     activeCount,
     unlinkedCount,
     proposalCount,
+    billingCount,
+    openValue,
+    nextStepsCount,
     avgValue: filteredTasks.length > 0 ? totalValue / filteredTasks.length : 0
   };
 }

@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { env } from '@/core/config/env';
 import { AppError } from '@/core/errors/app-error';
 import { maskCommunicationAddress, normalizeCommunicationAddress } from '@/modules/automation/communication/communication-address';
 import { CommunicationConsentService } from '@/modules/automation/communication/communication-consent-service';
@@ -27,6 +28,14 @@ type MessageStatus = (typeof messageStatuses)[number];
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function resolveManualReplyProvider(channel: string): string {
+  if (channel === 'email' && env.AUTOMATION_EMAIL_SEND_MODE === 'real') {
+    return env.AUTOMATION_EMAIL_PROVIDER;
+  }
+
+  return 'mock';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -597,6 +606,7 @@ export class CommunicationConversationService {
       }
     };
     const idempotencyKey = `manual-reply:${conversation.id}:${manualRun.stepRun.id}`;
+    const provider = resolveManualReplyProvider(channel);
     const sideEffect = await this.prisma.automationSideEffect.create({
       data: {
         workspaceId: input.workspaceId,
@@ -604,7 +614,7 @@ export class CommunicationConversationService {
         stepRunId: manualRun.stepRun.id,
         sideEffectType: channel === 'email' ? 'communication.email' : 'communication.whatsapp',
         channel,
-        provider: channel === 'email' ? 'mock' : 'mock',
+        provider,
         status: 'queued',
         idempotencyKey,
         payloadJson: toJsonValue(sanitizeAutomationPayload(payload)),

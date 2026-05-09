@@ -16,8 +16,8 @@ import type {
   UpdateConnectPaymentOrderInput
 } from '../repositories/billing-repository';
 import {
-  PLAN_AMOUNTS_BRL,
   PLAN_PRICE_IDS,
+  SUBSCRIPTION_PLANS,
   isSubscriptionActive,
   type BillingStatus
 } from '../domain/types';
@@ -50,6 +50,45 @@ function normalizedMetadataValue(value: string | null | undefined): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function isSubscriptionPlan(value: unknown): value is SubscriptionPlan {
+  return typeof value === 'string' && SUBSCRIPTION_PLANS.includes(value as SubscriptionPlan);
+}
+
+function parseBillingPlanFeatures(metadata: Record<string, string> | null | undefined): string[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const rawFeatureList = normalizedMetadataValue(metadata.features);
+  const parsedList = rawFeatureList
+    ? (() => {
+        try {
+          const parsed = JSON.parse(rawFeatureList) as unknown;
+          if (Array.isArray(parsed)) {
+            return parsed
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter(Boolean);
+          }
+        } catch {
+          // Metadata is operator-provided; non-JSON values are parsed as delimited text below.
+        }
+        return rawFeatureList
+          .split(/\r?\n|[|;]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      })()
+    : [];
+
+  const indexedFeatures = Object.entries(metadata)
+    .filter(([key]) => /^feature_\d+$/i.test(key))
+    .sort(([a], [b]) => Number(a.replace(/\D/g, '')) - Number(b.replace(/\D/g, '')))
+    .map(([, value]) => value.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set([...parsedList, ...indexedFeatures]));
+}
+
 // Minimal local interfaces for Stripe event payloads (avoids namespace type conflicts)
 interface StripeCheckoutSession {
   id: string;
@@ -58,6 +97,7 @@ interface StripeCheckoutSession {
   subscription: string | { id: string } | null;
   payment_intent?: string | { id: string } | null;
   payment_status?: string | null;
+  amount_total?: number | null;
   metadata: Record<string, string> | null;
 }
 
@@ -75,6 +115,10 @@ interface StripeSubscriptionObject {
     data: Array<{
       current_period_start?: number;
       current_period_end?: number;
+      price?: {
+        unit_amount?: number | null;
+        currency?: string | null;
+      };
     }>;
   };
 }
@@ -159,6 +203,18 @@ export interface ConnectAccountStatus {
   requirementsDue: string[];
 }
 
+export interface BillingPlanCatalogItem {
+  code: SubscriptionPlan;
+  name: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  interval: string | null;
+  intervalCount: number | null;
+  features: string[];
+  isActive: boolean;
+}
+
 export type ConnectLocalPaymentMethod = 'pix' | 'boleto';
 
 export interface CreateConnectCheckoutSessionInput {
@@ -187,6 +243,8 @@ export interface CreateConnectCatalogItemInput {
   currency?: string;
   metadata?: Record<string, string>;
 }
+
+export type UpdateConnectCatalogItemInput = CreateConnectCatalogItemInput;
 
 export interface ConnectCatalogItemListItem {
   id: string;
@@ -278,6 +336,85 @@ export class BillingService {
   }
 
   // ---------------------------------------------------------------------------
+  // Plan catalog
+  // ---------------------------------------------------------------------------
+
+  async listBillingPlans(): Promise<BillingPlanCatalogItem[]> {
+    return Promise.all(SUBSCRIPTION_PLANS.map((planCode) => this.buildBillingPlanCatalogItem(planCode)));
+  }
+
+  private getConfiguredPlanPriceId(planCode: SubscriptionPlan): string {
+    const priceId = this.priceIds[planCode]?.trim();
+    if (!priceId) {
+      throw new AppError(
+        `Stripe price ID for plan ${planCode} is not configured. Set STRIPE_PRICE_ID_${planCode}_MONTHLY in .env.`,
+        503
+      );
+    }
+    return priceId;
+  }
+
+  private async retrievePlanPrice(planCode: SubscriptionPlan) {
+    return this.stripe.prices.retrieve(this.getConfiguredPlanPriceId(planCode), {
+      expand: ['product']
+    });
+  }
+
+  private async buildBillingPlanCatalogItem(planCode: SubscriptionPlan): Promise<BillingPlanCatalogItem> {
+    const price = await this.retrievePlanPrice(planCode);
+    if (price.unit_amount == null) {
+      throw new AppError(`Stripe price ${price.id} for plan ${planCode} has no unit_amount.`, 503);
+    }
+
+    const product =
+      typeof price.product === 'string'
+        ? await this.stripe.products.retrieve(price.product)
+        : price.product;
+
+    if ('deleted' in product && product.deleted) {
+      throw new AppError(`Stripe product for plan ${planCode} is deleted.`, 503);
+    }
+
+    const features = parseBillingPlanFeatures({
+      ...(product.metadata ?? {}),
+      ...(price.metadata ?? {})
+    });
+
+    return {
+      code: planCode,
+      name: product.name,
+      description: product.description ?? null,
+      amount: price.unit_amount,
+      currency: price.currency,
+      interval: price.recurring?.interval ?? null,
+      intervalCount: price.recurring?.interval_count ?? null,
+      features,
+      isActive: price.active && product.active
+    };
+  }
+
+  private async resolveSubscriptionAmount(
+    subscription: StripeSubscriptionObject,
+    planCode: SubscriptionPlan,
+    checkoutAmount?: number | null
+  ): Promise<number> {
+    if (typeof checkoutAmount === 'number') {
+      return checkoutAmount;
+    }
+
+    const itemAmount = subscription.items?.data?.[0]?.price?.unit_amount;
+    if (typeof itemAmount === 'number') {
+      return itemAmount;
+    }
+
+    const configuredPrice = await this.retrievePlanPrice(planCode);
+    if (configuredPrice.unit_amount == null) {
+      throw new AppError(`Stripe price ${configuredPrice.id} for plan ${planCode} has no unit_amount.`, 503);
+    }
+    return configuredPrice.unit_amount;
+  }
+
+  // ---------------------------------------------------------------------------
   // Checkout
   // ---------------------------------------------------------------------------
 
@@ -285,13 +422,7 @@ export class BillingService {
     userId: string,
     planCode: SubscriptionPlan
   ): Promise<{ url: string }> {
-    const priceId = this.priceIds[planCode];
-    if (!priceId) {
-      throw new AppError(
-        `Stripe price ID for plan ${planCode} is not configured. Set STRIPE_PRICE_ID_${planCode}_MONTHLY in .env.`,
-        503
-      );
-    }
+    const priceId = this.getConfiguredPlanPriceId(planCode);
 
     const user = await this.repo.findUserById(userId);
     if (!user) {
@@ -995,6 +1126,137 @@ export class BillingService {
     return this.mapConnectCatalogItem(item);
   }
 
+  async updateConnectCatalogItem(
+    workspaceId: string,
+    userId: string,
+    itemId: string,
+    input: UpdateConnectCatalogItemInput
+  ): Promise<ConnectCatalogItemListItem> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+    const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
+    const accountId = workspace?.connectAccountId;
+    if (!accountId) {
+      throw new AppError('Workspace has no Stripe Connect account configured', 409);
+    }
+
+    const current = await this.repo.findConnectCatalogItemById(itemId);
+    if (!current || current.workspaceId !== workspaceId || !current.isActive) {
+      throw new AppError('Catalog item not found for this workspace', 404);
+    }
+    if (current.stripeConnectAccountId && current.stripeConnectAccountId !== accountId) {
+      throw new AppError('Catalog item belongs to a different connected account', 409);
+    }
+
+    const currency = (input.currency ?? 'brl').toLowerCase();
+    const name = input.name.trim();
+    const description = input.description?.trim() || undefined;
+    if (name.length < 2) {
+      throw new AppError('name must have at least 2 characters', 422);
+    }
+    if (this.isRecurringCatalogBillingType(input.billingType) && !input.recurringInterval) {
+      throw new AppError('recurringInterval is required for recurring items', 422);
+    }
+
+    let stripeProductId = current.stripeProductId;
+    if (stripeProductId) {
+      await this.stripe.products.update(
+        stripeProductId,
+        {
+          name,
+          description,
+          metadata: {
+            workspaceId,
+            updatedByUserId: userId,
+            billingType: input.billingType
+          }
+        },
+        { stripeAccount: accountId }
+      );
+    } else {
+      const product = await this.stripe.products.create(
+        {
+          name,
+          description,
+          metadata: {
+            workspaceId,
+            createdByUserId: current.createdByUserId,
+            updatedByUserId: userId,
+            billingType: input.billingType
+          }
+        },
+        { stripeAccount: accountId }
+      );
+      stripeProductId = product.id;
+    }
+
+    const nextBillingType = this.normalizeCatalogBillingTypeForPersistence(input.billingType);
+    const nextRecurringInterval = this.isRecurringCatalogBillingType(input.billingType)
+      ? input.recurringInterval ?? 'MONTH'
+      : null;
+    const nextRecurringIntervalCount = this.isRecurringCatalogBillingType(input.billingType)
+      ? input.recurringIntervalCount ?? 1
+      : null;
+    let stripePriceId = current.stripePriceId;
+    const pricingChanged =
+      current.amount !== input.amount ||
+      current.currency !== currency ||
+      current.billingType !== nextBillingType ||
+      current.recurringInterval !== nextRecurringInterval ||
+      current.recurringIntervalCount !== nextRecurringIntervalCount;
+
+    if (pricingChanged) {
+      if (!stripeProductId) {
+        throw new AppError('Catalog item has no Stripe product mapping', 409);
+      }
+      const recurring = this.isRecurringCatalogBillingType(input.billingType)
+        ? {
+            interval: this.mapRecurringInterval(nextRecurringInterval ?? 'MONTH'),
+            interval_count: nextRecurringIntervalCount ?? 1
+          }
+        : undefined;
+      const price = await this.stripe.prices.create(
+        {
+          product: stripeProductId,
+          currency,
+          unit_amount: input.amount,
+          recurring
+        },
+        { stripeAccount: accountId }
+      );
+      stripePriceId = price.id;
+
+      if (current.stripePriceId) {
+        try {
+          await this.stripe.prices.update(current.stripePriceId, { active: false }, { stripeAccount: accountId });
+        } catch (err) {
+          logger.warn({
+            event: 'billing.connect.catalog_price_deactivate_failed',
+            workspaceId,
+            itemId,
+            stripePriceId: current.stripePriceId,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+    }
+
+    const updated = await this.repo.updateConnectCatalogItem(itemId, {
+      kind: input.kind,
+      billingType: nextBillingType,
+      recurringInterval: nextRecurringInterval,
+      recurringIntervalCount: nextRecurringIntervalCount,
+      name,
+      description,
+      amount: input.amount,
+      currency,
+      stripeProductId,
+      stripePriceId,
+      metadata: input.metadata ?? {}
+    });
+
+    return this.mapConnectCatalogItem(updated);
+  }
+
   async deactivateConnectCatalogItem(
     workspaceId: string,
     userId: string,
@@ -1264,6 +1526,7 @@ export class BillingService {
       });
       await this.repo.syncUserBillingFields(userId, updated);
     } else {
+      const amount = await this.resolveSubscriptionAmount(stripeSub, planCode, session.amount_total);
       const created = await this.repo.createSubscription({
         userId,
         stripeCustomerId: customerId,
@@ -1271,7 +1534,7 @@ export class BillingService {
         stripeCheckoutSessionId: session.id,
         planCode,
         status,
-        amount: PLAN_AMOUNTS_BRL[planCode],
+        amount,
         currentPeriodStart: start,
         currentPeriodEnd: end,
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
@@ -1429,7 +1692,7 @@ export class BillingService {
     }
 
     const userId = sub.metadata?.userId;
-    const planCode = sub.metadata?.planCode as SubscriptionPlan | undefined;
+    const planCode = isSubscriptionPlan(sub.metadata?.planCode) ? sub.metadata.planCode : undefined;
     const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
     const status = mapStripeStatus(sub.status);
 
@@ -1449,13 +1712,14 @@ export class BillingService {
       await this.repo.syncUserBillingFields(existing.userId, updated);
     } else if (userId && planCode) {
       // Subscription arrived before checkout.session.completed (race condition)
+      const amount = await this.resolveSubscriptionAmount(sub, planCode);
       const created = await this.repo.createSubscription({
         userId,
         stripeCustomerId: customerId,
         stripeSubscriptionId: sub.id,
         planCode,
         status,
-        amount: PLAN_AMOUNTS_BRL[planCode],
+        amount,
         currentPeriodStart: start,
         currentPeriodEnd: end,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
@@ -1602,7 +1866,11 @@ export class BillingService {
         ? DomainEventNames.BillingPaymentConfirmed
         : order.status === 'CHECKOUT_OPEN' || order.status === 'PENDING'
           ? DomainEventNames.BillingRequested
-          : null;
+          : order.status === 'FAILED'
+            ? DomainEventNames.BillingPaymentFailed
+            : order.status === 'OVERDUE'
+              ? DomainEventNames.BillingOverdue
+              : null;
 
     if (!eventName || !sourceWorkItemId) {
       return;

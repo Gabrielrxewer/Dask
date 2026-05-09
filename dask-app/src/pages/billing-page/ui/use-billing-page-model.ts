@@ -56,7 +56,8 @@ export function useBillingPageModel() {
   const [deletingCatalogItemId, setDeletingCatalogItemId] = useState<string | null>(null);
   const [catalogItemPendingDelete, setCatalogItemPendingDelete] = useState<ConnectCatalogItem | null>(null);
   const [isCatalogFormOpen, setIsCatalogFormOpen] = useState(false);
-  const [catalogCreatedNotice, setCatalogCreatedNotice] = useState(false);
+  const [editingCatalogItemId, setEditingCatalogItemId] = useState<string | null>(null);
+  const [catalogSavedNotice, setCatalogSavedNotice] = useState<"created" | "updated" | null>(null);
   const [chargeSource, setChargeSource] = useState<ChargeSource>("catalog");
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState("");
   const [catalogItemKind, setCatalogItemKind] = useState<ConnectCatalogItemKind>("SERVICE");
@@ -567,13 +568,78 @@ export function useBillingPageModel() {
     setEmailSentNotice(false);
   }
 
-  async function handleCreateCatalogItem() {
+  function resetCatalogItemForm() {
+    setCatalogItemName("");
+    setCatalogItemDescription("");
+    setCatalogItemAmount("");
+    setCatalogItemUnit("servico");
+    setCatalogItemQuantity("1");
+    setCatalogItemScope("");
+    setCatalogItemDeliverables("");
+    setCatalogItemDeliveryTerms("");
+    setCatalogItemPaymentTerms("");
+    setCatalogItemProposalValidity("");
+    setCatalogItemContractTerm("");
+    setCatalogItemCancellationTerms("");
+    setCatalogItemClientResponsibilities("");
+    setCatalogItemAcceptanceCriteria("");
+    setCatalogItemContractNotes("");
+    setCatalogItemKind("SERVICE");
+    setCatalogItemBillingType("ONE_TIME");
+    setCatalogItemRecurringInterval("MONTH");
+    setCatalogItemRecurringIntervalCount(1);
+  }
+
+  function fillCatalogItemForm(item: ConnectCatalogItem) {
+    const metadata = item.metadata ?? {};
+    setCatalogItemKind(item.kind);
+    setCatalogItemBillingType(item.billingType);
+    setCatalogItemRecurringInterval(item.recurringInterval ?? "MONTH");
+    setCatalogItemRecurringIntervalCount(item.recurringIntervalCount ?? 1);
+    setCatalogItemName(item.name);
+    setCatalogItemDescription(item.description ?? "");
+    setCatalogItemAmount((item.amount / 100).toFixed(2));
+    setCatalogItemUnit(metadata.unit ?? "servico");
+    setCatalogItemQuantity(metadata.defaultQuantity ?? "1");
+    setCatalogItemScope(metadata.scope ?? "");
+    setCatalogItemDeliverables(metadata.deliverables ?? "");
+    setCatalogItemDeliveryTerms(metadata.deliveryTerms ?? "");
+    setCatalogItemPaymentTerms(metadata.paymentTerms ?? "");
+    setCatalogItemProposalValidity(metadata.proposalValidity ?? "");
+    setCatalogItemContractTerm(metadata.contractTerm ?? "");
+    setCatalogItemCancellationTerms(metadata.cancellationTerms ?? "");
+    setCatalogItemClientResponsibilities(metadata.clientResponsibilities ?? "");
+    setCatalogItemAcceptanceCriteria(metadata.acceptanceCriteria ?? "");
+    setCatalogItemContractNotes(metadata.contractNotes ?? "");
+  }
+
+  function handleOpenCatalogForm() {
+    resetCatalogItemForm();
+    setEditingCatalogItemId(null);
+    setCatalogError(null);
+    setIsCatalogFormOpen(true);
+  }
+
+  function handleCloseCatalogForm() {
+    setIsCatalogFormOpen(false);
+    setEditingCatalogItemId(null);
+    setCatalogError(null);
+  }
+
+  function handleEditCatalogItem(item: ConnectCatalogItem) {
+    fillCatalogItemForm(item);
+    setEditingCatalogItemId(item.id);
+    setCatalogError(null);
+    setIsCatalogFormOpen(true);
+  }
+
+  async function handleSaveCatalogItem() {
     if (!workspaceId || isCreatingCatalogItem || !canCreateCatalogItem || !catalogItemAmountInCents) return;
 
     setIsCreatingCatalogItem(true);
     setCatalogError(null);
     try {
-      const created = await billingService.createConnectCatalogItem(workspaceId, {
+      const payload = {
         kind: catalogItemKind,
         billingType: catalogItemBillingType,
         recurringInterval: isRecurringCatalogBillingType(catalogItemBillingType) ? catalogItemRecurringInterval : undefined,
@@ -585,30 +651,33 @@ export function useBillingPageModel() {
         amount: catalogItemAmountInCents,
         currency: "brl",
         metadata: catalogItemCommercialMetadata
-      });
-      setCatalogItems((current) => [created, ...current]);
-      setSelectedCatalogItemId(created.id);
-      setChargeSource("catalog");
-      setCatalogItemName("");
-      setCatalogItemDescription("");
-      setCatalogItemAmount("");
-      setCatalogItemUnit("servico");
-      setCatalogItemQuantity("1");
-      setCatalogItemScope("");
-      setCatalogItemDeliverables("");
-      setCatalogItemDeliveryTerms("");
-      setCatalogItemPaymentTerms("");
-      setCatalogItemProposalValidity("");
-      setCatalogItemContractTerm("");
-      setCatalogItemCancellationTerms("");
-      setCatalogItemClientResponsibilities("");
-      setCatalogItemAcceptanceCriteria("");
-      setCatalogItemContractNotes("");
+      };
+      if (editingCatalogItemId) {
+        const updated = await billingService.updateConnectCatalogItem(workspaceId, editingCatalogItemId, payload);
+        setCatalogItems((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+        if (selectedCatalogItemId === updated.id) {
+          setAmount((updated.amount / 100).toFixed(2));
+          setDescription(updated.name);
+        }
+        setCatalogSavedNotice("updated");
+      } else {
+        const created = await billingService.createConnectCatalogItem(workspaceId, payload);
+        setCatalogItems((current) => [created, ...current]);
+        setSelectedCatalogItemId(created.id);
+        setChargeSource("catalog");
+        setCatalogSavedNotice("created");
+      }
+
+      resetCatalogItemForm();
+      setEditingCatalogItemId(null);
       setIsCatalogFormOpen(false);
-      setCatalogCreatedNotice(true);
-      setTimeout(() => setCatalogCreatedNotice(false), 5000);
+      window.setTimeout(() => setCatalogSavedNotice(null), 5000);
     } catch {
-      setCatalogError("Não foi possível criar item no catálogo agora.");
+      setCatalogError(
+        editingCatalogItemId
+          ? "Não foi possível salvar as alterações do item agora."
+          : "Não foi possível criar item no catálogo agora."
+      );
     } finally {
       setIsCreatingCatalogItem(false);
     }
@@ -742,6 +811,7 @@ export function useBillingPageModel() {
     (!isClient && (connectState === "loading" || catalogLoadState === "loading")) || paymentOrdersLoadState === "loading";
 
   const catalogFormProps = {
+    mode: editingCatalogItemId ? "edit" as const : "create" as const,
     catalogItemKind,
     catalogItemBillingType,
     catalogItemRecurringInterval,
@@ -788,7 +858,8 @@ export function useBillingPageModel() {
     onCatalogItemClientResponsibilitiesChange: setCatalogItemClientResponsibilities,
     onCatalogItemAcceptanceCriteriaChange: setCatalogItemAcceptanceCriteria,
     onCatalogItemContractNotesChange: setCatalogItemContractNotes,
-    onSubmit: handleCreateCatalogItem
+    onCancel: handleCloseCatalogForm,
+    onSubmit: handleSaveCatalogItem
   };
 
   return {
@@ -823,13 +894,15 @@ export function useBillingPageModel() {
     catalogSectionProps: {
       catalogItems,
       catalogLoadState,
-      catalogCreatedNotice,
+      catalogSavedNotice,
       isCatalogFormOpen,
       deletingCatalogItemId,
       formProps: catalogFormProps,
-      onToggleCatalogForm: () => setIsCatalogFormOpen((open) => !open),
+      onOpenCatalogForm: handleOpenCatalogForm,
+      onCloseCatalogForm: handleCloseCatalogForm,
       onChargeNow: () => setActiveTab("cobrar"),
       onUseCatalogItem: handleUseCatalogItem,
+      onEditCatalogItem: handleEditCatalogItem,
       onRequestDeleteCatalogItem: handleRequestDeleteCatalogItem
     },
     chargePanelProps: {

@@ -83,6 +83,17 @@ export interface CreateConnectCatalogItemInput {
 }
 
 export interface UpdateConnectCatalogItemInput {
+  kind?: ConnectCatalogItemKind;
+  billingType?: ConnectCatalogBillingType;
+  recurringInterval?: ConnectCatalogRecurringInterval | null;
+  recurringIntervalCount?: number | null;
+  name?: string;
+  description?: string | null;
+  amount?: number;
+  currency?: string;
+  stripeProductId?: string | null;
+  stripePriceId?: string | null;
+  metadata?: Record<string, string> | null;
   isActive?: boolean;
 }
 

@@ -64,6 +64,11 @@ function normalizeDocumentMetadata(kind: DocumentKind, metadata: unknown): Docum
   return status ? { ...normalized, status } : normalized;
 }
 
+function readFolderId(metadata: unknown): string | null {
+  const folderId = toMetadataObject(metadata).folderId;
+  return typeof folderId === 'string' && folderId.trim().length > 0 ? folderId.trim() : null;
+}
+
 function readPublicToken(metadata: DocumentMetadata): string | null {
   const token = metadata.publicToken;
   return typeof token === 'string' && token.trim().length >= 32 ? token.trim() : null;
@@ -182,6 +187,126 @@ export class WorkspaceDocumentsService {
     return documents.map((document) => this.serialize(document));
   }
 
+  public async listFolders(input: { workspaceId: string; userId: string }) {
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+
+    const folders = await this.prisma.workspaceDocumentFolder.findMany({
+      where: { workspaceId: input.workspaceId },
+      orderBy: [{ position: 'asc' }, { name: 'asc' }]
+    });
+
+    return folders.map((folder) => this.serializeFolder(folder));
+  }
+
+  public async createFolder(input: {
+    workspaceId: string;
+    userId: string;
+    payload: {
+      name: string;
+      parentId?: string | null;
+      position?: number;
+    };
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    const parentId = input.payload.parentId ?? null;
+
+    if (parentId) {
+      await this.ensureFolder(input.workspaceId, parentId);
+    }
+
+    const defaultPosition = await this.prisma.workspaceDocumentFolder.count({
+      where: { workspaceId: input.workspaceId, parentId }
+    });
+
+    const folder = await this.prisma.workspaceDocumentFolder.create({
+      data: {
+        workspaceId: input.workspaceId,
+        name: input.payload.name.trim(),
+        parentId,
+        position: input.payload.position ?? defaultPosition,
+        createdBy: input.userId,
+        updatedBy: input.userId
+      }
+    });
+
+    return this.serializeFolder(folder);
+  }
+
+  public async updateFolder(input: {
+    workspaceId: string;
+    folderId: string;
+    userId: string;
+    payload: {
+      name?: string;
+      parentId?: string | null;
+      position?: number;
+    };
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    const current = await this.ensureFolder(input.workspaceId, input.folderId);
+
+    if (input.payload.parentId !== undefined) {
+      const nextParentId = input.payload.parentId ?? null;
+      if (nextParentId === current.id) {
+        throw new AppError('A folder cannot be its own parent', 422);
+      }
+      if (nextParentId) {
+        await this.ensureFolder(input.workspaceId, nextParentId);
+        const descendantIds = await this.collectDescendantFolderIds(input.workspaceId, current.id);
+        if (descendantIds.includes(nextParentId)) {
+          throw new AppError('A folder cannot be moved inside one of its subfolders', 422);
+        }
+      }
+    }
+
+    const folder = await this.prisma.workspaceDocumentFolder.update({
+      where: { id: current.id },
+      data: {
+        ...(input.payload.name !== undefined ? { name: input.payload.name.trim() } : {}),
+        ...(input.payload.parentId !== undefined ? { parentId: input.payload.parentId ?? null } : {}),
+        ...(input.payload.position !== undefined ? { position: input.payload.position } : {}),
+        updatedBy: input.userId
+      }
+    });
+
+    return this.serializeFolder(folder);
+  }
+
+  public async deleteFolder(input: { workspaceId: string; folderId: string; userId: string }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    const current = await this.ensureFolder(input.workspaceId, input.folderId);
+    const folderIds = [current.id, ...(await this.collectDescendantFolderIds(input.workspaceId, current.id))];
+
+    const documents = await this.prisma.workspaceDocument.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        OR: folderIds.map((folderId) => ({
+          metadata: {
+            path: ['folderId'],
+            equals: folderId
+          }
+        }))
+      }
+    });
+
+    await this.prisma.$transaction([
+      ...documents.map((document) => {
+        const metadata = normalizeDocumentMetadata(normalizeDocumentKind(document.kind), document.metadata);
+        delete metadata.folderId;
+        return this.prisma.workspaceDocument.update({
+          where: { id: document.id },
+          data: {
+            metadata: toInputJson(metadata),
+            updatedBy: input.userId
+          }
+        });
+      }),
+      this.prisma.workspaceDocumentFolder.delete({
+        where: { id: current.id }
+      })
+    ]);
+  }
+
   public async createDocument(input: {
     workspaceId: string;
     userId: string;
@@ -201,6 +326,11 @@ export class WorkspaceDocumentsService {
     const defaultPosition = await this.prisma.workspaceDocument.count({
       where: { workspaceId: input.workspaceId }
     });
+    const metadata = normalizeDocumentMetadata(input.payload.kind ?? 'wiki', input.payload.metadata);
+    const folderId = readFolderId(metadata);
+    if (folderId) {
+      await this.ensureFolder(input.workspaceId, folderId);
+    }
 
     const document = await this.prisma.workspaceDocument.create({
       data: {
@@ -211,7 +341,7 @@ export class WorkspaceDocumentsService {
         linkedEntityType: input.payload.linkedEntityType,
         linkedEntityId: input.payload.linkedEntityId,
         tags: input.payload.tags ?? [],
-        metadata: toInputJson(normalizeDocumentMetadata(input.payload.kind ?? 'wiki', input.payload.metadata)),
+        metadata: toInputJson(metadata),
         position: input.payload.position ?? defaultPosition,
         createdBy: input.userId,
         updatedBy: input.userId
@@ -521,6 +651,12 @@ export class WorkspaceDocumentsService {
 
     const previousStatus = readMetadataStatus(current.metadata);
     const nextKind = normalizeDocumentKind(input.payload.kind ?? current.kind);
+    const metadata =
+      input.payload.metadata === undefined ? undefined : normalizeDocumentMetadata(nextKind, input.payload.metadata);
+    const folderId = metadata ? readFolderId(metadata) : null;
+    if (folderId) {
+      await this.ensureFolder(input.workspaceId, folderId);
+    }
     const document = await this.prisma.workspaceDocument.update({
       where: { id: current.id },
       data: {
@@ -530,10 +666,7 @@ export class WorkspaceDocumentsService {
         linkedEntityType: input.payload.linkedEntityType,
         linkedEntityId: input.payload.linkedEntityId,
         tags: input.payload.tags,
-        metadata:
-          input.payload.metadata === undefined
-            ? undefined
-            : toInputJson(normalizeDocumentMetadata(nextKind, input.payload.metadata)),
+        metadata: metadata === undefined ? undefined : toInputJson(metadata),
         position: input.payload.position,
         updatedBy: input.userId
       }
@@ -644,9 +777,13 @@ export class WorkspaceDocumentsService {
           ? DomainEventNames.ContractSent
         : kind === 'proposal' && input.nextStatus === 'approved'
           ? DomainEventNames.ProposalApproved
+          : kind === 'proposal' && input.nextStatus === 'rejected'
+            ? DomainEventNames.ProposalRejected
           : kind === 'contract' && (input.nextStatus === 'accepted' || input.nextStatus === 'signed')
             ? DomainEventNames.ContractAccepted
-            : null;
+            : kind === 'contract' && input.nextStatus === 'rejected'
+              ? DomainEventNames.ContractRejected
+              : null;
 
     if (!eventName) {
       return;
@@ -728,6 +865,54 @@ export class WorkspaceDocumentsService {
     await this.prisma.workspaceDocument.delete({
       where: { id: current.id }
     });
+  }
+
+  private async ensureFolder(workspaceId: string, folderId: string) {
+    const folder = await this.prisma.workspaceDocumentFolder.findFirst({
+      where: { id: folderId, workspaceId }
+    });
+
+    if (!folder) {
+      throw new AppError('Workspace document folder not found', 404);
+    }
+
+    return folder;
+  }
+
+  private async collectDescendantFolderIds(workspaceId: string, folderId: string): Promise<string[]> {
+    const children = await this.prisma.workspaceDocumentFolder.findMany({
+      where: { workspaceId, parentId: folderId },
+      select: { id: true }
+    });
+    const nested = await Promise.all(
+      children.map((child) => this.collectDescendantFolderIds(workspaceId, child.id))
+    );
+
+    return children.flatMap((child, index) => [child.id, ...(nested[index] ?? [])]);
+  }
+
+  private serializeFolder(folder: {
+    id: string;
+    workspaceId: string;
+    name: string;
+    parentId: string | null;
+    position: number;
+    createdBy: string;
+    updatedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      id: folder.id,
+      workspaceId: folder.workspaceId,
+      name: folder.name,
+      parentId: folder.parentId,
+      position: folder.position,
+      createdBy: folder.createdBy,
+      updatedBy: folder.updatedBy,
+      createdAt: folder.createdAt,
+      updatedAt: folder.updatedAt
+    };
   }
 
   private serialize(document: {

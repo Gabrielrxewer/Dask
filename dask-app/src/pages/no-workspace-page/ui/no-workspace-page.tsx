@@ -38,12 +38,11 @@ export function NoWorkspacePage() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
 
   const [kind, setKind] = useState<WorkspaceKind>("PERSONAL");
   const [workspaceName, setWorkspaceName] = useState("Meu Workspace");
   const [organizationName, setOrganizationName] = useState("");
-  const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"]>("software_delivery");
+  const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"] | "">("");
   const canCreateWorkspace = billing.status?.canCreateWorkspace ?? false;
 
   useEffect(() => {
@@ -77,7 +76,8 @@ export function NoWorkspacePage() {
       .catch(() => {
         if (active) {
           setTemplates([]);
-          setTemplateNotice("Nao foi possivel carregar o catalogo de templates. Usando preset padrao.");
+          setTemplateKey("");
+          setErrorMessage("Nao foi possivel carregar o catalogo de templates.");
         }
       })
       .finally(() => {
@@ -117,6 +117,11 @@ export function NoWorkspacePage() {
 
     if (kind === "CORPORATE" && !resolvedOrganizationName) {
       setErrorMessage("Informe o nome da organizacao para workspace corporativo.");
+      return;
+    }
+
+    if (!templateKey) {
+      setErrorMessage("Selecione um template carregado pelo backend.");
       return;
     }
 
@@ -184,10 +189,10 @@ export function NoWorkspacePage() {
                   <Select
                     value={templateKey}
                     onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
-                    disabled={isLoadingTemplates}
+                    disabled={isLoadingTemplates || templates.length === 0}
                   >
-                    {isLoadingTemplates ? <option>Carregando templates...</option> : null}
-                    {!isLoadingTemplates && templates.length === 0 ? <option value={templateKey}>Software Delivery</option> : null}
+                    {isLoadingTemplates ? <option value="">Carregando templates...</option> : null}
+                    {!isLoadingTemplates && templates.length === 0 ? <option value="">Catalogo indisponivel</option> : null}
                     {templates.map((template) => (
                       <option key={template.key} value={template.key}>
                         {template.name}
@@ -215,7 +220,6 @@ export function NoWorkspacePage() {
                 <p className="no-workspace-page__support-text">{selectedTemplateDescription}</p>
               ) : null}
 
-              {templateNotice ? <p className="no-workspace-page__support-text">{templateNotice}</p> : null}
             </>
           ) : (
             <p className="no-workspace-page__support-text">
@@ -232,7 +236,7 @@ export function NoWorkspacePage() {
                 type="button"
                 variant="primary"
                 onClick={handleCreateWorkspace}
-                disabled={isCreating}
+                disabled={isCreating || isLoadingTemplates || !templateKey}
               >
                 {isCreating ? "Provisionando workspace..." : "Criar workspace"}
               </Button>

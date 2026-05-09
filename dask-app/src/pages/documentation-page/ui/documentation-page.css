@@ -424,6 +424,89 @@
   padding: 12px;
 }
 
+.documentation-page__root-drop {
+  min-height: 28px;
+  padding: 6px 8px;
+  border: 1px dashed color-mix(in oklab, var(--doc-line) 82%, transparent);
+  border-radius: 8px;
+  color: var(--doc-muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.documentation-page__folder-group {
+  display: grid;
+  gap: 2px;
+}
+
+.documentation-page__folder-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding-left: calc(var(--doc-folder-depth, 0) * 14px);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.documentation-page__folder-row:hover,
+.documentation-page__folder-row.is-active {
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--doc-line));
+  background: color-mix(in oklab, var(--selected-bg) 82%, var(--doc-surface-soft));
+}
+
+.documentation-page__folder-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--doc-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 720;
+  text-align: left;
+  cursor: pointer;
+}
+
+.documentation-page__folder-select svg {
+  width: 15px;
+  height: 15px;
+  color: color-mix(in oklab, var(--accent-strong) 62%, var(--doc-muted));
+  flex-shrink: 0;
+}
+
+.documentation-page__folder-select span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.documentation-page__folder-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.documentation-page__folder-row:hover .documentation-page__folder-actions,
+.documentation-page__folder-row.is-active .documentation-page__folder-actions {
+  opacity: 1;
+}
+
+.documentation-page__folder-actions .shared-button {
+  width: 24px;
+  height: 24px;
+}
+
 .documentation-page__files-header {
   display: flex;
   align-items: baseline;

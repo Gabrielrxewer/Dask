@@ -1,5 +1,6 @@
 import { apiClient } from "@/shared/api/http-client";
 import type {
+  BillingPlan,
   BillingStatus,
   ConnectAccountStatus,
   ConnectCatalogBillingType,
@@ -18,6 +19,14 @@ const billingRequestConfig = {
 };
 
 export const billingService = {
+  listPlans(): Promise<{ items: BillingPlan[] }> {
+    return apiClient.get<{ items: BillingPlan[] }>("/billing/plans", {
+      authMode: "optional",
+      retryOnUnauthorized: false,
+      globalLoading: false
+    });
+  },
+
   getStatus(): Promise<BillingStatus> {
     return apiClient.get<BillingStatus>("/billing/status", billingRequestConfig);
   },
@@ -90,6 +99,28 @@ export const billingService = {
   ): Promise<ConnectCatalogItem> {
     return apiClient.post<ConnectCatalogItem>(
       `/billing/connect/workspaces/${workspaceId}/catalog-items`,
+      input,
+      billingRequestConfig
+    );
+  },
+
+  updateConnectCatalogItem(
+    workspaceId: string,
+    itemId: string,
+    input: {
+      kind: ConnectCatalogItemKind;
+      billingType?: ConnectCatalogBillingType;
+      recurringInterval?: ConnectCatalogRecurringInterval;
+      recurringIntervalCount?: number;
+      name: string;
+      description?: string;
+      amount: number;
+      currency?: string;
+      metadata?: Record<string, string>;
+    }
+  ): Promise<ConnectCatalogItem> {
+    return apiClient.patch<ConnectCatalogItem>(
+      `/billing/connect/workspaces/${workspaceId}/catalog-items/${itemId}`,
       input,
       billingRequestConfig
     );

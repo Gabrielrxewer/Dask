@@ -152,28 +152,64 @@
 .flow-canvas-ui__sidebar-list {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   display: grid;
   align-content: start;
   gap: 6px;
   padding: 10px;
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
 .flow-canvas-ui__sidebar-list--custom {
-  gap: 8px;
   padding: 10px;
+}
+
+.flow-canvas-ui__node-menu {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.flow-canvas-ui__sidebar-section {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.flow-canvas-ui__sidebar-section-title {
+  margin: 0;
+  padding: 0;
+  font-size: var(--font-size-3xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--ab-text-muted, var(--text-muted, var(--primary)));
+}
+
+.flow-canvas-ui__sidebar-node-list,
+.flow-canvas-ui__sidebar-action-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .flow-canvas-ui__sidebar-item {
   --item-color: var(--text-primary);
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
   width: 100%;
+  height: 48px;
   min-height: 48px;
+  max-height: 48px;
   padding: 8px 9px;
+  overflow: hidden;
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
@@ -182,6 +218,54 @@
   user-select: none;
   outline: none;
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+
+.flow-canvas-ui__sidebar-action {
+  box-sizing: border-box;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 8px 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 82%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 72%, transparent);
+  color: var(--ab-text, var(--text-strong, var(--foreground)));
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+
+.flow-canvas-ui__sidebar-action:hover,
+.flow-canvas-ui__sidebar-action:focus-visible {
+  border-color: color-mix(in oklab, var(--agents-accent, var(--primary)) 24%, var(--ab-line, var(--border-blue-muted)));
+  background: color-mix(in oklab, var(--agents-accent, var(--primary)) 8%, var(--surface-raised, var(--neutral-white)));
+  outline: none;
+}
+
+.flow-canvas-ui__sidebar-action:active {
+  transform: scale(0.985);
+}
+
+.flow-canvas-ui__sidebar-action:disabled {
+  cursor: progress;
+  opacity: 0.62;
+  transform: none;
+}
+
+.flow-canvas-ui__sidebar-action .flow-canvas-ui__sidebar-label,
+.flow-canvas-ui__sidebar-action .flow-canvas-ui__sidebar-desc,
+.flow-canvas-ui__sidebar-item .flow-canvas-ui__sidebar-label,
+.flow-canvas-ui__sidebar-item .flow-canvas-ui__sidebar-desc {
+  white-space: nowrap;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
 }
 
 .flow-canvas-ui__sidebar-item:active {
@@ -193,6 +277,11 @@
 .flow-canvas-ui__sidebar-item:focus-visible {
   background: color-mix(in oklab, var(--item-color) 8%, var(--surface-raised, var(--neutral-white)));
   border-color: color-mix(in oklab, var(--item-color) 26%, transparent);
+}
+
+.flow-canvas-ui__sidebar-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .flow-canvas-ui__sidebar-dot {
@@ -210,23 +299,29 @@
 }
 
 .flow-canvas-ui__sidebar-label {
+  display: block;
+  min-width: 0;
   font-size: var(--font-size-sm);
   font-weight: 900;
   line-height: 1.15;
   color: var(--ab-text, var(--text-strong, var(--foreground)));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
 }
 
 .flow-canvas-ui__sidebar-desc {
+  display: block;
+  min-width: 0;
   font-size: var(--font-size-xs);
   font-weight: 650;
   line-height: 1.25;
   color: var(--ab-text-muted, var(--text-muted, var(--primary)));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
 }
 
 .flow-canvas-ui__sidebar-foot {

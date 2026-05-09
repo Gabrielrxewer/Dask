@@ -4,6 +4,7 @@ import { buildBoardMetrics } from '@/entities/task';
 import { useWorkspace } from '@/modules/workspace';
 import type {
   AiAgentConfig,
+  AiCapabilities,
   AiAgentRagSource,
   AiAgentSummary,
   CreateAiAgentInput,
@@ -28,7 +29,7 @@ import './ai-agents-page.css';
 
 // ── Flow serialization ────────────────────────────────────────────────────────
 
-function agentToFlow(agent: AiAgentSummary | null): AgentFlow {
+function agentToFlow(agent: AiAgentSummary | null, capabilities: AiCapabilities): AgentFlow {
   const CX = 220;
   const SPACE = 180;
 
@@ -36,8 +37,8 @@ function agentToFlow(agent: AiAgentSummary | null): AgentFlow {
     return {
       nodes: [
         fixedNode('trigger', 'trigger-1', CX, 40, { kind: 'trigger', label: 'Disparador', triggerType: 'manual' }),
-        flowNode('rag', 'rag-1', CX, 40 + SPACE, { kind: 'rag', label: 'Contexto', source: 'documentation', topK: 5, contextInstruction: '', includeSemanticContext: true, includeLinkedDocuments: true }),
-        flowNode('llm', 'llm-1', CX, 40 + SPACE * 2, { kind: 'llm', label: 'LLM', model: 'gpt-4.1-mini', temperature: 0.2, systemPrompt: '' }),
+        flowNode('rag', 'rag-1', CX, 40 + SPACE, { kind: 'rag', label: 'Contexto', source: capabilities.defaults.ragSource as RagSource, topK: capabilities.defaults.topKContextDocs, contextInstruction: '', includeSemanticContext: true, includeLinkedDocuments: true }),
+        flowNode('llm', 'llm-1', CX, 40 + SPACE * 2, { kind: 'llm', label: 'LLM', model: capabilities.defaults.model, temperature: 0.2, systemPrompt: '' }),
         fixedNode('output', 'output-1', CX, 40 + SPACE * 3, { kind: 'output', label: 'Resposta', outputType: 'text_response' }),
       ],
       edges: [
@@ -76,8 +77,8 @@ function agentToFlow(agent: AiAgentSummary | null): AgentFlow {
     nodes.push(flowNode('rag', ragId, CX, y, {
       kind: 'rag',
       label: 'Contexto',
-      source: (rag?.source ?? 'documentation') as RagSource,
-      topK: rag?.topKContextDocs ?? 5,
+      source: (rag?.source ?? capabilities.defaults.ragSource) as RagSource,
+      topK: rag?.topKContextDocs ?? capabilities.defaults.topKContextDocs,
       contextInstruction: rag?.contextInstruction ?? '',
       includeSemanticContext: rag?.includeSemanticContext !== false,
       includeLinkedDocuments: rag?.includeLinkedDocuments !== false,
@@ -103,7 +104,7 @@ function agentToFlow(agent: AiAgentSummary | null): AgentFlow {
   nodes.push(flowNode('llm', llmId, CX, y, {
     kind: 'llm',
     label: 'LLM',
-    model: agent.model || 'gpt-4.1-mini',
+    model: agent.model || capabilities.defaults.model,
     temperature: agent.temperature ?? 0.2,
     systemPrompt: agent.systemPrompt ?? '',
   }));
@@ -127,6 +128,7 @@ function agentToFlow(agent: AiAgentSummary | null): AgentFlow {
 function flowToAgentPayload(
   flow: AgentFlow,
   meta: { name: string; key: string; description: string; isActive: boolean },
+  capabilities: AiCapabilities,
 ): CreateAiAgentInput {
   const llmNode = flow.nodes.find((n) => n.type === 'llm');
   const ragNode = flow.nodes.find((n) => n.type === 'rag');
@@ -135,12 +137,15 @@ function flowToAgentPayload(
   const llm = llmNode?.data as LlmNodeData | undefined;
   const rag = ragNode?.data as RagNodeData | undefined;
 
+  const gptToolIdsFromCapabilities = new Set(
+    capabilities.tools.filter((tool) => tool.group === 'GPT Tools').map((tool) => tool.value)
+  );
   const nativeToolIds = toolNodes
     .map((n) => (n.data as ToolNodeData).toolId)
-    .filter((id) => id !== 'web_search');
+    .filter((id) => !gptToolIdsFromCapabilities.has(id));
   const gptToolIds = toolNodes
     .map((n) => (n.data as ToolNodeData).toolId)
-    .filter((id) => id === 'web_search');
+    .filter((id) => gptToolIdsFromCapabilities.has(id));
 
   const config: AiAgentConfig = {
     rag: rag
@@ -223,11 +228,12 @@ function sourceLabel(source: string): string {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function AiAgentsPage() {
-  const { snapshot, listAiAgents, createAiAgent, updateAiAgent } = useWorkspace();
+  const { snapshot, getAiCapabilities, listAiAgents, createAiAgent, updateAiAgent } = useWorkspace();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
 
   // Agent list
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
+  const [capabilities, setCapabilities] = useState<AiCapabilities | null>(null);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
@@ -270,15 +276,16 @@ export function AiAgentsPage() {
   useEffect(() => {
     let mounted = true;
     setIsLoadingAgents(true);
-    listAiAgents()
-      .then((result) => {
+    Promise.all([getAiCapabilities(), listAiAgents()])
+      .then(([capabilityCatalog, result]) => {
         if (!mounted) return;
+        setCapabilities(capabilityCatalog);
         setAgents(result);
         if (result.length > 0) {
           const first = result[0];
-          selectAgent(first);
+          selectAgent(first, capabilityCatalog);
         } else {
-          loadFlow(null);
+          loadFlow(null, capabilityCatalog);
         }
       })
       .catch(() => {
@@ -288,12 +295,13 @@ export function AiAgentsPage() {
         if (mounted) setIsLoadingAgents(false);
       });
     return () => { mounted = false; };
-  }, [listAiAgents]);
+  }, [getAiCapabilities, listAiAgents]);
 
   // ── Flow state management ────────────────────────────────────────────────────
 
-  function loadFlow(agent: AiAgentSummary | null) {
-    const flow = agentToFlow(agent);
+  function loadFlow(agent: AiAgentSummary | null, capabilityCatalog = capabilities) {
+    if (!capabilityCatalog) return;
+    const flow = agentToFlow(agent, capabilityCatalog);
     setNodes(flow.nodes);
     setEdges(flow.edges);
     setFitViewKey((k) => k + 1);
@@ -301,24 +309,25 @@ export function AiAgentsPage() {
     setConfigPanelMode(null);
   }
 
-  function selectAgent(agent: AiAgentSummary) {
+  function selectAgent(agent: AiAgentSummary, capabilityCatalog = capabilities) {
     setSelectedAgentId(agent.id);
     setAgentName(agent.name);
     setAgentKey(agent.key);
     setAgentDescription(agent.description ?? '');
     setAgentIsActive(agent.isActive);
     setError(null);
-    loadFlow(agent);
+    loadFlow(agent, capabilityCatalog);
   }
 
   function handleCreateNew() {
+    if (!capabilities) return;
     setSelectedAgentId(null);
     setAgentName('');
     setAgentKey('');
     setAgentDescription('');
     setAgentIsActive(true);
     setError(null);
-    loadFlow(null);
+    loadFlow(null, capabilities);
     setConfigPanelMode('agent');
   }
 
@@ -381,6 +390,7 @@ export function AiAgentsPage() {
 
   const canSave =
     agentName.trim().length >= 2 &&
+    Boolean(capabilities) &&
     !isSaving &&
     !isLoadingAgents;
 
@@ -393,13 +403,15 @@ export function AiAgentsPage() {
       return;
     }
 
+    if (!capabilities) return;
+
     const currentFlow: AgentFlow = { nodes, edges };
     const payload = flowToAgentPayload(currentFlow, {
       name: agentName.trim(),
       key,
       description: agentDescription.trim(),
       isActive: agentIsActive,
-    });
+    }, capabilities);
 
     setIsSaving(true);
     setError(null);
@@ -483,7 +495,7 @@ export function AiAgentsPage() {
       topNavigation={topNavigation}
     >
       <WorkspaceFrame className="ab-page" variant="editor" scroll="none">
-        <LoadingState text="Carregando agentes..." animation="ai" variant="frame" visible={isLoadingAgents} />
+        <LoadingState text="Carregando agentes..." animation="ai" variant="frame" visible={isLoadingAgents || !capabilities} />
 
         <StudioLayout
           sidebar={
@@ -562,32 +574,36 @@ export function AiAgentsPage() {
               )}
             </PanelMenu>
           }
-          inspector={
+          inspector={capabilities ? (
             <AgentConfigPanel
               node={selectedConfigNode}
               agent={agentMetaPanel}
+              capabilities={capabilities}
               onClose={handleCloseConfigPanel}
               onNodeDataChange={handleNodeDataChange}
               onAgentMetaChange={handleAgentMetaChange}
             />
-          }
+          ) : null}
           inspectorOpen={isConfigPanelVisible}
           inspectorWidth={340}
         >
           {error ? (
             <div className="ab-error">{error}</div>
           ) : null}
-          <AgentFlowCanvas
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onEdgesAdd={handleEdgesAdd}
-            onNodesAdd={handleNodesAdd}
-            onNodeSelect={handleNodeSelect}
-            fitViewKey={fitViewKey}
-            selectedNodeId={selectedNodeId}
-          />
+          {capabilities ? (
+            <AgentFlowCanvas
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onEdgesAdd={handleEdgesAdd}
+              onNodesAdd={handleNodesAdd}
+              onNodeSelect={handleNodeSelect}
+              fitViewKey={fitViewKey}
+              selectedNodeId={selectedNodeId}
+              capabilities={capabilities}
+            />
+          ) : null}
         </StudioLayout>
       </WorkspaceFrame>
     </AppShell>

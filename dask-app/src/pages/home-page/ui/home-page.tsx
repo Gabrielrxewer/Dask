@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth/model";
+import { billingService } from "@/modules/billing";
+import type { BillingPlan, SubscriptionPlan } from "@/modules/billing";
 import { cn } from "@/shared/lib/cn";
 import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
 import {
@@ -23,6 +26,19 @@ import "./home-page.css";
 
 type HomeSectionId = "top" | "valor" | "inteligencia" | "contextos" | "estruturas" | "precos";
 const homeSectionIds = new Set<HomeSectionId>(["top", "valor", "inteligencia", "contextos", "estruturas", "precos"]);
+
+function formatPlanPrice(plan: BillingPlan): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: plan.currency.toUpperCase()
+  }).format(plan.amount / 100);
+}
+
+function formatPlanPeriod(plan: BillingPlan): string {
+  if (plan.interval === "month") return "/mes";
+  if (plan.interval === "year") return "/ano";
+  return plan.interval ? `/${plan.interval}` : "";
+}
 
 function getHomeSectionFromHash(hash: string): HomeSectionId {
   const sectionId = hash.replace("#", "") as HomeSectionId;
@@ -272,10 +288,16 @@ function StructureView({ isActive }: { isActive: boolean }) {
 
 function PricingSection({
   onSubscribeClick,
-  isActive
+  isActive,
+  plans,
+  isLoadingPlans,
+  planLoadError
 }: {
-  onSubscribeClick: (plan: "PERSONAL" | "BUSINESS") => void;
+  onSubscribeClick: (plan: SubscriptionPlan) => void;
   isActive: boolean;
+  plans: BillingPlan[];
+  isLoadingPlans: boolean;
+  planLoadError: string | null;
 }) {
   return (
     <section
@@ -293,62 +315,45 @@ function PricingSection({
       />
 
       <div className="home-page__pricing-cards">
-        <article className="home-page__pricing-card">
-          <p className="home-page__pricing-plan-name">Pessoal</p>
-          <div className="home-page__pricing-price">
-            <strong>R$ 19,90</strong>
-            <span>/mes</span>
-          </div>
-          <p className="home-page__pricing-description">Para profissionais que querem centralizar contexto, tarefas e acompanhamento em um fluxo individual.</p>
-          <ul className="home-page__pricing-features">
-            {[
-              "1 workspace pessoal",
-              "Boards, listas e agenda",
-              "Contexto continuo para demandas e entregas",
-              "IA aplicada ao fluxo",
-              "Automacoes basicas e busca contextual"
-            ].map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-          <button
-            className="home-page__action home-page__action--secondary home-page__pricing-btn"
-            onClick={() => onSubscribeClick("PERSONAL")}
-            type="button"
-          >
-            Comecar no Pessoal
-          </button>
-        </article>
+        {isLoadingPlans ? (
+          <article className="home-page__pricing-card">
+            <p className="home-page__pricing-plan-name">Carregando planos...</p>
+          </article>
+        ) : null}
 
-        <article className="home-page__pricing-card home-page__pricing-card--featured">
-          <span className="home-page__pricing-badge">Popular</span>
-          <p className="home-page__pricing-plan-name">Business</p>
-          <div className="home-page__pricing-price">
-            <strong>R$ 99,00</strong>
-            <span>/mes</span>
-          </div>
-          <p className="home-page__pricing-description">Para software houses e equipes que precisam conectar comercial, entrega, acompanhamento e cobranca na mesma operacao.</p>
-          <ul className="home-page__pricing-features">
-            {[
-              "Multiplos workspaces",
-              "Fluxo compartilhado entre comercial, operacao e faturamento",
-              "Boards, listas e agenda",
-              "IA contextual e automacoes",
-              "Campos personalizados",
-              "Rastreabilidade, auditoria e integracoes",
-              "Suporte prioritario"
-            ].map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-          <button
-            className="home-page__action home-page__action--primary home-page__pricing-btn"
-            onClick={() => onSubscribeClick("BUSINESS")}
-            type="button"
-          >
-            Estruturar com Business
-          </button>
-        </article>
+        {!isLoadingPlans && (planLoadError || plans.length === 0) ? (
+          <article className="home-page__pricing-card">
+            <p className="home-page__pricing-plan-name">Planos indisponiveis</p>
+            <p className="home-page__pricing-description">
+              {planLoadError ?? "O catalogo de assinatura nao esta disponivel no momento."}
+            </p>
+          </article>
+        ) : null}
+
+        {plans.map((plan) => (
+          <article key={plan.code} className="home-page__pricing-card">
+            <p className="home-page__pricing-plan-name">{plan.name}</p>
+            <div className="home-page__pricing-price">
+              <strong>{formatPlanPrice(plan)}</strong>
+              <span>{formatPlanPeriod(plan)}</span>
+            </div>
+            {plan.description ? <p className="home-page__pricing-description">{plan.description}</p> : null}
+            {plan.features.length > 0 ? (
+              <ul className="home-page__pricing-features">
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            ) : null}
+            <button
+              className="home-page__action home-page__action--primary home-page__pricing-btn"
+              onClick={() => onSubscribeClick(plan.code)}
+              type="button"
+            >
+              Assinar {plan.name}
+            </button>
+          </article>
+        ))}
       </div>
 
     </section>
@@ -360,8 +365,39 @@ export function HomePage() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const activeSection = getHomeSectionFromHash(location.hash);
+  const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [planLoadError, setPlanLoadError] = useState<string | null>(null);
 
-  function handleSubscribeClick(_plan: "PERSONAL" | "BUSINESS") {
+  useEffect(() => {
+    let mounted = true;
+
+    billingService
+      .listPlans()
+      .then((result) => {
+        if (!mounted) return;
+        setPlans(
+          result.items
+            .filter((plan) => plan.isActive)
+        );
+        setPlanLoadError(null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setPlans([]);
+        setPlanLoadError("Nao foi possivel carregar os planos configurados.");
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setIsLoadingPlans(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function handleSubscribeClick(_plan: SubscriptionPlan) {
     if (isAuthenticated) {
       navigate(routePaths.choosePlan);
     } else {
@@ -401,7 +437,13 @@ export function HomePage() {
         </div>
 
         <div className="home-page__view home-page__view--pricing">
-          <PricingSection isActive={activeSection === "precos"} onSubscribeClick={handleSubscribeClick} />
+          <PricingSection
+            isActive={activeSection === "precos"}
+            onSubscribeClick={handleSubscribeClick}
+            plans={plans}
+            isLoadingPlans={isLoadingPlans}
+            planLoadError={planLoadError}
+          />
         </div>
       </div>
     </main>

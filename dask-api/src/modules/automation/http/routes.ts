@@ -8,6 +8,10 @@ import {
 } from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
+import {
+  createDefaultAutomationGraph,
+  getAutomationCapabilities
+} from '@/modules/automation/application/automation-capabilities';
 import type { AutomationRunObservabilityService } from '@/modules/automation/application/automation-run-observability-service';
 import type { AutomationRunService } from '@/modules/automation/application/automation-run-service';
 import type { AutomationViewService } from '@/modules/automation/application/automation-view-service';
@@ -102,38 +106,18 @@ export const buildAutomationRoutes = (deps: {
   const mockWhatsAppEventSimulator = new MockWhatsAppEventSimulator(deps.prisma);
   const automationApprovalRequestService =
     deps.automationApprovalRequestService ?? new AutomationApprovalRequestService(deps.prisma);
-  const createDefaultGraph = () => ({
-    version: 1 as const,
-    nodes: [
-      {
-        id: 'trigger-manual',
-        type: 'trigger',
-        label: 'Execucao manual',
-        config: { triggerType: 'manual' },
-        position: { x: 120, y: 120 }
-      },
-      {
-        id: 'end',
-        type: 'end',
-        label: 'Fim',
-        config: {},
-        position: { x: 120, y: 320 }
-      }
-    ],
-    edges: [
-      {
-        id: 'edge-trigger-end',
-        source: 'trigger-manual',
-        target: 'end'
-      }
-    ],
-    metadata: {}
-  });
 
   router.use('/automation/workspaces/:workspaceId', resolveWorkspaceScope, requireWorkflowRead, requireAutomationModule);
   router.use('/workspaces/:workspaceId/automation-workflows', resolveWorkspaceScope, requireWorkflowRead, requireAutomationModule);
   router.use('/workspaces/:workspaceId/automation-approvals', resolveWorkspaceScope, requireApprovalRead, requireAutomationModule);
   router.use('/workspaces/:workspaceId/communication', resolveWorkspaceScope, requireConversationRead, requireAutomationModule);
+
+  router.get(
+    '/automation/workspaces/:workspaceId/capabilities',
+    asyncHandler(async (_req, res) => {
+      res.status(200).json(getAutomationCapabilities());
+    })
+  );
 
   router.get(
     '/workspaces/:workspaceId/automation-workflows',
@@ -253,7 +237,7 @@ export const buildAutomationRoutes = (deps: {
       const version = await deps.automationWorkflowVersionService.createDraftVersion({
         ...params,
         definition: payload.definition,
-        graph: payload.graph ?? createDefaultGraph(),
+        graph: payload.graph ?? createDefaultAutomationGraph(),
         graphNodes: payload.graphNodes,
         graphEdges: payload.graphEdges
       });

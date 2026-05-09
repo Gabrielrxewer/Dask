@@ -302,7 +302,7 @@
   gap: 1px;
   padding: 0;
   border-radius: 0;
-  background: var(--border-default);
+  background: var(--surface-1);
 }
 
 .app-theme[data-theme="dark"] .board-column {

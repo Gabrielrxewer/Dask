@@ -152,6 +152,8 @@ export const createConnectCatalogItemDto = z.object({
   }
 });
 
+export const updateConnectCatalogItemDto = createConnectCatalogItemDto;
+
 export const listConnectCatalogItemsQueryDto = z.object({
   includeInactive: z
     .union([z.boolean(), z.string().trim().toLowerCase().transform((value) => value === 'true')])
@@ -168,4 +170,5 @@ export type CreateConnectOnboardingLinkInput = z.infer<typeof createConnectOnboa
 export type RequestConnectPaymentCapabilityInput = z.infer<typeof requestConnectPaymentCapabilityDto>;
 export type CreateConnectCheckoutSessionInput = z.infer<typeof createConnectCheckoutSessionDto>;
 export type CreateConnectCatalogItemInput = z.infer<typeof createConnectCatalogItemDto>;
+export type UpdateConnectCatalogItemInput = z.infer<typeof updateConnectCatalogItemDto>;
 export type ListConnectCatalogItemsQueryInput = z.infer<typeof listConnectCatalogItemsQueryDto>;

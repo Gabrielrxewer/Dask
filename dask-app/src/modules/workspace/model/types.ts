@@ -102,6 +102,10 @@ export interface WorkspaceSnapshot {
   tasks: Task[];
   tags?: WorkspaceTag[];
   boardConfig: BoardConfig;
+  itemTypes?: ApiItemType[];
+  workflowStates?: ApiWorkflowState[];
+  boardColumns?: ApiBoardColumn[];
+  customFieldDefinitions?: ApiCustomField[];
   automations: WorkspaceAutomation[];
   preferences: WorkspacePreferences;
   access?: {
@@ -141,6 +145,7 @@ export interface WorkspaceDocumentMetadata {
   sentBy?: string;
   status?: CommercialDocumentStatus | string;
   publicToken?: string;
+  folderId?: string | null;
   [key: string]: unknown;
 }
 
@@ -621,6 +626,61 @@ export interface UpdateCustomFieldInput {
   scopeTypeIds?: string[];
 }
 
+export interface CapabilityOption {
+  value: string;
+  label: string;
+  description?: string;
+  group?: string;
+}
+
+export interface AiCapabilities {
+  schemaVersion: 1;
+  defaults: {
+    model: string;
+    ragSource: string;
+    topKContextDocs: number;
+    nativeTools: string[];
+    gptTools: string[];
+  };
+  models: CapabilityOption[];
+  ragSources: CapabilityOption[];
+  topKContextDocsOptions: number[];
+  tools: CapabilityOption[];
+}
+
+export interface AutomationNodeCapability {
+  type: string;
+  label: string;
+  description: string;
+  color: string;
+  icon: string;
+  group?: string;
+  configSchema?: {
+    type: string;
+    label: string;
+    required: string[];
+    requiredAny?: string[][];
+    description: string;
+  };
+  isTerminal?: boolean;
+  isTrigger?: boolean;
+}
+
+export interface AutomationRecipeCapability {
+  id: string;
+  name: string;
+  description: string;
+  category: "lead" | "proposal" | "contract" | "billing" | "customer" | "followup";
+  graph: AutomationWorkflowGraph;
+}
+
+export interface AutomationCapabilities {
+  schemaVersion: 1;
+  nodeCatalog: AutomationNodeCapability[];
+  recipeCatalog: AutomationRecipeCapability[];
+  defaultGraph: AutomationWorkflowGraph;
+}
+
 export interface WorkspaceService {
   listWorkspaces: () => Promise<WorkspaceSummary[]>;
   listWorkspaceTemplates: () => Promise<WorkspaceTemplateOption[]>;
@@ -746,6 +806,7 @@ export interface WorkspaceService {
   updateCustomField: (workspaceSlug: string, fieldId: string, input: UpdateCustomFieldInput) => Promise<WorkspaceSnapshot>;
   deleteCustomField: (workspaceSlug: string, fieldId: string) => Promise<WorkspaceSnapshot>;
 
+  getAutomationCapabilities: (workspaceSlug: string) => Promise<AutomationCapabilities>;
   listAutomationWorkflows: (
     workspaceSlug: string,
     options?: { status?: AutomationWorkflowStatus; limit?: number }
@@ -902,6 +963,25 @@ export interface WorkspaceService {
   ) => Promise<AutomationSideEffectSummary>;
   listAutomationViews: (workspaceSlug: string) => Promise<AutomationView[]>;
   listWorkspaceDocuments: (workspaceSlug: string) => Promise<WorkspaceDocument[]>;
+  listWorkspaceDocumentFolders: (workspaceSlug: string) => Promise<WorkspaceDocumentFolder[]>;
+  createWorkspaceDocumentFolder: (
+    workspaceSlug: string,
+    input: {
+      name: string;
+      parentId?: string | null;
+      position?: number;
+    }
+  ) => Promise<WorkspaceDocumentFolder>;
+  updateWorkspaceDocumentFolder: (
+    workspaceSlug: string,
+    folderId: string,
+    input: {
+      name?: string;
+      parentId?: string | null;
+      position?: number;
+    }
+  ) => Promise<WorkspaceDocumentFolder>;
+  deleteWorkspaceDocumentFolder: (workspaceSlug: string, folderId: string) => Promise<void>;
   listCustomers: (workspaceSlug: string, input?: { search?: string; status?: CustomerStatus }) => Promise<Customer[]>;
   createCustomer: (workspaceSlug: string, input: CreateCustomerInput) => Promise<Customer>;
   updateCustomer: (workspaceSlug: string, customerId: string, input: Partial<CreateCustomerInput>) => Promise<Customer>;
@@ -946,6 +1026,7 @@ export interface WorkspaceService {
   ) => Promise<WorkItemLinkedDocument[]>;
   unlinkDocumentFromWorkItem: (workspaceSlug: string, itemId: string, documentId: string) => Promise<void>;
 
+  getAiCapabilities: (workspaceSlug: string) => Promise<AiCapabilities>;
   listAiAgents: (workspaceSlug: string) => Promise<AiAgentSummary[]>;
   listAiRuns: (
     workspaceSlug: string,
@@ -1194,6 +1275,18 @@ export interface AutomationApprovalRecord {
   requestedAt: string;
   reviewedAt: string | null;
   expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceDocumentFolder {
+  id: string;
+  workspaceId: string;
+  name: string;
+  parentId: string | null;
+  position: number;
+  createdBy: string;
+  updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }

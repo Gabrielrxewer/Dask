@@ -1,4 +1,4 @@
-import type { BoardConfig, TaskTypeMetaItem } from "@/entities/task/model/types";
+import type { BoardConfig } from "@/entities/task/model/types";
 
 const defaultPerspectiveStatuses = [
   { id: "backlog", label: "Backlog", dot: "var(--text-muted)" },
@@ -71,9 +71,3 @@ export const factoryBoardConfig: BoardConfig = {
   ]
 };
 
-export function buildTaskTypeMetaMap(taskTypes: TaskTypeMetaItem[]): Record<string, TaskTypeMetaItem> {
-  return taskTypes.reduce<Record<string, TaskTypeMetaItem>>((acc, item) => {
-    acc[item.id] = item;
-    return acc;
-  }, {});
-}

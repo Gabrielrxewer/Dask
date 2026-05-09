@@ -9,6 +9,8 @@ const modalCounterDatasetKey = "sharedModalCount";
 export interface ModalShellProps {
   titleId: string;
   className?: string;
+  theme?: "light" | "dark";
+  themePreference?: string;
   onClose: () => void;
   children: ReactNode;
 }
@@ -21,7 +23,7 @@ function updateBodyModalState(delta: number) {
   document.body.classList.toggle(modalOpenClassName, nextCount > 0);
 }
 
-export function ModalShell({ titleId, className = "", onClose, children }: ModalShellProps) {
+export function ModalShell({ titleId, className = "", theme, themePreference, onClose, children }: ModalShellProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -53,6 +55,9 @@ export function ModalShell({ titleId, className = "", onClose, children }: Modal
     <div className="shared-modal-overlay" role="presentation" onClick={onClose}>
       <aside
         className={cn("shared-modal-shell", className)}
+        data-theme={theme}
+        data-theme-preference={themePreference}
+        style={theme ? { colorScheme: theme } : undefined}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

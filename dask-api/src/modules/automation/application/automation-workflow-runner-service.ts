@@ -29,6 +29,8 @@ export class AutomationWorkflowRunnerService {
     triggerType: string;
     triggerRefId?: string | null;
     context?: Record<string, unknown>;
+    startNodeId?: string;
+    startNodeIds?: string[];
     now?: Date;
   }): Promise<{
     run: AutomationRun;
@@ -72,13 +74,17 @@ export class AutomationWorkflowRunnerService {
         workflowId: run.workflowId,
         workflowVersionId: run.workflowVersionId,
         triggerType: run.triggerType,
-        triggerRefId: run.triggerRefId
+        triggerRefId: run.triggerRefId,
+        startNodeId: input.startNodeId,
+        startNodeIds: input.startNodeIds
       }
     });
 
     const executionResult = await this.workflowExecutor.executeRun({
       workspaceId,
       runId: run.id,
+      startNodeId: input.startNodeId,
+      startNodeIds: input.startNodeIds,
       now: input.now
     });
 

@@ -36,6 +36,7 @@ export type WorkspaceTemplatePerspective = {
   key: string;
   name: string;
   caption: string;
+  analyticsRole?: 'prospecting' | 'funnel' | 'terminal' | 'client';
   statuses: Array<{ id: string; label: string; dot: string }>;
   statusSource: { kind: 'workflow_state' } | { kind: 'custom_field'; fieldId: string; fallbackByStatus?: Record<string, string> };
   compactCards?: boolean;
@@ -51,6 +52,7 @@ export type WorkspaceTemplateSchema = {
   fieldDefinitions?: WorkspaceTemplateFieldDefinition[];
   fieldBindings?: WorkspaceTemplateFieldBinding[];
   automations?: Array<Record<string, unknown>>;
+  automationRecipeIds?: string[];
   documentBindings?: Array<Record<string, unknown>>;
 };
 
@@ -273,6 +275,7 @@ const commercialStatuses = [
   { id: 'contract_accepted', label: 'Contrato aceito / assinado', dot: '#22c55e' },
   { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
   { id: 'payment_waiting', label: 'Aguardando pagamento', dot: '#0f766e' },
+  { id: 'payment_overdue', label: 'Pagamento em atraso', dot: '#dc2626' },
   { id: 'paid_active', label: 'Pago / Ativo', dot: '#15803d' },
   { id: 'lost', label: 'Perdido', dot: '#dc2626' },
   { id: 'closed', label: 'Encerrado', dot: '#64748b' }
@@ -806,6 +809,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           key: 'prospeccao',
           name: 'Prospecao',
           caption: 'Contatos antes de virar lead',
+          analyticsRole: 'prospecting',
           statuses: commercialStatuses,
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['prospect', 'contact_started', 'follow_up', 'lead_new'],
@@ -816,6 +820,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           key: 'entrada',
           name: 'Entrada',
           caption: 'Captura e qualificacao comercial',
+          analyticsRole: 'funnel',
           statuses: commercialStatuses,
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['lead_new', 'lead_qualification'],
@@ -826,6 +831,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           key: 'venda',
           name: 'Venda',
           caption: 'Oportunidade e proposta comercial',
+          analyticsRole: 'funnel',
           statuses: commercialStatuses,
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved'],
@@ -836,6 +842,7 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           key: 'formalizacao',
           name: 'Formalizacao',
           caption: 'Contrato e aceite',
+          analyticsRole: 'funnel',
           statuses: commercialStatuses,
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['contract_preparing', 'contract_sent', 'contract_accepted'],
@@ -846,9 +853,10 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           key: 'financeiro',
           name: 'Financeiro',
           caption: 'Cobranca e pagamento',
+          analyticsRole: 'funnel',
           statuses: commercialStatuses,
           statusSource: { kind: 'workflow_state' },
-          visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'paid_active'],
+          visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'payment_overdue', 'paid_active'],
           createTaskColumnSlugs: [],
           allowedTaskTypes: leadIssueTypes
         },
@@ -856,216 +864,37 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
           key: 'finalizacao',
           name: 'Finalizacao',
           caption: 'Perdas e encerramentos',
+          analyticsRole: 'terminal',
           statuses: commercialStatuses,
           statusSource: { kind: 'workflow_state' },
           visibleBoardColumnSlugs: ['lost', 'closed'],
+          createTaskColumnSlugs: [],
+          allowedTaskTypes: leadIssueTypes
+        },
+        {
+          key: 'cliente',
+          name: 'Cliente',
+          caption: 'Visao do cliente',
+          analyticsRole: 'client',
+          statuses: commercialStatuses,
+          statusSource: { kind: 'workflow_state' },
+          visibleBoardColumnSlugs: ['contract_sent', 'contract_accepted', 'billing_created', 'payment_waiting', 'payment_overdue', 'paid_active'],
           createTaskColumnSlugs: [],
           allowedTaskTypes: leadIssueTypes
         }
       ],
       fieldDefinitions: commercialFieldDefinitions,
       fieldBindings: commercialFieldBindings,
-      automations: [
-        {
-          id: 'convert_prospect_to_commercial_on_lead_new',
-          name: 'Converter prospect em lead comercial',
-          description: 'Quando um Prospect chega em Novo lead, transforma o WorkItem em Comercial para entrar no funil de leads.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'lead_new', itemTypeSlugs: ['prospect'] },
-          actions: [{ type: 'set_work_item_type', typeSlug: 'commercial' }]
-        },
-        {
-          id: 'move_to_opportunity_on_qualification',
-          name: 'Mover para Oportunidade aberta apos qualificacao',
-          description: 'Quando o WorkItem comercial entra em Qualificacao, avanca automaticamente para Oportunidade aberta na perspectiva Venda.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'lead_qualification' },
-          actions: [
-            { type: 'set_work_item_state', stateSlug: 'opportunity_open' }
-          ]
-        },
-        {
-          id: 'generate_proposal_on_proposal_preparing',
-          name: 'Gerar proposta ao mover para Proposta em preparacao',
-          description: 'Quando um WorkItem comercial entra na coluna Proposta em preparacao, cria a proposta vinculada ao WorkItem.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'proposal_preparing' },
-          actions: [
-            {
-              type: 'create_document',
-              kind: 'proposal',
-              binding: 'commercial_proposal',
-              status: 'draft',
-              targetFieldSlug: 'proposalId'
-            }
-          ]
-        },
-        {
-          id: 'mark_proposal_sent',
-          name: 'Marcar proposta como enviada',
-          description: 'Quando o WorkItem comercial entra em Proposta enviada, atualiza o status da proposta vinculada.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'proposal_sent' },
-          actions: [{ type: 'update_document_status', kind: 'proposal', status: 'sent' }]
-        },
-        {
-          id: 'move_to_proposal_sent_on_proposal_sent',
-          name: 'Mover para Proposta enviada apos envio da proposta',
-          description: 'Quando a proposta vinculada for enviada pelo documento, move o WorkItem para Proposta enviada.',
-          enabled: true,
-          trigger: { type: 'proposal_status_changed', status: 'sent' },
-          actions: [{ type: 'set_work_item_state', stateSlug: 'proposal_sent' }]
-        },
-        {
-          id: 'sync_draft_proposal_on_work_item_update',
-          name: 'Sincronizar proposta em rascunho ao atualizar card',
-          description: 'Quando dados do WorkItem comercial mudam, re-renderiza a proposta vinculada enquanto ela ainda estiver em rascunho.',
-          enabled: true,
-          trigger: { type: 'work_item_updated' },
-          actions: [
-            {
-              type: 'sync_document',
-              kind: 'proposal',
-              binding: 'commercial_proposal',
-              syncStatuses: ['draft']
-            }
-          ]
-        },
-        {
-          id: 'move_to_contract_on_proposal_approved',
-          name: 'Mover para Contrato em preparacao ao aprovar proposta',
-          description: 'Quando o WorkItem comercial entra em Proposta aprovada, avanca automaticamente para Contrato em preparacao na perspectiva Formalizacao.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'proposal_approved' },
-          actions: [
-            { type: 'set_work_item_state', stateSlug: 'contract_preparing' },
-            {
-              type: 'create_document',
-              kind: 'contract',
-              binding: 'commercial_contract',
-              status: 'draft',
-              targetFieldSlug: 'contractId',
-              skipIfExists: true
-            }
-          ]
-        },
-        {
-          id: 'generate_contract_on_proposal_approved',
-          name: 'Gerar contrato apos aprovacao da proposta',
-          description: 'Quando a proposta vinculada for aprovada, move o WorkItem para Contrato em preparacao e cria o contrato.',
-          enabled: true,
-          trigger: { type: 'proposal_status_changed', status: 'approved' },
-          actions: [
-            { type: 'set_work_item_state', stateSlug: 'contract_preparing' },
-            {
-              type: 'create_document',
-              kind: 'contract',
-              binding: 'commercial_contract',
-              status: 'draft',
-              targetFieldSlug: 'contractId'
-            }
-          ]
-        },
-        {
-          id: 'generate_contract_on_contract_preparing',
-          name: 'Gerar contrato ao mover para Contrato em preparacao',
-          description: 'Quando um WorkItem comercial entra diretamente na coluna Contrato em preparacao, cria o documento de contrato vinculado ao card usando os dados preenchidos.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'contract_preparing' },
-          actions: [
-            {
-              type: 'create_document',
-              kind: 'contract',
-              binding: 'commercial_contract',
-              status: 'draft',
-              targetFieldSlug: 'contractId',
-              skipIfExists: true
-            }
-          ]
-        },
-        {
-          id: 'mark_contract_sent',
-          name: 'Marcar contrato como enviado',
-          description: 'Quando o WorkItem comercial entra em Contrato enviado, atualiza o status do contrato vinculado.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'contract_sent' },
-          actions: [{ type: 'update_document_status', kind: 'contract', status: 'sent' }]
-        },
-        {
-          id: 'move_to_contract_sent_on_contract_sent',
-          name: 'Mover para Contrato enviado apos envio do contrato',
-          description: 'Quando o contrato vinculado for enviado pelo documento, move o WorkItem para Contrato enviado.',
-          enabled: true,
-          trigger: { type: 'contract_status_changed', status: 'sent' },
-          actions: [{ type: 'set_work_item_state', stateSlug: 'contract_sent' }]
-        },
-        {
-          id: 'sync_draft_contract_on_work_item_update',
-          name: 'Sincronizar contrato em rascunho ao atualizar card',
-          description: 'Quando dados do WorkItem comercial mudam, re-renderiza o contrato vinculado enquanto ele ainda estiver em rascunho.',
-          enabled: true,
-          trigger: { type: 'work_item_updated' },
-          actions: [
-            {
-              type: 'sync_document',
-              kind: 'contract',
-              binding: 'commercial_contract',
-              syncStatuses: ['draft']
-            }
-          ]
-        },
-        {
-          id: 'create_customer_on_contract_accepted',
-          name: 'Criar cliente ao aceitar contrato',
-          description: 'Quando o WorkItem comercial entra em Contrato aceito / assinado, cria ou vincula automaticamente o cliente mestre sem avancar a etapa de cobranca.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'contract_accepted' },
-          actions: [
-            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' }
-          ]
-        },
-        {
-          id: 'move_to_contract_accepted_on_contract_accepted',
-          name: 'Mover para Contrato aceito apos aceite do contrato',
-          description: 'Quando o contrato vinculado for aceito pelo cliente, move o WorkItem para Contrato aceito / assinado.',
-          enabled: true,
-          trigger: { type: 'contract_status_changed', status: 'accepted' },
-          actions: [{ type: 'set_work_item_state', stateSlug: 'contract_accepted' }]
-        },
-        {
-          id: 'prepare_billing_on_contract_accepted',
-          name: 'Preparar cobranca apos aceite do contrato',
-          description: 'Quando o card entra em Contrato aceito / assinado, cria e envia a cobranca automaticamente.',
-          enabled: true,
-          trigger: { type: 'work_item_moved_to_column', column: 'contract_accepted' },
-          actions: [
-            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
-            { type: 'set_work_item_state', stateSlug: 'billing_created' },
-            { type: 'create_billing_order', targetFieldSlug: 'billingOrderId' }
-          ],
-          validations: ['commercial.billing.required_fields']
-        },
-        {
-          id: 'prepare_billing_on_contract_document_accepted',
-          name: 'Preparar cobranca apos aceite do documento de contrato',
-          description: 'Quando o contrato vinculado for aceito pelo cliente, cria e envia a cobranca automaticamente.',
-          enabled: true,
-          trigger: { type: 'contract_status_changed', status: 'accepted' },
-          actions: [
-            { type: 'ensure_customer_from_work_item', targetFieldSlug: 'customerId', status: 'active' },
-            { type: 'set_work_item_state', stateSlug: 'billing_created' },
-            { type: 'create_billing_order', targetFieldSlug: 'billingOrderId' }
-          ],
-          validations: ['commercial.billing.required_fields']
-        },
-        {
-          id: 'move_to_paid_active_on_payment_confirmed',
-          name: 'Mover para Pago / Ativo apos pagamento confirmado',
-          description: 'Quando a cobranca vinculada for paga, move o WorkItem comercial para Pago / Ativo.',
-          enabled: true,
-          trigger: { type: 'billing_payment_confirmed', status: 'paid' },
-          actions: [{ type: 'set_work_item_state', stateSlug: 'paid_active' }]
-        }
+      automationRecipeIds: [
+        'lead-captured-to-new-lead',
+        'hot-lead-followup',
+        'first-contact-on-new-lead',
+        'no-response-followup',
+        'proposal-preparing-create-proposal',
+        'proposal-approved-create-contract',
+        'contract-accepted-create-billing',
+        'payment-confirmed-active-customer',
+        'billing-overdue-finance-alert'
       ],
       documentBindings: [
         { id: 'commercial_proposal', kind: 'proposal', linkedEntityType: 'work_item' },

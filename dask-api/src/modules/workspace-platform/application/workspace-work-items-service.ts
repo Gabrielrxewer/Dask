@@ -22,6 +22,40 @@ import {
   toSlug,
   type JsonRecord
 } from '@/modules/workspace-platform/application/shared';
+import {
+  getWorkspaceTemplateByKey,
+  type WorkspaceTemplatePerspective
+} from '@/modules/workspaces/application/workspace-template-catalog';
+
+type BoardStatusSnapshot = {
+  id: string;
+  label: string;
+  dot: string;
+  category?: string | null;
+  isTerminal?: boolean;
+};
+
+type BoardColumnSnapshot = {
+  id: string;
+  slug: string;
+  name: string;
+  isActive: boolean;
+  states?: Array<{ slug: string; name: string }>;
+};
+
+type BoardPerspectiveSnapshot = {
+  id: string;
+  label: string;
+  caption?: string;
+  statuses: Array<{ id: string; label: string; dot: string }>;
+  statusSource: { kind: 'workflow_state' } | { kind: 'custom_field'; fieldId: string; fallbackByStatus?: Record<string, string> };
+  compactCards?: boolean;
+  allowedTaskTypes?: string[];
+  visibleBoardColumnIds?: string[];
+  visibleStatusIds?: string[];
+  createTaskColumnIds?: string[];
+  analyticsRole?: 'prospecting' | 'funnel' | 'terminal' | 'client';
+};
 
 type SerializedWorkItemSource = {
   id: string;
@@ -156,16 +190,26 @@ export class WorkspaceWorkItemsService {
       .map((state) => ({
         id: state.slug,
         label: state.name,
-        dot: state.color
+        dot: state.color,
+        category: state.category,
+        isTerminal: state.isTerminal
       }));
 
-    const allPerspectives = this.resolveBoardPerspectivesFromSettings(config.preferences.settings, statuses);
+    const templateKey = this.readTemplateKey(config.preferences.settings);
+    const template = getWorkspaceTemplateByKey(templateKey);
+    const statusIdsByColumnId = this.buildStatusIdsByColumnId(config.boardColumns);
+    const allPerspectives = this.resolveBoardPerspectivesFromSettings(
+      config.preferences.settings,
+      statuses,
+      template?.schema.perspectives ?? [],
+      config.boardColumns
+    ).map((perspective) => this.enrichPerspectiveWithStatusIds(perspective, statuses, statusIdsByColumnId));
     const boardPerspectives = access.allowedBoardViewKeys
       ? allPerspectives.filter((view) => access.allowedBoardViewKeys!.includes(toSlug(view.id)))
       : allPerspectives;
 
     const clientPerspective = customerScope.isClient
-      ? this.buildClientBoardPerspective(config.boardColumns, allPerspectives)
+      ? this.buildClientBoardPerspective(allPerspectives)
       : null;
     const boardConfig = {
       statuses,
@@ -235,9 +279,18 @@ export class WorkspaceWorkItemsService {
       perspectives:
         clientPerspective
           ? [clientPerspective]
+          : customerScope.isClient
+          ? []
           : boardPerspectives.length > 0
           ? boardPerspectives
-          : allPerspectives.slice(0, 1)
+          : allPerspectives,
+      operationalMetadata: this.buildBoardOperationalMetadata({
+        templateKey,
+        templateRules: template?.rules,
+        perspectives: allPerspectives,
+        statuses,
+        itemTypes: config.itemTypes
+      })
     };
 
     return {
@@ -1046,39 +1099,8 @@ export class WorkspaceWorkItemsService {
     }
   }
 
-  private buildClientBoardPerspective(
-    boardColumns: Array<{ id: string; slug: string; name: string; isActive: boolean; stateIds?: string[] }>,
-    allPerspectives: Array<{ id: string; visibleBoardColumnIds?: string[]; statuses?: Array<{ id: string; label: string; dot: string }> }>
-  ) {
-    const configuredClientPerspective = allPerspectives.find((p) => p.id === 'cliente');
-
-    const INTERNAL_COMMERCIAL_SLUGS = new Set([
-      'lead_new', 'lead_qualification',
-      'opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved',
-      'contract_preparing', 'lost'
-    ]);
-
-    const visibleBoardColumnIds = configuredClientPerspective?.visibleBoardColumnIds?.length
-      ? configuredClientPerspective.visibleBoardColumnIds
-      : boardColumns
-          .filter((column) => column.isActive && !INTERNAL_COMMERCIAL_SLUGS.has(column.slug))
-          .map((column) => column.id);
-
-    const statuses = configuredClientPerspective?.statuses ?? [
-      { id: 'pendente', label: 'Pendente', dot: '#f59e0b' },
-      { id: 'ativo', label: 'Ativo', dot: '#2563eb' },
-      { id: 'concluido', label: 'Concluido', dot: '#16a34a' }
-    ];
-
-    return {
-      id: 'cliente',
-      label: 'Cliente',
-      caption: 'Sua jornada',
-      statuses,
-      statusSource: { kind: 'workflow_state' as const },
-      visibleBoardColumnIds,
-      createTaskColumnIds: []
-    };
+  private buildClientBoardPerspective(allPerspectives: BoardPerspectiveSnapshot[]): BoardPerspectiveSnapshot | null {
+    return allPerspectives.find((perspective) => perspective.analyticsRole === 'client' || perspective.id === 'cliente') ?? null;
   }
 
   private itemInclude() {
@@ -1737,7 +1759,7 @@ export class WorkspaceWorkItemsService {
       input.db
     );
 
-    if (input.item.type.slug === 'commercial') {
+    if (await this.isLeadOperationalItem({ workspaceId: input.workspaceId, typeSlug: input.item.type.slug })) {
       await this.publishEvent(
         {
           id: uuid(),
@@ -1777,8 +1799,30 @@ export class WorkspaceWorkItemsService {
       input.db
     );
 
+    if (
+      input.patch.fields !== undefined ||
+      input.patch.customFieldValues !== undefined ||
+      input.patch.metadata !== undefined
+    ) {
+      await this.publishEvent(
+        {
+          id: uuid(),
+          name: DomainEventNames.ItemFieldUpdated,
+          aggregateType: 'item',
+          aggregateId: input.item.id,
+          occurredAt: new Date(),
+          payload
+        },
+        input.db
+      );
+    }
+
     const customerId = this.resolveCustomerIdFromCommercialItem(input.item);
-    if (input.item.type.slug === 'commercial' && customerId && this.patchTouchesCustomerLink(input.patch)) {
+    if (
+      customerId &&
+      this.patchTouchesCustomerLink(input.patch) &&
+      await this.isLeadOperationalItem({ workspaceId: input.workspaceId, typeSlug: input.item.type.slug })
+    ) {
       await this.publishEvent(
         {
           id: uuid(),
@@ -1813,8 +1857,6 @@ export class WorkspaceWorkItemsService {
       occurredAt: new Date(),
       payload: {
         ...this.toAutomationEventPayload(input.workspaceId, input.item),
-        sourceViewKey: 'dev',
-        toViewKey: 'dev',
         fromColumnId: input.fromColumnId,
         toColumnId: input.toColumnId,
         toColumnKey: input.item.column.slug,
@@ -1910,33 +1952,157 @@ export class WorkspaceWorkItemsService {
     return false;
   }
 
-  private resolveBoardPerspectivesFromSettings(
-    settings: unknown,
-    defaultStatuses: Array<{ id: string; label: string; dot: string }>
-  ) {
-    if (!isRecord(settings)) {
-      return [
-        {
-          id: 'dev',
-          label: 'DEV',
-          caption: 'Fluxo operacional principal',
-          statuses: defaultStatuses,
-          statusSource: { kind: 'workflow_state' }
-        }
-      ];
+  private async isLeadOperationalItem(input: { workspaceId: string; typeSlug: string }): Promise<boolean> {
+    const config = await this.configService.loadWorkspaceConfig(input.workspaceId);
+    const statuses = config.workflowStates
+      .filter((state) => state.isActive)
+      .sort((left, right) => left.order - right.order)
+      .map((state) => ({
+        id: state.slug,
+        label: state.name,
+        dot: state.color,
+        category: state.category,
+        isTerminal: state.isTerminal
+      }));
+    const templateKey = this.readTemplateKey(config.preferences.settings);
+    const template = getWorkspaceTemplateByKey(templateKey);
+    const statusIdsByColumnId = this.buildStatusIdsByColumnId(config.boardColumns);
+    const perspectives = this.resolveBoardPerspectivesFromSettings(
+      config.preferences.settings,
+      statuses,
+      template?.schema.perspectives ?? [],
+      config.boardColumns
+    ).map((perspective) => this.enrichPerspectiveWithStatusIds(perspective, statuses, statusIdsByColumnId));
+    const metadata = this.buildBoardOperationalMetadata({
+      templateKey,
+      templateRules: template?.rules,
+      perspectives,
+      statuses,
+      itemTypes: config.itemTypes
+    });
+
+    return metadata.leads?.itemTypeIds.includes(input.typeSlug) ?? false;
+  }
+
+  private readTemplateKey(settings: unknown): string | undefined {
+    if (!isRecord(settings) || typeof settings.templateKey !== 'string') {
+      return undefined;
     }
 
-    const rawPerspectives = Array.isArray(settings.perspectives) ? settings.perspectives : settings.boardViews;
+    const templateKey = settings.templateKey.trim();
+    return templateKey.length > 0 ? templateKey : undefined;
+  }
+
+  private buildStatusIdsByColumnId(boardColumns: BoardColumnSnapshot[]): Map<string, string[]> {
+    return new Map(
+      boardColumns.map((column) => [
+        column.id,
+        Array.from(
+          new Set(
+            (column.states ?? [])
+              .map((state) => state.slug)
+              .filter((slug): slug is string => typeof slug === 'string' && slug.trim().length > 0)
+          )
+        )
+      ])
+    );
+  }
+
+  private enrichPerspectiveWithStatusIds(
+    perspective: BoardPerspectiveSnapshot,
+    defaultStatuses: BoardStatusSnapshot[],
+    statusIdsByColumnId: Map<string, string[]>
+  ): BoardPerspectiveSnapshot {
+    const statusIdsFromColumns = (perspective.visibleBoardColumnIds ?? [])
+      .flatMap((columnId) => statusIdsByColumnId.get(columnId) ?? [])
+      .filter((statusId) => defaultStatuses.some((status) => status.id === statusId));
+    const statusIdsFromStatusList = perspective.statuses
+      .map((status) => status.id)
+      .filter((statusId) => defaultStatuses.some((status) => status.id === statusId));
+
+    return {
+      ...perspective,
+      visibleStatusIds: Array.from(new Set(statusIdsFromColumns.length > 0 ? statusIdsFromColumns : statusIdsFromStatusList))
+    };
+  }
+
+  private resolveColumnIdsFromSlugs(
+    slugs: string[] | undefined,
+    columnIdBySlug: Map<string, string>
+  ): string[] | undefined {
+    if (!slugs) {
+      return undefined;
+    }
+
+    return slugs
+      .map((slug) => columnIdBySlug.get(slug))
+      .filter((value): value is string => Boolean(value));
+  }
+
+  private isBoardAnalyticsRole(value: unknown): value is BoardPerspectiveSnapshot['analyticsRole'] {
+    return value === 'prospecting' || value === 'funnel' || value === 'terminal' || value === 'client';
+  }
+
+  private mapTemplatePerspectives(
+    templatePerspectives: WorkspaceTemplatePerspective[],
+    defaultStatuses: BoardStatusSnapshot[],
+    boardColumns: BoardColumnSnapshot[]
+  ): BoardPerspectiveSnapshot[] {
+    const columnIdBySlug = new Map(boardColumns.map((column) => [column.slug, column.id]));
+
+    return templatePerspectives.map((view) => ({
+      id: view.key,
+      label: view.name,
+      caption: view.caption,
+      statuses: view.statuses.length > 0 ? view.statuses : defaultStatuses,
+      statusSource: view.statusSource,
+      compactCards: view.compactCards,
+      allowedTaskTypes: view.allowedTaskTypes,
+      visibleBoardColumnIds: this.resolveColumnIdsFromSlugs(
+        view.visibleBoardColumnSlugs ?? boardColumns.filter((column) => column.isActive).map((column) => column.slug),
+        columnIdBySlug
+      ),
+      createTaskColumnIds: this.resolveColumnIdsFromSlugs(view.createTaskColumnSlugs ?? [], columnIdBySlug),
+      analyticsRole: view.analyticsRole
+    }));
+  }
+
+  private deriveBoardPerspectiveFromColumns(
+    defaultStatuses: BoardStatusSnapshot[],
+    boardColumns: BoardColumnSnapshot[]
+  ): BoardPerspectiveSnapshot[] {
+    const activeColumnIds = boardColumns
+      .filter((column) => column.isActive)
+      .map((column) => column.id);
+
+    return [
+      {
+        id: 'board',
+        label: 'Board',
+        caption: 'Fluxo operacional',
+        statuses: defaultStatuses,
+        statusSource: { kind: 'workflow_state' as const },
+        visibleBoardColumnIds: activeColumnIds,
+        createTaskColumnIds: activeColumnIds.slice(0, 1)
+      }
+    ];
+  }
+
+  private resolveBoardPerspectivesFromSettings(
+    settings: unknown,
+    defaultStatuses: BoardStatusSnapshot[],
+    templatePerspectives: WorkspaceTemplatePerspective[],
+    boardColumns: BoardColumnSnapshot[]
+  ): BoardPerspectiveSnapshot[] {
+    const templateViews = this.mapTemplatePerspectives(templatePerspectives, defaultStatuses, boardColumns);
+    const templateViewByKey = new Map(templateViews.map((view) => [view.id, view]));
+    const sourceSettings = isRecord(settings) ? settings : {};
+    const rawPerspectives = Array.isArray(sourceSettings.perspectives) ? sourceSettings.perspectives : sourceSettings.boardViews;
+
     if (!Array.isArray(rawPerspectives) || rawPerspectives.length === 0) {
-      return [
-        {
-          id: 'dev',
-          label: 'DEV',
-          caption: 'Fluxo operacional principal',
-          statuses: defaultStatuses,
-          statusSource: { kind: 'workflow_state' }
-        }
-      ];
+      return templateViews.length > 0
+        ? templateViews
+        : this.deriveBoardPerspectiveFromColumns(defaultStatuses, boardColumns);
     }
 
     const parsed = rawPerspectives
@@ -1951,24 +2117,21 @@ export class WorkspaceWorkItemsService {
           return null;
         }
 
-        const caption = typeof rawView.caption === 'string' ? rawView.caption : undefined;
-        const compactCards = Boolean(rawView.compactCards);
+        const templateView = templateViewByKey.get(id);
+        const caption = typeof rawView.caption === 'string' ? rawView.caption : templateView?.caption;
+        const compactCards = typeof rawView.compactCards === 'boolean' ? rawView.compactCards : templateView?.compactCards;
         const allowedTaskTypes = Array.isArray(rawView.allowedTaskTypes)
           ? rawView.allowedTaskTypes.filter((value): value is string => typeof value === 'string')
-          : undefined;
+          : templateView?.allowedTaskTypes;
         const visibleBoardColumnIds = Array.isArray(rawView.visibleBoardColumnIds)
           ? rawView.visibleBoardColumnIds.filter((value): value is string => typeof value === 'string')
-          : undefined;
-        const configuredCreateTaskColumnIds = Array.isArray(rawView.createTaskColumnIds)
+          : templateView?.visibleBoardColumnIds;
+        const createTaskColumnIds = Array.isArray(rawView.createTaskColumnIds)
           ? rawView.createTaskColumnIds.filter((value): value is string => typeof value === 'string')
-          : undefined;
-        const createTaskColumnIds =
-          configuredCreateTaskColumnIds ??
-          (settings.templateKey === 'commercial_crm'
-            ? id === 'entrada'
-              ? visibleBoardColumnIds?.slice(0, 1)
-              : []
-            : undefined);
+          : templateView?.createTaskColumnIds;
+        const analyticsRole = this.isBoardAnalyticsRole(rawView.analyticsRole)
+          ? rawView.analyticsRole
+          : templateView?.analyticsRole;
 
         const statuses = Array.isArray(rawView.statuses)
           ? rawView.statuses
@@ -2006,7 +2169,7 @@ export class WorkspaceWorkItemsService {
         const statusSourceKind =
           statusSourceRecord && typeof statusSourceRecord.kind === 'string'
             ? statusSourceRecord.kind
-            : 'workflow_state';
+            : templateView?.statusSource.kind ?? 'workflow_state';
 
         const statusSource =
           statusSourceKind === 'custom_field' &&
@@ -2028,18 +2191,19 @@ export class WorkspaceWorkItemsService {
                       )
                     : undefined
               }
-            : { kind: 'workflow_state' as const };
+            : templateView?.statusSource ?? { kind: 'workflow_state' as const };
 
         return {
           id,
           label,
           caption,
-          statuses: statuses.length > 0 ? statuses : defaultStatuses,
+          statuses: statuses.length > 0 ? statuses : templateView?.statuses ?? defaultStatuses,
           statusSource,
           compactCards,
           allowedTaskTypes,
           visibleBoardColumnIds,
           createTaskColumnIds,
+          analyticsRole,
           position: typeof rawView.position === 'number' ? rawView.position : index
         };
       })
@@ -2047,18 +2211,116 @@ export class WorkspaceWorkItemsService {
       .sort((left, right) => left.position - right.position)
       .map(({ position: _position, ...view }) => view);
 
-    if (parsed.length === 0) {
-      return [
-        {
-          id: 'dev',
-          label: 'DEV',
-          caption: 'Fluxo operacional principal',
-          statuses: defaultStatuses,
-          statusSource: { kind: 'workflow_state' as const }
-        }
-      ];
+    return parsed.length > 0
+      ? parsed
+      : templateViews.length > 0
+      ? templateViews
+      : this.deriveBoardPerspectiveFromColumns(defaultStatuses, boardColumns);
+  }
+
+  private readStringRule(rules: Record<string, unknown> | undefined, key: string): string | null {
+    const value = rules?.[key];
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+  }
+
+  private buildBoardOperationalMetadata(input: {
+    templateKey?: string;
+    templateRules?: Record<string, unknown>;
+    perspectives: BoardPerspectiveSnapshot[];
+    statuses: BoardStatusSnapshot[];
+    itemTypes: Array<{ slug: string; isActive: boolean }>;
+  }) {
+    if (input.templateKey !== 'commercial_crm') {
+      return { schemaVersion: 1 as const };
     }
 
-    return parsed;
+    const statusById = new Map(input.statuses.map((status) => [status.id, status]));
+    const leadState = this.readStringRule(input.templateRules, 'leadState');
+    const doneState = this.readStringRule(input.templateRules, 'doneState');
+    const lostState = this.readStringRule(input.templateRules, 'lostState');
+    const funnelPerspectives = input.perspectives.filter((perspective) => perspective.analyticsRole === 'funnel');
+    const funnel = funnelPerspectives
+      .map((perspective) => {
+        const statusIds = (perspective.visibleStatusIds ?? perspective.statuses.map((status) => status.id))
+          .filter((statusId) => statusById.has(statusId));
+        const firstStatus = statusIds[0] ? statusById.get(statusIds[0]) : null;
+        return {
+          key: perspective.id,
+          label: perspective.label,
+          statusIds,
+          color: firstStatus?.dot ?? '#64748b'
+        };
+      })
+      .filter((stage) => stage.statusIds.length > 0);
+    const itemTypeIds = Array.from(
+      new Set(
+        funnelPerspectives
+          .flatMap((perspective) => perspective.allowedTaskTypes ?? [])
+          .filter((typeId) => input.itemTypes.some((itemType) => itemType.slug === typeId && itemType.isActive))
+      )
+    );
+    const defaultItemTypeId = itemTypeIds[0] ?? input.itemTypes.find((itemType) => itemType.isActive)?.slug ?? null;
+    const initialStatusId =
+      leadState && statusById.has(leadState)
+        ? leadState
+        : funnel[0]?.statusIds[0] ?? null;
+
+    if (!defaultItemTypeId || !initialStatusId || funnel.length === 0) {
+      return { schemaVersion: 1 as const };
+    }
+
+    const wonStatusIds = doneState && statusById.has(doneState) ? [doneState] : [];
+    const lostStatusIds = lostState && statusById.has(lostState) ? [lostState] : [];
+    const terminalStatusIds = Array.from(
+      new Set([
+        ...input.statuses.filter((status) => status.isTerminal).map((status) => status.id),
+        ...wonStatusIds,
+        ...lostStatusIds
+      ])
+    );
+    const terminalStatusSet = new Set(terminalStatusIds);
+    const activeStatusIds = Array.from(
+      new Set(
+        funnel
+          .flatMap((stage) => stage.statusIds)
+          .filter((statusId) => !terminalStatusSet.has(statusId))
+      )
+    );
+    const proposalRequiredStatusIds = Array.from(
+      new Set(
+        funnel
+          .slice(1)
+          .flatMap((stage) => stage.statusIds)
+          .filter((statusId) => !terminalStatusSet.has(statusId))
+      )
+    );
+    const prospectingPerspectives = input.perspectives.filter((perspective) => perspective.analyticsRole === 'prospecting');
+    const prospectingStatusIds = Array.from(
+      new Set(prospectingPerspectives.flatMap((perspective) => perspective.visibleStatusIds ?? perspective.statuses.map((status) => status.id)))
+    ).filter((statusId) => statusById.has(statusId));
+    const prospectingItemTypeIds = Array.from(
+      new Set(prospectingPerspectives.flatMap((perspective) => perspective.allowedTaskTypes ?? []))
+    ).filter((typeId) => input.itemTypes.some((itemType) => itemType.slug === typeId && itemType.isActive));
+
+    return {
+      schemaVersion: 1 as const,
+      leads: {
+        schemaVersion: 1 as const,
+        itemTypeIds,
+        defaultItemTypeId,
+        initialStatusId,
+        funnel,
+        activeStatusIds,
+        wonStatusIds,
+        lostStatusIds,
+        terminalStatusIds,
+        proposalRequiredStatusIds,
+        prospecting: {
+          itemTypeIds: prospectingItemTypeIds,
+          statusIds: prospectingStatusIds,
+          initialStatusId: prospectingStatusIds[0] ?? null
+        }
+      }
+    };
   }
 }

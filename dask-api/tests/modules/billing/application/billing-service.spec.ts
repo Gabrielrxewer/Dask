@@ -492,7 +492,8 @@ describe('BillingService', () => {
         current_period_start: Math.floor(Date.now() / 1000),
         current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400,
         cancel_at_period_end: false,
-        metadata: { userId: 'user-1', planCode: 'PERSONAL' }
+        metadata: { userId: 'user-1', planCode: 'PERSONAL' },
+        items: { data: [{ price: { unit_amount: 2900 } }] }
       };
 
       const session = {

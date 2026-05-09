@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api";
 import type {
+  AiCapabilities,
   AiAgentSummary,
   AiObservability,
   AiRunSummary,
@@ -22,6 +23,7 @@ import type {
   AutomationWorkflowStatus,
   AutomationWorkflowVersion,
   AutomationWorkflowVersionStatus,
+  AutomationCapabilities,
   CommunicationConversationDetail,
   CommunicationConversationSummary,
   CommunicationMessageSummary,
@@ -57,6 +59,7 @@ import type {
   WorkItemFieldBindingInput,
   WorkspaceAutomation,
   WorkspaceDocument,
+  WorkspaceDocumentFolder,
   WorkspaceDocumentMetadata,
   WorkItemLinkedDocument,
   WhatsAppConsent,
@@ -110,6 +113,7 @@ interface WorkspaceContextValue {
   createCustomField: (input: CreateCustomFieldInput) => Promise<void>;
   updateCustomField: (fieldId: string, input: UpdateCustomFieldInput) => Promise<void>;
   deleteCustomField: (fieldId: string) => Promise<void>;
+  getAutomationCapabilities: () => Promise<AutomationCapabilities>;
   listAutomationWorkflows: (options?: { status?: AutomationWorkflowStatus; limit?: number }) => Promise<{ items: AutomationWorkflow[] }>;
   createAutomationWorkflow: (input: CreateAutomationWorkflowInput) => Promise<AutomationWorkflow>;
   getAutomationWorkflow: (workflowId: string) => Promise<AutomationWorkflow>;
@@ -185,6 +189,7 @@ interface WorkspaceContextValue {
     input: { eventType: "delivered" | "read" | "failed" | "replied"; messageText?: string }
   ) => Promise<AutomationSideEffectSummary>;
   listAutomationViews: () => Promise<AutomationView[]>;
+  getAiCapabilities: () => Promise<AiCapabilities>;
   listAiAgents: () => Promise<AiAgentSummary[]>;
   listAiRuns: (input?: { itemId?: string; limit?: number }) => Promise<AiRunSummary[]>;
   getAiObservability: () => Promise<AiObservability>;
@@ -206,6 +211,21 @@ interface WorkspaceContextValue {
     input: RunDocumentationAssistantInput
   ) => Promise<RunDocumentationAssistantResult>;
   listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+  listWorkspaceDocumentFolders: () => Promise<WorkspaceDocumentFolder[]>;
+  createWorkspaceDocumentFolder: (input: {
+    name: string;
+    parentId?: string | null;
+    position?: number;
+  }) => Promise<WorkspaceDocumentFolder>;
+  updateWorkspaceDocumentFolder: (
+    folderId: string,
+    input: {
+      name?: string;
+      parentId?: string | null;
+      position?: number;
+    }
+  ) => Promise<WorkspaceDocumentFolder>;
+  deleteWorkspaceDocumentFolder: (folderId: string) => Promise<void>;
   listCustomers: (input?: { search?: string; status?: CustomerStatus }) => Promise<Customer[]>;
   createCustomer: (input: CreateCustomerInput) => Promise<Customer>;
   updateCustomer: (customerId: string, input: Partial<CreateCustomerInput>) => Promise<Customer>;
@@ -892,6 +912,20 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     return workspaceService.listAutomationViews(workspaceSlug);
   }, [workspaceSlug]);
 
+  const getAutomationCapabilities = useCallback(async (): Promise<AutomationCapabilities> => {
+    if (!workspaceSlug) {
+      throw new Error("No workspace");
+    }
+    return workspaceService.getAutomationCapabilities(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const getAiCapabilities = useCallback(async (): Promise<AiCapabilities> => {
+    if (!workspaceSlug) {
+      throw new Error("No workspace");
+    }
+    return workspaceService.getAiCapabilities(workspaceSlug);
+  }, [workspaceSlug]);
+
   const listAiAgents = useCallback(async (): Promise<AiAgentSummary[]> => {
     if (!workspaceSlug) return [];
     return workspaceService.listAiAgents(workspaceSlug);
@@ -985,6 +1019,54 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
     return workspaceService.listWorkspaceDocuments(workspaceSlug);
   }, [workspaceSlug]);
+
+  const listWorkspaceDocumentFolders = useCallback(async (): Promise<WorkspaceDocumentFolder[]> => {
+    if (!workspaceSlug) {
+      return [];
+    }
+    return workspaceService.listWorkspaceDocumentFolders(workspaceSlug);
+  }, [workspaceSlug]);
+
+  const createWorkspaceDocumentFolder = useCallback(
+    async (input: {
+      name: string;
+      parentId?: string | null;
+      position?: number;
+    }): Promise<WorkspaceDocumentFolder> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.createWorkspaceDocumentFolder(workspaceSlug, input);
+    },
+    [workspaceSlug]
+  );
+
+  const updateWorkspaceDocumentFolder = useCallback(
+    async (
+      folderId: string,
+      input: {
+        name?: string;
+        parentId?: string | null;
+        position?: number;
+      }
+    ): Promise<WorkspaceDocumentFolder> => {
+      if (!workspaceSlug) {
+        throw new Error("No workspace");
+      }
+      return workspaceService.updateWorkspaceDocumentFolder(workspaceSlug, folderId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const deleteWorkspaceDocumentFolder = useCallback(
+    async (folderId: string): Promise<void> => {
+      if (!workspaceSlug) {
+        return;
+      }
+      await workspaceService.deleteWorkspaceDocumentFolder(workspaceSlug, folderId);
+    },
+    [workspaceSlug]
+  );
 
   const listCustomers = useCallback(
     async (input?: { search?: string; status?: CustomerStatus }): Promise<Customer[]> => {
@@ -1180,6 +1262,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       upsertWhatsAppConsent,
       simulateWhatsAppMockEvent,
       listAutomationViews,
+      getAutomationCapabilities,
+      getAiCapabilities,
       listAiAgents,
       listAiRuns,
       getAiObservability,
@@ -1189,6 +1273,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       runAiRiskAnalysis,
       runDocumentationAssistant,
       listWorkspaceDocuments,
+      listWorkspaceDocumentFolders,
+      createWorkspaceDocumentFolder,
+      updateWorkspaceDocumentFolder,
+      deleteWorkspaceDocumentFolder,
       listCustomers,
       createCustomer,
       updateCustomer,
@@ -1275,6 +1363,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       upsertWhatsAppConsent,
       simulateWhatsAppMockEvent,
       listAutomationViews,
+      getAutomationCapabilities,
+      getAiCapabilities,
       listAiAgents,
       listAiRuns,
       getAiObservability,
@@ -1284,6 +1374,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       runAiRiskAnalysis,
       runDocumentationAssistant,
       listWorkspaceDocuments,
+      listWorkspaceDocumentFolders,
+      createWorkspaceDocumentFolder,
+      updateWorkspaceDocumentFolder,
+      deleteWorkspaceDocumentFolder,
       listCustomers,
       createCustomer,
       updateCustomer,

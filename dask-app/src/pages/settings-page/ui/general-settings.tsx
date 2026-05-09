@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import { Link, useParams } from "react-router-dom";
-import { factoryBoardConfig, mergeCardFieldDefinitions } from "@/entities/task";
+import { mergeCardFieldDefinitions } from "@/entities/task";
 import { billingService, buildOnboardingChecklist, getNextOnboardingAction } from "@/modules/billing";
 import type { ConnectAccountStatus } from "@/modules/billing";
 import { workspaceService } from "@/modules/workspace/api";
@@ -38,43 +37,6 @@ const emptyCompanyProfile: CompanyProfileForm = {
   noticePeriod: ""
 };
 
-const FALLBACK_TEMPLATES: WorkspaceTemplateOption[] = [
-  {
-    key: "software_delivery",
-    name: "Entrega de software",
-    description: "Backlog, execucao, revisao e pronto."
-  },
-  {
-    key: "product_discovery",
-    name: "Descoberta de produto",
-    description: "Oportunidades, hipoteses e experimentos."
-  },
-  {
-    key: "operations_kanban",
-    name: "Operacoes",
-    description: "Fila, triagem, execucao e resolucao."
-  },
-  {
-    key: "commercial_crm",
-    name: "Comercial / CRM Operacional",
-    description: "Entrada comercial, proposta, contrato, cobranca e ativacao."
-  }
-];
-
-const TEMPLATE_PREVIEWS: Record<WorkspaceTemplateOption["key"], string[]> = {
-  software_delivery: ["Backlog", "Execucao", "Review", "Done"],
-  product_discovery: ["Ideias", "Hipoteses", "Experimentos", "Validados"],
-  operations_kanban: ["Fila", "Triagem", "Execucao", "Resolvido"],
-  commercial_crm: ["Novo lead", "Proposta", "Contrato", "Pago"]
-};
-
-const TEMPLATE_ACCENTS: Record<WorkspaceTemplateOption["key"], string> = {
-  software_delivery: "var(--brand-blue)",
-  product_discovery: "var(--brand-indigo)",
-  operations_kanban: "var(--decorative-cyan)",
-  commercial_crm: "var(--brand-cyan-strong)"
-};
-
 function resolvePerspectives(rawBoardConfig: unknown): BoardPerspective[] {
   const fromPerspectives =
     rawBoardConfig &&
@@ -94,17 +56,13 @@ function resolvePerspectives(rawBoardConfig: unknown): BoardPerspective[] {
       ? ((rawBoardConfig as { views: BoardPerspective[] }).views ?? [])
       : [];
 
-  return fromViews.length > 0 ? fromViews : [{ id: "dev", label: "DEV", caption: "Fluxo principal" }];
+  return fromViews.length > 0 ? fromViews : [];
 }
 
 function statusLabel(count: number, minimum: number): "empty" | "partial" | "done" {
   if (count === 0) return "empty";
   if (count < minimum) return "partial";
   return "done";
-}
-
-function getTemplatePreview(templateKey: WorkspaceTemplateOption["key"]): string[] {
-  return TEMPLATE_PREVIEWS[templateKey] ?? ["Inicio", "Em andamento", "Finalizado"];
 }
 
 function readString(value: unknown): string {
@@ -144,7 +102,7 @@ export function GeneralSettings() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot, updatePreferences, resetWorkspaceTemplate } = useWorkspace();
   const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplateOption["key"]>("software_delivery");
+  const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplateOption["key"] | "">("");
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isResettingTemplate, setIsResettingTemplate] = useState(false);
   const [isCorporateWorkspace, setIsCorporateWorkspace] = useState(false);
@@ -171,17 +129,17 @@ export function GeneralSettings() {
     ref.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
   }
 
-  const rawBoardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const rawBoardConfig = snapshot?.boardConfig;
   const perspectives = useMemo(() => resolvePerspectives(rawBoardConfig), [rawBoardConfig]);
-  const statuses = Array.isArray(rawBoardConfig.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses;
-  const itemTypes = Array.isArray(rawBoardConfig.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes;
+  const statuses = Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : [];
+  const itemTypes = Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : [];
   const fields = mergeCardFieldDefinitions(
-    Array.isArray(rawBoardConfig.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : []
+    Array.isArray(rawBoardConfig?.fieldDefinitions) ? rawBoardConfig.fieldDefinitions : []
   );
   const tasksCount = snapshot?.tasks.length ?? 0;
-  const defaultMode = snapshot?.preferences.defaultBoardMode ?? perspectives[0]?.id ?? "dev";
+  const defaultMode = snapshot?.preferences.defaultBoardMode ?? perspectives[0]?.id ?? "";
   const dateFormat = snapshot?.preferences.dateFormat ?? "dd/mm/yyyy";
-  const availableTemplates = templates.length > 0 ? templates : FALLBACK_TEMPLATES;
+  const availableTemplates = templates;
   const missingCompanyProfileFields = getCompanyProfileMissingFields(companyProfile);
   const isCompanyProfileComplete = missingCompanyProfileFields.length === 0;
 
@@ -212,6 +170,12 @@ export function GeneralSettings() {
             options.some(option => option.key === current) ? current : options[0].key
           );
         }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setTemplates([]);
+        setSelectedTemplate("");
+        setError("Nao foi possivel carregar o catalogo de templates.");
       })
       .finally(() => {
         if (mounted) setIsLoadingTemplates(false);
@@ -500,13 +464,7 @@ export function GeneralSettings() {
               <article
                 key={template.key}
                 className={`general-settings__template-card${selectedTemplate === template.key ? " is-selected" : ""}`}
-                style={{ "--template-accent": TEMPLATE_ACCENTS[template.key] } as CSSProperties}
               >
-                <div className="general-settings__template-preview">
-                  {getTemplatePreview(template.key).map(label => (
-                    <span key={`${template.key}-${label}`}>{label}</span>
-                  ))}
-                </div>
                 <div>
                   <h3>{template.name}</h3>
                   <p>{template.description}</p>
@@ -521,6 +479,9 @@ export function GeneralSettings() {
                 </Button>
               </article>
             ))}
+            {!isLoadingTemplates && availableTemplates.length === 0 ? (
+              <p className="general-settings__empty-state">Catalogo de templates indisponivel.</p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -792,14 +753,6 @@ export function GeneralSettings() {
           onClose={() => setTemplateToConfirm(null)}
         >
           <>
-            <div
-              className="general-settings__modal-preview"
-              style={{ "--template-accent": TEMPLATE_ACCENTS[templateToConfirm.key] } as CSSProperties}
-            >
-              {getTemplatePreview(templateToConfirm.key).map(label => (
-                <span key={`modal-${templateToConfirm.key}-${label}`}>{label}</span>
-              ))}
-            </div>
             <div className="general-settings__modal-copy">
               <span>Trocar template</span>
               <h2 id="template-confirm-title">Usar {templateToConfirm.name}?</h2>

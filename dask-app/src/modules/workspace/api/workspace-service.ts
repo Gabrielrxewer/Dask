@@ -1,7 +1,7 @@
 import { apiClient } from "@/shared/api/http-client";
-import { isApiError } from "@/shared/api/http-client";
 import { CARD_FIELDS_SCHEMA_VERSION } from "@/entities/task";
 import type {
+  AiCapabilities,
   AiAgentSummary,
   AiObservability,
   AiRunSummary,
@@ -20,6 +20,7 @@ import type {
   AutomationWorkflowStatus,
   AutomationWorkflowVersion,
   AutomationWorkflowVersionStatus,
+  AutomationCapabilities,
   CommunicationConversationDetail,
   CommunicationConversationSummary,
   CommunicationMessageSummary,
@@ -47,6 +48,7 @@ import type {
   TaskScheduleInput,
   UpdateTaskInput,
   WorkspaceDocument,
+  WorkspaceDocumentFolder,
   WhatsAppConsent,
   Customer,
   CustomerStatus,
@@ -105,12 +107,6 @@ function makeWorkspaceKey(value: string): string {
 
 let workspaceCache: WorkspaceSummary[] = [];
 const snapshotByWorkspaceSlug = new Map<string, WorkspaceSnapshot>();
-const fallbackTemplates: WorkspaceTemplateOption[] = [
-  { key: "software_delivery", name: "Software Delivery", description: "Template padrao" },
-  { key: "product_discovery", name: "Product Discovery", description: "Template de descoberta" },
-  { key: "operations_kanban", name: "Operations Kanban", description: "Template operacional" },
-  { key: "commercial_crm", name: "Comercial / CRM Operacional", description: "Template comercial integrado ao board" }
-];
 
 async function listWorkspaces(): Promise<WorkspaceSummary[]> {
   const workspaces = await apiClient.get<ApiWorkspaceSummary[]>("/workspaces", {
@@ -181,18 +177,10 @@ export const workspaceService: WorkspaceService = {
   listWorkspaces,
 
   async listWorkspaceTemplates() {
-    try {
-      return await apiClient.get<WorkspaceTemplateOption[]>("/workspaces/templates-catalog", {
-        authMode: "required",
-        retryOnUnauthorized: true
-      });
-    } catch (error) {
-      if (isApiError(error) && (error.status === 404 || error.status === 405)) {
-        return fallbackTemplates;
-      }
-
-      throw error;
-    }
+    return apiClient.get<WorkspaceTemplateOption[]>("/workspaces/templates-catalog", {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
   },
 
   async listBoardTemplates(workspaceSlug: string): Promise<BoardTemplateSummary[]> {
@@ -236,53 +224,10 @@ export const workspaceService: WorkspaceService = {
   },
 
   async provisionWorkspace(input) {
-    try {
-      await apiClient.post("/workspaces/provision", input, {
-        authMode: "required",
-        retryOnUnauthorized: true
-      });
-    } catch (error) {
-      if (!isApiError(error) || (error.status !== 404 && error.status !== 405)) {
-        throw error;
-      }
-
-      let organizationId: string | undefined;
-      if (input.kind === "CORPORATE") {
-        const organization = await apiClient.post<{ id: string }>(
-          "/organizations",
-          {
-            name: input.organizationName ?? `${input.workspaceName} Organization`,
-            slug:
-              input.organizationSlug ??
-              input.workspaceName
-                .trim()
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/^-+|-+$/g, "")
-          },
-          {
-            authMode: "required",
-            retryOnUnauthorized: true
-          }
-        );
-        organizationId = organization.id;
-      }
-
-      await apiClient.post(
-        "/workspaces",
-        {
-          kind: input.kind,
-          organizationId,
-          name: input.workspaceName,
-          key: input.workspaceKey ?? makeWorkspaceKey(input.workspaceName),
-          templateKey: input.templateKey
-        },
-        {
-          authMode: "required",
-          retryOnUnauthorized: true
-        }
-      );
-    }
+    await apiClient.post("/workspaces/provision", input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
 
     const workspaces = await listWorkspaces();
     const created = workspaces.find((workspace) => workspace.name === input.workspaceName) ?? workspaces[0];
@@ -704,6 +649,14 @@ export const workspaceService: WorkspaceService = {
       retryOnUnauthorized: true
     });
     return fetchSnapshot(workspaceSlug);
+  },
+
+  async getAutomationCapabilities(workspaceSlug: string): Promise<AutomationCapabilities> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AutomationCapabilities>(`/automation/workspaces/${workspaceId}/capabilities`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
   },
 
   async listAutomationWorkflows(
@@ -1303,6 +1256,45 @@ export const workspaceService: WorkspaceService = {
     });
   },
 
+  async listWorkspaceDocumentFolders(workspaceSlug: string): Promise<WorkspaceDocumentFolder[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkspaceDocumentFolder[]>(`/workspaces/${workspaceId}/document-folders`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async createWorkspaceDocumentFolder(
+    workspaceSlug: string,
+    input: Parameters<WorkspaceService["createWorkspaceDocumentFolder"]>[1]
+  ): Promise<WorkspaceDocumentFolder> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkspaceDocumentFolder>(`/workspaces/${workspaceId}/document-folders`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async updateWorkspaceDocumentFolder(
+    workspaceSlug: string,
+    folderId: string,
+    input: Parameters<WorkspaceService["updateWorkspaceDocumentFolder"]>[2]
+  ): Promise<WorkspaceDocumentFolder> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.patch<WorkspaceDocumentFolder>(`/workspaces/${workspaceId}/document-folders/${folderId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async deleteWorkspaceDocumentFolder(workspaceSlug: string, folderId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/document-folders/${folderId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
   async listCustomers(
     workspaceSlug: string,
     input?: { search?: string; status?: CustomerStatus }
@@ -1413,6 +1405,14 @@ export const workspaceService: WorkspaceService = {
   async unlinkDocumentFromWorkItem(workspaceSlug: string, itemId: string, documentId: string): Promise<void> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.delete(`/workspaces/${workspaceId}/work-items/${itemId}/documents/${documentId}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async getAiCapabilities(workspaceSlug: string): Promise<AiCapabilities> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<AiCapabilities>(`/ai/workspaces/${workspaceId}/capabilities`, {
       authMode: "required",
       retryOnUnauthorized: true
     });

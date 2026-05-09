@@ -4,7 +4,6 @@ import {
   applyFieldDefinitionOverrides,
   type BoardConfig,
   buildBoardMetrics,
-  factoryBoardConfig,
   injectCatalogOptionsIntoBoardConfig,
   mergeCardFieldDefinitions,
   type TaskFieldOption
@@ -50,7 +49,11 @@ function mapCatalogItemsToFieldOptions(
     }));
 }
 
-function resolveBoardPerspectives(rawBoardConfig: BoardConfig): BoardConfig["perspectives"] {
+function resolveBoardPerspectives(rawBoardConfig: BoardConfig | null | undefined): BoardConfig["perspectives"] {
+  if (!rawBoardConfig) {
+    return [];
+  }
+
   const rawConfig = rawBoardConfig as BoardConfig & { views?: unknown };
 
   if (Array.isArray(rawConfig.perspectives)) {
@@ -71,27 +74,26 @@ export function useWorkspaceTaskPage(options: UseWorkspaceTaskPageOptions = {}) 
   const [catalogFieldOptions, setCatalogFieldOptions] = useState<TaskFieldOption[]>([]);
 
   const tasks = workspace.snapshot?.tasks ?? [];
-  const rawBoardConfig = workspace.snapshot?.boardConfig ?? factoryBoardConfig;
+  const rawBoardConfig = workspace.snapshot?.boardConfig;
   const boardConfigWithTypes = useMemo(
-    () => ({
-      ...factoryBoardConfig,
-      ...rawBoardConfig,
-      statuses: Array.isArray(rawBoardConfig.statuses) ? rawBoardConfig.statuses : factoryBoardConfig.statuses,
-      taskTypes: Array.isArray(rawBoardConfig.taskTypes) ? rawBoardConfig.taskTypes : factoryBoardConfig.taskTypes,
+    (): BoardConfig => ({
+      statuses: Array.isArray(rawBoardConfig?.statuses) ? rawBoardConfig.statuses : [],
+      taskTypes: Array.isArray(rawBoardConfig?.taskTypes) ? rawBoardConfig.taskTypes : [],
       fieldDefinitions: applyFieldCapabilityOverrides(
         applyFieldDefinitionOverrides(
           mergeCardFieldDefinitions(
-            Array.isArray(rawBoardConfig.fieldDefinitions)
+            Array.isArray(rawBoardConfig?.fieldDefinitions)
               ? rawBoardConfig.fieldDefinitions
-              : factoryBoardConfig.fieldDefinitions
+              : []
           ),
           workspace.snapshot?.preferences.settings
         ),
         workspace.snapshot?.preferences.settings
       ),
-      fieldBindings: Array.isArray(rawBoardConfig.fieldBindings) ? rawBoardConfig.fieldBindings : factoryBoardConfig.fieldBindings,
-      cardLayout: rawBoardConfig.cardLayout ?? factoryBoardConfig.cardLayout,
-      perspectives: resolveBoardPerspectives(rawBoardConfig)
+      fieldBindings: Array.isArray(rawBoardConfig?.fieldBindings) ? rawBoardConfig.fieldBindings : [],
+      cardLayout: rawBoardConfig?.cardLayout ?? { visibleFieldIds: [] },
+      perspectives: resolveBoardPerspectives(rawBoardConfig),
+      operationalMetadata: rawBoardConfig?.operationalMetadata
     }),
     [rawBoardConfig, workspace.snapshot?.preferences.settings]
   );

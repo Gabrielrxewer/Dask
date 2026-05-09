@@ -9,7 +9,8 @@ export function LeadsTopNavigation({
   onChangeTab,
   onRefresh,
   onNewCustomer,
-  onNewLead
+  onNewLead,
+  canCreateLead = true
 }: {
   tab: LeadsTab;
   isAuxLoading: boolean;
@@ -18,6 +19,7 @@ export function LeadsTopNavigation({
   onRefresh: () => void;
   onNewCustomer: () => void;
   onNewLead: () => void;
+  canCreateLead?: boolean;
 }) {
   return (
     <section className="leads-top-nav" aria-label="Navegação comercial">
@@ -30,7 +32,7 @@ export function LeadsTopNavigation({
           <>
             <WorkspaceActionButton className="leads-top-nav__btn" label="Atualizar" icon={<IconRefresh />} onClick={onRefresh} disabled={isAuxLoading || isSubmitting} />
             <WorkspaceActionButton className="leads-top-nav__btn leads-top-nav__btn--customer" label="Novo cliente" icon={<IconUsers />} onClick={onNewCustomer} />
-            <WorkspaceActionButton className="leads-top-nav__btn leads-top-nav__btn--lead" tone="accent" label="Novo lead" icon={<IconTrendUp />} onClick={onNewLead} />
+            <WorkspaceActionButton className="leads-top-nav__btn leads-top-nav__btn--lead" tone="accent" label="Novo lead" icon={<IconTrendUp />} onClick={onNewLead} disabled={!canCreateLead || isSubmitting} />
           </>
         }
       />

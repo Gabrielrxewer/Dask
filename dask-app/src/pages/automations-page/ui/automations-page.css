@@ -54,13 +54,6 @@
   min-width: 0;
 }
 
-.ast__actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 /* ── Primary actions pushed to end of sub-bar ──────────────────────────────── */
 
 .ast__sub-actions {
@@ -112,6 +105,41 @@
   font-weight: 800;
 }
 
+.ast__inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ast__config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: var(--radius-xs, 8px);
+  background: var(--panel, var(--neutral-white));
+}
+
+.ast__config-group h3 {
+  margin: 0;
+  color: var(--text-strong, var(--foreground));
+  font-size: var(--font-size-sm, 0.9rem);
+}
+
+.ast__inspector-select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: var(--radius-xs, 8px);
+  background: var(--panel, var(--neutral-white));
+  color: var(--text, var(--text-primary));
+  font: inherit;
+  font-size: var(--font-size-xs, 0.8rem);
+  padding: 0 10px;
+}
+
 .ast__inspector-textarea {
   width: 100%;
   min-height: 150px;
@@ -124,6 +152,49 @@
   font-size: var(--font-size-xs, 0.8rem);
   line-height: 1.45;
   padding: 10px;
+}
+
+.ast__inspector-textarea--compact {
+  min-height: 92px;
+}
+
+.ast__checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text, var(--text-primary));
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 800;
+}
+
+.ast__checkbox-label input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent, var(--brand-blue));
+}
+
+.ast__advanced-config {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ast__advanced-config summary {
+  cursor: pointer;
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 800;
+}
+
+.ast__advanced-config[open] {
+  display: flex;
+}
+
+.ast__inspector-muted {
+  margin: 0;
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-xs, 0.8rem);
+  line-height: 1.45;
 }
 
 /* ── Panel (non-flows tabs) ────────────────────────────────────────────────── */
@@ -277,6 +348,90 @@
 .studio-layout__canvas .flow-canvas-ui {
   height: 100%;
   min-height: 0;
+}
+
+.ast__preview {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line, var(--border-blue-muted));
+  border-radius: var(--radius-xs, 8px);
+  background: var(--panel, var(--neutral-white));
+}
+
+.ast__preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ast__preview-head h3 {
+  margin: 0;
+  color: var(--text-strong, var(--foreground));
+  font-size: var(--font-size-sm, 0.9rem);
+  font-weight: 900;
+}
+
+.ast__preview-list,
+.ast__preview-steps {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ast__preview-list li {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-xs, 8px);
+  background: color-mix(in oklab, var(--warning, #f59e0b) 10%, var(--panel, var(--neutral-white)));
+  color: var(--text, var(--text-primary));
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.ast__preview-list--danger li {
+  background: color-mix(in oklab, var(--danger, #dc2626) 10%, var(--panel, var(--neutral-white)));
+}
+
+.ast__preview-steps li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.ast__preview-steps li > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--panel-muted, var(--surface-3));
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-2xs, 0.72rem);
+  font-weight: 900;
+}
+
+.ast__preview-steps strong {
+  display: block;
+  min-width: 0;
+  color: var(--text-strong, var(--foreground));
+  font-size: var(--font-size-xs, 0.8rem);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.ast__preview-steps small {
+  display: block;
+  min-width: 0;
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-2xs, 0.72rem);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 720px) {

@@ -5,6 +5,7 @@ export { buildOnboardingChecklist, getNextOnboardingAction } from "./model/conne
 export type {
   BillingStatus,
   BillingState,
+  BillingPlan,
   ConnectAccountStatus,
   ConnectCatalogBillingType,
   ConnectCatalogItem,
@@ -16,4 +17,3 @@ export type {
   SubscriptionPlan,
   SubscriptionStatus
 } from "./model/types";
-export { PLAN_DISPLAY } from "./model/types";

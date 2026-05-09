@@ -81,7 +81,7 @@ export function resolvePerspectives(rawBoardConfig: unknown, baseStatuses: Persp
       return cfg.views as BoardPerspective[];
     }
   }
-  return [{ id: "dev", label: "DEV", statuses: baseStatuses, statusSource: { kind: "workflow_state" } }];
+  return [];
 }
 
 export function serializePerspective(perspective: BoardPerspective, position: number) {

@@ -8,6 +8,7 @@ import {
 } from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { AIAgentService } from '@/modules/ai/application/ai-agent-service';
+import { getAICapabilities } from '@/modules/ai/application/ai-capabilities';
 import type { ImprovementRequestService } from '@/modules/ai/application/improvement-request-service';
 import {
   aiWorkspaceParamsDto,
@@ -34,6 +35,13 @@ export const buildAiRoutes = (deps: {
   const requireAiModule = requireWorkspaceModule('ai');
 
   router.use('/ai/workspaces/:workspaceId', resolveWorkspaceScope, requireAiUse, requireAiModule);
+
+  router.get(
+    '/ai/workspaces/:workspaceId/capabilities',
+    asyncHandler(async (_req, res) => {
+      res.status(200).json(getAICapabilities());
+    })
+  );
 
   router.post(
     '/items/:itemId/ai/improve-description',

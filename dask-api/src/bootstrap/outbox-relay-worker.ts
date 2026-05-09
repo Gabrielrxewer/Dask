@@ -1,13 +1,33 @@
+import Stripe from 'stripe';
 import { AuditSeverity, type Prisma, type PrismaClient } from '@prisma/client';
 import { env } from '@/core/config/env';
 import type { DomainEvent } from '@/core/events/domain-event';
 import type { OutboxPendingEvent } from '@/core/events/outbox-repository';
+import { EventPublisher } from '@/core/events/event-publisher';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
 import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
+import { MockEmailService } from '@/infra/email/mock-email-service';
+import { ResendEmailService } from '@/infra/email/resend-email-service';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
+import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 import { AiEventDispatcher } from '@/modules/ai/application/ai-event-dispatcher';
+import { AutomationAIService } from '@/modules/automation/application/automation-ai-service';
+import { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
+import { AutomationBusinessActionService } from '@/modules/automation/application/automation-business-action-service';
+import { AutomationEventDispatcher } from '@/modules/automation/application/automation-event-dispatcher';
+import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
+import { AutomationSideEffectService } from '@/modules/automation/application/automation-side-effect-service';
+import { AutomationWorkflowRunnerService } from '@/modules/automation/application/automation-workflow-runner-service';
+import { AutomationWorkflowExecutor } from '@/modules/automation/runtime/automation-workflow-executor';
+import { BillingService } from '@/modules/billing/application/billing-service';
+import { PrismaBillingRepository } from '@/modules/billing/repositories/prisma-billing-repository';
 import { SearchEventDispatcher } from '@/modules/search/application/search-event-dispatcher';
+import { WorkspaceConfigService } from '@/modules/workspace-platform/application/workspace-config-service';
+import { WorkspaceCustomersService } from '@/modules/workspace-platform/application/workspace-customers-service';
+import { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
+import { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
+import { RoleAuthorizationService } from '@/modules/identity/application/role-authorization-service';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -85,15 +105,129 @@ export type RelayWorkerHandle = {
 
 export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle {
   const outboxRepository = new PrismaOutboxRepository(prisma);
+  const eventPublisher = new EventPublisher(outboxRepository, prisma);
   const jobQueue = new BullMqJobQueue();
   const aiDispatcher = new AiEventDispatcher(jobQueue);
   const searchDispatcher = new SearchEventDispatcher(jobQueue);
+  const { aiProvider } = buildAIProviderStack();
+  const emailService = env.RESEND_API_KEY ? new ResendEmailService() : new MockEmailService();
+  const workspaceConfigService = new WorkspaceConfigService(prisma);
+  const roleAuthorizationService = new RoleAuthorizationService(prisma);
+  const workspaceDocumentsService = new WorkspaceDocumentsService(prisma, workspaceConfigService, eventPublisher, emailService);
+  const workspaceWorkItemsService = new WorkspaceWorkItemsService(prisma, workspaceConfigService, eventPublisher);
+  const workspaceCustomersService = new WorkspaceCustomersService(prisma, workspaceConfigService, eventPublisher);
+  const stripeClient = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
+  const billingService = stripeClient
+    ? new BillingService({
+        repo: new PrismaBillingRepository(prisma),
+        stripe: stripeClient,
+        appPublicUrl: env.APP_PUBLIC_URL,
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        emailService,
+        eventPublisher,
+        priceIds: {
+          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
+          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+        },
+        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
+      })
+    : null;
+  const automationRunEventService = new AutomationRunEventService(prisma);
+  const automationApprovalRequestService = new AutomationApprovalRequestService(prisma, {
+    eventService: automationRunEventService
+  });
+  const automationSideEffectService = new AutomationSideEffectService(prisma, {
+    eventService: automationRunEventService
+  });
+  const automationBusinessActionService = new AutomationBusinessActionService({
+    prisma,
+    workItemsService: workspaceWorkItemsService,
+    documentsService: workspaceDocumentsService,
+    customersService: workspaceCustomersService,
+    billingService,
+    authorizationService: roleAuthorizationService
+  });
+  const automationWorkflowExecutor = new AutomationWorkflowExecutor(prisma, {
+    eventService: automationRunEventService,
+    sideEffectService: automationSideEffectService,
+    approvalRequestService: automationApprovalRequestService,
+    aiService: new AutomationAIService(prisma, aiProvider),
+    businessActionService: automationBusinessActionService
+  });
+  const automationDispatcher = new AutomationEventDispatcher(
+    prisma,
+    new AutomationWorkflowRunnerService(prisma, {
+      eventService: automationRunEventService,
+      workflowExecutor: automationWorkflowExecutor
+    })
+  );
   let running = false;
   let closing = false;
   let lastMetricsLogAt = 0;
 
+  const scheduleOutboxFailure = async (input: {
+    row: OutboxPendingEvent;
+    event: DomainEvent;
+    error: unknown;
+    db?: Prisma.TransactionClient;
+  }): Promise<void> => {
+    const writeFailure = async (db: Prisma.TransactionClient): Promise<void> => {
+      const payload = input.event.payload as Record<string, unknown>;
+      const nextRetries = input.row.retries + 1;
+      const errorMessage = sanitizeErrorMessage(input.error);
+      void recordTelemetryEvent({
+        category: 'domain',
+        eventName: `${input.event.name}.failed`,
+        success: false,
+        userId: extractActorId(payload),
+        workspaceId: extractWorkspaceId(payload),
+        reason: errorMessage,
+        metadata: {
+          aggregateType: input.event.aggregateType,
+          aggregateId: input.event.aggregateId,
+          retries: nextRetries
+        }
+      });
+      if (nextRetries >= env.OUTBOX_RELAY_MAX_RETRIES) {
+        await outboxRepository.markDeadLetter({
+          outboxId: input.row.id,
+          retries: nextRetries,
+          errorMessage,
+          db
+        });
+      } else {
+        const nextAttemptAt = new Date(Date.now() + toRetryDelayMs(nextRetries));
+        await outboxRepository.scheduleRetry({
+          outboxId: input.row.id,
+          retries: nextRetries,
+          nextAttemptAt,
+          errorMessage,
+          db
+        });
+      }
+
+      relayLogger.error(
+        {
+          event: 'outbox.relay.failed',
+          outboxId: input.row.id,
+          eventName: input.row.eventName,
+          retries: nextRetries,
+          err: input.error
+        },
+        'Outbox relay failed'
+      );
+    };
+
+    if (input.db) {
+      await writeFailure(input.db);
+      return;
+    }
+
+    await prisma.$transaction(writeFailure);
+  };
+
   const processNextEvent = async (): Promise<boolean> => {
-    return prisma.$transaction(async (db) => {
+    const claimed = await prisma.$transaction(async (db): Promise<{ row: OutboxPendingEvent; event: DomainEvent } | null | false> => {
       const row = await outboxRepository.claimNextPending(env.OUTBOX_RELAY_MAX_RETRIES, db);
       if (!row) {
         return false;
@@ -125,55 +259,34 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
         await recordAuditEvent(db, event);
         await aiDispatcher.dispatch(event, row.id);
         await searchDispatcher.dispatch(event, row.id);
-        await outboxRepository.markProcessed(row.id, db);
+        return { row, event };
       } catch (error) {
-        const nextRetries = row.retries + 1;
-        const errorMessage = sanitizeErrorMessage(error);
-        void recordTelemetryEvent({
-          category: 'domain',
-          eventName: `${event.name}.failed`,
-          success: false,
-          userId: extractActorId(payload),
-          workspaceId: extractWorkspaceId(payload),
-          reason: errorMessage,
-          metadata: {
-            aggregateType: event.aggregateType,
-            aggregateId: event.aggregateId,
-            retries: nextRetries
-          }
-        });
-        if (nextRetries >= env.OUTBOX_RELAY_MAX_RETRIES) {
-          await outboxRepository.markDeadLetter({
-            outboxId: row.id,
-            retries: nextRetries,
-            errorMessage,
-            db
-          });
-        } else {
-          const nextAttemptAt = new Date(Date.now() + toRetryDelayMs(nextRetries));
-          await outboxRepository.scheduleRetry({
-            outboxId: row.id,
-            retries: nextRetries,
-            nextAttemptAt,
-            errorMessage,
-            db
-          });
-        }
-
-        relayLogger.error(
-          {
-            event: 'outbox.relay.failed',
-            outboxId: row.id,
-            eventName: row.eventName,
-            retries: nextRetries,
-            err: error
-          },
-          'Outbox relay failed'
-        );
+        await scheduleOutboxFailure({ row, event, error, db });
       }
 
-      return true;
+      return null;
     });
+
+    if (claimed && typeof claimed === 'object') {
+      try {
+        await automationDispatcher.dispatch(claimed.event);
+        await outboxRepository.markProcessed(claimed.row.id);
+      } catch (error) {
+        await scheduleOutboxFailure({ row: claimed.row, event: claimed.event, error });
+        relayLogger.error(
+          {
+            event: 'outbox.automation_dispatch.failed',
+            eventName: claimed.event.name,
+            aggregateType: claimed.event.aggregateType,
+            aggregateId: claimed.event.aggregateId,
+            err: error
+          },
+          'Automation event dispatch failed'
+        );
+      }
+    }
+
+    return claimed !== false;
   };
 
   const tick = async (): Promise<void> => {

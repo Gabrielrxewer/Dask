@@ -14,7 +14,8 @@ import {
   listConnectCatalogItemsQueryDto,
   listConnectPaymentOrdersQueryDto,
   requestConnectPaymentCapabilityDto,
-  syncConnectPaymentOrderQueryDto
+  syncConnectPaymentOrderQueryDto,
+  updateConnectCatalogItemDto
 } from './dto';
 
 interface BillingRouteDeps {
@@ -23,6 +24,14 @@ interface BillingRouteDeps {
 
 export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router {
   const router = Router();
+
+  router.get(
+    '/billing/plans',
+    asyncHandler(async (_req: Request, res: Response) => {
+      const items = await billingService.listBillingPlans();
+      res.status(200).json({ items });
+    })
+  );
 
   router.post(
     '/billing/checkout-session',
@@ -150,6 +159,26 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
         params.data.workspaceId,
         req.auth!.userId,
         params.data.itemId
+      );
+      res.status(200).json(item);
+    })
+  );
+
+  router.patch(
+    '/billing/connect/workspaces/:workspaceId/catalog-items/:itemId',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectCatalogItemParamsDto.safeParse(req.params);
+      const body = updateConnectCatalogItemDto.safeParse(req.body ?? {});
+      if (!params.success || !body.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const item = await billingService.updateConnectCatalogItem(
+        params.data.workspaceId,
+        req.auth!.userId,
+        params.data.itemId,
+        body.data
       );
       res.status(200).json(item);
     })

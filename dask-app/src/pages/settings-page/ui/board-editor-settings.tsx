@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { factoryBoardConfig } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import type { ApiBoardColumn, ApiWorkflowState, BoardTemplateSummary } from "@/modules/workspace/model";
 import { BoardColumnsSection } from "./board-columns-section";
@@ -30,8 +29,8 @@ export function BoardEditorSettings() {
     createBoardTemplate
   } = useWorkspace();
 
-  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
-  const baseStatuses = boardConfig.statuses;
+  const boardConfig = snapshot?.boardConfig;
+  const baseStatuses = boardConfig?.statuses ?? [];
 
   const [columns, setColumns] = useState<ApiBoardColumn[]>([]);
   const [workflowStates, setWorkflowStates] = useState<ApiWorkflowState[]>([]);
@@ -54,7 +53,7 @@ export function BoardEditorSettings() {
     [draftPerspectives, serverPerspectives]
   );
 
-  const [activePerspectiveId, setActivePerspectiveId] = useState<string>(() => serverPerspectives[0]?.id ?? "dev");
+  const [activePerspectiveId, setActivePerspectiveId] = useState<string>(() => serverPerspectives[0]?.id ?? "");
   const [creatingPerspective, setCreatingPerspective] = useState(false);
   const [newPerspectiveName, setNewPerspectiveName] = useState("");
   const [newPerspectiveTemplateKey, setNewPerspectiveTemplateKey] = useState("");
@@ -124,6 +123,17 @@ export function BoardEditorSettings() {
     const shownIds = new Set(columnsToShow.map((column) => column.id));
     return activeColumns.filter((column) => !shownIds.has(column.id));
   }, [activeColumns, columnsToShow]);
+
+  useEffect(() => {
+    if (displayPerspectives.length === 0) {
+      setActivePerspectiveId("");
+      return;
+    }
+
+    if (!displayPerspectives.some((perspective) => perspective.id === activePerspectiveId)) {
+      setActivePerspectiveId(displayPerspectives[0].id);
+    }
+  }, [activePerspectiveId, displayPerspectives]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -255,7 +265,7 @@ export function BoardEditorSettings() {
 
     const nextPerspectives = displayPerspectives.filter((perspective) => perspective.id !== perspectiveId);
     if (activePerspectiveId === perspectiveId) {
-      setActivePerspectiveId(nextPerspectives[0]?.id ?? "dev");
+      setActivePerspectiveId(nextPerspectives[0]?.id ?? "");
     }
     setDraftPerspectives(nextPerspectives);
   };

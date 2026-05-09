@@ -1,5 +1,5 @@
 import { interpolateDocumentTemplate } from "@/modules/workspace/model/document-variables";
-import type { DocumentationAssistantMode, WorkspaceDocument } from "@/modules/workspace";
+import type { DocumentationAssistantMode, WorkspaceDocument, WorkspaceDocumentFolder } from "@/modules/workspace";
 import {
   buildRenderVariables,
   createMessage,
@@ -29,6 +29,48 @@ export function countDocumentWords(document: WorkspaceDocument | null): number {
   if (!document) return 0;
   const trimmed = document.content.trim();
   return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
+export function getDocumentFolderId(document: WorkspaceDocument): string | null {
+  const folderId = document.metadata?.folderId;
+  return typeof folderId === "string" && folderId.length > 0 ? folderId : null;
+}
+
+export function getFolderDescendantIds(
+  folders: WorkspaceDocumentFolder[],
+  folderId: string
+): string[] {
+  const childIds = folders.filter((folder) => folder.parentId === folderId).map((folder) => folder.id);
+  return childIds.flatMap((childId) => [childId, ...getFolderDescendantIds(folders, childId)]);
+}
+
+export function getFolderDocuments(
+  docs: WorkspaceDocument[],
+  folders: WorkspaceDocumentFolder[],
+  folderId: string
+): WorkspaceDocument[] {
+  const folderIds = new Set([folderId, ...getFolderDescendantIds(folders, folderId)]);
+  return docs.filter((doc) => {
+    const docFolderId = getDocumentFolderId(doc);
+    return docFolderId ? folderIds.has(docFolderId) : false;
+  });
+}
+
+export function buildFolderAssistantContent(input: {
+  folder: WorkspaceDocumentFolder;
+  docs: WorkspaceDocument[];
+}): string {
+  if (input.docs.length === 0) {
+    return `Pasta: ${input.folder.name}\n\nEsta pasta esta vazia.`;
+  }
+
+  return input.docs
+    .map((doc, index) => [
+      `## ${index + 1}. ${doc.title}`,
+      `Tipo: ${normalizeDocumentKind(doc.kind)}`,
+      doc.content || "(doc vazia)"
+    ].join("\n\n"))
+    .join("\n\n---\n\n");
 }
 
 export function renderWorkspaceDocumentMarkdown(

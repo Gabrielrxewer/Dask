@@ -10,6 +10,7 @@ import {
 interface DocumentationAssistantPanelProps {
   isAssistantOpen: boolean;
   activeDoc: WorkspaceDocument | null;
+  activeContextTitle: string;
   activeMessages: AssistantMessage[];
   isRunning: boolean;
   assistantTone: ComponentProps<typeof StatusBadge>["tone"];
@@ -38,6 +39,7 @@ interface DocumentationAssistantPanelProps {
 export function DocumentationAssistantPanel({
   isAssistantOpen,
   activeDoc,
+  activeContextTitle,
   activeMessages,
   isRunning,
   assistantTone,
@@ -77,7 +79,7 @@ export function DocumentationAssistantPanel({
         <header className="documentation-page__assistant-header">
           <div>
             <h2>Chat IA</h2>
-            <p>{activeDoc ? `ON: ${activeDoc.title}` : "Selecione uma doc"}</p>
+            <p>{activeContextTitle ? `ON: ${activeContextTitle}` : "Selecione uma doc ou pasta"}</p>
           </div>
           <div className="documentation-page__assistant-tools">
             <Button
@@ -158,7 +160,7 @@ export function DocumentationAssistantPanel({
               className="documentation-page__messages-empty-state"
               icon={<span className="documentation-page__messages-empty-avatar">AI</span>}
               title="Vamos comecar esta doc?"
-              description="Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu atualizo o conteudo da doc automaticamente."
+              description={activeDoc ? "Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu atualizo o conteudo da doc automaticamente." : "Digite livremente no chat para analisar os docs desta pasta."}
             />
           ) : (
             activeMessages.map((message) => (

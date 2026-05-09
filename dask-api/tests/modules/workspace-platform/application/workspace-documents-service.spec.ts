@@ -12,6 +12,9 @@ function makeService() {
     },
     workspaceDocument: {
       findMany: vi.fn().mockResolvedValue([])
+    },
+    item: {
+      findMany: vi.fn().mockResolvedValue([])
     }
   };
   const configService = {

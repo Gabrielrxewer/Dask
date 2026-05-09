@@ -20,6 +20,18 @@ export interface BillingStatus {
   message: string | null;
 }
 
+export interface BillingPlan {
+  code: SubscriptionPlan;
+  name: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  interval: string | null;
+  intervalCount: number | null;
+  features: string[];
+  isActive: boolean;
+}
+
 export interface ConnectAccountStatus {
   workspaceId: string;
   stripeAccountId: string;
@@ -125,16 +137,3 @@ export interface BillingState {
   status: BillingStatus | null;
   error: string | null;
 }
-
-export const PLAN_DISPLAY: Record<SubscriptionPlan, { name: string; price: string; description: string }> = {
-  PERSONAL: {
-    name: 'Pessoal',
-    price: 'R$ 19,90',
-    description: 'Para uso individual, organizar tarefas, projetos e fluxos pessoais.'
-  },
-  BUSINESS: {
-    name: 'Business',
-    price: 'R$ 99,00',
-    description: 'Para equipes e operacoes corporativas com recursos avancados.'
-  }
-};

@@ -63,6 +63,27 @@ export const workspaceDocumentParamsDto = z.object({
   documentId: z.string().uuid()
 });
 
+export const workspaceDocumentFolderParamsDto = z.object({
+  workspaceId: z.string().uuid(),
+  folderId: z.string().uuid()
+});
+
+export const createWorkspaceDocumentFolderDto = z.object({
+  name: z.string().trim().min(1).max(120),
+  parentId: z.string().uuid().nullable().optional(),
+  position: z.number().int().nonnegative().optional()
+});
+
+export const patchWorkspaceDocumentFolderDto = z
+  .object({
+    name: z.string().trim().min(1).max(120).optional(),
+    parentId: z.string().uuid().nullable().optional(),
+    position: z.number().int().nonnegative().optional()
+  })
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: 'At least one field is required'
+  });
+
 export const createWorkspaceDocumentDto = z.object({
   title: z.string().trim().min(1).max(180),
   content: z.string().max(200_000).optional(),

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DragEvent, MouseEvent } from "react";
 import {
-  applyFieldCapabilityOverrides,
-  factoryBoardConfig
+  applyFieldCapabilityOverrides
 } from "@/entities/task";
 import type {
+  BoardConfig,
   TaskCardSlotArea,
   TaskFieldCardArea,
   TaskFieldVisualPriority
@@ -52,6 +52,14 @@ import { useWorkItemEditorPreview } from "./use-work-item-editor-preview";
 import { useWorkItemEditorSelection } from "./use-work-item-editor-selection";
 import "./work-item-editor-settings.css";
 
+const emptyBoardConfig: BoardConfig = {
+  statuses: [],
+  taskTypes: [],
+  fieldDefinitions: [],
+  cardLayout: { visibleFieldIds: [] },
+  perspectives: []
+};
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkItemEditorSettings() {
@@ -71,16 +79,16 @@ export function WorkItemEditorSettings() {
     updatePreferences
   } = useWorkspace();
 
-  const boardConfig = snapshot?.boardConfig ?? factoryBoardConfig;
+  const boardConfig = snapshot?.boardConfig ?? emptyBoardConfig;
   const settings = (snapshot?.preferences.settings as Record<string, unknown> | undefined) ?? {};
 
   const allFields = useMemo(
     () =>
       applyFieldCapabilityOverrides(
-        buildMergedFieldDefinitions(Array.isArray(boardConfig.fieldDefinitions) ? boardConfig.fieldDefinitions : [], settings),
+        buildMergedFieldDefinitions(Array.isArray(boardConfig?.fieldDefinitions) ? boardConfig.fieldDefinitions : [], settings),
         settings
       ),
-    [boardConfig.fieldDefinitions, settings]
+    [boardConfig?.fieldDefinitions, settings]
   );
   const fieldCapabilitiesById = useMemo(() => readFieldCapabilitiesById(settings), [settings]);
   const allowedFieldIds = useMemo(() => new Set(allFields.map((f) => f.id)), [allFields]);

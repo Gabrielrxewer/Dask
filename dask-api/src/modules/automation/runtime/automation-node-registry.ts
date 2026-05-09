@@ -1,10 +1,13 @@
 import type { AutomationAIService } from '@/modules/automation/application/automation-ai-service';
 import type { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
+import type { AutomationBusinessActionService } from '@/modules/automation/application/automation-business-action-service';
 import type { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
+import type { PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import type { AutomationSideEffectService } from '@/modules/automation/application/automation-side-effect-service';
 import type { AutomationNodeExecutor } from '@/modules/automation/runtime/automation-node-executor';
 import { AINodeExecutor } from '@/modules/automation/runtime/executors/ai-node-executor';
+import { BusinessActionNodeExecutor, businessActionNodeTypes } from '@/modules/automation/runtime/executors/business-action-node-executors';
 import { CommunicationSendNodeExecutor } from '@/modules/automation/runtime/executors/communication-send-node-executor';
 import { ConditionNodeExecutor } from '@/modules/automation/runtime/executors/condition-node-executor';
 import { DelayNodeExecutor } from '@/modules/automation/runtime/executors/delay-node-executor';
@@ -47,10 +50,12 @@ export class AutomationNodeRegistry {
 }
 
 export function createDefaultAutomationNodeRegistry(input?: {
+  prisma?: PrismaClient;
   sideEffectService?: AutomationSideEffectService;
   aiService?: AutomationAIService;
   eventService?: AutomationRunEventService;
   approvalRequestService?: AutomationApprovalRequestService;
+  businessActionService?: AutomationBusinessActionService;
 }): AutomationNodeRegistry {
   const registry = new AutomationNodeRegistry();
 
@@ -72,6 +77,11 @@ export function createDefaultAutomationNodeRegistry(input?: {
   }
   if (input?.approvalRequestService) {
     registry.register(new HumanApprovalNodeExecutor(input.approvalRequestService));
+  }
+  if (input?.prisma && input.businessActionService) {
+    for (const nodeType of businessActionNodeTypes) {
+      registry.register(new BusinessActionNodeExecutor(nodeType, input.prisma, input.businessActionService));
+    }
   }
 
   return registry;

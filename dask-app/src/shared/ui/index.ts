@@ -83,10 +83,22 @@ export { WorkspaceActionButton } from "@/shared/ui/workspace-action-button";
 export type { WorkspaceActionButtonProps, WorkspaceActionButtonTone } from "@/shared/ui/workspace-action-button";
 export { AppIcon } from "@/shared/ui/icon";
 export type { AppIconName, AppIconProps } from "@/shared/ui/icon";
-export { FlowCanvas, FlowNodeCard } from "@/shared/ui/flow-canvas";
-export type { FlowCanvasPaletteItem, FlowCanvasProps, FlowNodeBranch, FlowNodeCardProps } from "@/shared/ui/flow-canvas";
+export { FlowCanvas, FlowNodeCard, FlowNodeSidebarMenu } from "@/shared/ui/flow-canvas";
+export type {
+  FlowCanvasPaletteItem,
+  FlowCanvasProps,
+  FlowNodeBranch,
+  FlowNodeCardProps,
+  FlowNodeSidebarMenuAction,
+  FlowNodeSidebarMenuActionSection,
+  FlowNodeSidebarMenuItem,
+  FlowNodeSidebarMenuProps,
+  FlowNodeSidebarMenuSection
+} from "@/shared/ui/flow-canvas";
 export { ResourceTable } from "@/shared/ui/resource-table";
 export type { ResourceTableActions, ResourceTableColumn, ResourceTableProps } from "@/shared/ui/resource-table";
+export { RegistrationList } from "@/shared/ui/registration-list";
+export type { RegistrationListProps } from "@/shared/ui/registration-list";
 export {
   DataTable,
   DataTableHeader,

@@ -28,11 +28,7 @@ export interface RagNodeData extends Record<string, unknown> {
   includeLinkedDocuments: boolean;
 }
 
-export type ToolId =
-  | 'web_search'
-  | 'update_item_description'
-  | 'set_item_status'
-  | 'set_item_priority';
+export type ToolId = string;
 
 export interface ToolNodeData extends Record<string, unknown> {
   kind: 'tool';

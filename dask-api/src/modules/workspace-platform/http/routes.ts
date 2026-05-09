@@ -53,12 +53,15 @@ import {
   workspaceMemberAccessParamsDto,
   workspaceInviteParamsDto,
   workspaceDocumentParamsDto,
+  workspaceDocumentFolderParamsDto,
   workItemParamsDto,
   workItemDocumentParamsDto,
   workItemTagParamsDto,
   workspaceIdParamsDto,
   workspaceSnapshotQueryDto,
   createWorkspaceDocumentDto,
+  createWorkspaceDocumentFolderDto,
+  patchWorkspaceDocumentFolderDto,
   patchWorkspaceDocumentDto,
   sendWorkspaceDocumentDto
 } from '@/modules/workspace-platform/http/dto';
@@ -1016,6 +1019,68 @@ export const buildWorkspacePlatformRoutes = (deps: {
         userId: req.auth!.userId
       });
       res.status(200).json(documents);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/document-folders',
+    requireWorkspaceModule('documentation'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const folders = await deps.workspaceDocumentsService.listFolders({
+        workspaceId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(folders);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/document-folders',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = createWorkspaceDocumentFolderDto.parse(req.body);
+      const folder = await deps.workspaceDocumentsService.createFolder({
+        workspaceId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(201).json(folder);
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/document-folders/:folderId',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, folderId } = workspaceDocumentFolderParamsDto.parse(req.params);
+      const payload = patchWorkspaceDocumentFolderDto.parse(req.body);
+      const folder = await deps.workspaceDocumentsService.updateFolder({
+        workspaceId,
+        folderId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(folder);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/document-folders/:folderId',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, folderId } = workspaceDocumentFolderParamsDto.parse(req.params);
+      await deps.workspaceDocumentsService.deleteFolder({
+        workspaceId,
+        folderId,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
     })
   );
 

@@ -32,12 +32,6 @@ const emptyCompanyProfile: CompanyProfileForm = {
   noticePeriod: ""
 };
 
-const FALLBACK_TEMPLATES: WorkspaceTemplateOption[] = [
-  { key: "software_delivery", name: "Software Delivery", description: "Template padrao" },
-  { key: "product_discovery", name: "Product Discovery", description: "Template de descoberta" },
-  { key: "operations_kanban", name: "Operations Kanban", description: "Template operacional" }
-];
-
 function makeWorkspaceKeyDraft(value: string) {
   return value
     .trim()
@@ -67,7 +61,7 @@ export function WorkspaceSelectorPage() {
   const [workspaceDescription, setWorkspaceDescription] = useState("");
   const [workspaceWebsite, setWorkspaceWebsite] = useState("");
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileForm>(emptyCompanyProfile);
-  const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"]>("software_delivery");
+  const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"] | "">("");
   const [error, setError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createFeedback, setCreateFeedback] = useState<string | null>(null);
@@ -136,7 +130,9 @@ export function WorkspaceSelectorPage() {
       })
       .catch(() => {
         if (mounted) {
-          setTemplates(FALLBACK_TEMPLATES);
+          setTemplates([]);
+          setTemplateKey("");
+          setCreateError("Nao foi possivel carregar o catalogo de templates.");
         }
       })
       .finally(() => {
@@ -165,7 +161,7 @@ export function WorkspaceSelectorPage() {
     });
   }, [query, workspaces]);
 
-  const availableTemplates = templates.length > 0 ? templates : FALLBACK_TEMPLATES;
+  const availableTemplates = templates;
   const deleteConfirmationMatches = workspacePendingDelete
     ? deleteConfirmation.trim() === workspacePendingDelete.name
     : false;
@@ -237,6 +233,12 @@ export function WorkspaceSelectorPage() {
 
     if (kind === "CORPORATE" && normalizedCompanyName.length < 2) {
       setCreateError("Informe o nome da empresa ou organizacao para workspace corporativo.");
+      setCreateFeedback(null);
+      return;
+    }
+
+    if (!templateKey) {
+      setCreateError("Selecione um template carregado pelo backend.");
       setCreateFeedback(null);
       return;
     }
@@ -411,8 +413,10 @@ export function WorkspaceSelectorPage() {
                         <Select
                           value={templateKey}
                           onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
-                          disabled={isLoadingTemplates}
+                          disabled={isLoadingTemplates || availableTemplates.length === 0}
                         >
+                          {isLoadingTemplates ? <option value="">Carregando templates...</option> : null}
+                          {!isLoadingTemplates && availableTemplates.length === 0 ? <option value="">Catalogo indisponivel</option> : null}
                           {availableTemplates.map((template) => (
                             <option key={template.key} value={template.key}>
                               {template.name}
@@ -535,7 +539,7 @@ export function WorkspaceSelectorPage() {
                       type="button"
                       variant="primary"
                       onClick={() => void handleCreateWorkspace()}
-                      disabled={isCreating}
+                      disabled={isCreating || isLoadingTemplates || !templateKey}
                     >
                       {isCreating ? "Criando..." : "Criar workspace"}
                     </Button>

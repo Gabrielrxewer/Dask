@@ -7,6 +7,7 @@ import type {
   AutomationNodeExecutionInput,
   AutomationNodeExecutor
 } from '@/modules/automation/runtime/automation-node-executor';
+import { businessActionNodeTypes } from '@/modules/automation/runtime/executors/business-action-node-executors';
 
 describe('AutomationNodeRegistry', () => {
   it('registers and returns an executor by type', () => {
@@ -44,5 +45,17 @@ describe('AutomationNodeRegistry', () => {
     ).resolves.toMatchObject({
       status: 'completed'
     });
+  });
+
+  it('registers official business action executors when domain services are provided', () => {
+    const registry = createDefaultAutomationNodeRegistry({
+      prisma: {} as never,
+      businessActionService: {} as never
+    });
+
+    expect(registry.listTypes()).toEqual(expect.arrayContaining(businessActionNodeTypes));
+    expect(registry.has('create_proposal')).toBe(true);
+    expect(registry.has('create_contract')).toBe(true);
+    expect(registry.has('create_document')).toBe(false);
   });
 });

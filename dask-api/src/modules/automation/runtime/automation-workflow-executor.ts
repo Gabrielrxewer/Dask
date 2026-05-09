@@ -6,6 +6,7 @@ import type {
 } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import type { AutomationAIService } from '@/modules/automation/application/automation-ai-service';
+import type { AutomationBusinessActionService } from '@/modules/automation/application/automation-business-action-service';
 import { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
 import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
 import { AutomationScheduledStepService } from '@/modules/automation/application/automation-scheduled-step-service';
@@ -207,6 +208,7 @@ export class AutomationWorkflowExecutor {
     eventService?: RunEventServiceLike;
     sideEffectService?: AutomationSideEffectService;
     aiService?: AutomationAIService;
+    businessActionService?: AutomationBusinessActionService;
     approvalRequestService?: ApprovalRequestServiceLike;
     retryPolicy?: Partial<AutomationRetryPolicy>;
   }) {
@@ -220,10 +222,12 @@ export class AutomationWorkflowExecutor {
       eventService: this.eventService as AutomationRunEventService
     });
     this.registry = input?.registry ?? createDefaultAutomationNodeRegistry({
+      prisma,
       sideEffectService: this.sideEffectService,
       aiService: input?.aiService,
       eventService: this.eventService as AutomationRunEventService,
-      approvalRequestService: this.approvalRequestService as AutomationApprovalRequestService
+      approvalRequestService: this.approvalRequestService as AutomationApprovalRequestService,
+      businessActionService: input?.businessActionService
     });
     this.retryPolicy = normalizeAutomationRetryPolicy(input?.retryPolicy);
   }

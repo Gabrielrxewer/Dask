@@ -16,7 +16,7 @@
     linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 10%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 4%, transparent) 100%);
 }
 
-.app-theme:not([data-theme="dark"]) .home-page {
+.global-layout--public-light .home-page {
   --text-primary: #151515;
   --text-secondary: #4f4f4f;
   --text-muted: #747474;
@@ -25,48 +25,49 @@
   --color-text-secondary: #4f4f4f;
 }
 
-.global-layout:has(.home-page) .global-header {
-  background: #08111b;
-  border-color: rgba(58, 85, 112, 0.36);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+.global-layout--public-light:has(.home-page) .global-header {
+  background: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 52%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
-.global-layout:has(.home-page) .global-header::before,
-.global-layout:has(.home-page) .global-header::after {
+.global-layout--public-light:has(.home-page) .global-header::before,
+.global-layout--public-light:has(.home-page) .global-header::after {
   opacity: 0;
 }
 
-.global-layout:has(.home-page) .global-header__home-link,
-.global-layout:has(.home-page) .global-header__marketing-link {
-  color: rgba(210, 223, 236, 0.78);
+.global-layout--public-light:has(.home-page) .global-header__home-link,
+.global-layout--public-light:has(.home-page) .global-header__marketing-link {
+  color: color-mix(in srgb, var(--neutral-white) 74%, transparent);
   text-shadow: none;
 }
 
-.global-layout:has(.home-page) .global-header__home-link:hover,
-.global-layout:has(.home-page) .global-header__home-link--active,
-.global-layout:has(.home-page) .global-header__marketing-link:hover {
-  color: #edf4fb;
+.global-layout--public-light:has(.home-page) .global-header__home-link:hover,
+.global-layout--public-light:has(.home-page) .global-header__home-link--active,
+.global-layout--public-light:has(.home-page) .global-header__marketing-link:hover {
+  color: var(--neutral-white);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 14%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 10%, transparent) 100%);
 }
 
-.global-layout:has(.home-page) .global-header__menu,
-.global-layout:has(.home-page) .global-header__user,
-.global-layout:has(.home-page) .global-header__guest-link,
-.global-layout:has(.home-page) .global-header__marketing-cta,
-.global-layout:has(.home-page) .global-header__marketing-cta:visited {
-  border-color: rgba(58, 85, 112, 0.56);
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(13, 24, 36, 0.96) 100%);
-  color: #edf4fb;
+.global-layout--public-light:has(.home-page) .global-header__menu,
+.global-layout--public-light:has(.home-page) .global-header__user,
+.global-layout--public-light:has(.home-page) .global-header__guest-link,
+.global-layout--public-light:has(.home-page) .global-header__marketing-cta,
+.global-layout--public-light:has(.home-page) .global-header__marketing-cta:visited {
+  border-color: color-mix(in srgb, var(--neutral-white) 22%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 14%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 10%, transparent) 100%);
+  color: var(--neutral-white);
   box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 10px 20px color-mix(in srgb, var(--ink-shadow) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 10%, transparent) inset;
 }
 
-.global-layout:has(.home-page) .global-header__user-name {
-  color: #edf4fb !important;
+.global-layout--public-light:has(.home-page) .global-header__user-name {
+  color: var(--neutral-white) !important;
   -webkit-text-stroke: 0;
-  text-shadow: none;
+  text-shadow: 0 1px 1px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .home-page::before,

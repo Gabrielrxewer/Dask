@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, type CSSProperties } from "react";
 import { MarkerType, type Edge, type Node, type NodeProps, type OnEdgesChange, type OnNodesChange } from "@xyflow/react";
 import { useSearchParams } from "react-router-dom";
-import { buildBoardMetrics, type Task, type TaskStatus } from "@/entities/task";
+import { buildBoardMetrics, type BoardLeadOperationalMetadata, type Task, type TaskStatus } from "@/entities/task";
 import { useWorkspace } from "@/modules/workspace";
 import { formatMoneyCompact } from "@/shared/lib/money";
 import { cn } from "@/shared/lib/cn";
@@ -9,7 +9,6 @@ import { AppIcon, EmptyState, FlowCanvas, FlowNodeCard, LoadingState, PanelMenu,
 import { AppShell } from "@/widgets/app-shell";
 import "./lead-flow-page.css";
 
-const COMMERCIAL_TYPE_ID = "commercial";
 const LEAD_FLOW_NODE_KIND = "lead-state";
 const MAIN_LANE_Y = 80;
 const STEP_X = 306;
@@ -59,29 +58,27 @@ function getInitials(value: string): string {
   return `${parts[0]?.[0] ?? "L"}${parts[1]?.[0] ?? parts[0]?.[1] ?? "D"}`.toUpperCase();
 }
 
-function ensureStatuses(boardStatuses: TaskStatus[], tasks: Task[]): TaskStatus[] {
-  const known = new Set(boardStatuses.map((status) => status.id));
-  const missing = tasks
-    .map((task) => task.status)
-    .filter((statusId, index, values) => !known.has(statusId) && values.indexOf(statusId) === index)
-    .map((statusId) => ({
-      id: statusId,
-      label: statusId,
-      dot: "var(--text-secondary)"
-    }));
-
-  return [...boardStatuses, ...missing];
+function uniqueValues(values: string[]): string[] {
+  return Array.from(new Set(values.filter((value) => value.trim().length > 0)));
 }
 
-function isOutcomeStatus(status: TaskStatus): boolean {
-  const value = `${status.id} ${status.label}`.toLowerCase();
-  return (
-    value.includes("lost") ||
-    value.includes("perdido") ||
-    value.includes("closed") ||
-    value.includes("encerrado") ||
-    value.includes("cancel")
-  );
+function resolveConfiguredStatusGroups(
+  metadata: BoardLeadOperationalMetadata | null,
+  statusById: Map<string, TaskStatus>
+): { primary: TaskStatus[]; outcomes: TaskStatus[]; terminalStatusIds: Set<string> } {
+  if (!metadata) {
+    return { primary: [], outcomes: [], terminalStatusIds: new Set() };
+  }
+
+  const primaryIds = uniqueValues(metadata.funnel.flatMap((stage) => stage.statusIds));
+  const primaryIdSet = new Set(primaryIds);
+  const outcomeIds = uniqueValues(metadata.terminalStatusIds.filter((statusId) => !primaryIdSet.has(statusId)));
+
+  return {
+    primary: primaryIds.map((statusId) => statusById.get(statusId)).filter((status): status is TaskStatus => Boolean(status)),
+    outcomes: outcomeIds.map((statusId) => statusById.get(statusId)).filter((status): status is TaskStatus => Boolean(status)),
+    terminalStatusIds: new Set(metadata.terminalStatusIds)
+  };
 }
 
 function LeadStateNode({ data, selected }: NodeProps) {
@@ -129,34 +126,34 @@ export function LeadFlowPage() {
 
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
   const boardStatuses = snapshot?.boardConfig.statuses ?? [];
-  const commercialType =
-    snapshot?.boardConfig.taskTypes.find((type) => type.id === COMMERCIAL_TYPE_ID) ??
-    snapshot?.boardConfig.taskTypes.find((type) => type.label.toLowerCase().includes("comercial"));
-  const commercialTypeId = commercialType?.id ?? COMMERCIAL_TYPE_ID;
-
-  const commercialTasks = useMemo(
-    () => (snapshot?.tasks ?? []).filter((task) => task.type === commercialTypeId),
-    [commercialTypeId, snapshot?.tasks]
+  const leadMetadata = snapshot?.boardConfig.operationalMetadata?.leads ?? null;
+  const boardStatusById = useMemo(
+    () => new Map(boardStatuses.map((status) => [status.id, status])),
+    [boardStatuses]
   );
 
-  const statuses = useMemo(
-    () => ensureStatuses(boardStatuses, commercialTasks),
-    [boardStatuses, commercialTasks]
+  const commercialTasks = useMemo(
+    () => {
+      if (!leadMetadata) return [];
+      const commercialTypeIds = new Set(leadMetadata.itemTypeIds);
+      return (snapshot?.tasks ?? []).filter((task) => commercialTypeIds.has(task.type));
+    },
+    [leadMetadata, snapshot?.tasks]
   );
 
   const statusById = useMemo(
-    () => new Map(statuses.map((status) => [status.id, status])),
-    [statuses]
+    () => boardStatusById,
+    [boardStatusById]
   );
 
-  const flowStatusGroups = useMemo(() => {
-    const primary = statuses.filter((status) => !isOutcomeStatus(status));
-    const outcomes = statuses.filter(isOutcomeStatus);
-    return {
-      primary: primary.length > 0 ? primary : statuses,
-      outcomes: primary.length > 0 ? outcomes : []
-    };
-  }, [statuses]);
+  const flowStatusGroups = useMemo(
+    () => resolveConfiguredStatusGroups(leadMetadata, statusById),
+    [leadMetadata, statusById]
+  );
+  const flowStatuses = useMemo(
+    () => [...flowStatusGroups.primary, ...flowStatusGroups.outcomes],
+    [flowStatusGroups.outcomes, flowStatusGroups.primary]
+  );
 
   const filteredLeads = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -200,7 +197,7 @@ export function LeadFlowPage() {
 
   const leadValueByStatus = useMemo(() => {
     const values = new Map<string, { count: number; value: number }>();
-    for (const status of statuses) {
+    for (const status of flowStatuses) {
       values.set(status.id, { count: 0, value: 0 });
     }
 
@@ -212,7 +209,7 @@ export function LeadFlowPage() {
     }
 
     return values;
-  }, [commercialTasks, statuses]);
+  }, [commercialTasks, flowStatuses]);
 
   const isSelectedOutcome = selectedLead ? flowStatusGroups.outcomes.some((status) => status.id === selectedLead.status) : false;
   const branchSourceIndex = Math.max(0, flowStatusGroups.primary.length - 2);
@@ -248,7 +245,8 @@ export function LeadFlowPage() {
           isDone,
           isNext,
           isFirst: index === 0,
-          isTerminal: index === flowStatusGroups.primary.length - 1 && !(flowStatusGroups.outcomes.length > 0 && status.id === branchSourceId),
+          isTerminal: flowStatusGroups.terminalStatusIds.has(status.id) ||
+            (index === flowStatusGroups.primary.length - 1 && !(flowStatusGroups.outcomes.length > 0 && status.id === branchSourceId)),
           isOutcome: false,
           selectedLeadTitle: selectedLead?.title ?? ""
         }
@@ -296,6 +294,7 @@ export function LeadFlowPage() {
     currentPrimaryIndex,
     flowStatusGroups.outcomes,
     flowStatusGroups.primary,
+    flowStatusGroups.terminalStatusIds,
     isSelectedOutcome,
     leadValueByStatus,
     selectedLead
@@ -385,6 +384,7 @@ export function LeadFlowPage() {
 
   const currentStatus = selectedLead ? statusById.get(selectedLead.status) : null;
   const selectedLeadValue = selectedLead ? getNumberField(selectedLead, "estimatedValue") : 0;
+  const currentStatusNodeId = selectedLead?.status ?? null;
 
   const topNavigation = (
     <WorkspaceTopNavigation<"flow">
@@ -400,6 +400,13 @@ export function LeadFlowPage() {
       <WorkspaceFrame className="lead-flow-page" variant="canvas" scroll="none">
         <LoadingState text="Carregando fluxo de leads..." animation="leads" variant="frame" visible={isLoading && !snapshot} />
 
+        {!isLoading && snapshot && !leadMetadata ? (
+          <EmptyState className="lead-flow-page__empty" size="compact">
+            Template comercial sem metadados operacionais de leads.
+          </EmptyState>
+        ) : null}
+
+        {leadMetadata ? (
         <StudioLayout
           sidebar={
             <PanelMenu
@@ -463,6 +470,7 @@ export function LeadFlowPage() {
             onNodesAdd={() => undefined}
             onNodeSelect={() => undefined}
             fitViewKey={selectedLead ? nodes.length + currentPrimaryIndex + selectedLead.id.length : nodes.length}
+            focusNodeId={currentStatusNodeId}
             emptyHint="Nenhum estado configurado."
             nodesDraggable={false}
             nodesConnectable={false}
@@ -470,6 +478,7 @@ export function LeadFlowPage() {
             className="lf-canvas"
           />
         </StudioLayout>
+        ) : null}
       </WorkspaceFrame>
     </AppShell>
   );

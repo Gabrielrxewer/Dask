@@ -3,7 +3,7 @@ import { cn } from "@/shared/lib/cn";
 
 export type InlineAlertTone = "default" | "info" | "success" | "warning" | "danger";
 
-export interface InlineAlertProps extends HTMLAttributes<HTMLDivElement> {
+export interface InlineAlertProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   tone?: InlineAlertTone;
   title?: ReactNode;
   action?: ReactNode;

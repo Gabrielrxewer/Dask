@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowUp,
+  Archive,
   Bot,
   BriefcaseBusiness,
   Bug,
@@ -18,6 +19,8 @@ import {
   EyeOff,
   FileText,
   FlaskConical,
+  Folder,
+  FolderOpen,
   GripVertical,
   Info,
   KanbanSquare,
@@ -31,7 +34,9 @@ import {
   Megaphone,
   MessageSquare,
   Minus,
+  Pause,
   Pencil,
+  Play,
   Plus,
   ReceiptText,
   RefreshCw,
@@ -55,6 +60,7 @@ import {
 
 export type AppIconName =
   | "alert-circle"
+  | "archive"
   | "arrow-left"
   | "arrow-up"
   | "automation"
@@ -76,6 +82,8 @@ export type AppIconName =
   | "eye-off"
   | "file"
   | "flask"
+  | "folder"
+  | "folder-open"
   | "grip"
   | "info"
   | "layers"
@@ -87,7 +95,9 @@ export type AppIconName =
   | "marketing"
   | "message"
   | "minus"
+  | "pause"
   | "pencil"
+  | "play"
   | "plus"
   | "receipt"
   | "refresh"
@@ -109,6 +119,7 @@ export type AppIconName =
 
 const icons: Record<AppIconName, LucideIcon> = {
   "alert-circle": AlertCircle,
+  archive: Archive,
   "arrow-left": ArrowLeft,
   "arrow-up": ArrowUp,
   automation: Repeat2,
@@ -130,6 +141,8 @@ const icons: Record<AppIconName, LucideIcon> = {
   "eye-off": EyeOff,
   file: FileText,
   flask: FlaskConical,
+  folder: Folder,
+  "folder-open": FolderOpen,
   grip: GripVertical,
   info: Info,
   layers: Layers,
@@ -141,7 +154,9 @@ const icons: Record<AppIconName, LucideIcon> = {
   marketing: Megaphone,
   message: MessageSquare,
   minus: Minus,
+  pause: Pause,
   pencil: Pencil,
+  play: Play,
   plus: Plus,
   receipt: ReceiptText,
   refresh: RefreshCw,

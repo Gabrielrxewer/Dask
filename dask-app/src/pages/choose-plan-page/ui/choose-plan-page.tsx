@@ -1,47 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { routePaths } from "@/app/router";
-import { billingService, PLAN_DISPLAY } from "@/modules/billing";
-import type { BillingStatus, SubscriptionPlan } from "@/modules/billing";
+import { billingService } from "@/modules/billing";
+import type { BillingPlan, BillingStatus, SubscriptionPlan } from "@/modules/billing";
 import "./choose-plan-page.css";
 
-const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
-  PERSONAL: [
-    "1 workspace pessoal",
-    "Boards, listas e agenda",
-    "IA para melhorias",
-    "Automações básicas",
-    "Busca semântica"
-  ],
-  BUSINESS: [
-    "Múltiplos workspaces",
-    "Suporte a equipes",
-    "Boards, listas e agenda",
-    "IA avançada e automações",
-    "Campos personalizados",
-    "Auditoria e integrações",
-    "Suporte prioritário"
-  ]
-};
+function formatPlanPrice(plan: BillingPlan): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: plan.currency.toUpperCase()
+  }).format(plan.amount / 100);
+}
+
+function formatPlanPeriod(plan: BillingPlan): string {
+  if (plan.interval === "month") return "/mes";
+  if (plan.interval === "year") return "/ano";
+  if (plan.interval) return `/${plan.interval}`;
+  return "";
+}
 
 export function ChoosePlanPage() {
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<BillingStatus | null>(null);
+  const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    billingService
-      .getStatus()
-      .then((value) => {
+    Promise.all([billingService.getStatus(), billingService.listPlans()])
+      .then(([statusValue, planCatalog]) => {
         if (!mounted) return;
-        setStatus(value);
+        setStatus(statusValue);
+        setPlans(
+          planCatalog.items
+            .filter((plan) => plan.isActive)
+        );
       })
       .catch(() => {
         if (!mounted) return;
         setStatus(null);
+        setPlans([]);
+        setError("Nao foi possivel carregar os planos configurados.");
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setIsLoadingPlans(false);
       });
 
     return () => {
@@ -56,10 +62,10 @@ export function ChoosePlanPage() {
 
     const labels: Record<string, string> = {
       ACTIVE: "Ativa",
-      TRIALING: "Em período de teste",
+      TRIALING: "Em periodo de teste",
       PAST_DUE: "Pagamento pendente",
       CANCELED: "Cancelada",
-      UNPAID: "Não paga",
+      UNPAID: "Nao paga",
       INCOMPLETE: "Incompleta",
       INCOMPLETE_EXPIRED: "Expirada",
       PAUSED: "Pausada"
@@ -76,7 +82,7 @@ export function ChoosePlanPage() {
       const { url } = await billingService.createCheckoutSession(plan);
       window.location.href = url;
     } catch {
-      setError("Não foi possível iniciar o pagamento. Tente novamente.");
+      setError("Nao foi possivel iniciar o pagamento. Tente novamente.");
       setLoadingPlan(null);
     }
   }
@@ -92,12 +98,12 @@ export function ChoosePlanPage() {
       const { url } = await billingService.createPortalSession();
       window.location.href = url;
     } catch {
-      setError("Não foi possível abrir a gestão da assinatura. Tente novamente.");
+      setError("Nao foi possivel abrir a gestao da assinatura. Tente novamente.");
       setIsOpeningPortal(false);
     }
   }
 
-  const currentPlan = status?.plan ? PLAN_DISPLAY[status.plan] : null;
+  const currentPlan = status?.plan ? plans.find((plan) => plan.code === status.plan) ?? null : null;
   const periodEndLabel = status?.currentPeriodEnd ? new Date(status.currentPeriodEnd).toLocaleDateString("pt-BR") : "Nao disponivel";
 
   return (
@@ -108,7 +114,7 @@ export function ChoosePlanPage() {
           <h1 className="choose-plan__title">Escolha o plano ideal para voce</h1>
           <p className="choose-plan__description choose-plan__description--legal">
             Antes de pagar, revise os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
-            <Link to={routePaths.privacyPolicy}>Política de Privacidade</Link>. Ao clicar em "Assinar", você concorda
+            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. Ao clicar em "Assinar", voce concorda
             com ambos.
           </p>
         </header>
@@ -118,13 +124,13 @@ export function ChoosePlanPage() {
         <section className="choose-plan__current-subscription" aria-label="Resumo da assinatura atual">
           <div className="choose-plan__current-subscription-copy">
             <p className="choose-plan__current-subscription-eyebrow">Assinatura atual</p>
-            <h2>{currentPlan ? `${currentPlan.name} (${currentPlan.price}/mes)` : "Sem plano ativo"}</h2>
+            <h2>{currentPlan ? `${currentPlan.name} (${formatPlanPrice(currentPlan)}${formatPlanPeriod(currentPlan)})` : "Sem plano ativo"}</h2>
             <p>
-              Status: <strong>{statusLabel}</strong> · Próxima renovação: <strong>{periodEndLabel}</strong>
+              Status: <strong>{statusLabel}</strong> - Proxima renovacao: <strong>{periodEndLabel}</strong>
             </p>
             {status.cancelAtPeriodEnd ? (
               <p className="choose-plan__cancel-note">
-                Cancelamento já agendado para o fim do ciclo atual. Você pode reativar pela área de gestão da
+                Cancelamento ja agendado para o fim do ciclo atual. Voce pode reativar pela area de gestao da
                 assinatura.
               </p>
             ) : null}
@@ -135,72 +141,64 @@ export function ChoosePlanPage() {
             onClick={() => void handleOpenPortal()}
             disabled={isOpeningPortal}
           >
-            {isOpeningPortal ? "Abrindo gestão..." : "Gerenciar assinatura / cancelar"}
+            {isOpeningPortal ? "Abrindo gestao..." : "Gerenciar assinatura / cancelar"}
           </button>
         </section>
       ) : null}
 
       <div className="choose-plan__plans">
-        <article className="choose-plan__card">
-          <p className="choose-plan__plan-name">{PLAN_DISPLAY.PERSONAL.name}</p>
-          <div className="choose-plan__price">
-            <span className="choose-plan__price-value">{PLAN_DISPLAY.PERSONAL.price}</span>
-            <span className="choose-plan__price-period">/mes</span>
-          </div>
-          <p className="choose-plan__plan-description">{PLAN_DISPLAY.PERSONAL.description}</p>
-          <ul className="choose-plan__features">
-            {PLAN_FEATURES.PERSONAL.map((feature) => (
-              <li key={feature} className="choose-plan__feature">
-                {feature}
-              </li>
-            ))}
-          </ul>
-          <button
-            className={`choose-plan__action${loadingPlan === "PERSONAL" ? " choose-plan__action--loading" : ""}`}
-            disabled={loadingPlan !== null || status?.plan === "PERSONAL"}
-            onClick={() => handleChoosePlan("PERSONAL")}
-            type="button"
-          >
-            {status?.plan === "PERSONAL" ? "Plano atual" : loadingPlan === "PERSONAL" ? "Aguarde..." : "Assinar Pessoal"}
-          </button>
-        </article>
+        {isLoadingPlans ? (
+          <article className="choose-plan__card">
+            <p className="choose-plan__plan-name">Carregando planos...</p>
+          </article>
+        ) : null}
 
-        <article className="choose-plan__card choose-plan__card--featured">
-          <span className="choose-plan__badge">Popular</span>
-          <p className="choose-plan__plan-name">{PLAN_DISPLAY.BUSINESS.name}</p>
-          <div className="choose-plan__price">
-            <span className="choose-plan__price-value">{PLAN_DISPLAY.BUSINESS.price}</span>
-            <span className="choose-plan__price-period">/mes</span>
-          </div>
-          <p className="choose-plan__plan-description">{PLAN_DISPLAY.BUSINESS.description}</p>
-          <ul className="choose-plan__features">
-            {PLAN_FEATURES.BUSINESS.map((feature) => (
-              <li key={feature} className="choose-plan__feature">
-                {feature}
-              </li>
-            ))}
-          </ul>
-          <button
-            className={`choose-plan__action${loadingPlan === "BUSINESS" ? " choose-plan__action--loading" : ""}`}
-            disabled={loadingPlan !== null || status?.plan === "BUSINESS"}
-            onClick={() => handleChoosePlan("BUSINESS")}
-            type="button"
-          >
-            {status?.plan === "BUSINESS" ? "Plano atual" : loadingPlan === "BUSINESS" ? "Aguarde..." : "Assinar Business"}
-          </button>
-        </article>
+        {!isLoadingPlans && plans.length === 0 ? (
+          <article className="choose-plan__card">
+            <p className="choose-plan__plan-name">Planos indisponiveis</p>
+            <p className="choose-plan__plan-description">O catalogo de assinatura nao esta configurado para esta conta.</p>
+          </article>
+        ) : null}
+
+        {plans.map((plan) => (
+          <article key={plan.code} className="choose-plan__card">
+            <p className="choose-plan__plan-name">{plan.name}</p>
+            <div className="choose-plan__price">
+              <span className="choose-plan__price-value">{formatPlanPrice(plan)}</span>
+              <span className="choose-plan__price-period">{formatPlanPeriod(plan)}</span>
+            </div>
+            {plan.description ? <p className="choose-plan__plan-description">{plan.description}</p> : null}
+            {plan.features.length > 0 ? (
+              <ul className="choose-plan__features">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="choose-plan__feature">
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <button
+              className={`choose-plan__action${loadingPlan === plan.code ? " choose-plan__action--loading" : ""}`}
+              disabled={loadingPlan !== null || status?.plan === plan.code}
+              onClick={() => handleChoosePlan(plan.code)}
+              type="button"
+            >
+              {status?.plan === plan.code ? "Plano atual" : loadingPlan === plan.code ? "Aguarde..." : `Assinar ${plan.name}`}
+            </button>
+          </article>
+        ))}
       </div>
 
       <div className="choose-plan__footer">
         {error && <p className="choose-plan__error">{error}</p>}
 
         <p className="choose-plan__notice choose-plan__notice--summary">
-          Acesso completo à plataforma após a confirmação do pagamento. Cobrança mensal recorrente, cancele quando
+          Acesso completo a plataforma apos a confirmacao do pagamento. Cobranca mensal recorrente, cancele quando
           quiser.
         </p>
 
         <p className="choose-plan__notice">
-          Pagamento processado com segurança via Stripe. Nenhum dado de cartão é armazenado pelo Dask.
+          Pagamento processado com seguranca via Stripe. Nenhum dado de cartao e armazenado pelo Dask.
         </p>
       </div>
     </main>

@@ -660,6 +660,7 @@ model Workspace {
   aiAgentRuns            AIAgentRun[]
   invites                WorkspaceInvite[]
   documents              WorkspaceDocument[]
+  documentFolders        WorkspaceDocumentFolder[]
   workItemDocumentLinks  WorkItemDocumentLink[]
   connectPaymentOrders   ConnectPaymentOrder[]
   connectCatalogItems    ConnectCatalogItem[]
@@ -1354,6 +1355,23 @@ model WorkspaceDocument {
   @@index([workspaceId, position])
   @@index([workspaceId, kind, updatedAt])
   @@index([workspaceId, linkedEntityType, linkedEntityId])
+}
+
+model WorkspaceDocumentFolder {
+  id          String    @id @default(uuid())
+  workspaceId String
+  name        String
+  parentId    String?
+  position    Int       @default(0)
+  createdBy   String
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent      WorkspaceDocumentFolder?  @relation("WorkspaceDocumentFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    WorkspaceDocumentFolder[] @relation("WorkspaceDocumentFolderTree")
+
+  @@index([workspaceId, parentId, position])
 }
 
 model ConnectPaymentOrder {

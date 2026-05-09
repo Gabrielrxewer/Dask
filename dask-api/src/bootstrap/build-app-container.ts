@@ -22,6 +22,7 @@ import { IndexingRequestService } from '@/modules/search/application/indexing-re
 import { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
 import { AutomationAIService } from '@/modules/automation/application/automation-ai-service';
 import { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
+import { AutomationBusinessActionService } from '@/modules/automation/application/automation-business-action-service';
 import { AutomationRunService } from '@/modules/automation/application/automation-run-service';
 import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
 import { AutomationRunObservabilityService } from '@/modules/automation/application/automation-run-observability-service';
@@ -128,6 +129,32 @@ export function buildAppContainer(): AppContainer {
     workspaceConfigService,
     eventPublisher
   );
+  const workspaceCustomersService = new WorkspaceCustomersService(prisma, workspaceConfigService, eventPublisher);
+  const billingRepo = new PrismaBillingRepository(prisma);
+  const stripeClient = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
+  const billingService = stripeClient
+    ? new BillingService({
+        repo: billingRepo,
+        stripe: stripeClient,
+        appPublicUrl: env.APP_PUBLIC_URL,
+        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        emailService,
+        eventPublisher,
+        priceIds: {
+          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
+          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+        },
+        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
+      })
+    : null;
+  const automationBusinessActionService = new AutomationBusinessActionService({
+    prisma,
+    workItemsService: workspaceWorkItemsService,
+    documentsService: workspaceDocumentsService,
+    customersService: workspaceCustomersService,
+    billingService,
+    authorizationService: roleAuthorizationService
+  });
   const improvementRequestService = new ImprovementRequestService(itemsRepository, eventPublisher);
   const indexingRequestService = new IndexingRequestService(itemsRepository, eventPublisher);
   const hybridSearchService = new HybridSearchService(prisma, embeddingProvider);
@@ -158,7 +185,8 @@ export function buildAppContainer(): AppContainer {
     eventService: automationRunEventService,
     sideEffectService: automationSideEffectService,
     aiService: automationAIService,
-    approvalRequestService: automationApprovalRequestService
+    approvalRequestService: automationApprovalRequestService,
+    businessActionService: automationBusinessActionService
   });
   const automationScheduledStepProcessor = new AutomationScheduledStepProcessor(prisma, {
     eventService: automationRunEventService,
@@ -172,24 +200,6 @@ export function buildAppContainer(): AppContainer {
   const integrationService = new IntegrationService(eventPublisher);
   const auditService = new AuditService(prisma);
 
-  const billingRepo = new PrismaBillingRepository(prisma);
-  const stripeClient = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
-  const billingService = stripeClient
-    ? new BillingService({
-        repo: billingRepo,
-        stripe: stripeClient,
-        appPublicUrl: env.APP_PUBLIC_URL,
-        webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
-        emailService,
-        eventPublisher,
-        priceIds: {
-          PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
-          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
-        },
-        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
-      })
-    : null;
-
   const fiscalRepo = new PrismaFiscalRepository(prisma);
   const focusProvider = new FocusFiscalProvider();
   const fiscalService = new FiscalService({
@@ -200,7 +210,6 @@ export function buildAppContainer(): AppContainer {
     stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL ?? env.STRIPE_WEBHOOK_SECRET,
     focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
   });
-  const workspaceCustomersService = new WorkspaceCustomersService(prisma, workspaceConfigService, eventPublisher);
   const commercialIntakeService = new CommercialIntakeService({
     prisma,
     workspaceWorkItemsService,

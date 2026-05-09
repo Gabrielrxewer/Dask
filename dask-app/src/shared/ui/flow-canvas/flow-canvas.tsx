@@ -22,6 +22,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { EmptyState } from "@/shared/ui/empty-state";
 import { AppIcon } from "@/shared/ui/icon";
+import { FlowNodeSidebarMenu } from "./flow-node-sidebar-menu";
 import './flow-canvas.css';
 
 export interface FlowCanvasPaletteItem<TKind extends string, TData extends Record<string, unknown>> {
@@ -40,7 +41,7 @@ const DEFAULT_EDGE_OPTIONS = {
   markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
 };
 
-function FlowCanvasControls() {
+function FlowCanvasControls({ fitViewMaxZoom }: { fitViewMaxZoom: number }) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
   return (
@@ -53,7 +54,7 @@ function FlowCanvasControls() {
         <AppIcon name="minus" size={16} strokeWidth={1.7} />
       </button>
       <div className="flow-canvas-ui__ctrl-sep" />
-      <button type="button" className="flow-canvas-ui__ctrl-btn" title="Ajustar tela" aria-label="Ajustar tela" onClick={() => fitView({ duration: 300, padding: 0.25, maxZoom: 0.85 })}>
+      <button type="button" className="flow-canvas-ui__ctrl-btn" title="Ajustar tela" aria-label="Ajustar tela" onClick={() => fitView({ duration: 300, padding: 0.25, maxZoom: fitViewMaxZoom })}>
         <AppIcon name="settings" size={16} strokeWidth={1.5} />
       </button>
     </div>
@@ -75,6 +76,9 @@ interface FlowCanvasInnerProps<TData extends Record<string, unknown>, TKind exte
   onNodesAdd: (nodes: Node<TData, TKind>[]) => void;
   onNodeSelect: (nodeId: string | null) => void;
   fitViewKey: number;
+  focusNodeId?: string | null;
+  fitViewMaxZoom?: number;
+  focusNodeZoom?: number;
   emptyHint?: string;
   paletteTitle?: string;
   paletteEyebrow?: string;
@@ -102,6 +106,9 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
   onNodesAdd,
   onNodeSelect,
   fitViewKey,
+  focusNodeId,
+  fitViewMaxZoom = 0.85,
+  focusNodeZoom = 0.55,
   emptyHint = 'Abra o painel a esquerda e clique em um tipo de no para comecar',
   paletteTitle = 'Adicionar no',
   paletteEyebrow = 'Canvas',
@@ -115,17 +122,30 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
 }: FlowCanvasInnerProps<TData, TKind>) {
   const reactFlow = useReactFlow<Node<TData, TKind>, Edge>();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const fitDoneRef = useRef(0);
+  const fitDoneRef = useRef<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(sidebarDefaultOpen);
   const hasSidebar = paletteItems.length > 0 || Boolean(sidebarContent);
 
   useEffect(() => {
     if (fitViewKey !== fitDoneRef.current) {
       fitDoneRef.current = fitViewKey;
-      const timer = setTimeout(() => reactFlow.fitView({ padding: 0.25, maxZoom: 0.85, duration: 300 }), 60);
+      const timer = setTimeout(() => {
+        const focusNode = focusNodeId ? nodes.find((node) => node.id === focusNodeId) : null;
+        if (focusNode) {
+          const width = focusNode.measured?.width ?? focusNode.width ?? 0;
+          const height = focusNode.measured?.height ?? focusNode.height ?? 0;
+          reactFlow.setCenter(focusNode.position.x + width / 2, focusNode.position.y + height / 2, {
+            zoom: focusNodeZoom,
+            duration: 300
+          });
+          return;
+        }
+
+        reactFlow.fitView({ padding: 0.25, maxZoom: fitViewMaxZoom, duration: 300 });
+      }, 60);
       return () => clearTimeout(timer);
     }
-  }, [fitViewKey, reactFlow]);
+  }, [fitViewKey, fitViewMaxZoom, focusNodeId, focusNodeZoom, nodes, reactFlow]);
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
@@ -220,34 +240,27 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
               </div>
             ) : (
               <div className="flow-canvas-ui__sidebar-list">
-                {paletteItems.map((item) => (
-                  <div
-                    key={item.kind}
-                    className="flow-canvas-ui__sidebar-item"
-                    style={{ '--item-color': item.color } as React.CSSProperties}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData('application/reactflow', item.kind);
-                      event.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onClick={() => spawnNode(item)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        spawnNode(item);
-                      }
-                    }}
-                    title={item.description}
-                  >
-                    <span className="flow-canvas-ui__sidebar-dot" />
-                    <div className="flow-canvas-ui__sidebar-text">
-                      <span className="flow-canvas-ui__sidebar-label">{item.label}</span>
-                      <span className="flow-canvas-ui__sidebar-desc">{item.description}</span>
-                    </div>
-                  </div>
-                ))}
+                <FlowNodeSidebarMenu
+                  sections={[
+                    {
+                      id: "default",
+                      items: paletteItems.map((item) => ({
+                        id: item.kind,
+                        label: item.label,
+                        description: item.description,
+                        color: item.color
+                      }))
+                    }
+                  ]}
+                  onItemSelect={(menuItem) => {
+                    const item = paletteItems.find((entry) => entry.kind === menuItem.id);
+                    if (item) spawnNode(item);
+                  }}
+                  onItemDragStart={(event, menuItem) => {
+                    event.dataTransfer.setData('application/reactflow', menuItem.id);
+                    event.dataTransfer.effectAllowed = 'move';
+                  }}
+                />
               </div>
             )}
 
@@ -255,7 +268,7 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
               {sidebarFooter ?? (
                 <>
                   <span className="flow-canvas-ui__sidebar-foot-label">Visualizacao</span>
-                  <FlowCanvasControls />
+                  <FlowCanvasControls fitViewMaxZoom={fitViewMaxZoom} />
                 </>
               )}
             </div>
@@ -291,6 +304,7 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
         nodesConnectable={nodesConnectable}
         elementsSelectable={elementsSelectable}
         fitView
+        fitViewOptions={{ padding: 0.25, maxZoom: fitViewMaxZoom }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.2}
         maxZoom={2.5}

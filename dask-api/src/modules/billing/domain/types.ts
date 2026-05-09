@@ -11,19 +11,11 @@ export type SubscriptionStatus =
   | 'UNPAID'
   | 'PAUSED';
 
+export const SUBSCRIPTION_PLANS = ['PERSONAL', 'BUSINESS'] as const satisfies SubscriptionPlan[];
+
 export const PLAN_PRICE_IDS: Record<SubscriptionPlan, string> = {
   PERSONAL: process.env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
   BUSINESS: process.env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
-};
-
-export const PLAN_AMOUNTS_BRL: Record<SubscriptionPlan, number> = {
-  PERSONAL: 1990, // R$ 19,90 in cents
-  BUSINESS: 9900  // R$ 99,00 in cents
-};
-
-export const PLAN_DISPLAY_NAMES: Record<SubscriptionPlan, string> = {
-  PERSONAL: 'Pessoal',
-  BUSINESS: 'Business'
 };
 
 /** Stripe statuses that grant full platform access */

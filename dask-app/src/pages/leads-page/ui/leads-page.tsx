@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { buildWorkspaceBoardPath, buildWorkspaceDocumentationPath, buildWorkspaceLeadFlowPath } from "@/app/router";
-import { buildBoardMetrics, type Task } from "@/entities/task";
+import { buildBoardMetrics, type BoardLeadOperationalMetadata, type Task } from "@/entities/task";
 import {
   getCustomerDisplayName,
   useWorkspace,
@@ -26,7 +26,6 @@ import {
   buildPipelineMetrics,
   buildSourceBreakdown,
   buildStatusDistribution,
-  COMMERCIAL_TYPE_ID,
   emptyCustomerForm,
   emptyLeadForm,
   findPossibleDuplicates,
@@ -73,15 +72,17 @@ export function LeadsPage() {
   const [linkCustomerId, setLinkCustomerId] = useState("");
 
   const boardStatuses = snapshot?.boardConfig.statuses ?? [];
-  const commercialType =
-    snapshot?.boardConfig.taskTypes.find((t) => t.id === COMMERCIAL_TYPE_ID) ??
-    snapshot?.boardConfig.taskTypes.find((t) => t.label.toLowerCase().includes("comercial"));
-  const commercialTypeId = commercialType?.id ?? COMMERCIAL_TYPE_ID;
-  const initialStatusId = boardStatuses[0]?.id ?? "lead_new";
+  const leadMetadata: BoardLeadOperationalMetadata | null = snapshot?.boardConfig.operationalMetadata?.leads ?? null;
+  const commercialTypeId = leadMetadata?.defaultItemTypeId ?? "";
+  const initialStatusId = leadMetadata?.initialStatusId ?? "";
 
   const commercialTasks = useMemo(
-    () => (snapshot?.tasks ?? []).filter((task) => task.type === commercialTypeId),
-    [commercialTypeId, snapshot?.tasks]
+    () => {
+      if (!leadMetadata) return [];
+      const commercialTypeIds = new Set(leadMetadata.itemTypeIds);
+      return (snapshot?.tasks ?? []).filter((task) => commercialTypeIds.has(task.type));
+    },
+    [leadMetadata, snapshot?.tasks]
   );
 
   const statusLabelById = useMemo(
@@ -139,17 +140,17 @@ export function LeadsPage() {
   }, [customers, search]);
 
   const pipelineMetrics = useMemo(
-    () => buildPipelineMetrics(commercialTasks, customers, documents),
-    [commercialTasks, customers, documents]
+    () => buildPipelineMetrics(commercialTasks, customers, documents, leadMetadata),
+    [commercialTasks, customers, documents, leadMetadata]
   );
-  const funnelData = useMemo(() => buildFunnelData(commercialTasks), [commercialTasks]);
+  const funnelData = useMemo(() => buildFunnelData(commercialTasks, leadMetadata), [commercialTasks, leadMetadata]);
   const statusDistribution = useMemo(
     () => buildStatusDistribution(boardStatuses, commercialTasks),
     [boardStatuses, commercialTasks]
   );
   const sourceBreakdown = useMemo(() => buildSourceBreakdown(commercialTasks), [commercialTasks]);
-  const pendingItems = useMemo(() => buildPendingItems(commercialTasks, documents), [commercialTasks, documents]);
-  const filteredLeadMetrics = useMemo(() => buildFilteredLeadMetrics(filteredTasks), [filteredTasks]);
+  const pendingItems = useMemo(() => buildPendingItems(commercialTasks, documents, leadMetadata), [commercialTasks, documents, leadMetadata]);
+  const filteredLeadMetrics = useMemo(() => buildFilteredLeadMetrics(filteredTasks, leadMetadata), [filteredTasks, leadMetadata]);
 
   const loadAuxData = useCallback(async () => {
     setIsAuxLoading(true);
@@ -189,6 +190,10 @@ export function LeadsPage() {
   }, [loadAuxData]);
 
   const openNewLeadModal = (customer?: Customer) => {
+    if (!leadMetadata) {
+      setError("Metadados comerciais do board nao configurados para criar leads.");
+      return;
+    }
     setLeadForm({ ...emptyLeadForm(), customerId: customer?.id ?? "", companyName: getCustomerDisplayName(customer) || "", contactEmail: customer?.email ?? "", contactPhone: customer?.phone ?? "" });
     setSelectedCustomerId(customer?.id ?? null);
     setSelectedTaskId(null);
@@ -240,6 +245,9 @@ export function LeadsPage() {
   };
 
   const createLeadWorkItem = async () => {
+    if (!leadMetadata || !commercialTypeId || !initialStatusId) {
+      throw new Error("Metadados comerciais do board nao configurados para criar leads.");
+    }
     const companyNameInput = leadForm.companyName.trim();
     const contactName = leadForm.contactName.trim();
     const catalogItem = selectedCatalogItem;
@@ -357,6 +365,7 @@ export function LeadsPage() {
       onRefresh={() => void loadAuxData()}
       onNewCustomer={openCustomerModal}
       onNewLead={() => openNewLeadModal()}
+      canCreateLead={Boolean(leadMetadata)}
     />
   );
 
@@ -367,6 +376,9 @@ export function LeadsPage() {
 
         {message ? <InlineAlert tone="success">{message}</InlineAlert> : null}
         {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
+        {!isLoading && snapshot && !leadMetadata ? (
+          <InlineAlert tone="warning">Template comercial sem metadados operacionais de leads. Reaplique o template comercial antes de criar ou analisar oportunidades.</InlineAlert>
+        ) : null}
 
         <div className="leads-page__content">
           <div className="leads-page__stack">

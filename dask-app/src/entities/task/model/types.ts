@@ -143,6 +143,8 @@ export interface TaskStatus {
   id: TaskStatusId;
   label: string;
   dot: string;
+  category?: string | null;
+  isTerminal?: boolean;
 }
 
 export interface PriorityMetaItem {
@@ -209,7 +211,39 @@ export interface BoardViewConfig {
   allowedTaskTypes?: string[];
   compactCards?: boolean;
   visibleBoardColumnIds?: string[];
+  visibleStatusIds?: string[];
   createTaskColumnIds?: string[];
+  analyticsRole?: "prospecting" | "funnel" | "terminal" | "client";
+}
+
+export interface BoardOperationalFunnelStage {
+  key: string;
+  label: string;
+  statusIds: string[];
+  color: string;
+}
+
+export interface BoardLeadOperationalMetadata {
+  schemaVersion: 1;
+  itemTypeIds: string[];
+  defaultItemTypeId: string;
+  initialStatusId: string;
+  funnel: BoardOperationalFunnelStage[];
+  activeStatusIds: string[];
+  wonStatusIds: string[];
+  lostStatusIds: string[];
+  terminalStatusIds: string[];
+  proposalRequiredStatusIds: string[];
+  prospecting?: {
+    itemTypeIds: string[];
+    statusIds: string[];
+    initialStatusId: string | null;
+  };
+}
+
+export interface BoardOperationalMetadata {
+  schemaVersion: 1;
+  leads?: BoardLeadOperationalMetadata;
 }
 
 export interface BoardConfig {
@@ -221,6 +255,7 @@ export interface BoardConfig {
   /** Compatibilidade legada para consumidores ainda nao migrados. */
   cardLayout: CardLayoutConfig;
   perspectives: BoardViewConfig[];
+  operationalMetadata?: BoardOperationalMetadata;
   /** @deprecated Use perspectives. */
   views?: BoardViewConfig[];
 }

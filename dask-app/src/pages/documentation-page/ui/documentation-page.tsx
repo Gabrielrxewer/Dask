@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, ty
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { buildBoardMetrics, type Task } from "@/entities/task";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
-import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentMetadata } from "@/modules/workspace";
+import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentFolder, type WorkspaceDocumentMetadata } from "@/modules/workspace";
 import { buildWorkspaceBoardPathWithTask } from "@/app/router";
 import { LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
@@ -15,8 +15,11 @@ import { DocumentationSendModal } from "./documentation-send-modal";
 import { DocumentationTopNavigation } from "./documentation-top-navigation";
 import {
   buildAssistantConversationHistory,
+  buildFolderAssistantContent,
   countDocumentWords,
   filterDocumentationDocs,
+  getFolderDescendantIds,
+  getFolderDocuments,
   renderWorkspaceDocumentMarkdown,
   resolveDocumentationAssistantStatus
 } from "./documentation-page.model";
@@ -108,10 +111,14 @@ export function DocumentationPage() {
     isLoading,
     runDocumentationAssistant,
     listWorkspaceDocuments,
+    listWorkspaceDocumentFolders,
     listCustomers,
     createWorkspaceDocument,
+    createWorkspaceDocumentFolder,
+    updateWorkspaceDocumentFolder,
     updateWorkspaceDocument,
     sendWorkspaceDocument,
+    deleteWorkspaceDocumentFolder,
     deleteWorkspaceDocument
   } = useWorkspace();
   const navigate = useNavigate();
@@ -133,8 +140,10 @@ export function DocumentationPage() {
   const saveSeqByDocRef = useRef<Record<string, number>>({});
 
   const [docs, setDocs] = useState<WorkspaceDocument[]>([]);
+  const [folders, setFolders] = useState<WorkspaceDocumentFolder[]>([]);
   const [isDocsLoading, setIsDocsLoading] = useState(true);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [documentKindFilter, setDocumentKindFilter] = useState<DocumentKindFilter>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [sendModalDocId, setSendModalDocId] = useState<string | null>(null);
@@ -169,6 +178,14 @@ export function DocumentationPage() {
     return docs.find((doc) => doc.id === activeDocId) ?? null;
   }, [docs, activeDocId]);
 
+  const activeFolder = useMemo(() => {
+    return folders.find((folder) => folder.id === activeFolderId) ?? null;
+  }, [activeFolderId, folders]);
+
+  const activeFolderDocs = useMemo(() => {
+    return activeFolder ? getFolderDocuments(docs, folders, activeFolder.id) : [];
+  }, [activeFolder, docs, folders]);
+
   const activeDocKind = normalizeDocumentKind(activeDoc?.kind);
   const sendModalDoc = useMemo(
     () => docs.find((doc) => doc.id === sendModalDocId) ?? null,
@@ -189,11 +206,12 @@ export function DocumentationPage() {
   );
 
   const activeMessages = useMemo(() => {
-    if (!activeDoc) {
+    const chatKey = activeDoc?.id ?? (activeFolder ? `folder:${activeFolder.id}` : null);
+    if (!chatKey) {
       return [];
     }
-    return chatsByDoc[activeDoc.id] ?? [];
-  }, [chatsByDoc, activeDoc]);
+    return chatsByDoc[chatKey] ?? [];
+  }, [activeFolder, chatsByDoc, activeDoc]);
 
   const wordCount = useMemo(() => countDocumentWords(activeDoc), [activeDoc]);
 
@@ -246,6 +264,17 @@ export function DocumentationPage() {
     setDocs((previous) => previous.map((doc) => (doc.id === nextDoc.id ? nextDoc : doc)));
   }, []);
 
+  const selectDoc = useCallback((docId: string) => {
+    setActiveDocId(docId);
+    setActiveFolderId(null);
+  }, []);
+
+  const selectFolder = useCallback((folderId: string) => {
+    setActiveFolderId(folderId);
+    setActiveDocId(null);
+    setSelectedSnippet("");
+  }, []);
+
   const persistDocImmediately = useCallback(
     async (document: WorkspaceDocument) => {
       const nextSequence = (saveSeqByDocRef.current[document.id] ?? 0) + 1;
@@ -287,12 +316,13 @@ export function DocumentationPage() {
     dirtyDocIdsRef.current = new Set();
     saveSeqByDocRef.current = {};
 
-    listWorkspaceDocuments()
-      .then((fetchedDocs) => {
+    Promise.all([listWorkspaceDocuments(), listWorkspaceDocumentFolders()])
+      .then(([fetchedDocs, fetchedFolders]) => {
         if (!mounted) {
           return;
         }
         setDocs(fetchedDocs);
+        setFolders(fetchedFolders);
         setActiveDocId((current) => {
           if (initialDocId && fetchedDocs.some((doc) => doc.id === initialDocId)) {
             return initialDocId;
@@ -302,11 +332,20 @@ export function DocumentationPage() {
           }
           return fetchedDocs[0]?.id ?? null;
         });
+        setActiveFolderId((current) =>
+          current && fetchedFolders.some((folder) => folder.id === current) ? current : null
+        );
         setChatsByDoc((previous) => {
           const next: Record<string, AssistantMessage[]> = {};
           fetchedDocs.forEach((doc) => {
             if (previous[doc.id]) {
               next[doc.id] = previous[doc.id];
+            }
+          });
+          fetchedFolders.forEach((folder) => {
+            const key = `folder:${folder.id}`;
+            if (previous[key]) {
+              next[key] = previous[key];
             }
           });
           return next;
@@ -327,7 +366,7 @@ export function DocumentationPage() {
     return () => {
       mounted = false;
     };
-  }, [listWorkspaceDocuments]);
+  }, [listWorkspaceDocumentFolders, listWorkspaceDocuments]);
 
   useEffect(() => {
     setSelectedSnippet("");
@@ -336,6 +375,10 @@ export function DocumentationPage() {
   }, [activeDoc?.id]);
 
   useEffect(() => {
+    if (activeFolderId) {
+      return;
+    }
+
     if (documentKindFilter === "all" && !activeDocId && docs.length > 0) {
       setActiveDocId(docs[0].id);
       return;
@@ -350,7 +393,7 @@ export function DocumentationPage() {
     }
 
     setActiveDocId(filteredDocs[0]?.id ?? null);
-  }, [activeDocId, docs, documentKindFilter, filteredDocs]);
+  }, [activeDocId, activeFolderId, docs, documentKindFilter, filteredDocs]);
 
   useEffect(() => {
     if (!messagesRef.current) {
@@ -494,6 +537,7 @@ export function DocumentationPage() {
       });
       setDocs((previous) => [...previous, created]);
       setActiveDocId(created.id);
+      setActiveFolderId(null);
       setSelectedSnippet("");
       setDocumentKindFilter("all");
       setIsCreateModalOpen(false);
@@ -521,6 +565,7 @@ export function DocumentationPage() {
       });
       setDocs((previous) => [...previous, duplicated]);
       setActiveDocId(duplicated.id);
+      setActiveFolderId(null);
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "Falha ao duplicar doc.");
     }
@@ -703,13 +748,18 @@ export function DocumentationPage() {
   }
 
   async function handleRunAssistant() {
-    if (!activeDoc) {
+    if (!activeDoc && !activeFolder) {
       return;
     }
 
-    const docId = activeDoc.id;
-    const docTitle = activeDoc.title;
-    const docContent = activeDoc.content;
+    const chatKey = activeDoc ? activeDoc.id : `folder:${activeFolder!.id}`;
+    const docTitle = activeDoc ? activeDoc.title : `Pasta: ${activeFolder!.name}`;
+    const docContent = activeDoc
+      ? activeDoc.content
+      : buildFolderAssistantContent({ folder: activeFolder!, docs: activeFolderDocs });
+    const docPath = activeFolder
+      ? `${activeFolder.name} (${activeFolderDocs.length} docs, incluindo subpastas)`
+      : undefined;
     const instruction = (prompt.trim() || DEFAULT_INSTRUCTIONS[activeMode]).slice(0, 6000);
     const inferredMode = inferIntentMode(instruction, activeMode);
     const conversationHistory = buildAssistantConversationHistory({
@@ -718,7 +768,7 @@ export function DocumentationPage() {
       instruction
     });
 
-    pushMessage(docId, createMessage("user", inferredMode, instruction));
+    pushMessage(chatKey, createMessage("user", inferredMode, instruction));
     setRunError(null);
     setIsRunning(true);
     const runStartedAt = Date.now();
@@ -728,6 +778,7 @@ export function DocumentationPage() {
         mode: inferredMode,
         instruction,
         documentTitle: docTitle,
+        documentPath: docPath,
         documentContent: docContent,
         selection: selectedSnippet || undefined,
         conversationHistory,
@@ -736,35 +787,40 @@ export function DocumentationPage() {
       });
       setLastRunLatencyMs(Date.now() - runStartedAt);
 
-      pushMessage(docId, createMessage("assistant", inferredMode, result.content));
+      pushMessage(chatKey, createMessage("assistant", inferredMode, result.content));
 
-      if (result.action === "replace_document" && result.updatedDocument) {
-        updateDocDraft(docId, { content: result.updatedDocument });
-        pushMessage(docId, createMessage("system", inferredMode, "A IA atualizou esta doc automaticamente."));
+      if (activeDoc && result.action === "replace_document" && result.updatedDocument) {
+        updateDocDraft(activeDoc.id, { content: result.updatedDocument });
+        pushMessage(chatKey, createMessage("system", inferredMode, "A IA atualizou esta doc automaticamente."));
       }
 
-      if (result.action === "append_document" && result.updatedDocument) {
-        appendDocDraft(docId, result.updatedDocument);
-        pushMessage(docId, createMessage("system", inferredMode, "A IA anexou novo trecho nesta doc."));
+      if (activeDoc && result.action === "append_document" && result.updatedDocument) {
+        appendDocDraft(activeDoc.id, result.updatedDocument);
+        pushMessage(chatKey, createMessage("system", inferredMode, "A IA anexou novo trecho nesta doc."));
+      }
+
+      if (activeFolder && result.action !== "chat") {
+        pushMessage(chatKey, createMessage("system", inferredMode, "Esta conversa analisou a pasta; nenhuma doc foi alterada automaticamente."));
       }
 
       setPrompt("");
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "Falha ao processar IA de documentacao.");
-      pushMessage(docId, createMessage("system", inferredMode, "Nao foi possivel processar sua solicitacao agora."));
+      pushMessage(chatKey, createMessage("system", inferredMode, "Nao foi possivel processar sua solicitacao agora."));
     } finally {
       setIsRunning(false);
     }
   }
 
   function clearActiveChat() {
-    if (!activeDoc) {
+    const chatKey = activeDoc?.id ?? (activeFolder ? `folder:${activeFolder.id}` : null);
+    if (!chatKey) {
       return;
     }
 
     setChatsByDoc((previous) => ({
       ...previous,
-      [activeDoc.id]: []
+      [chatKey]: []
     }));
     setRunError(null);
   }
@@ -780,7 +836,7 @@ export function DocumentationPage() {
       (activeDocKind === "proposal" || activeDocKind === "contract") &&
       (clientDecisionState === "success" || !["approved", "accepted", "signed", "rejected"].includes(activeCommercialStatus))
   );
-  const canSend = !isRunning && !isLoading && !isDocsLoading && Boolean(activeDoc);
+  const canSend = !isRunning && !isLoading && !isDocsLoading && Boolean(activeDoc || activeFolder);
   const { status: assistantStatus, tone: assistantTone } = resolveDocumentationAssistantStatus({
     isRunning,
     activeDocId: activeDoc?.id ?? null,
@@ -807,6 +863,103 @@ export function DocumentationPage() {
         ...patch
       }
     });
+  }
+
+  async function createFolder(parentId: string | null = null) {
+    const name = window.prompt(parentId ? "Nome da subpasta" : "Nome da pasta");
+    if (!name?.trim()) {
+      return;
+    }
+
+    setRunError(null);
+    try {
+      const created = await createWorkspaceDocumentFolder({
+        name: name.trim(),
+        parentId,
+        position: folders.filter((folder) => (folder.parentId ?? null) === parentId).length
+      });
+      setFolders((previous) => [...previous, created]);
+      selectFolder(created.id);
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Falha ao criar pasta.");
+    }
+  }
+
+  async function renameFolder(folderId: string) {
+    const folder = folders.find((entry) => entry.id === folderId);
+    if (!folder) {
+      return;
+    }
+
+    const name = window.prompt("Nome da pasta", folder.name);
+    if (!name?.trim() || name.trim() === folder.name) {
+      return;
+    }
+
+    setRunError(null);
+    try {
+      const updated = await updateWorkspaceDocumentFolder(folder.id, { name: name.trim() });
+      setFolders((previous) => previous.map((entry) => (entry.id === updated.id ? updated : entry)));
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Falha ao editar pasta.");
+    }
+  }
+
+  async function removeFolder(folderId: string) {
+    const folder = folders.find((entry) => entry.id === folderId);
+    if (!folder) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Excluir a pasta "${folder.name}"? As docs voltam para a raiz.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setRunError(null);
+    try {
+      await deleteWorkspaceDocumentFolder(folder.id);
+      const folderIds = new Set([folder.id, ...getFolderDescendantIds(folders, folder.id)]);
+      setFolders((previous) => previous.filter((entry) => !folderIds.has(entry.id)));
+      setDocs((previous) =>
+        previous.map((doc) => {
+          const folderIdValue = doc.metadata?.folderId;
+          if (typeof folderIdValue !== "string" || !folderIds.has(folderIdValue)) {
+            return doc;
+          }
+          const metadata = { ...(doc.metadata ?? {}) };
+          delete metadata.folderId;
+          return { ...doc, metadata };
+        })
+      );
+      setActiveFolderId((current) => current && folderIds.has(current) ? null : current);
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Falha ao excluir pasta.");
+    }
+  }
+
+  async function moveDocToFolder(docId: string, folderId: string | null) {
+    const doc = docs.find((entry) => entry.id === docId);
+    if (!doc || isClient) {
+      return;
+    }
+
+    const metadata = { ...(doc.metadata ?? {}) };
+    if (folderId) {
+      metadata.folderId = folderId;
+    } else {
+      delete metadata.folderId;
+    }
+
+    setDocs((previous) => previous.map((entry) => entry.id === docId ? { ...entry, metadata } : entry));
+    try {
+      const updated = await updateWorkspaceDocument(docId, { metadata });
+      replaceDocWithServerVersion(updated);
+      setSaveError(null);
+    } catch (error) {
+      replaceDocWithServerVersion(doc);
+      setSaveError(error instanceof Error ? error.message : "Falha ao mover doc.");
+    }
   }
 
   async function submitClientDocumentDecision(decision: "approve" | "accept" | "reject") {
@@ -929,12 +1082,19 @@ export function DocumentationPage() {
         <DocumentationFilesPane
           docsCount={docs.length}
           filteredDocs={filteredDocs}
+          folders={folders}
           activeDocId={activeDoc?.id ?? null}
+          activeFolderId={activeFolder?.id ?? null}
           documentKindFilter={documentKindFilter}
           fromCard={fromCard}
           isDocsLoading={isDocsLoading}
           onFilterChange={setDocumentKindFilter}
-          onSelectDoc={setActiveDocId}
+          onSelectDoc={selectDoc}
+          onSelectFolder={selectFolder}
+          onCreateFolder={(parentId) => void createFolder(parentId ?? null)}
+          onRenameFolder={(folderId) => void renameFolder(folderId)}
+          onDeleteFolder={(folderId) => void removeFolder(folderId)}
+          onMoveDocToFolder={(docId, folderId) => void moveDocToFolder(docId, folderId)}
         />
 
         <DocumentationEditorPanel
@@ -974,6 +1134,7 @@ export function DocumentationPage() {
         <DocumentationAssistantPanel
           isAssistantOpen={isAssistantOpen}
           activeDoc={activeDoc}
+          activeContextTitle={activeFolder ? `Pasta: ${activeFolder.name}` : activeDoc?.title ?? ""}
           activeMessages={activeMessages}
           isRunning={isRunning}
           assistantTone={assistantTone}

@@ -387,6 +387,17 @@ export class PrismaBillingRepository implements BillingRepository {
     return (this.prisma as any).connectCatalogItem.update({
       where: { id: itemId },
       data: {
+        kind: input.kind,
+        billingType: input.billingType,
+        recurringInterval: input.recurringInterval,
+        recurringIntervalCount: input.recurringIntervalCount,
+        name: input.name,
+        description: input.description,
+        amount: input.amount,
+        currency: input.currency,
+        stripeProductId: input.stripeProductId,
+        stripePriceId: input.stripePriceId,
+        metadata: input.metadata as any,
         ...(typeof input.isActive === 'boolean' ? { isActive: input.isActive } : {})
       }
     });

@@ -140,6 +140,15 @@
   z-index: 1;
 }
 
+.workspace:has(.board-view) {
+  padding: 6px 6px 8px;
+}
+
+.workspace:has(.board-view) .workspace__content {
+  gap: 0;
+  padding-top: 0;
+}
+
 .app-theme:not([data-theme="dark"]) .board-top-nav {
   padding: 5px 2px;
   border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);

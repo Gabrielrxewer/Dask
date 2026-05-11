@@ -3,7 +3,7 @@ import { getTaskFieldTypeLabel } from "@/entities/task";
 import type { TaskCardDebugSnapshot, TaskFieldCardArea } from "@/entities/task";
 import type { DetailZone, LayoutDraft, LayoutScope } from "@/pages/settings-page/model/work-item-layout-editor";
 import { resolveCssColorForInput } from "@/shared/lib/color/css-color";
-import { Button, FormField, TextInput } from "@/shared/ui";
+import { AppSelect, Button, FormField, TextInput } from "@/shared/ui";
 import { CatalogSourceField } from "./work-item-catalog-source-field";
 import {
   CARD_SLOT_AREA_META,
@@ -17,6 +17,19 @@ import {
   type PendingFieldSetup,
   type TypeDraft
 } from "./work-item-editor-settings.model";
+
+const billingAggregationItems = [
+  { value: "sum", label: "Somar valores" },
+  { value: "average", label: "Media" },
+  { value: "count", label: "Contagem" },
+  { value: "manual", label: "Manual" }
+];
+
+const billingDisplayFormatItems = [
+  { value: "currency", label: "Moeda" },
+  { value: "number", label: "Numero" },
+  { value: "compact", label: "Compacto" }
+];
 
 interface WorkItemEditorPropertiesProps {
   pendingFieldSetup: PendingFieldSetup | null;
@@ -192,6 +205,50 @@ export function WorkItemEditorProperties({
               </FormField>
             </div>
           ) : null}
+          {draft.type === "billing_summary" ? (
+            <div className="wie__props-billing-settings">
+              <FormField label="Moeda">
+                <TextInput
+                  value={draft.billingCurrency}
+                  placeholder="BRL"
+                  onChange={(e) => setFieldDraft({ ...draft, billingCurrency: e.target.value.toUpperCase().slice(0, 3) })}
+                />
+              </FormField>
+              <FormField label="Campos fonte">
+                <TextInput
+                  value={draft.billingSourceFields}
+                  placeholder="amount, fee, discount"
+                  onChange={(e) => setFieldDraft({ ...draft, billingSourceFields: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Agregacao">
+                <AppSelect
+                  className="wie__props-select"
+                  value={draft.billingAggregationMode}
+                  onValueChange={(value) => setFieldDraft({ ...draft, billingAggregationMode: value as FieldDraft["billingAggregationMode"] })}
+                  aria-label="Agregacao"
+                  items={billingAggregationItems}
+                />
+              </FormField>
+              <FormField label="Formato">
+                <AppSelect
+                  className="wie__props-select"
+                  value={draft.billingDisplayFormat}
+                  onValueChange={(value) => setFieldDraft({ ...draft, billingDisplayFormat: value as FieldDraft["billingDisplayFormat"] })}
+                  aria-label="Formato"
+                  items={billingDisplayFormatItems}
+                />
+              </FormField>
+              <label className="wie__props-billing-toggle">
+                <input
+                  type="checkbox"
+                  checked={draft.billingReadOnly}
+                  onChange={(e) => setFieldDraft({ ...draft, billingReadOnly: e.target.checked })}
+                />
+                Campo calculado/read-only
+              </label>
+            </div>
+          ) : null}
           {supportsSelectableOptions(draft.type) ? (
             <div className="wie__props-options">
               <div className="wie__props-options-head">
@@ -300,6 +357,56 @@ export function WorkItemEditorProperties({
                   />
                 </div>
               </FormField>
+            </div>
+          ) : null}
+          {pendingFieldSetup.type === "billing_summary" ? (
+            <div className="wie__props-billing-settings">
+              <FormField label="Moeda">
+                <TextInput
+                  value={pendingFieldSetup.billingCurrency}
+                  placeholder="BRL"
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, billingCurrency: e.target.value.toUpperCase().slice(0, 3) })}
+                />
+              </FormField>
+              <FormField label="Campos fonte">
+                <TextInput
+                  value={pendingFieldSetup.billingSourceFields}
+                  placeholder="amount, fee, discount"
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, billingSourceFields: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Agregacao">
+                <AppSelect
+                  className="wie__props-select"
+                  value={pendingFieldSetup.billingAggregationMode}
+                  onValueChange={(value) => setPendingFieldSetup({
+                    ...pendingFieldSetup,
+                    billingAggregationMode: value as PendingFieldSetup["billingAggregationMode"]
+                  })}
+                  aria-label="Agregacao"
+                  items={billingAggregationItems}
+                />
+              </FormField>
+              <FormField label="Formato">
+                <AppSelect
+                  className="wie__props-select"
+                  value={pendingFieldSetup.billingDisplayFormat}
+                  onValueChange={(value) => setPendingFieldSetup({
+                    ...pendingFieldSetup,
+                    billingDisplayFormat: value as PendingFieldSetup["billingDisplayFormat"]
+                  })}
+                  aria-label="Formato"
+                  items={billingDisplayFormatItems}
+                />
+              </FormField>
+              <label className="wie__props-billing-toggle">
+                <input
+                  type="checkbox"
+                  checked={pendingFieldSetup.billingReadOnly}
+                  onChange={(e) => setPendingFieldSetup({ ...pendingFieldSetup, billingReadOnly: e.target.checked })}
+                />
+                Campo calculado/read-only
+              </label>
             </div>
           ) : null}
           {supportsSelectableOptions(pendingFieldSetup.type) ? (

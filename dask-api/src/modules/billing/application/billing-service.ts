@@ -21,6 +21,11 @@ import {
   isSubscriptionActive,
   type BillingStatus
 } from '../domain/types';
+import {
+  DEFAULT_BILLING_PORTAL_SCOPES,
+  createBillingPortalToken,
+  type BillingPortalTokenScope
+} from '../domain/portal-token';
 import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
 
 // Stripe v22 exports as `export = StripeConstructor` — use InstanceType to get the instance type
@@ -175,6 +180,7 @@ interface BillingServiceDeps {
   stripe: StripeInstance;
   appPublicUrl: string;
   webhookSecret: string;
+  portalTokenSecret?: string;
   emailService?: EmailService;
   eventPublisher?: {
     publish(event: {
@@ -193,14 +199,22 @@ interface BillingServiceDeps {
 export interface ConnectAccountStatus {
   workspaceId: string;
   stripeAccountId: string;
+  controllerType: string | null;
+  dashboardType: string | null;
+  requirementCollection: string | null;
+  disabledReason: string | null;
   detailsSubmitted: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   cardPaymentsStatus: string | null;
   pixPaymentsStatus: string | null;
   boletoPaymentsStatus: string | null;
+  capabilities: Record<string, string | null>;
   onboardingComplete: boolean;
   requirementsDue: string[];
+  requirementsPastDue: string[];
+  requirementsEventuallyDue: string[];
+  requirementsPendingVerification: string[];
 }
 
 export interface BillingPlanCatalogItem {
@@ -229,6 +243,9 @@ export interface CreateConnectCheckoutSessionInput {
   applicationFeeAmount?: number;
   successUrl?: string;
   cancelUrl?: string;
+  sourceWorkItemId?: string;
+  hasProposalOrContract?: boolean;
+  justification?: string;
   metadata?: Record<string, string>;
 }
 
@@ -242,6 +259,32 @@ export interface CreateConnectCatalogItemInput {
   amount: number;
   currency?: string;
   metadata?: Record<string, string>;
+}
+
+export interface CreateBillingPortalTokenInput {
+  expiresInSeconds?: number;
+  scopes?: BillingPortalTokenScope[];
+}
+
+export interface ListConnectPaymentOrdersInput {
+  cursor?: string;
+  pageSize?: number;
+  limit?: number;
+  status?: ConnectPaymentOrderStatus;
+  customerId?: string;
+  email?: string;
+  search?: string;
+}
+
+export interface ListConnectCatalogItemsInput {
+  includeInactive?: boolean;
+  cursor?: string;
+  pageSize?: number;
+  limit?: number;
+  kind?: ConnectCatalogItemKind;
+  billingType?: ConnectCatalogBillingType;
+  status?: 'active' | 'inactive' | 'all';
+  search?: string;
 }
 
 export type UpdateConnectCatalogItemInput = CreateConnectCatalogItemInput;
@@ -323,12 +366,14 @@ export class BillingService {
   private readonly eventPublisher?: BillingServiceDeps['eventPublisher'];
   private readonly priceIds: Partial<Record<SubscriptionPlan, string>>;
   private readonly connectApplicationFeeBps: number;
+  private readonly portalTokenSecret: string;
 
   constructor(deps: BillingServiceDeps) {
     this.repo = deps.repo;
     this.stripe = deps.stripe;
     this.appPublicUrl = deps.appPublicUrl;
     this.webhookSecret = deps.webhookSecret;
+    this.portalTokenSecret = deps.portalTokenSecret ?? (deps.webhookSecret ? `${deps.webhookSecret}:billing-portal-token` : '');
     this.emailService = deps.emailService;
     this.eventPublisher = deps.eventPublisher;
     this.priceIds = deps.priceIds ?? PLAN_PRICE_IDS;
@@ -545,6 +590,9 @@ export class BillingService {
     let accountId = workspace.connectAccountId;
 
     if (!accountId) {
+      // Current production path keeps legacy Express account creation for existing
+      // Dask workspaces. New Connect configurations should move through an adapter
+      // to controller properties / Accounts v2 before changing account creation.
       const account = await this.stripe.accounts.create({
         type: 'express',
         capabilities: {
@@ -584,22 +632,49 @@ export class BillingService {
     }
 
     const account = await this.stripe.accounts.retrieve(workspace.connectAccountId);
-    const requirementsDue = account.requirements?.currently_due ?? [];
+    const rawAccount = account as typeof account & {
+      capabilities?: Record<string, string | null>;
+      controller?: {
+        type?: string | null;
+        requirement_collection?: string | null;
+        stripe_dashboard?: { type?: string | null } | null;
+      } | null;
+      requirements?: {
+        currently_due?: string[] | null;
+        past_due?: string[] | null;
+        eventually_due?: string[] | null;
+        pending_verification?: string[] | null;
+        disabled_reason?: string | null;
+      } | null;
+    };
+    const requirementsDue = rawAccount.requirements?.currently_due ?? [];
+    const requirementsPastDue = rawAccount.requirements?.past_due ?? [];
+    const requirementsEventuallyDue = rawAccount.requirements?.eventually_due ?? [];
+    const requirementsPendingVerification = rawAccount.requirements?.pending_verification ?? [];
     const paymentMethodConfiguration = await this.getDefaultPaymentMethodConfiguration(workspace.connectAccountId, workspaceId);
     return {
       workspaceId,
       stripeAccountId: account.id,
+      controllerType: rawAccount.controller?.type ?? null,
+      dashboardType: rawAccount.controller?.stripe_dashboard?.type ?? null,
+      requirementCollection: rawAccount.controller?.requirement_collection ?? null,
+      disabledReason: rawAccount.requirements?.disabled_reason ?? null,
       detailsSubmitted: Boolean(account.details_submitted),
       chargesEnabled: Boolean(account.charges_enabled),
       payoutsEnabled: Boolean(account.payouts_enabled),
-      cardPaymentsStatus: account.capabilities?.card_payments ?? null,
-      pixPaymentsStatus: this.resolvePaymentMethodConfigurationStatus(paymentMethodConfiguration?.pix, account.capabilities?.pix_payments),
-      boletoPaymentsStatus: this.resolvePaymentMethodConfigurationStatus(paymentMethodConfiguration?.boleto, account.capabilities?.boleto_payments),
+      cardPaymentsStatus: rawAccount.capabilities?.card_payments ?? null,
+      pixPaymentsStatus: this.resolvePaymentMethodConfigurationStatus(paymentMethodConfiguration?.pix, rawAccount.capabilities?.pix_payments),
+      boletoPaymentsStatus: this.resolvePaymentMethodConfigurationStatus(paymentMethodConfiguration?.boleto, rawAccount.capabilities?.boleto_payments),
+      capabilities: rawAccount.capabilities ?? {},
       onboardingComplete:
         Boolean(account.details_submitted) &&
         Boolean(account.charges_enabled) &&
-        requirementsDue.length === 0,
-      requirementsDue
+        requirementsDue.length === 0 &&
+        requirementsPastDue.length === 0,
+      requirementsDue,
+      requirementsPastDue,
+      requirementsEventuallyDue,
+      requirementsPendingVerification
     };
   }
 
@@ -691,28 +766,53 @@ export class BillingService {
       throw new AppError('description is required for this charge', 422);
     }
 
-    const requestedCustomerEmail = normalizeCustomerEmail(input.customerEmail);
-    let customer = input.customerId
-      ? await this.repo.findCustomerById(workspaceId, input.customerId)
-      : null;
-    if (input.customerId && !customer) {
-      throw new AppError('Customer not found for this workspace', 404);
+    const sourceWorkItemId =
+      normalizedMetadataValue(input.sourceWorkItemId) ||
+      normalizedMetadataValue(input.metadata?.sourceWorkItemId);
+    const justification = normalizedMetadataValue(input.justification ?? input.metadata?.justification);
+    const hasFormalCommercialDocument = sourceWorkItemId
+      ? input.hasProposalOrContract === true ||
+        await this.repo.hasWorkItemProposalOrContract(workspaceId, sourceWorkItemId)
+      : false;
+
+    if (sourceWorkItemId && !hasFormalCommercialDocument && justification.length < 12) {
+      throw new AppError(
+        'Formal justification is required to create billing for a lead without proposal or contract',
+        422,
+        {
+          code: 'LEAD_BILLING_JUSTIFICATION_REQUIRED',
+          sourceWorkItemId,
+          minimumLength: 12
+        }
+      );
     }
-    if (!customer && requestedCustomerEmail) {
-      customer =
-        await this.repo.findCustomerByEmail(workspaceId, requestedCustomerEmail) ??
-        await this.repo.createCustomerForBilling({
-          workspaceId,
-          name: input.customerName?.trim() || requestedCustomerEmail,
-          email: requestedCustomerEmail,
-          createdByUserId: userId
-        });
+
+    if (!input.customerId) {
+      throw new AppError(
+        'Customer fiscal data is required before creating checkout',
+        422,
+        {
+          code: 'FISCAL_CUSTOMER_REQUIRED',
+          missingFields: ['customerId', 'customerDocument']
+        }
+      );
+    }
+
+    const requestedCustomerEmail = normalizeCustomerEmail(input.customerEmail);
+    const customer = await this.repo.findCustomerById(workspaceId, input.customerId);
+    if (!customer) {
+      throw new AppError('Customer not found for this workspace', 404);
     }
     const customerName = getBillingCustomerDisplayName(customer) ?? input.customerName?.trim() ?? null;
     const customerEmail = requestedCustomerEmail ?? normalizeCustomerEmail(customer?.email) ?? undefined;
     const customerDocument = customer?.document ?? null;
     const customerPhone = customer?.phone ?? null;
     const customerAddress = asRecordOrNull(customer?.address);
+    this.assertCheckoutCustomerFiscalData({
+      customer,
+      customerEmail,
+      customerDocument
+    });
     if (customer && customerEmail) {
       const existingUser = await this.repo.findUserByEmail(customerEmail);
       if (existingUser) {
@@ -724,8 +824,6 @@ export class BillingService {
     const checkoutMode = this.isRecurringCatalogBillingType(catalogItem?.billingType)
       ? 'subscription'
       : 'payment';
-    const clientAccessToken = createPublicAccessToken();
-    const clientPortalUrl = this.buildCustomerPaymentPortalUrl(clientAccessToken);
     const order = await this.repo.createConnectPaymentOrder({
       workspaceId,
       createdByUserId: userId,
@@ -742,14 +840,57 @@ export class BillingService {
       applicationFeeAmount,
       metadata: {
         ...(input.metadata ?? {}),
-        clientAccessToken,
-        clientPortalUrl,
+        ...(sourceWorkItemId ? { sourceWorkItemId } : {}),
+        ...(sourceWorkItemId
+          ? {
+              billingLinkedToLead: 'true',
+              billingHasProposalOrContract: hasFormalCommercialDocument ? 'true' : 'false'
+            }
+          : {}),
+        ...(sourceWorkItemId && !hasFormalCommercialDocument
+          ? {
+              billingJustification: justification,
+              billingJustificationRequired: 'true'
+            }
+          : {}),
         ...(catalogItem
           ? {
               catalogItemId: catalogItem.id,
               catalogBillingType: catalogItem.billingType
             }
           : {})
+      }
+    });
+    const portalToken = this.createCustomerPortalToken({
+      workspaceId,
+      orderId: order.id,
+      customerEmail,
+      scopes: DEFAULT_BILLING_PORTAL_SCOPES
+    });
+    const clientPortalUrl = this.buildCustomerPaymentPortalUrl(portalToken.token);
+    await this.repo.revokeBillingPortalTokensForOrder(workspaceId, order.id, userId);
+    await this.repo.createBillingPortalTokenRecord({
+      workspaceId,
+      orderId: order.id,
+      tokenId: portalToken.tokenId,
+      tokenHash: portalToken.tokenHash,
+      customerEmail,
+      scopes: portalToken.scopes,
+      expiresAt: portalToken.expiresAt,
+      createdByUserId: userId,
+      metadata: {
+        source: 'checkout_session'
+      }
+    });
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      metadata: {
+        ...(order.metadata ?? {}),
+        clientPortalUrl,
+        clientPortalTokenId: portalToken.tokenId,
+        clientPortalTokenExpiresAt: portalToken.expiresAt.toISOString(),
+        clientPortalTokenScopes: portalToken.scopes.join(','),
+        clientPortalTokenIssuedAt: new Date().toISOString(),
+        clientPortalTokenRevokedAt: ''
       }
     });
     const fiscalMetadata = this.buildFiscalCheckoutMetadata({
@@ -759,7 +900,8 @@ export class BillingService {
       customer,
       metadata: {
         ...(input.metadata ?? {}),
-        clientAccessToken,
+        ...(sourceWorkItemId ? { sourceWorkItemId } : {}),
+        ...(sourceWorkItemId && !hasFormalCommercialDocument ? { billingJustification: justification } : {}),
         clientPortalUrl
       }
     });
@@ -987,18 +1129,106 @@ export class BillingService {
     logger.info({ event: 'billing.connect.order.canceled', orderId, workspaceId });
   }
 
+  async createConnectPaymentOrderPortalToken(
+    workspaceId: string,
+    userId: string,
+    orderId: string,
+    input: CreateBillingPortalTokenInput = {}
+  ): Promise<{ url: string; expiresAt: string; scopes: BillingPortalTokenScope[] }> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+
+    const order = await this.repo.findConnectPaymentOrderById(orderId);
+    if (!order || order.workspaceId !== workspaceId) {
+      throw new AppError('Payment order not found', 404);
+    }
+    if (!order.customerEmail) {
+      throw new AppError('Payment order has no customer email for portal access', 409);
+    }
+
+    const portalToken = this.createCustomerPortalToken({
+      workspaceId,
+      orderId: order.id,
+      customerEmail: order.customerEmail,
+      scopes: input.scopes ?? DEFAULT_BILLING_PORTAL_SCOPES,
+      expiresInSeconds: input.expiresInSeconds
+    });
+    const url = this.buildCustomerPaymentPortalUrl(portalToken.token);
+    await this.repo.revokeBillingPortalTokensForOrder(workspaceId, order.id, userId);
+    await this.repo.createBillingPortalTokenRecord({
+      workspaceId,
+      orderId: order.id,
+      tokenId: portalToken.tokenId,
+      tokenHash: portalToken.tokenHash,
+      customerEmail: order.customerEmail,
+      scopes: portalToken.scopes,
+      expiresAt: portalToken.expiresAt,
+      createdByUserId: userId,
+      metadata: {
+        source: 'manual_portal_token'
+      }
+    });
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      metadata: {
+        ...(order.metadata ?? {}),
+        clientPortalUrl: url,
+        clientPortalTokenId: portalToken.tokenId,
+        clientPortalTokenExpiresAt: portalToken.expiresAt.toISOString(),
+        clientPortalTokenScopes: portalToken.scopes.join(','),
+        clientPortalTokenIssuedAt: new Date().toISOString(),
+        clientPortalTokenRevokedAt: ''
+      }
+    });
+
+    logger.info({ event: 'billing.connect.portal_token.created', workspaceId, userId, orderId });
+    return {
+      url,
+      expiresAt: portalToken.expiresAt.toISOString(),
+      scopes: portalToken.scopes
+    };
+  }
+
+  async revokeConnectPaymentOrderPortalToken(
+    workspaceId: string,
+    userId: string,
+    orderId: string
+  ): Promise<void> {
+    await this.assertWorkspaceBillingManager(workspaceId, userId);
+
+    const order = await this.repo.findConnectPaymentOrderById(orderId);
+    if (!order || order.workspaceId !== workspaceId) {
+      throw new AppError('Payment order not found', 404);
+    }
+
+    await this.repo.revokeBillingPortalTokensForOrder(workspaceId, order.id, userId);
+    await this.repo.updateConnectPaymentOrder(order.id, {
+      metadata: {
+        ...(order.metadata ?? {}),
+        clientPortalTokenRevokedAt: new Date().toISOString(),
+        clientPortalUrl: ''
+      }
+    });
+
+    logger.info({ event: 'billing.connect.portal_token.revoked', workspaceId, userId, orderId });
+  }
+
   async listConnectPaymentOrders(
     workspaceId: string,
     userId: string,
-    limit = 50
+    input: number | ListConnectPaymentOrdersInput = {}
   ): Promise<ConnectPaymentOrderListItem[]> {
     const scope = await this.assertWorkspaceBillingReader(workspaceId, userId);
-    const safeLimit = Math.max(1, Math.min(limit, 200));
-    const orders = await this.repo.listConnectPaymentOrdersByWorkspace(
+    const options = typeof input === 'number' ? { pageSize: input } : input;
+    const safePageSize = Math.max(1, Math.min(options.pageSize ?? options.limit ?? 50, 201));
+    const orders = await this.repo.listConnectPaymentOrdersByWorkspace({
       workspaceId,
-      safeLimit,
-      scope.isClient ? scope.customerIds : undefined
-    );
+      pageSize: safePageSize,
+      cursor: options.cursor,
+      customerIds: scope.isClient ? scope.customerIds : undefined,
+      customerId: options.customerId,
+      status: options.status,
+      email: options.email,
+      search: options.search
+    });
     return orders.map((order) => this.mapConnectPaymentOrder(order));
   }
 
@@ -1051,10 +1281,20 @@ export class BillingService {
   async listConnectCatalogItems(
     workspaceId: string,
     userId: string,
-    includeInactive = true
+    input: boolean | ListConnectCatalogItemsInput = true
   ): Promise<ConnectCatalogItemListItem[]> {
     await this.assertWorkspaceBillingManager(workspaceId, userId);
-    const items = await this.repo.listConnectCatalogItemsByWorkspace(workspaceId, includeInactive);
+    const options = typeof input === 'boolean' ? { includeInactive: input } : input;
+    const items = await this.repo.listConnectCatalogItemsByWorkspace({
+      workspaceId,
+      includeInactive: options.includeInactive ?? true,
+      pageSize: Math.max(1, Math.min(options.pageSize ?? options.limit ?? 100, 201)),
+      cursor: options.cursor,
+      kind: options.kind,
+      billingType: options.billingType,
+      status: options.status,
+      search: options.search
+    });
     return items.map((item) => this.mapConnectCatalogItem(item));
   }
 
@@ -1861,11 +2101,14 @@ export class BillingService {
       ? order.metadata
       : {};
     const sourceWorkItemId = normalizedMetadataValue(metadata.sourceWorkItemId);
+    const hasFormalJustification = normalizedMetadataValue(metadata.billingJustification).length > 0;
     const eventName =
       order.status === 'PAID' || order.status === 'SUBSCRIPTION_ACTIVE'
         ? DomainEventNames.BillingPaymentConfirmed
         : order.status === 'CHECKOUT_OPEN' || order.status === 'PENDING'
-          ? DomainEventNames.BillingRequested
+          ? hasFormalJustification
+            ? DomainEventNames.BillingRequestedWithJustification
+            : DomainEventNames.BillingRequested
           : order.status === 'FAILED'
             ? DomainEventNames.BillingPaymentFailed
             : order.status === 'OVERDUE'
@@ -1891,6 +2134,8 @@ export class BillingService {
         status: this.mapCustomerFacingPaymentStatus(order.status),
         connectPaymentOrderStatus: order.status,
         customerId: order.customerId,
+        justification: hasFormalJustification ? metadata.billingJustification : undefined,
+        hasProposalOrContract: metadata.billingHasProposalOrContract === 'true',
         requestedBy: order.createdByUserId
       }
     });
@@ -2029,6 +2274,23 @@ export class BillingService {
     return `${this.appPublicUrl}/portal/billing?token=${encodeURIComponent(token)}`;
   }
 
+  private createCustomerPortalToken(input: {
+    workspaceId: string;
+    orderId: string;
+    customerEmail?: string | null;
+    scopes?: BillingPortalTokenScope[];
+    expiresInSeconds?: number;
+  }) {
+    return createBillingPortalToken({
+      workspaceId: input.workspaceId,
+      orderId: input.orderId,
+      customerEmail: input.customerEmail ?? null,
+      scopes: input.scopes,
+      expiresInSeconds: input.expiresInSeconds,
+      secret: this.portalTokenSecret
+    });
+  }
+
   private resolveCustomerPortalUrl(order: Pick<ConnectPaymentOrder, 'metadata'>): string | null {
     const metadata = order.metadata;
     if (!metadata || typeof metadata !== 'object') {
@@ -2042,6 +2304,34 @@ export class BillingService {
     return typeof token === 'string' && token.trim().length > 0
       ? this.buildCustomerPaymentPortalUrl(token)
       : null;
+  }
+
+  private assertCheckoutCustomerFiscalData(input: {
+    customer: BillingCustomerSnapshot;
+    customerEmail: string | undefined;
+    customerDocument: string | null;
+  }): void {
+    const missingFields: string[] = [];
+    if (!getBillingCustomerDisplayName(input.customer)?.trim()) {
+      missingFields.push('customerName');
+    }
+    if (!input.customerEmail) {
+      missingFields.push('customerEmail');
+    }
+    if (!isValidBrazilianFiscalDocument(input.customerDocument)) {
+      missingFields.push('customerDocument');
+    }
+
+    if (missingFields.length > 0) {
+      throw new AppError(
+        'Customer fiscal data is required before creating checkout',
+        422,
+        {
+          code: 'FISCAL_CUSTOMER_REQUIRED',
+          missingFields
+        }
+      );
+    }
   }
 
   private mapConnectCatalogItem(item: ConnectCatalogItem): ConnectCatalogItemListItem {
@@ -2086,6 +2376,11 @@ function normalizeCustomerEmail(email: string | null | undefined): string | null
   return normalized && normalized.includes('@') ? normalized : null;
 }
 
-function createPublicAccessToken(): string {
-  return crypto.randomBytes(24).toString('base64url');
+function normalizeFiscalDocument(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.replace(/\D/g, '') : '';
+}
+
+function isValidBrazilianFiscalDocument(value: string | null | undefined): boolean {
+  const digits = normalizeFiscalDocument(value);
+  return digits.length === 11 || digits.length === 14;
 }

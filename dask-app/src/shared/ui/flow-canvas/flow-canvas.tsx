@@ -1,9 +1,10 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   BackgroundVariant,
+  MiniMap,
   Panel,
   addEdge,
   MarkerType,
@@ -11,6 +12,7 @@ import {
   type Connection,
   type Edge,
   type EdgeTypes,
+  type IsValidConnection,
   type Node,
   type NodeTypes,
   type OnConnect,
@@ -89,6 +91,13 @@ interface FlowCanvasInnerProps<TData extends Record<string, unknown>, TKind exte
   sidebarContent?: ReactNode;
   sidebarFooter?: ReactNode;
   sidebarDefaultOpen?: boolean;
+  showMiniMap?: boolean;
+  showCanvasControls?: boolean;
+  validateConnection?: (connection: Connection) => string | null;
+  onInvalidConnection?: (connection: Connection, reason: string) => void;
+  invalidEdgeIds?: Iterable<string>;
+  topPanel?: ReactNode;
+  bottomPanel?: ReactNode;
 }
 
 function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends string>({
@@ -119,12 +128,44 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
   sidebarContent,
   sidebarFooter,
   sidebarDefaultOpen = false,
+  showMiniMap = false,
+  showCanvasControls,
+  validateConnection,
+  onInvalidConnection,
+  invalidEdgeIds,
+  topPanel,
+  bottomPanel,
 }: FlowCanvasInnerProps<TData, TKind>) {
   const reactFlow = useReactFlow<Node<TData, TKind>, Edge>();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fitDoneRef = useRef<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(sidebarDefaultOpen);
   const hasSidebar = paletteItems.length > 0 || Boolean(sidebarContent);
+  const shouldShowCanvasControls = showCanvasControls ?? !hasSidebar;
+  const invalidEdgeIdSet = useMemo(() => new Set(invalidEdgeIds ?? []), [invalidEdgeIds]);
+  const renderedEdges = useMemo(
+    () => edges.map((edge) => invalidEdgeIdSet.has(edge.id)
+      ? {
+          ...edge,
+          animated: false,
+          className: `${edge.className ?? ''} flow-canvas-ui__edge--invalid`.trim(),
+          style: {
+            ...edge.style,
+            stroke: 'var(--danger, #dc2626)',
+            strokeWidth: 2.5,
+            strokeDasharray: '8 6'
+          },
+          label: edge.label ?? 'Invalida',
+          labelStyle: {
+            ...edge.labelStyle,
+            fill: 'var(--danger, #dc2626)',
+            fontWeight: 800
+          }
+        }
+      : edge
+    ),
+    [edges, invalidEdgeIdSet]
+  );
 
   useEffect(() => {
     if (fitViewKey !== fitDoneRef.current) {
@@ -149,6 +190,12 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
+      const invalidReason = validateConnection?.(connection);
+      if (invalidReason) {
+        onInvalidConnection?.(connection, invalidReason);
+        return;
+      }
+
       if (customOnConnect) {
         customOnConnect(connection);
         return;
@@ -164,7 +211,12 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
       );
       onEdgesAdd(newEdges);
     },
-    [customOnConnect, edges, onEdgesAdd],
+    [customOnConnect, edges, onEdgesAdd, onInvalidConnection, validateConnection],
+  );
+
+  const isValidConnection: IsValidConnection<Edge> = useCallback(
+    (connection) => !validateConnection?.(connection as Connection),
+    [validateConnection]
   );
 
   const getViewportCenter = useCallback((): XYPosition => {
@@ -288,10 +340,11 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
 
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={renderedEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onNodeClick={handleNodeClick}
         onPaneClick={() => onNodeSelect(null)}
         onDrop={onDrop}
@@ -311,6 +364,34 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
         className="flow-canvas-ui__flow"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} className="flow-canvas-ui__bg" />
+
+        {topPanel ? (
+          <Panel position="top-right" className="flow-canvas-ui__panel flow-canvas-ui__panel--top">
+            {topPanel}
+          </Panel>
+        ) : null}
+
+        {bottomPanel ? (
+          <Panel position="bottom-center" className="flow-canvas-ui__panel flow-canvas-ui__panel--bottom">
+            {bottomPanel}
+          </Panel>
+        ) : null}
+
+        {shouldShowCanvasControls ? (
+          <Panel position="bottom-right" className="flow-canvas-ui__panel flow-canvas-ui__panel--controls">
+            <FlowCanvasControls fitViewMaxZoom={fitViewMaxZoom} />
+          </Panel>
+        ) : null}
+
+        {showMiniMap ? (
+          <MiniMap
+            pannable
+            zoomable
+            className="flow-canvas-ui__minimap"
+            maskColor="color-mix(in oklab, var(--surface-muted, #f8fafc) 72%, transparent)"
+            nodeStrokeWidth={3}
+          />
+        ) : null}
 
         {nodes.length === 0 && (
           <Panel position="top-center" className="flow-canvas-ui__empty-hint">

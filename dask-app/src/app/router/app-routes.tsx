@@ -17,6 +17,7 @@ import {
   BoardPage,
   BoardEditorSettingsPage,
   ChoosePlanPage,
+  DashboardPage,
   DocumentationPage,
   GeneralSettingsPage,
   HomePage,
@@ -36,6 +37,7 @@ import {
   SubscriptionBlockedPage,
   TermsOfUsePage,
   WorkspaceSelectorPage,
+  WorkspaceAuditSettingsPage,
   VerifyEmailPage,
   PrivacyPolicyPage,
   WorkflowStatesSettingsPage
@@ -105,14 +107,14 @@ function ModuleRoute({
   module,
   children
 }: {
-  module: "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+  module: "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
   children: JSX.Element;
 }) {
   const { snapshot } = useWorkspace();
   const location = useLocation();
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
+    snapshot?.access?.allowedModules ?? ["dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
   );
   const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
   const isCorporateWorkspace = snapshot?.workspace?.kind === "CORPORATE";
@@ -246,6 +248,16 @@ export function AppRoutes() {
             <Route path={routePaths.workspaceSelector} element={<WorkspaceSelectorPage />} />
             <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />
             <Route
+              path={routePaths.dashboard}
+              element={
+                <ModuleRoute module="dashboard">
+                  <NonClientRoute>
+                    <DashboardPage />
+                  </NonClientRoute>
+                </ModuleRoute>
+              }
+            />
+            <Route
               path={routePaths.board}
               element={
                 <ModuleRoute module="board">
@@ -350,6 +362,7 @@ export function AppRoutes() {
               <Route index element={<GeneralSettingsPage />} />
               <Route path="workflow-states" element={<WorkflowStatesSettingsPage />} />
               <Route path="item-types" element={<WorkItemEditorSettingsPage />} />
+              <Route path="audit" element={<WorkspaceAuditSettingsPage />} />
               <Route path="custom-fields" element={<Navigate replace to="../item-types" />} />
               {/* Editor de board: substitui Perspectivas + Colunas */}
               <Route path="perspectives" element={<BoardEditorSettingsPage />} />

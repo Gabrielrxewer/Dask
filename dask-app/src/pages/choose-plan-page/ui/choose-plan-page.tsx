@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { routePaths } from "@/app/router";
-import { billingService } from "@/modules/billing";
+import {
+  useBillingPlansQuery,
+  useBillingStatusQuery,
+  useCreateBillingPortalSessionMutation,
+  useCreateSubscriptionCheckoutMutation
+} from "@/modules/billing";
 import type { BillingPlan, BillingStatus, SubscriptionPlan } from "@/modules/billing";
 import "./choose-plan-page.css";
 
@@ -23,37 +28,23 @@ export function ChoosePlanPage() {
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<BillingStatus | null>(null);
-  const [plans, setPlans] = useState<BillingPlan[]>([]);
-  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const statusQuery = useBillingStatusQuery();
+  const plansQuery = useBillingPlansQuery();
+  const checkoutMutation = useCreateSubscriptionCheckoutMutation();
+  const portalMutation = useCreateBillingPortalSessionMutation();
 
   useEffect(() => {
-    let mounted = true;
+    if (statusQuery.isError || plansQuery.isError) {
+      setError("Nao foi possivel carregar os planos configurados.");
+    }
+  }, [plansQuery.isError, statusQuery.isError]);
 
-    Promise.all([billingService.getStatus(), billingService.listPlans()])
-      .then(([statusValue, planCatalog]) => {
-        if (!mounted) return;
-        setStatus(statusValue);
-        setPlans(
-          planCatalog.items
-            .filter((plan) => plan.isActive)
-        );
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setStatus(null);
-        setPlans([]);
-        setError("Nao foi possivel carregar os planos configurados.");
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setIsLoadingPlans(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const status: BillingStatus | null = statusQuery.data ?? null;
+  const plans: BillingPlan[] = useMemo(
+    () => plansQuery.data?.items.filter((plan) => plan.isActive) ?? [],
+    [plansQuery.data]
+  );
+  const isLoadingPlans = statusQuery.isLoading || plansQuery.isLoading;
 
   const statusLabel = useMemo(() => {
     if (!status?.status) {
@@ -79,7 +70,7 @@ export function ChoosePlanPage() {
     setError(null);
 
     try {
-      const { url } = await billingService.createCheckoutSession(plan);
+      const { url } = await checkoutMutation.mutateAsync(plan);
       window.location.href = url;
     } catch {
       setError("Nao foi possivel iniciar o pagamento. Tente novamente.");
@@ -95,7 +86,7 @@ export function ChoosePlanPage() {
     setError(null);
     setIsOpeningPortal(true);
     try {
-      const { url } = await billingService.createPortalSession();
+      const { url } = await portalMutation.mutateAsync();
       window.location.href = url;
     } catch {
       setError("Nao foi possivel abrir a gestao da assinatura. Tente novamente.");

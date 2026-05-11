@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import "./button.css";
 
@@ -12,7 +12,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
-export function Button({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   children,
   onClick,
   type = "button",
@@ -21,9 +21,10 @@ export function Button({
   loading = false,
   className = "",
   ...props
-}: ButtonProps) {
+}, ref) {
   return (
     <button
+      ref={ref}
       type={type}
       onClick={onClick}
       className={cn("shared-button", `shared-button--${variant}`, `shared-button--${size}`, className)}
@@ -34,4 +35,4 @@ export function Button({
       {children}
     </button>
   );
-}
+});

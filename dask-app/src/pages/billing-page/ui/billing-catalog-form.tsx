@@ -1,358 +1,238 @@
-import type {
-  ConnectCatalogBillingType,
-  ConnectCatalogItemKind,
-  ConnectCatalogRecurringInterval
+import { useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
+import {
+  billingCatalogItemFormSchema,
+  normalizeMoneyInput,
+  type BillingCatalogItemFormValues,
+  type ConnectCatalogBillingType,
+  type ConnectCatalogItemKind,
+  type ConnectCatalogRecurringInterval
 } from "@/modules/billing";
-import { AppIcon, Button, FormField, InlineAlert, ModalShell, Select, Textarea, TextInput } from "@/shared/ui";
+import {
+  AppDialog,
+  AppForm,
+  AppFormActions,
+  AppFormField,
+  AppFormGrid,
+  AppFormSection,
+  AppIcon,
+  AppMoneyField,
+  AppSelect,
+  AppSelectField,
+  AppTextField,
+  AppTextareaField,
+  Button
+} from "@/shared/ui";
 import { isRecurringCatalogBillingType } from "./billing-page.model";
 
 export interface BillingCatalogFormProps {
   mode: "create" | "edit";
-  catalogItemKind: ConnectCatalogItemKind;
-  catalogItemBillingType: ConnectCatalogBillingType;
-  catalogItemRecurringInterval: ConnectCatalogRecurringInterval;
-  catalogItemRecurringIntervalCount: number;
-  catalogItemName: string;
-  catalogItemDescription: string;
-  catalogItemAmount: string;
-  catalogItemUnit: string;
-  catalogItemQuantity: string;
-  catalogItemScope: string;
-  catalogItemDeliverables: string;
-  catalogItemDeliveryTerms: string;
-  catalogItemPaymentTerms: string;
-  catalogItemProposalValidity: string;
-  catalogItemContractTerm: string;
-  catalogItemCancellationTerms: string;
-  catalogItemClientResponsibilities: string;
-  catalogItemAcceptanceCriteria: string;
-  catalogItemContractNotes: string;
+  initialValues: BillingCatalogItemFormValues;
   isCreatingCatalogItem: boolean;
-  canCreateCatalogItem: boolean;
-  catalogError: string | null;
-  onCatalogItemKindChange: (value: ConnectCatalogItemKind) => void;
-  onCatalogItemBillingTypeChange: (value: ConnectCatalogBillingType) => void;
-  onCatalogItemRecurringChange: (interval: ConnectCatalogRecurringInterval, intervalCount: number) => void;
-  onCatalogItemNameChange: (value: string) => void;
-  onCatalogItemDescriptionChange: (value: string) => void;
-  onCatalogItemAmountChange: (value: string) => void;
-  onCatalogItemUnitChange: (value: string) => void;
-  onCatalogItemQuantityChange: (value: string) => void;
-  onCatalogItemScopeChange: (value: string) => void;
-  onCatalogItemDeliverablesChange: (value: string) => void;
-  onCatalogItemDeliveryTermsChange: (value: string) => void;
-  onCatalogItemPaymentTermsChange: (value: string) => void;
-  onCatalogItemProposalValidityChange: (value: string) => void;
-  onCatalogItemContractTermChange: (value: string) => void;
-  onCatalogItemCancellationTermsChange: (value: string) => void;
-  onCatalogItemClientResponsibilitiesChange: (value: string) => void;
-  onCatalogItemAcceptanceCriteriaChange: (value: string) => void;
-  onCatalogItemContractNotesChange: (value: string) => void;
   onCancel: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (values: BillingCatalogItemFormValues) => void | Promise<void>;
 }
 
 export function BillingCatalogForm({
   mode,
-  catalogItemKind,
-  catalogItemBillingType,
-  catalogItemRecurringInterval,
-  catalogItemRecurringIntervalCount,
-  catalogItemName,
-  catalogItemDescription,
-  catalogItemAmount,
-  catalogItemUnit,
-  catalogItemQuantity,
-  catalogItemScope,
-  catalogItemDeliverables,
-  catalogItemDeliveryTerms,
-  catalogItemPaymentTerms,
-  catalogItemProposalValidity,
-  catalogItemContractTerm,
-  catalogItemCancellationTerms,
-  catalogItemClientResponsibilities,
-  catalogItemAcceptanceCriteria,
-  catalogItemContractNotes,
+  initialValues,
   isCreatingCatalogItem,
-  canCreateCatalogItem,
-  catalogError,
-  onCatalogItemKindChange,
-  onCatalogItemBillingTypeChange,
-  onCatalogItemRecurringChange,
-  onCatalogItemNameChange,
-  onCatalogItemDescriptionChange,
-  onCatalogItemAmountChange,
-  onCatalogItemUnitChange,
-  onCatalogItemQuantityChange,
-  onCatalogItemScopeChange,
-  onCatalogItemDeliverablesChange,
-  onCatalogItemDeliveryTermsChange,
-  onCatalogItemPaymentTermsChange,
-  onCatalogItemProposalValidityChange,
-  onCatalogItemContractTermChange,
-  onCatalogItemCancellationTermsChange,
-  onCatalogItemClientResponsibilitiesChange,
-  onCatalogItemAcceptanceCriteriaChange,
-  onCatalogItemContractNotesChange,
   onCancel,
   onSubmit
 }: BillingCatalogFormProps) {
   const titleId = "billing-catalog-form-title";
   const isEditMode = mode === "edit";
-  const isRecurring = isRecurringCatalogBillingType(catalogItemBillingType);
+  const form = useForm<BillingCatalogItemFormValues>({
+    resolver: zodResolver(billingCatalogItemFormSchema) as Resolver<BillingCatalogItemFormValues>,
+    defaultValues: initialValues,
+    mode: "onChange"
+  });
+  const { errors } = form.formState;
+  const billingType = form.watch("billingType");
+  const recurringInterval = form.watch("recurringInterval") ?? "MONTH";
+  const recurringIntervalCount = form.watch("recurringIntervalCount") ?? 1;
+  const isRecurring = isRecurringCatalogBillingType(billingType);
+
+  useEffect(() => {
+    form.reset(initialValues);
+  }, [form, initialValues]);
 
   return (
-    <ModalShell titleId={titleId} className="billing-catalog-modal" onClose={isCreatingCatalogItem ? () => undefined : onCancel}>
-      <form
+    <AppDialog
+      open
+      title={isEditMode ? "Editar item do catalogo" : "Novo item do catalogo"}
+      onOpenChange={(open) => {
+        if (!open && !isCreatingCatalogItem) onCancel();
+      }}
+      showClose={false}
+      className="billing-catalog-modal"
+      contentClassName="billing-catalog-modal__dialog-frame"
+    >
+      <AppForm
+        form={form}
         className="billing-catalog-modal__surface"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!isCreatingCatalogItem && canCreateCatalogItem) {
-            void onSubmit();
-          }
-        }}
+        disabled={isCreatingCatalogItem}
+        onSubmit={onSubmit}
       >
+        <input type="hidden" {...form.register("currency")} />
         <header className="billing-catalog-modal__header">
           <div className="billing-catalog-modal__heading">
             <p>{isEditMode ? "Editar cadastro" : "Novo cadastro"}</p>
-            <h2 id={titleId}>{isEditMode ? "Editar item do catálogo" : "Novo item do catálogo"}</h2>
-            <span>Defina as informações comerciais usadas em cobrança, orçamento, proposta e contrato.</span>
+            <h2 id={titleId}>{isEditMode ? "Editar item do catalogo" : "Novo item do catalogo"}</h2>
+            <span>Defina as informacoes comerciais usadas em cobranca, orcamento, proposta e contrato.</span>
           </div>
           <button
             type="button"
             className="billing-catalog-modal__close"
             onClick={onCancel}
             disabled={isCreatingCatalogItem}
-            aria-label="Fechar formulário"
+            aria-label="Fechar formulario"
           >
             <AppIcon name="x" size={15} />
           </button>
         </header>
 
         <div className="billing-catalog-modal__body">
-          <section className="billing-catalog-modal__section">
+          <AppFormSection className="billing-catalog-modal__section">
             <div className="billing-catalog-modal__section-head">
               <span>01</span>
               <div>
-                <h3>Identificação</h3>
+                <h3>Identificacao</h3>
                 <p>Nome, resumo e tipo do item comercial.</p>
               </div>
             </div>
-            <div className="billing-catalog-modal__grid billing-catalog-modal__grid--identity">
-              <FormField label="Nome do item" className="billing-view__field">
-                <TextInput
-                  value={catalogItemName}
-                  onChange={(e) => onCatalogItemNameChange(e.target.value)}
-                  placeholder="Ex.: Consultoria mensal"
-                  autoFocus
-                  required
-                />
-              </FormField>
+            <AppFormGrid className="billing-catalog-modal__grid billing-catalog-modal__grid--identity">
+              <AppTextField
+                name="name"
+                label="Nome do item"
+                className="billing-view__field"
+                placeholder="Ex.: Consultoria mensal"
+                autoFocus
+              />
+              <AppSelectField<BillingCatalogItemFormValues, "kind", ConnectCatalogItemKind>
+                name="kind"
+                label="Tipo"
+                className="billing-view__field"
+                options={[
+                  { value: "SERVICE", label: "Servico" },
+                  { value: "PRODUCT", label: "Produto" }
+                ]}
+              />
+              <AppTextareaField
+                name="description"
+                label="Descricao"
+                className="billing-view__field billing-catalog-modal__field--wide"
+                placeholder="Resumo claro do que sera entregue ou cobrado"
+                rows={3}
+              />
+            </AppFormGrid>
+          </AppFormSection>
 
-              <FormField label="Tipo" className="billing-view__field">
-                <Select value={catalogItemKind} onChange={(e) => onCatalogItemKindChange(e.target.value as ConnectCatalogItemKind)}>
-                  <option value="SERVICE">Serviço</option>
-                  <option value="PRODUCT">Produto</option>
-                </Select>
-              </FormField>
-
-              <FormField label="Descrição" className="billing-view__field billing-catalog-modal__field--wide">
-                <Textarea
-                  value={catalogItemDescription}
-                  onChange={(e) => onCatalogItemDescriptionChange(e.target.value)}
-                  placeholder="Resumo claro do que será entregue ou cobrado"
-                  rows={3}
-                  required
-                />
-              </FormField>
-            </div>
-          </section>
-
-          <section className="billing-catalog-modal__section">
+          <AppFormSection className="billing-catalog-modal__section">
             <div className="billing-catalog-modal__section-head">
               <span>02</span>
               <div>
-                <h3>Cobrança</h3>
-                <p>Preço, recorrência e condições comerciais.</p>
+                <h3>Cobranca</h3>
+                <p>Preco, recorrencia e condicoes comerciais.</p>
               </div>
             </div>
-            <div className="billing-catalog-modal__grid">
-              <FormField label="Preço" className="billing-view__field">
-                <TextInput
-                  value={catalogItemAmount}
-                  onChange={(e) => onCatalogItemAmountChange(e.target.value)}
-                  placeholder="249.90"
-                  inputMode="decimal"
-                  required
-                />
-              </FormField>
-
-              <FormField label="Moeda" className="billing-view__field">
-                <TextInput value="BRL" readOnly aria-readonly="true" />
-              </FormField>
-
-              <FormField label="Modelo" className="billing-view__field">
-                <Select
-                  value={catalogItemBillingType}
-                  onChange={(e) => onCatalogItemBillingTypeChange(e.target.value as ConnectCatalogBillingType)}
+            <AppFormGrid className="billing-catalog-modal__grid">
+              <AppMoneyField
+                name="amount"
+                label="Preco"
+                className="billing-view__field"
+                placeholder="249.90"
+                normalizeOnBlur={normalizeMoneyInput}
+              />
+              <AppTextField
+                name="currency"
+                label="Moeda"
+                className="billing-view__field"
+                readOnly
+                aria-readonly="true"
+              />
+              <AppSelectField<BillingCatalogItemFormValues, "billingType", ConnectCatalogBillingType>
+                name="billingType"
+                label="Modelo"
+                className="billing-view__field"
+                options={[
+                  { value: "ONE_TIME", label: "Cobranca avulsa" },
+                  { value: "ASSINATURA", label: "Assinatura (cartao)" }
+                ]}
+                onValueChange={(value) => {
+                  if (isRecurringCatalogBillingType(value)) {
+                    form.setValue("recurringInterval", form.getValues("recurringInterval") ?? "MONTH", { shouldValidate: true });
+                    form.setValue("recurringIntervalCount", form.getValues("recurringIntervalCount") ?? 1, { shouldValidate: true });
+                  } else {
+                    form.setValue("recurringInterval", undefined, { shouldValidate: true });
+                    form.setValue("recurringIntervalCount", undefined, { shouldValidate: true });
+                  }
+                }}
+              />
+              {isRecurring ? (
+                <AppFormField
+                  label="Recorrencia"
+                  className="billing-view__field"
+                  error={typeof errors.recurringInterval?.message === "string" ? errors.recurringInterval.message : undefined}
                 >
-                  <option value="ONE_TIME">Cobrança avulsa</option>
-                  <option value="ASSINATURA">Assinatura (cartão)</option>
-                </Select>
-              </FormField>
-
-              <FormField label="Recorrência" className="billing-view__field">
-                {isRecurring ? (
-                  <Select
-                    value={`${catalogItemRecurringInterval}:${catalogItemRecurringIntervalCount}`}
-                    onChange={(e) => {
-                      const [interval, intervalCount] = e.target.value.split(":");
-                      onCatalogItemRecurringChange(interval as ConnectCatalogRecurringInterval, Number(intervalCount));
+                  <AppSelect
+                    value={`${recurringInterval}:${recurringIntervalCount}`}
+                    onValueChange={(value) => {
+                      const [interval, intervalCount] = value.split(":");
+                      form.setValue("recurringInterval", interval as ConnectCatalogRecurringInterval, { shouldValidate: true });
+                      form.setValue("recurringIntervalCount", Number(intervalCount), { shouldValidate: true });
                     }}
-                  >
-                    <option value="MONTH:1">Mensal</option>
-                    <option value="MONTH:6">Semestral</option>
-                    <option value="YEAR:1">Anual</option>
-                    <option value="WEEK:1">Semanal</option>
-                    <option value="DAY:1">Diária</option>
-                  </Select>
-                ) : (
-                  <TextInput value="Não recorrente" readOnly aria-readonly="true" />
-                )}
-              </FormField>
-
-              <FormField label="Unidade" className="billing-view__field">
-                <TextInput
-                  value={catalogItemUnit}
-                  onChange={(e) => onCatalogItemUnitChange(e.target.value)}
-                  placeholder="serviço, hora, projeto, licença"
-                  required
+                    aria-label="Recorrencia"
+                    items={[
+                      { value: "MONTH:1", label: "Mensal" },
+                      { value: "MONTH:6", label: "Semestral" },
+                      { value: "YEAR:1", label: "Anual" },
+                      { value: "WEEK:1", label: "Semanal" },
+                      { value: "DAY:1", label: "Diaria" }
+                    ]}
+                  />
+                </AppFormField>
+              ) : (
+                <AppTextField
+                  name="recurringInterval"
+                  label="Recorrencia"
+                  className="billing-view__field"
+                  formatValue={() => "Nao recorrente"}
+                  readOnly
+                  aria-readonly="true"
                 />
-              </FormField>
+              )}
+              <AppTextField name="unit" label="Unidade" className="billing-view__field" placeholder="servico, hora, projeto, licenca" />
+              <AppTextField name="defaultQuantity" label="Quantidade padrao" className="billing-view__field" placeholder="1" />
+              <AppTextField name="deliveryTerms" label="Prazo de entrega" className="billing-view__field" placeholder="Ate 10 dias uteis apos aprovacao" />
+              <AppTextField name="paymentTerms" label="Condicoes de pagamento" className="billing-view__field" placeholder="50% na aprovacao e 50% na entrega" />
+              <AppTextField name="proposalValidity" label="Validade do orcamento" className="billing-view__field" placeholder="15 dias" />
+              <AppTextField name="contractTerm" label="Vigencia do contrato" className="billing-view__field" placeholder="12 meses, renovacao mensal" />
+            </AppFormGrid>
+          </AppFormSection>
 
-              <FormField label="Quantidade padrão" className="billing-view__field">
-                <TextInput
-                  value={catalogItemQuantity}
-                  onChange={(e) => onCatalogItemQuantityChange(e.target.value)}
-                  placeholder="1"
-                  required
-                />
-              </FormField>
-
-              <FormField label="Prazo de entrega" className="billing-view__field">
-                <TextInput
-                  value={catalogItemDeliveryTerms}
-                  onChange={(e) => onCatalogItemDeliveryTermsChange(e.target.value)}
-                  placeholder="Até 10 dias úteis após aprovação"
-                  required
-                />
-              </FormField>
-
-              <FormField label="Condições de pagamento" className="billing-view__field">
-                <TextInput
-                  value={catalogItemPaymentTerms}
-                  onChange={(e) => onCatalogItemPaymentTermsChange(e.target.value)}
-                  placeholder="50% na aprovação e 50% na entrega"
-                  required
-                />
-              </FormField>
-
-              <FormField label="Validade do orçamento" className="billing-view__field">
-                <TextInput
-                  value={catalogItemProposalValidity}
-                  onChange={(e) => onCatalogItemProposalValidityChange(e.target.value)}
-                  placeholder="15 dias"
-                  required
-                />
-              </FormField>
-
-              <FormField label="Vigência do contrato" className="billing-view__field">
-                <TextInput
-                  value={catalogItemContractTerm}
-                  onChange={(e) => onCatalogItemContractTermChange(e.target.value)}
-                  placeholder="12 meses, renovação mensal"
-                  required
-                />
-              </FormField>
-            </div>
-          </section>
-
-          <section className="billing-catalog-modal__section">
+          <AppFormSection className="billing-catalog-modal__section">
             <div className="billing-catalog-modal__section-head">
               <span>03</span>
               <div>
-                <h3>Configurações adicionais</h3>
-                <p>Escopo, entregáveis, aceite e regras contratuais.</p>
+                <h3>Configuracoes adicionais</h3>
+                <p>Escopo, entregaveis, aceite e regras contratuais.</p>
               </div>
             </div>
-            <div className="billing-catalog-modal__grid billing-catalog-modal__grid--textarea">
-              <FormField label="Escopo" className="billing-view__field">
-                <Textarea
-                  value={catalogItemScope}
-                  onChange={(e) => onCatalogItemScopeChange(e.target.value)}
-                  placeholder="Atividades incluídas, limites e premissas"
-                  rows={3}
-                  required
-                />
-              </FormField>
-
-              <FormField label="Entregáveis" className="billing-view__field">
-                <Textarea
-                  value={catalogItemDeliverables}
-                  onChange={(e) => onCatalogItemDeliverablesChange(e.target.value)}
-                  placeholder="Itens, arquivos, acessos ou resultados entregues"
-                  rows={3}
-                  required
-                />
-              </FormField>
-
-              <FormField label="Responsabilidades do cliente" className="billing-view__field">
-                <Textarea
-                  value={catalogItemClientResponsibilities}
-                  onChange={(e) => onCatalogItemClientResponsibilitiesChange(e.target.value)}
-                  placeholder="Informações, aprovações, materiais e acessos necessários"
-                  rows={3}
-                  required
-                />
-              </FormField>
-
-              <FormField label="Critérios de aceite" className="billing-view__field">
-                <Textarea
-                  value={catalogItemAcceptanceCriteria}
-                  onChange={(e) => onCatalogItemAcceptanceCriteriaChange(e.target.value)}
-                  placeholder="Como a entrega será considerada aceita"
-                  rows={3}
-                  required
-                />
-              </FormField>
-
-              <FormField label="Cancelamento / rescisão" className="billing-view__field">
-                <Textarea
-                  value={catalogItemCancellationTerms}
-                  onChange={(e) => onCatalogItemCancellationTermsChange(e.target.value)}
-                  placeholder="Prazos, multas, reembolsos e encerramento"
-                  rows={3}
-                  required
-                />
-              </FormField>
-
-              <FormField label="Observações contratuais" className="billing-view__field">
-                <Textarea
-                  value={catalogItemContractNotes}
-                  onChange={(e) => onCatalogItemContractNotesChange(e.target.value)}
-                  placeholder="Garantias, exclusões, impostos ou regras específicas"
-                  rows={3}
-                />
-              </FormField>
-            </div>
-          </section>
+            <AppFormGrid className="billing-catalog-modal__grid billing-catalog-modal__grid--textarea">
+              <AppTextareaField name="scope" label="Escopo" className="billing-view__field" placeholder="Atividades incluidas, limites e premissas" rows={3} />
+              <AppTextareaField name="deliverables" label="Entregaveis" className="billing-view__field" placeholder="Itens, arquivos, acessos ou resultados entregues" rows={3} />
+              <AppTextareaField name="clientResponsibilities" label="Responsabilidades do cliente" className="billing-view__field" placeholder="Informacoes, aprovacoes, materiais e acessos necessarios" rows={3} />
+              <AppTextareaField name="acceptanceCriteria" label="Criterios de aceite" className="billing-view__field" placeholder="Como a entrega sera considerada aceita" rows={3} />
+              <AppTextareaField name="cancellationTerms" label="Cancelamento / rescisao" className="billing-view__field" placeholder="Prazos, multas, reembolsos e encerramento" rows={3} />
+              <AppTextareaField name="contractNotes" label="Observacoes contratuais" className="billing-view__field" placeholder="Garantias, exclusoes, impostos ou regras especificas" rows={3} />
+            </AppFormGrid>
+          </AppFormSection>
         </div>
 
         <footer className="billing-catalog-modal__footer">
-          <div className="billing-catalog-modal__feedback">
-            {catalogError ? <InlineAlert tone="danger">{catalogError}</InlineAlert> : null}
-          </div>
-          <div className="billing-catalog-modal__actions">
+          <AppFormActions className="billing-catalog-modal__actions">
             <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isCreatingCatalogItem}>
               Cancelar
             </Button>
@@ -360,14 +240,14 @@ export function BillingCatalogForm({
               type="submit"
               variant="primary"
               size="sm"
-              disabled={isCreatingCatalogItem || !canCreateCatalogItem}
+              disabled={isCreatingCatalogItem || !form.formState.isValid}
               loading={isCreatingCatalogItem}
             >
-              {isCreatingCatalogItem ? "Salvando..." : isEditMode ? "Salvar alterações" : "Salvar item"}
+              {isCreatingCatalogItem ? "Salvando..." : isEditMode ? "Salvar alteracoes" : "Salvar item"}
             </Button>
-          </div>
+          </AppFormActions>
         </footer>
-      </form>
-    </ModalShell>
+      </AppForm>
+    </AppDialog>
   );
 }

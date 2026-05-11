@@ -8,6 +8,7 @@ import {
   connectWorkspaceParamsDto,
   connectPaymentOrderParamsDto,
   createConnectCatalogItemDto,
+  createBillingPortalTokenDto,
   createCheckoutSessionDto,
   createConnectCheckoutSessionDto,
   createConnectOnboardingLinkDto,
@@ -20,6 +21,18 @@ import {
 
 interface BillingRouteDeps {
   billingService: BillingService;
+}
+
+function resolvePageSize(input: { pageSize?: number; limit?: number }, fallback = 50): number {
+  return Math.max(1, Math.min(input.pageSize ?? input.limit ?? fallback, 200));
+}
+
+function toCursorPage<T extends { id: string }>(items: T[], pageSize: number): { items: T[]; nextCursor: string | null } {
+  const pageItems = items.slice(0, pageSize);
+  return {
+    items: pageItems,
+    nextCursor: items.length > pageSize ? pageItems[pageItems.length - 1]?.id ?? null : null
+  };
 }
 
 export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router {
@@ -137,12 +150,21 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
         throw new AppError('Invalid request payload', 400);
       }
 
+      const pageSize = resolvePageSize(query.data, 100);
       const items = await billingService.listConnectCatalogItems(
         params.data.workspaceId,
         req.auth!.userId,
-        query.data.includeInactive
+        {
+          includeInactive: query.data.includeInactive,
+          cursor: query.data.cursor,
+          pageSize: pageSize + 1,
+          kind: query.data.kind,
+          billingType: query.data.billingType,
+          status: query.data.status,
+          search: query.data.search
+        }
       );
-      res.status(200).json({ items });
+      res.status(200).json(toCursorPage(items, pageSize));
     })
   );
 
@@ -213,12 +235,20 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
         throw new AppError('Invalid request payload', 400);
       }
 
+      const pageSize = resolvePageSize(query.data, 50);
       const orders = await billingService.listConnectPaymentOrders(
         params.data.workspaceId,
         req.auth!.userId,
-        query.data.limit
+        {
+          cursor: query.data.cursor,
+          pageSize: pageSize + 1,
+          status: query.data.status,
+          customerId: query.data.customerId,
+          email: query.data.email,
+          search: query.data.search
+        }
       );
-      res.status(200).json({ items: orders });
+      res.status(200).json(toCursorPage(orders, pageSize));
     })
   );
 
@@ -288,6 +318,44 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
       }
 
       await billingService.cancelConnectPaymentOrder(
+        params.data.workspaceId,
+        req.auth!.userId,
+        params.data.orderId
+      );
+      res.status(200).json({ ok: true });
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/payment-orders/:orderId/portal-token',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectPaymentOrderParamsDto.safeParse(req.params);
+      const body = createBillingPortalTokenDto.safeParse(req.body ?? {});
+      if (!params.success || !body.success) {
+        throw new AppError('Invalid request payload', 400);
+      }
+
+      const token = await billingService.createConnectPaymentOrderPortalToken(
+        params.data.workspaceId,
+        req.auth!.userId,
+        params.data.orderId,
+        body.data
+      );
+      res.status(201).json(token);
+    })
+  );
+
+  router.post(
+    '/billing/connect/workspaces/:workspaceId/payment-orders/:orderId/portal-token/revoke',
+    authMiddleware,
+    asyncHandler(async (req: Request, res: Response) => {
+      const params = connectPaymentOrderParamsDto.safeParse(req.params);
+      if (!params.success) {
+        throw new AppError('Invalid request params', 400);
+      }
+
+      await billingService.revokeConnectPaymentOrderPortalToken(
         params.data.workspaceId,
         req.auth!.userId,
         params.data.orderId

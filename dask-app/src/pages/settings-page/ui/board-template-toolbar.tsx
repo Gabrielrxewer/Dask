@@ -1,4 +1,5 @@
 import type { Ref } from "react";
+import { AppSelect } from "@/shared/ui";
 import { IconTemplate } from "./board-editor-icons";
 import type { BoardPerspective, PerspectiveTemplateSeed } from "./board-editor-settings.model";
 
@@ -43,6 +44,8 @@ export function BoardTemplateToolbar({
   onStartCreatingTemplate,
   onCancelCreatingTemplate
 }: BoardTemplateToolbarProps) {
+  const noTemplateValue = "__none__";
+
   return (
     <div className="board-editor__template-toolbar">
       <div className="board-editor__template-group">
@@ -55,21 +58,21 @@ export function BoardTemplateToolbar({
           </span>
         </div>
         <div className="board-editor__template-actions">
-          <select
+          <AppSelect
             className="board-editor__template-select"
-            value={selectedApplyTemplateKey}
-            onChange={(event) => onSelectedApplyTemplateKeyChange(event.target.value)}
+            value={selectedApplyTemplateKey || noTemplateValue}
+            onValueChange={(value) => onSelectedApplyTemplateKeyChange(value === noTemplateValue ? "" : value)}
             disabled={loadingTemplates || templateSeeds.length === 0}
-          >
-            <option value="">
-              {loadingTemplates ? "Carregando templates..." : templateSeeds.length === 0 ? "Sem templates salvos" : "Selecionar template"}
-            </option>
-            {templateSeeds.map((seed) => (
-              <option key={seed.key} value={seed.key}>
-                {seed.templateName} / {seed.perspectiveName}
-              </option>
-            ))}
-          </select>
+            aria-label="Template por perspectiva"
+            placeholder={loadingTemplates ? "Carregando templates..." : templateSeeds.length === 0 ? "Sem templates salvos" : "Selecionar template"}
+            items={[
+              { value: noTemplateValue, label: "Selecionar template" },
+              ...templateSeeds.map((seed) => ({
+                value: seed.key,
+                label: `${seed.templateName} / ${seed.perspectiveName}`
+              }))
+            ]}
+          />
           <button
             type="button"
             className="board-editor__btn-discard"

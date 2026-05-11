@@ -1,15 +1,19 @@
 import { apiClient } from '@/shared/api/http-client';
 import type {
   CreateMarketingCampaignInput,
+  CreateMarketingFollowUpInput,
   MarketingAudienceContact,
   MarketingAutomationFlow,
   MarketingCampaignAnalytics,
   MarketingCampaignDetails,
   MarketingCampaignListItem,
   MarketingDashboard,
+  MarketingFollowUpResult,
   MarketingSegment,
+  MarketingSegmentPreview,
   MarketingSignalsInbox,
-  MarketingTemplate
+  MarketingTemplate,
+  SendMarketingTemplateTestInput
 } from '@/modules/marketing/model/types';
 
 function asQueryString(input: Record<string, string | number | undefined>): string {
@@ -224,27 +228,37 @@ export const marketingService = {
     );
   },
 
-  previewSegment(workspaceId: string, segmentId: string, limit?: number): Promise<{
-    segment: MarketingSegment;
-    estimatedContacts: number;
-    sample: MarketingAudienceContact['lead'][];
-  }> {
+  previewSegment(workspaceId: string, segmentId: string, limit?: number): Promise<MarketingSegmentPreview> {
     const query = typeof limit === 'number' ? `?limit=${limit}` : '';
-    return apiClient.post<{
-      segment: MarketingSegment;
-      estimatedContacts: number;
-      sample: MarketingAudienceContact['lead'][];
-    }>(`/marketing/workspaces/${workspaceId}/audience/segments/${segmentId}/preview${query}`, undefined, {
+    return apiClient.post<MarketingSegmentPreview>(`/marketing/workspaces/${workspaceId}/audience/segments/${segmentId}/preview${query}`, undefined, {
       authMode: 'required',
       retryOnUnauthorized: true
     });
   },
 
-  listTemplates(workspaceId: string): Promise<{ items: MarketingTemplate[] }> {
-    return apiClient.get<{ items: MarketingTemplate[] }>(`/marketing/workspaces/${workspaceId}/templates`, {
-      authMode: 'required',
-      retryOnUnauthorized: true
-    });
+  listTemplates(
+    workspaceId: string,
+    input: {
+      category?: string;
+      objective?: string;
+      funnelStage?: string;
+      search?: string;
+      includeArchived?: boolean;
+    } = {}
+  ): Promise<{ items: MarketingTemplate[] }> {
+    return apiClient.get<{ items: MarketingTemplate[] }>(
+      `/marketing/workspaces/${workspaceId}/templates${asQueryString({
+        category: input.category,
+        objective: input.objective,
+        funnelStage: input.funnelStage,
+        search: input.search,
+        includeArchived: input.includeArchived ? 'true' : undefined
+      })}`,
+      {
+        authMode: 'required',
+        retryOnUnauthorized: true
+      }
+    );
   },
 
   createTemplate(
@@ -274,9 +288,31 @@ export const marketingService = {
     });
   },
 
-  listAutomationFlows(workspaceId: string): Promise<{ items: MarketingAutomationFlow[] }> {
+  sendTemplateTestEmail(
+    workspaceId: string,
+    templateId: string,
+    input: SendMarketingTemplateTestInput
+  ): Promise<{ providerKey: string; providerMessageId: string }> {
+    return apiClient.post<{ providerKey: string; providerMessageId: string }>(
+      `/marketing/workspaces/${workspaceId}/templates/${templateId}/send-test`,
+      input,
+      {
+        authMode: 'required',
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  listAutomationFlows(
+    workspaceId: string,
+    input: {
+      status?: string;
+      search?: string;
+      limit?: number;
+    } = {}
+  ): Promise<{ items: MarketingAutomationFlow[] }> {
     return apiClient.get<{ items: MarketingAutomationFlow[] }>(
-      `/marketing/workspaces/${workspaceId}/automations/flows`,
+      `/marketing/workspaces/${workspaceId}/automations/flows${asQueryString(input)}`,
       {
         authMode: 'required',
         retryOnUnauthorized: true
@@ -366,5 +402,29 @@ export const marketingService = {
       authMode: 'required',
       retryOnUnauthorized: true
     });
+  },
+
+  createFollowUp(
+    workspaceId: string,
+    input: CreateMarketingFollowUpInput
+  ): Promise<MarketingFollowUpResult> {
+    return apiClient.post<MarketingFollowUpResult>(
+      `/marketing/workspaces/${workspaceId}/signals/${input.signalId}/follow-up`,
+      {
+        leadId: input.leadId,
+        title: input.title,
+        description: input.description,
+        dueAt: input.dueAt,
+        priority: input.priority,
+        createWorkItem: input.createWorkItem,
+        boardId: input.boardId,
+        workflowStateId: input.workflowStateId,
+        assigneeId: input.assigneeId
+      },
+      {
+        authMode: 'required',
+        retryOnUnauthorized: true
+      }
+    );
   }
 };

@@ -3,7 +3,8 @@ import { z } from 'zod';
 const workspaceTemplateKeyDto = z.enum([
   'software_delivery',
   'product_discovery',
-  'operations_kanban'
+  'operations_kanban',
+  'commercial_crm'
 ]);
 
 export const createWorkspaceDto = z.object({

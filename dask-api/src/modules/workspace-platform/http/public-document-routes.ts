@@ -6,6 +6,7 @@ import type { AuthService } from '@/modules/identity/application/auth-service';
 import type { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
 import {
   decidePublicWorkspaceDocumentDto,
+  publicWorkspaceDocumentAssetParamsDto,
   publicWorkspaceDocumentTokenParamsDto
 } from '@/modules/workspace-platform/http/dto';
 
@@ -30,6 +31,28 @@ export const buildPublicDocumentRoutes = (deps: {
         requestingUserEmail: req.auth?.email ?? sessionUser?.email ?? null
       });
       res.status(200).json(document);
+    })
+  );
+
+  router.get(
+    '/documents/public/:token/assets/:assetId/content',
+    optionalAuthMiddleware,
+    asyncHandler(async (req, res) => {
+      const { token, assetId } = publicWorkspaceDocumentAssetParamsDto.parse(req.params);
+      const rawRefreshToken = (req.cookies?.[SESSION_COOKIE_NAME] as string | undefined) ?? '';
+      const sessionUser = req.auth
+        ? null
+        : await deps.authService.resolveSessionUser(rawRefreshToken);
+      const asset = await deps.workspaceDocumentsService.getPublicDocumentAssetContent({
+        token,
+        assetId,
+        requestingUserId: req.auth?.userId ?? sessionUser?.userId ?? null,
+        requestingUserEmail: req.auth?.email ?? sessionUser?.email ?? null
+      });
+      res.setHeader('Content-Type', asset.contentType);
+      res.setHeader('Content-Length', String(asset.size));
+      res.setHeader('Content-Disposition', `inline; filename="${asset.filename.replace(/"/g, '')}"`);
+      res.sendFile(asset.absolutePath);
     })
   );
 

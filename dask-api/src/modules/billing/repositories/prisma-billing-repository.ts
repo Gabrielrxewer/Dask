@@ -3,7 +3,7 @@
 // Until then, we use type assertions for new schema additions.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { PrismaClient } from '@prisma/client';
+import { AuditSeverity, type PrismaClient } from '@prisma/client';
 import type { SubscriptionStatus } from '../domain/types';
 import type {
   BillingRepository,
@@ -12,8 +12,12 @@ import type {
   ConnectCatalogItem,
   ConnectPaymentOrder,
   CreateBillingCustomerInput,
+  CreateBillingPortalTokenRecordInput,
   CreateConnectCatalogItemInput,
   CreateConnectPaymentOrderInput,
+  BillingPortalTokenRecord,
+  ListConnectCatalogItemsInput,
+  ListConnectPaymentOrdersInput,
   CreateSubscriptionInput,
   Subscription,
   UpdateConnectCatalogItemInput,
@@ -24,6 +28,14 @@ import type {
   WorkspaceMembership
 } from './billing-repository';
 import { isSubscriptionActive } from '../domain/types';
+
+function resolveLimit(input?: number, fallback = 100, max = 200): number {
+  if (typeof input !== 'number' || Number.isNaN(input)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.min(max, Math.round(input)));
+}
 
 export class PrismaBillingRepository implements BillingRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -254,13 +266,34 @@ export class PrismaBillingRepository implements BillingRepository {
     return (this.prisma as any).connectCatalogItem.findUnique({ where: { id: itemId } });
   }
 
-  listConnectCatalogItemsByWorkspace(
-    workspaceId: string,
-    includeInactive = false
-  ): Promise<ConnectCatalogItem[]> {
+  listConnectCatalogItemsByWorkspace(input: ListConnectCatalogItemsInput): Promise<ConnectCatalogItem[]> {
+    const search = input.search?.trim();
+    const activeFilter =
+      input.status === 'active'
+        ? true
+        : input.status === 'inactive'
+          ? false
+          : undefined;
     return (this.prisma as any).connectCatalogItem.findMany({
-      where: includeInactive ? { workspaceId } : { workspaceId, isActive: true },
-      orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }]
+      where: {
+        workspaceId: input.workspaceId,
+        ...(activeFilter === undefined
+          ? (input.includeInactive ? {} : { isActive: true })
+          : { isActive: activeFilter }),
+        kind: input.kind,
+        billingType: input.billingType,
+        OR: search
+          ? [
+              { name: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+              { stripeProductId: { contains: search, mode: 'insensitive' } },
+              { stripePriceId: { contains: search, mode: 'insensitive' } }
+            ]
+          : undefined
+      },
+      orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: resolveLimit(input.pageSize, 100, 201)
     });
   }
 
@@ -326,19 +359,65 @@ export class PrismaBillingRepository implements BillingRepository {
     return (this.prisma as any).connectPaymentOrder.findUnique({ where: { stripePaymentIntentId: paymentIntentId } });
   }
 
-  listConnectPaymentOrdersByWorkspace(
-    workspaceId: string,
-    limit: number,
-    customerIds?: string[]
-  ): Promise<ConnectPaymentOrder[]> {
+  listConnectPaymentOrdersByWorkspace(input: ListConnectPaymentOrdersInput): Promise<ConnectPaymentOrder[]> {
+    const search = input.search?.trim();
+    const email = input.email?.trim();
+    const effectiveCustomerIds = input.customerIds && input.customerId
+      ? input.customerIds.filter((customerId) => customerId === input.customerId)
+      : input.customerIds;
     return (this.prisma as any).connectPaymentOrder.findMany({
       where: {
-        workspaceId,
-        ...(customerIds ? { customerId: { in: customerIds } } : {})
+        workspaceId: input.workspaceId,
+        status: input.status,
+        customerId: effectiveCustomerIds
+          ? { in: effectiveCustomerIds }
+          : input.customerId,
+        customerEmail: email ? { contains: email, mode: 'insensitive' } : undefined,
+        OR: search
+          ? [
+              { description: { contains: search, mode: 'insensitive' } },
+              { customerName: { contains: search, mode: 'insensitive' } },
+              { customerEmail: { contains: search, mode: 'insensitive' } },
+              { customerDocument: { contains: search.replace(/\D/g, ''), mode: 'insensitive' } },
+              { stripeCheckoutSessionId: { contains: search, mode: 'insensitive' } },
+              { stripePaymentIntentId: { contains: search, mode: 'insensitive' } }
+            ]
+          : undefined
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: resolveLimit(input.pageSize, 50, 201)
     });
+  }
+
+  async hasWorkItemProposalOrContract(workspaceId: string, workItemId: string): Promise<boolean> {
+    const total = await this.prisma.workspaceDocument.count({
+      where: {
+        workspaceId,
+        kind: { in: ['proposal', 'contract'] },
+        OR: [
+          {
+            linkedEntityType: 'work_item',
+            linkedEntityId: workItemId
+          },
+          {
+            itemLinks: {
+              some: {
+                itemId: workItemId
+              }
+            }
+          },
+          {
+            metadata: {
+              path: ['sourceWorkItemId'],
+              equals: workItemId
+            }
+          }
+        ]
+      }
+    });
+
+    return total > 0;
   }
 
   createConnectPaymentOrder(input: CreateConnectPaymentOrderInput): Promise<ConnectPaymentOrder> {
@@ -411,6 +490,7 @@ export class PrismaBillingRepository implements BillingRepository {
         stripePaymentIntentId: input.stripePaymentIntentId,
         status: input.status,
         statusReason: input.statusReason,
+        metadata: input.metadata as any,
         checkoutUrl: input.checkoutUrl,
         lastWebhookEvent: input.lastWebhookEvent,
         paidAt: input.paidAt,
@@ -418,6 +498,79 @@ export class PrismaBillingRepository implements BillingRepository {
         canceledAt: input.canceledAt,
         refundedAt: input.refundedAt,
         updatedAt: new Date()
+      }
+    });
+  }
+
+  createBillingPortalTokenRecord(input: CreateBillingPortalTokenRecordInput): Promise<BillingPortalTokenRecord> {
+    return this.prisma.$transaction(async (tx) => {
+      const record = await (tx as any).billingPortalToken.create({
+        data: {
+          workspaceId: input.workspaceId,
+          orderId: input.orderId,
+          tokenId: input.tokenId,
+          tokenHash: input.tokenHash,
+          customerEmail: input.customerEmail,
+          scopes: input.scopes,
+          expiresAt: input.expiresAt,
+          createdByUserId: input.createdByUserId,
+          metadata: input.metadata as any
+        }
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          eventName: 'billing.portal_token.created',
+          severity: AuditSeverity.INFO,
+          actorId: input.createdByUserId ?? null,
+          workspaceId: input.workspaceId,
+          metadata: {
+            orderId: input.orderId,
+            tokenId: input.tokenId,
+            scopes: input.scopes,
+            expiresAt: input.expiresAt.toISOString(),
+            source: input.metadata?.source
+          } as any
+        }
+      });
+
+      return record;
+    });
+  }
+
+  async revokeBillingPortalTokensForOrder(
+    workspaceId: string,
+    orderId: string,
+    revokedByUserId?: string | null
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const revokedAt = new Date();
+      const result = await (tx as any).billingPortalToken.updateMany({
+        where: {
+          workspaceId,
+          orderId,
+          revokedAt: null
+        },
+        data: {
+          revokedAt,
+          revokedByUserId: revokedByUserId ?? null
+        }
+      });
+
+      if (result.count > 0) {
+        await tx.auditEvent.create({
+          data: {
+            eventName: 'billing.portal_token.revoked',
+            severity: AuditSeverity.INFO,
+            actorId: revokedByUserId ?? null,
+            workspaceId,
+            metadata: {
+              orderId,
+              revokedCount: result.count,
+              revokedAt: revokedAt.toISOString()
+            } as any
+          }
+        });
       }
     });
   }

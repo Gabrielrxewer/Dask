@@ -718,6 +718,11 @@ body.shared-modal-open .global-footer {
   box-shadow: 0 28px 72px color-mix(in srgb, var(--ink-shadow-strong) 16%, transparent);
 }
 
+.user-profile-modal__dialog-body {
+  padding: 0;
+  overflow: hidden;
+}
+
 .user-profile-modal__header {
   position: relative;
   display: flex;

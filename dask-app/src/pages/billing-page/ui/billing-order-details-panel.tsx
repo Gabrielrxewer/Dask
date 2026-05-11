@@ -1,7 +1,6 @@
 import type { ConnectCatalogItem } from "@/modules/billing";
 import { getCustomerDisplayName, type Customer } from "@/modules/workspace";
 import { Button, LoadingState, StatusBadge } from "@/shared/ui";
-import { IconCheck } from "./billing-page-icons";
 import {
   CATALOG_BILLING_LABEL,
   formatAmount,
@@ -18,8 +17,6 @@ interface BillingOrderDetailsPanelProps {
   selectedCustomer: Customer | null;
   customerEmail: string;
   checkoutUrl: string | null;
-  linkCopied: boolean;
-  emailSentNotice: boolean;
   onCopyCheckoutUrl: () => void | Promise<void>;
   onCancelReview: () => void;
 }
@@ -33,8 +30,6 @@ export function BillingOrderDetailsPanel({
   selectedCustomer,
   customerEmail,
   checkoutUrl,
-  linkCopied,
-  emailSentNotice,
   onCopyCheckoutUrl,
   onCancelReview
 }: BillingOrderDetailsPanelProps) {
@@ -83,36 +78,28 @@ export function BillingOrderDetailsPanel({
           <div className="billing-view__checkout-link">
             <div className="billing-view__checkout-link-head">
               <span className="billing-view__checkout-link-label">Link de pagamento</span>
-              {linkCopied ? <span className="billing-view__checkout-link-state">Copiado!</span> : null}
             </div>
             <div
-              className={`billing-view__checkout-link-row ${linkCopied ? "is-copied" : ""}`}
+              className="billing-view__checkout-link-row"
               onClick={() => void onCopyCheckoutUrl()}
               title={checkoutUrl ?? undefined}
             >
               <span className="billing-view__checkout-link-url">{checkoutUrl}</span>
               <button
                 type="button"
-                className={`billing-view__copy-btn ${linkCopied ? "is-copied" : ""}`}
+                className="billing-view__copy-btn"
                 onClick={(event) => {
                   event.stopPropagation();
                   void onCopyCheckoutUrl();
                 }}
               >
-                {linkCopied ? "Copiado!" : "Copiar link"}
+                Copiar link
               </button>
             </div>
             <span className="billing-view__checkout-link-hint">
               Clique no bloco para copiar. Avulsa aceita cartão e boleto; assinatura aceita só cartão.
             </span>
           </div>
-
-          {emailSentNotice ? (
-            <div className="billing-view__email-sent-notice">
-              <span className="billing-view__email-sent-icon"><IconCheck /></span>
-              Link enviado por e-mail para <strong>{customerEmail.trim() || selectedCustomer?.email}</strong>
-            </div>
-          ) : null}
 
           <div className="billing-view__actions shared-actions-row">
             <Button type="button" variant="outline" onClick={onCancelReview}>

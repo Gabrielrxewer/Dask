@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useParams } from 'react-router-dom';
 import { applyEdgeChanges, applyNodeChanges, type OnEdgesChange, type OnNodesChange } from '@xyflow/react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { buildBoardMetrics } from '@/entities/task';
+import {
+  aiAgentCompiledConfigSchema,
+  aiAgentMetaFormSchema,
+  compileAiAgentToAutomation,
+  normalizeAiAgentKey,
+  validateAiAgentNodeConfigs,
+  useAiAgentsQuery,
+  useAiCapabilitiesQuery,
+  useCreateAiAgentMutation,
+  usePublishAiAgentMutation,
+  useRunAiAgentMutation,
+  useUpdateAiAgentMutation,
+  useValidateAiAgentMutation,
+  type AiAgentMetaFormInput,
+  type AiAgentMetaFormValues
+} from '@/modules/ai';
 import { useWorkspace } from '@/modules/workspace';
 import type {
   AiAgentConfig,
@@ -26,6 +45,13 @@ import type {
   ToolId,
 } from './agent-flow-types';
 import './ai-agents-page.css';
+
+const EMPTY_AGENT_META_FORM = {
+  name: '',
+  key: '',
+  description: '',
+  isActive: true,
+};
 
 // ── Flow serialization ────────────────────────────────────────────────────────
 
@@ -147,7 +173,7 @@ function flowToAgentPayload(
     .map((n) => (n.data as ToolNodeData).toolId)
     .filter((id) => gptToolIdsFromCapabilities.has(id));
 
-  const config: AiAgentConfig = {
+  const baseConfig = {
     rag: rag
       ? {
           enabled: rag.source !== 'none',
@@ -168,6 +194,45 @@ function flowToAgentPayload(
     },
     flow: flow as unknown as Record<string, unknown>,
   };
+  const compiledAutomation = compileAiAgentToAutomation({
+    key: meta.key,
+    name: meta.name,
+    description: meta.description,
+    graph: flow as unknown as Parameters<typeof compileAiAgentToAutomation>[0]["graph"],
+    model: {
+      model: llm?.model || capabilities.defaults.model,
+      temperature: llm?.temperature ?? 0.2
+    },
+    prompt: {
+      systemPrompt: llm?.systemPrompt ?? ''
+    },
+    rag: rag
+      ? {
+          enabled: rag.source !== 'none',
+          source: rag.source as AiAgentRagSource,
+          topKContextDocs: rag.topK,
+          contextInstruction: rag.contextInstruction,
+          includeSemanticContext: rag.includeSemanticContext,
+          includeLinkedDocuments: rag.includeLinkedDocuments
+        }
+      : undefined,
+    tools: toolNodes.map((node) => ({
+      toolId: (node.data as ToolNodeData).toolId
+    })),
+    output: {
+      outputType: (flow.nodes.find((node) => node.type === 'output')?.data as { outputType?: 'text_response' | 'update_card' } | undefined)?.outputType ?? 'text_response'
+    }
+  });
+
+  const config = aiAgentCompiledConfigSchema.parse({
+    ...baseConfig,
+    automationRuntime: {
+      executor: "automation",
+      compilerVersion: 1,
+      validationIssues: compiledAutomation.issues,
+      definition: compiledAutomation.definition
+    }
+  }) as AiAgentConfig;
 
   return {
     key: meta.key,
@@ -228,22 +293,33 @@ function sourceLabel(source: string): string {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function AiAgentsPage() {
-  const { snapshot, getAiCapabilities, listAiAgents, createAiAgent, updateAiAgent } = useWorkspace();
+  const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
+  const { snapshot } = useWorkspace();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
+  const agentsQuery = useAiAgentsQuery(workspaceSlug);
+  const capabilitiesQuery = useAiCapabilitiesQuery(workspaceSlug);
+  const createAiAgentMutation = useCreateAiAgentMutation(workspaceSlug);
+  const updateAiAgentMutation = useUpdateAiAgentMutation(workspaceSlug);
+  const validateAiAgentMutation = useValidateAiAgentMutation(workspaceSlug);
+  const publishAiAgentMutation = usePublishAiAgentMutation(workspaceSlug);
+  const runAiAgentMutation = useRunAiAgentMutation(workspaceSlug);
+  const agentMetaForm = useForm<AiAgentMetaFormInput, unknown, AiAgentMetaFormValues>({
+    resolver: zodResolver(aiAgentMetaFormSchema),
+    defaultValues: EMPTY_AGENT_META_FORM,
+    mode: 'onChange',
+  });
+  const agentMetaValues = agentMetaForm.watch();
 
   // Agent list
-  const [agents, setAgents] = useState<AiAgentSummary[]>([]);
-  const [capabilities, setCapabilities] = useState<AiCapabilities | null>(null);
-  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const agents = agentsQuery.data ?? [];
+  const capabilities = capabilitiesQuery.data ?? null;
+  const isLoadingAgents = agentsQuery.isLoading || capabilitiesQuery.isLoading || agentsQuery.isFetching || capabilitiesQuery.isFetching;
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
+  const [hasInitializedAgent, setHasInitializedAgent] = useState(false);
 
-  // Agent metadata form (top nav)
-  const [agentName, setAgentName] = useState('');
-  const [agentKey, setAgentKey] = useState('');
-  const [agentDescription, setAgentDescription] = useState('');
-  const [agentIsActive, setAgentIsActive] = useState(true);
   const isCreateMode = selectedAgentId === null;
+  const agentName = agentMetaValues.name ?? '';
 
   // Flow state (lifted so config panel can update nodes)
   const [nodes, setNodes] = useState<AgentFlowNode[]>([]);
@@ -257,10 +333,7 @@ export function AiAgentsPage() {
   const agentMetaPanel: AgentMetaForm | null =
     configPanelMode === 'agent'
       ? {
-          name: agentName,
-          key: agentKey,
-          description: agentDescription,
-          isActive: agentIsActive,
+          form: agentMetaForm,
           isCreateMode,
         }
       : null;
@@ -268,34 +341,39 @@ export function AiAgentsPage() {
   const isConfigPanelVisible = Boolean(agentMetaPanel || selectedConfigNode);
 
   // Save state
-  const [isSaving, setIsSaving] = useState(false);
+  const isSaving = createAiAgentMutation.isPending || updateAiAgentMutation.isPending;
+  const isRuntimeBusy =
+    validateAiAgentMutation.isPending ||
+    publishAiAgentMutation.isPending ||
+    runAiAgentMutation.isPending;
   const [error, setError] = useState<string | null>(null);
+  const agentMetaValidation = useMemo(() => aiAgentMetaFormSchema.safeParse(agentMetaValues), [agentMetaValues]);
+  const agentMetaValidationMessage = agentMetaValidation.success ? null : agentMetaValidation.error.issues[0]?.message ?? null;
+  const flowValidationIssues = useMemo(() => validateAiAgentNodeConfigs(nodes), [nodes]);
+  const flowValidationMessage = flowValidationIssues[0] ?? null;
 
   // ── Load agents ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    let mounted = true;
-    setIsLoadingAgents(true);
-    Promise.all([getAiCapabilities(), listAiAgents()])
-      .then(([capabilityCatalog, result]) => {
-        if (!mounted) return;
-        setCapabilities(capabilityCatalog);
-        setAgents(result);
-        if (result.length > 0) {
-          const first = result[0];
-          selectAgent(first, capabilityCatalog);
-        } else {
-          loadFlow(null, capabilityCatalog);
-        }
-      })
-      .catch(() => {
-        if (mounted) setError('Não foi possível carregar os agentes.');
-      })
-      .finally(() => {
-        if (mounted) setIsLoadingAgents(false);
-      });
-    return () => { mounted = false; };
-  }, [getAiCapabilities, listAiAgents]);
+    setHasInitializedAgent(false);
+    setSelectedAgentId(null);
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (!capabilities || hasInitializedAgent) return;
+    if (agents.length > 0) {
+      selectAgent(agents[0], capabilities);
+    } else {
+      loadFlow(null, capabilities);
+    }
+    setHasInitializedAgent(true);
+  }, [agents, capabilities, hasInitializedAgent]);
+
+  useEffect(() => {
+    if (agentsQuery.isError || capabilitiesQuery.isError) {
+      setError('Não foi possível carregar os agentes.');
+    }
+  }, [agentsQuery.isError, capabilitiesQuery.isError]);
 
   // ── Flow state management ────────────────────────────────────────────────────
 
@@ -311,10 +389,12 @@ export function AiAgentsPage() {
 
   function selectAgent(agent: AiAgentSummary, capabilityCatalog = capabilities) {
     setSelectedAgentId(agent.id);
-    setAgentName(agent.name);
-    setAgentKey(agent.key);
-    setAgentDescription(agent.description ?? '');
-    setAgentIsActive(agent.isActive);
+    agentMetaForm.reset({
+      name: agent.name,
+      key: agent.key,
+      description: agent.description ?? '',
+      isActive: agent.isActive,
+    });
     setError(null);
     loadFlow(agent, capabilityCatalog);
   }
@@ -322,10 +402,7 @@ export function AiAgentsPage() {
   function handleCreateNew() {
     if (!capabilities) return;
     setSelectedAgentId(null);
-    setAgentName('');
-    setAgentKey('');
-    setAgentDescription('');
-    setAgentIsActive(true);
+    agentMetaForm.reset(EMPTY_AGENT_META_FORM);
     setError(null);
     loadFlow(null, capabilities);
     setConfigPanelMode('agent');
@@ -362,19 +439,6 @@ export function AiAgentsPage() {
     setConfigPanelMode(nodeId ? 'node' : null);
   }, []);
 
-  const handleAgentMetaChange = useCallback(
-    (patch: Partial<Omit<AgentMetaForm, 'isCreateMode'>>) => {
-      if (patch.name !== undefined) {
-        setAgentName(patch.name);
-        if (isCreateMode && patch.key === undefined) setAgentKey(normalizeKey(patch.name));
-      }
-      if (patch.key !== undefined && isCreateMode) setAgentKey(normalizeKey(patch.key));
-      if (patch.description !== undefined) setAgentDescription(patch.description);
-      if (patch.isActive !== undefined) setAgentIsActive(patch.isActive);
-    },
-    [isCreateMode],
-  );
-
   function handleEditAgent(agent: AiAgentSummary) {
     if (agent.id !== selectedAgentId) selectAgent(agent);
     setSelectedNodeId(null);
@@ -389,65 +453,107 @@ export function AiAgentsPage() {
   // ── Save ─────────────────────────────────────────────────────────────────────
 
   const canSave =
-    agentName.trim().length >= 2 &&
+    agentMetaValidation.success &&
+    flowValidationIssues.length === 0 &&
     Boolean(capabilities) &&
     !isSaving &&
     !isLoadingAgents;
 
-  async function handleSave() {
-    if (!canSave) return;
-
-    const key = isCreateMode ? normalizeKey(agentKey || agentName) : agentKey;
-    if (isCreateMode && key.length < 2) {
-      setError('Nome do agente muito curto para gerar chave.');
-      return;
+  async function handleSave(): Promise<string | null> {
+    if (!canSave) {
+      if (agentMetaValidationMessage || flowValidationMessage) {
+        setError(agentMetaValidationMessage ?? flowValidationMessage);
+      }
+      return selectedAgentId;
     }
 
-    if (!capabilities) return;
+    const isMetaValid = await agentMetaForm.trigger();
+    if (!isMetaValid) {
+      setError(agentMetaValidationMessage ?? 'Revise a configuracao do agente.');
+      return selectedAgentId;
+    }
+
+    const metaValues = aiAgentMetaFormSchema.parse(agentMetaForm.getValues());
+    const key = isCreateMode ? normalizeAiAgentKey(metaValues.key || metaValues.name) : metaValues.key;
+    if (isCreateMode && key.length < 2) {
+      setError('Nome do agente muito curto para gerar chave.');
+      return null;
+    }
+
+    if (!capabilities) return null;
 
     const currentFlow: AgentFlow = { nodes, edges };
     const payload = flowToAgentPayload(currentFlow, {
-      name: agentName.trim(),
+      name: metaValues.name,
       key,
-      description: agentDescription.trim(),
-      isActive: agentIsActive,
+      description: metaValues.description,
+      isActive: metaValues.isActive,
     }, capabilities);
 
-    setIsSaving(true);
     setError(null);
     try {
-      let savedId: string;
+      let saved: AiAgentSummary;
       if (isCreateMode) {
-        const created = await createAiAgent(payload);
-        savedId = created.id;
+        saved = await createAiAgentMutation.mutateAsync(payload);
       } else {
-        await updateAiAgent(selectedAgentId!, {
-          name: payload.name,
-          description: payload.description ?? null,
-          model: payload.model,
-          temperature: payload.temperature,
-          systemPrompt: payload.systemPrompt,
-          config: payload.config,
-          isActive: payload.isActive,
+        saved = await updateAiAgentMutation.mutateAsync({
+          agentId: selectedAgentId!,
+          patch: {
+            name: payload.name,
+            description: payload.description ?? null,
+            model: payload.model,
+            temperature: payload.temperature,
+            systemPrompt: payload.systemPrompt,
+            config: payload.config,
+            isActive: payload.isActive,
+          }
         });
-        savedId = selectedAgentId!;
       }
-      const nextAgents = await listAiAgents();
-      setAgents(nextAgents);
-      const saved = nextAgents.find((a) => a.id === savedId) ?? nextAgents[0];
-      if (saved) selectAgent(saved);
+      selectAgent(saved);
+      return saved.id;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível salvar.');
-    } finally {
-      setIsSaving(false);
+      return null;
     }
   }
 
   // ── Auto-generate key from name (create mode) ────────────────────────────────
 
-  function handleNameChange(value: string) {
-    setAgentName(value);
-    if (isCreateMode) setAgentKey(normalizeKey(value));
+  async function handleValidateRuntime() {
+    if (isRuntimeBusy) return;
+    const agentId = await handleSave();
+    if (!agentId) return;
+    setError(null);
+    try {
+      await validateAiAgentMutation.mutateAsync(agentId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nao foi possivel validar o agente.');
+    }
+  }
+
+  async function handlePublishRuntime() {
+    if (isRuntimeBusy) return;
+    const agentId = await handleSave();
+    if (!agentId) return;
+    setError(null);
+    try {
+      await publishAiAgentMutation.mutateAsync({ agentId, activateWorkflow: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nao foi possivel publicar o agente.');
+    }
+  }
+
+  async function handleRunRuntime() {
+    if (!selectedAgentId || isRuntimeBusy) return;
+    setError(null);
+    try {
+      await runAiAgentMutation.mutateAsync({
+        agentId: selectedAgentId,
+        instruction: `Executar agente ${agentName || selectedAgent?.name || selectedAgentId}.`
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nao foi possivel executar o agente.');
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -465,6 +571,24 @@ export function AiAgentsPage() {
             icon={<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>}
             onClick={handleCreateNew}
             disabled={isSaving}
+          />
+          <WorkspaceActionButton
+            label="Validar"
+            icon={<AppIcon name="list-checks" />}
+            onClick={() => void handleValidateRuntime()}
+            disabled={isSaving || isRuntimeBusy || !canSave}
+          />
+          <WorkspaceActionButton
+            label="Publicar"
+            icon={<AppIcon name="send" />}
+            onClick={() => void handlePublishRuntime()}
+            disabled={isSaving || isRuntimeBusy || !canSave}
+          />
+          <WorkspaceActionButton
+            label="Executar"
+            icon={<AppIcon name="play" />}
+            onClick={() => void handleRunRuntime()}
+            disabled={isCreateMode || !selectedAgentId || isSaving || isRuntimeBusy}
           />
           <WorkspaceActionButton
             tone="accent"
@@ -581,7 +705,6 @@ export function AiAgentsPage() {
               capabilities={capabilities}
               onClose={handleCloseConfigPanel}
               onNodeDataChange={handleNodeDataChange}
-              onAgentMetaChange={handleAgentMetaChange}
             />
           ) : null}
           inspectorOpen={isConfigPanelVisible}
@@ -589,6 +712,9 @@ export function AiAgentsPage() {
         >
           {error ? (
             <div className="ab-error">{error}</div>
+          ) : null}
+          {!error && flowValidationMessage ? (
+            <div className="ab-error">{flowValidationMessage}</div>
           ) : null}
           {capabilities ? (
             <AgentFlowCanvas

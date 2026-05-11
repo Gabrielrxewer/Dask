@@ -1,5 +1,6 @@
 import type { Ref } from "react";
 import type { ApiWorkflowState } from "@/modules/workspace/model";
+import { AppSelect } from "@/shared/ui";
 
 type BoardColumnFormProps = {
   inputRef?: Ref<HTMLInputElement>;
@@ -34,6 +35,8 @@ export function BoardColumnForm({
   onSubmit,
   onCancel
 }: BoardColumnFormProps) {
+  const noStateValue = "__none__";
+
   return (
     <div className="board-editor__column-edit-form">
       <div className="board-editor__edit-field">
@@ -57,14 +60,16 @@ export function BoardColumnForm({
       </div>
       <div className="board-editor__edit-field">
         <label className="board-editor__edit-label">Estado automatico</label>
-        <select className="board-editor__edit-select" value={stateId} onChange={(event) => onStateIdChange(event.target.value)}>
-          <option value="">Sem estado</option>
-          {activeStates.map((state) => (
-            <option key={state.id} value={state.id}>
-              {state.name}
-            </option>
-          ))}
-        </select>
+        <AppSelect
+          className="board-editor__edit-select"
+          value={stateId || noStateValue}
+          onValueChange={(value) => onStateIdChange(value === noStateValue ? "" : value)}
+          aria-label="Estado automatico"
+          items={[
+            { value: noStateValue, label: "Sem estado" },
+            ...activeStates.map((state) => ({ value: state.id, label: state.name }))
+          ]}
+        />
       </div>
       <div className="board-editor__edit-actions">
         <button type="button" className="board-editor__btn-save" onClick={onSubmit} disabled={saving || !name.trim()}>

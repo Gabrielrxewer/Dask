@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { DragEvent } from "react";
+import { DndContext, useDroppable, type DragOverEvent } from "@dnd-kit/core";
 import { cn } from "@/shared/lib/cn";
-import { AppIcon, ModuleTabs, type ModuleTabsItem } from "@/shared/ui";
+import { AppIcon } from "@/shared/ui";
 import type { WorkspaceBoardMode } from "@/modules/workspace";
 import "./board-perspective-tabs.css";
 
@@ -16,11 +16,81 @@ interface BoardPerspectiveTabsProps {
   onChange: (id: WorkspaceBoardMode) => void;
 }
 
+interface PerspectiveTabButtonProps {
+  perspective: Perspective;
+  active: boolean;
+  dragHover: boolean;
+  onSelect: (id: string) => void;
+}
+
 const MAX_VISIBLE = 5;
+
+function getPerspectiveDropId(id: string) {
+  return `board-perspective:${id}`;
+}
+
+function readPerspectiveDropId(event: DragOverEvent): string {
+  const data = event.over?.data.current as { type?: string; perspectiveId?: string } | undefined;
+  return data?.type === "board-perspective" && data.perspectiveId ? data.perspectiveId : "";
+}
+
+function PerspectiveTabButton({ perspective, active, dragHover, onSelect }: PerspectiveTabButtonProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: getPerspectiveDropId(perspective.id),
+    data: {
+      type: "board-perspective",
+      perspectiveId: perspective.id
+    }
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      role="tab"
+      aria-selected={active}
+      className={cn(
+        "module-tabs__item shared-tabs__item",
+        active && "module-tabs__item--active shared-tabs__item--active",
+        (dragHover || isOver) && "board-perspective-tabs__item--drag-hover"
+      )}
+      onClick={() => onSelect(perspective.id)}
+    >
+      <span className="module-tabs__label shared-tabs__label">{perspective.label}</span>
+    </button>
+  );
+}
+
+function PerspectiveDropdownItem({ perspective, active, dragHover, onSelect }: PerspectiveTabButtonProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: getPerspectiveDropId(perspective.id),
+    data: {
+      type: "board-perspective",
+      perspectiveId: perspective.id
+    }
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      role="option"
+      aria-selected={active}
+      className={cn(
+        "board-perspective-tabs__dropdown-item",
+        active && "board-perspective-tabs__dropdown-item--active",
+        (dragHover || isOver) && "board-perspective-tabs__dropdown-item--drag-hover"
+      )}
+      onClick={() => onSelect(perspective.id)}
+    >
+      {perspective.label}
+    </button>
+  );
+}
 
 export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPerspectiveTabsProps) {
   const [open, setOpen] = useState(false);
-  const [dragHoverId, setDragHoverId] = useState<string>("");
+  const [dragHoverId, setDragHoverId] = useState("");
   const moreRef = useRef<HTMLDivElement>(null);
 
   const activeIdx = perspectives.findIndex(p => p.id === value);
@@ -44,29 +114,19 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
     }
   };
 
-  const handlePerspectiveDragOver = (event: DragEvent<HTMLElement>, id: string) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setDragHoverId(id);
-    changePerspective(id);
-  };
-
-  const clearPerspectiveDragHover = (event: DragEvent<HTMLElement>, id: string) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setDragHoverId(current => (current === id ? "" : current));
+  const handleDndOver = (event: DragOverEvent) => {
+    const nextPerspectiveId = readPerspectiveDropId(event);
+    if (!nextPerspectiveId) {
+      return;
     }
+
+    setDragHoverId(nextPerspectiveId);
+    changePerspective(nextPerspectiveId);
   };
 
-  const buildPerspectiveTabItems = (items: Perspective[]): Array<ModuleTabsItem<string>> =>
-    items.map((perspective) => ({
-      id: perspective.id,
-      label: perspective.label,
-      className: dragHoverId === perspective.id ? "board-perspective-tabs__item--drag-hover" : undefined,
-      onDragOver: event => handlePerspectiveDragOver(event, perspective.id),
-      onDragEnter: event => handlePerspectiveDragOver(event, perspective.id),
-      onDragLeave: event => clearPerspectiveDragHover(event, perspective.id),
-      onDrop: () => setDragHoverId("")
-    }));
+  const clearDndHover = () => {
+    setDragHoverId("");
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -104,108 +164,75 @@ export function BoardPerspectiveTabs({ perspectives, value, onChange }: BoardPer
     </div>
   ) : null;
 
-  if (perspectives.length <= MAX_VISIBLE) {
-    return (
-      <div className="board-perspective-tabs">
-        <ModuleTabs
-          value={value}
-          items={buildPerspectiveTabItems(perspectives)}
-          onChange={changePerspective}
-          ariaLabel="Perspectivas do board"
-          className="board-top-nav__tabs"
-          variant="underline"
-        />
-        {navigationControls}
-      </div>
-    );
-  }
-
   const activeIsOverflow = activeIdx >= MAX_VISIBLE;
-
-  let visibleItems: Perspective[];
-  let overflowItems: Perspective[];
-
-  if (activeIsOverflow) {
-    visibleItems = [...perspectives.slice(0, MAX_VISIBLE - 1), perspectives[activeIdx]];
-    overflowItems = perspectives.filter((_, i) => i >= MAX_VISIBLE - 1 && i !== activeIdx);
-  } else {
-    visibleItems = perspectives.slice(0, MAX_VISIBLE);
-    overflowItems = perspectives.slice(MAX_VISIBLE);
-  }
-
+  const visibleItems = perspectives.length <= MAX_VISIBLE
+    ? perspectives
+    : activeIsOverflow
+      ? [...perspectives.slice(0, MAX_VISIBLE - 1), perspectives[activeIdx]]
+      : perspectives.slice(0, MAX_VISIBLE);
+  const overflowItems = perspectives.length <= MAX_VISIBLE
+    ? []
+    : activeIsOverflow
+      ? perspectives.filter((_, i) => i >= MAX_VISIBLE - 1 && i !== activeIdx)
+      : perspectives.slice(MAX_VISIBLE);
   const overflowHasActive = overflowItems.some(p => p.id === value);
 
-  const overflowMenu = (
+  const overflowMenu = overflowItems.length > 0 ? (
     <div ref={moreRef} className="board-perspective-tabs__more">
-        <button
-          type="button"
-          className={cn(
-            "module-tabs__item shared-tabs__item board-perspective-tabs__more-btn",
-            (open || overflowHasActive) && "board-perspective-tabs__more-btn--active"
-          )}
-          onClick={() => setOpen(v => !v)}
-          onDragOver={event => {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-            setOpen(true);
-          }}
-          onDragEnter={event => {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-            setOpen(true);
-          }}
-          aria-label="Mais perspectivas"
-          aria-expanded={open}
-          aria-haspopup="listbox"
-        >
-          <AppIcon className="board-perspective-tabs__more-icon" name="chevron-down" size={16} strokeWidth={1.8} />
-        </button>
-
-        {open && (
-          <div className="board-perspective-tabs__dropdown" role="listbox">
-            {overflowItems.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                role="option"
-                aria-selected={value === p.id}
-                className={cn(
-                  "board-perspective-tabs__dropdown-item",
-                  value === p.id && "board-perspective-tabs__dropdown-item--active",
-                  dragHoverId === p.id && "board-perspective-tabs__dropdown-item--drag-hover"
-                )}
-                onDragOver={event => handlePerspectiveDragOver(event, p.id)}
-                onDragEnter={event => handlePerspectiveDragOver(event, p.id)}
-                onDragLeave={event => clearPerspectiveDragHover(event, p.id)}
-                onDrop={() => {
-                  setDragHoverId("");
-                  setOpen(false);
-                }}
-                onClick={() => {
-                  changePerspective(p.id);
-                  setOpen(false);
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+      <button
+        type="button"
+        className={cn(
+          "module-tabs__item shared-tabs__item board-perspective-tabs__more-btn",
+          (open || overflowHasActive) && "board-perspective-tabs__more-btn--active"
         )}
-      </div>
-  );
+        onClick={() => setOpen(v => !v)}
+        aria-label="Mais perspectivas"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <AppIcon className="board-perspective-tabs__more-icon" name="chevron-down" size={16} strokeWidth={1.8} />
+      </button>
+
+      {open && (
+        <div className="board-perspective-tabs__dropdown" role="listbox">
+          {overflowItems.map(p => (
+            <PerspectiveDropdownItem
+              key={p.id}
+              perspective={p}
+              active={value === p.id}
+              dragHover={dragHoverId === p.id}
+              onSelect={(id) => {
+                changePerspective(id);
+                setOpen(false);
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  ) : null;
 
   return (
-    <div className="board-perspective-tabs">
-      <ModuleTabs
-        value={value}
-        items={buildPerspectiveTabItems(visibleItems)}
-        onChange={changePerspective}
-        ariaLabel="Perspectivas do board"
-        className="board-top-nav__tabs"
-        variant="underline"
-        afterItems={overflowMenu}
-      />
-      {navigationControls}
-    </div>
+    <DndContext onDragOver={handleDndOver} onDragEnd={clearDndHover} onDragCancel={clearDndHover}>
+      <div className="board-perspective-tabs">
+        <div
+          className="module-tabs shared-tabs module-tabs--underline board-top-nav__tabs board-perspective-tabs__list"
+          role="tablist"
+          aria-label="Perspectivas do board"
+        >
+          {visibleItems.map(p => (
+            <PerspectiveTabButton
+              key={p.id}
+              perspective={p}
+              active={value === p.id}
+              dragHover={dragHoverId === p.id}
+              onSelect={changePerspective}
+            />
+          ))}
+          {overflowMenu}
+        </div>
+        {navigationControls}
+      </div>
+    </DndContext>
   );
 }

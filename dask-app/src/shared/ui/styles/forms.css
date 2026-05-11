@@ -163,20 +163,22 @@
 
 .shared-form-field {
   display: grid;
-  gap: 8px;
+  min-width: 0;
+  gap: 7px;
+  color: var(--text-strong);
 }
 
 .shared-form-field__label {
-  font-size: var(--font-size-label);
-  color: var(--text-secondary);
-  font-weight: 700;
-  letter-spacing: 0.015em;
+  color: var(--text-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
 .shared-form-grid {
   display: grid;
   grid-template-columns: repeat(var(--shared-form-grid-columns, 2), minmax(0, 1fr));
-  gap: var(--shared-form-grid-gap, 10px);
+  gap: var(--shared-form-grid-gap, 14px 16px);
 }
 
 .shared-form-grid--two {
@@ -189,6 +191,14 @@
 
 .shared-form-grid--stack {
   align-items: stretch;
+}
+
+.shared-form-field small,
+.shared-form-field [class$="__field-error"],
+.shared-form-field .mkt-field-error {
+  color: var(--danger);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
 }
 
 .shared-actions-row {

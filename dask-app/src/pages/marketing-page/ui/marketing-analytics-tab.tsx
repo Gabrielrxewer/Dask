@@ -1,11 +1,10 @@
-import type { CSSProperties, Dispatch, MutableRefObject, SetStateAction } from "react";
+import type { CSSProperties } from "react";
 import type {
-  MarketingCampaignAnalytics,
   MarketingCampaignListItem,
   MarketingCampaignObjective,
   MarketingDashboard
 } from "@/modules/marketing";
-import { EmptyState } from "@/shared/ui";
+import { AppSelect, EmptyState } from "@/shared/ui";
 import {
   OBJECTIVE_OPTIONS,
   campaignObjectiveLabel,
@@ -34,11 +33,10 @@ interface MarketingAnalyticsTabProps {
   analyticsObjectiveFilter: MarketingCampaignObjective | "ALL";
   isLoadingAnalytics: boolean;
   hasEnoughAnalyticsData: boolean;
-  analyticsLoadedRef: MutableRefObject<string>;
-  setCampaignAnalyticsMap: Dispatch<SetStateAction<Record<string, MarketingCampaignAnalytics>>>;
   setAnalyticsObjectiveFilter: (objective: MarketingCampaignObjective | "ALL") => void;
   setTab: (tab: MarketingTab) => void;
   loadCampaignDetails: (campaignIdValue: string) => Promise<void>;
+  onRefreshAnalytics: () => Promise<void>;
 }
 
 export function MarketingAnalyticsTab({
@@ -49,11 +47,10 @@ export function MarketingAnalyticsTab({
   analyticsObjectiveFilter,
   isLoadingAnalytics,
   hasEnoughAnalyticsData,
-  analyticsLoadedRef,
-  setCampaignAnalyticsMap,
   setAnalyticsObjectiveFilter,
   setTab,
-  loadCampaignDetails
+  loadCampaignDetails,
+  onRefreshAnalytics
 }: MarketingAnalyticsTabProps) {
   return (
               <div className="mkt-analytics">
@@ -73,16 +70,16 @@ export function MarketingAnalyticsTab({
                 <div className="mkt-analytics__filters shared-surface-panel">
                   <label className="mkt-analytics__filter-label">
                     Objetivo
-                    <select
+                    <AppSelect
                       className="mkt-analytics__filter-select"
                       value={analyticsObjectiveFilter}
-                      onChange={(e) => setAnalyticsObjectiveFilter(e.target.value as MarketingCampaignObjective | "ALL")}
-                    >
-                      <option value="ALL">Todos</option>
-                      {OBJECTIVE_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
+                      onValueChange={(value) => setAnalyticsObjectiveFilter(value as MarketingCampaignObjective | "ALL")}
+                      aria-label="Objetivo"
+                      items={[
+                        { value: "ALL", label: "Todos" },
+                        ...OBJECTIVE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))
+                      ]}
+                    />
                   </label>
                   {isLoadingAnalytics ?(
                     <span className="mkt-analytics__loading">Carregando métricas...</span>
@@ -90,10 +87,7 @@ export function MarketingAnalyticsTab({
                   <button
                     type="button"
                     className="mkt-analytics__refresh"
-                    onClick={() => {
-                      analyticsLoadedRef.current = "";
-                      setCampaignAnalyticsMap({});
-                    }}
+                    onClick={() => void onRefreshAnalytics()}
                     disabled={isLoadingAnalytics}
                   >
                     Atualizar

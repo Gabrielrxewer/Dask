@@ -1547,6 +1547,10 @@
     grid-template-columns: 1fr;
   }
 
+  .mkt-email-template-editor {
+    grid-template-columns: 1fr;
+  }
+
   .mkt-perf-table__head,
   .mkt-perf-table__row {
     grid-template-columns: 1fr 0.7fr 0.6fr 0.6fr;
@@ -2688,9 +2692,12 @@
 
 .mkt-template-card {
   position: relative;
+  display: grid;
+  gap: 8px;
   min-height: 142px;
   overflow: hidden;
   align-content: start;
+  cursor: default;
 }
 
 .mkt-template-card::before {
@@ -2703,7 +2710,101 @@
 }
 
 .mkt-template-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: auto;
+}
+
+.mkt-template-card--archived {
+  opacity: 0.68;
+}
+
+.mkt-email-template-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.mkt-email-template-editor__fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mkt-email-template-editor__variables {
+  display: grid;
+  gap: 7px;
+}
+
+.mkt-email-template-editor__variables > span {
+  color: var(--marketing-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.mkt-email-template-editor__actions,
+.mkt-follow-up-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mkt-email-variable-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mkt-email-preview {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mkt-email-preview__subject {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--marketing-line) 70%, transparent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in oklab, var(--surface-1) 78%, transparent);
+}
+
+.mkt-email-preview__subject span {
+  color: var(--marketing-text-muted);
+  font-size: var(--font-size-3xs);
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.mkt-email-preview__subject strong {
+  color: var(--marketing-text);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.mkt-email-preview__frame {
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid color-mix(in oklab, var(--marketing-line) 70%, transparent);
+  border-radius: var(--radius-xs);
+  background: var(--surface-1);
+}
+
+.mkt-template-dialog {
+  width: min(880px, calc(100vw - 32px));
+}
+
+.mkt-template-dialog--editor {
+  width: min(1120px, calc(100vw - 32px));
+}
+
+.mkt-follow-up-dialog,
+.mkt-follow-up-dialog__form {
+  display: grid;
+  gap: 12px;
 }
 
 .mkt-template-card__actions span {

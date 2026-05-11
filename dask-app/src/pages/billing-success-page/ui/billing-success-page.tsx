@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { routePaths } from "@/app/router";
-import { billingService, billingStore } from "@/modules/billing";
+import { billingStore, useBillingStatusQuery } from "@/modules/billing";
 import { LoadingState } from "@/shared/ui";
 import "./billing-success-page.css";
 
@@ -13,44 +13,38 @@ const POLL_INTERVAL_MS = 2500;
 export function BillingSuccessPage() {
   const [state, setState] = useState<PageState>("loading");
   const pollCount = useRef(0);
+  const statusQuery = useBillingStatusQuery({
+    enabled: state === "loading",
+    refetchInterval: state === "loading" ? POLL_INTERVAL_MS : false
+  });
 
   useEffect(() => {
-    let active = true;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    async function poll() {
-      try {
-        const status = await billingService.getStatus();
-
-        if (!active) return;
-
-        if (status.canAccessPlatform) {
-          billingStore.setStatus(status);
-          setState("active");
-          return;
-        }
-
-        pollCount.current += 1;
-        if (pollCount.current >= MAX_POLLS) {
-          // Webhook may be delayed — show pending message
-          setState("pending");
-          return;
-        }
-
-        timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
-      } catch {
-        if (!active) return;
-        setState("pending");
-      }
+    if (state !== "loading") {
+      return;
     }
 
-    poll();
+    if (statusQuery.isError) {
+      setState("pending");
+      return;
+    }
 
-    return () => {
-      active = false;
-      clearTimeout(timeoutId);
-    };
-  }, []);
+    const status = statusQuery.data;
+    if (!status) {
+      return;
+    }
+
+    if (status.canAccessPlatform) {
+      billingStore.setStatus(status);
+      setState("active");
+      return;
+    }
+
+    pollCount.current += 1;
+    if (pollCount.current >= MAX_POLLS) {
+      // Webhook may be delayed; show pending message.
+      setState("pending");
+    }
+  }, [state, statusQuery.data, statusQuery.dataUpdatedAt, statusQuery.isError]);
 
   if (state === "loading") {
     return (

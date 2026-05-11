@@ -1,6 +1,8 @@
 import type { MemberId, MembersById } from "@/entities/member";
 import type { BoardConfig, Task, TaskChecklist, TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 
+export type { Task } from "@/entities/task";
+
 export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT";
 
 export type WorkspaceBoardMode = string;
@@ -45,6 +47,7 @@ export interface CreateTaskInput {
 export interface TaskScheduleInput {
   plannedStartAt?: string | null;
   plannedEndAt?: string | null;
+  reason?: string;
 }
 
 export interface UpdateTaskInput {
@@ -59,6 +62,166 @@ export interface UpdateTaskInput {
   checklist?: TaskChecklist;
   fields?: Record<string, unknown>;
   customFieldValues?: Record<string, unknown>;
+}
+
+export interface BulkUpdateWorkItemsInput {
+  itemIds: string[];
+  patch: {
+    stateId?: TaskStatusId;
+    stateSlug?: TaskStatusId;
+    assigneeId?: MemberId | null;
+    priority?: TaskPriority;
+    archived?: boolean;
+  };
+}
+
+export interface BulkUpdateWorkItemsResult {
+  updatedCount: number;
+  failedCount: number;
+  items: Task[];
+  failed: Array<{
+    itemId: string;
+    message: string;
+  }>;
+}
+
+export interface ListWorkItemsInput {
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+  cursor?: string | null;
+  perspectiveId?: string;
+  boardColumnId?: string;
+  columnId?: string;
+  workItemTypeId?: string;
+  typeId?: string;
+  workflowStateId?: string;
+  workflowStateIds?: string[];
+  stateId?: string;
+  stateSlug?: string;
+  typeSlug?: string;
+  assignedToMe?: boolean;
+  assigneeId?: string;
+  responsibleId?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  dueDateFrom?: string;
+  dueDateTo?: string;
+  plannedStartFrom?: string;
+  plannedStartTo?: string;
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  updatedAtFrom?: string;
+  updatedAtTo?: string;
+  source?: string;
+  customerId?: string;
+  converted?: boolean;
+  customFieldFilters?: Array<{
+    fieldId?: string;
+    fieldKey?: string;
+    value: string | number | boolean | null;
+  }>;
+  sortBy?: "position" | "title" | "type" | "status" | "assignee" | "dueDate" | "createdAt" | "updatedAt" | "plannedStartAt";
+  sortDirection?: "asc" | "desc";
+  sort?: "position_asc" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc";
+}
+
+export interface WorkItemsPage {
+  items: Task[];
+  total: number;
+  totalCount?: number;
+  nextCursor: string | null;
+  hasMore?: boolean;
+  pageInfo?: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    nextCursor: string | null;
+  };
+  columnCounts: Record<string, number>;
+  workflowStateCounts: Record<string, number>;
+  countsByState?: Record<string, number>;
+  countsByType?: Record<string, number>;
+}
+
+export interface CustomersPage {
+  items: Customer[];
+  total: number;
+  totalCount?: number;
+  nextCursor: string | null;
+  hasMore?: boolean;
+}
+
+export interface WorkItemTypeTransformationField {
+  id: string;
+  slug: string;
+  name: string;
+  required: boolean;
+  defaultValue?: unknown;
+}
+
+export interface WorkItemTypeTransformationSummary {
+  id: string;
+  workspaceId: string;
+  fromTypeId: string;
+  toTypeId: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  mode: string;
+  fieldCompatibilityMode: string;
+  permission: string | null;
+  fromType: { id: string; slug: string; name: string; color: string };
+  toType: { id: string; slug: string; name: string; color: string };
+  valid: boolean;
+  missingFields: WorkItemTypeTransformationField[];
+  preservedFields: WorkItemTypeTransformationField[];
+  newRequiredFields: WorkItemTypeTransformationField[];
+}
+
+export type WorkItemTypeTransformationConfig = Omit<
+  WorkItemTypeTransformationSummary,
+  "valid" | "missingFields" | "preservedFields" | "newRequiredFields"
+> & {
+  defaultValuesForNewFields?: Record<string, unknown> | null;
+  stateMapping?: Record<string, unknown> | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export interface WorkItemTypeTransformationPayload {
+  transformationId?: string;
+  toTypeId?: string;
+  toTypeSlug?: string;
+  stateId?: string;
+  stateSlug?: string;
+  customFieldValues?: Record<string, unknown>;
+  defaultValuesForNewFields?: Record<string, unknown>;
+}
+
+export interface WorkItemTypeTransformationValidation {
+  valid: boolean;
+  reason: string | null;
+  transformation: WorkItemTypeTransformationConfig;
+  fromType: { id: string; slug: string; name: string; color: string };
+  toType: { id: string; slug: string; name: string; color: string };
+  preservedFields: WorkItemTypeTransformationField[];
+  missingFields: WorkItemTypeTransformationField[];
+  newRequiredFields: WorkItemTypeTransformationField[];
+  defaultValuesForNewFields: Record<string, unknown>;
+}
+
+export interface WorkspaceAuditEvent {
+  id: string;
+  eventName: string;
+  severity: "INFO" | "WARNING" | "ERROR";
+  actorId: string | null;
+  workspaceId: string | null;
+  metadata: Record<string, unknown> | null;
+  happenedAt: string;
 }
 
 export type CalendarIntegrationProvider = "teams" | "google-calendar" | "outlook-calendar" | "zoom" | "manual";
@@ -133,8 +296,14 @@ export type CommercialDocumentStatus = "draft" | "sent" | "viewed" | "approved" 
 
 export interface WorkspaceDocumentMetadata {
   clientLogoUrl?: string;
+  logoAssetId?: string | null;
+  attachmentAssetIds?: string[];
   clientName?: string;
   clientEmail?: string;
+  linkedWorkItemId?: string | null;
+  variableContextType?: "work_item" | null;
+  variableContextVersion?: string | null;
+  visibility?: "internal" | "client_visible" | "commercial_shared" | "public_authenticated";
   proposalCode?: string;
   proposalDate?: string;
   proposalValidity?: string;
@@ -329,6 +498,7 @@ export type WorkspacePermissionKey =
   | "role.read"
   | "role.manage"
   | "permission.manage"
+  | "dashboard.view"
   | "project.read"
   | "project.create"
   | "project.update"
@@ -397,7 +567,7 @@ export type WorkspacePermissionKey =
   | "board.write"
   | "item.write";
 
-export type WorkspaceModuleKey = "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+export type WorkspaceModuleKey = "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
 export interface WorkspaceAccessGroup {
   id: string;
@@ -455,14 +625,31 @@ export interface ApiBoardColumn {
 
 export interface ApiWorkflowState {
   id: string;
+  workspaceId?: string;
   name: string;
   slug: string;
   color: string;
+  order?: number;
   category: string | null;
   isTerminal: boolean;
   isEditable: boolean;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export interface CreateWorkflowStateInput {
+  name: string;
+  slug?: string;
+  category?: string | null;
+  color?: string;
+  order?: number;
+  isActive?: boolean;
+  isTerminal?: boolean;
+  isEditable?: boolean;
+}
+
+export type UpdateWorkflowStateInput = Partial<CreateWorkflowStateInput>;
 
 export interface ApiItemType {
   id: string;
@@ -705,6 +892,34 @@ export interface WorkspaceService {
   }) => Promise<WorkspaceSummary>;
   createPersonalWorkspace: (input?: { workspaceName?: string }) => Promise<WorkspaceSummary>;
   getSnapshot: (workspaceSlug: string) => Promise<WorkspaceSnapshot>;
+  listWorkItemsPage: (workspaceSlug: string, input?: ListWorkItemsInput) => Promise<WorkItemsPage>;
+  bulkUpdateWorkItems: (workspaceSlug: string, input: BulkUpdateWorkItemsInput) => Promise<BulkUpdateWorkItemsResult>;
+  listCustomersPage: (
+    workspaceSlug: string,
+    input?: { search?: string; status?: CustomerStatus; limit?: number; cursor?: string | null }
+  ) => Promise<CustomersPage>;
+  listWorkItemTypeTransformations: (workspaceSlug: string) => Promise<WorkItemTypeTransformationSummary[]>;
+  validateWorkItemTypeTransformation: (
+    workspaceSlug: string,
+    taskId: string,
+    input: WorkItemTypeTransformationPayload
+  ) => Promise<WorkItemTypeTransformationValidation>;
+  transformWorkItemType: (
+    workspaceSlug: string,
+    taskId: string,
+    input: WorkItemTypeTransformationPayload
+  ) => Promise<Task>;
+  convertWorkItemToCustomer: (
+    workspaceSlug: string,
+    taskId: string,
+    input: {
+      customerId?: string;
+      customer?: CreateCustomerInput;
+      fields?: Record<string, unknown>;
+      customFieldValues?: Record<string, unknown>;
+    }
+  ) => Promise<Customer>;
+  listWorkspaceAuditLog: (workspaceSlug: string, input?: { limit?: number }) => Promise<WorkspaceAuditEvent[]>;
   createTask: (workspaceSlug: string, input: CreateTaskInput) => Promise<WorkspaceSnapshot>;
   deleteTask: (workspaceSlug: string, taskId: string) => Promise<WorkspaceSnapshot>;
   moveTask: (workspaceSlug: string, taskId: string, nextStatus: TaskStatusId) => Promise<WorkspaceSnapshot>;
@@ -760,6 +975,11 @@ export interface WorkspaceService {
     workspaceSlug: string,
     patch: Partial<WorkspacePreferences>
   ) => Promise<WorkspaceSnapshot>;
+  updateWorkItemListConfig: (
+    workspaceSlug: string,
+    workItemTypeId: string,
+    config: Record<string, unknown>
+  ) => Promise<WorkspaceSnapshot>;
   resetWorkspaceTemplate: (
     workspaceSlug: string,
     templateKey?: WorkspaceTemplateKey
@@ -787,6 +1007,13 @@ export interface WorkspaceService {
   fetchWorkflowStates: (workspaceSlug: string) => Promise<ApiWorkflowState[]>;
   fetchItemTypes: (workspaceSlug: string) => Promise<ApiItemType[]>;
   fetchCustomFields: (workspaceSlug: string) => Promise<ApiCustomField[]>;
+
+  createWorkflowState: (workspaceSlug: string, input: CreateWorkflowStateInput) => Promise<WorkspaceSnapshot>;
+  updateWorkflowState: (
+    workspaceSlug: string,
+    stateId: string,
+    input: UpdateWorkflowStateInput
+  ) => Promise<WorkspaceSnapshot>;
 
   // Board config management
   createBoardColumn: (workspaceSlug: string, input: CreateBoardColumnInput) => Promise<WorkspaceSnapshot>;
@@ -962,7 +1189,11 @@ export interface WorkspaceService {
     input: { eventType: "delivered" | "read" | "failed" | "replied"; messageText?: string }
   ) => Promise<AutomationSideEffectSummary>;
   listAutomationViews: (workspaceSlug: string) => Promise<AutomationView[]>;
-  listWorkspaceDocuments: (workspaceSlug: string) => Promise<WorkspaceDocument[]>;
+  listWorkspaceDocuments: (workspaceSlug: string, input?: WorkspaceDocumentFilters) => Promise<WorkspaceDocument[]>;
+  listWorkspaceDocumentsPage: (
+    workspaceSlug: string,
+    input?: WorkspaceDocumentFilters
+  ) => Promise<WorkspaceDocumentsPage>;
   listWorkspaceDocumentFolders: (workspaceSlug: string) => Promise<WorkspaceDocumentFolder[]>;
   createWorkspaceDocumentFolder: (
     workspaceSlug: string,
@@ -996,6 +1227,7 @@ export interface WorkspaceService {
       tags?: string[];
       metadata?: WorkspaceDocumentMetadata;
       position?: number;
+      expectedUpdatedAt?: string;
     }
   ) => Promise<WorkspaceDocument>;
   updateWorkspaceDocument: (
@@ -1015,8 +1247,38 @@ export interface WorkspaceService {
   sendWorkspaceDocument: (
     workspaceSlug: string,
     documentId: string,
-    input: { email?: string; emails?: string[] }
+    input: {
+      email?: string;
+      emails?: string[];
+      subject?: string;
+      message?: string;
+      includeAttachments?: boolean;
+      selectedAssetIds?: string[];
+      expirationDate?: string | null;
+      requireLogin?: boolean;
+      allowAcceptReject?: boolean;
+      linkedWorkItemId?: string | null;
+      resolvedPreviewSnapshot?: string;
+    }
   ) => Promise<WorkspaceDocument>;
+  decideWorkspaceDocument: (
+    workspaceSlug: string,
+    documentId: string,
+    input: { decision: "approve" | "accept" | "sign" | "reject"; reason?: string | null }
+  ) => Promise<WorkspaceDocument>;
+  listDocumentAssets: (workspaceSlug: string, documentId: string) => Promise<WorkspaceDocumentAsset[]>;
+  uploadDocumentAsset: (
+    workspaceSlug: string,
+    documentId: string,
+    input: {
+      type: DocumentAssetType;
+      file: File;
+      filename?: string;
+      contentType?: string;
+      onProgress?: (progress: { loaded: number; total: number | null; percent: number | null }) => void;
+    }
+  ) => Promise<WorkspaceDocumentAsset>;
+  deleteDocumentAsset: (workspaceSlug: string, documentId: string, assetId: string) => Promise<void>;
   deleteWorkspaceDocument: (workspaceSlug: string, documentId: string) => Promise<void>;
   listWorkItemLinkedDocuments: (workspaceSlug: string, itemId: string) => Promise<WorkItemLinkedDocument[]>;
   linkDocumentToWorkItem: (
@@ -1039,6 +1301,18 @@ export interface WorkspaceService {
     agentId: string,
     patch: Omit<Partial<CreateAiAgentInput>, "description"> & { description?: string | null }
   ) => Promise<{ id: string }>;
+  validateAiAgent: (workspaceSlug: string, agentId: string) => Promise<AiAgentRuntimeValidationResult>;
+  publishAiAgent: (
+    workspaceSlug: string,
+    agentId: string,
+    input?: { activateWorkflow?: boolean }
+  ) => Promise<AiAgentRuntimePublishResult>;
+  runAiAgent: (
+    workspaceSlug: string,
+    agentId: string,
+    input?: RunAiAgentRuntimeInput
+  ) => Promise<RunAiAgentRuntimeResult>;
+  archiveAiAgent: (workspaceSlug: string, agentId: string) => Promise<{ id: string }>;
   runAiAgentOnItem: (
     workspaceSlug: string,
     itemId: string,
@@ -1277,6 +1551,59 @@ export interface AutomationApprovalRecord {
   expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type DocumentAssetType = "logo" | "attachment" | "generated_pdf" | "exported_html";
+
+export interface WorkspaceDocumentAsset {
+  id: string;
+  workspaceId: string;
+  documentId: string;
+  type: DocumentAssetType | string;
+  storageKey: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  checksum: string;
+  uploadedBy: string;
+  createdAt: string;
+  contentUrl: string;
+}
+
+export interface WorkspaceDocumentFilters {
+  search?: string;
+  type?: DocumentKind;
+  kind?: DocumentKind;
+  folderId?: string | null;
+  tags?: string[];
+  status?: string;
+  commercialStatus?: string;
+  linkedWorkItemId?: string;
+  createdBy?: string;
+  updatedAtFrom?: string;
+  updatedAtTo?: string;
+  visibility?: WorkspaceDocumentMetadata["visibility"];
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+  cursor?: string | null;
+  sort?: "position_asc" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc";
+}
+
+export interface WorkspaceDocumentsPage {
+  items: WorkspaceDocument[];
+  total: number;
+  totalCount: number;
+  nextCursor: string | null;
+  hasMore: boolean;
+  pageInfo: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    nextCursor: string | null;
+  };
 }
 
 export interface WorkspaceDocumentFolder {
@@ -1788,6 +2115,36 @@ export interface CreateAiAgentInput {
   systemPrompt: string;
   config?: AiAgentConfig;
   isActive?: boolean;
+}
+
+export interface AiAgentRuntimeValidationResult {
+  agentId: string;
+  valid: boolean;
+  issues: string[];
+  definition: Record<string, unknown>;
+}
+
+export interface AiAgentRuntimePublishResult {
+  agentId: string;
+  workflowId: string;
+  workflowVersionId: string;
+  valid: boolean;
+  issues: string[];
+}
+
+export interface RunAiAgentRuntimeInput {
+  instruction?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface RunAiAgentRuntimeResult {
+  agentId: string;
+  workflowId: string;
+  workflowVersionId: string;
+  runId: string;
+  status: string;
+  executionStatus: string;
+  executedNodeIds: string[];
 }
 
 export interface AiRunSummary {

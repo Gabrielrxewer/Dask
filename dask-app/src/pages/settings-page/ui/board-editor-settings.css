@@ -697,54 +697,6 @@
 .board-editor__mock-card--b::before { width: 50%; }
 .board-editor__mock-card--c::before { width: 76%; }
 
-/* Delete confirm overlay */
-.board-editor__confirm-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 16px;
-  background: color-mix(in srgb, var(--neutral-white) 97%, transparent);
-  border-radius: 7px;
-}
-
-.board-editor__confirm-overlay p {
-  margin: 0;
-  color: var(--danger);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  text-align: center;
-  line-height: 1.4;
-}
-
-.board-editor__confirm-overlay strong { color: var(--danger); }
-
-.board-editor__confirm-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-}
-
-.board-editor__btn-confirm-delete {
-  width: 100%;
-  padding: 7px 12px;
-  border: none;
-  border-radius: 6px;
-  background: var(--danger);
-  color: var(--neutral-white);
-  font-size: var(--font-size-xs);
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-
-.board-editor__btn-confirm-delete:hover { background: var(--danger); }
-.board-editor__btn-confirm-delete:disabled { opacity: 0.55; cursor: not-allowed; }
-
 /* ─── Edit form (inside column) ──────────────────────────────────────────────── */
 
 .board-editor__column-edit-form {
@@ -1305,15 +1257,6 @@
 
 .app-theme[data-theme="dark"] .board-editor__picker-divider {
   background: var(--line) !important;
-}
-
-.app-theme[data-theme="dark"] .board-editor__confirm-overlay {
-  background: color-mix(in oklab, var(--danger-soft) 18%, var(--panel)) !important;
-}
-
-.app-theme[data-theme="dark"] .board-editor__confirm-overlay p,
-.app-theme[data-theme="dark"] .board-editor__confirm-overlay strong {
-  color: var(--danger) !important;
 }
 
 .app-theme[data-theme="dark"] .board-editor__topbar {

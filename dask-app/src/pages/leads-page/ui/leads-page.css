@@ -1557,14 +1557,10 @@
   white-space: nowrap;
 }
 
-.opportunity-actions-menu {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.opportunity-actions-menu summary {
+.opportunity-actions-menu__trigger {
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   width: 36px;
   height: 36px;
   border: 1px solid color-mix(in oklab, var(--leads-line) 72%, transparent);
@@ -1576,63 +1572,62 @@
   transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
-.opportunity-actions-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.opportunity-actions-menu summary:hover,
-.opportunity-actions-menu[open] summary {
+.opportunity-actions-menu__trigger:hover,
+.opportunity-actions-menu__trigger[data-state="open"] {
   border-color: color-mix(in oklab, var(--accent) 28%, var(--leads-line));
   background: color-mix(in oklab, var(--accent) 8%, var(--surface-1));
   color: var(--leads-text);
 }
 
-.opportunity-actions-menu[open] summary svg {
+.opportunity-actions-menu__trigger[data-state="open"] svg {
   transform: rotate(180deg);
 }
 
-.opportunity-actions-menu__panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 30;
-  display: grid;
-  gap: 4px;
-  width: 188px;
-  padding: 7px;
-  border: 1px solid color-mix(in oklab, var(--leads-line) 84%, transparent);
-  border-radius: 8px;
-  background: var(--surface-overlay-strong);
-  box-shadow: var(--shadow-3);
-}
-
-.opportunity-actions-menu__panel button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 32px;
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--leads-text-soft);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--font-size-xs);
-  font-weight: 760;
-  text-align: left;
-}
-
-.opportunity-actions-menu__panel button:hover {
-  border-color: color-mix(in oklab, var(--accent) 24%, var(--leads-line));
-  background: color-mix(in oklab, var(--accent) 8%, transparent);
-  color: var(--leads-text);
+.opportunity-actions-menu__dropdown {
+  min-width: 188px;
 }
 
 .leads-opportunities-empty.shared-empty-state {
   min-height: 220px;
   border-radius: 8px;
+}
+
+.leads-page__transformation-summary,
+.leads-page__transformation-preview {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in oklab, var(--leads-line) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface-overlay) 72%, transparent);
+}
+
+.leads-page__transformation-summary strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--leads-text);
+}
+
+.leads-page__transformation-preview {
+  display: grid;
+  justify-content: stretch;
+}
+
+.leads-page__transformation-preview > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.leads-page__transformation-preview span:not(.leads-page__eyebrow) {
+  padding: 5px 8px;
+  border: 1px solid color-mix(in oklab, var(--leads-line) 78%, transparent);
+  border-radius: 999px;
+  color: var(--leads-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 720;
 }
 
 /* ── Inline utilities ────────────────────────────────────────────────────── */
@@ -1862,7 +1857,7 @@
 .app-theme[data-theme="dark"] .leads-command-metric,
 .app-theme[data-theme="dark"] .leads-opportunities-toolbar,
 .app-theme[data-theme="dark"] .opportunity-card,
-.app-theme[data-theme="dark"] .opportunity-actions-menu__panel {
+.app-theme[data-theme="dark"] .opportunity-actions-menu__dropdown {
   border-color: var(--line) !important;
   background-color: var(--surface-raised);
   box-shadow: var(--shadow-1);
@@ -1881,7 +1876,7 @@
 }
 
 .app-theme[data-theme="dark"] .leads-search-input.shared-input,
-.app-theme[data-theme="dark"] .opportunity-actions-menu summary,
+.app-theme[data-theme="dark"] .opportunity-actions-menu__trigger,
 .app-theme[data-theme="dark"] .opportunity-avatar,
 .app-theme[data-theme="dark"] .opportunity-customer-icon,
 .app-theme[data-theme="dark"] .commercial-pipeline__node {
@@ -2072,10 +2067,10 @@
     margin-left: 0;
   }
 
-  .leads-page__tabs .shared-tabs__item {
-    flex: 0 0 auto;
-    padding-inline: 12px;
-  }
+.leads-page__tabs .shared-tabs__item {
+  flex: 0 0 auto;
+  padding-inline: 12px;
+}
 
   .leads-kpi-strip {
     grid-template-columns: 1fr;
@@ -2085,4 +2080,10 @@
     grid-template-columns: 80px 1fr 32px;
     gap: 6px;
   }
+}
+
+.leads-page__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 4px;
 }

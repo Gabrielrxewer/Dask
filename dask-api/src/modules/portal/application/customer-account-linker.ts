@@ -46,7 +46,7 @@ export class CustomerAccountLinker {
       }
 
       for (const customer of customers) {
-        await (tx as any).workspaceCustomerUser.upsert({
+        await tx.workspaceCustomerUser.upsert({
           where: {
             workspaceId_customerId_userId: {
               workspaceId: customer.workspaceId,

@@ -1,6 +1,7 @@
 import { apiClient } from "@/shared/api/http-client";
 import type {
   BillingPlan,
+  BillingPortalToken,
   BillingStatus,
   ConnectAccountStatus,
   ConnectCatalogBillingType,
@@ -17,6 +18,23 @@ const billingRequestConfig = {
   retryOnUnauthorized: true,
   globalLoading: false
 };
+
+interface BillingPageResponse<T> {
+  items: T[];
+  nextCursor?: string | null;
+}
+
+function asQueryString(input: Record<string, string | number | boolean | undefined | null>): string {
+  const query = new URLSearchParams();
+  Object.entries(input).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "" || value === "all") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+  const encoded = query.toString();
+  return encoded.length > 0 ? `?${encoded}` : "";
+}
 
 export const billingService = {
   listPlans(): Promise<{ items: BillingPlan[] }> {
@@ -76,9 +94,29 @@ export const billingService = {
     );
   },
 
-  listConnectCatalogItems(workspaceId: string, includeInactive = true): Promise<{ items: ConnectCatalogItem[] }> {
-    return apiClient.get<{ items: ConnectCatalogItem[] }>(
-      `/billing/connect/workspaces/${workspaceId}/catalog-items?includeInactive=${String(includeInactive)}`,
+  listConnectCatalogItems(
+    workspaceId: string,
+    input: boolean | {
+      includeInactive?: boolean;
+      search?: string;
+      kind?: ConnectCatalogItemKind;
+      billingType?: ConnectCatalogBillingType;
+      status?: "active" | "inactive" | "all";
+      pageSize?: number;
+      cursor?: string | null;
+    } = true
+  ): Promise<BillingPageResponse<ConnectCatalogItem>> {
+    const filters = typeof input === "boolean" ? { includeInactive: input } : input;
+    return apiClient.get<BillingPageResponse<ConnectCatalogItem>>(
+      `/billing/connect/workspaces/${workspaceId}/catalog-items${asQueryString({
+        includeInactive: filters.includeInactive ?? true,
+        search: filters.search,
+        kind: filters.kind,
+        billingType: filters.billingType,
+        status: filters.status,
+        pageSize: filters.pageSize,
+        cursor: filters.cursor ?? undefined
+      })}`,
       billingRequestConfig
     );
   },
@@ -144,9 +182,27 @@ export const billingService = {
     );
   },
 
-  listConnectPaymentOrders(workspaceId: string, limit = 50): Promise<{ items: ConnectPaymentOrder[] }> {
-    return apiClient.get<{ items: ConnectPaymentOrder[] }>(
-      `/billing/connect/workspaces/${workspaceId}/payment-orders?limit=${limit}`,
+  listConnectPaymentOrders(
+    workspaceId: string,
+    input: number | {
+      status?: string;
+      customerId?: string;
+      email?: string;
+      search?: string;
+      pageSize?: number;
+      cursor?: string | null;
+    } = 50
+  ): Promise<BillingPageResponse<ConnectPaymentOrder>> {
+    const filters = typeof input === "number" ? { pageSize: input } : input;
+    return apiClient.get<BillingPageResponse<ConnectPaymentOrder>>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders${asQueryString({
+        status: filters.status,
+        customerId: filters.customerId,
+        email: filters.email,
+        search: filters.search,
+        pageSize: filters.pageSize,
+        cursor: filters.cursor ?? undefined
+      })}`,
       billingRequestConfig
     );
   },
@@ -170,6 +226,29 @@ export const billingService = {
   cancelConnectPaymentOrder(workspaceId: string, orderId: string): Promise<{ ok: true }> {
     return apiClient.post<{ ok: true }>(
       `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/cancel`,
+      {},
+      billingRequestConfig
+    );
+  },
+
+  createPaymentOrderPortalToken(
+    workspaceId: string,
+    orderId: string,
+    input: {
+      expiresInSeconds?: number;
+      scopes?: BillingPortalToken["scopes"];
+    } = {}
+  ): Promise<BillingPortalToken> {
+    return apiClient.post<BillingPortalToken>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/portal-token`,
+      input,
+      billingRequestConfig
+    );
+  },
+
+  revokePaymentOrderPortalToken(workspaceId: string, orderId: string): Promise<{ ok: true }> {
+    return apiClient.post<{ ok: true }>(
+      `/billing/connect/workspaces/${workspaceId}/payment-orders/${orderId}/portal-token/revoke`,
       {},
       billingRequestConfig
     );

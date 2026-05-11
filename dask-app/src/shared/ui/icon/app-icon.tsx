@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Filter,
   FlaskConical,
   Folder,
   FolderOpen,
@@ -25,6 +26,7 @@ import {
   Info,
   KanbanSquare,
   Layers,
+  LayoutDashboard,
   LayoutTemplate,
   Link,
   List,
@@ -77,10 +79,12 @@ export type AppIconName =
   | "code"
   | "copy"
   | "credit-card"
+  | "dashboard"
   | "documentation"
   | "eye"
   | "eye-off"
   | "file"
+  | "filter"
   | "flask"
   | "folder"
   | "folder-open"
@@ -136,10 +140,12 @@ const icons: Record<AppIconName, LucideIcon> = {
   code: Code,
   copy: Copy,
   "credit-card": CreditCard,
+  dashboard: LayoutDashboard,
   documentation: FileText,
   eye: Eye,
   "eye-off": EyeOff,
   file: FileText,
+  filter: Filter,
   flask: FlaskConical,
   folder: Folder,
   "folder-open": FolderOpen,

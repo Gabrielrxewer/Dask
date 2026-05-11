@@ -191,6 +191,11 @@ export const updateTemplateDto = z
     message: 'At least one field is required'
   });
 
+export const sendTemplateTestEmailDto = z.object({
+  to: z.string().trim().email(),
+  variables: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).optional()
+});
+
 const automationStepDto = z.object({
   key: z.string().trim().min(1).max(80),
   name: z.string().trim().min(1).max(120),
@@ -236,6 +241,18 @@ export const signalEventParamsDto = z.object({
 
 export const markSignalDto = z.object({
   action: z.enum(['seen', 'dismissed'])
+});
+
+export const createSignalFollowUpDto = z.object({
+  leadId: z.string().uuid(),
+  title: z.string().trim().min(2).max(160),
+  description: z.string().trim().max(2000).optional(),
+  dueAt: z.coerce.date().nullable().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  createWorkItem: z.boolean().default(false),
+  boardId: z.string().uuid().optional(),
+  workflowStateId: z.string().uuid().optional(),
+  assigneeId: z.string().uuid().nullable().optional()
 });
 
 export const providerWebhookParamsDto = z.object({

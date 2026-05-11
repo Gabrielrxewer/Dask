@@ -67,11 +67,47 @@ export type AutomationWorkflowEdge = {
 export type AutomationGraphNode = AutomationWorkflowNode;
 export type AutomationGraphEdge = AutomationWorkflowEdge;
 
+export type AutomationTriggerDefinition = Record<string, unknown>;
+
+export type AutomationExecutionPlan = {
+  schemaVersion: 1;
+  entryNodeIds: string[];
+  terminalNodeIds: string[];
+  parallelGroups: Array<{
+    sourceNodeId: string;
+    targetNodeIds: string[];
+  }>;
+};
+
+export type AutomationRunStep = {
+  id: string;
+  nodeId: string;
+  status: AutomationStepRunStatus;
+  startedAt?: Date | string | null;
+  finishedAt?: Date | string | null;
+  error?: unknown;
+};
+
+export type AutomationDebugTrace = {
+  runId: string;
+  nodeId?: string | null;
+  eventType: string;
+  level?: string;
+  message: string;
+  payload?: unknown;
+  createdAt?: Date | string;
+};
+
 export type AutomationWorkflowDefinition = {
-  trigger?: Record<string, unknown>;
+  schemaVersion?: 1;
+  definitionType?: 'automation_workflow';
+  source?: Record<string, unknown>;
+  trigger?: AutomationTriggerDefinition;
   variables?: Record<string, unknown>;
   settings?: Record<string, unknown>;
   graph?: AutomationWorkflowGraph;
+  executionPlan?: AutomationExecutionPlan;
+  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 };
 

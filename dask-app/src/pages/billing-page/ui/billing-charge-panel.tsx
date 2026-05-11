@@ -1,6 +1,18 @@
-import type { ConnectCatalogItem } from "@/modules/billing";
+import type { UseFormReturn } from "react-hook-form";
+import { normalizeMoneyInput, type BillingCheckoutFormValues, type ConnectCatalogItem } from "@/modules/billing";
 import { formatCustomerOptionDetail, getCustomerDisplayName, type Customer } from "@/modules/workspace";
-import { Button, FormField, InlineAlert, Select, TextInput } from "@/shared/ui";
+import {
+  AppForm,
+  AppFormActions,
+  AppFormError,
+  AppFormField,
+  AppFormGrid,
+  AppMoneyField,
+  AppSelect,
+  AppTextField,
+  Button,
+  InlineAlert
+} from "@/shared/ui";
 import { IconCheck, IconLock } from "./billing-page-icons";
 import { BillingOrderDetailsPanel } from "./billing-order-details-panel";
 import {
@@ -29,23 +41,22 @@ interface BillingChargePanelProps {
   customerEmail: string;
   sendEmailToCustomer: boolean;
   canReviewCharge: boolean;
-  checkoutError: string | null;
+  chargeForm: UseFormReturn<BillingCheckoutFormValues>;
   checkoutUrl: string | null;
-  linkCopied: boolean;
-  emailSentNotice: boolean;
   onGoToAccount: () => void;
   onOpenOnboarding: () => void | Promise<void>;
   onChargeSourceChange: (value: ChargeSource) => void;
   onSelectedCatalogItemClear: () => void;
   onUseCatalogItem: (item: ConnectCatalogItem) => void;
-  onAmountChange: (value: string) => void;
-  onDescriptionChange: (value: string) => void;
   onCustomerSelect: (customerId: string) => void;
-  onCustomerEmailChange: (value: string) => void;
-  onSendEmailToCustomerChange: (value: boolean) => void;
-  onPrepareCheckout: () => void | Promise<void>;
+  onPrepareCheckout: (values: BillingCheckoutFormValues) => void | Promise<void>;
   onCopyCheckoutUrl: () => void | Promise<void>;
   onCancelReview: () => void;
+}
+
+function getFieldError(form: UseFormReturn<BillingCheckoutFormValues>, name: keyof BillingCheckoutFormValues) {
+  const message = form.formState.errors[name]?.message;
+  return typeof message === "string" ? message : undefined;
 }
 
 export function BillingChargePanel({
@@ -56,7 +67,6 @@ export function BillingChargePanel({
   chargeSource,
   selectedCatalogItemId,
   selectedCatalogItem,
-  amount,
   amountInCents,
   description,
   customers,
@@ -66,24 +76,32 @@ export function BillingChargePanel({
   customerEmail,
   sendEmailToCustomer,
   canReviewCharge,
-  checkoutError,
+  chargeForm,
   checkoutUrl,
-  linkCopied,
-  emailSentNotice,
   onGoToAccount,
   onOpenOnboarding,
   onChargeSourceChange,
   onSelectedCatalogItemClear,
   onUseCatalogItem,
-  onAmountChange,
-  onDescriptionChange,
   onCustomerSelect,
-  onCustomerEmailChange,
-  onSendEmailToCustomerChange,
   onPrepareCheckout,
   onCopyCheckoutUrl,
   onCancelReview
 }: BillingChargePanelProps) {
+  const customerItems = [
+    {
+      value: "__none",
+      label: customersLoadState === "loading" ? "Carregando clientes..." : "Selecionar cliente"
+    },
+    ...customers.map((customer) => {
+      const detail = formatCustomerOptionDetail(customer, ["email", "document", "phone"]);
+      return {
+        value: customer.id,
+        label: `${getCustomerDisplayName(customer)}${detail ? ` - ${detail}` : ""}`
+      };
+    })
+  ];
+
   return (
     <div className="billing-view__panel" role="tabpanel">
       {!canCreateCheckout ? (
@@ -93,7 +111,7 @@ export function BillingChargePanel({
           </div>
           <p className="billing-view__charge-blocked-title">Cadastro incompleto</p>
           <p className="billing-view__charge-blocked-desc">
-            Complete o cadastro Stripe Connect para liberar cobranças nesta conta.
+            Complete o cadastro Stripe Connect para liberar cobrancas nesta conta.
           </p>
           <Button
             type="button"
@@ -108,138 +126,141 @@ export function BillingChargePanel({
         </div>
       ) : (
         <>
-          <fieldset
-            disabled={reviewStep === "preparing"}
-            className="billing-view__fieldset billing-view__charge-form"
-          >
-            {activeCatalogItems.length > 0 ? (
-              <>
-                <div className="billing-view__source-toggle">
-                  <button
-                    type="button"
-                    className={`billing-view__source-btn ${chargeSource === "catalog" ? "is-active" : ""}`}
-                    onClick={() => onChargeSourceChange("catalog")}
-                  >
-                    Do catálogo
-                  </button>
-                  <button
-                    type="button"
-                    className={`billing-view__source-btn ${chargeSource === "manual" ? "is-active" : ""}`}
-                    onClick={() => {
-                      onChargeSourceChange("manual");
-                      onSelectedCatalogItemClear();
-                    }}
-                  >
-                    Avulsa
-                  </button>
-                </div>
-
-                {chargeSource === "catalog" ? (
-                  <div className="billing-view__charge-items">
-                    {activeCatalogItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`billing-view__charge-item ${selectedCatalogItemId === item.id ? "is-selected" : ""}`}
-                        onClick={() => onUseCatalogItem(item)}
-                      >
-                        <span className="billing-view__charge-item-name">{item.name}</span>
-                        <span className="billing-view__charge-item-price">
-                          {formatAmount(item.amount, item.currency)}
-                        </span>
-                        <span className="billing-view__charge-item-type">
-                          {CATALOG_BILLING_LABEL[item.billingType]}
-                        </span>
-                        {selectedCatalogItemId === item.id ? (
-                          <span className="billing-view__charge-item-check"><IconCheck /></span>
-                        ) : null}
-                      </button>
-                    ))}
+          <AppForm form={chargeForm} onSubmit={onPrepareCheckout} disabled={reviewStep === "preparing"}>
+            <fieldset
+              disabled={reviewStep === "preparing"}
+              className="billing-view__fieldset billing-view__charge-form"
+            >
+              {activeCatalogItems.length > 0 ? (
+                <>
+                  <div className="billing-view__source-toggle">
+                    <button
+                      type="button"
+                      className={`billing-view__source-btn ${chargeSource === "catalog" ? "is-active" : ""}`}
+                      onClick={() => onChargeSourceChange("catalog")}
+                    >
+                      Do catalogo
+                    </button>
+                    <button
+                      type="button"
+                      className={`billing-view__source-btn ${chargeSource === "manual" ? "is-active" : ""}`}
+                      onClick={() => {
+                        onChargeSourceChange("manual");
+                        onSelectedCatalogItemClear();
+                      }}
+                    >
+                      Avulsa
+                    </button>
                   </div>
-                ) : null}
-              </>
-            ) : null}
 
-            {chargeSource === "manual" || activeCatalogItems.length === 0 ? (
-              <div className="billing-view__form-grid shared-form-grid shared-form-grid--two">
-                <FormField label="Valor (R$)" className="billing-view__field">
-                  <TextInput
-                    value={amount}
-                    onChange={(e) => onAmountChange(e.target.value)}
+                  {chargeSource === "catalog" ? (
+                    <div className="billing-view__charge-items">
+                      {activeCatalogItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`billing-view__charge-item ${selectedCatalogItemId === item.id ? "is-selected" : ""}`}
+                          onClick={() => onUseCatalogItem(item)}
+                        >
+                          <span className="billing-view__charge-item-name">{item.name}</span>
+                          <span className="billing-view__charge-item-price">
+                            {formatAmount(item.amount, item.currency)}
+                          </span>
+                          <span className="billing-view__charge-item-type">
+                            {CATALOG_BILLING_LABEL[item.billingType]}
+                          </span>
+                          {selectedCatalogItemId === item.id ? (
+                            <span className="billing-view__charge-item-check"><IconCheck /></span>
+                          ) : null}
+                        </button>
+                      ))}
+                      <AppFormError>{getFieldError(chargeForm, "catalogItemId")}</AppFormError>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
+              {chargeSource === "manual" || activeCatalogItems.length === 0 ? (
+                <AppFormGrid className="billing-view__form-grid" columns={2}>
+                  <AppMoneyField
+                    name="amount"
+                    label="Valor (R$)"
+                    className="billing-view__field"
                     placeholder="100.00"
+                    normalizeOnBlur={normalizeMoneyInput}
                   />
-                </FormField>
-                <FormField label="Descrição" className="billing-view__field">
-                  <TextInput
-                    value={description}
-                    onChange={(e) => onDescriptionChange(e.target.value)}
-                    placeholder="Descrição da cobrança"
+                  <AppTextField
+                    name="description"
+                    label="Descricao"
+                    className="billing-view__field"
+                    placeholder="Descricao da cobranca"
                   />
-                </FormField>
-              </div>
-            ) : null}
+                </AppFormGrid>
+              ) : null}
 
-            <div className="billing-view__form-grid shared-form-grid shared-form-grid--two">
-              <FormField label="Cliente cadastrado (opcional)" className="billing-view__field billing-view__field--grow">
-                <Select
-                  value={selectedCustomerId}
-                  onChange={(e) => onCustomerSelect(e.target.value)}
-                  disabled={customersLoadState === "loading"}
+              <AppFormGrid className="billing-view__form-grid" columns={2}>
+                <AppFormField
+                  label="Cliente cadastrado (opcional)"
+                  className="billing-view__field billing-view__field--grow"
+                  error={getFieldError(chargeForm, "customerId") ?? getFieldError(chargeForm, "customerDocument")}
                 >
-                  <option value="">
-                    {customersLoadState === "loading" ? "Carregando clientes..." : "Selecionar cliente"}
-                  </option>
-                  {customers.map((customer) => {
-                    const detail = formatCustomerOptionDetail(customer, ["email", "document", "phone"]);
-                    return (
-                      <option key={customer.id} value={customer.id}>
-                        {getCustomerDisplayName(customer)}{detail ? ` - ${detail}` : ""}
-                      </option>
-                    );
-                  })}
-                </Select>
-              </FormField>
-            </div>
-            {customersLoadState === "error" ? (
-              <InlineAlert tone="danger">Nao foi possivel carregar o cadastro de clientes.</InlineAlert>
-            ) : null}
-            {selectedCustomer && !selectedCustomer.document ? (
-              <InlineAlert tone="danger">
-                Complete CPF/CNPJ no cadastro do cliente antes de usar esta cobranca para fiscal.
-              </InlineAlert>
-            ) : null}
+                  <AppSelect
+                    value={selectedCustomerId || "__none"}
+                    onValueChange={(value) => onCustomerSelect(value === "__none" ? "" : value)}
+                    items={customerItems}
+                    aria-label="Cliente cadastrado"
+                    disabled={customersLoadState === "loading"}
+                  />
+                </AppFormField>
+              </AppFormGrid>
 
-            <div className="billing-view__email-row">
-              <FormField label="E-mail do cliente" className="billing-view__field billing-view__field--grow">
-                <TextInput
-                  value={customerEmail}
-                  onChange={(e) => onCustomerEmailChange(e.target.value)}
+              {customersLoadState === "error" ? (
+                <InlineAlert tone="danger">Nao foi possivel carregar o cadastro de clientes.</InlineAlert>
+              ) : null}
+              {!selectedCustomer ? (
+                <InlineAlert tone="warning">
+                  Selecione um cliente cadastrado com CPF/CNPJ antes de gerar checkout.
+                </InlineAlert>
+              ) : null}
+              {selectedCustomer && !selectedCustomer.document ? (
+                <InlineAlert tone="danger">
+                  Complete CPF/CNPJ no cadastro do cliente antes de usar esta cobranca para fiscal.
+                </InlineAlert>
+              ) : null}
+
+              <div className="billing-view__email-row">
+                <AppTextField
+                  name="customerEmail"
+                  label="E-mail do cliente"
+                  className="billing-view__field billing-view__field--grow"
                   placeholder="cliente@empresa.com"
                 />
-              </FormField>
-              <label className={`billing-view__send-email-toggle ${!customerEmail.trim() ? "is-disabled" : ""}`}>
-                <input
-                  type="checkbox"
-                  checked={sendEmailToCustomer && customerEmail.trim().length > 0}
-                  disabled={!customerEmail.trim()}
-                  onChange={(e) => onSendEmailToCustomerChange(e.target.checked)}
-                />
-                Enviar link por e-mail
-              </label>
-            </div>
+                <label className={`billing-view__send-email-toggle ${!customerEmail.trim() ? "is-disabled" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={sendEmailToCustomer && customerEmail.trim().length > 0}
+                    disabled={!customerEmail.trim()}
+                    onChange={(event) =>
+                      chargeForm.setValue("sendEmail", event.target.checked, {
+                        shouldDirty: true,
+                        shouldValidate: true
+                      })
+                    }
+                  />
+                  Enviar link por e-mail
+                </label>
+              </div>
 
-            <div className="billing-view__actions shared-actions-row">
-              <Button
-                type="button"
-                onClick={() => void onPrepareCheckout()}
-                disabled={!canReviewCharge || reviewStep === "preparing"}
-              >
-                {reviewStep === "preparing" ? "Gerando link..." : "Gerar cobrança"}
-              </Button>
-            </div>
-          </fieldset>
-
-          {checkoutError ? <InlineAlert tone="danger">{checkoutError}</InlineAlert> : null}
+              <AppFormActions className="billing-view__actions">
+                <Button
+                  type="submit"
+                  disabled={!canReviewCharge || reviewStep === "preparing"}
+                >
+                  {reviewStep === "preparing" ? "Gerando link..." : "Gerar cobranca"}
+                </Button>
+              </AppFormActions>
+            </fieldset>
+          </AppForm>
 
           <BillingOrderDetailsPanel
             reviewStep={reviewStep}
@@ -250,8 +271,6 @@ export function BillingChargePanel({
             selectedCustomer={selectedCustomer}
             customerEmail={customerEmail}
             checkoutUrl={checkoutUrl}
-            linkCopied={linkCopied}
-            emailSentNotice={emailSentNotice}
             onCopyCheckoutUrl={onCopyCheckoutUrl}
             onCancelReview={onCancelReview}
           />

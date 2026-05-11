@@ -1,50 +1,24 @@
 import type {
+  MarketingAiCampaignComposerFormValues,
+  MarketingCampaignComposerFormValues,
   MarketingCampaignAnalytics,
   MarketingCampaignObjective,
   MarketingCampaignStatus,
+  MarketingSegmentComposerFormValues,
   MarketingSignal,
   MarketingSignalPriority
 } from "@/modules/marketing";
 
 export type MarketingTab = "overview" | "inbox" | "campaigns" | "audience" | "journeys" | "templates" | "analytics";
 
-export interface CampaignFormState {
-  name: string;
-  description: string;
-  objective: MarketingCampaignObjective;
-  segmentId: string;
-  templateId: string;
-  subject: string;
-  bodyMarkdown: string;
-}
-
-export interface SegmentFormState {
-  name: string;
-  description: string;
-  kind: "STATIC" | "DYNAMIC";
-  filtersText: string;
-}
+export type CampaignFormState = MarketingCampaignComposerFormValues;
+export type SegmentFormState = MarketingSegmentComposerFormValues;
+export type AiFormState = MarketingAiCampaignComposerFormValues;
 
 export interface SegmentPreviewState {
   segmentName: string;
   estimatedContacts: number;
   sample: Array<{ id: string; fullName: string | null; email: string | null; companyName: string | null }>;
-}
-
-export interface TemplateFormState {
-  name: string;
-  category: string;
-  objective: string;
-  funnelStage: string;
-  subject: string;
-  bodyMarkdown: string;
-}
-
-export interface AiFormState {
-  objective: string;
-  tone: string;
-  targetStage: string;
-  segmentHint: string;
 }
 
 export interface SegmentFilterRule {

@@ -424,14 +424,38 @@
   padding: 12px;
 }
 
+.documentation-page__files-pane .panel-menu__filter {
+  display: block;
+  overflow: visible;
+  padding-bottom: 8px;
+}
+
 .documentation-page__root-drop {
-  min-height: 28px;
-  padding: 6px 8px;
-  border: 1px dashed color-mix(in oklab, var(--doc-line) 82%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 10px;
+  border: 0 dashed color-mix(in oklab, var(--accent) 48%, var(--doc-line));
   border-radius: 8px;
-  color: var(--doc-muted);
-  font-size: 0.7rem;
+  background: color-mix(in oklab, var(--surface-section-content) 96%, var(--selected-bg));
+  box-shadow: 0 14px 28px color-mix(in oklab, var(--accent) 12%, transparent);
+  color: color-mix(in oklab, var(--accent-strong) 74%, var(--doc-ink));
+  font-size: 0.72rem;
+  font-weight: 780;
   text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    height 140ms ease,
+    margin 140ms ease,
+    opacity 140ms ease,
+    padding 140ms ease,
+    visibility 140ms ease;
 }
 
 .documentation-page__folder-group {
@@ -594,7 +618,16 @@
 .documentation-page__file-item:hover:not(.documentation-page__file-item--active) {
   border-color: color-mix(in oklab, var(--accent) 24%, var(--doc-line));
   background: color-mix(in oklab, var(--selected-bg) 86%, var(--doc-surface-soft));
-  box-shadow: 0 10px 22px color-mix(in oklab, var(--accent) 8%, transparent);
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--accent) 6%, transparent);
+}
+
+.documentation-page__file-item .panel-menu-item__label {
+  color: var(--doc-ink);
+  font-size: 0.8rem;
+  font-weight: 760;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .documentation-page__file-item-icon {
@@ -652,14 +685,38 @@
   word-break: break-all;
 }
 
-.documentation-page__file-item--active {
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--doc-line));
-  background: color-mix(in oklab, var(--selected-bg) 100%, var(--doc-surface-soft));
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--primary) 8%, transparent);
+button.documentation-page__file-item.documentation-page__file-item--active,
+button.documentation-page__file-item.documentation-page__file-item--active:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--accent) 58%, var(--doc-line));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--selected-bg) 100%, var(--surface-section-content)) 0%,
+      color-mix(in oklab, var(--selected-bg) 78%, var(--doc-surface-soft)) 100%
+    );
+  box-shadow:
+    0 12px 24px color-mix(in srgb, var(--primary) 10%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent);
+}
+
+.documentation-page__file-item--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: color-mix(in oklab, var(--accent-strong) 88%, var(--accent));
 }
 
 .documentation-page__file-item--active .documentation-page__file-item-icon {
-  color: color-mix(in oklab, var(--accent-strong) 68%, var(--doc-muted));
+  color: color-mix(in oklab, var(--accent-strong) 84%, var(--doc-muted));
+}
+
+.documentation-page__file-item--active .panel-menu-item__label {
+  color: color-mix(in oklab, var(--accent-strong) 72%, var(--doc-ink));
+  font-weight: 880;
 }
 
 .documentation-page__editor-pane {
@@ -1867,12 +1924,26 @@
   color: var(--text-muted);
 }
 
-.app-theme[data-theme="dark"] .documentation-page__file-item--active {
-  border-color: color-mix(in oklab, var(--accent-strong) 34%, var(--line));
-  background: color-mix(in oklab, var(--selected-bg) 78%, var(--doc-surface-soft));
+.app-theme[data-theme="dark"] .documentation-page__file-item .panel-menu-item__label {
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] button.documentation-page__file-item.documentation-page__file-item--active,
+.app-theme[data-theme="dark"] button.documentation-page__file-item.documentation-page__file-item--active:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--accent-strong) 54%, var(--line));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--selected-bg) 88%, var(--surface-section-content)) 0%,
+      color-mix(in oklab, var(--selected-bg) 58%, var(--doc-surface-soft)) 100%
+    );
   box-shadow:
     0 18px 34px color-mix(in srgb, var(--neutral-black) 20%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--accent) 12%, transparent) inset;
+    0 0 0 1px color-mix(in oklab, var(--accent-strong) 16%, transparent) inset;
+}
+
+.app-theme[data-theme="dark"] .documentation-page__file-item--active .panel-menu-item__label {
+  color: color-mix(in oklab, var(--accent-strong) 72%, var(--text-strong));
 }
 
 .app-theme[data-theme="dark"] .documentation-page__editor-header,
@@ -2161,5 +2232,267 @@
   .documentation-page__editor-body--split .documentation-page__editor-preview {
     border-left: 0;
     border-top: 1px solid var(--doc-line);
+  }
+}
+
+.documentation-page__error-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 8;
+  display: flex;
+  max-width: min(720px, calc(100% - 48px));
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 8px;
+  background: rgba(254, 242, 242, 0.96);
+  color: #991b1b;
+  padding: 10px 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+.documentation-page__document-context-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.documentation-page__linked-work-item {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.9);
+  color: #475569;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
+.documentation-page__linked-work-item strong {
+  max-width: 220px;
+  overflow: hidden;
+  color: #0f172a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.documentation-page__inline-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
+
+.documentation-page__variable-picker-trigger {
+  height: 32px;
+  gap: 6px;
+}
+
+.documentation-page__toolbar-help {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.documentation-page__variable-alert {
+  margin-bottom: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  background: rgba(255, 251, 235, 0.92);
+  color: #92400e;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+}
+
+.documentation-page__variable-alert strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.documentation-page__variable-alert ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.documentation-page__files-search {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 24px;
+  min-height: 24px;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in oklab, var(--doc-line) 72%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--surface-section-content) 76%, transparent);
+  color: var(--doc-muted);
+  padding: 0 6px;
+}
+
+.documentation-page__files-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--doc-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.documentation-page__files-controls {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
+
+.documentation-page__files-kind-row {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.documentation-page__files-kind-row::-webkit-scrollbar {
+  display: none;
+}
+
+.documentation-page__tag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.documentation-page__tag-filter {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: var(--surface-overlay, var(--neutral-white));
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+}
+
+.documentation-page__tag-filter.is-active {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface-overlay, var(--neutral-white)));
+  color: var(--accent);
+}
+
+.documentation-page__dnd-item {
+  position: relative;
+  touch-action: none;
+}
+
+.documentation-page__dnd-list {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--pm-item-gap, 2px);
+}
+
+.documentation-page__dnd-item.is-dragging {
+  z-index: 20;
+  opacity: 0.72;
+}
+
+.documentation-page__dnd-list.is-dnd-active .documentation-page__root-drop {
+  height: 34px;
+  min-height: 34px;
+  margin-bottom: 4px;
+  opacity: 1;
+  padding: 7px 10px;
+  border-width: 1px;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.documentation-page__root-drop.is-drop-target,
+.documentation-page__folder-group > .is-drop-target .documentation-page__folder-row {
+  outline: 2px solid rgba(37, 99, 235, 0.65);
+  outline-offset: 2px;
+}
+
+.documentation-folder-dialog__form {
+  display: grid;
+  gap: 16px;
+}
+
+.documentation-send-modal__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.6fr);
+}
+
+.documentation-send-modal__options {
+  display: grid;
+  gap: 8px;
+}
+
+.documentation-send-modal__options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 0.875rem;
+}
+
+.documentation-page__assistant-suggestion {
+  margin: 0 16px 12px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  background: var(--surface-overlay, var(--neutral-white));
+  display: grid;
+  gap: 10px;
+}
+
+.documentation-page__assistant-suggestion header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.documentation-page__assistant-suggestion header span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.documentation-page__assistant-suggestion pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.78rem;
+}
+
+.documentation-page__assistant-suggestion div {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .documentation-send-modal__grid {
+    grid-template-columns: 1fr;
   }
 }

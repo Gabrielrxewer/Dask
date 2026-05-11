@@ -18,7 +18,8 @@ export type CustomFieldInputType =
   | 'status'
   | 'tag'
   | 'schedule'
-  | 'work_item_type';
+  | 'work_item_type'
+  | 'billing_summary';
 
 export function isRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -227,6 +228,8 @@ export function mapInputTypeToPrisma(type: CustomFieldInputType): CustomFieldTyp
       return CustomFieldType.SCHEDULE;
     case 'work_item_type':
       return CustomFieldType.WORK_ITEM_TYPE;
+    case 'billing_summary':
+      return CustomFieldType.TEXT;
     default:
       return CustomFieldType.TEXT;
   }

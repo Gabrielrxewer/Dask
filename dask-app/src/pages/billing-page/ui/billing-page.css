@@ -1139,232 +1139,6 @@
   padding: 0;
 }
 
-/* ─── Dark mode ──────────────────────────────────────────────────── */
-
-.app-theme[data-theme="dark"] .billing-view__tabs {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__tab.is-active {
-  background: var(--surface-raised) !important;
-  border-color: var(--line) !important;
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__tab:not(.is-active) {
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__tab-count {
-  background: var(--surface-section-content) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__tab.is-active .billing-view__tab-count {
-  background: var(--accent) !important;
-  color: var(--neutral-white) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__kpi-card,
-.app-theme[data-theme="dark"] .billing-view__onboarding-card,
-.app-theme[data-theme="dark"] .billing-view__card,
-.app-theme[data-theme="dark"] .billing-view__capability-row,
-.app-theme[data-theme="dark"] .billing-view__pending-list li,
-.app-theme[data-theme="dark"] .billing-view__catalog-card,
-.app-theme[data-theme="dark"] .billing-view__catalog-card-meta,
-.app-theme[data-theme="dark"] .billing-view__review-grid span,
-.app-theme[data-theme="dark"] .billing-view__table {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
-  box-shadow: var(--shadow-1) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__kpi-icon {
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__kpi-card--active .billing-view__kpi-icon {
-  background: color-mix(in oklab, var(--success-soft) 22%, var(--surface-muted)) !important;
-  color: var(--success) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__kpi-card--attention .billing-view__kpi-icon {
-  background: color-mix(in oklab, var(--warn-soft) 22%, var(--surface-muted)) !important;
-  color: var(--warn) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__step {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__step-check {
-  background: var(--surface-section-content) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__step.is-done {
-  border-color: color-mix(in oklab, var(--success) 30%, var(--line)) !important;
-  background: color-mix(in oklab, var(--success-soft) 16%, var(--surface-muted)) !important;
-  color: var(--success) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__step.is-done .billing-view__step-check {
-  background: var(--success) !important;
-  color: var(--neutral-white) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__card--review {
-  border-color: color-mix(in oklab, var(--success) 22%, var(--line)) !important;
-  background: var(--surface-raised) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__catalog-create,
-.app-theme[data-theme="dark"] .billing-view__charge-blocked {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__catalog-create .billing-view__actions {
-  border-top-color: var(--line) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 78%, transparent) 0%, var(--surface-muted) 40%) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__source-toggle {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__source-btn.is-active {
-  background: var(--surface-raised) !important;
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__charge-item {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__charge-item:hover,
-.app-theme[data-theme="dark"] .billing-view__charge-item.is-selected {
-  border-color: var(--accent) !important;
-  background: color-mix(in oklab, var(--accent-soft) 20%, var(--surface-muted)) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__badge {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link-row {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link-row:hover {
-  border-color: var(--accent) !important;
-  background: color-mix(in oklab, var(--accent-soft) 16%, var(--surface-raised)) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link-row.is-copied {
-  border-color: color-mix(in oklab, var(--success) 36%, var(--line)) !important;
-  background: color-mix(in oklab, var(--success-soft) 20%, var(--surface-muted)) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link-state {
-  background: color-mix(in oklab, var(--success-soft) 20%, var(--surface-muted)) !important;
-  color: var(--success) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link-url {
-  color: var(--accent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__checkout-link-hint {
-  color: var(--text-muted) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__copy-btn {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__copy-btn.is-copied {
-  border-color: color-mix(in oklab, var(--success) 36%, var(--line)) !important;
-  background: color-mix(in oklab, var(--success-soft) 20%, var(--surface-muted)) !important;
-  color: var(--success) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table-action--danger {
-  color: var(--danger) !important;
-  border-color: color-mix(in oklab, var(--danger) 24%, var(--line)) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table-action--danger:hover:not(:disabled) {
-  color: var(--neutral-white) !important;
-  background: var(--danger) !important;
-  border-color: var(--danger) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__pagination-label {
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__field .shared-input,
-.app-theme[data-theme="dark"] .billing-view__field .shared-select,
-.app-theme[data-theme="dark"] .billing-view__field .shared-textarea {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-strong) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table .shared-data-table__header {
-  border-bottom-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table .shared-data-table__row {
-  border-bottom-color: var(--line) !important;
-  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
-  color: var(--text) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__send-email-toggle {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__send-email-toggle:not(.is-disabled):hover {
-  border-color: var(--accent) !important;
-  background: color-mix(in oklab, var(--accent-soft) 16%, var(--surface-muted)) !important;
-  color: var(--accent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__email-sent-notice {
-  border-color: color-mix(in oklab, var(--success) 28%, var(--line)) !important;
-  background: color-mix(in oklab, var(--success-soft) 16%, var(--surface-muted)) !important;
-  color: var(--success) !important;
-}
-
-
-
-
-
 /* ─── Responsive ─────────────────────────────────────────────────── */
 
 @media (max-width: 980px) {
@@ -1548,7 +1322,7 @@
   gap: 2px;
   border: 0;
   border-radius: 0;
-  background: transparent !important;
+  background: transparent;
   box-shadow: none;
   min-width: 0;
 }
@@ -1567,7 +1341,7 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  box-shadow: none !important;
+  box-shadow: none;
   transform: none;
   font-size: 0.69rem;
   font-weight: 760;
@@ -1892,51 +1666,6 @@
   background: color-mix(in srgb, var(--primary) 8%, transparent);
   border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
   color: var(--text-primary);
-}
-
-.app-theme[data-theme="dark"] .billing-view__kpi-card,
-.app-theme[data-theme="dark"] .billing-view__onboarding-card,
-.app-theme[data-theme="dark"] .billing-view__card,
-.app-theme[data-theme="dark"] .billing-view__capability-row,
-.app-theme[data-theme="dark"] .billing-view__pending-list li,
-.app-theme[data-theme="dark"] .billing-view__catalog-card,
-.app-theme[data-theme="dark"] .billing-view__catalog-card-meta,
-.app-theme[data-theme="dark"] .billing-view__catalog-create,
-.app-theme[data-theme="dark"] .billing-view__charge-blocked,
-.app-theme[data-theme="dark"] .billing-view__review-grid span,
-.app-theme[data-theme="dark"] .billing-view__table {
-  border-color: transparent !important;
-  background: var(--billing-surface) !important;
-  box-shadow: 0 20px 40px color-mix(in srgb, var(--neutral-black) 22%, transparent) !important;
-}
-
-
-.app-theme[data-theme="dark"] .billing-view__source-toggle,
-.app-theme[data-theme="dark"] .billing-view__charge-item,
-.app-theme[data-theme="dark"] .billing-view__checkout-link,
-.app-theme[data-theme="dark"] .billing-view__checkout-link-row,
-.app-theme[data-theme="dark"] .billing-view__badge,
-.app-theme[data-theme="dark"] .billing-view__send-email-toggle,
-.app-theme[data-theme="dark"] .billing-view__field .shared-input,
-.app-theme[data-theme="dark"] .billing-view__field .shared-select,
-.app-theme[data-theme="dark"] .billing-view__field .shared-textarea,
-.app-theme[data-theme="dark"] .billing-view__step {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: var(--billing-surface-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table .shared-data-table__header {
-  border-bottom-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: color-mix(in srgb, var(--primary) 88%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table .shared-data-table__row {
-  border-bottom-color: color-mix(in srgb, var(--primary) 64%, transparent) !important;
-  background: transparent !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__table .shared-data-table__row:hover {
-  background: color-mix(in srgb, var(--primary) 18%, transparent) !important;
 }
 
 @media (min-width: 1141px) {
@@ -2311,69 +2040,6 @@
   background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 16%, transparent) 0%, transparent 52%);
 }
 
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--active {
-  border-color: color-mix(in oklab, var(--success) 42%, color-mix(in srgb, var(--border-strong) 58%, transparent)) !important;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--success-soft) 18%, color-mix(in srgb, var(--primary) 96%, transparent)) 0%,
-    color-mix(in oklab, var(--success-soft) 10%, color-mix(in srgb, var(--primary) 92%, transparent)) 100%
-  ) !important;
-  box-shadow:
-    0 14px 30px color-mix(in oklab, var(--success) 10%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--attention,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--blocked {
-  border-color: color-mix(in oklab, var(--danger) 34%, color-mix(in srgb, var(--border-strong) 58%, transparent)) !important;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--danger-soft) 16%, color-mix(in srgb, var(--primary) 96%, transparent)) 0%,
-    color-mix(in oklab, var(--danger-soft) 10%, color-mix(in srgb, var(--primary) 92%, transparent)) 100%
-  ) !important;
-  box-shadow:
-    0 14px 30px color-mix(in oklab, var(--danger) 10%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--active .billing-view__kpi-label {
-  color: var(--text-secondary);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--attention .billing-view__kpi-label,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--blocked .billing-view__kpi-label {
-  color: color-mix(in oklab, var(--danger) 58%, var(--text-muted));
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--active .billing-view__kpi-value {
-  color: color-mix(in oklab, var(--success) 84%, var(--success-bg));
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--attention .billing-view__kpi-value,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--blocked .billing-view__kpi-value {
-  color: color-mix(in oklab, var(--danger) 80%, var(--danger-border));
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--active .billing-view__kpi-icon {
-  background: color-mix(in oklab, var(--success-soft) 24%, color-mix(in srgb, var(--primary) 96%, transparent));
-  color: var(--success);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--attention .billing-view__kpi-icon,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--blocked .billing-view__kpi-icon {
-  background: color-mix(in oklab, var(--danger-soft) 20%, color-mix(in srgb, var(--primary) 96%, transparent));
-  color: color-mix(in oklab, var(--danger) 82%, var(--danger-border));
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--active::before {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 5%, transparent) 0%, transparent 52%);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--attention::before,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card--blocked::before {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 4%, transparent) 0%, transparent 52%);
-}
-
 .app-theme:not([data-theme="dark"]) .billing-view__panel--account .billing-view__kpi-card--attention .billing-view__kpi-icon {
   background: color-mix(in oklab, var(--danger-soft) 62%, var(--neutral-white));
   color: var(--danger);
@@ -2389,80 +2055,6 @@
 .app-theme:not([data-theme="dark"]) .billing-view__panel--account .billing-view__step.is-done .billing-view__step-check {
   background: var(--success);
   color: var(--neutral-white);
-}
-
-.app-theme[data-theme="dark"] .billing-view__metrics .shared-metric-card,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__onboarding-card,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__card {
-  border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%) !important;
-  box-shadow:
-    0 20px 40px color-mix(in srgb, var(--neutral-black) 22%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card,
-.app-theme[data-theme="dark"] .billing-view__metrics .shared-metric-card {
-  border: 1px solid color-mix(in srgb, var(--border-strong) 58%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%) !important;
-  box-shadow:
-    0 14px 30px color-mix(in srgb, var(--neutral-black) 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 3%, transparent) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card::before,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__onboarding-card::before,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__card::before {
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 4%, transparent), transparent 42%),
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 36%);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__capability-row,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__pending-list li,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__all-good,
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__step:not(.is-done) {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, transparent) 0%, color-mix(in srgb, var(--primary) 88%, transparent) 100%) !important;
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__kpi-card::before {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 4%, transparent) 0%, transparent 52%);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__onboarding-actions .shared-status-badge {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 90%, transparent) 100%) !important;
-  color: var(--text-primary);
-  box-shadow:
-    0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__onboarding-cta.shared-button {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 90%, transparent) 100%) !important;
-  color: var(--text-primary);
-  box-shadow:
-    0 14px 26px color-mix(in srgb, var(--neutral-black) 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__onboarding-cta.shared-button:hover {
-  border-color: color-mix(in srgb, var(--primary) 84%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%) !important;
-  color: var(--surface-tint-strong);
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__step.is-done {
-  border-color: color-mix(in oklab, var(--success) 46%, color-mix(in srgb, var(--border-strong) 72%, transparent)) !important;
-  background: color-mix(in oklab, var(--success-soft) 16%, color-mix(in srgb, var(--primary) 96%, transparent)) !important;
-  color: color-mix(in oklab, var(--success) 88%, var(--success-bg));
-}
-
-.app-theme[data-theme="dark"] .billing-view__panel--account .billing-view__step.is-done .billing-view__step-check {
-  background: var(--success);
-  color: var(--text-primary);
 }
 
 /* Billing cards aligned to board-card tone */
@@ -4080,6 +3672,23 @@
   border: 1px solid var(--border-default);
   background: var(--surface-1);
   color: var(--text-primary);
+}
+
+.billing-catalog-modal .app-dialog__header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+}
+
+.billing-catalog-modal .app-dialog__body {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
 }
 
 .billing-catalog-modal__surface {

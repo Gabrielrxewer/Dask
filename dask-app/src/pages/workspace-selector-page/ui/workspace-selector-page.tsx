@@ -1,150 +1,93 @@
 import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { buildWorkspaceBoardPath } from "@/app/router";
-import { billingStore, useBilling } from "@/modules/billing";
-import { workspaceService, type WorkspaceSummary, type WorkspaceTemplateOption } from "@/modules/workspace";
-import { isApiError } from "@/shared/api/http-client";
-import { Button, Card, FormField, ModalShell, Select, Textarea, TextInput } from "@/shared/ui";
+import { useBillingStatusQuery } from "@/modules/billing";
+import {
+  useDeleteWorkspaceMutation,
+  useProvisionWorkspaceWithProfileMutation,
+  useWorkspaceListQuery,
+  useWorkspaceTemplatesQuery,
+  type WorkspaceSummary
+} from "@/modules/workspace";
+import { AppDialog, AppSelect, Button, Card, FormField, Textarea, TextInput, toast } from "@/shared/ui";
+import {
+  EMPTY_TEMPLATE_VALUE,
+  emptyWorkspaceCreateFormValues,
+  makeWorkspaceKeyDraft,
+  toProvisionWorkspaceMutationInput,
+  workspaceCreateFormSchema,
+  workspaceKindOptions,
+  type WorkspaceCreateFormValues,
+  type WorkspaceSelectorView
+} from "./workspace-selector-page.model";
 import "../../no-workspace-page/ui/no-workspace-page.css";
 import "./workspace-selector-page.css";
 
-type WorkspaceKind = "PERSONAL" | "CORPORATE";
-type WorkspaceSelectorView = "select" | "create";
-
-type CompanyProfileForm = {
-  name: string;
-  legalName: string;
-  document: string;
-  address: string;
-  jurisdictionCity: string;
-  jurisdictionState: string;
-  noticePeriod: string;
-};
-
-const emptyCompanyProfile: CompanyProfileForm = {
-  name: "",
-  legalName: "",
-  document: "",
-  address: "",
-  jurisdictionCity: "",
-  jurisdictionState: "",
-  noticePeriod: ""
-};
-
-function makeWorkspaceKeyDraft(value: string) {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "")
-    .slice(0, 20);
-}
-
-function hasCompanyProfileData(profile: CompanyProfileForm) {
-  return Object.values(profile).some((value) => value.trim().length > 0);
+function fieldError(message: unknown) {
+  return typeof message === "string" ? <span className="workspace-selector-page__field-error">{message}</span> : null;
 }
 
 export function WorkspaceSelectorPage() {
   const navigate = useNavigate();
-  const billing = useBilling();
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
-  const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const billingStatusQuery = useBillingStatusQuery();
+  const workspacesQuery = useWorkspaceListQuery();
+  const canCreateWorkspace = billingStatusQuery.data?.canCreateWorkspace ?? false;
+  const templatesQuery = useWorkspaceTemplatesQuery({ enabled: canCreateWorkspace });
+  const createWorkspaceMutation = useProvisionWorkspaceWithProfileMutation();
+  const deleteWorkspaceMutation = useDeleteWorkspaceMutation();
   const [view, setView] = useState<WorkspaceSelectorView>("select");
-  const [isCreating, setIsCreating] = useState(false);
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<WorkspaceKind>("PERSONAL");
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [workspaceKey, setWorkspaceKey] = useState("");
   const [isWorkspaceKeyDirty, setIsWorkspaceKeyDirty] = useState(false);
-  const [workspaceDescription, setWorkspaceDescription] = useState("");
-  const [workspaceWebsite, setWorkspaceWebsite] = useState("");
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfileForm>(emptyCompanyProfile);
-  const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"] | "">("");
-  const [error, setError] = useState<string | null>(null);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [createFeedback, setCreateFeedback] = useState<string | null>(null);
-  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [workspacePendingDelete, setWorkspacePendingDelete] = useState<WorkspaceSummary | null>(null);
-  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
-  const canCreateWorkspace = billing.status?.canCreateWorkspace ?? false;
+
+  const form = useForm<WorkspaceCreateFormValues>({
+    resolver: zodResolver(workspaceCreateFormSchema) as Resolver<WorkspaceCreateFormValues>,
+    defaultValues: emptyWorkspaceCreateFormValues,
+    mode: "onBlur"
+  });
+
+  const workspaceName = form.watch("workspaceName");
+  const templateKey = form.watch("templateKey");
+  const availableTemplates = templatesQuery.data ?? [];
+  const firstTemplateKey = availableTemplates[0]?.key;
+  const workspaces = workspacesQuery.data ?? [];
+  const isCreateView = view === "create";
+  const isCreating = createWorkspaceMutation.isPending;
+  const isDeletingWorkspace = deleteWorkspaceMutation.isPending;
+  const deleteConfirmationMatches = workspacePendingDelete
+    ? deleteConfirmation.trim() === workspacePendingDelete.name
+    : false;
 
   useEffect(() => {
-    if (billing.loadState === "idle") {
-      void billingStore.load();
-    }
-  }, [billing.loadState]);
-
-  useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-    setError(null);
-
-    workspaceService
-      .listWorkspaces()
-      .then((items) => {
-        if (!mounted) {
-          return;
-        }
-        setWorkspaces(items);
-      })
-      .catch(() => {
-        if (mounted) {
-          setError("Nao foi possivel carregar seus workspaces agora.");
-        }
-      })
-      .finally(() => {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!canCreateWorkspace) {
-      setTemplates([]);
-      setIsLoadingTemplates(false);
+    if (isWorkspaceKeyDirty) {
       return;
     }
 
-    let mounted = true;
-    setIsLoadingTemplates(true);
+    form.setValue("workspaceKey", makeWorkspaceKeyDraft(workspaceName), { shouldValidate: true });
+  }, [form, isWorkspaceKeyDirty, workspaceName]);
 
-    workspaceService
-      .listWorkspaceTemplates()
-      .then((items) => {
-        if (!mounted) {
-          return;
-        }
-        setTemplates(items);
-        if (items[0]?.key) {
-          setTemplateKey(items[0].key);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setTemplates([]);
-          setTemplateKey("");
-          setCreateError("Nao foi possivel carregar o catalogo de templates.");
-        }
-      })
-      .finally(() => {
-        if (mounted) {
-          setIsLoadingTemplates(false);
-        }
-      });
+  useEffect(() => {
+    if (!canCreateWorkspace) {
+      form.setValue("templateKey", "", { shouldValidate: true });
+      return;
+    }
 
-    return () => {
-      mounted = false;
-    };
-  }, [canCreateWorkspace]);
+    const currentTemplateKey = form.getValues("templateKey");
+    if (!currentTemplateKey && firstTemplateKey) {
+      form.setValue("templateKey", firstTemplateKey, { shouldValidate: true });
+    }
+  }, [canCreateWorkspace, firstTemplateKey, form]);
+
+  useEffect(() => {
+    if (isCreateView && templatesQuery.isError) {
+      toast.error("Nao foi possivel carregar o catalogo de templates.");
+    }
+  }, [isCreateView, templatesQuery.isError]);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -161,30 +104,23 @@ export function WorkspaceSelectorPage() {
     });
   }, [query, workspaces]);
 
-  const availableTemplates = templates;
-  const deleteConfirmationMatches = workspacePendingDelete
-    ? deleteConfirmation.trim() === workspacePendingDelete.name
-    : false;
-  const isCreateView = view === "create";
+  const templateItems = useMemo(() => {
+    const emptyLabel = templatesQuery.isLoading ? "Carregando templates..." : "Catalogo indisponivel";
 
-  useEffect(() => {
-    if (isWorkspaceKeyDirty) {
-      return;
-    }
-
-    setWorkspaceKey(makeWorkspaceKeyDraft(workspaceName));
-  }, [isWorkspaceKeyDirty, workspaceName]);
-
-  const reloadWorkspaces = async () => {
-    const refreshed = await workspaceService.listWorkspaces();
-    setWorkspaces(refreshed);
-  };
+    return [
+      { value: EMPTY_TEMPLATE_VALUE, label: emptyLabel, disabled: true },
+      ...availableTemplates.map((template) => ({
+        value: template.key,
+        label: template.name,
+        description: template.description
+      }))
+    ];
+  }, [availableTemplates, templatesQuery.isLoading]);
 
   const handleOpenDeleteWorkspace = (workspace: WorkspaceSummary) => {
     setWorkspacePendingDelete(workspace);
     setDeleteConfirmation("");
     setDeleteError(null);
-    setDeleteFeedback(null);
   };
 
   const handleCloseDeleteWorkspace = () => {
@@ -199,9 +135,7 @@ export function WorkspaceSelectorPage() {
 
   const handleOpenCreate = () => {
     setView("create");
-    setCreateError(null);
-    setCreateFeedback(null);
-    setDeleteFeedback(null);
+    setDeleteError(null);
   };
 
   const handleBackToSelection = () => {
@@ -210,123 +144,21 @@ export function WorkspaceSelectorPage() {
     }
 
     setView("select");
-    setCreateError(null);
+    form.clearErrors();
   };
 
-  const handleCreateWorkspace = async () => {
-    const normalizedName = workspaceName.trim();
-    const normalizedKey = workspaceKey.trim().toUpperCase();
-    const normalizedCompanyName = companyProfile.name.trim();
-    const normalizedWebsite = workspaceWebsite.trim();
-
-    if (normalizedName.length < 2) {
-      setCreateError("Informe um nome de workspace com pelo menos 2 caracteres.");
-      setCreateFeedback(null);
-      return;
-    }
-
-    if (normalizedKey.length < 2) {
-      setCreateError("Informe uma chave de workspace com pelo menos 2 caracteres.");
-      setCreateFeedback(null);
-      return;
-    }
-
-    if (kind === "CORPORATE" && normalizedCompanyName.length < 2) {
-      setCreateError("Informe o nome da empresa ou organizacao para workspace corporativo.");
-      setCreateFeedback(null);
-      return;
-    }
-
-    if (!templateKey) {
-      setCreateError("Selecione um template carregado pelo backend.");
-      setCreateFeedback(null);
-      return;
-    }
-
-    if (normalizedWebsite.length > 0 && !/^https?:\/\/\S+\.\S+/.test(normalizedWebsite)) {
-      setCreateError("Informe um website valido com http:// ou https://.");
-      setCreateFeedback(null);
-      return;
-    }
-
-    setIsCreating(true);
-    setCreateError(null);
-    setCreateFeedback(null);
-    setDeleteFeedback(null);
+  const handleCreateWorkspace = async (values: WorkspaceCreateFormValues) => {
+    setDeleteError(null);
 
     try {
-      const created = await workspaceService.provisionWorkspace({
-        kind,
-        workspaceName: normalizedName,
-        workspaceKey: normalizedKey,
-        templateKey,
-        organizationName: kind === "CORPORATE" ? normalizedCompanyName : undefined
-      });
-
-      const profileInfo: { description?: string; company?: string; website?: string } = {};
-      const normalizedDescription = workspaceDescription.trim();
-      if (normalizedDescription.length > 0) {
-        profileInfo.description = normalizedDescription;
-      }
-      if (normalizedCompanyName.length > 0) {
-        profileInfo.company = normalizedCompanyName;
-      }
-      if (normalizedWebsite.length > 0) {
-        profileInfo.website = normalizedWebsite;
-      }
-
-      const postCreateRequests: Promise<unknown>[] = [];
-      if (Object.keys(profileInfo).length > 0) {
-        postCreateRequests.push(
-          workspaceService.updateWorkspaceProfile(created.slug, {
-            name: normalizedName,
-            key: normalizedKey,
-            info: profileInfo
-          })
-        );
-      }
-
-      if (hasCompanyProfileData(companyProfile)) {
-        postCreateRequests.push(
-          workspaceService.updatePreferences(created.slug, {
-            settings: {
-              companyProfile: {
-                name: normalizedCompanyName,
-                legalName: companyProfile.legalName.trim(),
-                document: companyProfile.document.trim(),
-                address: companyProfile.address.trim(),
-                jurisdictionCity: companyProfile.jurisdictionCity.trim(),
-                jurisdictionState: companyProfile.jurisdictionState.trim(),
-                noticePeriod: companyProfile.noticePeriod.trim()
-              }
-            }
-          })
-        );
-      }
-
-      if (postCreateRequests.length > 0) {
-        await Promise.all(postCreateRequests);
-      }
-
-      await reloadWorkspaces();
-      setCreateFeedback(`Workspace ${created.name} criado com sucesso.`);
-      setWorkspaceName("");
-      setWorkspaceKey("");
+      const created = await createWorkspaceMutation.mutateAsync(toProvisionWorkspaceMutationInput(values));
+      toast.success(`Workspace ${created.name} criado com sucesso.`);
+      form.reset(emptyWorkspaceCreateFormValues);
       setIsWorkspaceKeyDirty(false);
-      setWorkspaceDescription("");
-      setWorkspaceWebsite("");
-      setCompanyProfile(emptyCompanyProfile);
       setView("select");
       navigate(buildWorkspaceBoardPath(created.slug));
-    } catch (creationError) {
-      if (isApiError(creationError)) {
-        setCreateError(creationError.message);
-      } else {
-        setCreateError("Nao foi possivel criar o workspace agora.");
-      }
-      setCreateFeedback(null);
-    } finally {
-      setIsCreating(false);
+    } catch {
+      // The mutation hook owns the user-facing toast.
     }
   };
 
@@ -340,25 +172,16 @@ export function WorkspaceSelectorPage() {
       return;
     }
 
-    setIsDeletingWorkspace(true);
     setDeleteError(null);
-    setCreateFeedback(null);
 
     try {
       const deletedWorkspaceName = workspacePendingDelete.name;
-      await workspaceService.deleteWorkspace(workspacePendingDelete.slug);
-      await reloadWorkspaces();
-      setDeleteFeedback(`Workspace ${deletedWorkspaceName} excluido com sucesso.`);
+      await deleteWorkspaceMutation.mutateAsync(workspacePendingDelete.slug);
+      toast.success(`Workspace ${deletedWorkspaceName} excluido com sucesso.`);
       setWorkspacePendingDelete(null);
       setDeleteConfirmation("");
-    } catch (deletionError) {
-      if (isApiError(deletionError)) {
-        setDeleteError(deletionError.message);
-      } else {
-        setDeleteError("Nao foi possivel excluir o workspace agora.");
-      }
-    } finally {
-      setIsDeletingWorkspace(false);
+    } catch {
+      // The mutation hook owns the user-facing toast.
     }
   };
 
@@ -399,59 +222,73 @@ export function WorkspaceSelectorPage() {
                   Sua conta foi convidada para workspaces existentes e nao pode criar um workspace proprio sem assinatura.
                 </p>
               ) : (
-                <section className="workspace-selector-page__create-card" aria-label="Cadastrar workspace">
+                <form
+                  className="workspace-selector-page__create-card"
+                  aria-label="Cadastrar workspace"
+                  onSubmit={form.handleSubmit(handleCreateWorkspace)}
+                >
                   <div className="workspace-selector-page__create-section">
                     <h2>Base do workspace</h2>
                     <div className="workspace-selector-page__create-grid">
                       <FormField label="Tipo">
-                        <Select value={kind} onChange={(event) => setKind(event.target.value as WorkspaceKind)}>
-                          <option value="PERSONAL">Pessoal</option>
-                          <option value="CORPORATE">Corporativo</option>
-                        </Select>
+                        <Controller
+                          control={form.control}
+                          name="kind"
+                          render={({ field }) => (
+                            <AppSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              items={workspaceKindOptions}
+                            />
+                          )}
+                        />
+                        {fieldError(form.formState.errors.kind?.message)}
                       </FormField>
                       <FormField label="Template">
-                        <Select
-                          value={templateKey}
-                          onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
-                          disabled={isLoadingTemplates || availableTemplates.length === 0}
-                        >
-                          {isLoadingTemplates ? <option value="">Carregando templates...</option> : null}
-                          {!isLoadingTemplates && availableTemplates.length === 0 ? <option value="">Catalogo indisponivel</option> : null}
-                          {availableTemplates.map((template) => (
-                            <option key={template.key} value={template.key}>
-                              {template.name}
-                            </option>
-                          ))}
-                        </Select>
+                        <Controller
+                          control={form.control}
+                          name="templateKey"
+                          render={({ field }) => (
+                            <AppSelect
+                              value={field.value || EMPTY_TEMPLATE_VALUE}
+                              onValueChange={(value) => {
+                                field.onChange(value === EMPTY_TEMPLATE_VALUE ? "" : value);
+                              }}
+                              disabled={templatesQuery.isLoading || availableTemplates.length === 0}
+                              items={templateItems}
+                            />
+                          )}
+                        />
+                        {fieldError(form.formState.errors.templateKey?.message)}
                       </FormField>
                       <FormField label="Nome do workspace">
-                        <TextInput
-                          value={workspaceName}
-                          onChange={(event) => setWorkspaceName(event.target.value)}
-                          placeholder="Ex.: Produto Core"
-                        />
+                        <TextInput {...form.register("workspaceName")} placeholder="Ex.: Produto Core" />
+                        {fieldError(form.formState.errors.workspaceName?.message)}
                       </FormField>
                       <FormField label="Chave do workspace">
-                        <TextInput
-                          value={workspaceKey}
-                          onChange={(event) => {
-                            setIsWorkspaceKeyDirty(true);
-                            setWorkspaceKey(makeWorkspaceKeyDraft(event.target.value));
-                          }}
-                          placeholder="PRODCORE"
+                        <Controller
+                          control={form.control}
+                          name="workspaceKey"
+                          render={({ field }) => (
+                            <TextInput
+                              value={field.value}
+                              onChange={(event) => {
+                                setIsWorkspaceKeyDirty(true);
+                                field.onChange(makeWorkspaceKeyDraft(event.target.value));
+                              }}
+                              placeholder="PRODCORE"
+                            />
+                          )}
                         />
+                        {fieldError(form.formState.errors.workspaceKey?.message)}
                       </FormField>
                       <FormField label="Website" className="workspace-selector-page__field--wide">
-                        <TextInput
-                          value={workspaceWebsite}
-                          onChange={(event) => setWorkspaceWebsite(event.target.value)}
-                          placeholder="https://suaempresa.com"
-                        />
+                        <TextInput {...form.register("workspaceWebsite")} placeholder="https://suaempresa.com" />
+                        {fieldError(form.formState.errors.workspaceWebsite?.message)}
                       </FormField>
                       <FormField label="Descricao" className="workspace-selector-page__field--wide">
                         <Textarea
-                          value={workspaceDescription}
-                          onChange={(event) => setWorkspaceDescription(event.target.value)}
+                          {...form.register("workspaceDescription")}
                           placeholder="Resumo da area, objetivo ou contexto deste workspace."
                           rows={3}
                         />
@@ -463,88 +300,54 @@ export function WorkspaceSelectorPage() {
                     <h2>Empresa e dados legais</h2>
                     <div className="workspace-selector-page__create-grid">
                       <FormField label="Nome fantasia / empresa">
-                        <TextInput
-                          value={companyProfile.name}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, name: event.target.value }))
-                          }
-                          placeholder="Ex.: Dask Labs"
-                        />
+                        <TextInput {...form.register("companyProfile.name")} placeholder="Ex.: Dask Labs" />
+                        {fieldError(form.formState.errors.companyProfile?.name?.message)}
                       </FormField>
                       <FormField label="Razao social / nome legal">
                         <TextInput
-                          value={companyProfile.legalName}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, legalName: event.target.value }))
-                          }
+                          {...form.register("companyProfile.legalName")}
                           placeholder="Ex.: Dask Labs Tecnologia Ltda"
                         />
                       </FormField>
                       <FormField label="CPF / CNPJ">
-                        <TextInput
-                          value={companyProfile.document}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, document: event.target.value }))
-                          }
-                          placeholder="Ex.: 00.000.000/0001-00"
-                        />
+                        <TextInput {...form.register("companyProfile.document")} placeholder="Ex.: 00.000.000/0001-00" />
                       </FormField>
                       <FormField label="Aviso previo padrao (dias)">
-                        <TextInput
-                          value={companyProfile.noticePeriod}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, noticePeriod: event.target.value }))
-                          }
-                          placeholder="Ex.: 30"
-                        />
+                        <TextInput {...form.register("companyProfile.noticePeriod")} placeholder="Ex.: 30" />
                       </FormField>
                       <FormField label="Endereco da contratada" className="workspace-selector-page__field--wide">
                         <Textarea
-                          value={companyProfile.address}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, address: event.target.value }))
-                          }
+                          {...form.register("companyProfile.address")}
                           placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
                           rows={3}
                         />
                       </FormField>
                       <FormField label="Cidade do foro">
-                        <TextInput
-                          value={companyProfile.jurisdictionCity}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, jurisdictionCity: event.target.value }))
-                          }
-                          placeholder="Ex.: Sao Paulo"
-                        />
+                        <TextInput {...form.register("companyProfile.jurisdictionCity")} placeholder="Ex.: Sao Paulo" />
                       </FormField>
                       <FormField label="Estado do foro">
-                        <TextInput
-                          value={companyProfile.jurisdictionState}
-                          onChange={(event) =>
-                            setCompanyProfile((current) => ({ ...current, jurisdictionState: event.target.value }))
-                          }
-                          placeholder="Ex.: SP"
-                        />
+                        <TextInput {...form.register("companyProfile.jurisdictionState")} placeholder="Ex.: SP" />
                       </FormField>
                     </div>
                   </div>
 
                   <div className="workspace-selector-page__create-actions">
                     <div className="workspace-selector-page__create-action-feedback">
-                      {createFeedback ? <p className="workspace-selector-page__feedback">{createFeedback}</p> : null}
-                      {createError ? <p className="workspace-selector-page__error">{createError}</p> : null}
+                      {templatesQuery.isError ? (
+                        <p className="workspace-selector-page__error">Nao foi possivel carregar o catalogo de templates.</p>
+                      ) : null}
                     </div>
                     <Button
                       className="workspace-selector-page__create-submit"
-                      type="button"
+                      type="submit"
                       variant="primary"
-                      onClick={() => void handleCreateWorkspace()}
-                      disabled={isCreating || isLoadingTemplates || !templateKey}
+                      disabled={isCreating || templatesQuery.isLoading || !templateKey}
+                      loading={isCreating}
                     >
                       {isCreating ? "Criando..." : "Criar workspace"}
                     </Button>
                   </div>
-                </section>
+                </form>
               )}
             </>
           ) : (
@@ -568,32 +371,29 @@ export function WorkspaceSelectorPage() {
                     className="no-workspace-page__secondary"
                     type="button"
                     onClick={handleOpenCreate}
-                    disabled={!canCreateWorkspace}
+                    disabled={billingStatusQuery.isLoading || !canCreateWorkspace}
                   >
                     {!canCreateWorkspace ? "Criacao indisponivel" : "Criar novo workspace"}
                   </Button>
                 </div>
               </div>
 
-              {!canCreateWorkspace ? (
+              {!canCreateWorkspace && !billingStatusQuery.isLoading ? (
                 <p className="workspace-selector-page__state">
                   Sua conta foi convidada para workspaces existentes e nao pode criar um workspace proprio sem assinatura.
                 </p>
               ) : null}
 
-              {isLoading ? <p className="workspace-selector-page__state">Carregando workspaces...</p> : null}
-              {error ? <p className="workspace-selector-page__error">{error}</p> : null}
-              {deleteFeedback ? (
-                <p className="workspace-selector-page__feedback workspace-selector-page__feedback--banner">
-                  {deleteFeedback}
-                </p>
+              {workspacesQuery.isLoading ? <p className="workspace-selector-page__state">Carregando workspaces...</p> : null}
+              {workspacesQuery.isError ? (
+                <p className="workspace-selector-page__error">Nao foi possivel carregar seus workspaces agora.</p>
               ) : null}
 
-              {!isLoading && !error && filtered.length === 0 ? (
+              {!workspacesQuery.isLoading && !workspacesQuery.isError && filtered.length === 0 ? (
                 <p className="workspace-selector-page__state">Nenhum workspace encontrado.</p>
               ) : null}
 
-              {!isLoading && !error && filtered.length > 0 ? (
+              {!workspacesQuery.isLoading && !workspacesQuery.isError && filtered.length > 0 ? (
                 <div className="workspace-selector-page__list">
                   {filtered.map((workspace) => (
                     <article key={workspace.id} className="workspace-selector-page__workspace">
@@ -631,66 +431,72 @@ export function WorkspaceSelectorPage() {
       </section>
 
       {workspacePendingDelete ? (
-        <ModalShell
-          titleId="workspace-delete-title"
+        <AppDialog
+          open
+          showClose={false}
           className="workspace-selector-page__delete-modal"
-          onClose={handleCloseDeleteWorkspace}
+          contentClassName="workspace-selector-page__delete-dialog"
+          title={(
+            <>
+              <span className="workspace-selector-page__delete-eyebrow">Excluir workspace</span>
+              <span className="workspace-selector-page__delete-title-text">Confirmar exclusao permanente</span>
+            </>
+          )}
+          titleClassName="workspace-selector-page__delete-title"
+          description={(
+            <>
+              Essa acao remove o workspace, boards, documentos, automacoes e configuracoes vinculadas. Nao existe
+              restauracao automatica depois da exclusao.
+            </>
+          )}
+          descriptionClassName="workspace-selector-page__delete-description"
+          onOpenChange={(open) => {
+            if (!open) handleCloseDeleteWorkspace();
+          }}
         >
-          <div className="workspace-selector-page__delete-dialog">
-            <header className="workspace-selector-page__delete-header">
-              <p className="workspace-selector-page__delete-eyebrow">Excluir workspace</p>
-              <h2 id="workspace-delete-title" className="workspace-selector-page__delete-title">
-                Confirmar exclusao permanente
-              </h2>
-              <p className="workspace-selector-page__delete-description">
-                Essa acao remove o workspace, boards, documentos, automacoes e configuracoes vinculadas. Nao existe
-                restauracao automatica depois da exclusao.
-              </p>
-            </header>
-
-            <div className="workspace-selector-page__delete-target">
-              <strong>{workspacePendingDelete.name}</strong>
-              <span>
-                {workspacePendingDelete.kind === "CORPORATE" ? "Corporativo" : "Pessoal"} - {workspacePendingDelete.role}
-              </span>
-              <small>{workspacePendingDelete.slug}</small>
-            </div>
-
-            <FormField label="Digite o nome do workspace para confirmar">
-              <TextInput
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                placeholder={workspacePendingDelete.name}
-                autoFocus
-              />
-            </FormField>
-
-            <p className="workspace-selector-page__delete-hint">
-              Confirmacao necessaria: <strong>{workspacePendingDelete.name}</strong>
-            </p>
-
-            {deleteError ? <p className="workspace-selector-page__error">{deleteError}</p> : null}
-
-            <div className="workspace-selector-page__delete-actions">
-              <Button
-                className="no-workspace-page__secondary"
-                type="button"
-                onClick={handleCloseDeleteWorkspace}
-                disabled={isDeletingWorkspace}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="workspace-selector-page__delete-confirm"
-                type="button"
-                onClick={() => void handleDeleteWorkspace()}
-                disabled={isDeletingWorkspace || !deleteConfirmationMatches}
-              >
-                {isDeletingWorkspace ? "Excluindo..." : "Excluir workspace"}
-              </Button>
-            </div>
+          <div className="workspace-selector-page__delete-target">
+            <strong>{workspacePendingDelete.name}</strong>
+            <span>
+              {workspacePendingDelete.kind === "CORPORATE" ? "Corporativo" : "Pessoal"} - {workspacePendingDelete.role}
+            </span>
+            <small>{workspacePendingDelete.slug}</small>
           </div>
-        </ModalShell>
+
+          <FormField label="Digite o nome do workspace para confirmar">
+            <TextInput
+              value={deleteConfirmation}
+              onChange={(event) => setDeleteConfirmation(event.target.value)}
+              placeholder={workspacePendingDelete.name}
+              autoFocus
+            />
+          </FormField>
+
+          <p className="workspace-selector-page__delete-hint">
+            Confirmacao necessaria: <strong>{workspacePendingDelete.name}</strong>
+          </p>
+
+          {deleteError ? <p className="workspace-selector-page__error">{deleteError}</p> : null}
+
+          <div className="workspace-selector-page__delete-actions">
+            <Button
+              className="no-workspace-page__secondary"
+              type="button"
+              onClick={handleCloseDeleteWorkspace}
+              disabled={isDeletingWorkspace}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="workspace-selector-page__delete-confirm"
+              type="button"
+              onClick={() => void handleDeleteWorkspace()}
+              disabled={isDeletingWorkspace || !deleteConfirmationMatches}
+              loading={isDeletingWorkspace}
+            >
+              {isDeletingWorkspace ? "Excluindo..." : "Excluir workspace"}
+            </Button>
+          </div>
+        </AppDialog>
       ) : null}
     </main>
   );

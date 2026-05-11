@@ -1,4 +1,4 @@
-import { InlineAlert, LoadingState, Section, WorkspaceFrame } from "@/shared/ui";
+import { LoadingState, Section, WorkspaceFrame } from "@/shared/ui";
 import { BoardMetrics } from "@/widgets/board-metrics";
 import { AppShell } from "@/widgets/app-shell";
 import { BillingAccountPanel } from "./billing-account-panel";
@@ -14,7 +14,7 @@ export function BillingPage() {
   const billing = useBillingPageModel();
 
   return (
-    <AppShell metrics={billing.metrics} hideSidebarBrandMark pageTitle="Cobrança" pageLabel="Financeiro">
+    <AppShell metrics={billing.metrics} hideSidebarBrandMark pageTitle="Assinatura do Dask e cobrancas" pageLabel="Financeiro">
       <WorkspaceFrame className="billing-view workspace-view" variant="dashboard" scroll="content">
         <LoadingState
           text="Carregando cobranca..."
@@ -37,20 +37,9 @@ export function BillingPage() {
           className="billing-view__metrics workspace-view__metrics"
         />
 
-        {billing.checkoutResult === "success" ? (
-          <InlineAlert tone="success">
-            Pagamento concluído. A Stripe confirmou o checkout com sucesso.
-          </InlineAlert>
-        ) : null}
-        {billing.checkoutResult === "cancel" ? (
-          <InlineAlert tone="warning">
-            Checkout cancelado. Revise os dados e tente novamente quando quiser.
-          </InlineAlert>
-        ) : null}
-
         <Section
-          title="Cobrança Connect"
-          subtitle="Gerencie cadastro, cobrança e repasses com o mesmo estilo visual do workspace."
+          title="Cobrancas dos seus clientes"
+          subtitle="A assinatura do Dask fica separada da conta de recebimento Stripe Connect deste workspace."
           className="billing-view__section workspace-view__section"
         >
           <div className="billing-view__stack">

@@ -388,6 +388,36 @@
   pointer-events: none;
 }
 
+.flow-canvas-ui__panel.react-flow__panel {
+  margin: 14px;
+  pointer-events: auto;
+}
+
+.flow-canvas-ui__panel--bottom.react-flow__panel {
+  margin-bottom: 18px;
+}
+
+.flow-canvas-ui__panel--controls .flow-canvas-ui__ctrl {
+  min-width: 118px;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.flow-canvas-ui__minimap {
+  width: 156px;
+  height: 112px;
+  margin: 14px;
+  border: 1px solid color-mix(in oklab, var(--ab-line, var(--line, var(--border-blue-muted))) 84%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 90%, transparent);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.flow-canvas-ui__edge--invalid .react-flow__edge-path {
+  stroke: var(--danger, #dc2626);
+  stroke-dasharray: 8 6;
+}
+
 .app-theme[data-theme="dark"] .flow-canvas-ui {
   background:
     radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--accent, var(--primary)) 10%, transparent) 0%, transparent 32%),

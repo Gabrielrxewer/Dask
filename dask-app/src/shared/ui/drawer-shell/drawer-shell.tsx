@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { AppDialog } from "@/shared/ui/dialog";
 import { AppIcon } from "@/shared/ui/icon";
-import { ModalShell } from "@/shared/ui/modal-shell";
 
 export interface DrawerShellFrameProps {
   title: ReactNode;
@@ -83,8 +83,16 @@ export function DrawerShellFrame({
 
 export function DrawerShell({ shellClassName, ...props }: DrawerShellProps) {
   return (
-    <ModalShell titleId={props.titleId} onClose={props.onClose} className={cn("shared-drawer-shell", shellClassName)}>
+    <AppDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onClose();
+      }}
+      className={cn("shared-drawer-shell", shellClassName)}
+      bodyClassName="shared-drawer-shell__dialog-body"
+      showClose={false}
+    >
       <DrawerShellFrame {...props} />
-    </ModalShell>
+    </AppDialog>
   );
 }

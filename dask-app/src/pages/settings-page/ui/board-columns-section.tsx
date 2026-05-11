@@ -1,4 +1,18 @@
-import type { DragEvent, Ref } from "react";
+import type { Ref } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
+import {
+  horizontalListSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates
+} from "@dnd-kit/sortable";
 import type { ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
 import { BoardColumnCard } from "./board-column-card";
 import { BoardColumnPicker } from "./board-column-picker";
@@ -23,10 +37,10 @@ type BoardColumnsSectionProps = {
   draggingId: string | null;
   dragOverId: string | null;
   saving: boolean;
-  onDragStart: (event: DragEvent<HTMLDivElement>, columnId: string) => void;
-  onDragEnd: () => void;
-  onDragOver: (event: DragEvent<HTMLDivElement>, columnId: string) => void;
-  onDrop: (event: DragEvent<HTMLDivElement>, columnId: string) => void;
+  onDragStart: (columnId: string) => void;
+  onDragEnd: (activeId: string, targetId: string | null) => void;
+  onDragOver: (columnId: string | null) => void;
+  onDragCancel: () => void;
   onStartEdit: (column: ApiBoardColumn) => void;
   onEditingColumnNameChange: (value: string) => void;
   onEditingColumnStateIdChange: (value: string) => void;
@@ -68,7 +82,7 @@ export function BoardColumnsSection({
   onDragStart,
   onDragEnd,
   onDragOver,
-  onDrop,
+  onDragCancel,
   onStartEdit,
   onEditingColumnNameChange,
   onEditingColumnStateIdChange,
@@ -88,46 +102,69 @@ export function BoardColumnsSection({
   onCreateColumn,
   onBackToPicker
 }: BoardColumnsSectionProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const sortableColumnIds = columnsToShow.map((column) => column.id);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    onDragStart(String(event.active.id));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    onDragOver(event.over ? String(event.over.id) : null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    onDragEnd(String(event.active.id), event.over ? String(event.over.id) : null);
+  };
+
   return (
     <div className="board-editor__canvas-wrap">
       <div className="board-editor__canvas">
         {loading ? (
           <BoardEditorLoader />
         ) : (
-          <>
-            {columnsToShow.map((column) => {
-              const isHidden = activePendingHidden.has(column.id);
-              return (
-                <BoardColumnCard
-                  key={column.id}
-                  column={column}
-                  activeStates={activeStates}
-                  isHidden={isHidden}
-                  hasCreateTaskButton={Boolean(activePerspective?.createTaskColumnIds?.includes(column.id))}
-                  isEditing={editingColumnId === column.id}
-                  isConfirmingDelete={deletingColumnId === column.id}
-                  isDragging={draggingId === column.id}
-                  isDragOver={dragOverId === column.id && draggingId !== column.id}
-                  editingColumnName={editingColumnName}
-                  editingColumnStateId={editingColumnStateId}
-                  saving={saving}
-                  onDragStart={onDragStart}
-                  onDragEnd={onDragEnd}
-                  onDragOver={onDragOver}
-                  onDrop={onDrop}
-                  onStartEdit={onStartEdit}
-                  onEditingColumnNameChange={onEditingColumnNameChange}
-                  onEditingColumnStateIdChange={onEditingColumnStateIdChange}
-                  onSaveEdit={onSaveEdit}
-                  onCancelEdit={onCancelEdit}
-                  onShowColumn={onShowColumn}
-                  onHideColumn={onHideColumn}
-                  onDeleteColumn={onDeleteColumn}
-                  onCancelDelete={onCancelDelete}
-                  onToggleCreateTaskColumn={onToggleCreateTaskColumn}
-                />
-              );
-            })}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragCancel={onDragCancel}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableColumnIds} strategy={horizontalListSortingStrategy}>
+              {columnsToShow.map((column) => {
+                const isHidden = activePendingHidden.has(column.id);
+                return (
+                  <BoardColumnCard
+                    key={column.id}
+                    column={column}
+                    activeStates={activeStates}
+                    isHidden={isHidden}
+                    hasCreateTaskButton={Boolean(activePerspective?.createTaskColumnIds?.includes(column.id))}
+                    isEditing={editingColumnId === column.id}
+                    isConfirmingDelete={deletingColumnId === column.id}
+                    isDragging={draggingId === column.id}
+                    isDragOver={dragOverId === column.id && draggingId !== column.id}
+                    editingColumnName={editingColumnName}
+                    editingColumnStateId={editingColumnStateId}
+                    saving={saving}
+                    onStartEdit={onStartEdit}
+                    onEditingColumnNameChange={onEditingColumnNameChange}
+                    onEditingColumnStateIdChange={onEditingColumnStateIdChange}
+                    onSaveEdit={onSaveEdit}
+                    onCancelEdit={onCancelEdit}
+                    onShowColumn={onShowColumn}
+                    onHideColumn={onHideColumn}
+                    onDeleteColumn={onDeleteColumn}
+                    onCancelDelete={onCancelDelete}
+                    onToggleCreateTaskColumn={onToggleCreateTaskColumn}
+                  />
+                );
+              })}
+            </SortableContext>
 
             <BoardColumnPicker
               mode={addColumnMode}
@@ -146,7 +183,7 @@ export function BoardColumnsSection({
               onCreateColumn={onCreateColumn}
               onBackToPicker={onBackToPicker}
             />
-          </>
+          </DndContext>
         )}
       </div>
     </div>

@@ -24,6 +24,15 @@
   color: var(--text-strong);
 }
 
+.shared-page-header__subtitle {
+  max-width: 720px;
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .shared-filter-bar {
   display: flex;
   gap: var(--space-2);

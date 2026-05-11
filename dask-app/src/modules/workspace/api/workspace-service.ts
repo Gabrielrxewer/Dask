@@ -1,10 +1,13 @@
 import { apiClient } from "@/shared/api/http-client";
 import { CARD_FIELDS_SCHEMA_VERSION } from "@/entities/task";
+import type { Task } from "@/entities/task";
 import type {
   AiCapabilities,
   AiAgentSummary,
   AiObservability,
   AiRunSummary,
+  AiAgentRuntimePublishResult,
+  AiAgentRuntimeValidationResult,
   ApiBoardColumn,
   ApiCustomField,
   ApiItemType,
@@ -29,30 +32,47 @@ import type {
   CreateCustomerInput,
   CreateAiAgentInput,
   CreateWhatsAppTemplateInput,
+  DocumentAssetType,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
+  RunAiAgentRuntimeInput,
+  RunAiAgentRuntimeResult,
   RunAutomationWorkflowInput,
   RunAutomationWorkflowResult,
   SaveAutomationWorkflowVersionInput,
   CreateAutomationWorkflowInput,
   CreateBoardColumnInput,
+  BulkUpdateWorkItemsInput,
+  BulkUpdateWorkItemsResult,
   ListCommunicationInboxOptions,
   CreateCustomFieldInput,
+  CreateWorkflowStateInput,
   CreateItemTypeInput,
+  ListWorkItemsInput,
   UpdateBoardColumnInput,
   UpdateAutomationWorkflowInput,
   UpdateCommunicationTemplateVersionInput,
   UpdateCustomFieldInput,
+  UpdateWorkflowStateInput,
   UpdateItemTypeInput,
   WorkItemFieldBindingInput,
   TaskScheduleInput,
   UpdateTaskInput,
   WorkspaceDocument,
+  WorkspaceDocumentAsset,
+  WorkspaceDocumentFilters,
   WorkspaceDocumentFolder,
+  WorkspaceDocumentsPage,
   WhatsAppConsent,
   Customer,
   CustomerStatus,
+  CustomersPage,
+  WorkItemTypeTransformationPayload,
+  WorkItemTypeTransformationSummary,
+  WorkItemTypeTransformationValidation,
   WorkItemLinkedDocument,
+  WorkItemsPage,
+  WorkspaceAuditEvent,
   WorkspacePreferences,
   WorkspaceProfile,
   BoardTemplateSummary,
@@ -159,6 +179,49 @@ function getCachedTask(workspaceSlug: string, taskId: string) {
   return snapshot?.tasks.find((task) => task.id === taskId) ?? null;
 }
 
+function buildWorkItemsQuery(input?: ListWorkItemsInput): string {
+  const params = new URLSearchParams();
+  params.set("paged", "true");
+
+  for (const [key, value] of Object.entries(input ?? {})) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      if (key === "customFieldFilters") {
+        params.set(key, JSON.stringify(value));
+        continue;
+      }
+      if (value.length > 0) {
+        params.set(key, value.join(","));
+      }
+      continue;
+    }
+    params.set(key, String(value));
+  }
+
+  return params.toString();
+}
+
+function buildWorkspaceDocumentsQuery(input?: WorkspaceDocumentFilters & { paged?: boolean }): string {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(input ?? {})) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        params.set(key, value.join(","));
+      }
+      continue;
+    }
+    params.set(key, String(value));
+  }
+
+  return params.toString();
+}
+
 async function patchWorkItem(
   workspaceSlug: string,
   taskId: string,
@@ -254,6 +317,121 @@ export const workspaceService: WorkspaceService = {
     return fetchSnapshot(workspaceSlug);
   },
 
+  async listWorkItemsPage(workspaceSlug: string, input?: ListWorkItemsInput): Promise<WorkItemsPage> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = buildWorkItemsQuery(input);
+    return apiClient.get<WorkItemsPage>(`/workspaces/${workspaceId}/work-items?${query}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async bulkUpdateWorkItems(workspaceSlug: string, input: BulkUpdateWorkItemsInput): Promise<BulkUpdateWorkItemsResult> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<BulkUpdateWorkItemsResult>(`/workspaces/${workspaceId}/work-items/bulk-update`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listCustomersPage(
+    workspaceSlug: string,
+    input?: { search?: string; status?: CustomerStatus; limit?: number; cursor?: string | null }
+  ): Promise<CustomersPage> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = new URLSearchParams();
+    query.set("paged", "true");
+    if (input?.search) query.set("search", input.search);
+    if (input?.status) query.set("status", input.status);
+    if (input?.limit) query.set("limit", String(input.limit));
+    if (input?.cursor) query.set("cursor", input.cursor);
+    return apiClient.get<CustomersPage>(`/workspaces/${workspaceId}/customers?${query.toString()}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listWorkItemTypeTransformations(workspaceSlug: string): Promise<WorkItemTypeTransformationSummary[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkItemTypeTransformationSummary[]>(
+      `/workspaces/${workspaceId}/work-item-type-transformations`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async validateWorkItemTypeTransformation(
+    workspaceSlug: string,
+    taskId: string,
+    input: WorkItemTypeTransformationPayload
+  ): Promise<WorkItemTypeTransformationValidation> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkItemTypeTransformationValidation>(
+      `/workspaces/${workspaceId}/work-items/${taskId}/type-transformation/validate`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async transformWorkItemType(
+    workspaceSlug: string,
+    taskId: string,
+    input: WorkItemTypeTransformationPayload
+  ): Promise<Task> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const task = await apiClient.post<Task>(
+      `/workspaces/${workspaceId}/work-items/${taskId}/type-transformation`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+    snapshotByWorkspaceSlug.delete(workspaceSlug);
+    return task;
+  },
+
+  async convertWorkItemToCustomer(
+    workspaceSlug: string,
+    taskId: string,
+    input: {
+      customerId?: string;
+      customer?: CreateCustomerInput;
+      fields?: Record<string, unknown>;
+      customFieldValues?: Record<string, unknown>;
+    }
+  ): Promise<Customer> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const customer = await apiClient.post<Customer>(
+      `/workspaces/${workspaceId}/work-items/${taskId}/convert-to-customer`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+    snapshotByWorkspaceSlug.delete(workspaceSlug);
+    return customer;
+  },
+
+  async listWorkspaceAuditLog(workspaceSlug: string, input?: { limit?: number }): Promise<WorkspaceAuditEvent[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const params = new URLSearchParams();
+    if (input?.limit) {
+      params.set("limit", String(input.limit));
+    }
+    const query = params.toString();
+    return apiClient.get<WorkspaceAuditEvent[]>(`/audit/workspaces/${workspaceId}/events${query ? `?${query}` : ""}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
   async createTask(workspaceSlug, input) {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.post(`/workspaces/${workspaceId}/work-items`, {
@@ -346,16 +524,17 @@ export const workspaceService: WorkspaceService = {
   },
 
   async updateTaskSchedule(workspaceSlug: string, taskId: string, input: TaskScheduleInput) {
-    const current = getCachedTask(workspaceSlug, taskId);
-    const nextFields = {
-      ...(current?.customFields ?? {}),
-      plannedStartAt: input.plannedStartAt ?? null,
-      plannedEndAt: input.plannedEndAt ?? null
-    };
-
-    return patchWorkItem(workspaceSlug, taskId, {
-      fields: nextFields
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/work-items/${taskId}/schedule`, {
+      ...(input.plannedStartAt !== undefined ? { plannedStartAt: input.plannedStartAt } : {}),
+      ...(input.plannedEndAt !== undefined ? { plannedEndAt: input.plannedEndAt } : {}),
+      ...(input.reason ? { reason: input.reason } : {})
+    }, {
+      authMode: "required",
+      retryOnUnauthorized: true
     });
+
+    return fetchSnapshot(workspaceSlug);
   },
 
   async updateTask(workspaceSlug: string, taskId: string, input: UpdateTaskInput) {
@@ -503,6 +682,24 @@ export const workspaceService: WorkspaceService = {
     };
   },
 
+  async updateWorkItemListConfig(workspaceSlug, workItemTypeId, config) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const preferences = await apiClient.put<WorkspacePreferences>(
+      `/workspaces/${workspaceId}/work-item-list-configs/${workItemTypeId}`,
+      config,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+
+    const snapshot = await fetchSnapshot(workspaceSlug);
+    return {
+      ...snapshot,
+      preferences
+    };
+  },
+
   async resetWorkspaceTemplate(workspaceSlug: string, templateKey?: WorkspaceTemplateKey) {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     await apiClient.post(
@@ -552,6 +749,24 @@ export const workspaceService: WorkspaceService = {
   },
 
   // ─── Board Config ─────────────────────────────────────────────────────────
+
+  async createWorkflowState(workspaceSlug: string, input: CreateWorkflowStateInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.post(`/workspaces/${workspaceId}/workflow-states`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
+
+  async updateWorkflowState(workspaceSlug: string, stateId: string, input: UpdateWorkflowStateInput) {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.patch(`/workspaces/${workspaceId}/workflow-states/${stateId}`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+    return fetchSnapshot(workspaceSlug);
+  },
 
   async createBoardColumn(workspaceSlug: string, input: CreateBoardColumnInput) {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
@@ -1248,9 +1463,22 @@ export const workspaceService: WorkspaceService = {
     });
   },
 
-  async listWorkspaceDocuments(workspaceSlug: string): Promise<WorkspaceDocument[]> {
+  async listWorkspaceDocuments(workspaceSlug: string, input?: WorkspaceDocumentFilters): Promise<WorkspaceDocument[]> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
-    return apiClient.get<WorkspaceDocument[]>(`/workspaces/${workspaceId}/documents`, {
+    const query = buildWorkspaceDocumentsQuery(input);
+    return apiClient.get<WorkspaceDocument[]>(`/workspaces/${workspaceId}/documents${query ? `?${query}` : ""}`, {
+      authMode: "required",
+      retryOnUnauthorized: true
+    });
+  },
+
+  async listWorkspaceDocumentsPage(
+    workspaceSlug: string,
+    input?: WorkspaceDocumentFilters
+  ): Promise<WorkspaceDocumentsPage> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const query = buildWorkspaceDocumentsQuery({ ...input, paged: true });
+    return apiClient.get<WorkspaceDocumentsPage>(`/workspaces/${workspaceId}/documents${query ? `?${query}` : ""}`, {
       authMode: "required",
       retryOnUnauthorized: true
     });
@@ -1360,10 +1588,60 @@ export const workspaceService: WorkspaceService = {
   async sendWorkspaceDocument(
     workspaceSlug: string,
     documentId: string,
-    input: { email?: string; emails?: string[] }
+    input: Parameters<WorkspaceService["sendWorkspaceDocument"]>[2]
   ): Promise<WorkspaceDocument> {
     const workspaceId = await resolveWorkspaceId(workspaceSlug);
     return apiClient.post<WorkspaceDocument>(`/workspaces/${workspaceId}/documents/${documentId}/send`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true,
+      globalLoading: false
+    });
+  },
+
+  async decideWorkspaceDocument(
+    workspaceSlug: string,
+    documentId: string,
+    input: Parameters<WorkspaceService["decideWorkspaceDocument"]>[2]
+  ): Promise<WorkspaceDocument> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WorkspaceDocument>(`/workspaces/${workspaceId}/documents/${documentId}/decision`, input, {
+      authMode: "required",
+      retryOnUnauthorized: true,
+      globalLoading: false
+    });
+  },
+
+  async listDocumentAssets(workspaceSlug: string, documentId: string): Promise<WorkspaceDocumentAsset[]> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<WorkspaceDocumentAsset[]>(`/workspaces/${workspaceId}/documents/${documentId}/assets`, {
+      authMode: "required",
+      retryOnUnauthorized: true,
+      globalLoading: false
+    });
+  },
+
+  async uploadDocumentAsset(
+    workspaceSlug: string,
+    documentId: string,
+    input: Parameters<WorkspaceService["uploadDocumentAsset"]>[2]
+  ): Promise<WorkspaceDocumentAsset> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    const formData = new FormData();
+    formData.append("type", input.type);
+    formData.append("filename", input.filename ?? input.file.name);
+    formData.append("contentType", input.contentType ?? (input.file.type || "application/octet-stream"));
+    formData.append("file", input.file, input.filename ?? input.file.name);
+    return apiClient.uploadFormData<WorkspaceDocumentAsset>(`/workspaces/${workspaceId}/documents/${documentId}/assets`, formData, {
+      authMode: "required",
+      retryOnUnauthorized: true,
+      globalLoading: false,
+      onProgress: input.onProgress
+    });
+  },
+
+  async deleteDocumentAsset(workspaceSlug: string, documentId: string, assetId: string): Promise<void> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    await apiClient.delete(`/workspaces/${workspaceId}/documents/${documentId}/assets/${assetId}`, {
       authMode: "required",
       retryOnUnauthorized: true,
       globalLoading: false
@@ -1474,6 +1752,67 @@ export const workspaceService: WorkspaceService = {
       authMode: "required",
       retryOnUnauthorized: true
     });
+  },
+
+  async validateAiAgent(workspaceSlug: string, agentId: string): Promise<AiAgentRuntimeValidationResult> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AiAgentRuntimeValidationResult>(
+      `/ai/workspaces/${workspaceId}/agents/${agentId}/validate`,
+      {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async publishAiAgent(
+    workspaceSlug: string,
+    agentId: string,
+    input?: { activateWorkflow?: boolean }
+  ): Promise<AiAgentRuntimePublishResult> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<AiAgentRuntimePublishResult>(
+      `/ai/workspaces/${workspaceId}/agents/${agentId}/publish`,
+      {
+        activateWorkflow: input?.activateWorkflow ?? true
+      },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async runAiAgent(
+    workspaceSlug: string,
+    agentId: string,
+    input?: RunAiAgentRuntimeInput
+  ): Promise<RunAiAgentRuntimeResult> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<RunAiAgentRuntimeResult>(
+      `/ai/workspaces/${workspaceId}/agents/${agentId}/run`,
+      {
+        instruction: input?.instruction,
+        context: input?.context ?? {}
+      },
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async archiveAiAgent(workspaceSlug: string, agentId: string): Promise<{ id: string }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<{ id: string }>(
+      `/ai/workspaces/${workspaceId}/agents/${agentId}/archive`,
+      {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
   },
 
   async runAiAgentOnItem(

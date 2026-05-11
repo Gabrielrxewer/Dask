@@ -23,7 +23,7 @@ import type {
   JourneyNodeKind,
 } from './types';
 import { PALETTE_ITEMS, validateNode } from './types';
-import { Button, EmptyState, FlowCanvas, InlineAlert, StatusBadge, TextInput, type FlowCanvasPaletteItem } from '@/shared/ui';
+import { AppIcon, Button, EmptyState, FlowCanvas, StatusBadge, TextInput, toast, type FlowCanvasPaletteItem } from '@/shared/ui';
 import { TriggerNode } from './nodes/trigger-node';
 import { ActionNode } from './nodes/action-node';
 import { ConditionNode } from './nodes/condition-node';
@@ -119,11 +119,6 @@ interface InsertPickerState {
   y: number;
 }
 
-interface ToastState {
-  message: string;
-  kind: 'ok' | 'error';
-}
-
 interface JourneyBuilderInnerProps {
   flow: MarketingAutomationFlow | null;
   onSave: (name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
@@ -140,7 +135,6 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [insertPicker, setInsertPicker] = useState<InsertPickerState | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   // Load existing flow
   useEffect(() => {
@@ -158,8 +152,12 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
   }, [flow?.id]);
 
   function showToast(message: string, kind: 'ok' | 'error' = 'ok') {
-    setToast({ message, kind });
-    setTimeout(() => setToast(null), 2800);
+    if (kind === 'error') {
+      toast.error(message);
+      return;
+    }
+
+    toast.success(message);
   }
 
   // Connections
@@ -323,17 +321,12 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
           >
             {flow.status === 'ACTIVE' ? (
               <>
-                <svg viewBox="0 0 14 14" fill="none">
-                  <rect x="2" y="2" width="4" height="10" rx="1" fill="currentColor" />
-                  <rect x="8" y="2" width="4" height="10" rx="1" fill="currentColor" />
-                </svg>
+                <AppIcon name="pause" size={14} strokeWidth={2.2} />
                 Pausar
               </>
             ) : (
               <>
-                <svg viewBox="0 0 14 14" fill="none">
-                  <path d="M3 2l10 5-10 5V2Z" fill="currentColor" />
-                </svg>
+                <AppIcon name="play" size={14} strokeWidth={2.2} />
                 Ativar
               </>
             )}
@@ -346,10 +339,7 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
           onClick={() => void handleSave()}
           disabled={isSaving}
         >
-          <svg viewBox="0 0 14 14" fill="none">
-            <path d="M2 2h8l2 2v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2Z" stroke="var(--neutral-white)" strokeWidth="1.3" />
-            <path d="M5 2v3h4V2M4 8h6" stroke="var(--neutral-white)" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
+          <AppIcon name="check" size={14} strokeWidth={2.2} />
           {isSaving ? 'Salvando...' : 'Salvar'}
         </Button>
       </div>
@@ -429,13 +419,6 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
               ))}
             </div>
           </>
-        )}
-
-        {/* Toast */}
-        {toast && (
-          <InlineAlert className="jb-toast" tone={toast.kind === 'error' ? 'danger' : 'success'}>
-            {toast.message}
-          </InlineAlert>
         )}
       </div>
     </div>

@@ -27,6 +27,7 @@ import { WorkItemFieldLibrary } from "./work-item-field-library";
 import {
   addFieldIdToList,
   buildCustomFieldRuntimeIndex,
+  DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS,
   buildFieldLibraryItems,
   buildFieldSettings,
   buildFieldsById,
@@ -324,7 +325,18 @@ export function WorkItemEditorSettings() {
               required: draft.required,
               options: supportsSelectableOptions(draft.type as CustomFieldType) ? normalizedOptions : [],
               allowAiGeneration: supportsAiGeneration(draft.type as CustomFieldType) ? draft.allowAiGeneration : false,
-              config: isCatalogSelectType(draft.type) ? { entityType: "billing_catalog_item" } : undefined,
+              config: buildFieldSettings({
+                type: draft.type,
+                name: draft.name,
+                allowAiGeneration: draft.allowAiGeneration,
+                checklistIcon: draft.checklistIcon,
+                checklistColor: draft.checklistColor,
+                billingCurrency: draft.billingCurrency,
+                billingSourceFields: draft.billingSourceFields,
+                billingAggregationMode: draft.billingAggregationMode,
+                billingDisplayFormat: draft.billingDisplayFormat,
+                billingReadOnly: draft.billingReadOnly
+              }),
               checklistDisplay:
                 draft.type === "checklist"
                   ? {
@@ -387,7 +399,12 @@ export function WorkItemEditorSettings() {
             name: pendingFieldSetup.name,
             allowAiGeneration: pendingFieldSetup.allowAiGeneration,
             checklistIcon: pendingFieldSetup.checklistIcon,
-            checklistColor: pendingFieldSetup.checklistColor
+            checklistColor: pendingFieldSetup.checklistColor,
+            billingCurrency: pendingFieldSetup.billingCurrency,
+            billingSourceFields: pendingFieldSetup.billingSourceFields,
+            billingAggregationMode: pendingFieldSetup.billingAggregationMode,
+            billingDisplayFormat: pendingFieldSetup.billingDisplayFormat,
+            billingReadOnly: pendingFieldSetup.billingReadOnly
           })
         },
         options: supportsSelectableOptions(pendingFieldSetup.type) ? normalizedOptions : []
@@ -471,7 +488,12 @@ export function WorkItemEditorSettings() {
               name: fieldDraft.name,
               allowAiGeneration: fieldDraft.allowAiGeneration,
               checklistIcon: fieldDraft.checklistIcon,
-              checklistColor: fieldDraft.checklistColor
+              checklistColor: fieldDraft.checklistColor,
+              billingCurrency: fieldDraft.billingCurrency,
+              billingSourceFields: fieldDraft.billingSourceFields,
+              billingAggregationMode: fieldDraft.billingAggregationMode,
+              billingDisplayFormat: fieldDraft.billingDisplayFormat,
+              billingReadOnly: fieldDraft.billingReadOnly
             })
           },
           options: supportsSelectableOptions(fieldDraft.type as CustomFieldType) ? normalizedOptions : []
@@ -520,7 +542,8 @@ export function WorkItemEditorSettings() {
       allowAiGeneration: false,
       options: [],
       checklistIcon: "checklist",
-      checklistColor: "var(--text-secondary)"
+      checklistColor: "var(--text-secondary)",
+      ...DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS
     });
   };
 

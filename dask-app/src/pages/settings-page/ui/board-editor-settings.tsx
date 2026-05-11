@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent } from "react";
 import { useWorkspace } from "@/modules/workspace";
 import type { ApiBoardColumn, ApiWorkflowState, BoardTemplateSummary } from "@/modules/workspace/model";
 import { BoardColumnsSection } from "./board-columns-section";
@@ -442,27 +441,21 @@ export function BoardEditorSettings() {
     );
   };
 
-  const handleDragStart = (event: DragEvent<HTMLDivElement>, columnId: string) => {
+  const handleDragStart = (columnId: string) => {
     setDraggingId(columnId);
-    event.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragEnd = () => {
+  const handleDragCancel = () => {
     setDraggingId(null);
     setDragOverId(null);
   };
 
-  const handleDragOver = (event: DragEvent<HTMLDivElement>, columnId: string) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    if (columnId !== draggingId) {
-      setDragOverId(columnId);
-    }
+  const handleDragOver = (columnId: string | null) => {
+    setDragOverId(columnId && columnId !== draggingId ? columnId : null);
   };
 
-  const handleDrop = (event: DragEvent<HTMLDivElement>, targetId: string) => {
-    event.preventDefault();
-    if (!draggingId || draggingId === targetId) {
+  const handleDragEnd = (activeId: string, targetId: string | null) => {
+    if (!activeId || !targetId || activeId === targetId) {
       setDraggingId(null);
       setDragOverId(null);
       return;
@@ -478,7 +471,7 @@ export function BoardEditorSettings() {
           Array.isArray(perspective.visibleBoardColumnIds) && perspective.visibleBoardColumnIds.length > 0
             ? [...perspective.visibleBoardColumnIds]
             : activeColumns.map((column) => column.id);
-        const fromIndex = currentOrder.indexOf(draggingId);
+        const fromIndex = currentOrder.indexOf(activeId);
         const toIndex = currentOrder.indexOf(targetId);
         if (fromIndex === -1 || toIndex === -1) {
           return perspective;
@@ -486,7 +479,7 @@ export function BoardEditorSettings() {
 
         const nextOrder = [...currentOrder];
         nextOrder.splice(fromIndex, 1);
-        nextOrder.splice(toIndex, 0, draggingId);
+        nextOrder.splice(toIndex, 0, activeId);
         return { ...perspective, visibleBoardColumnIds: nextOrder };
       })
     );
@@ -681,7 +674,7 @@ export function BoardEditorSettings() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        onDragCancel={handleDragCancel}
         onStartEdit={handleStartEdit}
         onEditingColumnNameChange={setEditingColumnName}
         onEditingColumnStateIdChange={setEditingColumnStateId}

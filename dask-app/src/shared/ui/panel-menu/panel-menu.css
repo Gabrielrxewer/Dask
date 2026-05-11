@@ -246,17 +246,20 @@
 }
 
 button.panel-menu-item,
-a.panel-menu-item {
+a.panel-menu-item,
+[role="button"].panel-menu-item {
   cursor: pointer;
 }
 
 button.panel-menu-item:hover:not(:disabled),
+[role="button"].panel-menu-item:hover,
 a.panel-menu-item:hover {
   background: var(--pm-hover-bg);
   border-color: color-mix(in oklab, var(--pm-line) 60%, transparent);
 }
 
 button.panel-menu-item:focus-visible,
+[role="button"].panel-menu-item:focus-visible,
 a.panel-menu-item:focus-visible {
   outline: 2px solid var(--pm-accent);
   outline-offset: -2px;

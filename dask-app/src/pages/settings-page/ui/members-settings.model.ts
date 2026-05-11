@@ -27,7 +27,7 @@ export interface GroupDraft {
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MODULE_KEYS: WorkspaceModuleKey[] = [
-  "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"
+  "dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"
 ];
 
 export const TAB_ITEMS: Array<{ id: ActiveTab; label: string }> = [
@@ -66,6 +66,7 @@ export const ROLE_TONES: Record<string, "default" | "success" | "warning"> = {
 };
 
 export const MODULE_META: Record<WorkspaceModuleKey, { label: string; description: string }> = {
+  dashboard: { label: "Dashboard", description: "Indicadores de CRM, funil operacional e automações" },
   board: { label: "Board", description: "Gestão de projetos e tarefas em quadros kanban" },
   automation: { label: "Automação", description: "Automações e fluxos de trabalho automáticos" },
   documentation: { label: "Documentação", description: "Wiki e base de conhecimento da equipe" },
@@ -82,6 +83,7 @@ export const PERMISSION_CATEGORY_PREFIXES: Array<{ prefix: string; label: string
   { prefix: "member.", label: "Membros" },
   { prefix: "role.", label: "Roles" },
   { prefix: "permission.", label: "Permissões" },
+  { prefix: "dashboard.", label: "Dashboard" },
   { prefix: "project.", label: "Projetos" },
   { prefix: "board.", label: "Board" },
   { prefix: "item.", label: "Itens" },

@@ -1,6 +1,6 @@
-import type { Dispatch, SetStateAction } from "react";
 import type { ConnectPaymentOrder } from "@/modules/billing";
-import { Button, EmptyState, InlineAlert, ResourceTable, SectionHeader, StatusBadge } from "@/shared/ui";
+import { Button, EmptyState, InlineAlert, SectionHeader, StatusBadge } from "@/shared/ui";
+import { BillingDataTable as ResourceTable } from "./billing-data-table";
 import type { HistoryAction, PaymentOrdersLoadState } from "./billing-page.model";
 import {
   BADGE_TONE_BY_STATUS,
@@ -20,12 +20,14 @@ interface BillingHistoryPanelProps {
   paymentOrdersLoadState: PaymentOrdersLoadState;
   paymentOrdersError: string | null;
   focusedOrderId: string | null;
-  historyCopiedOrderId: string | null;
   historyActionOrderId: string | null;
   historyActionType: HistoryAction | null;
   historyPage: number;
-  historyTotalPages: number;
-  setHistoryPage: Dispatch<SetStateAction<number>>;
+  historyHasPrevious: boolean;
+  historyHasNext: boolean;
+  historyIsFetching: boolean;
+  onHistoryPrevious: () => void;
+  onHistoryNext: () => void;
   onCreateFirstCharge: () => void;
   onCopyHistoryLink: (order: ConnectPaymentOrder) => void;
   onResendOrder: (order: ConnectPaymentOrder) => void;
@@ -47,17 +49,21 @@ export function BillingHistoryPanel({
   paymentOrdersLoadState,
   paymentOrdersError,
   focusedOrderId,
-  historyCopiedOrderId,
   historyActionOrderId,
   historyActionType,
   historyPage,
-  historyTotalPages,
-  setHistoryPage,
+  historyHasPrevious,
+  historyHasNext,
+  historyIsFetching,
+  onHistoryPrevious,
+  onHistoryNext,
   onCreateFirstCharge,
   onCopyHistoryLink,
   onResendOrder,
   onCancelOrder
 }: BillingHistoryPanelProps) {
+  const hasHistoryPage = paymentOrders.length > 0 || historyHasPrevious || historyHasNext;
+
   return (
     <div className="billing-view__panel" role="tabpanel">
       <SectionHeader
@@ -65,7 +71,7 @@ export function BillingHistoryPanel({
         description={
           customerMode
             ? "Acompanhe cobrancas, vencimentos, status de pagamento, assinatura e documentos fiscais."
-            : "Ultimas 30 cobrancas criadas neste workspace."
+            : "Cobrancas criadas neste workspace com paginacao server-side."
         }
         badge={<StatusBadge>{paymentOrders.length} itens</StatusBadge>}
       />
@@ -73,7 +79,7 @@ export function BillingHistoryPanel({
       {paymentOrdersLoadState === "error" ? (
         <InlineAlert tone="danger">{paymentOrdersError}</InlineAlert>
       ) : null}
-      {paymentOrdersLoadState === "loaded" && paymentOrders.length === 0 ? (
+      {paymentOrdersLoadState === "loaded" && !hasHistoryPage ? (
         <EmptyState
           title={customerMode ? "Nenhuma cobranca vinculada ao seu e-mail ainda." : "Nenhuma cobranca criada ainda."}
           action={!customerMode ? (
@@ -83,7 +89,7 @@ export function BillingHistoryPanel({
           ) : null}
         />
       ) : null}
-      {paymentOrdersLoadState === "loaded" && paymentOrders.length > 0 ? (
+      {paymentOrdersLoadState === "loaded" && hasHistoryPage ? (
         <>
           <ResourceTable
             className="billing-view__table"
@@ -128,7 +134,7 @@ export function BillingHistoryPanel({
               }
             ]}
             actions={{
-              header: "Acoes",
+              header: "Ações",
               width: customerMode ? "1fr" : "1.35fr",
               render: (order) => (
                 <div className="billing-view__table-actions">
@@ -140,7 +146,7 @@ export function BillingHistoryPanel({
                     onClick={() => onCopyHistoryLink(order)}
                     disabled={!order.customerPortalUrl && !order.checkoutUrl}
                   >
-                    {historyCopiedOrderId === order.id ? "Copiado!" : "Copiar link"}
+                    Copiar link
                   </Button>
                   {customerMode && order.checkoutUrl && !CUSTOMER_TERMINAL_STATUSES.has(order.status) ? (
                     <Button
@@ -194,16 +200,14 @@ export function BillingHistoryPanel({
             responsiveMinWidthMobile="100%"
           />
           <div className="billing-view__pagination">
-            <span className="billing-view__pagination-label">
-              Pagina {historyPage} de {historyTotalPages}
-            </span>
+            <span className="billing-view__pagination-label">Página {historyPage}</span>
             <div className="billing-view__pagination-actions">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
-                disabled={historyPage === 1}
+                onClick={onHistoryPrevious}
+                disabled={!historyHasPrevious || historyIsFetching}
               >
                 Anterior
               </Button>
@@ -211,10 +215,10 @@ export function BillingHistoryPanel({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setHistoryPage((current) => Math.min(historyTotalPages, current + 1))}
-                disabled={historyPage === historyTotalPages}
+                onClick={onHistoryNext}
+                disabled={!historyHasNext || historyIsFetching}
               >
-                Proxima
+                Próxima
               </Button>
             </div>
           </div>

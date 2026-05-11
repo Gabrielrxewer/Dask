@@ -79,6 +79,33 @@
   flex-shrink: 0;
 }
 
+.lf-lead-draggable {
+  width: 100%;
+  cursor: grab;
+  text-align: left;
+  touch-action: none;
+}
+
+.lf-lead-draggable:active {
+  cursor: grabbing;
+}
+
+.lf-lead-draggable--dragging {
+  opacity: 0.42;
+}
+
+.lf-drag-overlay {
+  max-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--lead-flow-accent) 34%, var(--lead-flow-line));
+  border-radius: 8px;
+  background: var(--lead-flow-surface);
+  color: var(--lead-flow-text);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+}
+
 /* ── Sidebar footer ──────────────────────────────────────────────────────────── */
 
 .lf-sidebar-foot {
@@ -138,6 +165,22 @@
   box-shadow:
     0 12px 28px color-mix(in oklab, var(--lead-flow-node-color) 22%, transparent),
     0 0 0 4px color-mix(in oklab, var(--lead-flow-node-color) 20%, transparent) !important;
+}
+
+.lead-flow-node--drop-target .flow-node-card--lead-state {
+  outline: 1px dashed color-mix(in oklab, var(--lead-flow-node-color) 58%, var(--line));
+  outline-offset: 5px;
+}
+
+.lead-flow-node--drag-over .flow-node-card--lead-state {
+  outline: 2px solid color-mix(in oklab, var(--lead-flow-node-color) 76%, var(--lead-flow-accent));
+  outline-offset: 7px;
+  box-shadow: 0 16px 32px color-mix(in oklab, var(--lead-flow-node-color) 22%, transparent) !important;
+}
+
+.lead-flow-node--saving {
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .lead-flow-node__badge {

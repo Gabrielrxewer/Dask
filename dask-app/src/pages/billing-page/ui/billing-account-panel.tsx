@@ -141,6 +141,16 @@ export function BillingAccountPanel({
           <h3>Formas de pagamento locais</h3>
           <StatusBadge>Brasil</StatusBadge>
         </div>
+        {connectStatus?.disabledReason ? (
+          <InlineAlert tone="warning">
+            Stripe bloqueou temporariamente a conta: {connectStatus.disabledReason}. Continue o onboarding para liberar cobrancas.
+          </InlineAlert>
+        ) : null}
+        {connectStatus?.dashboardType || connectStatus?.requirementCollection ? (
+          <p className="billing-view__capability-copy">
+            Dashboard: {connectStatus.dashboardType ?? "nao informado"} - KYC: {connectStatus.requirementCollection ?? "nao informado"}
+          </p>
+        ) : null}
         <div className="billing-view__capability-grid">
           <div className="billing-view__capability-row">
             <div className="billing-view__capability-copy billing-view__capability-copy--name">

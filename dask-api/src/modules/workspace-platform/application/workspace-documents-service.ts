@@ -1,5 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
 import type { EventPublisher } from '@/core/events/event-publisher';
@@ -17,6 +19,46 @@ type DocumentLinkedEntityType = 'work_item' | 'customer' | 'proposal' | 'contrac
 type CommercialDocumentStatus = 'draft' | 'sent' | 'viewed' | 'approved' | 'rejected' | 'accepted' | 'signed';
 type DocumentMetadata = Record<string, unknown>;
 type PublicDocumentDecision = 'approve' | 'accept' | 'sign' | 'reject';
+type DocumentAssetType = 'logo' | 'attachment' | 'generated_pdf' | 'exported_html';
+type DocumentDecision = PublicDocumentDecision;
+
+type DocumentListFilters = {
+  search?: string;
+  type?: DocumentKind;
+  kind?: DocumentKind;
+  folderId?: string | null;
+  tags?: string[];
+  status?: string;
+  commercialStatus?: string;
+  linkedWorkItemId?: string;
+  createdBy?: string;
+  updatedAtFrom?: Date;
+  updatedAtTo?: Date;
+  visibility?: 'internal' | 'client_visible' | 'commercial_shared' | 'public_authenticated';
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+  cursor?: string;
+  sort?: 'position_asc' | 'updated_desc' | 'updated_asc' | 'created_desc' | 'created_asc' | 'title_asc';
+  paged?: boolean;
+};
+
+const allowedLogoContentTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml']);
+const allowedAttachmentContentTypes = new Set([
+  ...allowedLogoContentTypes,
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+]);
+const maxAssetSizeByType: Record<DocumentAssetType, number> = {
+  logo: 5 * 1024 * 1024,
+  attachment: 25 * 1024 * 1024,
+  generated_pdf: 25 * 1024 * 1024,
+  exported_html: 10 * 1024 * 1024
+};
 
 const documentKinds = new Set<DocumentKind>(['wiki', 'proposal', 'contract']);
 const commercialDocumentStatuses = new Set<CommercialDocumentStatus>([
@@ -97,6 +139,28 @@ function buildPublicDocumentUrl(token: string): string {
   return `${env.APP_PUBLIC_URL.replace(/\/+$/, '')}/documents/public/${encodeURIComponent(token)}`;
 }
 
+function hashDocumentContent(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+function isTerminalCommercialStatus(status: string | null): boolean {
+  return status === 'approved' || status === 'accepted' || status === 'signed' || status === 'rejected';
+}
+
+function buildApiUrl(pathname: string): string {
+  return `${env.API_PUBLIC_URL.replace(/\/+$/, '')}${env.API_PREFIX.replace(/\/+$/, '')}${pathname}`;
+}
+
+function buildInternalAssetUrl(asset: { workspaceId: string; documentId: string; id: string }): string {
+  return buildApiUrl(
+    `/workspaces/${asset.workspaceId}/documents/${asset.documentId}/assets/${asset.id}/content`
+  );
+}
+
+function buildPublicAssetUrl(token: string, assetId: string): string {
+  return buildApiUrl(`/documents/public/${encodeURIComponent(token)}/assets/${assetId}/content`);
+}
+
 function readIsoDate(metadata: DocumentMetadata, key: string): Date | null {
   const value = metadata[key];
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -126,7 +190,7 @@ export class WorkspaceDocumentsService {
     private readonly emailService: EmailService
   ) {}
 
-  public async listDocuments(input: { workspaceId: string; userId: string }) {
+  public async listDocuments(input: { workspaceId: string; userId: string; filters?: DocumentListFilters }) {
     await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
     const customerScope = await resolveCustomerAccessScope(this.prisma, input);
     const customerIds = requireClientCustomerScope(customerScope);
@@ -147,41 +211,60 @@ export class WorkspaceDocumentsService {
       clientItemIds = clientItems.map((item) => item.id);
     }
 
+    const filters = input.filters ?? {};
+    const where = this.buildDocumentListWhere({
+      workspaceId: input.workspaceId,
+      filters,
+      isClient: customerScope.isClient,
+      customerIds,
+      clientItemIds
+    });
+    const orderBy = this.buildDocumentListOrderBy(filters);
+
+    if (filters.paged) {
+      const pageNumber = typeof filters.page === 'number' ? Math.max(filters.page, 1) : null;
+      const take = Math.min(Math.max(filters.pageSize ?? filters.limit ?? 80, 1), 200);
+      const findManyArgs: Prisma.WorkspaceDocumentFindManyArgs = {
+        where,
+        orderBy,
+        take: take + 1
+      };
+      if (pageNumber !== null) {
+        findManyArgs.skip = (pageNumber - 1) * take;
+      } else if (filters.cursor) {
+        findManyArgs.cursor = { id: filters.cursor };
+        findManyArgs.skip = 1;
+      }
+
+      const [documents, total] = await Promise.all([
+        this.prisma.workspaceDocument.findMany(findManyArgs),
+        this.prisma.workspaceDocument.count({ where })
+      ]);
+      const items = documents.slice(0, take);
+      const trailing = documents[take];
+      const currentPage = pageNumber ?? 1;
+      const totalPages = Math.max(Math.ceil(total / take), 1);
+
+      return {
+        items: items.map((document) => this.serialize(document)),
+        totalCount: total,
+        total,
+        nextCursor: trailing?.id ?? null,
+        hasMore: Boolean(trailing),
+        pageInfo: {
+          page: currentPage,
+          pageSize: take,
+          totalPages,
+          hasNextPage: pageNumber !== null ? currentPage < totalPages : Boolean(trailing),
+          hasPreviousPage: pageNumber !== null ? currentPage > 1 : Boolean(filters.cursor),
+          nextCursor: trailing?.id ?? null
+        }
+      };
+    }
+
     const documents = await this.prisma.workspaceDocument.findMany({
-      where: {
-        workspaceId: input.workspaceId,
-        ...(customerScope.isClient
-          ? {
-              kind: {
-                in: ['proposal', 'contract']
-              },
-              OR: [
-                ...customerIds.flatMap((customerId) => [
-                  {
-                    linkedEntityType: 'customer',
-                    linkedEntityId: customerId
-                  },
-                  {
-                    metadata: {
-                      path: ['customerId'],
-                      equals: customerId
-                    }
-                  },
-                  {
-                    metadata: {
-                      path: ['customer', 'id'],
-                      equals: customerId
-                    }
-                  }
-                ]),
-                ...(clientItemIds.length > 0
-                  ? [{ linkedEntityType: 'work_item', linkedEntityId: { in: clientItemIds } }]
-                  : [])
-              ]
-            }
-          : {})
-      },
-      orderBy: [{ position: 'asc' }, { updatedAt: 'desc' }]
+      where,
+      orderBy
     });
 
     return documents.map((document) => this.serialize(document));
@@ -189,11 +272,40 @@ export class WorkspaceDocumentsService {
 
   public async listFolders(input: { workspaceId: string; userId: string }) {
     await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
 
     const folders = await this.prisma.workspaceDocumentFolder.findMany({
       where: { workspaceId: input.workspaceId },
       orderBy: [{ position: 'asc' }, { name: 'asc' }]
     });
+
+    if (customerScope.isClient) {
+      const documentsResult = await this.listDocuments({ workspaceId: input.workspaceId, userId: input.userId });
+      const documents = Array.isArray(documentsResult) ? documentsResult : documentsResult.items;
+      const visibleFolderIds = new Set<string>();
+      for (const document of documents) {
+        const folderId = readFolderId(document.metadata);
+        if (folderId) {
+          visibleFolderIds.add(folderId);
+        }
+      }
+      for (const folder of folders) {
+        if (folder.createdBy === input.userId) {
+          visibleFolderIds.add(folder.id);
+        }
+      }
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const folder of folders) {
+          if (folder.parentId && visibleFolderIds.has(folder.id) && !visibleFolderIds.has(folder.parentId)) {
+            visibleFolderIds.add(folder.parentId);
+            changed = true;
+          }
+        }
+      }
+      return folders.filter((folder) => visibleFolderIds.has(folder.id)).map((folder) => this.serializeFolder(folder));
+    }
 
     return folders.map((folder) => this.serializeFolder(folder));
   }
@@ -207,11 +319,20 @@ export class WorkspaceDocumentsService {
       position?: number;
     };
   }) {
-    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
     const parentId = input.payload.parentId ?? null;
 
-    if (parentId) {
-      await this.ensureFolder(input.workspaceId, parentId);
+    if (customerScope.isClient) {
+      requireClientCustomerScope(customerScope);
+      if (parentId) {
+        await this.ensureClientManagedFolder(input.workspaceId, parentId, input.userId);
+      }
+    } else {
+      await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+      if (parentId) {
+        await this.ensureFolder(input.workspaceId, parentId);
+      }
     }
 
     const defaultPosition = await this.prisma.workspaceDocumentFolder.count({
@@ -229,6 +350,17 @@ export class WorkspaceDocumentsService {
       }
     });
 
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentFolderCreated,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      aggregateId: folder.id,
+      payload: {
+        folderId: folder.id,
+        parentId
+      }
+    });
+
     return this.serializeFolder(folder);
   }
 
@@ -242,8 +374,20 @@ export class WorkspaceDocumentsService {
       position?: number;
     };
   }) {
-    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
     const current = await this.ensureFolder(input.workspaceId, input.folderId);
+
+    if (customerScope.isClient) {
+      requireClientCustomerScope(customerScope);
+      if (current.createdBy !== input.userId) {
+        throw new AppError('Clients can only organize their own folders.', 403, {
+          code: 'DOCUMENT_FOLDER_NOT_MANAGEABLE'
+        });
+      }
+    } else {
+      await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    }
 
     if (input.payload.parentId !== undefined) {
       const nextParentId = input.payload.parentId ?? null;
@@ -251,7 +395,11 @@ export class WorkspaceDocumentsService {
         throw new AppError('A folder cannot be its own parent', 422);
       }
       if (nextParentId) {
-        await this.ensureFolder(input.workspaceId, nextParentId);
+        if (customerScope.isClient) {
+          await this.ensureClientManagedFolder(input.workspaceId, nextParentId, input.userId);
+        } else {
+          await this.ensureFolder(input.workspaceId, nextParentId);
+        }
         const descendantIds = await this.collectDescendantFolderIds(input.workspaceId, current.id);
         if (descendantIds.includes(nextParentId)) {
           throw new AppError('A folder cannot be moved inside one of its subfolders', 422);
@@ -269,13 +417,45 @@ export class WorkspaceDocumentsService {
       }
     });
 
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentFolderUpdated,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      aggregateId: folder.id,
+      payload: {
+        folderId: folder.id,
+        previousParentId: current.parentId,
+        parentId: folder.parentId,
+        renamed: input.payload.name !== undefined
+      }
+    });
+
     return this.serializeFolder(folder);
   }
 
   public async deleteFolder(input: { workspaceId: string; folderId: string; userId: string }) {
-    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
     const current = await this.ensureFolder(input.workspaceId, input.folderId);
     const folderIds = [current.id, ...(await this.collectDescendantFolderIds(input.workspaceId, current.id))];
+
+    if (customerScope.isClient) {
+      requireClientCustomerScope(customerScope);
+      const managedFolders = await this.prisma.workspaceDocumentFolder.findMany({
+        where: {
+          workspaceId: input.workspaceId,
+          id: { in: folderIds }
+        },
+        select: { id: true, createdBy: true }
+      });
+      if (managedFolders.some((folder) => folder.createdBy !== input.userId)) {
+        throw new AppError('Clients can only delete their own folders.', 403, {
+          code: 'DOCUMENT_FOLDER_NOT_MANAGEABLE'
+        });
+      }
+    } else {
+      await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    }
 
     const documents = await this.prisma.workspaceDocument.findMany({
       where: {
@@ -288,6 +468,14 @@ export class WorkspaceDocumentsService {
         }))
       }
     });
+
+    if (customerScope.isClient) {
+      await this.assertClientCanOrganizeDocuments({
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        documents
+      });
+    }
 
     await this.prisma.$transaction([
       ...documents.map((document) => {
@@ -305,6 +493,18 @@ export class WorkspaceDocumentsService {
         where: { id: current.id }
       })
     ]);
+
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentFolderDeleted,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      aggregateId: current.id,
+      payload: {
+        folderId: current.id,
+        folderIds,
+        affectedDocumentIds: documents.map((document) => document.id)
+      }
+    });
   }
 
   public async createDocument(input: {
@@ -319,6 +519,7 @@ export class WorkspaceDocumentsService {
       tags?: string[];
       metadata?: DocumentMetadata;
       position?: number;
+      expectedUpdatedAt?: string;
     };
   }) {
     await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
@@ -364,6 +565,15 @@ export class WorkspaceDocumentsService {
     payload: {
       email?: string;
       emails?: string[];
+      subject?: string;
+      message?: string;
+      includeAttachments?: boolean;
+      selectedAssetIds?: string[];
+      expirationDate?: string | null;
+      requireLogin?: boolean;
+      allowAcceptReject?: boolean;
+      linkedWorkItemId?: string | null;
+      resolvedPreviewSnapshot?: string;
     };
   }) {
     await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
@@ -393,7 +603,7 @@ export class WorkspaceDocumentsService {
 
     const currentMetadata = normalizeDocumentMetadata(kind, current.metadata);
     const publicToken = readPublicToken(currentMetadata) ?? randomBytes(32).toString('base64url');
-    const tokenMetadata = {
+    const tokenMetadata: DocumentMetadata = {
       ...currentMetadata,
       publicToken
     };
@@ -435,7 +645,18 @@ export class WorkspaceDocumentsService {
       sentToEmail: recipientEmails[0],
       sentToEmails: recipientEmails,
       sentBy: input.userId,
-      status: 'sent'
+      status: 'sent',
+      sendSubject: input.payload.subject,
+      sendMessage: input.payload.message,
+      includeAttachments: input.payload.includeAttachments ?? true,
+      selectedAssetIds: input.payload.selectedAssetIds ?? [],
+      publicTokenExpiresAt: input.payload.expirationDate ?? tokenMetadata.publicTokenExpiresAt,
+      requireLogin: input.payload.requireLogin ?? true,
+      allowAcceptReject: input.payload.allowAcceptReject ?? true,
+      linkedWorkItemId: input.payload.linkedWorkItemId ?? tokenMetadata.linkedWorkItemId,
+      resolvedPreviewSnapshot: input.payload.resolvedPreviewSnapshot,
+      sentContentHash: hashDocumentContent(current.content),
+      sentVersion: current.updatedAt.toISOString()
     };
     const document = await this.prisma.workspaceDocument.update({
       where: { id: current.id },
@@ -507,13 +728,17 @@ export class WorkspaceDocumentsService {
           })
         )
       : false;
+    const revealedMetadata = canRevealSensitiveData ? { ...metadata } : {};
+    if (canRevealSensitiveData && typeof metadata.logoAssetId === 'string') {
+      revealedMetadata.clientLogoUrl = buildPublicAssetUrl(input.token, metadata.logoAssetId);
+    }
 
     return {
       title: document.title,
       content: canRevealSensitiveData ? document.content : '',
       kind,
       status: normalizeCommercialStatus(kind, metadata),
-      metadata: canRevealSensitiveData ? metadata : {},
+      metadata: revealedMetadata,
       masked: !canRevealSensitiveData,
       workspace: {
         name: document.workspace.name
@@ -561,11 +786,15 @@ export class WorkspaceDocumentsService {
     }
 
     const now = new Date();
+    const contentHash = hashDocumentContent(current.content);
     const auditMetadata = {
       acceptedByEmail: user.email,
       acceptedByUserId: user.id,
       acceptedIp: input.requestContext?.ip ?? null,
-      acceptedUserAgent: input.requestContext?.userAgent ?? null
+      acceptedUserAgent: input.requestContext?.userAgent ?? null,
+      decisionSource: 'public',
+      decisionContentHash: contentHash,
+      decisionVersion: current.updatedAt.toISOString()
     };
     let nextStatus: CommercialDocumentStatus;
     let nextMetadata: DocumentMetadata;
@@ -579,7 +808,10 @@ export class WorkspaceDocumentsService {
         rejectedByEmail: user.email,
         rejectedByUserId: user.id,
         rejectedIp: input.requestContext?.ip ?? null,
-        rejectedUserAgent: input.requestContext?.userAgent ?? null
+        rejectedUserAgent: input.requestContext?.userAgent ?? null,
+        decisionSource: 'public',
+        decisionContentHash: contentHash,
+        decisionVersion: current.updatedAt.toISOString()
       };
     } else if (kind === 'proposal' && input.decision === 'approve') {
       nextStatus = 'approved';
@@ -617,23 +849,33 @@ export class WorkspaceDocumentsService {
       previousStatus: currentStatus,
       nextStatus
     });
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentDecisionRecorded,
+      workspaceId: current.workspaceId,
+      userId: user.id,
+      aggregateId: current.id,
+      payload: {
+        documentId: current.id,
+        decision: input.decision,
+        source: 'public',
+        status: nextStatus,
+        contentHash,
+        version: current.updatedAt.toISOString(),
+        userAgent: input.requestContext?.userAgent ?? null,
+        ip: input.requestContext?.ip ?? null
+      }
+    });
 
     return this.serialize(document);
   }
 
-  public async updateDocument(input: {
+  public async decideInternalCommercialDocument(input: {
     workspaceId: string;
     documentId: string;
     userId: string;
     payload: {
-      title?: string;
-      content?: string;
-      kind?: DocumentKind;
-      linkedEntityType?: DocumentLinkedEntityType | null;
-      linkedEntityId?: string | null;
-      tags?: string[];
-      metadata?: DocumentMetadata;
-      position?: number;
+      decision: DocumentDecision;
+      reason?: string | null;
     };
   }) {
     await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
@@ -649,6 +891,303 @@ export class WorkspaceDocumentsService {
       throw new AppError('Workspace document not found', 404);
     }
 
+    const kind = normalizeDocumentKind(current.kind);
+    if (kind === 'wiki') {
+      throw new AppError('Invalid decision for document type.', 422, { code: 'INVALID_DOCUMENT_DECISION' });
+    }
+
+    const metadata = normalizeDocumentMetadata(kind, current.metadata);
+    const currentStatus = normalizeCommercialStatus(kind, metadata);
+    if (currentStatus === 'approved' || currentStatus === 'accepted' || currentStatus === 'signed') {
+      throw new AppError('Document has already been accepted.', 409, { code: 'DOCUMENT_ALREADY_ACCEPTED' });
+    }
+    if (currentStatus === 'rejected') {
+      throw new AppError('Document has already been rejected.', 409, { code: 'DOCUMENT_ALREADY_REJECTED' });
+    }
+
+    const now = new Date();
+    const contentHash = hashDocumentContent(current.content);
+    let nextStatus: CommercialDocumentStatus;
+    let nextMetadata: DocumentMetadata;
+
+    if (input.payload.decision === 'reject') {
+      nextStatus = 'rejected';
+      nextMetadata = {
+        ...metadata,
+        status: nextStatus,
+        rejectedAt: now.toISOString(),
+        rejectedByUserId: input.userId,
+        rejectedReason: input.payload.reason ?? null,
+        decisionSource: 'internal',
+        decisionContentHash: contentHash,
+        decisionVersion: current.updatedAt.toISOString()
+      };
+    } else if (kind === 'proposal' && input.payload.decision === 'approve') {
+      nextStatus = 'approved';
+      nextMetadata = {
+        ...metadata,
+        status: nextStatus,
+        approvedAt: now.toISOString(),
+        acceptedByUserId: input.userId,
+        decisionSource: 'internal',
+        decisionContentHash: contentHash,
+        decisionVersion: current.updatedAt.toISOString()
+      };
+    } else if (kind === 'contract' && (input.payload.decision === 'accept' || input.payload.decision === 'sign')) {
+      nextStatus = input.payload.decision === 'sign' ? 'signed' : 'accepted';
+      nextMetadata = {
+        ...metadata,
+        status: nextStatus,
+        acceptedAt: now.toISOString(),
+        signedAt: nextStatus === 'signed' ? now.toISOString() : metadata.signedAt,
+        acceptedByUserId: input.userId,
+        decisionSource: 'internal',
+        decisionContentHash: contentHash,
+        decisionVersion: current.updatedAt.toISOString()
+      };
+    } else {
+      throw new AppError('Invalid decision for document type.', 422, { code: 'INVALID_DOCUMENT_DECISION' });
+    }
+
+    const document = await this.prisma.workspaceDocument.update({
+      where: { id: current.id },
+      data: {
+        metadata: toInputJson(nextMetadata),
+        updatedBy: input.userId
+      }
+    });
+
+    await this.publishDocumentStatusEvent({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      document,
+      previousStatus: currentStatus,
+      nextStatus
+    });
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentDecisionRecorded,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      aggregateId: current.id,
+      payload: {
+        documentId: current.id,
+        decision: input.payload.decision,
+        source: 'internal',
+        status: nextStatus,
+        reason: input.payload.reason ?? null,
+        contentHash,
+        version: current.updatedAt.toISOString()
+      }
+    });
+
+    return this.serialize(document);
+  }
+
+  public async listDocumentAssets(input: { workspaceId: string; documentId: string; userId: string }) {
+    await this.ensureDocumentReadableByUser(input);
+
+    const assets = await this.prisma.documentAsset.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        documentId: input.documentId
+      },
+      orderBy: [{ createdAt: 'desc' }]
+    });
+
+    return assets.map((asset) => this.serializeAsset(asset));
+  }
+
+  public async uploadDocumentAsset(input: {
+    workspaceId: string;
+    documentId: string;
+    userId: string;
+    payload: {
+      type: DocumentAssetType;
+      filename: string;
+      contentType: string;
+      dataBase64?: string;
+      buffer?: Buffer;
+    };
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    await this.ensureDocument(input.workspaceId, input.documentId);
+
+    const contentType = input.payload.contentType.trim().toLowerCase();
+    this.assertAllowedAsset(input.payload.type, contentType);
+
+    let buffer = input.payload.buffer;
+    if (!buffer) {
+      if (!input.payload.dataBase64) {
+        throw new AppError('Invalid asset payload.', 422);
+      }
+      try {
+        buffer = Buffer.from(input.payload.dataBase64, 'base64');
+      } catch {
+        throw new AppError('Invalid asset payload.', 422);
+      }
+    }
+
+    if (buffer.length === 0) {
+      throw new AppError('Asset file is empty.', 422);
+    }
+
+    const maxSize = maxAssetSizeByType[input.payload.type];
+    if (buffer.length > maxSize) {
+      throw new AppError('Asset file is too large.', 413, { maxSize });
+    }
+
+    const assetId = randomUUID();
+    const filename = this.safeFilename(input.payload.filename);
+    const storageKey = `${input.workspaceId}/${input.documentId}/${assetId}-${filename}`;
+    const absolutePath = this.resolveAssetPath(storageKey);
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+    await fs.writeFile(absolutePath, buffer);
+
+    const asset = await this.prisma.documentAsset.create({
+      data: {
+        id: assetId,
+        workspaceId: input.workspaceId,
+        documentId: input.documentId,
+        type: input.payload.type,
+        storageKey,
+        filename,
+        contentType,
+        size: buffer.length,
+        checksum: createHash('sha256').update(buffer).digest('hex'),
+        uploadedBy: input.userId
+      }
+    });
+
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentAssetUploaded,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      aggregateId: input.documentId,
+      payload: {
+        documentId: input.documentId,
+        assetId: asset.id,
+        assetType: asset.type,
+        filename: asset.filename,
+        contentType: asset.contentType,
+        size: asset.size,
+        checksum: asset.checksum
+      }
+    });
+
+    return this.serializeAsset(asset);
+  }
+
+  public async getDocumentAssetContent(input: {
+    workspaceId: string;
+    documentId: string;
+    assetId: string;
+    userId: string;
+  }) {
+    await this.ensureDocumentReadableByUser(input);
+    const asset = await this.ensureAsset(input.workspaceId, input.documentId, input.assetId);
+    return {
+      ...this.serializeAsset(asset),
+      absolutePath: this.resolveAssetPath(asset.storageKey)
+    };
+  }
+
+  public async getPublicDocumentAssetContent(input: {
+    token: string;
+    assetId: string;
+    requestingUserId?: string | null;
+    requestingUserEmail?: string | null;
+  }) {
+    const document = await this.findPublicDocumentByToken(input.token);
+    await this.assertPublicDocumentCanReveal({
+      document,
+      requestingUserId: input.requestingUserId,
+      requestingUserEmail: input.requestingUserEmail
+    });
+    const asset = await this.ensureAsset(document.workspaceId, document.id, input.assetId);
+    return {
+      ...this.serializeAsset(asset, input.token),
+      absolutePath: this.resolveAssetPath(asset.storageKey)
+    };
+  }
+
+  public async deleteDocumentAsset(input: {
+    workspaceId: string;
+    documentId: string;
+    assetId: string;
+    userId: string;
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    const asset = await this.ensureAsset(input.workspaceId, input.documentId, input.assetId);
+    await this.prisma.documentAsset.delete({ where: { id: asset.id } });
+    await fs.rm(this.resolveAssetPath(asset.storageKey), { force: true });
+    await this.publishDocumentationEvent({
+      name: DomainEventNames.DocumentAssetDeleted,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      aggregateId: input.documentId,
+      payload: {
+        documentId: input.documentId,
+        assetId: asset.id,
+        assetType: asset.type,
+        filename: asset.filename
+      }
+    });
+  }
+
+  public async updateDocument(input: {
+    workspaceId: string;
+    documentId: string;
+    userId: string;
+    payload: {
+      title?: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType | null;
+      linkedEntityId?: string | null;
+      tags?: string[];
+      metadata?: DocumentMetadata;
+      position?: number;
+      expectedUpdatedAt?: string;
+    };
+  }) {
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+
+    const current = await this.prisma.workspaceDocument.findFirst({
+      where: {
+        id: input.documentId,
+        workspaceId: input.workspaceId
+      }
+    });
+
+    if (!current) {
+      throw new AppError('Workspace document not found', 404);
+    }
+
+    const isClientFolderMove = customerScope.isClient && this.isClientFolderMovePayload(input.payload, current.metadata);
+    if (customerScope.isClient) {
+      requireClientCustomerScope(customerScope);
+      if (!isClientFolderMove) {
+        throw new AppError('Clients can only organize visible documents.', 403, {
+          code: 'DOCUMENT_CLIENT_UPDATE_NOT_ALLOWED'
+        });
+      }
+      await this.ensureDocumentReadableByUser(input);
+      const targetFolderId = readFolderId(input.payload.metadata);
+      if (targetFolderId) {
+        await this.ensureClientManagedFolder(input.workspaceId, targetFolderId, input.userId);
+      }
+    } else {
+      await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+    }
+
+    if (input.payload.expectedUpdatedAt && current.updatedAt.toISOString() !== input.payload.expectedUpdatedAt) {
+      throw new AppError('Document has changed since this draft was loaded.', 409, {
+        code: 'DOCUMENT_VERSION_CONFLICT',
+        currentUpdatedAt: current.updatedAt.toISOString()
+      });
+    }
+
     const previousStatus = readMetadataStatus(current.metadata);
     const nextKind = normalizeDocumentKind(input.payload.kind ?? current.kind);
     const metadata =
@@ -657,6 +1196,17 @@ export class WorkspaceDocumentsService {
     if (folderId) {
       await this.ensureFolder(input.workspaceId, folderId);
     }
+    const contentChanged = input.payload.content !== undefined && input.payload.content !== current.content;
+    const titleChanged = input.payload.title !== undefined && input.payload.title !== current.title;
+    const nextMetadata =
+      metadata && (contentChanged || titleChanged) && isTerminalCommercialStatus(previousStatus)
+        ? {
+            ...metadata,
+            status: 'sent',
+            decisionInvalidatedAt: new Date().toISOString(),
+            previousDecisionStatus: previousStatus
+          }
+        : metadata;
     const document = await this.prisma.workspaceDocument.update({
       where: { id: current.id },
       data: {
@@ -666,7 +1216,7 @@ export class WorkspaceDocumentsService {
         linkedEntityType: input.payload.linkedEntityType,
         linkedEntityId: input.payload.linkedEntityId,
         tags: input.payload.tags,
-        metadata: metadata === undefined ? undefined : toInputJson(metadata),
+        metadata: nextMetadata === undefined ? undefined : toInputJson(nextMetadata),
         position: input.payload.position,
         updatedBy: input.userId
       }
@@ -679,8 +1229,279 @@ export class WorkspaceDocumentsService {
       previousStatus,
       nextStatus: readMetadataStatus(document.metadata)
     });
+    const previousFolderId = readFolderId(current.metadata);
+    const nextFolderId = readFolderId(document.metadata);
+    if (previousFolderId !== nextFolderId) {
+      await this.publishDocumentationEvent({
+        name: DomainEventNames.DocumentMoved,
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        aggregateId: document.id,
+        payload: {
+          documentId: document.id,
+          previousFolderId,
+          folderId: nextFolderId,
+          source: customerScope.isClient ? 'client' : 'internal'
+        }
+      });
+    }
 
     return this.serialize(document);
+  }
+
+  private buildDocumentListWhere(input: {
+    workspaceId: string;
+    filters: DocumentListFilters;
+    isClient: boolean;
+    customerIds: string[];
+    clientItemIds: string[];
+  }): Prisma.WorkspaceDocumentWhereInput {
+    const filters = input.filters;
+    const and: Prisma.WorkspaceDocumentWhereInput[] = [{ workspaceId: input.workspaceId }];
+    const kind = filters.kind ?? filters.type;
+    const status = filters.commercialStatus ?? filters.status;
+
+    if (kind) {
+      and.push({ kind });
+    }
+
+    if (filters.search) {
+      const search = filters.search.trim();
+      and.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { content: { contains: search, mode: 'insensitive' } },
+          { tags: { has: search } }
+        ]
+      });
+    }
+
+    if (filters.folderId !== undefined) {
+      if (filters.folderId) {
+        and.push({ metadata: { path: ['folderId'], equals: filters.folderId } });
+      } else {
+        and.push({
+          NOT: {
+            metadata: {
+              path: ['folderId'],
+              not: Prisma.JsonNull
+            }
+          }
+        });
+      }
+    }
+
+    if (filters.tags?.length) {
+      and.push({ tags: { hasEvery: filters.tags } });
+    }
+
+    if (status) {
+      and.push({ metadata: { path: ['status'], equals: status } });
+    }
+
+    if (filters.visibility) {
+      and.push({ metadata: { path: ['visibility'], equals: filters.visibility } });
+    }
+
+    if (filters.linkedWorkItemId) {
+      and.push({
+        OR: [
+          { linkedEntityType: 'work_item', linkedEntityId: filters.linkedWorkItemId },
+          { itemLinks: { some: { itemId: filters.linkedWorkItemId } } },
+          { metadata: { path: ['linkedWorkItemId'], equals: filters.linkedWorkItemId } },
+          { metadata: { path: ['workItemId'], equals: filters.linkedWorkItemId } }
+        ]
+      });
+    }
+
+    if (filters.createdBy) {
+      and.push({ createdBy: filters.createdBy });
+    }
+
+    if (filters.updatedAtFrom || filters.updatedAtTo) {
+      and.push({
+        updatedAt: {
+          ...(filters.updatedAtFrom ? { gte: filters.updatedAtFrom } : {}),
+          ...(filters.updatedAtTo ? { lte: filters.updatedAtTo } : {})
+        }
+      });
+    }
+
+    if (input.isClient) {
+      and.push({
+        kind: {
+          in: ['proposal', 'contract']
+        },
+        OR: [
+          ...input.customerIds.flatMap((customerId) => [
+            {
+              linkedEntityType: 'customer',
+              linkedEntityId: customerId
+            },
+            {
+              metadata: {
+                path: ['customerId'],
+                equals: customerId
+              }
+            },
+            {
+              metadata: {
+                path: ['customer', 'id'],
+                equals: customerId
+              }
+            }
+          ]),
+          ...(input.clientItemIds.length > 0
+            ? [
+                { linkedEntityType: 'work_item', linkedEntityId: { in: input.clientItemIds } },
+                { itemLinks: { some: { itemId: { in: input.clientItemIds } } } }
+              ]
+            : [])
+        ]
+      });
+    }
+
+    return and.length === 1 ? and[0] : { AND: and };
+  }
+
+  private buildDocumentListOrderBy(filters: DocumentListFilters): Prisma.WorkspaceDocumentOrderByWithRelationInput[] {
+    switch (filters.sort) {
+      case 'updated_asc':
+        return [{ updatedAt: 'asc' }, { id: 'asc' }];
+      case 'created_desc':
+        return [{ createdAt: 'desc' }, { id: 'asc' }];
+      case 'created_asc':
+        return [{ createdAt: 'asc' }, { id: 'asc' }];
+      case 'title_asc':
+        return [{ title: 'asc' }, { id: 'asc' }];
+      case 'updated_desc':
+        return [{ updatedAt: 'desc' }, { id: 'asc' }];
+      case 'position_asc':
+      default:
+        return [{ position: 'asc' }, { updatedAt: 'desc' }, { id: 'asc' }];
+    }
+  }
+
+  private isClientFolderMovePayload(
+    payload: {
+      title?: string;
+      content?: string;
+      kind?: DocumentKind;
+      linkedEntityType?: DocumentLinkedEntityType | null;
+      linkedEntityId?: string | null;
+      tags?: string[];
+      metadata?: DocumentMetadata;
+      position?: number;
+      expectedUpdatedAt?: string;
+    },
+    currentMetadata: unknown
+  ): boolean {
+    const changedKeys = Object.entries(payload).filter(([key, value]) => key !== 'expectedUpdatedAt' && value !== undefined);
+    if (changedKeys.length !== 1 || !payload.metadata) {
+      return false;
+    }
+
+    const previousMetadata = normalizeDocumentMetadata('wiki', currentMetadata);
+    const nextMetadata = normalizeDocumentMetadata('wiki', payload.metadata);
+    const previousFolderId = readFolderId(previousMetadata);
+    const nextFolderId = readFolderId(nextMetadata);
+    if (previousFolderId === nextFolderId) {
+      return true;
+    }
+
+    const sanitizedPrevious = { ...previousMetadata };
+    const sanitizedNext = { ...nextMetadata };
+    delete sanitizedPrevious.folderId;
+    delete sanitizedNext.folderId;
+
+    return JSON.stringify(sanitizedPrevious) === JSON.stringify(sanitizedNext);
+  }
+
+  private async ensureClientManagedFolder(workspaceId: string, folderId: string, userId: string) {
+    const folder = await this.ensureFolder(workspaceId, folderId);
+    if (folder.createdBy !== userId) {
+      throw new AppError('Clients can only organize their own folders.', 403, {
+        code: 'DOCUMENT_FOLDER_NOT_MANAGEABLE'
+      });
+    }
+    return folder;
+  }
+
+  private async assertClientCanOrganizeDocuments(input: {
+    workspaceId: string;
+    userId: string;
+    documents: Array<{ id: string }>;
+  }) {
+    await Promise.all(
+      input.documents.map((document) =>
+        this.ensureDocumentReadableByUser({
+          workspaceId: input.workspaceId,
+          documentId: document.id,
+          userId: input.userId
+        })
+      )
+    );
+  }
+
+  private async ensureDocumentReadableByUser(input: { workspaceId: string; documentId: string; userId: string }) {
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    const customerIds = requireClientCustomerScope(customerScope);
+
+    let clientItemIds: string[] = [];
+    if (customerScope.isClient && customerIds.length > 0) {
+      const clientItems = await this.prisma.item.findMany({
+        where: {
+          workspaceId: input.workspaceId,
+          OR: customerIds.flatMap((customerId) => [
+            { fields: { path: ['customerId'], equals: customerId } },
+            { metadata: { path: ['customerId'], equals: customerId } },
+            { metadata: { path: ['clientAnchorCustomerId'], equals: customerId } }
+          ])
+        },
+        select: { id: true }
+      });
+      clientItemIds = clientItems.map((item) => item.id);
+    }
+
+    const document = await this.prisma.workspaceDocument.findFirst({
+      where: {
+        id: input.documentId,
+        ...this.buildDocumentListWhere({
+          workspaceId: input.workspaceId,
+          filters: {},
+          isClient: customerScope.isClient,
+          customerIds,
+          clientItemIds
+        })
+      },
+      select: { id: true }
+    });
+
+    if (!document) {
+      throw new AppError('Workspace document not found', 404);
+    }
+  }
+
+  private async assertPublicDocumentCanReveal(input: {
+    document: Awaited<ReturnType<WorkspaceDocumentsService['findPublicDocumentByToken']>>;
+    requestingUserId?: string | null;
+    requestingUserEmail?: string | null;
+  }) {
+    const kind = normalizeDocumentKind(input.document.kind);
+    const metadata = normalizeDocumentMetadata(kind, input.document.metadata);
+    const recipientEmails = readRecipientEmails(metadata);
+    const requestingUserEmail = normalizeEmail(input.requestingUserEmail ?? '');
+    const clientUserId = typeof metadata.clientUserId === 'string' ? metadata.clientUserId.trim() : '';
+    const canRevealSensitiveData = Boolean(
+      input.requestingUserId &&
+        ((requestingUserEmail && recipientEmails.includes(requestingUserEmail)) ||
+          (clientUserId && clientUserId === input.requestingUserId))
+    );
+
+    if (!canRevealSensitiveData) {
+      throw new AppError('Authentication required.', 401, { code: 'DOCUMENT_AUTH_REQUIRED' });
+    }
   }
 
   private async findPublicDocumentByToken(token: string) {
@@ -723,6 +1544,27 @@ export class WorkspaceDocumentsService {
     }
 
     return document;
+  }
+
+  private async publishDocumentationEvent(input: {
+    name: (typeof DomainEventNames)[keyof typeof DomainEventNames];
+    workspaceId: string;
+    userId: string;
+    aggregateId: string;
+    payload: Record<string, unknown>;
+  }) {
+    await this.eventPublisher.publish({
+      id: randomUUID(),
+      name: input.name,
+      aggregateType: 'document',
+      aggregateId: input.aggregateId,
+      occurredAt: new Date(),
+      payload: {
+        workspaceId: input.workspaceId,
+        requestedBy: input.userId,
+        ...input.payload
+      }
+    });
   }
 
   private async publishDocumentCreatedEvent(input: {
@@ -867,6 +1709,63 @@ export class WorkspaceDocumentsService {
     });
   }
 
+  private async ensureDocument(workspaceId: string, documentId: string) {
+    const document = await this.prisma.workspaceDocument.findFirst({
+      where: { id: documentId, workspaceId },
+      select: { id: true }
+    });
+
+    if (!document) {
+      throw new AppError('Workspace document not found', 404);
+    }
+
+    return document;
+  }
+
+  private async ensureAsset(workspaceId: string, documentId: string, assetId: string) {
+    const asset = await this.prisma.documentAsset.findFirst({
+      where: {
+        id: assetId,
+        workspaceId,
+        documentId
+      }
+    });
+
+    if (!asset) {
+      throw new AppError('Document asset not found', 404);
+    }
+
+    return asset;
+  }
+
+  private resolveAssetPath(storageKey: string): string {
+    const root = path.resolve(process.cwd(), env.DOCUMENT_ASSET_STORAGE_DIR);
+    const absolutePath = path.resolve(root, storageKey);
+    if (!absolutePath.startsWith(root)) {
+      throw new AppError('Invalid asset storage key.', 500);
+    }
+    return absolutePath;
+  }
+
+  private safeFilename(filename: string): string {
+    const normalized = filename
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .slice(0, 160);
+    return normalized.length > 0 ? normalized : 'asset';
+  }
+
+  private assertAllowedAsset(type: DocumentAssetType, contentType: string): void {
+    const allowed = type === 'logo' ? allowedLogoContentTypes : allowedAttachmentContentTypes;
+    if (!allowed.has(contentType)) {
+      throw new AppError('Asset content type is not allowed.', 422, {
+        code: 'DOCUMENT_ASSET_TYPE_NOT_ALLOWED',
+        contentType
+      });
+    }
+  }
+
   private async ensureFolder(workspaceId: string, folderId: string) {
     const folder = await this.prisma.workspaceDocumentFolder.findFirst({
       where: { id: folderId, workspaceId }
@@ -912,6 +1811,35 @@ export class WorkspaceDocumentsService {
       updatedBy: folder.updatedBy,
       createdAt: folder.createdAt,
       updatedAt: folder.updatedAt
+    };
+  }
+
+  private serializeAsset(asset: {
+    id: string;
+    workspaceId: string;
+    documentId: string;
+    type: string;
+    storageKey: string;
+    filename: string;
+    contentType: string;
+    size: number;
+    checksum: string;
+    uploadedBy: string;
+    createdAt: Date;
+  }, publicToken?: string) {
+    return {
+      id: asset.id,
+      workspaceId: asset.workspaceId,
+      documentId: asset.documentId,
+      type: asset.type,
+      storageKey: asset.storageKey,
+      filename: asset.filename,
+      contentType: asset.contentType,
+      size: asset.size,
+      checksum: asset.checksum,
+      uploadedBy: asset.uploadedBy,
+      createdAt: asset.createdAt,
+      contentUrl: publicToken ? buildPublicAssetUrl(publicToken, asset.id) : buildInternalAssetUrl(asset)
     };
   }
 

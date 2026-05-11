@@ -1,6 +1,6 @@
 import type { ComponentProps, KeyboardEvent, Ref } from "react";
 import type { DocumentationAssistantMode, WorkspaceDocument } from "@/modules/workspace";
-import { AppIcon, Button, EmptyState, StatusBadge, Textarea } from "@/shared/ui";
+import { AppIcon, AppPopover, Button, EmptyState, StatusBadge, Textarea } from "@/shared/ui";
 import {
   formatRelativeDate,
   MODE_LABELS,
@@ -33,6 +33,12 @@ interface DocumentationAssistantPanelProps {
   onPromptChange: (value: string) => void;
   onPromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onRunAssistant: () => void;
+  pendingSuggestion?: {
+    action: "replace_document" | "append_document";
+    content: string;
+  } | null;
+  onApplySuggestion: () => void;
+  onDismissSuggestion: () => void;
   onSemanticContextChange: (enabled: boolean) => void;
 }
 
@@ -62,6 +68,9 @@ export function DocumentationAssistantPanel({
   onPromptChange,
   onPromptKeyDown,
   onRunAssistant,
+  pendingSuggestion,
+  onApplySuggestion,
+  onDismissSuggestion,
   onSemanticContextChange
 }: DocumentationAssistantPanelProps) {
   return (
@@ -134,24 +143,29 @@ export function DocumentationAssistantPanel({
             <AppIcon className="documentation-page__mode-chip-icon" name="wrench" />
             {MODE_LABELS.maintain}
           </button>
-          <button
-            type="button"
-            className="documentation-page__mode-info-button"
-            aria-label="Mais informacoes sobre os modos do chat"
-            aria-expanded={isModeInfoOpen}
-            onClick={onToggleModeInfo}
+          <AppPopover
+            open={isModeInfoOpen}
+            onOpenChange={(open) => {
+              if (open !== isModeInfoOpen) onToggleModeInfo();
+            }}
+            contentClassName="documentation-page__mode-info-popover"
+            trigger={
+              <button
+                type="button"
+                className="documentation-page__mode-info-button"
+                aria-label="Mais informacoes sobre os modos do chat"
+                aria-expanded={isModeInfoOpen}
+              >
+                <AppIcon name="info" />
+              </button>
+            }
           >
-            <AppIcon name="info" />
-          </button>
-          {isModeInfoOpen ? (
-            <div className="documentation-page__mode-info-popover" role="status">
               <strong>Modos do Chat IA</strong>
               <p>
                 Chat responde duvidas sobre a doc. Escrita cria novos trechos em markdown. Manutencao revisa,
                 corrige ou atualiza o conteudo existente.
               </p>
-            </div>
-          ) : null}
+          </AppPopover>
         </div>
 
         <div ref={messagesRef} className="documentation-page__messages">
@@ -160,7 +174,7 @@ export function DocumentationAssistantPanel({
               className="documentation-page__messages-empty-state"
               icon={<span className="documentation-page__messages-empty-avatar">AI</span>}
               title="Vamos comecar esta doc?"
-              description={activeDoc ? "Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu atualizo o conteudo da doc automaticamente." : "Digite livremente no chat para analisar os docs desta pasta."}
+              description={activeDoc ? "Digite livremente no chat. Se pedir para reescrever, revisar ou melhorar, eu preparo uma sugestao para voce aplicar." : "Digite livremente no chat para analisar os docs desta pasta."}
             />
           ) : (
             activeMessages.map((message) => (
@@ -201,6 +215,24 @@ export function DocumentationAssistantPanel({
             </article>
           ) : null}
         </div>
+
+        {pendingSuggestion ? (
+          <section className="documentation-page__assistant-suggestion" aria-label="Sugestao pendente da IA">
+            <header>
+              <strong>{pendingSuggestion.action === "replace_document" ? "Substituir conteudo" : "Anexar trecho"}</strong>
+              <span>Revise antes de aplicar</span>
+            </header>
+            <pre>{pendingSuggestion.content.slice(0, 900)}</pre>
+            <div>
+              <Button type="button" variant="primary" size="sm" onClick={onApplySuggestion}>
+                Aplicar sugestao
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={onDismissSuggestion}>
+                Descartar
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         <div className="documentation-page__composer">
           <div className="documentation-page__composer-shell">
@@ -243,7 +275,7 @@ export function DocumentationAssistantPanel({
         </div>
 
         <div className="documentation-page__assistant-footer">
-          <p>Se voce pedir para reescrever ou editar, a IA atualiza a doc automaticamente.</p>
+          <p>Se voce pedir para reescrever ou editar, a IA prepara uma sugestao. O documento so muda quando voce aplica.</p>
         </div>
       </aside>
     </>

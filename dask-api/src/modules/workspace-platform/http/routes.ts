@@ -1,6 +1,8 @@
 ﻿import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import type { Request } from 'express';
 import { MembershipRole, Prisma, type PrismaClient } from '@prisma/client';
+import { AppError } from '@/core/errors/app-error';
 import { asyncHandler } from '@/core/http/async-handler';
 import {
   requireWorkspaceModule,
@@ -42,10 +44,14 @@ import {
   patchPreferencesDto,
   resetWorkspaceTemplateDto,
   patchTagDto,
+  patchWorkItemScheduleDto,
+  bulkUpdateWorkItemsDto,
   patchWorkflowStateDto,
   patchWorkspaceMemberAccessDto,
   patchWorkItemCustomFieldValueDto,
   patchWorkItemDto,
+  workItemTypeTransformationDto,
+  convertWorkItemToCustomerDto,
   tagParamsDto,
   transitionWorkItemDto,
   workspaceAccessGroupParamsDto,
@@ -55,6 +61,8 @@ import {
   workspaceDocumentParamsDto,
   workspaceDocumentFolderParamsDto,
   workItemParamsDto,
+  workItemListQueryDto,
+  workItemListConfigDto,
   workItemDocumentParamsDto,
   workItemTagParamsDto,
   workspaceIdParamsDto,
@@ -63,7 +71,11 @@ import {
   createWorkspaceDocumentFolderDto,
   patchWorkspaceDocumentFolderDto,
   patchWorkspaceDocumentDto,
-  sendWorkspaceDocumentDto
+  decideWorkspaceDocumentDto,
+  sendWorkspaceDocumentDto,
+  uploadWorkspaceDocumentAssetDto,
+  workspaceDocumentAssetParamsDto,
+  workspaceDocumentListQueryDto
 } from '@/modules/workspace-platform/http/dto';
 import { permissionCatalog, rolePermissionPresets } from '@/modules/identity/domain/permissions';
 import {
@@ -72,9 +84,114 @@ import {
   resolveWorkspaceAccessPolicy,
   upsertWorkspaceAccessControlConfig,
   workspaceModuleCatalog,
-  type WorkspaceAccessGroup,
+type WorkspaceAccessGroup,
   type WorkspaceModuleKey
 } from '@/modules/identity/domain/access-policy';
+
+type MultipartAssetPayload = {
+  type: 'logo' | 'attachment' | 'generated_pdf' | 'exported_html';
+  filename: string;
+  contentType: string;
+  buffer: Buffer;
+};
+
+const maxMultipartAssetBytes = 30 * 1024 * 1024;
+const multipartAssetTypes = new Set(['logo', 'attachment', 'generated_pdf', 'exported_html']);
+
+function parseMultipartHeaderValue(value: string, key: string): string {
+  const match = new RegExp(`${key}="([^"]*)"`).exec(value);
+  return match?.[1] ?? '';
+}
+
+async function readRequestBuffer(req: Request, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > maxBytes) {
+      throw new AppError('Asset file is too large.', 413, { maxSize: maxBytes });
+    }
+    chunks.push(buffer);
+  }
+
+  return Buffer.concat(chunks);
+}
+
+async function readMultipartAssetPayload(req: Request): Promise<MultipartAssetPayload> {
+  const contentType = req.headers['content-type'];
+  const boundaryMatch = typeof contentType === 'string' ? /boundary=([^;]+)/i.exec(contentType) : null;
+  const boundary = boundaryMatch?.[1]?.trim();
+  if (!boundary) {
+    throw new AppError('Multipart boundary is required.', 400);
+  }
+
+  const raw = (await readRequestBuffer(req, maxMultipartAssetBytes)).toString('latin1');
+  const fields = new Map<string, string>();
+  let file: { filename: string; contentType: string; buffer: Buffer } | null = null;
+
+  for (const part of raw.split(`--${boundary}`)) {
+    if (!part || part === '--\r\n' || part === '--') {
+      continue;
+    }
+
+    const normalized = part.startsWith('\r\n') ? part.slice(2) : part;
+    const separatorIndex = normalized.indexOf('\r\n\r\n');
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const rawHeaders = normalized.slice(0, separatorIndex);
+    let body = normalized.slice(separatorIndex + 4);
+    if (body.endsWith('\r\n')) {
+      body = body.slice(0, -2);
+    }
+    if (body.endsWith('--')) {
+      body = body.slice(0, -2);
+    }
+
+    const disposition = rawHeaders
+      .split('\r\n')
+      .find((header) => header.toLowerCase().startsWith('content-disposition:'));
+    if (!disposition) {
+      continue;
+    }
+
+    const name = parseMultipartHeaderValue(disposition, 'name');
+    const filename = parseMultipartHeaderValue(disposition, 'filename');
+    const partContentType = rawHeaders
+      .split('\r\n')
+      .find((header) => header.toLowerCase().startsWith('content-type:'))
+      ?.split(':')
+      .slice(1)
+      .join(':')
+      .trim();
+
+    if (filename && (name === 'file' || name === 'asset')) {
+      file = {
+        filename,
+        contentType: partContentType || 'application/octet-stream',
+        buffer: Buffer.from(body, 'latin1')
+      };
+    } else if (name) {
+      fields.set(name, body.trim());
+    }
+  }
+
+  if (!file) {
+    throw new AppError('Asset file is required.', 422);
+  }
+
+  return {
+    type: multipartAssetTypes.has(fields.get('type') ?? '')
+      ? (fields.get('type') as MultipartAssetPayload['type'])
+      : 'attachment',
+    filename: fields.get('filename') || file.filename,
+    contentType: fields.get('contentType') || file.contentType,
+    buffer: file.buffer
+  };
+}
 
 export const buildWorkspacePlatformRoutes = (deps: {
   prisma: PrismaClient;
@@ -95,6 +212,14 @@ export const buildWorkspacePlatformRoutes = (deps: {
   const requireItemRead = requireWorkspacePermission(deps.authorizationService, 'item.read');
   const requireItemWrite = [
     requireWorkspacePermission(deps.authorizationService, 'item.write'),
+    requireWorkspaceRole(MembershipRole.MEMBER)
+  ];
+  const requireLeadTransform = [
+    requireWorkspacePermission(deps.authorizationService, 'lead.transform'),
+    requireWorkspaceRole(MembershipRole.MEMBER)
+  ];
+  const requireLeadConvertToCustomer = [
+    requireWorkspacePermission(deps.authorizationService, 'lead.convert_to_customer'),
     requireWorkspaceRole(MembershipRole.MEMBER)
   ];
 
@@ -621,6 +746,19 @@ export const buildWorkspacePlatformRoutes = (deps: {
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const query = customerListQueryDto.parse(req.query ?? {});
+      if (query.paged || query.limit || query.cursor) {
+        const page = await deps.workspaceCustomersService.listCustomersPage({
+          workspaceId,
+          userId: req.auth!.userId,
+          search: query.search,
+          status: query.status,
+          limit: query.limit,
+          cursor: query.cursor
+        });
+        res.status(200).json(page);
+        return;
+      }
+
       const customers = await deps.workspaceCustomersService.listCustomers({
         workspaceId,
         userId: req.auth!.userId,
@@ -914,6 +1052,23 @@ export const buildWorkspacePlatformRoutes = (deps: {
     })
   );
 
+  router.put(
+    '/workspaces/:workspaceId/work-item-list-configs/:typeId',
+    requireWorkspaceModule('board'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { typeId } = itemTypeParamsDto.parse(req.params);
+      const payload = workItemListConfigDto.parse(req.body);
+      const preferences = await deps.workspaceConfigService.updateWorkItemListConfig({
+        workspaceId: req.workspace!.id,
+        workItemTypeId: typeId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(preferences);
+    })
+  );
+
   router.post(
     '/workspaces/:workspaceId/reset-template',
     ...requireConfigWrite,
@@ -950,11 +1105,106 @@ export const buildWorkspacePlatformRoutes = (deps: {
     requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const query = workItemListQueryDto.parse(req.query);
+      const shouldReturnPaged =
+        query.paged ||
+        Boolean(
+          query.page ||
+          query.pageSize ||
+          query.limit ||
+          query.cursor ||
+          query.perspectiveId ||
+          query.boardColumnId ||
+          query.columnId ||
+          query.workItemTypeId ||
+          query.typeId ||
+          query.workflowStateId ||
+          query.workflowStateIds?.length ||
+          query.stateId ||
+          query.stateSlug ||
+          query.typeSlug ||
+          query.assignedToMe ||
+          query.assigneeId ||
+          query.search ||
+          query.dateFrom ||
+          query.dateTo ||
+          query.dueDateFrom ||
+          query.dueDateTo ||
+          query.createdAtFrom ||
+          query.createdAtTo ||
+          query.updatedAtFrom ||
+          query.updatedAtTo ||
+          query.source ||
+          query.customerId ||
+          query.converted !== undefined ||
+          query.customFieldFilters?.length ||
+          query.sort ||
+          query.sortBy
+        );
+
+      if (shouldReturnPaged) {
+        const page = await deps.workspaceWorkItemsService.listWorkItemsPage({
+          workspaceId,
+          userId: req.auth!.userId,
+          filters: query
+        });
+        res.status(200).json(page);
+        return;
+      }
+
       const items = await deps.workspaceWorkItemsService.listWorkItems({
         workspaceId,
         userId: req.auth!.userId
       });
       res.status(200).json(items);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/work-item-type-transformations',
+    requireWorkspaceModule('board'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const transformations = await deps.workspaceWorkItemsService.listWorkItemTypeTransformations({
+        workspaceId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(transformations);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/work-items/:itemId/type-transformation/validate',
+    requireWorkspaceModule('board'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const payload = workItemTypeTransformationDto.parse(req.body ?? {});
+      const validation = await deps.workspaceWorkItemsService.validateWorkItemTypeTransformation({
+        workspaceId,
+        itemId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(validation);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/work-items/:itemId/type-transformation',
+    requireWorkspaceModule('board'),
+    ...requireLeadTransform,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const payload = workItemTypeTransformationDto.parse(req.body ?? {});
+      const item = await deps.workspaceWorkItemsService.transformWorkItemType({
+        workspaceId,
+        itemId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(item);
     })
   );
 
@@ -1014,9 +1264,11 @@ export const buildWorkspacePlatformRoutes = (deps: {
     requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const query = workspaceDocumentListQueryDto.parse(req.query);
       const documents = await deps.workspaceDocumentsService.listDocuments({
         workspaceId,
-        userId: req.auth!.userId
+        userId: req.auth!.userId,
+        filters: query
       });
       res.status(200).json(documents);
     })
@@ -1039,7 +1291,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   router.post(
     '/workspaces/:workspaceId/document-folders',
     requireWorkspaceModule('documentation'),
-    ...requireItemWrite,
+    requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const payload = createWorkspaceDocumentFolderDto.parse(req.body);
@@ -1055,7 +1307,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   router.patch(
     '/workspaces/:workspaceId/document-folders/:folderId',
     requireWorkspaceModule('documentation'),
-    ...requireItemWrite,
+    requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId, folderId } = workspaceDocumentFolderParamsDto.parse(req.params);
       const payload = patchWorkspaceDocumentFolderDto.parse(req.body);
@@ -1072,7 +1324,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   router.delete(
     '/workspaces/:workspaceId/document-folders/:folderId',
     requireWorkspaceModule('documentation'),
-    ...requireItemWrite,
+    requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId, folderId } = workspaceDocumentFolderParamsDto.parse(req.params);
       await deps.workspaceDocumentsService.deleteFolder({
@@ -1103,7 +1355,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   router.patch(
     '/workspaces/:workspaceId/documents/:documentId',
     requireWorkspaceModule('documentation'),
-    ...requireItemWrite,
+    requireItemRead,
     asyncHandler(async (req, res) => {
       const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
       const payload = patchWorkspaceDocumentDto.parse(req.body);
@@ -1117,6 +1369,76 @@ export const buildWorkspacePlatformRoutes = (deps: {
     })
   );
 
+  router.get(
+    '/workspaces/:workspaceId/documents/:documentId/assets',
+    requireWorkspaceModule('documentation'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
+      const assets = await deps.workspaceDocumentsService.listDocumentAssets({
+        workspaceId,
+        documentId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(assets);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/documents/:documentId/assets',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
+      const contentType = req.headers['content-type'] ?? '';
+      const payload = typeof contentType === 'string' && contentType.includes('multipart/form-data')
+        ? await readMultipartAssetPayload(req)
+        : uploadWorkspaceDocumentAssetDto.parse(req.body);
+      const asset = await deps.workspaceDocumentsService.uploadDocumentAsset({
+        workspaceId,
+        documentId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(201).json(asset);
+    })
+  );
+
+  router.get(
+    '/workspaces/:workspaceId/documents/:documentId/assets/:assetId/content',
+    requireWorkspaceModule('documentation'),
+    requireItemRead,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId, assetId } = workspaceDocumentAssetParamsDto.parse(req.params);
+      const asset = await deps.workspaceDocumentsService.getDocumentAssetContent({
+        workspaceId,
+        documentId,
+        assetId,
+        userId: req.auth!.userId
+      });
+      res.setHeader('Content-Type', asset.contentType);
+      res.setHeader('Content-Length', String(asset.size));
+      res.setHeader('Content-Disposition', `inline; filename="${asset.filename.replace(/"/g, '')}"`);
+      res.sendFile(asset.absolutePath);
+    })
+  );
+
+  router.delete(
+    '/workspaces/:workspaceId/documents/:documentId/assets/:assetId',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId, assetId } = workspaceDocumentAssetParamsDto.parse(req.params);
+      await deps.workspaceDocumentsService.deleteDocumentAsset({
+        workspaceId,
+        documentId,
+        assetId,
+        userId: req.auth!.userId
+      });
+      res.status(204).send();
+    })
+  );
+
   router.post(
     '/workspaces/:workspaceId/documents/:documentId/send',
     requireWorkspaceModule('documentation'),
@@ -1125,6 +1447,23 @@ export const buildWorkspacePlatformRoutes = (deps: {
       const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
       const payload = sendWorkspaceDocumentDto.parse(req.body);
       const document = await deps.workspaceDocumentsService.sendCommercialDocument({
+        workspaceId,
+        documentId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(document);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/documents/:documentId/decision',
+    requireWorkspaceModule('documentation'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, documentId } = workspaceDocumentParamsDto.parse(req.params);
+      const payload = decideWorkspaceDocumentDto.parse(req.body);
+      const document = await deps.workspaceDocumentsService.decideInternalCommercialDocument({
         workspaceId,
         documentId,
         userId: req.auth!.userId,
@@ -1164,6 +1503,21 @@ export const buildWorkspacePlatformRoutes = (deps: {
     })
   );
 
+  router.post(
+    '/workspaces/:workspaceId/work-items/bulk-update',
+    requireWorkspaceModule('board'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const payload = bulkUpdateWorkItemsDto.parse(req.body);
+      const result = await deps.workspaceWorkItemsService.bulkUpdateWorkItems({
+        workspaceId: req.workspace!.id,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(result);
+    })
+  );
+
   router.patch(
     '/workspaces/:workspaceId/work-items/:itemId',
     requireWorkspaceModule('board'),
@@ -1178,6 +1532,40 @@ export const buildWorkspacePlatformRoutes = (deps: {
         payload
       });
       res.status(200).json(item);
+    })
+  );
+
+  router.patch(
+    '/workspaces/:workspaceId/work-items/:itemId/schedule',
+    requireWorkspaceModule('board'),
+    ...requireItemWrite,
+    asyncHandler(async (req, res) => {
+      const { itemId } = workItemParamsDto.parse(req.params);
+      const payload = patchWorkItemScheduleDto.parse(req.body);
+      const item = await deps.workspaceWorkItemsService.updateWorkItemSchedule({
+        workspaceId: req.workspace!.id,
+        itemId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(item);
+    })
+  );
+
+  router.post(
+    '/workspaces/:workspaceId/work-items/:itemId/convert-to-customer',
+    requireWorkspaceModule('board'),
+    ...requireLeadConvertToCustomer,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
+      const payload = convertWorkItemToCustomerDto.parse(req.body ?? {});
+      const customer = await deps.workspaceCustomersService.convertWorkItemToCustomer({
+        workspaceId,
+        itemId,
+        userId: req.auth!.userId,
+        payload
+      });
+      res.status(200).json(customer);
     })
   );
 

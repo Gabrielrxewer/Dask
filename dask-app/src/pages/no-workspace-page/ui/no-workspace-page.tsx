@@ -3,9 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { buildWorkspaceBoardPath, routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth";
 import { billingStore, useBilling } from "@/modules/billing";
-import { workspaceService, type WorkspaceTemplateOption } from "@/modules/workspace";
+import {
+  useProvisionWorkspaceWithProfileMutation,
+  useWorkspaceTemplatesQuery,
+  type WorkspaceTemplateOption
+} from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
-import { Button, Card, FormField, Select, TextInput } from "@/shared/ui";
+import { AppSelect, Button, Card, FormField, TextInput, toast } from "@/shared/ui";
 import "./no-workspace-page.css";
 
 type WorkspaceKind = "PERSONAL" | "CORPORATE";
@@ -34,16 +38,18 @@ export function NoWorkspacePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const billing = useBilling();
-  const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [kind, setKind] = useState<WorkspaceKind>("PERSONAL");
   const [workspaceName, setWorkspaceName] = useState("Meu Workspace");
   const [organizationName, setOrganizationName] = useState("");
   const [templateKey, setTemplateKey] = useState<WorkspaceTemplateOption["key"] | "">("");
   const canCreateWorkspace = billing.status?.canCreateWorkspace ?? false;
+  const templatesQuery = useWorkspaceTemplatesQuery({ enabled: canCreateWorkspace });
+  const provisionWorkspaceMutation = useProvisionWorkspaceWithProfileMutation();
+  const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
+  const isLoadingTemplates = templatesQuery.isLoading;
+  const emptyTemplateValue = "__empty_template__";
 
   useEffect(() => {
     if (billing.loadState === "idle") {
@@ -53,43 +59,23 @@ export function NoWorkspacePage() {
 
   useEffect(() => {
     if (!canCreateWorkspace) {
-      setTemplates([]);
-      setIsLoadingTemplates(false);
+      setTemplateKey("");
       return;
     }
 
-    let active = true;
+    const firstKey = templates[0]?.key;
+    if (firstKey) {
+      setTemplateKey(current => templates.some(template => template.key === current) ? current : firstKey);
+    } else if (!isLoadingTemplates) {
+      setTemplateKey("");
+    }
+  }, [canCreateWorkspace, isLoadingTemplates, templates]);
 
-    workspaceService
-      .listWorkspaceTemplates()
-      .then((items) => {
-        if (!active) {
-          return;
-        }
-
-        setTemplates(items);
-        const firstKey = items[0]?.key;
-        if (firstKey) {
-          setTemplateKey(firstKey);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setTemplates([]);
-          setTemplateKey("");
-          setErrorMessage("Nao foi possivel carregar o catalogo de templates.");
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoadingTemplates(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [canCreateWorkspace]);
+  useEffect(() => {
+    if (templatesQuery.isError) {
+      toast.error("Nao foi possivel carregar o catalogo de templates.");
+    }
+  }, [templatesQuery.isError]);
 
   const resolvedOrganizationName = useMemo(() => {
     if (kind !== "CORPORATE") {
@@ -111,25 +97,24 @@ export function NoWorkspacePage() {
 
     const finalWorkspaceName = workspaceName.trim();
     if (finalWorkspaceName.length < 2) {
-      setErrorMessage("Informe um nome de workspace com pelo menos 2 caracteres.");
+      toast.error("Informe um nome de workspace com pelo menos 2 caracteres.");
       return;
     }
 
     if (kind === "CORPORATE" && !resolvedOrganizationName) {
-      setErrorMessage("Informe o nome da organizacao para workspace corporativo.");
+      toast.error("Informe o nome da organizacao para workspace corporativo.");
       return;
     }
 
     if (!templateKey) {
-      setErrorMessage("Selecione um template carregado pelo backend.");
+      toast.error("Selecione um template carregado pelo backend.");
       return;
     }
 
     setIsCreating(true);
-    setErrorMessage(null);
 
     try {
-      const workspace = await workspaceService.provisionWorkspace({
+      const workspace = await provisionWorkspaceMutation.mutateAsync({
         kind,
         workspaceName: finalWorkspaceName,
         workspaceKey: toWorkspaceKey(finalWorkspaceName),
@@ -142,12 +127,12 @@ export function NoWorkspacePage() {
     } catch (error) {
       if (isApiError(error)) {
         if (error.status === 404) {
-          setErrorMessage("Seu backend nao reconheceu o fluxo de provisionamento. Reinicie a API e tente novamente.");
+          toast.error("Seu backend nao reconheceu o fluxo de provisionamento. Reinicie a API e tente novamente.");
         } else {
-          setErrorMessage(error.message);
+          toast.error(error.message);
         }
       } else {
-        setErrorMessage("Nao foi possivel criar seu workspace agora. Tente novamente.");
+        toast.error("Nao foi possivel criar seu workspace agora. Tente novamente.");
       }
     } finally {
       setIsCreating(false);
@@ -179,26 +164,33 @@ export function NoWorkspacePage() {
             <>
               <div className="no-workspace-page__form-grid">
                 <FormField label="Tipo de workspace" className="no-workspace-page__field">
-                  <Select value={kind} onChange={(event) => setKind(event.target.value as WorkspaceKind)}>
-                    <option value="PERSONAL">Pessoal</option>
-                    <option value="CORPORATE">Corporativo</option>
-                  </Select>
+                  <AppSelect
+                    value={kind}
+                    onValueChange={(value) => setKind(value as WorkspaceKind)}
+                    aria-label="Tipo de workspace"
+                    items={[
+                      { value: "PERSONAL", label: "Pessoal" },
+                      { value: "CORPORATE", label: "Corporativo" }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Template padrao" className="no-workspace-page__field">
-                  <Select
-                    value={templateKey}
-                    onChange={(event) => setTemplateKey(event.target.value as WorkspaceTemplateOption["key"])}
+                  <AppSelect
+                    value={templateKey || emptyTemplateValue}
+                    onValueChange={(value) => setTemplateKey(value === emptyTemplateValue ? "" : value as WorkspaceTemplateOption["key"])}
                     disabled={isLoadingTemplates || templates.length === 0}
-                  >
-                    {isLoadingTemplates ? <option value="">Carregando templates...</option> : null}
-                    {!isLoadingTemplates && templates.length === 0 ? <option value="">Catalogo indisponivel</option> : null}
-                    {templates.map((template) => (
-                      <option key={template.key} value={template.key}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </Select>
+                    aria-label="Template padrao"
+                    placeholder={isLoadingTemplates ? "Carregando templates..." : "Selecionar template"}
+                    items={[
+                      {
+                        value: emptyTemplateValue,
+                        label: isLoadingTemplates ? "Carregando templates..." : "Catalogo indisponivel",
+                        disabled: templates.length > 0
+                      },
+                      ...templates.map((template) => ({ value: template.key, label: template.name }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Nome do workspace" className="no-workspace-page__field no-workspace-page__field--wide">
@@ -227,8 +219,6 @@ export function NoWorkspacePage() {
               requer assinatura ativa.
             </p>
           )}
-          {errorMessage ? <p className="no-workspace-page__error">{errorMessage}</p> : null}
-
           <div className="no-workspace-page__actions">
             {canCreateWorkspace ? (
               <Button

@@ -1,20 +1,55 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
 import { buildBoardMetrics } from "@/entities/task";
-import { fiscalService } from "@/modules/fiscal";
+import {
+  fiscalQueryKeys,
+  fiscalCompanySchema,
+  fiscalReceivedSyncSchema,
+  fiscalWizardSchema,
+  normalizeFiscalStripePolicy,
+  useCancelFiscalDocumentMutation,
+  useCreateFiscalCompanyMutation,
+  useCreateFiscalDraftMutation,
+  useEmitFiscalDraftMutation,
+  useFiscalCompaniesQuery,
+  useFiscalCustomersQuery,
+  useFiscalCustomerDocumentsQuery,
+  useFiscalDashboardQuery,
+  useFiscalDocumentQuery,
+  useFiscalDocumentsQuery,
+  useFiscalDraftsQuery,
+  useFiscalReceivedDocumentsQuery,
+  useFiscalSyncRunsQuery,
+  useIssueFiscalDocumentMutation,
+  useRetryFiscalDocumentMutation,
+  useSyncReceivedDocumentsMutation,
+  useUpdateFiscalCompanyMutation,
+  useValidateFiscalCompanyMutation
+} from "@/modules/fiscal";
 import type {
   FiscalCompanyConfig,
-  FiscalDashboardResponse,
+  FiscalCompanyFormValues,
   FiscalDocument,
-  FiscalDocumentDetails,
   FiscalDocumentType,
   FiscalEmissionDraft,
   FiscalReceivedDocument,
-  FiscalReceivedType
+  FiscalReceivedSyncValues,
+  FiscalWizardFormValues,
+  FiscalSyncRun
 } from "@/modules/fiscal";
 import { formatCustomerOptionDetail, getCustomerDisplayName, useWorkspace, type Customer } from "@/modules/workspace";
 import { formatDateTime as formatDate } from "@/shared/lib/date";
 import { formatMoney } from "@/shared/lib/money";
 import {
+  AppForm,
+  AppFormActions,
+  AppFormGrid,
+  AppSelect,
+  AppSelectField,
+  AppTextField,
+  AppTextareaField,
   Button,
   DrawerShell,
   EmptyState,
@@ -24,40 +59,26 @@ import {
   MetricCard,
   ModuleTabs,
   PageToolbar,
-  ResourceTable,
   SectionCard,
-  Select,
   StatusBadge,
   TextInput,
   Textarea,
   WorkspaceActionButton,
   WorkspaceFrame,
-  type ResourceTableColumn
+  toast
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
+import { FiscalDataTable as ResourceTable, type FiscalDataTableColumn as ResourceTableColumn } from "./fiscal-data-table";
 import "./fiscal-page.css";
 
-type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "wizard" | "settings" | "portal";
-
-interface WizardState {
-  documentType: FiscalDocumentType;
-  companyConfigId: string;
-  customerId: string;
-  customerName: string;
-  customerDocument: string;
-  itemName: string;
-  quantity: string;
-  unitPrice: string;
-  discount: string;
-  reference: string;
-  notes: string;
-}
+type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "sync" | "wizard" | "settings" | "portal";
 
 const TAB_ITEMS: Array<{ id: FiscalTab; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
   { id: "issued", label: "Emitidas" },
   { id: "received", label: "Recebidas" },
   { id: "stripe", label: "Stripe" },
+  { id: "sync", label: "Sincronizacoes" },
   { id: "wizard", label: "Wizard" },
   { id: "settings", label: "Configuracoes" }
 ];
@@ -65,6 +86,9 @@ const TAB_ITEMS: Array<{ id: FiscalTab; label: string }> = [
 const TAB_ITEMS_CLIENT: Array<{ id: FiscalTab; label: string }> = [
   { id: "portal", label: "Portal do cliente" }
 ];
+
+const FISCAL_LIST_PAGE_SIZE = 50;
+const FISCAL_SYNC_PAGE_SIZE = 25;
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Rascunho",
@@ -101,6 +125,10 @@ function mapTone(status: string): "default" | "success" | "warning" {
   return "default";
 }
 
+function canCancelFiscalDocument(document: FiscalDocument) {
+  return document.direction === "OUTBOUND" && document.status !== "CANCELLED" && document.issueStatus === "AUTHORIZED";
+}
+
 function toNumber(value: string): number {
   const parsed = Number(value.trim().replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -120,7 +148,52 @@ function getCustomerAddressRecord(customer: Customer): Record<string, unknown> |
   return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
-function initialWizardState(): WizardState {
+function getCurrentCursor(cursorStack: string[]): string | null {
+  return cursorStack.length > 0 ? cursorStack[cursorStack.length - 1] : null;
+}
+
+function mapCompanyFormToPayload(values: FiscalCompanyFormValues): FiscalCompanyFormValues {
+  return {
+    ...values,
+    emitAutomatically: values.stripePolicy === "automatic_after_payment"
+  };
+}
+
+interface FiscalPaginationControlsProps {
+  label: string;
+  page: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  isLoading: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}
+
+function FiscalPaginationControls({
+  label,
+  page,
+  hasPrevious,
+  hasNext,
+  isLoading,
+  onPrevious,
+  onNext
+}: FiscalPaginationControlsProps) {
+  if (!hasPrevious && !hasNext) return null;
+
+  return (
+    <div className="fiscal-view__pagination" aria-label={label}>
+      <Button type="button" size="sm" variant="outline" onClick={onPrevious} disabled={!hasPrevious || isLoading}>
+        Anterior
+      </Button>
+      <span className="fiscal-view__pagination-label">Pagina {page}</span>
+      <Button type="button" size="sm" variant="outline" onClick={onNext} disabled={!hasNext || isLoading}>
+        Proxima
+      </Button>
+    </div>
+  );
+}
+
+function initialWizardState(): FiscalWizardFormValues {
   return {
     documentType: "NFE",
     companyConfigId: "",
@@ -136,189 +209,297 @@ function initialWizardState(): WizardState {
   };
 }
 
+function initialSyncState(): FiscalReceivedSyncValues {
+  return {
+    companyConfigId: "",
+    type: "NFE_MDE",
+    trigger: "MANUAL"
+  };
+}
+
 export function FiscalPage() {
   const { snapshot, listCustomers } = useWorkspace();
+  const queryClient = useQueryClient();
   const workspaceId = snapshot?.id ?? "";
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
   const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
+  const isFiscalOwner = snapshot?.access?.role === "OWNER";
   const customerIds = useMemo(() => snapshot?.access?.customerIds ?? [], [snapshot?.access?.customerIds]);
+  const availableTabs = useMemo(
+    () => (isClient ? TAB_ITEMS_CLIENT : TAB_ITEMS.filter((item) => item.id !== "settings" || isFiscalOwner)),
+    [isClient, isFiscalOwner]
+  );
 
   const [tab, setTab] = useState<FiscalTab>("dashboard");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<string>("");
-  const [error, setError] = useState<string>("");
-
-  const [dashboard, setDashboard] = useState<FiscalDashboardResponse | null>(null);
-  const [documents, setDocuments] = useState<FiscalDocument[]>([]);
-  const [received, setReceived] = useState<FiscalReceivedDocument[]>([]);
-  const [drafts, setDrafts] = useState<FiscalEmissionDraft[]>([]);
-  const [companies, setCompanies] = useState<FiscalCompanyConfig[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [issuedSearch, setIssuedSearch] = useState("");
   const [receivedSearch, setReceivedSearch] = useState("");
-  const [syncType, setSyncType] = useState<FiscalReceivedType>("NFE_MDE");
-  const [syncCompanyConfigId, setSyncCompanyConfigId] = useState("");
+  const [issuedCursorStack, setIssuedCursorStack] = useState<string[]>([]);
+  const [receivedCursorStack, setReceivedCursorStack] = useState<string[]>([]);
+  const [draftsCursorStack, setDraftsCursorStack] = useState<string[]>([]);
+  const [syncRunsCursorStack, setSyncRunsCursorStack] = useState<string[]>([]);
+  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
 
-  const [wizard, setWizard] = useState<WizardState>(() => initialWizardState());
-  const [companyForm, setCompanyForm] = useState({
-    displayName: "",
-    legalName: "",
-    cnpj: "",
-    focusToken: ""
+  const wizardForm = useForm<FiscalWizardFormValues>({
+    resolver: zodResolver(fiscalWizardSchema) as Resolver<FiscalWizardFormValues>,
+    defaultValues: initialWizardState(),
+    mode: "onChange"
   });
-
-  const [details, setDetails] = useState<FiscalDocumentDetails | null>(null);
-  const [detailDocumentId, setDetailDocumentId] = useState<string | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const loadAll = useCallback(async () => {
-    if (!workspaceId) return;
-    setIsLoading(true);
-    setError("");
-    try {
-      if (isClient) {
-        if (customerIds.length === 0) {
-          setDocuments([]);
-        } else {
-          const results = await Promise.all(
-            customerIds.map((id) =>
-              fiscalService.listDocuments(workspaceId, { customerId: id, direction: "OUTBOUND", limit: 150 })
-            )
-          );
-          const merged = results.flatMap((r) => r.items);
-          merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          setDocuments(merged);
-        }
-        return;
-      }
-
-      const [dash, docs, recs, stripeDrafts, companyList, customerList] = await Promise.all([
-        fiscalService.getDashboard(workspaceId),
-        fiscalService.listDocuments(workspaceId, { direction: "OUTBOUND", search: issuedSearch || undefined, limit: 150 }),
-        fiscalService.listReceived(workspaceId, { search: receivedSearch || undefined, limit: 150 }),
-        fiscalService.listDrafts(workspaceId, 150),
-        fiscalService.listCompanies(workspaceId),
-        listCustomers()
-      ]);
-
-      setDashboard(dash);
-      setDocuments(docs.items);
-      setReceived(recs.items);
-      setDrafts(stripeDrafts.items);
-      setCompanies(companyList.items);
-      setCustomers(customerList);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao carregar modulo fiscal.");
-    } finally {
-      setIsLoading(false);
+  const wizard = wizardForm.watch();
+  const companyForm = useForm<FiscalCompanyFormValues>({
+    resolver: zodResolver(fiscalCompanySchema) as Resolver<FiscalCompanyFormValues>,
+    defaultValues: {
+      displayName: "",
+      legalName: "",
+      cnpj: "",
+      focusToken: "",
+      focusEnvironment: "homologacao",
+      emitAutomatically: false,
+      stripePolicy: "manual_review"
     }
-  }, [customerIds, isClient, issuedSearch, listCustomers, receivedSearch, workspaceId]);
+  });
+  const syncForm = useForm<FiscalReceivedSyncValues>({
+    resolver: zodResolver(fiscalReceivedSyncSchema) as Resolver<FiscalReceivedSyncValues>,
+    defaultValues: initialSyncState(),
+    mode: "onSubmit"
+  });
+  const syncCompanyConfigId = syncForm.watch("companyConfigId");
+
+  const [detailDocumentId, setDetailDocumentId] = useState<string | null>(null);
+  const dashboardQuery = useFiscalDashboardQuery(isClient ? null : workspaceId);
+  const issuedCursor = getCurrentCursor(issuedCursorStack);
+  const receivedCursor = getCurrentCursor(receivedCursorStack);
+  const draftsCursor = getCurrentCursor(draftsCursorStack);
+  const syncRunsCursor = getCurrentCursor(syncRunsCursorStack);
+  const issuedDocumentsQuery = useFiscalDocumentsQuery(isClient ? null : workspaceId, {
+    direction: "OUTBOUND",
+    search: issuedSearch || undefined,
+    pageSize: FISCAL_LIST_PAGE_SIZE,
+    cursor: issuedCursor
+  });
+  const clientDocumentsQuery = useFiscalCustomerDocumentsQuery(isClient ? workspaceId : null, customerIds, {
+    direction: "OUTBOUND",
+    pageSize: FISCAL_LIST_PAGE_SIZE
+  });
+  const receivedDocumentsQuery = useFiscalReceivedDocumentsQuery(isClient ? null : workspaceId, {
+    search: receivedSearch || undefined,
+    pageSize: FISCAL_LIST_PAGE_SIZE,
+    cursor: receivedCursor
+  });
+  const draftsQuery = useFiscalDraftsQuery(isClient ? null : workspaceId, {
+    pageSize: FISCAL_LIST_PAGE_SIZE,
+    cursor: draftsCursor
+  });
+  const syncRunsQuery = useFiscalSyncRunsQuery(isClient ? null : workspaceId, {
+    pageSize: FISCAL_SYNC_PAGE_SIZE,
+    cursor: syncRunsCursor
+  });
+  const customersQuery = useFiscalCustomersQuery(workspaceId, listCustomers, !isClient);
+  const companiesQuery = useFiscalCompaniesQuery(!isClient && isFiscalOwner ? workspaceId : null);
+  const detailQuery = useFiscalDocumentQuery(workspaceId, detailDocumentId);
+
+  const createFiscalCompanyMutation = useCreateFiscalCompanyMutation(workspaceId);
+  const updateFiscalCompanyMutation = useUpdateFiscalCompanyMutation(workspaceId);
+  const createFiscalDraftMutation = useCreateFiscalDraftMutation(workspaceId);
+  const issueFiscalDocumentMutation = useIssueFiscalDocumentMutation(workspaceId);
+  const retryFiscalDocumentMutation = useRetryFiscalDocumentMutation(workspaceId);
+  const cancelFiscalDocumentMutation = useCancelFiscalDocumentMutation(workspaceId);
+  const syncReceivedDocumentsMutation = useSyncReceivedDocumentsMutation(workspaceId);
+  const emitFiscalDraftMutation = useEmitFiscalDraftMutation(workspaceId);
+  const validateFiscalCompanyMutation = useValidateFiscalCompanyMutation(workspaceId);
+
+  const dashboard = dashboardQuery.data ?? null;
+  const documents = isClient
+    ? clientDocumentsQuery.data ?? []
+    : issuedDocumentsQuery.data?.items ?? [];
+  const received = receivedDocumentsQuery.data?.items ?? [];
+  const drafts = draftsQuery.data?.items ?? [];
+  const syncRuns = syncRunsQuery.data?.items ?? [];
+  const customers = customersQuery.data ?? [];
+  const companies = isFiscalOwner ? companiesQuery.data?.items ?? [] : [];
+  const issuedNextCursor = issuedDocumentsQuery.data?.nextCursor ?? null;
+  const receivedNextCursor = receivedDocumentsQuery.data?.nextCursor ?? null;
+  const draftsNextCursor = draftsQuery.data?.nextCursor ?? null;
+  const syncRunsNextCursor = syncRunsQuery.data?.nextCursor ?? null;
+  const details = detailQuery.data ?? null;
+  const detailLoading = Boolean(detailDocumentId) && (detailQuery.isLoading || detailQuery.isFetching);
+
+  const isLoading = [
+    dashboardQuery,
+    issuedDocumentsQuery,
+    clientDocumentsQuery,
+    receivedDocumentsQuery,
+    draftsQuery,
+    syncRunsQuery,
+    customersQuery,
+    companiesQuery
+  ].some((query) => query.isLoading || query.isFetching);
+
+  const isSubmitting =
+    createFiscalCompanyMutation.isPending ||
+    updateFiscalCompanyMutation.isPending ||
+    createFiscalDraftMutation.isPending ||
+    issueFiscalDocumentMutation.isPending ||
+    retryFiscalDocumentMutation.isPending ||
+    cancelFiscalDocumentMutation.isPending ||
+    syncReceivedDocumentsMutation.isPending ||
+    emitFiscalDraftMutation.isPending ||
+    validateFiscalCompanyMutation.isPending;
+
+  const queryError = [
+    dashboardQuery.error,
+    issuedDocumentsQuery.error,
+    clientDocumentsQuery.error,
+    receivedDocumentsQuery.error,
+    draftsQuery.error,
+    syncRunsQuery.error,
+    customersQuery.error,
+    companiesQuery.error,
+    detailQuery.error
+  ].find(Boolean);
+
+  const refreshFiscalData = useCallback(() => {
+    if (!workspaceId) return;
+    void queryClient.invalidateQueries({ queryKey: fiscalQueryKeys.workspace(workspaceId) });
+  }, [queryClient, workspaceId]);
 
   useEffect(() => {
     if (isClient) setTab("portal");
   }, [isClient]);
 
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    if (!isClient && !isFiscalOwner && tab === "settings") {
+      setTab("dashboard");
+    }
+  }, [isClient, isFiscalOwner, tab]);
 
   useEffect(() => {
     if (companies.length === 0) return;
     if (!wizard.companyConfigId) {
-      setWizard((current) => ({ ...current, companyConfigId: companies[0].id }));
+      wizardForm.setValue("companyConfigId", companies[0].id, { shouldValidate: true });
     }
     if (!syncCompanyConfigId) {
-      setSyncCompanyConfigId(companies[0].id);
+      syncForm.setValue("companyConfigId", companies[0].id, { shouldValidate: true });
     }
-  }, [companies, syncCompanyConfigId, wizard.companyConfigId]);
+  }, [companies, syncCompanyConfigId, syncForm, wizard.companyConfigId, wizardForm]);
 
   const customersById = useMemo(() => new Map(customers.map((customer) => [customer.id, customer])), [customers]);
   const selectedWizardCustomer = wizard.customerId ? customersById.get(wizard.customerId) ?? null : null;
 
   const runAction = useCallback(
-    async (action: () => Promise<unknown>, successMessage: string) => {
-      setIsSubmitting(true);
-      setMessage("");
-      setError("");
+    async (action: () => Promise<unknown>) => {
       try {
         await action();
-        setMessage(successMessage);
-        await loadAll();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Falha ao executar acao fiscal.");
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Mutation hooks own user-facing error toasts.
       }
     },
-    [loadAll]
+    []
+  );
+
+  function resetCompanyForm() {
+    setEditingCompanyId(null);
+    companyForm.reset({
+      displayName: "",
+      legalName: "",
+      cnpj: "",
+      focusToken: "",
+      focusEnvironment: "homologacao",
+      emitAutomatically: false,
+      stripePolicy: "manual_review"
+    });
+  }
+
+  function handleIssuedSearchChange(value: string) {
+    setIssuedSearch(value);
+    setIssuedCursorStack([]);
+  }
+
+  function handleReceivedSearchChange(value: string) {
+    setReceivedSearch(value);
+    setReceivedCursorStack([]);
+  }
+
+  function handleEditCompany(company: FiscalCompanyConfig) {
+    setEditingCompanyId(company.id);
+    companyForm.reset({
+      displayName: company.displayName,
+      legalName: company.legalName,
+      cnpj: company.cnpj,
+      focusToken: company.focusToken,
+      focusEnvironment: company.focusEnvironment === "producao" ? "producao" : "homologacao",
+      emitAutomatically: company.emitAutomatically,
+      stripePolicy: normalizeFiscalStripePolicy(company.stripePolicy, company.emitAutomatically)
+    });
+    setTab("settings");
+  }
+
+  const submitCompanyForm = companyForm.handleSubmit((values) =>
+    runAction(async () => {
+      const payload = mapCompanyFormToPayload(values);
+      if (editingCompanyId) {
+        await updateFiscalCompanyMutation.mutateAsync({ companyId: editingCompanyId, patch: payload });
+      } else {
+        await createFiscalCompanyMutation.mutateAsync(payload);
+      }
+      resetCompanyForm();
+    })
+  );
+  const submitSyncReceived = syncForm.handleSubmit((values) =>
+    runAction(() => syncReceivedDocumentsMutation.mutateAsync(values))
   );
 
   const openDetails = async (documentId: string) => {
     if (!workspaceId) return;
     setDetailDocumentId(documentId);
-    setDetailLoading(true);
-    setDetails(null);
-    try {
-      const response = await fiscalService.getDocumentDetails(workspaceId, documentId);
-      setDetails(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao carregar detalhe.");
-    } finally {
-      setDetailLoading(false);
-    }
   };
 
   const handleWizardCustomerChange = (customerId: string) => {
     const customer = customersById.get(customerId);
-    setWizard((current) => ({
-      ...current,
-      customerId,
-      customerName: customer ? getCustomerDisplayName(customer) : "",
-      customerDocument: customer?.document ?? ""
-    }));
+    wizardForm.setValue("customerId", customerId, { shouldValidate: true });
+    wizardForm.setValue("customerName", customer ? getCustomerDisplayName(customer) : "", { shouldValidate: true });
+    wizardForm.setValue("customerDocument", customer?.document ?? "", { shouldValidate: true });
   };
 
-  const submitWizard = async () => {
+  const submitWizard = wizardForm.handleSubmit(async (values) => {
     const customer = selectedWizardCustomer;
-    if (!workspaceId || !wizard.companyConfigId || !customer || !wizard.itemName.trim()) {
-      setError("Selecione empresa, cliente cadastrado e item para emitir.");
+    if (!workspaceId || !values.companyConfigId || !customer || !values.itemName.trim()) {
+      toast.error("Selecione empresa, cliente cadastrado e item para emitir.");
       return;
     }
     const customerDocument = customer.document;
     if (!customerDocument) {
-      setError("Complete CPF/CNPJ no cadastro do cliente antes de emitir.");
+      toast.error("Complete CPF/CNPJ no cadastro do cliente antes de emitir.");
       return;
     }
 
-    const quantity = toNumber(wizard.quantity);
-    const unitPrice = toNumber(wizard.unitPrice);
-    const discount = toNumber(wizard.discount);
+    const quantity = toNumber(values.quantity);
+    const unitPrice = toNumber(values.unitPrice);
+    const discount = toNumber(values.discount);
     const total = Math.max(0, quantity * unitPrice - discount);
-    const itemType = wizard.documentType === "NFSE" ? "SERVICE" : "PRODUCT";
-    const origin = wizard.documentType === "NFSE" ? "MANUAL_SERVICE" : "MANUAL_PRODUCT";
+    const itemType = values.documentType === "NFSE" ? "SERVICE" : "PRODUCT";
+    const origin = values.documentType === "NFSE" ? "MANUAL_SERVICE" : "MANUAL_PRODUCT";
 
     await runAction(async () => {
-      const created = await fiscalService.createDocument(workspaceId, {
-        companyConfigId: wizard.companyConfigId,
-        internalReference: wizard.reference,
+      const created = await createFiscalDraftMutation.mutateAsync({
+        companyConfigId: values.companyConfigId,
+        internalReference: values.reference,
         direction: "OUTBOUND",
-        documentType: wizard.documentType,
+        documentType: values.documentType,
         origin,
         sourceSystem: "INTERNAL",
         customerId: customer.id,
         amountSubtotal: total.toFixed(2),
         amountDiscount: discount.toFixed(2),
         amountTotal: total.toFixed(2),
-        requestPayloadSnapshot: { notes: wizard.notes, source: "manual_wizard", customerId: customer.id },
+        requestPayloadSnapshot: { notes: values.notes, source: "manual_wizard", customerId: customer.id },
         items: [
           {
             itemType,
             sourceType: "manual",
-            name: wizard.itemName,
-            descriptionCommercial: wizard.itemName,
-            descriptionFiscal: wizard.itemName,
+            name: values.itemName,
+            descriptionCommercial: values.itemName,
+            descriptionFiscal: values.itemName,
             quantity: quantity.toFixed(4),
             unit: "UN",
             unitPrice: unitPrice.toFixed(2),
@@ -328,7 +509,7 @@ export function FiscalPage() {
         ],
         parties: [
           {
-            role: wizard.documentType === "NFSE" ? "TAKER" : "RECIPIENT",
+            role: values.documentType === "NFSE" ? "TAKER" : "RECIPIENT",
             name: getCustomerDisplayName(customer),
             legalName: customer.legalName || getCustomerDisplayName(customer),
             cnpjCpf: customerDocument,
@@ -342,11 +523,11 @@ export function FiscalPage() {
         ]
       });
 
-      await fiscalService.issueDocument(workspaceId, created.id);
-      setWizard(initialWizardState());
+      await issueFiscalDocumentMutation.mutateAsync(created.id);
+      wizardForm.reset(initialWizardState());
       setTab("issued");
-    }, "Documento criado e enviado para emissao.");
-  };
+    });
+  });
 
   const issuedColumns = useMemo<Array<ResourceTableColumn<FiscalDocument>>>(
     () => [
@@ -447,6 +628,40 @@ export function FiscalPage() {
     []
   );
 
+  const syncRunColumns = useMemo<Array<ResourceTableColumn<FiscalSyncRun>>>(
+    () => [
+      { id: "type", header: "Tipo", width: "1fr", accessor: "syncType" },
+      { id: "trigger", header: "Origem", width: "0.9fr", accessor: "trigger" },
+      {
+        id: "status",
+        header: "Status",
+        width: "0.8fr",
+        render: (run) => (
+          <StatusBadge tone={mapTone(run.status)}>{STATUS_LABELS[run.status] ?? run.status}</StatusBadge>
+        )
+      },
+      {
+        id: "counts",
+        header: "Processadas",
+        width: "1fr",
+        render: (run) => `${run.processedCount} / ${run.createdCount + run.updatedCount} salvas`
+      },
+      {
+        id: "started",
+        header: "Inicio",
+        width: "1fr",
+        render: (run) => formatDate(run.startedAt)
+      },
+      {
+        id: "finished",
+        header: "Fim",
+        width: "1fr",
+        render: (run) => (run.finishedAt ? formatDate(run.finishedAt) : "-")
+      }
+    ],
+    []
+  );
+
   const companyColumns = useMemo<Array<ResourceTableColumn<FiscalCompanyConfig>>>(
     () => [
       { id: "company", header: "Empresa", width: "1fr", accessor: "displayName" },
@@ -504,7 +719,7 @@ export function FiscalPage() {
     <section className="fiscal-top-nav" aria-label="Navegacao fiscal">
       <ModuleTabs<FiscalTab>
         value={tab}
-        items={isClient ? TAB_ITEMS_CLIENT : TAB_ITEMS}
+        items={availableTabs}
         onChange={setTab}
         className="fiscal-view__tabs"
         variant="underline"
@@ -520,7 +735,7 @@ export function FiscalPage() {
                 className="fiscal-top-nav__btn"
                 label="Atualizar fiscal"
                 icon={REFRESH_ICON}
-                onClick={() => void loadAll()}
+                onClick={refreshFiscalData}
                 disabled={isLoading || isSubmitting}
               />
               <WorkspaceActionButton
@@ -529,7 +744,7 @@ export function FiscalPage() {
                 label="Nova emissao"
                 icon="+"
                 onClick={() => setTab("wizard")}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!isFiscalOwner && companies.length === 0)}
               />
             </>
           }
@@ -548,8 +763,11 @@ export function FiscalPage() {
           visible={isLoading && !dashboard}
         />
 
-        {message ? <InlineAlert tone="success">{message}</InlineAlert> : null}
-        {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
+        {queryError ? (
+          <InlineAlert tone="danger">
+            {queryError instanceof Error ? queryError.message : "Falha ao carregar modulo fiscal."}
+          </InlineAlert>
+        ) : null}
 
         <div className="fiscal-view__content">
           <div className="fiscal-view__stack">
@@ -646,7 +864,7 @@ export function FiscalPage() {
             {tab === "issued" ? (
               <>
                 <FormField label="Buscar documentos" className="fiscal-view__field">
-                  <TextInput value={issuedSearch} onChange={(event) => setIssuedSearch(event.target.value)} placeholder="Referencia, venda, Focus..." />
+                  <TextInput value={issuedSearch} onChange={(event) => handleIssuedSearchChange(event.target.value)} placeholder="Referencia, venda, Focus..." />
                 </FormField>
                 <ResourceTable
                   className="fiscal-view__table"
@@ -667,10 +885,32 @@ export function FiscalPage() {
                     render: (document) => (
                       <div className="fiscal-page__row-actions">
                         <Button size="sm" variant="outline" onClick={() => void openDetails(document.id)}>Detalhe</Button>
-                        <Button size="sm" onClick={() => void runAction(() => fiscalService.issueDocument(workspaceId, document.id), "Emissao enviada.")} disabled={isSubmitting}>Emitir</Button>
-                        <Button size="sm" variant="outline" onClick={() => void runAction(() => fiscalService.retryDocument(workspaceId, document.id), "Reprocesso solicitado.")} disabled={isSubmitting}>Retry</Button>
+                        <Button size="sm" onClick={() => void runAction(() => issueFiscalDocumentMutation.mutateAsync(document.id))} disabled={isSubmitting}>Emitir</Button>
+                        <Button size="sm" variant="outline" onClick={() => void runAction(() => retryFiscalDocumentMutation.mutateAsync(document.id))} disabled={isSubmitting}>Retry</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void runAction(() => cancelFiscalDocumentMutation.mutateAsync({
+                            documentId: document.id,
+                            justification: "Cancelamento solicitado pelo painel fiscal."
+                          }))}
+                          disabled={isSubmitting || !canCancelFiscalDocument(document)}
+                        >
+                          Cancelar
+                        </Button>
                       </div>
                     )
+                  }}
+                />
+                <FiscalPaginationControls
+                  label="Paginacao de documentos emitidos"
+                  page={issuedCursorStack.length + 1}
+                  hasPrevious={issuedCursorStack.length > 0}
+                  hasNext={Boolean(issuedNextCursor)}
+                  isLoading={issuedDocumentsQuery.isFetching}
+                  onPrevious={() => setIssuedCursorStack((current) => current.slice(0, -1))}
+                  onNext={() => {
+                    if (issuedNextCursor) setIssuedCursorStack((current) => [...current, issuedNextCursor]);
                   }}
                 />
               </>
@@ -678,31 +918,43 @@ export function FiscalPage() {
 
             {tab === "received" ? (
               <>
-                <div className="fiscal-view__inline-grid">
-                  <FormField label="Buscar recebidas" className="fiscal-view__field">
-                    <TextInput value={receivedSearch} onChange={(event) => setReceivedSearch(event.target.value)} placeholder="Fornecedor, chave..." />
-                  </FormField>
-                  <FormField label="Tipo sync" className="fiscal-view__field">
-                    <Select value={syncType} onChange={(event) => setSyncType(event.target.value as FiscalReceivedType)}>
-                      <option value="NFE_MDE">NFe (MD-e)</option>
-                      <option value="NFSE_NFSER">NFSe (NFSeR)</option>
-                    </Select>
-                  </FormField>
-                  <FormField label="Empresa" className="fiscal-view__field">
-                    <Select value={syncCompanyConfigId} onChange={(event) => setSyncCompanyConfigId(event.target.value)}>
-                      {companies.map((company) => (
-                        <option key={company.id} value={company.id}>{company.displayName}</option>
-                      ))}
-                    </Select>
-                  </FormField>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => void runAction(() => fiscalService.syncReceived(workspaceId, { companyConfigId: syncCompanyConfigId, type: syncType }), "Sincronizacao iniciada.")}
-                  disabled={isSubmitting || !syncCompanyConfigId}
+                <FormField label="Buscar recebidas" className="fiscal-view__field">
+                  <TextInput value={receivedSearch} onChange={(event) => handleReceivedSearchChange(event.target.value)} placeholder="Fornecedor, chave..." />
+                </FormField>
+                <AppForm
+                  form={syncForm}
+                  className="fiscal-view__settings-form"
+                  onRawSubmit={(event) => {
+                    event.preventDefault();
+                    void submitSyncReceived();
+                  }}
                 >
-                  Sincronizar recebidas
-                </Button>
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={2}>
+                    <AppSelectField<FiscalReceivedSyncValues, "type", FiscalReceivedSyncValues["type"]>
+                      name="type"
+                      label="Tipo sync"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "NFE_MDE", label: "NFe (MD-e)" },
+                        { value: "NFSE_NFSER", label: "NFSe (NFSeR)" }
+                      ]}
+                    />
+                    <AppSelectField
+                      name="companyConfigId"
+                      label="Empresa"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "__none", label: "Selecione uma empresa" },
+                        ...companies.map((company) => ({ value: company.id, label: company.displayName }))
+                      ]}
+                      formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : "__none")}
+                      parseValue={(value) => (value === "__none" ? "" : value)}
+                    />
+                  </AppFormGrid>
+                  <Button type="submit" variant="outline" disabled={isSubmitting || !syncCompanyConfigId}>
+                    Sincronizar recebidas
+                  </Button>
+                </AppForm>
                 <ResourceTable
                   className="fiscal-view__table"
                   data={received}
@@ -717,96 +969,171 @@ export function FiscalPage() {
                     />
                   }
                 />
+                <FiscalPaginationControls
+                  label="Paginacao de documentos recebidos"
+                  page={receivedCursorStack.length + 1}
+                  hasPrevious={receivedCursorStack.length > 0}
+                  hasNext={Boolean(receivedNextCursor)}
+                  isLoading={receivedDocumentsQuery.isFetching}
+                  onPrevious={() => setReceivedCursorStack((current) => current.slice(0, -1))}
+                  onNext={() => {
+                    if (receivedNextCursor) setReceivedCursorStack((current) => [...current, receivedNextCursor]);
+                  }}
+                />
               </>
             ) : null}
 
             {tab === "stripe" ? (
-              <ResourceTable
-                className="fiscal-view__table"
-                data={drafts}
-                columns={stripeDraftColumns}
-                rowKey="id"
-                responsiveMinWidth="900px"
-                emptyState={
-                  <EmptyState
-                    variant="table"
-                    title="Nenhum draft Stripe pendente."
-                    description="Novos drafts serao criados a partir de eventos financeiros elegiveis."
-                  />
-                }
-                actions={{
-                  header: "Acoes",
-                  width: "0.8fr",
-                  render: (draft) => (
-                    <Button size="sm" onClick={() => void runAction(() => fiscalService.emitDraft(workspaceId, draft.id), "Draft emitido.")} disabled={isSubmitting}>
-                      Emitir
-                    </Button>
-                  )
-                }}
-              />
+              <>
+                <ResourceTable
+                  className="fiscal-view__table"
+                  data={drafts}
+                  columns={stripeDraftColumns}
+                  rowKey="id"
+                  responsiveMinWidth="900px"
+                  emptyState={
+                    <EmptyState
+                      variant="table"
+                      title="Nenhum draft Stripe pendente."
+                      description="Novos drafts serao criados a partir de eventos financeiros elegiveis."
+                    />
+                  }
+                  actions={{
+                    header: "Acoes",
+                    width: "0.8fr",
+                    render: (draft) => (
+                      <Button size="sm" onClick={() => void runAction(() => emitFiscalDraftMutation.mutateAsync(draft.id))} disabled={isSubmitting}>
+                        Emitir
+                      </Button>
+                    )
+                  }}
+                />
+                <FiscalPaginationControls
+                  label="Paginacao de drafts fiscais"
+                  page={draftsCursorStack.length + 1}
+                  hasPrevious={draftsCursorStack.length > 0}
+                  hasNext={Boolean(draftsNextCursor)}
+                  isLoading={draftsQuery.isFetching}
+                  onPrevious={() => setDraftsCursorStack((current) => current.slice(0, -1))}
+                  onNext={() => {
+                    if (draftsNextCursor) setDraftsCursorStack((current) => [...current, draftsNextCursor]);
+                  }}
+                />
+              </>
+            ) : null}
+
+            {tab === "sync" ? (
+              <>
+                <ResourceTable
+                  className="fiscal-view__table"
+                  data={syncRuns}
+                  columns={syncRunColumns}
+                  rowKey="id"
+                  responsiveMinWidth="920px"
+                  emptyState={
+                    <EmptyState
+                      variant="table"
+                      title="Nenhuma sincronizacao fiscal registrada."
+                      description="As execucoes de sincronizacao de notas recebidas aparecerao aqui."
+                    />
+                  }
+                />
+                <FiscalPaginationControls
+                  label="Paginacao de sincronizacoes fiscais"
+                  page={syncRunsCursorStack.length + 1}
+                  hasPrevious={syncRunsCursorStack.length > 0}
+                  hasNext={Boolean(syncRunsNextCursor)}
+                  isLoading={syncRunsQuery.isFetching}
+                  onPrevious={() => setSyncRunsCursorStack((current) => current.slice(0, -1))}
+                  onNext={() => {
+                    if (syncRunsNextCursor) setSyncRunsCursorStack((current) => [...current, syncRunsNextCursor]);
+                  }}
+                />
+              </>
             ) : null}
 
             {tab === "wizard" ? (
               <>
                 <SectionCard className="fiscal-view__form-card" title="Dados da emissao" subtitle="Configure empresa, cliente e item antes de emitir." density="compact">
-                <div className="fiscal-view__inline-grid">
-                  <FormField label="Tipo" className="fiscal-view__field">
-                <Select value={wizard.documentType} onChange={(event) => setWizard((current) => ({ ...current, documentType: event.target.value as FiscalDocumentType }))}>
-                  <option value="NFE">NF-e</option>
-                  <option value="NFSE">NFS-e</option>
-                </Select>
-              </FormField>
-                  <FormField label="Empresa" className="fiscal-view__field">
-                <Select value={wizard.companyConfigId} onChange={(event) => setWizard((current) => ({ ...current, companyConfigId: event.target.value }))}>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>{company.displayName}</option>
-                  ))}
-                </Select>
-              </FormField>
-                  <FormField label="Referencia" className="fiscal-view__field">
-                <TextInput value={wizard.reference} onChange={(event) => setWizard((current) => ({ ...current, reference: event.target.value }))} />
-              </FormField>
-                </div>
-                <div className="fiscal-view__inline-grid">
-                  <FormField label="Cliente cadastrado" className="fiscal-view__field">
-                <Select value={wizard.customerId} onChange={(event) => handleWizardCustomerChange(event.target.value)}>
-                  <option value="">Selecione um cliente</option>
-                  {customers.map((customer) => {
-                    const detail = formatCustomerOptionDetail(customer);
-                    return (
-                      <option key={customer.id} value={customer.id}>
-                        {getCustomerDisplayName(customer)}{detail ? ` - ${detail}` : ""}
-                      </option>
-                    );
-                  })}
-                </Select>
-              </FormField>
-                  <FormField label="Nome fiscal" className="fiscal-view__field">
-                <TextInput value={wizard.customerName} readOnly />
-              </FormField>
-                  <FormField label="Documento" className="fiscal-view__field">
-                <TextInput value={wizard.customerDocument} readOnly />
-              </FormField>
-                </div>
-                {selectedWizardCustomer && !selectedWizardCustomer.document ? (
-                  <InlineAlert tone="danger">
-                    Complete CPF/CNPJ no cadastro do cliente antes de emitir.
-                  </InlineAlert>
-                ) : null}
-                <div className="fiscal-view__inline-grid">
-                  <FormField label="Item" className="fiscal-view__field">
-                <TextInput value={wizard.itemName} onChange={(event) => setWizard((current) => ({ ...current, itemName: event.target.value }))} />
-              </FormField>
-                </div>
-                <div className="fiscal-view__inline-grid">
-                  <FormField label="Qtd" className="fiscal-view__field"><TextInput value={wizard.quantity} onChange={(event) => setWizard((current) => ({ ...current, quantity: event.target.value }))} /></FormField>
-                  <FormField label="Unitario" className="fiscal-view__field"><TextInput value={wizard.unitPrice} onChange={(event) => setWizard((current) => ({ ...current, unitPrice: event.target.value }))} /></FormField>
-                  <FormField label="Desconto" className="fiscal-view__field"><TextInput value={wizard.discount} onChange={(event) => setWizard((current) => ({ ...current, discount: event.target.value }))} /></FormField>
-                </div>
-                <FormField label="Observacoes" className="fiscal-view__field">
-              <Textarea value={wizard.notes} onChange={(event) => setWizard((current) => ({ ...current, notes: event.target.value }))} rows={3} />
-            </FormField>
-                <Button onClick={() => void submitWizard()} disabled={isSubmitting}>Emitir documento</Button>
+                <AppForm
+                  form={wizardForm}
+                  className="fiscal-view__settings-form"
+                  onRawSubmit={(event) => {
+                    event.preventDefault();
+                    void submitWizard();
+                  }}
+                >
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={3}>
+                    <AppSelectField<FiscalWizardFormValues, "documentType", FiscalDocumentType>
+                      name="documentType"
+                      label="Tipo"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "NFE", label: "NF-e" },
+                        { value: "NFSE", label: "NFS-e" }
+                      ]}
+                    />
+                    <AppSelectField
+                      name="companyConfigId"
+                      label="Empresa"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "__none", label: "Selecione uma empresa" },
+                        ...companies.map((company) => ({ value: company.id, label: company.displayName }))
+                      ]}
+                      formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : "__none")}
+                      parseValue={(value) => (value === "__none" ? "" : value)}
+                    />
+                    <AppTextField name="reference" label="Referencia" className="fiscal-view__field" />
+                  </AppFormGrid>
+
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={3}>
+                    <AppSelectField
+                      name="customerId"
+                      label="Cliente cadastrado"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "__none", label: "Selecione um cliente" },
+                        ...customers.map((customer) => {
+                          const detail = formatCustomerOptionDetail(customer);
+                          return {
+                            value: customer.id,
+                            label: `${getCustomerDisplayName(customer)}${detail ? ` - ${detail}` : ""}`
+                          };
+                        })
+                      ]}
+                      formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : "__none")}
+                      parseValue={(value) => (value === "__none" ? "" : value)}
+                      onValueChange={(_, formValue) => handleWizardCustomerChange(typeof formValue === "string" ? formValue : "")}
+                    />
+                    <AppTextField name="customerName" label="Nome fiscal" className="fiscal-view__field" readOnly />
+                    <AppTextField name="customerDocument" label="Documento" className="fiscal-view__field" readOnly />
+                  </AppFormGrid>
+
+                  {selectedWizardCustomer && !selectedWizardCustomer.document ? (
+                    <InlineAlert tone="danger">
+                      Complete CPF/CNPJ no cadastro do cliente antes de emitir.
+                    </InlineAlert>
+                  ) : null}
+
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={1}>
+                    <AppTextField name="itemName" label="Item" className="fiscal-view__field" />
+                  </AppFormGrid>
+
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={3}>
+                    <AppTextField name="quantity" label="Qtd" className="fiscal-view__field" inputMode="decimal" />
+                    <AppTextField name="unitPrice" label="Unitario" className="fiscal-view__field" inputMode="decimal" />
+                    <AppTextField name="discount" label="Desconto" className="fiscal-view__field" inputMode="decimal" />
+                  </AppFormGrid>
+
+                  <AppTextareaField name="notes" label="Observacoes" className="fiscal-view__field" rows={3} />
+
+                  <AppFormActions align="start">
+                    <Button type="submit" disabled={isSubmitting || !wizardForm.formState.isValid}>
+                      Emitir documento
+                    </Button>
+                  </AppFormActions>
+                </AppForm>
                 </SectionCard>
               </>
             ) : null}
@@ -814,33 +1141,51 @@ export function FiscalPage() {
             {tab === "settings" ? (
               <>
                 <SectionCard className="fiscal-view__form-card" title="Empresa fiscal" subtitle="Cadastre as credenciais fiscais usadas na emissao." density="compact">
-                <div className="fiscal-view__inline-grid">
-                  <FormField label="Nome exibicao" className="fiscal-view__field"><TextInput value={companyForm.displayName} onChange={(event) => setCompanyForm((current) => ({ ...current, displayName: event.target.value }))} /></FormField>
-                  <FormField label="Razao social" className="fiscal-view__field"><TextInput value={companyForm.legalName} onChange={(event) => setCompanyForm((current) => ({ ...current, legalName: event.target.value }))} /></FormField>
-                  <FormField label="CNPJ" className="fiscal-view__field"><TextInput value={companyForm.cnpj} onChange={(event) => setCompanyForm((current) => ({ ...current, cnpj: event.target.value }))} /></FormField>
-                </div>
-                <FormField label="Token Focus" className="fiscal-view__field">
-              <TextInput value={companyForm.focusToken} onChange={(event) => setCompanyForm((current) => ({ ...current, focusToken: event.target.value }))} />
-            </FormField>
-                <div className="fiscal-view__row-actions">
-              <Button
-                onClick={() =>
-                  void runAction(
-                    () =>
-                      fiscalService.createCompany(workspaceId, {
-                        displayName: companyForm.displayName,
-                        legalName: companyForm.legalName,
-                        cnpj: companyForm.cnpj,
-                        focusToken: companyForm.focusToken
-                      }),
-                    "Empresa fiscal cadastrada."
-                  )
-                }
-                disabled={isSubmitting}
-              >
-                Cadastrar empresa
-              </Button>
-            </div>
+                <AppForm
+                  form={companyForm}
+                  className="fiscal-view__settings-form"
+                  onRawSubmit={(event) => {
+                    event.preventDefault();
+                    void submitCompanyForm();
+                  }}
+                >
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={3}>
+                    <AppTextField name="displayName" label="Nome exibicao" className="fiscal-view__field" />
+                    <AppTextField name="legalName" label="Razao social" className="fiscal-view__field" />
+                    <AppTextField name="cnpj" label="CNPJ" className="fiscal-view__field" inputMode="numeric" />
+                  </AppFormGrid>
+                  <AppFormGrid className="fiscal-view__inline-grid" columns={2}>
+                    <AppSelectField<FiscalCompanyFormValues, "focusEnvironment", FiscalCompanyFormValues["focusEnvironment"]>
+                      name="focusEnvironment"
+                      label="Ambiente Focus"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "homologacao", label: "Homologacao" },
+                        { value: "producao", label: "Producao" }
+                      ]}
+                    />
+                    <AppSelectField<FiscalCompanyFormValues, "stripePolicy", FiscalCompanyFormValues["stripePolicy"]>
+                      name="stripePolicy"
+                      label="Politica Stripe"
+                      className="fiscal-view__field"
+                      options={[
+                        { value: "manual_review", label: "Revisao manual" },
+                        { value: "automatic_after_payment", label: "Automatica apos pagamento" }
+                      ]}
+                    />
+                  </AppFormGrid>
+                  <AppTextField name="focusToken" label="Token Focus" className="fiscal-view__field" />
+                  <AppFormActions className="fiscal-view__row-actions">
+                    {editingCompanyId ? (
+                      <Button type="button" variant="outline" onClick={resetCompanyForm} disabled={isSubmitting || companyForm.formState.isSubmitting}>
+                        Cancelar edicao
+                      </Button>
+                    ) : null}
+                    <Button type="submit" disabled={isSubmitting || companyForm.formState.isSubmitting}>
+                      {editingCompanyId ? "Salvar empresa" : "Cadastrar empresa"}
+                    </Button>
+                  </AppFormActions>
+                </AppForm>
                 <ResourceTable
                   className="fiscal-view__table"
                   data={companies}
@@ -855,12 +1200,17 @@ export function FiscalPage() {
                     />
                   }
                   actions={{
-                    header: "Validar",
-                    width: "0.8fr",
+                    header: "Acoes",
+                    width: "1fr",
                     render: (company) => (
-                      <Button size="sm" variant="outline" onClick={() => void runAction(() => fiscalService.validateCompany(workspaceId, company.id).then(() => undefined), "Validacao concluida.")} disabled={isSubmitting}>
-                        Validar
-                      </Button>
+                      <div className="fiscal-page__row-actions">
+                        <Button size="sm" variant="outline" onClick={() => handleEditCompany(company)} disabled={isSubmitting}>
+                          Editar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => void runAction(() => validateFiscalCompanyMutation.mutateAsync(company.id))} disabled={isSubmitting}>
+                          Validar
+                        </Button>
+                      </div>
                     )
                   }}
                 />
@@ -883,7 +1233,6 @@ export function FiscalPage() {
           bodyClassName="fiscal-view__modal-content"
           onClose={() => {
             setDetailDocumentId(null);
-            setDetails(null);
           }}
         >
           {detailLoading || !details ? (

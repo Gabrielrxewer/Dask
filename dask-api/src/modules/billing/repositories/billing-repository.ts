@@ -65,6 +65,20 @@ export interface ConnectCatalogItem {
   updatedAt: Date;
 }
 
+export interface CursorPaginationInput {
+  cursor?: string;
+  pageSize?: number;
+}
+
+export interface ListConnectCatalogItemsInput extends CursorPaginationInput {
+  workspaceId: string;
+  includeInactive?: boolean;
+  kind?: ConnectCatalogItemKind;
+  billingType?: ConnectCatalogBillingType;
+  status?: 'active' | 'inactive' | 'all';
+  search?: string;
+}
+
 export interface CreateConnectCatalogItemInput {
   workspaceId: string;
   createdByUserId: string;
@@ -140,6 +154,15 @@ export interface ConnectPaymentOrder {
   updatedAt: Date;
 }
 
+export interface ListConnectPaymentOrdersInput extends CursorPaginationInput {
+  workspaceId: string;
+  customerIds?: string[];
+  customerId?: string;
+  status?: ConnectPaymentOrderStatus;
+  email?: string;
+  search?: string;
+}
+
 export interface CreateConnectPaymentOrderInput {
   workspaceId: string;
   createdByUserId: string;
@@ -162,12 +185,42 @@ export interface UpdateConnectPaymentOrderInput {
   stripePaymentIntentId?: string;
   status?: ConnectPaymentOrderStatus;
   statusReason?: string;
+  metadata?: Record<string, string> | null;
   checkoutUrl?: string;
   lastWebhookEvent?: string;
   paidAt?: Date | null;
   failedAt?: Date | null;
   canceledAt?: Date | null;
   refundedAt?: Date | null;
+}
+
+export interface BillingPortalTokenRecord {
+  id: string;
+  workspaceId: string;
+  orderId: string;
+  tokenId: string;
+  tokenHash: string;
+  customerEmail: string | null;
+  scopes: string[];
+  expiresAt: Date;
+  revokedAt: Date | null;
+  revokedByUserId: string | null;
+  lastAccessedAt: Date | null;
+  createdByUserId: string | null;
+  createdAt: Date;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface CreateBillingPortalTokenRecordInput {
+  workspaceId: string;
+  orderId: string;
+  tokenId: string;
+  tokenHash: string;
+  customerEmail?: string | null;
+  scopes: string[];
+  expiresAt: Date;
+  createdByUserId?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface SyncWorkItemBillingSnapshotInput {
@@ -245,15 +298,12 @@ export interface BillingRepository {
   createCustomerForBilling(input: CreateBillingCustomerInput): Promise<BillingCustomerSnapshot>;
   linkCustomerToUser(workspaceId: string, customerId: string, userId: string, createdBy?: string): Promise<void>;
   findConnectCatalogItemById(itemId: string): Promise<ConnectCatalogItem | null>;
-  listConnectCatalogItemsByWorkspace(workspaceId: string, includeInactive?: boolean): Promise<ConnectCatalogItem[]>;
+  listConnectCatalogItemsByWorkspace(input: ListConnectCatalogItemsInput): Promise<ConnectCatalogItem[]>;
   findConnectPaymentOrderById(orderId: string): Promise<ConnectPaymentOrder | null>;
   findConnectPaymentOrderByCheckoutSessionId(sessionId: string): Promise<ConnectPaymentOrder | null>;
   findConnectPaymentOrderByPaymentIntentId(paymentIntentId: string): Promise<ConnectPaymentOrder | null>;
-  listConnectPaymentOrdersByWorkspace(
-    workspaceId: string,
-    limit: number,
-    customerIds?: string[]
-  ): Promise<ConnectPaymentOrder[]>;
+  listConnectPaymentOrdersByWorkspace(input: ListConnectPaymentOrdersInput): Promise<ConnectPaymentOrder[]>;
+  hasWorkItemProposalOrContract(workspaceId: string, workItemId: string): Promise<boolean>;
 
   upsertStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void>;
   upsertWorkspaceConnectAccountId(workspaceId: string, stripeConnectAccountId: string): Promise<void>;
@@ -264,6 +314,8 @@ export interface BillingRepository {
   updateConnectCatalogItem(itemId: string, input: UpdateConnectCatalogItemInput): Promise<ConnectCatalogItem>;
   createConnectPaymentOrder(input: CreateConnectPaymentOrderInput): Promise<ConnectPaymentOrder>;
   updateConnectPaymentOrder(orderId: string, input: UpdateConnectPaymentOrderInput): Promise<ConnectPaymentOrder>;
+  createBillingPortalTokenRecord(input: CreateBillingPortalTokenRecordInput): Promise<BillingPortalTokenRecord>;
+  revokeBillingPortalTokensForOrder(workspaceId: string, orderId: string, revokedByUserId?: string | null): Promise<void>;
   syncWorkItemBillingSnapshot(input: SyncWorkItemBillingSnapshotInput): Promise<void>;
 
   /** Sync User billing fields from subscription state */

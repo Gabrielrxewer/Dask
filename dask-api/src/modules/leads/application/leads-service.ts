@@ -30,6 +30,9 @@ import {
 } from '@/modules/leads/domain/types';
 import type { LeadsDashboard, LeadsRepository, LeadWithRelations } from '@/modules/leads/repositories/leads-repository';
 
+// LEGACY: este service opera a tabela Prisma Lead criada na fundacao do modulo.
+// O runtime principal do produto nao monta essas rotas; Lead oficial = WorkItem comercial
+// via workspace-platform/commercial-intake. Manter este codigo isolado evita duas fontes de verdade.
 interface LeadsServiceDeps {
   repo: LeadsRepository;
   eventPublisher: EventPublisher;

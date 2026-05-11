@@ -230,4 +230,149 @@ describe('AIAgentService', () => {
     expect(prisma.item.updateMany).toHaveBeenCalled();
     expect(eventPublisher.publish).toHaveBeenCalled();
   });
+
+  it('publishes an AI agent as an active automation workflow version', async () => {
+    const prisma = {
+      aIAgent: {
+        findFirst: vi.fn().mockResolvedValue(buildAgent({
+          id: 'agent-1',
+          config: {
+            flow: {
+              nodes: [
+                { id: 'trigger', type: 'trigger', data: { label: 'Input' } },
+                { id: 'llm', type: 'llm', data: { label: 'LLM' } },
+                { id: 'output', type: 'output', data: { label: 'Output' } }
+              ],
+              edges: [
+                { id: 'e1', source: 'trigger', target: 'llm' },
+                { id: 'e2', source: 'llm', target: 'output' }
+              ]
+            }
+          }
+        }))
+      },
+      automationWorkflow: {
+        findFirst: vi.fn().mockResolvedValue(null)
+      }
+    };
+    const agentRepository = buildAgentRepository();
+    agentRepository.patch.mockResolvedValue({ count: 1 });
+    const workflowService = {
+      createWorkflow: vi.fn().mockResolvedValue({ id: 'workflow-1' }),
+      updateWorkflow: vi.fn()
+    };
+    const workflowVersionService = {
+      createDraftVersion: vi.fn().mockResolvedValue({ id: 'version-draft-1' }),
+      publishVersion: vi.fn().mockResolvedValue({
+        id: 'version-1',
+        publishedAt: new Date('2026-05-10T00:00:00.000Z')
+      })
+    };
+
+    const service = new AIAgentService(
+      prisma as any,
+      agentRepository as any,
+      {
+        generateText: vi.fn(),
+        improveDescription: vi.fn(),
+        summarize: vi.fn(),
+        classify: vi.fn()
+      } as any,
+      { search: vi.fn().mockResolvedValue([]) } as any,
+      { can: vi.fn().mockResolvedValue(true) } as any,
+      buildEventPublisher() as any,
+      {
+        workflowService: workflowService as any,
+        workflowVersionService: workflowVersionService as any
+      }
+    );
+
+    const result = await service.publishAgentRuntime({
+      workspaceId: 'ws-1',
+      agentId: 'agent-1',
+      requestedBy: 'user-1'
+    });
+
+    expect(result.workflowId).toBe('workflow-1');
+    expect(result.workflowVersionId).toBe('version-1');
+    expect(workflowVersionService.createDraftVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowId: 'workflow-1',
+        graph: expect.objectContaining({ version: 1 })
+      })
+    );
+    expect(agentRepository.patch).toHaveBeenCalledWith(
+      'agent-1',
+      'ws-1',
+      expect.objectContaining({
+        config: expect.objectContaining({
+          automationRuntime: expect.objectContaining({
+            workflowId: 'workflow-1',
+            workflowVersionId: 'version-1'
+          })
+        })
+      })
+    );
+  });
+
+  it('audits AI agent runtime failures', async () => {
+    const prisma = {
+      aIAgent: {
+        findFirst: vi.fn().mockResolvedValue(buildAgent({
+          id: 'agent-1',
+          config: {
+            automationRuntime: {
+              workflowId: 'workflow-1',
+              workflowVersionId: 'version-1'
+            }
+          }
+        }))
+      }
+    };
+    const eventPublisher = buildEventPublisher();
+    const workflowRunnerService = {
+      startRun: vi.fn().mockRejectedValue(new Error('Runtime exploded with a long but safe message'))
+    };
+
+    const service = new AIAgentService(
+      prisma as any,
+      buildAgentRepository() as any,
+      {
+        generateText: vi.fn(),
+        improveDescription: vi.fn(),
+        summarize: vi.fn(),
+        classify: vi.fn()
+      } as any,
+      { search: vi.fn().mockResolvedValue([]) } as any,
+      { can: vi.fn().mockResolvedValue(true) } as any,
+      eventPublisher as any,
+      {
+        workflowRunnerService: workflowRunnerService as any
+      }
+    );
+
+    await expect(
+      service.runAgentRuntime({
+        workspaceId: 'ws-1',
+        agentId: 'agent-1',
+        requestedBy: 'user-1',
+        instruction: 'Run it'
+      })
+    ).rejects.toThrow('Runtime exploded');
+
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'ai.agent.run.failed',
+        aggregateType: 'ai-agent',
+        aggregateId: 'agent-1',
+        payload: expect.objectContaining({
+          workspaceId: 'ws-1',
+          agentId: 'agent-1',
+          requestedBy: 'user-1',
+          workflowId: 'workflow-1',
+          error: expect.stringContaining('Runtime exploded')
+        })
+      })
+    );
+  });
 });

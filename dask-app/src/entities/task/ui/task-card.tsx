@@ -52,6 +52,7 @@ interface TaskCardProps {
   onDelete?: (taskId: string) => void;
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
   onUpdateChecklist?: (taskId: string, checklist: Task["checklist"]) => Promise<void> | void;
+  onMoveToStatus?: (taskId: string, statusId: string) => void;
 }
 
 export function TaskCard({
@@ -72,7 +73,8 @@ export function TaskCard({
   onOpen,
   onDelete,
   onUpdatePriority,
-  onUpdateChecklist
+  onUpdateChecklist,
+  onMoveToStatus
 }: TaskCardProps) {
   const [isMounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -139,7 +141,14 @@ export function TaskCard({
     meta: Math.max(0, CARD_SLOT_LIMITS.meta - metaFields.length)
   } satisfies Record<TaskCardSlotArea, number>;
   const priorityLabel = priorityMeta[task.priority]?.label ?? "Prioridade";
-  const hasMenuActions = canOpen || typeof onDelete === "function" || typeof onUpdatePriority === "function";
+  const moveTargets = typeof onMoveToStatus === "function"
+    ? resolvedStatuses.filter(status => status.id !== task.status)
+    : [];
+  const hasMenuActions =
+    canOpen ||
+    typeof onDelete === "function" ||
+    typeof onUpdatePriority === "function" ||
+    moveTargets.length > 0;
   const hasHeader = badgeFields.length > 0 || hasMenuActions || emptySlotCountByArea.badge > 0;
 
   const resolveFieldSlotProps = (
@@ -488,6 +497,31 @@ export function TaskCard({
                       })}
                     </div>
                     <span className="task-card__menu-helper">{priorityLabel}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {moveTargets.length > 0 ? (
+                <div className="task-card__menu-section" role="none">
+                  <div className="task-card__menu-group" role="none">
+                    <span className="task-card__menu-label">Mover para</span>
+                    <div className="task-card__menu-status-list" role="none">
+                      {moveTargets.map(status => (
+                        <button
+                          key={status.id}
+                          type="button"
+                          className="task-card__menu-action task-card__menu-action--status"
+                          role="menuitem"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            onMoveToStatus?.(task.id, status.id);
+                          }}
+                        >
+                          <span className="task-card__menu-status-dot" style={{ background: status.dot }} aria-hidden="true" />
+                          <span>{status.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : null}

@@ -1,11 +1,16 @@
 import type { Dispatch, SetStateAction } from "react";
+import { type Control, type FieldErrors } from "react-hook-form";
 import {
+  AppFormField,
+  AppFormError,
+  AppFormGrid,
+  AppSelectField,
+  AppTextField,
   Button,
   EmptyState,
   FormField,
-  ModuleTabs,
+  AppSelect,
   ResourceTable,
-  Select,
   TextInput
 } from "@/shared/ui";
 import type { MarketingAudienceContact, MarketingSegment } from "@/modules/marketing";
@@ -19,9 +24,9 @@ import {
   type SegmentPreviewState
 } from "./marketing-page.model";
 
-const SEGMENT_KIND_ITEMS: Array<{ id: SegmentFormState["kind"]; label: string }> = [
-  { id: "DYNAMIC", label: "Dinamico" },
-  { id: "STATIC", label: "Estatico" }
+const SEGMENT_KIND_ITEMS: Array<{ value: SegmentFormState["kind"]; label: string }> = [
+  { value: "DYNAMIC", label: "Dinamico" },
+  { value: "STATIC", label: "Estatico" }
 ];
 
 interface MarketingAudienceTabProps {
@@ -29,8 +34,8 @@ interface MarketingAudienceTabProps {
   segments: MarketingSegment[];
   audienceSearch: string;
   setAudienceSearch: Dispatch<SetStateAction<string>>;
-  segmentForm: SegmentFormState;
-  setSegmentForm: Dispatch<SetStateAction<SegmentFormState>>;
+  segmentFormControl: Control<SegmentFormState>;
+  segmentFormErrors: FieldErrors<SegmentFormState>;
   segmentPreview: SegmentPreviewState | null;
   segmentFilterRule: SegmentFilterRule;
   updateSegmentFilterRule: (updates: Partial<SegmentFilterRule>) => void;
@@ -46,8 +51,8 @@ export function MarketingAudienceTab({
   segments,
   audienceSearch,
   setAudienceSearch,
-  segmentForm,
-  setSegmentForm,
+  segmentFormControl,
+  segmentFormErrors,
   segmentPreview,
   segmentFilterRule,
   updateSegmentFilterRule,
@@ -155,32 +160,35 @@ export function MarketingAudienceTab({
                       </div>
                     </div>
 
-                    <FormField label="Nome">
-                      <TextInput value={segmentForm.name} onChange={(event) => setSegmentForm((current) => ({ ...current, name: event.target.value }))} />
-                    </FormField>
-                    <FormField label="Descrição">
-                      <TextInput value={segmentForm.description} onChange={(event) => setSegmentForm((current) => ({ ...current, description: event.target.value }))} />
-                    </FormField>
+                    <AppTextField control={segmentFormControl} name="name" label="Nome" />
+                    <AppTextField control={segmentFormControl} name="description" label="Descricao" />
 
-                    <div className="mkt-rule-builder">
-                      <Select value={segmentFilterRule.field} onChange={(event) => updateSegmentFilterRule({ field: event.target.value })}>
-                        {SEGMENT_FILTER_FIELDS.map((field) => <option key={field.value} value={field.value}>{field.label}</option>)}
-                      </Select>
-                      <Select value={segmentFilterRule.operator} onChange={(event) => updateSegmentFilterRule({ operator: event.target.value })}>
-                        {SEGMENT_FILTER_OPERATORS.map((operator) => <option key={operator.value} value={operator.value}>{operator.label}</option>)}
-                      </Select>
-                      <TextInput value={segmentFilterRule.value} onChange={(event) => updateSegmentFilterRule({ value: event.target.value })} />
-                    </div>
+                    <AppFormField label="Regra">
+                      <AppFormGrid className="mkt-rule-builder" columns={3}>
+                        <AppSelect
+                          value={segmentFilterRule.field}
+                          onValueChange={(value) => updateSegmentFilterRule({ field: value })}
+                          aria-label="Campo do filtro"
+                          items={SEGMENT_FILTER_FIELDS.map((field) => ({ value: field.value, label: field.label }))}
+                        />
+                        <AppSelect
+                          value={segmentFilterRule.operator}
+                          onValueChange={(value) => updateSegmentFilterRule({ operator: value })}
+                          aria-label="Operador do filtro"
+                          items={SEGMENT_FILTER_OPERATORS.map((operator) => ({ value: operator.value, label: operator.label }))}
+                        />
+                        <TextInput value={segmentFilterRule.value} onChange={(event) => updateSegmentFilterRule({ value: event.target.value })} />
+                      </AppFormGrid>
+                    </AppFormField>
 
-                    <ModuleTabs
-                      value={segmentForm.kind}
-                      items={SEGMENT_KIND_ITEMS}
-                      onChange={(kind) => setSegmentForm((current) => ({ ...current, kind }))}
+                    <AppSelectField<SegmentFormState, "kind", SegmentFormState["kind"]>
+                      control={segmentFormControl}
+                      name="kind"
+                      label="Tipo de segmento"
                       className="mkt-segment-builder__mode"
-                      variant="pill"
-                      ariaLabel="Tipo de segmento"
+                      options={SEGMENT_KIND_ITEMS}
                     />
-
+                    <AppFormError>{segmentFormErrors.filtersText?.message}</AppFormError>
                     <Button onClick={() => void createSegment()} disabled={isSubmitting}>Criar segmento</Button>
 
                     <div className="marketing-page__chips">

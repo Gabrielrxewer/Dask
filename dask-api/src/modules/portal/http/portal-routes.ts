@@ -1,12 +1,16 @@
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { asyncHandler } from '@/core/http/async-handler';
 import { authMiddleware } from '@/core/http/auth-middleware';
 import { AppError } from '@/core/errors/app-error';
 import { normalizeEmail } from '@/modules/identity/domain/password-policy';
 import type { WorkspaceDocumentsService } from '@/modules/workspace-platform/application/workspace-documents-service';
+import {
+  hashBillingPortalToken,
+  verifyBillingPortalToken
+} from '@/modules/billing/domain/portal-token';
 
 const onboardByDocumentDto = z.object({
   docToken: z.string().min(1)
@@ -18,6 +22,27 @@ const onboardByBillingDto = z.object({
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+interface BillingPortalTokenRow {
+  id: string;
+  workspaceId: string;
+  orderId: string;
+  tokenId: string;
+  tokenHash: string;
+  customerEmail: string | null;
+  scopes: string[];
+  expiresAt: Date;
+  revokedAt: Date | null;
+}
+
+interface BillingPortalTokenDelegate {
+  findUnique(input: { where: { tokenId: string } }): Promise<BillingPortalTokenRow | null>;
+  update(input: { where: { id: string }; data: { lastAccessedAt: Date } }): Promise<BillingPortalTokenRow>;
+}
+
+function billingPortalTokens(prisma: PrismaClient): BillingPortalTokenDelegate {
+  return (prisma as unknown as PrismaClient & { billingPortalToken: BillingPortalTokenDelegate }).billingPortalToken;
 }
 
 async function ensureClientMembership(prisma: PrismaClient, workspaceId: string, userId: string) {
@@ -83,7 +108,7 @@ async function linkCustomerIdToUser(
   customerId: string,
   userId: string
 ) {
-  await (prisma as any).workspaceCustomerUser.upsert({
+  await prisma.workspaceCustomerUser.upsert({
     where: { workspaceId_customerId_userId: { workspaceId, customerId, userId } },
     create: { workspaceId, customerId, userId, createdBy: userId },
     update: {}
@@ -293,6 +318,7 @@ async function attachBillingToClientAnchor(input: {
 export const buildPortalRoutes = (deps: {
   prisma: PrismaClient;
   workspaceDocumentsService: WorkspaceDocumentsService;
+  billingPortalTokenSecret: string;
 }): Router => {
   const router = Router();
 
@@ -370,10 +396,18 @@ export const buildPortalRoutes = (deps: {
 
       if (body.billingToken !== undefined) {
         const { billingToken } = onboardByBillingDto.parse(body);
+        let tokenClaims: ReturnType<typeof verifyBillingPortalToken>;
+
+        try {
+          tokenClaims = verifyBillingPortalToken(billingToken, deps.billingPortalTokenSecret);
+        } catch {
+          throw new AppError('Link de cobranca invalido.', 404, { code: 'BILLING_TOKEN_INVALID' });
+        }
 
         const order = await deps.prisma.connectPaymentOrder.findFirst({
           where: {
-            metadata: { path: ['clientAccessToken'], equals: billingToken }
+            id: tokenClaims.orderId,
+            workspaceId: tokenClaims.workspaceId
           },
           include: {
             workspace: { select: { id: true, key: true, name: true } }
@@ -384,8 +418,68 @@ export const buildPortalRoutes = (deps: {
           throw new AppError('Link de cobranca invalido.', 404, { code: 'BILLING_TOKEN_INVALID' });
         }
 
+        const tokenHash = hashBillingPortalToken(billingToken);
+        const tokenRecord = await billingPortalTokens(deps.prisma).findUnique({
+          where: { tokenId: tokenClaims.jti }
+        });
+
+        if (tokenRecord) {
+          if (
+            tokenRecord.workspaceId !== order.workspaceId ||
+            tokenRecord.orderId !== order.id ||
+            tokenRecord.tokenHash !== tokenHash
+          ) {
+            throw new AppError('Link de cobranca invalido.', 404, { code: 'BILLING_TOKEN_INVALID' });
+          }
+          if (tokenRecord.revokedAt) {
+            throw new AppError('Link de cobranca revogado.', 403, { code: 'BILLING_TOKEN_REVOKED' });
+          }
+          if (tokenRecord.expiresAt.getTime() <= Date.now()) {
+            throw new AppError('Link de cobranca expirado.', 403, { code: 'BILLING_TOKEN_EXPIRED' });
+          }
+          if (!tokenRecord.scopes.includes('view')) {
+            throw new AppError('Link de cobranca sem escopo de visualizacao.', 403, { code: 'BILLING_TOKEN_SCOPE_DENIED' });
+          }
+        } else {
+          const orderMetadata = asRecord(order.metadata);
+          const expectedHash = typeof orderMetadata.clientPortalTokenHash === 'string'
+            ? orderMetadata.clientPortalTokenHash
+            : '';
+          const expectedTokenId = typeof orderMetadata.clientPortalTokenId === 'string'
+            ? orderMetadata.clientPortalTokenId
+            : '';
+          const revokedAt = typeof orderMetadata.clientPortalTokenRevokedAt === 'string'
+            ? orderMetadata.clientPortalTokenRevokedAt.trim()
+            : '';
+          const expiresAt = typeof orderMetadata.clientPortalTokenExpiresAt === 'string'
+            ? new Date(orderMetadata.clientPortalTokenExpiresAt)
+            : null;
+
+          if (
+            expectedTokenId !== tokenClaims.jti ||
+            expectedHash !== tokenHash
+          ) {
+            throw new AppError('Link de cobranca invalido.', 404, { code: 'BILLING_TOKEN_INVALID' });
+          }
+          if (revokedAt) {
+            throw new AppError('Link de cobranca revogado.', 403, { code: 'BILLING_TOKEN_REVOKED' });
+          }
+          if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+            throw new AppError('Link de cobranca expirado.', 403, { code: 'BILLING_TOKEN_EXPIRED' });
+          }
+        }
+
+        if (!tokenClaims.scopes.includes('view')) {
+          throw new AppError('Link de cobranca sem escopo de visualizacao.', 403, { code: 'BILLING_TOKEN_SCOPE_DENIED' });
+        }
+
         const expectedEmail = order.customerEmail ? normalizeEmail(order.customerEmail) : null;
-        if (!expectedEmail || normalizeEmail(user.email) !== expectedEmail) {
+        const tokenEmail = tokenRecord?.customerEmail
+          ? normalizeEmail(tokenRecord.customerEmail)
+          : tokenClaims.customerEmail
+            ? normalizeEmail(tokenClaims.customerEmail)
+            : expectedEmail;
+        if (!expectedEmail || normalizeEmail(user.email) !== expectedEmail || tokenEmail !== expectedEmail) {
           throw new AppError(
             'Esta cobranca foi enviada para outro endereco de e-mail.',
             403,
@@ -426,6 +520,28 @@ export const buildPortalRoutes = (deps: {
           userId,
           anchorItemId
         });
+
+        if (tokenRecord) {
+          await billingPortalTokens(deps.prisma).update({
+            where: { id: tokenRecord.id },
+            data: { lastAccessedAt: new Date() }
+          });
+        } else {
+          const currentOrderForAccessLog = await deps.prisma.connectPaymentOrder.findUnique({
+            where: { id: order.id },
+            select: { metadata: true }
+          });
+
+          await deps.prisma.connectPaymentOrder.update({
+            where: { id: order.id },
+            data: {
+              metadata: {
+                ...asRecord(currentOrderForAccessLog?.metadata),
+                clientPortalTokenLastAccessedAt: new Date().toISOString()
+              } as Prisma.InputJsonValue
+            }
+          });
+        }
 
         res.status(200).json({
           workspaceSlug: order.workspace.key,

@@ -2,6 +2,8 @@ import type { CommercialDocumentStatus, DocumentationAssistantMode, DocumentKind
 import { resolveDocumentVariables } from "@/modules/workspace/model/document-variables";
 import { AppIcon } from "@/shared/ui";
 
+export { markdownUrlTransform } from "@/modules/documentation";
+
 export type AssistantRole = "user" | "assistant" | "system";
 
 export interface AssistantMessage {
@@ -91,28 +93,6 @@ export function buildRenderVariables(
     return acc;
   }, {});
   return { ...contextVars, ...metadataVars };
-}
-
-export function markdownUrlTransform(url: string): string {
-  const trimmedUrl = url.trim();
-  const normalizedUrl = trimmedUrl.toLowerCase();
-
-  if (
-    normalizedUrl.startsWith("data:image/") ||
-    trimmedUrl.startsWith("#") ||
-    trimmedUrl.startsWith("/") ||
-    trimmedUrl.startsWith("./") ||
-    trimmedUrl.startsWith("../")
-  ) {
-    return trimmedUrl;
-  }
-
-  try {
-    const protocol = new URL(trimmedUrl).protocol;
-    return ["http:", "https:", "mailto:", "tel:"].includes(protocol) ? trimmedUrl : "";
-  } catch {
-    return trimmedUrl;
-  }
 }
 
 export function renderDocumentKindIcon(kind: DocumentKind) {

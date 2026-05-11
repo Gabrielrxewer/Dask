@@ -85,16 +85,25 @@ export interface MarketingRepository {
   updateCampaignSend(sendId: string, data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   findCampaignSendByProviderMessageId(workspaceId: string, providerMessageId: string): Promise<Record<string, unknown> | null>;
   createMarketingEvent(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
+  findMarketingEventById(workspaceId: string, eventId: string): Promise<Record<string, unknown> | null>;
   listCampaignAnalytics(campaignId: string): Promise<{
     byType: Array<{ type: string; total: number }>;
     byStatus: Array<{ status: string; total: number }>;
   }>;
   createLeadActivity(data: Prisma.LeadActivityUncheckedCreateInput): Promise<LeadActivity>;
+  updateLeadFollowUp(input: {
+    workspaceId: string;
+    leadId: string;
+    nextFollowUpAt?: Date | null;
+    note?: string | null;
+    actorUserId?: string | null;
+  }): Promise<Lead | null>;
   createLeadNurtureTouch(data: Prisma.LeadNurtureTouchUncheckedCreateInput): Promise<LeadNurtureTouch>;
   updateLeadScore(workspaceId: string, leadId: string, nextScore: number): Promise<Lead>;
   createLeadScoreEvent(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   listWorkspaceDocuments(workspaceId: string, limit: number): Promise<Array<{ id: string; title: string; content: string }>>;
   listAutomationFlows(workspaceId: string): Promise<Record<string, unknown>[]>;
+  findAutomationFlowById(workspaceId: string, flowId: string): Promise<Record<string, unknown> | null>;
   createAutomationFlow(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   updateAutomationFlow(id: string, workspaceId: string, patch: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   createAutomationStep(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;

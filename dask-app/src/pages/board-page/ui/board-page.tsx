@@ -12,8 +12,16 @@ import {
 } from "@/entities/task";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { useAuth } from "@/features/auth";
-import { useWorkspaceTaskPage, type WorkspaceBoardMode } from "@/modules/workspace";
-import type { AiAgentSummary, ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
+import {
+  useWorkflowStatesQuery,
+  useWorkspaceBoardsQuery,
+  useWorkspaceTaskPage,
+  useWorkspaceWorkItemActions,
+  type CreateTaskInput,
+  type WorkspaceBoardMode
+} from "@/modules/workspace";
+import { useCustomerLookupAction } from "@/modules/leads";
+import type { AiAgentSummary } from "@/modules/workspace/model";
 import { LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { BoardPerspectiveTabs } from "./board-perspective-tabs";
 import "./board-page.css";
@@ -23,18 +31,6 @@ export function BoardPage() {
   const {
     snapshot,
     isLoading,
-    createTask,
-    deleteTask,
-    moveTask,
-    moveTaskToColumn,
-    updateTaskPriority,
-    updateTaskTitle,
-    updateTaskDescription,
-    updateTaskCustomField,
-    updateTaskSchedule,
-    updateTask,
-    fetchBoardColumns,
-    fetchWorkflowStates,
     listAiAgents,
     runAiAgentOnItem,
     runAiRiskAnalysis,
@@ -43,7 +39,6 @@ export function BoardPage() {
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem,
-    listCustomers,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -55,31 +50,56 @@ export function BoardPage() {
   } = useWorkspaceTaskPage({ currentUser: user });
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
+  const listCustomers = useCustomerLookupAction(workspaceSlug || null);
+  const {
+    createTask,
+    deleteTask,
+    moveTask,
+    moveTaskToColumn,
+    updateTaskPriority,
+    updateTaskTitle,
+    updateTaskDescription,
+    updateTaskCustomField,
+    updateTaskSchedule,
+    updateTask
+  } = useWorkspaceWorkItemActions(workspaceSlug || null);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialOpenTaskId = searchParams.get("openTaskId") ?? "";
   const initialBoardMode = searchParams.get("boardMode") ?? "";
   const [mode, setMode] = useState<WorkspaceBoardMode>("dev");
   const previousDefaultMode = useRef<WorkspaceBoardMode | null>(null);
 
-  const [apiBoardCols, setApiBoardCols] = useState<ApiBoardColumn[]>([]);
-  const [apiWorkflowStates, setApiWorkflowStates] = useState<ApiWorkflowState[]>([]);
+  const boardColumnsQuery = useWorkspaceBoardsQuery(workspaceSlug || null);
+  const workflowStatesQuery = useWorkflowStatesQuery(workspaceSlug || null);
   const [aiAgents, setAiAgents] = useState<AiAgentSummary[]>([]);
   const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
 
-  const loadBoardConfig = useCallback(async () => {
-    const [cols, states, agents] = await Promise.all([
-      fetchBoardColumns(),
-      fetchWorkflowStates(),
-      isClient ? Promise.resolve([]) : listAiAgents()
-    ]);
-    setApiBoardCols(cols.filter(c => c.isActive).sort((a, b) => a.order - b.order));
-    setApiWorkflowStates(states.filter(s => s.isActive));
-    setAiAgents(agents.filter(agent => agent.isActive));
-  }, [fetchBoardColumns, fetchWorkflowStates, isClient, listAiAgents]);
+  const apiBoardCols = useMemo(
+    () => (boardColumnsQuery.data ?? []).filter(c => c.isActive).sort((a, b) => a.order - b.order),
+    [boardColumnsQuery.data]
+  );
+  const apiWorkflowStates = useMemo(
+    () => (workflowStatesQuery.data ?? []).filter(s => s.isActive),
+    [workflowStatesQuery.data]
+  );
 
   useEffect(() => {
-    void loadBoardConfig();
-  }, [loadBoardConfig]);
+    let mounted = true;
+    if (isClient) {
+      setAiAgents([]);
+      return () => {
+        mounted = false;
+      };
+    }
+    void listAiAgents().then((agents) => {
+      if (mounted) {
+        setAiAgents(agents.filter(agent => agent.isActive));
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [isClient, listAiAgents]);
 
   const availableTags = (snapshot?.tags ?? [])
     .filter(tag => tag.isActive !== false)
@@ -188,7 +208,7 @@ export function BoardPage() {
     return updateTaskCustomField(taskId, activePerspective.statusSource.fieldId, statusId);
   };
 
-  const handleCreateTask = (statusId: TaskStatusId, input: Parameters<NonNullable<typeof createTask>>[0]) => {
+  const handleCreateTask = (statusId: TaskStatusId, input: CreateTaskInput) => {
     if (useBoardColumnsProjection && apiBoardCols.length > 0) {
       const col = apiBoardCols.find(column => column.id === statusId);
       if (col) {

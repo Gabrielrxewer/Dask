@@ -1,12 +1,22 @@
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 import { type Prisma, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
+import { DomainEventNames } from '@/core/events/event-names';
 import type { AIProvider, AIToolDefinition } from '@/modules/ai/domain/providers';
 import type { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { EventPublisher } from '@/core/events/event-publisher';
 import type { AIAgentRepository } from '@/modules/ai/repositories/ai-agent-repository';
+import type { AIAgentData } from '@/modules/ai/repositories/ai-agent-repository';
+import {
+  compileAiAgentToAutomationWorkflow,
+  mergeAiAgentRuntimeConfig
+} from '@/modules/ai/model/ai-agent-runtime-compiler';
+import type { AutomationWorkflowRunnerService } from '@/modules/automation/application/automation-workflow-runner-service';
+import { AutomationWorkflowService } from '@/modules/automation/application/workflow-service';
+import { AutomationWorkflowVersionService } from '@/modules/automation/application/workflow-version-service';
 import {
   ensureRiskAnalysisOutput,
   formatRiskAnalysisAsText,
@@ -44,6 +54,12 @@ type RunDocumentationAssistantInput = {
   }>;
   includeSemanticContext: boolean;
   topKContextDocs: number;
+};
+
+type RuntimeServices = {
+  workflowService?: AutomationWorkflowService;
+  workflowVersionService?: AutomationWorkflowVersionService;
+  workflowRunnerService?: AutomationWorkflowRunnerService;
 };
 
 const documentationAssistantOutputSchema = z.object({
@@ -311,6 +327,9 @@ function shouldAttachSemanticContext(input: {
 
 export class AIAgentService {
   private readonly toolExecutor: AIToolExecutor;
+  private readonly workflowService: AutomationWorkflowService;
+  private readonly workflowVersionService: AutomationWorkflowVersionService;
+  private readonly workflowRunnerService?: AutomationWorkflowRunnerService;
 
   public constructor(
     private readonly prisma: PrismaClient,
@@ -318,9 +337,13 @@ export class AIAgentService {
     private readonly aiProvider: AIProvider,
     private readonly hybridSearchService: HybridSearchService,
     private readonly authorizationService: AuthorizationService,
-    private readonly eventPublisher: EventPublisher
+    private readonly eventPublisher: EventPublisher,
+    runtimeServices?: RuntimeServices
   ) {
     this.toolExecutor = new AIToolExecutor(prisma, authorizationService, eventPublisher);
+    this.workflowService = runtimeServices?.workflowService ?? new AutomationWorkflowService(prisma);
+    this.workflowVersionService = runtimeServices?.workflowVersionService ?? new AutomationWorkflowVersionService(prisma);
+    this.workflowRunnerService = runtimeServices?.workflowRunnerService;
   }
 
   private async ensureDefaultAgent(workspaceId: string): Promise<void> {
@@ -386,8 +409,9 @@ export class AIAgentService {
     systemPrompt: string;
     config?: Record<string, unknown>;
     isActive?: boolean;
+    requestedBy?: string | null;
   }): Promise<{ id: string }> {
-    return this.agentRepository.create({
+    const agent = await this.agentRepository.create({
       workspaceId: input.workspaceId,
       key: input.key,
       name: input.name,
@@ -398,6 +422,17 @@ export class AIAgentService {
       config: input.config as Prisma.InputJsonValue | undefined,
       isActive: input.isActive ?? true
     });
+    await this.publishAgentEvent({
+      name: DomainEventNames.AiAgentCreated,
+      workspaceId: input.workspaceId,
+      agentId: agent.id,
+      requestedBy: input.requestedBy,
+      payload: {
+        key: input.key,
+        name: input.name
+      }
+    });
+    return agent;
   }
 
   public async updateAgent(input: {
@@ -412,6 +447,7 @@ export class AIAgentService {
       config?: Record<string, unknown>;
       isActive?: boolean;
     };
+    requestedBy?: string | null;
   }): Promise<{ id: string }> {
     const result = await this.agentRepository.patch(input.agentId, input.workspaceId, {
       name: input.patch.name,
@@ -427,7 +463,343 @@ export class AIAgentService {
       throw new AppError('Agent not found', 404);
     }
 
+    await this.publishAgentEvent({
+      name: DomainEventNames.AiAgentUpdated,
+      workspaceId: input.workspaceId,
+      agentId: input.agentId,
+      requestedBy: input.requestedBy,
+      payload: {
+        changedFields: Object.keys(input.patch)
+      }
+    });
+
     return { id: input.agentId };
+  }
+
+  public async archiveAgent(input: {
+    workspaceId: string;
+    agentId: string;
+    requestedBy?: string | null;
+  }): Promise<{ id: string }> {
+    const result = await this.agentRepository.patch(input.agentId, input.workspaceId, {
+      isActive: false
+    });
+
+    if (result.count === 0) {
+      throw new AppError('Agent not found', 404);
+    }
+
+    await this.publishAgentEvent({
+      name: DomainEventNames.AiAgentArchived,
+      workspaceId: input.workspaceId,
+      agentId: input.agentId,
+      requestedBy: input.requestedBy
+    });
+
+    return { id: input.agentId };
+  }
+
+  private async findAgentById(input: { workspaceId: string; agentId: string }): Promise<AIAgentData | null> {
+    return this.prisma.aIAgent.findFirst({
+      where: {
+        id: input.agentId,
+        workspaceId: input.workspaceId
+      }
+    });
+  }
+
+  private async requireAgent(input: { workspaceId: string; agentId: string }): Promise<AIAgentData> {
+    const agent = await this.findAgentById(input);
+    if (!agent) {
+      throw new AppError('Agent not found', 404);
+    }
+    return agent;
+  }
+
+  private async publishAgentEvent(input: {
+    name: string;
+    workspaceId: string;
+    agentId: string;
+    requestedBy?: string | null;
+    payload?: Record<string, unknown>;
+  }): Promise<void> {
+    await this.eventPublisher.publish({
+      id: randomUUID(),
+      name: input.name,
+      aggregateType: 'ai-agent',
+      aggregateId: input.agentId,
+      occurredAt: new Date(),
+      payload: {
+        workspaceId: input.workspaceId,
+        agentId: input.agentId,
+        requestedBy: input.requestedBy ?? null,
+        ...(input.payload ?? {})
+      }
+    });
+  }
+
+  private readRuntimeConfig(config: Prisma.JsonValue | null): Record<string, unknown> {
+    const root = asRecord(config);
+    const runtime = root.automationRuntime;
+    return runtime && typeof runtime === 'object' && !Array.isArray(runtime)
+      ? runtime as Record<string, unknown>
+      : {};
+  }
+
+  private async resolveExistingRuntimeWorkflow(input: {
+    workspaceId: string;
+    workflowId: unknown;
+  }): Promise<{ id: string } | null> {
+    if (typeof input.workflowId !== 'string' || input.workflowId.trim().length === 0) {
+      return null;
+    }
+
+    const workflow = await this.prisma.automationWorkflow.findFirst({
+      where: {
+        id: input.workflowId,
+        workspaceId: input.workspaceId
+      },
+      select: { id: true }
+    });
+
+    return workflow;
+  }
+
+  public async validateAgentRuntime(input: {
+    workspaceId: string;
+    agentId: string;
+    requestedBy?: string | null;
+    audit?: boolean;
+  }): Promise<{
+    agentId: string;
+    valid: boolean;
+    issues: string[];
+    definition: ReturnType<typeof compileAiAgentToAutomationWorkflow>['definition'];
+  }> {
+    const agent = await this.requireAgent(input);
+    const compiled = compileAiAgentToAutomationWorkflow(agent);
+    const result = {
+      agentId: agent.id,
+      valid: compiled.issues.length === 0,
+      issues: compiled.issues,
+      definition: compiled.definition
+    };
+
+    if (input.audit !== false) {
+      await this.publishAgentEvent({
+        name: DomainEventNames.AiAgentValidated,
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        requestedBy: input.requestedBy,
+        payload: {
+          valid: result.valid,
+          issueCount: result.issues.length
+        }
+      });
+    }
+
+    return result;
+  }
+
+  public async publishAgentRuntime(input: {
+    workspaceId: string;
+    agentId: string;
+    requestedBy: string;
+    activateWorkflow?: boolean;
+  }): Promise<{
+    agentId: string;
+    workflowId: string;
+    workflowVersionId: string;
+    valid: boolean;
+    issues: string[];
+  }> {
+    const agent = await this.requireAgent(input);
+    const compiled = compileAiAgentToAutomationWorkflow(agent);
+    if (compiled.issues.length > 0) {
+      await this.publishAgentEvent({
+        name: DomainEventNames.AiAgentValidated,
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        requestedBy: input.requestedBy,
+        payload: {
+          valid: false,
+          issueCount: compiled.issues.length,
+          issues: compiled.issues
+        }
+      });
+      throw new AppError('AI agent cannot be published with invalid runtime graph.', 422, {
+        issues: compiled.issues
+      });
+    }
+
+    const runtime = this.readRuntimeConfig(agent.config);
+    const existingWorkflow = await this.resolveExistingRuntimeWorkflow({
+      workspaceId: input.workspaceId,
+      workflowId: runtime.workflowId
+    });
+
+    const workflow = existingWorkflow
+      ? await this.workflowService.updateWorkflow({
+          workspaceId: input.workspaceId,
+          workflowId: existingWorkflow.id,
+          name: `AI Agent: ${agent.name}`,
+          description: agent.description
+        })
+      : await this.workflowService.createWorkflow({
+          workspaceId: input.workspaceId,
+          name: `AI Agent: ${agent.name}`,
+          description: agent.description,
+          status: 'draft',
+          createdById: input.requestedBy
+        });
+
+    const draftVersion = await this.workflowVersionService.createDraftVersion({
+      workspaceId: input.workspaceId,
+      workflowId: workflow.id,
+      definition: compiled.definition,
+      graph: compiled.definition.graph
+    });
+
+    const publishedVersion = await this.workflowVersionService.publishVersion({
+      workspaceId: input.workspaceId,
+      workflowId: workflow.id,
+      versionId: draftVersion.id,
+      publishedById: input.requestedBy,
+      activateWorkflow: input.activateWorkflow ?? true
+    });
+
+    const publishedAt = (publishedVersion.publishedAt ?? new Date()).toISOString();
+    const nextConfig = mergeAiAgentRuntimeConfig({
+      config: agent.config,
+      runtime: {
+        executor: 'automation',
+        compilerVersion: 1,
+        workflowId: workflow.id,
+        workflowVersionId: publishedVersion.id,
+        publishedAt,
+        validationIssues: [],
+        definition: compiled.definition
+      }
+    });
+
+    await this.agentRepository.patch(agent.id, input.workspaceId, {
+      config: nextConfig
+    });
+
+    await this.publishAgentEvent({
+      name: DomainEventNames.AiAgentPublished,
+      workspaceId: input.workspaceId,
+      agentId: agent.id,
+      requestedBy: input.requestedBy,
+      payload: {
+        workflowId: workflow.id,
+        workflowVersionId: publishedVersion.id,
+        publishedAt
+      }
+    });
+
+    return {
+      agentId: agent.id,
+      workflowId: workflow.id,
+      workflowVersionId: publishedVersion.id,
+      valid: true,
+      issues: []
+    };
+  }
+
+  public async runAgentRuntime(input: {
+    workspaceId: string;
+    agentId: string;
+    requestedBy: string;
+    instruction?: string;
+    context?: Record<string, unknown>;
+  }): Promise<{
+    agentId: string;
+    workflowId: string;
+    workflowVersionId: string;
+    runId: string;
+    status: string;
+    executionStatus: string;
+    executedNodeIds: string[];
+  }> {
+    if (!this.workflowRunnerService) {
+      throw new AppError('Automation runtime is not configured for AI agent execution.', 503);
+    }
+
+    const agent = await this.requireAgent(input);
+    if (!agent.isActive) {
+      throw new AppError('Inactive AI agents cannot be executed.', 422);
+    }
+
+    const runtime = this.readRuntimeConfig(agent.config);
+    const workflowId = typeof runtime.workflowId === 'string' ? runtime.workflowId : '';
+    if (!workflowId) {
+      throw new AppError('AI agent must be published before it can run on Automation Runtime.', 422);
+    }
+
+    const instruction = (input.instruction ?? '').trim() || `Execute AI agent ${agent.name}.`;
+
+    try {
+      const run = await this.workflowRunnerService.startRun({
+        workspaceId: input.workspaceId,
+        workflowId,
+        triggerType: 'ai.agent.run',
+        triggerRefId: `${agent.id}:${randomUUID()}`,
+        context: {
+          ...(input.context ?? {}),
+          instruction,
+          agentId: agent.id,
+          agentKey: agent.key,
+          requestedBy: input.requestedBy,
+          event: {
+            name: 'ai.agent.run',
+            payload: {
+              ...(input.context ?? {}),
+              instruction,
+              agentId: agent.id,
+              agentKey: agent.key,
+              requestedBy: input.requestedBy
+            }
+          }
+        }
+      });
+
+      await this.publishAgentEvent({
+        name: DomainEventNames.AiAgentRunStarted,
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        requestedBy: input.requestedBy,
+        payload: {
+          workflowId,
+          workflowVersionId: run.run.workflowVersionId,
+          runId: run.run.id,
+          executionStatus: run.executionResult.status
+        }
+      });
+
+      return {
+        agentId: agent.id,
+        workflowId,
+        workflowVersionId: run.run.workflowVersionId,
+        runId: run.run.id,
+        status: run.run.status,
+        executionStatus: run.executionResult.status,
+        executedNodeIds: run.executionResult.executedNodeIds
+      };
+    } catch (error) {
+      await this.publishAgentEvent({
+        name: DomainEventNames.AiAgentRunFailed,
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        requestedBy: input.requestedBy,
+        payload: {
+          workflowId,
+          error: error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000)
+        }
+      });
+
+      throw error;
+    }
   }
 
   private async buildItemContext(input: {

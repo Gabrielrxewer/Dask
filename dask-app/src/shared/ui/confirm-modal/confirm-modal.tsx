@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
-import { ModalShell } from "@/shared/ui/modal-shell";
+import { AppDialog } from "@/shared/ui/dialog";
 
 export type ConfirmModalTone = "default" | "danger";
 
@@ -85,12 +85,16 @@ export function ConfirmModal({
   };
 
   return (
-    <ModalShell
-      titleId={props.titleId}
+    <AppDialog
+      open
       className={cn("shared-confirm-modal", shellClassName)}
-      onClose={handleClose}
+      bodyClassName="shared-confirm-modal__dialog-body"
+      showClose={false}
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
     >
       <ConfirmModalFrame {...props} isConfirming={isConfirming} onClose={handleClose} />
-    </ModalShell>
+    </AppDialog>
   );
 }

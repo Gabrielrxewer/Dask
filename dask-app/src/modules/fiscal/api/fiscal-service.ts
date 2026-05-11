@@ -11,7 +11,8 @@ import type {
   FiscalEmissionDraft,
   FiscalOperationTemplate,
   FiscalReceivedDocument,
-  FiscalReceivedType
+  FiscalReceivedType,
+  FiscalSyncRun
 } from "../model/types";
 
 function asQueryString(input: Record<string, string | number | undefined | null>): string {
@@ -24,6 +25,11 @@ function asQueryString(input: Record<string, string | number | undefined | null>
   });
   const encoded = query.toString();
   return encoded.length > 0 ? `?${encoded}` : "";
+}
+
+interface FiscalPageResponse<T> {
+  items: T[];
+  nextCursor?: string | null;
 }
 
 export const fiscalService = {
@@ -47,9 +53,11 @@ export const fiscalService = {
       from?: string;
       to?: string;
       limit?: number;
+      pageSize?: number;
+      cursor?: string | null;
     } = {}
-  ): Promise<{ items: FiscalDocument[] }> {
-    return apiClient.get<{ items: FiscalDocument[] }>(
+  ): Promise<FiscalPageResponse<FiscalDocument>> {
+    return apiClient.get<FiscalPageResponse<FiscalDocument>>(
       `/fiscal/workspaces/${workspaceId}/documents${asQueryString(input)}`,
       {
         authMode: "required",
@@ -107,9 +115,11 @@ export const fiscalService = {
       from?: string;
       to?: string;
       limit?: number;
+      pageSize?: number;
+      cursor?: string | null;
     } = {}
-  ): Promise<{ items: FiscalReceivedDocument[] }> {
-    return apiClient.get<{ items: FiscalReceivedDocument[] }>(
+  ): Promise<FiscalPageResponse<FiscalReceivedDocument>> {
+    return apiClient.get<FiscalPageResponse<FiscalReceivedDocument>>(
       `/fiscal/workspaces/${workspaceId}/received${asQueryString(input)}`,
       {
         authMode: "required",
@@ -128,11 +138,30 @@ export const fiscalService = {
     });
   },
 
-  listCompanies(workspaceId: string): Promise<{ items: FiscalCompanyConfig[] }> {
-    return apiClient.get<{ items: FiscalCompanyConfig[] }>(`/fiscal/workspaces/${workspaceId}/companies`, {
+  listSyncRuns(
+    workspaceId: string,
+    input: { pageSize?: number; cursor?: string | null } = {}
+  ): Promise<FiscalPageResponse<FiscalSyncRun>> {
+    return apiClient.get<FiscalPageResponse<FiscalSyncRun>>(
+      `/fiscal/workspaces/${workspaceId}/sync-runs${asQueryString(input)}`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  listCompanies(
+    workspaceId: string,
+    input: { search?: string; pageSize?: number; cursor?: string | null } = {}
+  ): Promise<FiscalPageResponse<FiscalCompanyConfig>> {
+    return apiClient.get<FiscalPageResponse<FiscalCompanyConfig>>(
+      `/fiscal/workspaces/${workspaceId}/companies${asQueryString(input)}`,
+      {
       authMode: "required",
       retryOnUnauthorized: true
-    });
+      }
+    );
   },
 
   createCompany(workspaceId: string, input: Partial<FiscalCompanyConfig> & { displayName: string; legalName: string; cnpj: string; focusToken: string }): Promise<FiscalCompanyConfig> {
@@ -201,9 +230,16 @@ export const fiscalService = {
     );
   },
 
-  listDrafts(workspaceId: string, limit = 100): Promise<{ items: FiscalEmissionDraft[] }> {
-    return apiClient.get<{ items: FiscalEmissionDraft[] }>(
-      `/fiscal/workspaces/${workspaceId}/drafts${asQueryString({ limit })}`,
+  listDrafts(
+    workspaceId: string,
+    input: number | { pageSize?: number; cursor?: string | null } = 100
+  ): Promise<FiscalPageResponse<FiscalEmissionDraft>> {
+    const filters = typeof input === "number" ? { pageSize: input } : input;
+    return apiClient.get<FiscalPageResponse<FiscalEmissionDraft>>(
+      `/fiscal/workspaces/${workspaceId}/drafts${asQueryString({
+        pageSize: filters.pageSize,
+        cursor: filters.cursor ?? undefined
+      })}`,
       {
         authMode: "required",
         retryOnUnauthorized: true
@@ -218,4 +254,3 @@ export const fiscalService = {
     });
   }
 };
-

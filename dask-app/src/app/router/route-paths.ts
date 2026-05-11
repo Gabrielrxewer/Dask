@@ -17,6 +17,7 @@ export const routePaths = {
   workspaceSelector: "/w/select",
   noWorkspace: "/w/no-workspace",
   workspaceBase: "/w/:workspaceSlug",
+  dashboard: "/w/:workspaceSlug/dashboard",
   board: "/w/:workspaceSlug/board",
   leadFlow: "/w/:workspaceSlug/lead-flow",
   list: "/w/:workspaceSlug/list",
@@ -35,7 +36,8 @@ export const routePaths = {
   settingsColumns: "/w/:workspaceSlug/settings/columns",
   settingsItemTypes: "/w/:workspaceSlug/settings/item-types",
   settingsWorkflowStates: "/w/:workspaceSlug/settings/workflow-states",
-  settingsPerspectives: "/w/:workspaceSlug/settings/perspectives"
+  settingsPerspectives: "/w/:workspaceSlug/settings/perspectives",
+  settingsAudit: "/w/:workspaceSlug/settings/audit"
 } as const;
 
 export type AppRoutePath = (typeof routePaths)[keyof typeof routePaths];
@@ -48,6 +50,10 @@ export function buildWorkspacePath(workspaceSlug: string, path: string): string 
 
 export function buildWorkspaceBoardPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/board");
+}
+
+export function buildWorkspaceDashboardPath(workspaceSlug: string): string {
+  return buildWorkspacePath(workspaceSlug, "/dashboard");
 }
 
 export function buildWorkspaceLeadFlowPath(workspaceSlug: string, leadId?: string): string {
@@ -153,4 +159,8 @@ export function buildWorkspaceSettingsWorkflowStatesPath(workspaceSlug: string):
 
 export function buildWorkspaceSettingsPerspectivesPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/settings/perspectives");
+}
+
+export function buildWorkspaceSettingsAuditPath(workspaceSlug: string): string {
+  return buildWorkspacePath(workspaceSlug, "/settings/audit");
 }

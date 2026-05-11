@@ -1,45 +1,46 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta, type TaskStatusId } from "@/entities/task";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
+import type { Task, TaskStatusId } from "@/entities/task";
 import { useAuth } from "@/features/auth";
 import { DashboardFilter } from "@/features/dashboard-filter";
-import { useWorkspaceTaskPage } from "@/modules/workspace";
-import type { AiAgentSummary } from "@/modules/workspace/model";
-import { MemberAvatar } from "@/entities/member";
-import {
-  DataTable,
-  DataTableBody,
-  DataTableCell,
-  DataTableHeader,
-  DataTableRow,
-  EmptyState,
-  Button,
-  LoadingState,
-  Select,
-  StatusBadge,
-  ResourceListPageTemplate
-} from "@/shared/ui";
-import { AppShell } from "@/widgets/app-shell";
 import { CreateTaskButton } from "@/features/create-task";
+import { WorkItemDataGrid } from "@/features/work-item-list/ui/WorkItemDataGrid";
+import {
+  WorkItemListFilterBar,
+  type WorkItemListAdvancedFilterState
+} from "@/features/work-item-list/ui/WorkItemListFilterBar";
+import { WorkItemMobileList } from "@/features/work-item-list/ui/WorkItemMobileList";
+import {
+  useUpdateWorkItemListConfigMutation,
+  useUpdateWorkItemStatusMutation,
+  useBulkUpdateWorkItemsMutation,
+  readWorkItemListConfigs,
+  useWorkItemListConfigQuery,
+  useWorkItemListQuery,
+  workItemListQueryKeys,
+  type WorkItemListConfig,
+  type WorkItemListParams
+} from "@/modules/work-item-list";
+import { useWorkspaceTaskPage, type AiAgentSummary, type CreateTaskInput, type UpdateTaskInput } from "@/modules/workspace";
+import { AppSelect, LoadingState, ResourceListPageTemplate } from "@/shared/ui";
+import { AppShell } from "@/widgets/app-shell";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./list-page.css";
 
-function formatDueDate(due: string): { label: string; overdue: boolean; isToday: boolean } {
-  if (!due) return { label: "—", overdue: false, isToday: false };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const date = new Date(`${due}T00:00:00`);
-  const diff = Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff === 0) return { label: "Hoje", overdue: false, isToday: true };
-  if (diff === 1) return { label: "Amanhã", overdue: false, isToday: false };
-  if (diff === -1) return { label: "Ontem", overdue: true, isToday: false };
-  if (diff < 0) return { label: `${Math.abs(diff)}d atraso`, overdue: true, isToday: false };
-  const [, month, day] = due.split("-");
-  return { label: `${day}/${month}`, overdue: false, isToday: false };
+type ListSortBy = NonNullable<WorkItemListParams["sortBy"]>;
+
+interface ListSortState {
+  sortBy?: ListSortBy;
+  sortDirection?: "asc" | "desc";
 }
 
 export function ListPage() {
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const {
+    snapshot,
     isLoading,
     createTask,
     moveTask,
@@ -57,96 +58,244 @@ export function ListPage() {
     linkDocumentToWorkItem,
     unlinkDocumentFromWorkItem,
     listCustomers,
-    filter,
-    setFilterQuery,
-    toggleMineFilter,
     boardConfig,
-    activeMembers: rawActiveMembers,
-    filteredTasks,
-    metrics,
-    selectedTask,
-    selectedStatus,
-    selectTask,
-    clearSelectedTask
-  } = useWorkspaceTaskPage();
+    activeMembers,
+    metrics
+  } = useWorkspaceTaskPage({ currentUser: user });
 
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
-  const [taskOrder, setTaskOrder] = useState<string[]>([]);
-  const [pendingStatuses, setPendingStatuses] = useState<Record<string, TaskStatusId>>({});
-  const taskTypeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
+  const [query, setQuery] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
+  const [selectedTypeId, setSelectedTypeId] = useState("all");
+  const [advancedFilters, setAdvancedFilters] = useState<WorkItemListAdvancedFilterState>({});
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 });
+  const [sorting, setSorting] = useState<ListSortState>({});
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const attemptedConfigPersistenceRef = useRef(new Set<string>());
 
-  const activeMembers = useMemo(() => {
-    const userAvatarUrl = user?.avatarUrl ?? null;
-    if (!userAvatarUrl) return rawActiveMembers;
-    const memberId = user?.id;
-    const member = memberId ? rawActiveMembers[memberId] : null;
-    if (!member) return rawActiveMembers;
-    return { ...rawActiveMembers, [memberId!]: { ...member, avatarUrl: userAvatarUrl } };
-  }, [rawActiveMembers, user?.avatarUrl, user?.id]);
+  const invalidateListQueries = useCallback(() => {
+    if (!workspaceSlug) {
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: workItemListQueryKeys.lists(workspaceSlug) });
+  }, [queryClient, workspaceSlug]);
+
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  }, []);
+
+  const handleMineToggle = useCallback(() => {
+    setMineOnly((current) => !current);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  }, []);
+
+  const handleTypeChange = useCallback((value: string) => {
+    setSelectedTypeId(value);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  }, []);
+
+  const handleAdvancedFiltersChange = useCallback((patch: Partial<WorkItemListAdvancedFilterState>) => {
+    setAdvancedFilters((current) => ({ ...current, ...patch }));
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  }, []);
+
+  const handleAdvancedFiltersClear = useCallback(() => {
+    setAdvancedFilters({});
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  }, []);
+
+  const handleSortChange = useCallback((nextSorting: ListSortState) => {
+    setSorting(nextSorting);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  }, []);
+
+  const configTypeId = useMemo(
+    () => selectedTypeId === "all" ? boardConfig.taskTypes[0]?.id ?? "task" : selectedTypeId,
+    [boardConfig.taskTypes, selectedTypeId]
+  );
 
   useEffect(() => {
-    setTaskOrder((currentOrder) => {
-      const nextIds = filteredTasks.map(task => task.id);
-      const nextIdSet = new Set(nextIds);
-      const preservedIds = currentOrder.filter(taskId => nextIdSet.has(taskId));
-      const newIds = nextIds.filter(taskId => !currentOrder.includes(taskId));
-      const nextOrder = [...preservedIds, ...newIds];
-      if (nextOrder.length === currentOrder.length && nextOrder.every((taskId, index) => taskId === currentOrder[index])) {
-        return currentOrder;
-      }
-      return nextOrder;
-    });
-  }, [filteredTasks]);
+    if (
+      selectedTypeId !== "all" &&
+      boardConfig.taskTypes.length > 0 &&
+      !boardConfig.taskTypes.some((type) => type.id === selectedTypeId)
+    ) {
+      setSelectedTypeId("all");
+    }
+  }, [boardConfig.taskTypes, selectedTypeId]);
 
-  const orderedTasks = useMemo(() => {
-    if (taskOrder.length === 0) return filteredTasks;
-    const orderIndex = new Map(taskOrder.map((taskId, index) => [taskId, index]));
-    return [...filteredTasks].sort((a, b) => {
-      const ai = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-      const bi = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
-      return ai - bi;
-    });
-  }, [filteredTasks, taskOrder]);
+  const listParams = useMemo<Partial<WorkItemListParams>>(
+    () => ({
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      search: query,
+      assignedToMe: mineOnly || undefined,
+      workflowStateId: advancedFilters.workflowStateId,
+      assigneeId: mineOnly ? undefined : advancedFilters.assigneeId,
+      dueDateFrom: advancedFilters.dueDateFrom || undefined,
+      dueDateTo: advancedFilters.dueDateTo || undefined,
+      typeSlug: selectedTypeId !== "all" ? selectedTypeId : undefined,
+      ...(sorting.sortBy
+        ? {
+            sortBy: sorting.sortBy,
+            sortDirection: sorting.sortDirection ?? "asc"
+          }
+        : {})
+    }),
+    [
+      advancedFilters.assigneeId,
+      advancedFilters.dueDateFrom,
+      advancedFilters.dueDateTo,
+      advancedFilters.workflowStateId,
+      mineOnly,
+      pagination.pageIndex,
+      pagination.pageSize,
+      query,
+      selectedTypeId,
+      sorting.sortBy,
+      sorting.sortDirection
+    ]
+  );
+
+  const listQuery = useWorkItemListQuery(workspaceSlug, listParams);
+  const configQuery = useWorkItemListConfigQuery(workspaceSlug, {
+    workItemTypeId: configTypeId,
+    boardConfig,
+    settings: snapshot?.preferences.settings
+  });
+  const updateStatusMutation = useUpdateWorkItemStatusMutation(workspaceSlug);
+  const bulkUpdateMutation = useBulkUpdateWorkItemsMutation(workspaceSlug);
+  const updateConfigMutation = useUpdateWorkItemListConfigMutation(workspaceSlug);
+
+  const items = listQuery.data?.items ?? [];
+  const totalCount = listQuery.data?.totalCount ?? listQuery.data?.total ?? 0;
+  const pageCount = listQuery.data?.pageInfo?.totalPages ?? Math.max(1, Math.ceil(totalCount / pagination.pageSize));
+  const selectedStatus = useMemo(
+    () => selectedTask ? boardConfig.statuses.find((status) => status.id === selectedTask.status) ?? null : null,
+    [boardConfig.statuses, selectedTask]
+  );
 
   useEffect(() => {
-    setPendingStatuses((currentStatuses) => {
-      const nextStatuses = { ...currentStatuses };
-      let changed = false;
-      Object.entries(currentStatuses).forEach(([taskId, pendingStatus]) => {
-        const task = filteredTasks.find(item => item.id === taskId);
-        if (!task || task.status === pendingStatus) {
-          delete nextStatuses[taskId];
-          changed = true;
-        }
-      });
-      return changed ? nextStatuses : currentStatuses;
-    });
-  }, [filteredTasks]);
+    const selectedTaskId = selectedTask?.id;
+    if (!selectedTaskId) {
+      return;
+    }
+    const nextTask = items.find((item) => item.id === selectedTaskId);
+    if (nextTask) {
+      setSelectedTask(nextTask);
+    }
+  }, [items, selectedTask?.id]);
 
   useEffect(() => {
     let mounted = true;
     void listAiAgents().then((result) => {
-      if (mounted) setAgents(result.filter(agent => agent.isActive));
+      if (mounted) {
+        setAgents(result.filter((agent) => agent.isActive));
+      }
     });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [listAiAgents]);
 
-  const handleStatusChange = (taskId: string, statusId: TaskStatusId) => {
-    setPendingStatuses(prev => ({ ...prev, [taskId]: statusId }));
-    void moveTask(taskId, statusId).catch(() => {
-      setPendingStatuses(prev => {
-        const next = { ...prev };
-        delete next[taskId];
-        return next;
-      });
-    });
-  };
+  const handleCreateTask = useCallback(
+    async (input: CreateTaskInput) => {
+      await createTask(input);
+      invalidateListQueries();
+    },
+    [createTask, invalidateListQueries]
+  );
+
+  const handleStatusChange = useCallback(
+    async (taskId: string, statusId: TaskStatusId) => {
+      await updateStatusMutation.mutateAsync({ taskId, statusId });
+    },
+    [updateStatusMutation]
+  );
+
+  const handleBulkStatusChange = useCallback(
+    async (taskIds: string[], statusId: TaskStatusId) => {
+      await bulkUpdateMutation.mutateAsync({ itemIds: taskIds, patch: { statusId } });
+    },
+    [bulkUpdateMutation]
+  );
+
+  const handleBulkAssigneeChange = useCallback(
+    async (taskIds: string[], assigneeId: string) => {
+      await bulkUpdateMutation.mutateAsync({ itemIds: taskIds, patch: { assigneeId } });
+    },
+    [bulkUpdateMutation]
+  );
+
+  const handleBulkArchive = useCallback(
+    async (taskIds: string[]) => {
+      await bulkUpdateMutation.mutateAsync({ itemIds: taskIds, patch: { archived: true } });
+    },
+    [bulkUpdateMutation]
+  );
+
+  const handleConfigChange = useCallback(
+    (config: WorkItemListConfig) => {
+      updateConfigMutation.mutate(config);
+    },
+    [updateConfigMutation]
+  );
+
+  useEffect(() => {
+    if (!configQuery.data || updateConfigMutation.isPending) {
+      return;
+    }
+
+    const persistedConfig = readWorkItemListConfigs(snapshot?.preferences.settings)[configQuery.data.workItemTypeId];
+    if (persistedConfig) {
+      return;
+    }
+    if (attemptedConfigPersistenceRef.current.has(configQuery.data.workItemTypeId)) {
+      return;
+    }
+
+    attemptedConfigPersistenceRef.current.add(configQuery.data.workItemTypeId);
+    updateConfigMutation.mutate({ config: configQuery.data, silent: true });
+  }, [configQuery.data, snapshot?.preferences.settings, updateConfigMutation]);
+
+  const handleModalStatusChange = useCallback(
+    async (taskId: string, statusId: TaskStatusId) => {
+      await moveTask(taskId, statusId);
+      invalidateListQueries();
+    },
+    [invalidateListQueries, moveTask]
+  );
+
+  const handleModalTaskSave = useCallback(
+    async (taskId: string, input: UpdateTaskInput) => {
+      await updateTask(taskId, input);
+      invalidateListQueries();
+    },
+    [invalidateListQueries, updateTask]
+  );
+
+  const handleOpenTask = useCallback((task: Task) => {
+    setSelectedTask(task);
+  }, []);
+
+  const handleCloseTask = useCallback(() => {
+    setSelectedTask(null);
+  }, []);
+
+  const typeOptions = useMemo(
+    () => [
+      { value: "all", label: "Todos os tipos" },
+      ...boardConfig.taskTypes.map((type) => ({ value: type.id, label: type.label }))
+    ],
+    [boardConfig.taskTypes]
+  );
 
   const topNavigation = (
     <section className="list-top-nav" aria-label="Filtro da lista">
       <CreateTaskButton
         className="list-top-nav__create-task"
-        onCreate={input => void createTask(input)}
+        onCreate={handleCreateTask}
         initialStatusId={boardConfig.statuses[0]?.id ?? "backlog"}
         statuses={boardConfig.statuses}
         boardConfig={boardConfig}
@@ -154,16 +303,27 @@ export function ListPage() {
         taskTypes={boardConfig.taskTypes}
         iconOnly
       />
+      <AppSelect
+        className="list-top-nav__type-select"
+        value={selectedTypeId}
+        items={typeOptions}
+        onValueChange={handleTypeChange}
+        aria-label="Tipo de work item"
+      />
       <div className="list-top-nav__filter">
         <DashboardFilter
-          query={filter.query}
-          mineOnly={filter.mineOnly}
-          onQueryChange={setFilterQuery}
-          onMineToggle={toggleMineFilter}
+          query={query}
+          mineOnly={mineOnly}
+          onQueryChange={handleQueryChange}
+          onMineToggle={handleMineToggle}
         />
       </div>
     </section>
   );
+
+  const loading = (isLoading && items.length === 0) || configQuery.isLoading || listQuery.isLoading;
+  const error = listQuery.error ?? configQuery.error;
+  const config = configQuery.data;
 
   return (
     <AppShell
@@ -175,153 +335,74 @@ export function ListPage() {
     >
       <ResourceListPageTemplate
         frameClassName="list-view"
-        title={`${filteredTasks.length} ${filteredTasks.length === 1 ? "item" : "itens"}`}
+        title={null}
         sectionClassName="list-view__section workspace-view__section"
         loading={
           <LoadingState
             text="Carregando lista..."
             animation="list"
             variant="frame"
-            visible={isLoading && filteredTasks.length === 0}
+            visible={loading && items.length === 0}
           />
         }
       >
-          <DataTable
-            columns="minmax(200px, 2.4fr) minmax(140px, 1.2fr) minmax(120px, 1fr) minmax(80px, 0.65fr) minmax(76px, 0.5fr) 68px"
-            className="list-view__table"
-            responsiveMinWidth="900px"
-            responsiveMinWidthMobile="760px"
-          >
-            <DataTableHeader>
-              <span>Negócio</span>
-              <span>Etapa</span>
-              <span>Responsável</span>
-              <span>Prazo</span>
-              <span>Progresso</span>
-              <span />
-            </DataTableHeader>
-
-            <DataTableBody>
-              {filteredTasks.length === 0 ? (
-                <DataTableRow className="shared-data-table__row--empty">
-                  <DataTableCell className="shared-data-table__cell--full">
-                    <EmptyState
-                      variant="table"
-                      title="Nenhum item encontrado."
-                      description="Ajuste o filtro atual ou crie um novo item para alimentar esta lista."
-                      primaryAction={
-                        <CreateTaskButton
-                          onCreate={input => void createTask(input)}
-                          initialStatusId={boardConfig.statuses[0]?.id ?? "backlog"}
-                          statuses={boardConfig.statuses}
-                          boardConfig={boardConfig}
-                          membersById={activeMembers}
-                          taskTypes={boardConfig.taskTypes}
-                        />
-                      }
-                    />
-                  </DataTableCell>
-                </DataTableRow>
-              ) : (
-                orderedTasks.map(task => {
-                  const done = task.checklist.items.filter(item => item.done).length;
-                  const total = task.checklist.items.length;
-                  const type = getTaskTypeDisplayMeta(taskTypeMap, task.type);
-                  const owner = activeMembers[task.assignee];
-                  const due = task.due ? formatDueDate(task.due) : null;
-                  const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-                  return (
-                    <DataTableRow key={task.id} className="list-view__row">
-                      <DataTableCell>
-                        <div className="list-view__negocio">
-                          <button type="button" className="list-view__title" onClick={() => selectTask(task.id)}>
-                            {task.title}
-                          </button>
-                          {type && (
-                            <StatusBadge
-                              size="sm"
-                              kind="tag"
-                              className="list-view__type"
-                              style={{
-                                "--list-type-background": type.background ?? "var(--info-bg)",
-                                "--list-type-border": type.border ?? "var(--info-border)",
-                                "--list-type-text": type.text ?? "var(--text-primary)"
-                              } as CSSProperties}
-                            >
-                              {type.label}
-                            </StatusBadge>
-                          )}
-                        </div>
-                      </DataTableCell>
-
-                      <DataTableCell>
-                        <Select
-                          className="list-view__status"
-                          value={pendingStatuses[task.id] ?? task.status}
-                          onChange={event => handleStatusChange(task.id, event.target.value)}
-                        >
-                          {boardConfig.statuses.map(status => (
-                            <option key={status.id} value={status.id}>{status.label}</option>
-                          ))}
-                        </Select>
-                      </DataTableCell>
-
-                      <DataTableCell>
-                        {owner ? (
-                          <span className="list-view__owner-wrap">
-                            <MemberAvatar member={owner} />
-                            <span className="list-view__owner">{owner.name}</span>
-                          </span>
-                        ) : <span className="list-view__empty-cell">—</span>}
-                      </DataTableCell>
-
-                      <DataTableCell>
-                        {due ? (
-                          <span className={`list-view__due${due.overdue ? " list-view__due--overdue" : due.isToday ? " list-view__due--today" : ""}`}>
-                            {due.label}
-                          </span>
-                        ) : <span className="list-view__empty-cell">—</span>}
-                      </DataTableCell>
-
-                      <DataTableCell>
-                        {total === 0 ? (
-                          <span className="list-view__empty-cell">—</span>
-                        ) : (
-                          <span className="list-view__progress">
-                            <span className="list-view__progress-bar">
-                              <span
-                                className="list-view__progress-fill"
-                                style={{ width: `${progressPct}%` }}
-                              />
-                            </span>
-                            <span className={`list-view__progress-label${done === total ? " list-view__progress-label--done" : ""}`}>
-                              {done}/{total}
-                            </span>
-                          </span>
-                        )}
-                      </DataTableCell>
-
-                      <DataTableCell>
-                        <div className="list-view__row-actions">
-                          <Button
-                            type="button"
-                            className="list-view__action-btn"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => selectTask(task.id)}
-                            title="Abrir"
-                          >
-                            Abrir
-                          </Button>
-                        </div>
-                      </DataTableCell>
-                    </DataTableRow>
-                  );
-                })
-              )}
-            </DataTableBody>
-          </DataTable>
+        {config ? (
+          <>
+            <WorkItemListFilterBar
+              value={advancedFilters}
+              statuses={boardConfig.statuses}
+              membersById={activeMembers}
+              assigneeDisabled={mineOnly}
+              onChange={handleAdvancedFiltersChange}
+              onClear={handleAdvancedFiltersClear}
+            />
+            <div className="list-view__desktop-grid">
+              <WorkItemDataGrid
+                items={items}
+                config={config}
+                boardConfig={boardConfig}
+                statuses={boardConfig.statuses}
+                membersById={activeMembers}
+                loading={loading}
+                error={error}
+                totalCount={totalCount}
+                pageIndex={pagination.pageIndex}
+                pageSize={pagination.pageSize}
+                pageCount={pageCount}
+                sortBy={sorting.sortBy}
+                sortDirection={sorting.sortDirection}
+                onOpenTask={handleOpenTask}
+                onStatusChange={handleStatusChange}
+                onBulkStatusChange={handleBulkStatusChange}
+                onBulkAssigneeChange={handleBulkAssigneeChange}
+                onBulkArchive={handleBulkArchive}
+                onPaginationChange={setPagination}
+                onSortChange={handleSortChange}
+                onConfigChange={handleConfigChange}
+              />
+            </div>
+            <div className="list-view__mobile-list">
+              <WorkItemMobileList
+                items={items}
+                config={config}
+                boardConfig={boardConfig}
+                statuses={boardConfig.statuses}
+                membersById={activeMembers}
+                loading={loading}
+                error={error}
+                totalCount={totalCount}
+                pageIndex={pagination.pageIndex}
+                pageSize={pagination.pageSize}
+                pageCount={pageCount}
+                onOpenTask={handleOpenTask}
+                onStatusChange={handleStatusChange}
+                onPaginationChange={setPagination}
+              />
+            </div>
+          </>
+        ) : (
+          <LoadingState text="Preparando configuracao da lista..." animation="list" variant="frame" visible />
+        )}
       </ResourceListPageTemplate>
 
       {selectedTask && selectedStatus ? (
@@ -333,13 +414,23 @@ export function ListPage() {
           assignee={activeMembers[selectedTask.assignee]}
           membersById={activeMembers}
           boardConfig={boardConfig}
-          onUpdatePriority={(taskId, priority) => void updateTaskPriority(taskId, priority)}
-          onUpdateStatus={(taskId, statusId) => void moveTask(taskId, statusId)}
-          onUpdateTitle={(taskId, title) => void updateTaskTitle(taskId, title)}
-          onUpdateDescription={(taskId, description) => void updateTaskDescription(taskId, description)}
-          onUpdateCustomField={(taskId, fieldId, value) => void updateTaskCustomField(taskId, fieldId, value)}
-          onUpdateSchedule={(taskId, input) => void updateTaskSchedule(taskId, input)}
-          onSaveTask={(taskId, input) => void updateTask(taskId, input)}
+          onUpdatePriority={(taskId, priority) => {
+            void updateTaskPriority(taskId, priority).then(invalidateListQueries);
+          }}
+          onUpdateStatus={(taskId, statusId) => void handleModalStatusChange(taskId, statusId)}
+          onUpdateTitle={(taskId, title) => {
+            void updateTaskTitle(taskId, title).then(invalidateListQueries);
+          }}
+          onUpdateDescription={(taskId, description) => {
+            void updateTaskDescription(taskId, description).then(invalidateListQueries);
+          }}
+          onUpdateCustomField={(taskId, fieldId, value) => {
+            void updateTaskCustomField(taskId, fieldId, value).then(invalidateListQueries);
+          }}
+          onUpdateSchedule={(taskId, input) => {
+            void updateTaskSchedule(taskId, input).then(invalidateListQueries);
+          }}
+          onSaveTask={(taskId, input) => void handleModalTaskSave(taskId, input)}
           aiAgents={agents}
           onRunAiAgentOnItem={runAiAgentOnItem}
           onRunAiRiskAnalysis={runAiRiskAnalysis}
@@ -348,7 +439,7 @@ export function ListPage() {
           linkDocumentToWorkItem={linkDocumentToWorkItem}
           unlinkDocumentFromWorkItem={unlinkDocumentFromWorkItem}
           listCustomers={listCustomers}
-          onClose={clearSelectedTask}
+          onClose={handleCloseTask}
         />
       ) : null}
     </AppShell>

@@ -1,22 +1,26 @@
+import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import { Button, EmptyState, FormField, ModuleTabs, Select, Textarea, TextInput } from "@/shared/ui";
-import type { MarketingTemplate } from "@/modules/marketing";
+import type { MarketingTemplate, MarketingTemplateFormValues, SendMarketingTemplateTestEmailValues } from "@/modules/marketing";
+import { AppDialog, Button, EmptyState, ModuleTabs } from "@/shared/ui";
 import {
-  OBJECTIVE_OPTIONS,
   TEMPLATE_GOAL_FILTERS,
-  fmtNum,
-  type TemplateFormState
+  fmtNum
 } from "./marketing-page.model";
+import { EmailTemplateEditor } from "./email-template-editor";
+import { EmailTemplatePreview } from "./email-template-preview";
+import { EmailTemplateTestDialog } from "./email-template-test-dialog";
 
 interface MarketingTemplatesTabProps {
   templates: MarketingTemplate[];
   filteredTemplates: MarketingTemplate[];
   templateGoalFilter: (typeof TEMPLATE_GOAL_FILTERS)[number];
   setTemplateGoalFilter: Dispatch<SetStateAction<(typeof TEMPLATE_GOAL_FILTERS)[number]>>;
-  templateForm: TemplateFormState;
-  setTemplateForm: Dispatch<SetStateAction<TemplateFormState>>;
   isSubmitting: boolean;
-  createTemplate: () => Promise<void>;
+  createTemplate: (values?: MarketingTemplateFormValues) => Promise<void>;
+  updateTemplate: (templateId: string, values: MarketingTemplateFormValues) => Promise<void>;
+  duplicateTemplate: (template: MarketingTemplate) => Promise<void>;
+  archiveTemplate: (templateId: string) => Promise<void>;
+  sendTemplateTest: (templateId: string, values: SendMarketingTemplateTestEmailValues) => Promise<void>;
 }
 
 export function MarketingTemplatesTab({
@@ -24,17 +28,23 @@ export function MarketingTemplatesTab({
   filteredTemplates,
   templateGoalFilter,
   setTemplateGoalFilter,
-  templateForm,
-  setTemplateForm,
   isSubmitting,
-  createTemplate
+  createTemplate,
+  updateTemplate,
+  duplicateTemplate,
+  archiveTemplate,
+  sendTemplateTest
 }: MarketingTemplatesTabProps) {
+  const [previewTemplate, setPreviewTemplate] = useState<MarketingTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<MarketingTemplate | null>(null);
+  const [testingTemplate, setTestingTemplate] = useState<MarketingTemplate | null>(null);
+
   return (
               <div className="mkt-workbench">
                 <section className="mkt-screen-hero mkt-screen-hero--templates">
                   <div className="mkt-screen-hero__copy">
                     <h2>Biblioteca de templates</h2>
-                    <p>Modelos reutilizáveis para acelerar campanhas e manter consistência de tom, objetivo e estágio do funil.</p>
+                    <p>Modelos reutilizaveis para acelerar campanhas e manter consistencia de tom, objetivo e estagio do funil.</p>
                   </div>
                   <div className="mkt-screen-hero__stats">
                     <div><strong>{fmtNum(templates.length)}</strong><span>templates</span></div>
@@ -48,35 +58,14 @@ export function MarketingTemplatesTab({
                     <div className="marketing-page__section-head">
                       <div>
                         <h3 className="mkt-analytics__section-title">Novo template</h3>
-                        <p className="marketing-page__hint">Salve assunto e corpo para reutilizar no builder.</p>
+                        <p className="marketing-page__hint">Salve assunto, corpo e HTML opcional para reutilizar no builder.</p>
                       </div>
                     </div>
 
-                    <FormField label="Nome">
-                      <TextInput value={templateForm.name} onChange={(event) => setTemplateForm((current) => ({ ...current, name: event.target.value }))} />
-                    </FormField>
-                    <div className="marketing-page__grid">
-                      <FormField label="Categoria">
-                        <TextInput value={templateForm.category} onChange={(event) => setTemplateForm((current) => ({ ...current, category: event.target.value }))} />
-                      </FormField>
-                      <FormField label="Estágio">
-                        <TextInput value={templateForm.funnelStage} onChange={(event) => setTemplateForm((current) => ({ ...current, funnelStage: event.target.value }))} />
-                      </FormField>
-                    </div>
-                    <FormField label="Objetivo">
-                      <Select value={templateForm.objective} onChange={(event) => setTemplateForm((current) => ({ ...current, objective: event.target.value }))}>
-                        {OBJECTIVE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </Select>
-                    </FormField>
-                    <FormField label="Assunto">
-                      <TextInput value={templateForm.subject} onChange={(event) => setTemplateForm((current) => ({ ...current, subject: event.target.value }))} />
-                    </FormField>
-                    <FormField label="Corpo">
-                      <Textarea rows={9} value={templateForm.bodyMarkdown} onChange={(event) => setTemplateForm((current) => ({ ...current, bodyMarkdown: event.target.value }))} />
-                    </FormField>
-                    <Button onClick={() => void createTemplate()} disabled={isSubmitting}>Salvar template</Button>
+                    <EmailTemplateEditor
+                      isSubmitting={isSubmitting}
+                      onSubmit={createTemplate}
+                    />
                   </article>
 
                   <article className="mkt-analytics__section">
@@ -106,33 +95,87 @@ export function MarketingTemplatesTab({
                         />
                       ) : null}
                       {filteredTemplates.map((template) => (
-                        <button
+                        <article
                           key={template.id}
-                          type="button"
-                          className="mkt-template-card"
-                          onClick={() => setTemplateForm({
-                            name: template.name,
-                            category: template.category ?? "newsletter",
-                            objective: template.objective ?? "LEAD_NURTURE",
-                            funnelStage: template.funnelStage ?? "mql",
-                            subject: template.subject,
-                            bodyMarkdown: template.bodyMarkdown
-                          })}
+                          className={`mkt-template-card${template.isArchived ? " mkt-template-card--archived" : ""}`}
                         >
-                          <span className="mkt-template-card__meta">{template.category ?? "geral"} · {template.funnelStage ?? "sem estágio"}</span>
+                          <span className="mkt-template-card__meta">{template.category ?? "geral"} - {template.funnelStage ?? "sem estagio"}</span>
                           <strong>{template.name}</strong>
                           <p>{template.subject}</p>
                           <span className="mkt-template-card__actions">
-                            <span>Usar</span>
-                            <span>Visualizar</span>
-                            <span>Duplicar</span>
-                            <span>Editar</span>
+                            <Button size="sm" variant="outline" onClick={() => setPreviewTemplate(template)}>
+                              Visualizar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingTemplate(template)}>
+                              Editar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setTestingTemplate(template)}>
+                              Enviar teste
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => void duplicateTemplate(template)} disabled={isSubmitting}>
+                              Duplicar
+                            </Button>
+                            {!template.isArchived ? (
+                              <Button size="sm" variant="ghost" onClick={() => void archiveTemplate(template.id)} disabled={isSubmitting}>
+                                Arquivar
+                              </Button>
+                            ) : null}
                           </span>
-                        </button>
+                        </article>
                       ))}
                     </div>
                   </article>
                 </section>
+
+                <AppDialog
+                  open={Boolean(previewTemplate)}
+                  onOpenChange={(open) => {
+                    if (!open) setPreviewTemplate(null);
+                  }}
+                  title={previewTemplate?.name ?? "Preview de template"}
+                  description={previewTemplate?.subject}
+                  contentClassName="mkt-template-dialog"
+                >
+                  {previewTemplate ? (
+                    <EmailTemplatePreview
+                      subject={previewTemplate.subject}
+                      bodyMarkdown={previewTemplate.bodyMarkdown}
+                      bodyHtml={previewTemplate.bodyHtml}
+                    />
+                  ) : null}
+                </AppDialog>
+
+                <AppDialog
+                  open={Boolean(editingTemplate)}
+                  onOpenChange={(open) => {
+                    if (!open) setEditingTemplate(null);
+                  }}
+                  title={editingTemplate ? `Editar ${editingTemplate.name}` : "Editar template"}
+                  contentClassName="mkt-template-dialog mkt-template-dialog--editor"
+                >
+                  {editingTemplate ? (
+                    <EmailTemplateEditor
+                      template={editingTemplate}
+                      submitLabel="Salvar alteracoes"
+                      isSubmitting={isSubmitting}
+                      onCancel={() => setEditingTemplate(null)}
+                      onSubmit={async (values) => {
+                        await updateTemplate(editingTemplate.id, values);
+                        setEditingTemplate(null);
+                      }}
+                    />
+                  ) : null}
+                </AppDialog>
+
+                <EmailTemplateTestDialog
+                  open={Boolean(testingTemplate)}
+                  template={testingTemplate}
+                  isSubmitting={isSubmitting}
+                  onOpenChange={(open) => {
+                    if (!open) setTestingTemplate(null);
+                  }}
+                  onSubmit={sendTemplateTest}
+                />
               </div>
   );
 }

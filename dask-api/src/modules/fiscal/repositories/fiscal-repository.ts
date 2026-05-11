@@ -36,6 +36,7 @@ export interface FiscalDocumentsQuery {
   to?: Date;
   search?: string;
   limit?: number;
+  cursor?: string;
 }
 
 export interface FiscalReceivedQuery {
@@ -47,10 +48,18 @@ export interface FiscalReceivedQuery {
   to?: Date;
   search?: string;
   limit?: number;
+  cursor?: string;
+}
+
+export interface FiscalCursorPaginationInput {
+  cursor?: string;
+  pageSize?: number;
+  limit?: number;
+  search?: string;
 }
 
 export interface FiscalRepository {
-  listCompanyConfigs(workspaceId: string): Promise<FiscalCompanyConfig[]>;
+  listCompanyConfigs(workspaceId: string, options?: FiscalCursorPaginationInput): Promise<FiscalCompanyConfig[]>;
   findCompanyConfigById(workspaceId: string, companyConfigId: string): Promise<FiscalCompanyConfig | null>;
   createCompanyConfig(input: Omit<FiscalCompanyConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<FiscalCompanyConfig>;
   updateCompanyConfig(
@@ -87,7 +96,7 @@ export interface FiscalRepository {
   ): Promise<FiscalDocument | null>;
 
   createEmissionDraft(input: Omit<FiscalEmissionDraft, 'id' | 'createdAt' | 'updatedAt'>): Promise<FiscalEmissionDraft>;
-  listEmissionDrafts(workspaceId: string, limit?: number): Promise<FiscalEmissionDraft[]>;
+  listEmissionDrafts(workspaceId: string, options?: number | FiscalCursorPaginationInput): Promise<FiscalEmissionDraft[]>;
   findEmissionDraftById(workspaceId: string, draftId: string): Promise<FiscalEmissionDraft | null>;
   findEmissionDraftByStripeSession(
     workspaceId: string,
@@ -115,7 +124,7 @@ export interface FiscalRepository {
       lastError?: string | null;
     }
   ): Promise<FiscalSyncRun>;
-  listLatestSyncRuns(workspaceId: string, limit?: number): Promise<FiscalSyncRun[]>;
+  listLatestSyncRuns(workspaceId: string, options?: number | FiscalCursorPaginationInput): Promise<FiscalSyncRun[]>;
 
   createWebhookEvent(input: Omit<FiscalWebhookEvent, 'id' | 'createdAt' | 'updatedAt'>): Promise<FiscalWebhookEvent>;
   findWebhookEventByIdempotencyKey(idempotencyKey: string): Promise<FiscalWebhookEvent | null>;

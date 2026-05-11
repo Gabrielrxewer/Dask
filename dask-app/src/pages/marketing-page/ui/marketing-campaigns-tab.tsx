@@ -1,5 +1,18 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, EmptyState, FormField, Select, StatusBadge, Textarea, TextInput } from "@/shared/ui";
+import { type Control, type FieldErrors } from "react-hook-form";
+import {
+  AppDateTimePicker,
+  AppFormGrid,
+  AppSelect,
+  AppSelectField,
+  AppTextField,
+  AppTextareaField,
+  Button,
+  EmptyState,
+  FormField,
+  StatusBadge,
+  TextInput
+} from "@/shared/ui";
 import type {
   MarketingAudienceContact,
   MarketingCampaignDetails,
@@ -36,10 +49,11 @@ interface MarketingCampaignsTabProps {
   templates: MarketingTemplate[];
   isAiAssistantOpen: boolean;
   setIsAiAssistantOpen: Dispatch<SetStateAction<boolean>>;
-  aiForm: AiFormState;
   setAiForm: Dispatch<SetStateAction<AiFormState>>;
-  campaignForm: CampaignFormState;
-  setCampaignForm: Dispatch<SetStateAction<CampaignFormState>>;
+  aiFormControl: Control<AiFormState>;
+  aiFormErrors: FieldErrors<AiFormState>;
+  campaignFormControl: Control<CampaignFormState>;
+  campaignFormErrors: FieldErrors<CampaignFormState>;
   campaignSearch: string;
   setCampaignSearch: Dispatch<SetStateAction<string>>;
   campaignStatusFilter: MarketingCampaignStatus | "ALL";
@@ -74,10 +88,11 @@ export function MarketingCampaignsTab({
   templates,
   isAiAssistantOpen,
   setIsAiAssistantOpen,
-  aiForm,
   setAiForm,
-  campaignForm,
-  setCampaignForm,
+  aiFormControl,
+  aiFormErrors,
+  campaignFormControl,
+  campaignFormErrors,
   campaignSearch,
   setCampaignSearch,
   campaignStatusFilter,
@@ -101,6 +116,10 @@ export function MarketingCampaignsTab({
   improveVariantWithAI,
   launchCampaign
 }: MarketingCampaignsTabProps) {
+  const noSegmentValue = "__no_segment__";
+  const noTemplateValue = "__no_template__";
+  const noVariantValue = "__no_variant__";
+
   return (
               <div className="mkt-workbench mkt-workbench--campaigns">
                 <section className="mkt-campaign-hero">
@@ -158,28 +177,15 @@ export function MarketingCampaignsTab({
                       </div>
 
                       <div className="mkt-ai-inline__fields">
-                        <FormField label="Objetivo">
-                          <Textarea
-                            rows={4}
-                            value={aiForm.objective}
-                            onChange={(event) => setAiForm((current) => ({ ...current, objective: event.target.value }))}
-                          />
-                        </FormField>
+                        <AppTextareaField control={aiFormControl} name="objective" label="Objetivo" rows={4} />
 
-                        <div className="marketing-page__grid">
-                          <FormField label="Tom">
-                            <TextInput value={aiForm.tone} onChange={(event) => setAiForm((current) => ({ ...current, tone: event.target.value }))} />
-                          </FormField>
-                          <FormField label="Estágio">
-                            <TextInput value={aiForm.targetStage} onChange={(event) => setAiForm((current) => ({ ...current, targetStage: event.target.value }))} />
-                          </FormField>
-                        </div>
+                        <AppFormGrid className="marketing-page__grid" columns={2}>
+                          <AppTextField control={aiFormControl} name="tone" label="Tom" />
+                          <AppTextField control={aiFormControl} name="targetStage" label="Estagio" />
+                        </AppFormGrid>
 
-                        <FormField label="Público">
-                          <TextInput value={aiForm.segmentHint} onChange={(event) => setAiForm((current) => ({ ...current, segmentHint: event.target.value }))} />
-                        </FormField>
+                        <AppTextField control={aiFormControl} name="segmentHint" label="Publico" />
                       </div>
-
                       <div className="marketing-page__actions shared-actions-row">
                         <Button onClick={() => void generateWithAI()} disabled={isSubmitting}>Gerar com IA</Button>
                       </div>
@@ -210,75 +216,41 @@ export function MarketingCampaignsTab({
                     </div>
 
                     <div className="mkt-composer__fields">
-                      <FormField label="Nome">
-                        <TextInput
-                          value={campaignForm.name}
-                          onChange={(event) => setCampaignForm((current) => ({ ...current, name: event.target.value }))}
-                          placeholder="Nurture MQL - Q2"
+                      <AppTextField control={campaignFormControl} name="name" label="Nome" placeholder="Nurture MQL - Q2" />
+                      <AppFormGrid className="marketing-page__grid" columns={2}>
+                        <AppSelectField<CampaignFormState, "objective", MarketingCampaignObjective>
+                          control={campaignFormControl}
+                          name="objective"
+                          label="Objetivo"
+                          options={OBJECTIVE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                         />
-                      </FormField>
-                      <div className="marketing-page__grid">
-                        <FormField label="Objetivo">
-                          <Select
-                            value={campaignForm.objective}
-                            onChange={(event) =>
-                              setCampaignForm((current) => ({
-                                ...current,
-                                objective: event.target.value as MarketingCampaignObjective
-                              }))
-                            }
-                          >
-                            {OBJECTIVE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </Select>
-                        </FormField>
-                        <FormField label="Segmento">
-                          <Select
-                            value={campaignForm.segmentId}
-                            onChange={(event) => setCampaignForm((current) => ({ ...current, segmentId: event.target.value }))}
-                          >
-                            <option value="">Sem segmento</option>
-                            {segments.map((segment) => (
-                              <option key={segment.id} value={segment.id}>{segment.name}</option>
-                            ))}
-                          </Select>
-                        </FormField>
-                      </div>
-                      <FormField label="Template">
-                        <Select
-                          value={campaignForm.templateId}
-                          onChange={(event) => setCampaignForm((current) => ({ ...current, templateId: event.target.value }))}
-                        >
-                          <option value="">Começar do zero</option>
-                          {templates.map((template) => (
-                            <option key={template.id} value={template.id}>{template.name}</option>
-                          ))}
-                        </Select>
-                      </FormField>
-                      <FormField label="Assunto">
-                        <TextInput
-                          value={campaignForm.subject}
-                          onChange={(event) => setCampaignForm((current) => ({ ...current, subject: event.target.value }))}
-                          placeholder="Seu próximo passo para acelerar entrega"
+                        <AppSelectField
+                          control={campaignFormControl}
+                          name="segmentId"
+                          label="Segmento"
+                          options={[
+                            { value: noSegmentValue, label: "Sem segmento" },
+                            ...segments.map((segment) => ({ value: segment.id, label: segment.name }))
+                          ]}
+                          formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : noSegmentValue)}
+                          parseValue={(value) => (value === noSegmentValue ? "" : value)}
                         />
-                      </FormField>
-                      <FormField label="Mensagem">
-                        <Textarea
-                          rows={8}
-                          value={campaignForm.bodyMarkdown}
-                          onChange={(event) => setCampaignForm((current) => ({ ...current, bodyMarkdown: event.target.value }))}
-                        />
-                      </FormField>
-                      <FormField label="Nota interna">
-                        <TextInput
-                          value={campaignForm.description}
-                          onChange={(event) => setCampaignForm((current) => ({ ...current, description: event.target.value }))}
-                          placeholder="Hipótese, público ou contexto"
-                        />
-                      </FormField>
+                      </AppFormGrid>
+                      <AppSelectField
+                        control={campaignFormControl}
+                        name="templateId"
+                        label="Template"
+                        options={[
+                          { value: noTemplateValue, label: "Comecar do zero" },
+                          ...templates.map((template) => ({ value: template.id, label: template.name }))
+                        ]}
+                        formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : noTemplateValue)}
+                        parseValue={(value) => (value === noTemplateValue ? "" : value)}
+                      />
+                      <AppTextField control={campaignFormControl} name="subject" label="Assunto" placeholder="Seu proximo passo para acelerar entrega" />
+                      <AppTextareaField control={campaignFormControl} name="bodyMarkdown" label="Mensagem" rows={8} />
+                      <AppTextField control={campaignFormControl} name="description" label="Nota interna" placeholder="Hipotese, publico ou contexto" />
                     </div>
-
                     <div className="marketing-page__actions shared-actions-row">
                       <Button onClick={() => void createCampaign()} disabled={isSubmitting}>Criar campanha</Button>
                     </div>
@@ -301,14 +273,15 @@ export function MarketingCampaignsTab({
                         />
                       </FormField>
                       <FormField label="Status">
-                        <Select
+                        <AppSelect
                           value={campaignStatusFilter}
-                          onChange={(event) => setCampaignStatusFilter(event.target.value as MarketingCampaignStatus | "ALL")}
-                        >
-                          {STATUS_OPTIONS.map((status) => (
-                            <option key={status} value={status}>{status === "ALL" ?"Todos" : campaignStatusLabel(status)}</option>
-                          ))}
-                        </Select>
+                          onValueChange={(value) => setCampaignStatusFilter(value as MarketingCampaignStatus | "ALL")}
+                          aria-label="Status"
+                          items={STATUS_OPTIONS.map((status) => ({
+                            value: status,
+                            label: status === "ALL" ? "Todos" : campaignStatusLabel(status)
+                          }))}
+                        />
                       </FormField>
                     </div>
 
@@ -360,14 +333,22 @@ export function MarketingCampaignsTab({
                           <TextInput value={testEmail} onChange={(event) => setTestEmail(event.target.value)} placeholder="qa@empresa.com" />
                         </FormField>
                         <FormField label="Agenda">
-                          <TextInput type="datetime-local" value={scheduleAt} onChange={(event) => setScheduleAt(event.target.value)} />
+                          <AppDateTimePicker value={scheduleAt || null} onChange={(value) => setScheduleAt(value ?? "")} />
                         </FormField>
                         <FormField label="Variante">
-                          <Select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)}>
-                            {campaignDetails.variants.map((variant) => (
-                              <option key={variant.id} value={variant.id}>{variant.name} - {variant.subject}</option>
-                            ))}
-                          </Select>
+                          <AppSelect
+                            value={selectedVariantId || noVariantValue}
+                            onValueChange={(value) => setSelectedVariantId(value === noVariantValue ? "" : value)}
+                            disabled={campaignDetails.variants.length === 0}
+                            aria-label="Variante"
+                            items={[
+                              { value: noVariantValue, label: "Sem variantes", disabled: campaignDetails.variants.length > 0 },
+                              ...campaignDetails.variants.map((variant) => ({
+                                value: variant.id,
+                                label: `${variant.name} - ${variant.subject}`
+                              }))
+                            ]}
+                          />
                         </FormField>
                       </div>
 

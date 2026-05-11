@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { mergeCardFieldDefinitions } from "@/entities/task";
-import { billingService, buildOnboardingChecklist, getNextOnboardingAction } from "@/modules/billing";
+import {
+  buildOnboardingChecklist,
+  getNextOnboardingAction,
+  useConnectAccountQuery,
+  useCreateConnectAccountMutation
+} from "@/modules/billing";
 import type { ConnectAccountStatus } from "@/modules/billing";
-import { workspaceService } from "@/modules/workspace/api";
-import { useWorkspace } from "@/modules/workspace";
-import type { WorkspaceProfile, WorkspaceTemplateOption } from "@/modules/workspace/model";
+import {
+  useUpdateWorkspaceProfileMutation,
+  useWorkspace,
+  useWorkspaceListQuery,
+  useWorkspaceProfileQuery,
+  useWorkspaceTemplatesQuery
+} from "@/modules/workspace";
+import type { WorkspaceTemplateOption } from "@/modules/workspace/model";
 import { buildWorkspaceSettingsMembersPath, buildWorkspaceSelectorPath } from "@/app/router";
 import { isApiError } from "@/shared/api/http-client";
-import { Button, FormField, ModalShell, Select, Textarea, TextInput } from "@/shared/ui";
+import { AppDialog, AppSelect, Button, FormField, Textarea, TextInput, toast } from "@/shared/ui";
 import "./general-settings.css";
 
 type BoardPerspective = {
@@ -101,15 +111,9 @@ function getCompanyProfileMissingFields(profile: CompanyProfileForm): string[] {
 export function GeneralSettings() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const { snapshot, updatePreferences, resetWorkspaceTemplate } = useWorkspace();
-  const [templates, setTemplates] = useState<WorkspaceTemplateOption[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplateOption["key"] | "">("");
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isResettingTemplate, setIsResettingTemplate] = useState(false);
-  const [isCorporateWorkspace, setIsCorporateWorkspace] = useState(false);
   const [templateToConfirm, setTemplateToConfirm] = useState<WorkspaceTemplateOption | null>(null);
-  const [feedback, setFeedback] = useState("");
-  const [error, setError] = useState("");
-  const [workspaceProfile, setWorkspaceProfile] = useState<WorkspaceProfile | null>(null);
   const [workspaceNameDraft, setWorkspaceNameDraft] = useState("");
   const [workspaceKeyDraft, setWorkspaceKeyDraft] = useState("");
   const [workspaceDescriptionDraft, setWorkspaceDescriptionDraft] = useState("");
@@ -122,6 +126,16 @@ export function GeneralSettings() {
   const [connectStatus, setConnectStatus] = useState<ConnectAccountStatus | null>(null);
   const [connectLoadState, setConnectLoadState] = useState<"idle" | "loading" | "missing" | "ready" | "error">("idle");
   const [isOpeningOnboarding, setIsOpeningOnboarding] = useState(false);
+  const workspaceListQuery = useWorkspaceListQuery();
+  const templatesQuery = useWorkspaceTemplatesQuery();
+  const workspaceProfileQuery = useWorkspaceProfileQuery(workspaceSlug);
+  const updateWorkspaceProfileMutation = useUpdateWorkspaceProfileMutation(workspaceSlug);
+  const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
+  const workspaceProfile = workspaceProfileQuery.data ?? null;
+  const isLoadingTemplates = templatesQuery.isLoading;
+  const isCorporateWorkspace = workspaceListQuery.data?.find(workspace => workspace.slug === workspaceSlug)?.kind === "CORPORATE";
+  const connectAccountQuery = useConnectAccountQuery(workspaceProfile?.id);
+  const connectOnboardingMutation = useCreateConnectAccountMutation(workspaceProfile?.id);
   const templateTrackRef = useRef<HTMLDivElement>(null);
   const previewTrackRef = useRef<HTMLDivElement>(null);
 
@@ -157,58 +171,29 @@ export function GeneralSettings() {
   }, [snapshot?.preferences.settings]);
 
   useEffect(() => {
-    let mounted = true;
-    setIsLoadingTemplates(true);
+    if (templates.length > 0) {
+      setSelectedTemplate(current =>
+        templates.some(option => option.key === current) ? current : templates[0].key
+      );
+      return;
+    }
 
-    workspaceService
-      .listWorkspaceTemplates()
-      .then(options => {
-        if (!mounted) return;
-        setTemplates(options);
-        if (options.length > 0) {
-          setSelectedTemplate(current =>
-            options.some(option => option.key === current) ? current : options[0].key
-          );
-        }
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setTemplates([]);
-        setSelectedTemplate("");
-        setError("Nao foi possivel carregar o catalogo de templates.");
-      })
-      .finally(() => {
-        if (mounted) setIsLoadingTemplates(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (!templatesQuery.isLoading) {
+      setSelectedTemplate("");
+    }
+  }, [templates, templatesQuery.isLoading]);
 
   useEffect(() => {
-    let mounted = true;
+    if (templatesQuery.isError) {
+      toast.error("Nao foi possivel carregar o catalogo de templates.");
+    }
+  }, [templatesQuery.isError]);
 
-    workspaceService
-      .listWorkspaces()
-      .then(workspaces => {
-        if (!mounted) {
-          return;
-        }
-
-        const currentWorkspace = workspaces.find(workspace => workspace.slug === workspaceSlug);
-        setIsCorporateWorkspace(currentWorkspace?.kind === "CORPORATE");
-      })
-      .catch(() => {
-        if (mounted) {
-          setIsCorporateWorkspace(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [workspaceSlug]);
+  useEffect(() => {
+    if (workspaceProfileQuery.isError) {
+      toast.error("Nao foi possivel carregar os dados do workspace.");
+    }
+  }, [workspaceProfileQuery.isError]);
 
   useEffect(() => {
     if (!workspaceProfile?.id) {
@@ -217,62 +202,45 @@ export function GeneralSettings() {
       return;
     }
 
-    let mounted = true;
-    setConnectLoadState("loading");
+    if (connectAccountQuery.isLoading) {
+      setConnectLoadState("loading");
+      return;
+    }
 
-    billingService
-      .getConnectAccountStatus(workspaceProfile.id)
-      .then((status) => {
-        if (!mounted) {
-          return;
-        }
-        setConnectStatus(status);
-        setConnectLoadState("ready");
-      })
-      .catch((error: unknown) => {
-        if (!mounted) {
-          return;
-        }
-        if (isApiError(error) && error.status === 404) {
-          setConnectStatus(null);
-          setConnectLoadState("missing");
-          return;
-        }
+    if (connectAccountQuery.data) {
+      setConnectStatus(connectAccountQuery.data);
+      setConnectLoadState("ready");
+      return;
+    }
+
+    const error = connectAccountQuery.error;
+    if (error) {
+      if (isApiError(error) && error.status === 404) {
         setConnectStatus(null);
-        setConnectLoadState("error");
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [workspaceProfile?.id]);
+        setConnectLoadState("missing");
+        return;
+      }
+      setConnectStatus(null);
+      setConnectLoadState("error");
+    }
+  }, [
+    connectAccountQuery.data,
+    connectAccountQuery.error,
+    connectAccountQuery.isLoading,
+    workspaceProfile?.id
+  ]);
 
   useEffect(() => {
-    let mounted = true;
+    if (!workspaceProfile) {
+      return;
+    }
 
-    workspaceService
-      .getWorkspaceProfile(workspaceSlug)
-      .then((profile) => {
-        if (!mounted) {
-          return;
-        }
-        setWorkspaceProfile(profile);
-        setWorkspaceNameDraft(profile.name);
-        setWorkspaceKeyDraft(profile.key);
-        setWorkspaceDescriptionDraft(profile.info.description);
-        setWorkspaceCompanyDraft(profile.info.company);
-        setWorkspaceWebsiteDraft(profile.info.website);
-      })
-      .catch(() => {
-        if (mounted) {
-          setError("Nao foi possivel carregar os dados do workspace.");
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [workspaceSlug]);
+    setWorkspaceNameDraft(workspaceProfile.name);
+    setWorkspaceKeyDraft(workspaceProfile.key);
+    setWorkspaceDescriptionDraft(workspaceProfile.info.description);
+    setWorkspaceCompanyDraft(workspaceProfile.info.company);
+    setWorkspaceWebsiteDraft(workspaceProfile.info.website);
+  }, [workspaceProfile]);
 
   const members = useMemo(() => Object.values(snapshot?.membersById ?? {}), [snapshot?.membersById]);
   const adminsCount = useMemo(
@@ -283,15 +251,13 @@ export function GeneralSettings() {
   const handleResetTemplate = async (template: WorkspaceTemplateOption) => {
     setSelectedTemplate(template.key);
     setIsResettingTemplate(true);
-    setFeedback("");
-    setError("");
 
     try {
       await resetWorkspaceTemplate(template.key);
-      setFeedback(`${template.name} aplicado.`);
+      toast.success(`${template.name} aplicado.`);
       setTemplateToConfirm(null);
     } catch {
-      setError("Nao foi possivel aplicar o template agora.");
+      toast.error("Nao foi possivel aplicar o template agora.");
     } finally {
       setIsResettingTemplate(false);
     }
@@ -302,14 +268,12 @@ export function GeneralSettings() {
     const normalizedKey = workspaceKeyDraft.trim().toUpperCase();
 
     if (normalizedName.length < 2) {
-      setError("O nome do workspace precisa ter pelo menos 2 caracteres.");
-      setFeedback("");
+      toast.error("O nome do workspace precisa ter pelo menos 2 caracteres.");
       return;
     }
 
     if (normalizedKey.length < 2) {
-      setError("A chave do workspace precisa ter pelo menos 2 caracteres.");
-      setFeedback("");
+      toast.error("A chave do workspace precisa ter pelo menos 2 caracteres.");
       return;
     }
 
@@ -325,12 +289,10 @@ export function GeneralSettings() {
 
     setIsSavingWorkspaceProfile(true);
     setIsSavingCompanyProfile(true);
-    setFeedback("");
-    setError("");
 
     try {
       const [updated] = await Promise.all([
-        workspaceService.updateWorkspaceProfile(workspaceSlug, {
+        updateWorkspaceProfileMutation.mutateAsync({
           name: normalizedName,
           key: normalizedKey,
           info: {
@@ -347,15 +309,14 @@ export function GeneralSettings() {
         })
       ]);
 
-      setWorkspaceProfile(updated);
       setWorkspaceNameDraft(updated.name);
       setWorkspaceKeyDraft(updated.key);
       setWorkspaceDescriptionDraft(updated.info.description);
       setWorkspaceCompanyDraft(updated.info.company);
       setWorkspaceWebsiteDraft(updated.info.website);
-      setFeedback("Dados salvos.");
+      toast.success("Dados salvos.");
     } catch {
-      setError("Nao foi possivel salvar agora. Tente novamente.");
+      toast.error("Nao foi possivel salvar agora. Tente novamente.");
     } finally {
       setIsSavingWorkspaceProfile(false);
       setIsSavingCompanyProfile(false);
@@ -381,14 +342,12 @@ export function GeneralSettings() {
     }
 
     setIsOpeningOnboarding(true);
-    setFeedback("");
-    setError("");
 
     try {
-      const response = await billingService.createConnectOnboardingLink(workspaceProfile.id);
+      const response = await connectOnboardingMutation.mutateAsync(undefined);
       window.location.href = response.url;
     } catch {
-      setError("Nao foi possivel abrir o cadastro da cobranca Connect.");
+      toast.error("Nao foi possivel abrir o cadastro da cobranca Connect.");
       setIsOpeningOnboarding(false);
     }
   };
@@ -528,27 +487,28 @@ export function GeneralSettings() {
           <h2>Preferencias iniciais</h2>
           <div className="general-settings__form-grid">
             <FormField label="Perspectiva inicial">
-              <Select
+              <AppSelect
                 value={defaultMode}
-                onChange={event => void updatePreferences({ defaultBoardMode: event.target.value })}
-              >
-                {perspectives.map(perspective => (
-                  <option key={perspective.id} value={perspective.id}>{perspective.label}</option>
-                ))}
-              </Select>
+                onValueChange={value => void updatePreferences({ defaultBoardMode: value })}
+                disabled={perspectives.length === 0}
+                aria-label="Perspectiva inicial"
+                items={perspectives.map(perspective => ({ value: perspective.id, label: perspective.label }))}
+              />
             </FormField>
             <FormField label="Formato de data">
-              <Select
+              <AppSelect
                 value={dateFormat}
-                onChange={event =>
+                onValueChange={value =>
                   void updatePreferences({
-                    dateFormat: event.target.value as "dd/mm/yyyy" | "mm/dd/yyyy"
+                    dateFormat: value as "dd/mm/yyyy" | "mm/dd/yyyy"
                   })
                 }
-              >
-                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
-                <option value="mm/dd/yyyy">MM/DD/YYYY</option>
-              </Select>
+                aria-label="Formato de data"
+                items={[
+                  { value: "dd/mm/yyyy", label: "DD/MM/YYYY" },
+                  { value: "mm/dd/yyyy", label: "MM/DD/YYYY" }
+                ]}
+              />
             </FormField>
           </div>
         </div>
@@ -743,14 +703,15 @@ export function GeneralSettings() {
         </div>
       </section>
 
-      {feedback ? <p className="general-settings__feedback">{feedback}</p> : null}
-      {error ? <p className="general-settings__error">{error}</p> : null}
-
       {templateToConfirm ? (
-        <ModalShell
-          titleId="template-confirm-title"
+        <AppDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setTemplateToConfirm(null);
+          }}
           className="general-settings__template-modal"
-          onClose={() => setTemplateToConfirm(null)}
+          bodyClassName="general-settings__template-modal-body"
+          showClose={false}
         >
           <>
             <div className="general-settings__modal-copy">
@@ -778,7 +739,7 @@ export function GeneralSettings() {
               </Button>
             </div>
           </>
-        </ModalShell>
+        </AppDialog>
       ) : null}
     </div>
   );

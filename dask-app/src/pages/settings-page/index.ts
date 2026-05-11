@@ -4,3 +4,4 @@ export { WorkflowStatesSettings as WorkflowStatesSettingsPage } from "@/pages/se
 export { MembersSettings as MembersSettingsPage } from "@/pages/settings-page/ui/members-settings";
 export { BoardEditorSettings as BoardEditorSettingsPage } from "@/pages/settings-page/ui/board-editor-settings";
 export { WorkItemEditorSettings as WorkItemEditorSettingsPage } from "@/pages/settings-page/ui/work-item-editor-settings";
+export { WorkspaceAuditSettings as WorkspaceAuditSettingsPage } from "@/pages/settings-page/ui/workspace-audit-settings";

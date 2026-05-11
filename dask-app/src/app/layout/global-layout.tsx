@@ -2,10 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { buildWorkspaceSelectorPath, routePaths } from "@/app/router/route-paths";
 import { useAuth, useLogout } from "@/features/auth";
-import { billingService, type BillingPlan, type BillingStatus } from "@/modules/billing";
+import {
+  useBillingPlansQuery,
+  useBillingStatusQuery,
+  useCreateSubscriptionCheckoutMutation,
+  type BillingPlan,
+  type BillingStatus
+} from "@/modules/billing";
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
-import { ModalShell, TextInput, UserAvatar } from "@/shared/ui";
+import { AppDialog, TextInput, UserAvatar } from "@/shared/ui";
 import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
@@ -340,6 +346,10 @@ export function GlobalLayout() {
   const [billingLoadState, setBillingLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [billingError, setBillingError] = useState<string | null>(null);
   const [isUpgradingToBusiness, setIsUpgradingToBusiness] = useState(false);
+  const shouldLoadUserBilling = isAuthenticated && isUserMenuOpen;
+  const billingStatusQuery = useBillingStatusQuery({ enabled: shouldLoadUserBilling });
+  const billingPlansQuery = useBillingPlansQuery({ enabled: shouldLoadUserBilling });
+  const checkoutMutation = useCreateSubscriptionCheckoutMutation();
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
   const [activeLegalSection, setActiveLegalSection] = useState(() => getLegalSectionFromHash(location.hash));
@@ -648,20 +658,34 @@ export function GlobalLayout() {
       return;
     }
 
-    setBillingLoadState("loading");
-    setBillingError(null);
-    Promise.all([billingService.getStatus(), billingService.listPlans()])
-      .then(([statusResponse, planCatalog]) => {
-        setBillingStatus(statusResponse);
-        setBillingPlans(planCatalog.items.filter((plan) => plan.isActive));
-        setBillingLoadState("loaded");
-      })
-      .catch(() => {
-        setBillingPlans([]);
-        setBillingLoadState("error");
-        setBillingError("Nao foi possivel carregar os dados de assinatura.");
-      });
-  }, [isAuthenticated, isUserMenuOpen]);
+    if (billingStatusQuery.isLoading || billingPlansQuery.isLoading) {
+      setBillingLoadState("loading");
+      setBillingError(null);
+      return;
+    }
+
+    if (billingStatusQuery.isError || billingPlansQuery.isError) {
+      setBillingPlans([]);
+      setBillingLoadState("error");
+      setBillingError("Nao foi possivel carregar os dados de assinatura.");
+      return;
+    }
+
+    if (billingStatusQuery.data && billingPlansQuery.data) {
+      setBillingStatus(billingStatusQuery.data);
+      setBillingPlans(billingPlansQuery.data.items.filter((plan) => plan.isActive));
+      setBillingLoadState("loaded");
+    }
+  }, [
+    billingPlansQuery.data,
+    billingPlansQuery.isError,
+    billingPlansQuery.isLoading,
+    billingStatusQuery.data,
+    billingStatusQuery.isError,
+    billingStatusQuery.isLoading,
+    isAuthenticated,
+    isUserMenuOpen
+  ]);
 
   const toggleNavigation = () => {
     if (isCompactViewport()) {
@@ -756,7 +780,7 @@ export function GlobalLayout() {
       if (!businessBillingPlan) {
         throw new Error("Business plan is not available.");
       }
-      const { url } = await billingService.createCheckoutSession(businessBillingPlan.code);
+      const { url } = await checkoutMutation.mutateAsync(businessBillingPlan.code);
       window.location.href = url;
     } catch {
       setBillingError("Nao foi possivel iniciar upgrade agora.");
@@ -1095,12 +1119,16 @@ export function GlobalLayout() {
           ) : null}
 
           {isUserProfileOpen ? (
-            <ModalShell
-              titleId="user-profile-title"
+            <AppDialog
+              open
+              onOpenChange={(open) => {
+                if (!open) closeUserProfileModal();
+              }}
               className={cn("app-theme", "user-profile-modal", `user-profile-modal--${resolvedProfileTheme}`)}
+              bodyClassName="user-profile-modal__dialog-body"
               theme={resolvedProfileTheme}
               themePreference={normalizedProfileTheme}
-              onClose={() => closeUserProfileModal()}
+              showClose={false}
             >
               <header className="user-profile-modal__header">
                 <div className="user-profile-modal__identity">
@@ -1245,7 +1273,7 @@ export function GlobalLayout() {
                   {isProfileSaveBusy ? "Salvando..." : "Salvar perfil"}
                 </button>
               </footer>
-            </ModalShell>
+            </AppDialog>
           ) : null}
         </div>
       </div>

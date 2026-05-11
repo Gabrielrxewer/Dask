@@ -1,16 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { buildBoardMetrics, type Task } from "@/entities/task";
+import {
+  documentVariableRegistry,
+  resolveDocumentMarkdown,
+  useCreateDocumentMutation,
+  useCreateFolderMutation,
+  useDecideCommercialDocumentMutation,
+  useDeleteDocumentMutation,
+  useDeleteFolderMutation,
+  useDocumentsQuery,
+  useFoldersQuery,
+  usePublicCommercialDocumentDecisionMutation,
+  useSendCommercialDocumentMutation,
+  useUpdateDocumentMutation,
+  useUpdateFolderMutation,
+  useUploadDocumentAssetMutation,
+  type CommercialDocumentSendInput,
+  type DocumentVariableDiagnostic
+} from "@/modules/documentation";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
 import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentFolder, type WorkspaceDocumentMetadata } from "@/modules/workspace";
 import { buildWorkspaceBoardPathWithTask } from "@/app/router";
-import { LoadingState, WorkspaceFrame } from "@/shared/ui";
+import { AppIcon, Button, ConfirmModal, LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { publicCommercialDocumentService } from "@/pages/proposal-public-page/api/public-commercial-document-service";
 import { DocumentationAssistantPanel } from "./documentation-assistant-panel";
 import { DocumentationCreateModal } from "./documentation-create-modal";
 import { DocumentationEditorPanel } from "./documentation-editor-panel";
 import { DocumentationFilesPane } from "./documentation-files-pane";
+import { DocumentationFolderDialog } from "./documentation-folder-dialog";
 import { DocumentationSendModal } from "./documentation-send-modal";
 import { DocumentationTopNavigation } from "./documentation-top-navigation";
 import {
@@ -20,7 +38,6 @@ import {
   filterDocumentationDocs,
   getFolderDescendantIds,
   getFolderDocuments,
-  renderWorkspaceDocumentMarkdown,
   resolveDocumentationAssistantStatus
 } from "./documentation-page.model";
 import {
@@ -34,9 +51,20 @@ import {
   type DocumentKindFilter,
   type EditorViewMode
 } from "./documentation-page.local";
+import { useDocumentAutosave } from "./use-document-autosave";
 import "./documentation-page.css";
 
 type DecisionState = "idle" | "submitting" | "success" | "error";
+type FolderDialogState =
+  | { mode: "create"; parentId: string | null }
+  | { mode: "rename"; folderId: string };
+type AssistantSuggestion = {
+  id: string;
+  docId: string;
+  mode: DocumentationAssistantMode;
+  action: "replace_document" | "append_document";
+  content: string;
+};
 
 function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -110,16 +138,7 @@ export function DocumentationPage() {
     snapshot,
     isLoading,
     runDocumentationAssistant,
-    listWorkspaceDocuments,
-    listWorkspaceDocumentFolders,
     listCustomers,
-    createWorkspaceDocument,
-    createWorkspaceDocumentFolder,
-    updateWorkspaceDocumentFolder,
-    updateWorkspaceDocument,
-    sendWorkspaceDocument,
-    deleteWorkspaceDocumentFolder,
-    deleteWorkspaceDocument
   } = useWorkspace();
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
@@ -136,8 +155,6 @@ export function DocumentationPage() {
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const logoFileInputRef = useRef<HTMLInputElement | null>(null);
-  const dirtyDocIdsRef = useRef<Set<string>>(new Set());
-  const saveSeqByDocRef = useRef<Record<string, number>>({});
 
   const [docs, setDocs] = useState<WorkspaceDocument[]>([]);
   const [folders, setFolders] = useState<WorkspaceDocumentFolder[]>([]);
@@ -145,10 +162,15 @@ export function DocumentationPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [documentKindFilter, setDocumentKindFilter] = useState<DocumentKindFilter>("all");
+  const [documentSearch, setDocumentSearch] = useState("");
+  const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [folderDialog, setFolderDialog] = useState<FolderDialogState | null>(null);
+  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
   const [sendModalDocId, setSendModalDocId] = useState<string | null>(null);
   const [sendModalCustomerEmails, setSendModalCustomerEmails] = useState<string[]>([]);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [assistantSuggestion, setAssistantSuggestion] = useState<AssistantSuggestion | null>(null);
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
   const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("split");
@@ -157,13 +179,37 @@ export function DocumentationPage() {
   const [prompt, setPrompt] = useState("");
   const [includeSemanticContext, setIncludeSemanticContext] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
-  const [isSavingDocId, setIsSavingDocId] = useState<string | null>(null);
   const [lastRunLatencyMs, setLastRunLatencyMs] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [internalDecisionState, setInternalDecisionState] = useState<DecisionState>("idle");
+  const [internalDecisionError, setInternalDecisionError] = useState<string | null>(null);
   const [clientDecisionState, setClientDecisionState] = useState<DecisionState>("idle");
   const [clientDecisionError, setClientDecisionError] = useState<string | null>(null);
+
+  const documentQueryFilters = useMemo(
+    () => ({
+      search: documentSearch.trim() || undefined,
+      type: documentKindFilter === "all" ? undefined : documentKindFilter,
+      tags: selectedTagFilters
+    }),
+    [documentKindFilter, documentSearch, selectedTagFilters]
+  );
+
+  const documentsQuery = useDocumentsQuery(workspaceSlug, documentQueryFilters);
+  const foldersQuery = useFoldersQuery(workspaceSlug);
+  const createDocumentMutation = useCreateDocumentMutation(workspaceSlug);
+  const updateDocumentMutation = useUpdateDocumentMutation(workspaceSlug);
+  const deleteDocumentMutation = useDeleteDocumentMutation(workspaceSlug);
+  const createFolderMutation = useCreateFolderMutation(workspaceSlug);
+  const updateFolderMutation = useUpdateFolderMutation(workspaceSlug);
+  const deleteFolderMutation = useDeleteFolderMutation(workspaceSlug);
+  const sendDocumentMutation = useSendCommercialDocumentMutation(workspaceSlug);
+  const decideDocumentMutation = useDecideCommercialDocumentMutation(workspaceSlug);
+  const publicDecisionMutation = usePublicCommercialDocumentDecisionMutation();
+  const uploadAssetMutation = useUploadDocumentAssetMutation(workspaceSlug);
 
   useEffect(() => {
     if (isClient) {
@@ -173,6 +219,14 @@ export function DocumentationPage() {
       setSendModalDocId(null);
     }
   }, [isClient]);
+
+  useEffect(() => {
+    setInternalDecisionState("idle");
+    setInternalDecisionError(null);
+    setClientDecisionState("idle");
+    setClientDecisionError(null);
+    setAssistantSuggestion((current) => current && current.docId !== activeDocId ? null : current);
+  }, [activeDocId]);
 
   const activeDoc = useMemo(() => {
     return docs.find((doc) => doc.id === activeDocId) ?? null;
@@ -204,6 +258,10 @@ export function DocumentationPage() {
     () => filterDocumentationDocs({ docs, documentKindFilter, fromCard, initialDocId }),
     [docs, documentKindFilter, fromCard, initialDocId]
   );
+  const availableTags = useMemo(
+    () => Array.from(new Set(docs.flatMap((doc) => doc.tags ?? []))).sort((left, right) => left.localeCompare(right)),
+    [docs]
+  );
 
   const activeMessages = useMemo(() => {
     const chatKey = activeDoc?.id ?? (activeFolder ? `folder:${activeFolder.id}` : null);
@@ -215,10 +273,30 @@ export function DocumentationPage() {
 
   const wordCount = useMemo(() => countDocumentWords(activeDoc), [activeDoc]);
 
-  const renderedMarkdown = useMemo(
-    () => renderWorkspaceDocumentMarkdown(activeDoc, snapshot),
-    [activeDoc, snapshot]
+  const activeLinkedTask = useMemo(
+    () => activeDoc ? findLinkedTask(activeDoc, snapshot?.tasks ?? []) : null,
+    [activeDoc, snapshot?.tasks]
   );
+
+  const renderedDocument = useMemo(() => {
+    if (!activeDoc) {
+      return { markdown: "", diagnostics: [] as DocumentVariableDiagnostic[] };
+    }
+
+    const resolved = resolveDocumentMarkdown(activeDoc.content, {
+      document: activeDoc,
+      workItem: activeLinkedTask,
+      workspace: snapshot
+    });
+
+    return {
+      ...resolved,
+      markdown: resolved.markdown.replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "")
+    };
+  }, [activeDoc, activeLinkedTask, snapshot]);
+
+  const renderedMarkdown = renderedDocument.markdown;
+  const variableDiagnostics = renderedDocument.diagnostics;
 
   const pushMessage = useCallback((docId: string, message: AssistantMessage) => {
     setChatsByDoc((previous) => ({
@@ -227,146 +305,116 @@ export function DocumentationPage() {
     }));
   }, []);
 
-  const updateDocDraft = useCallback((docId: string, patch: Partial<Pick<WorkspaceDocument, "title" | "content" | "kind" | "tags" | "metadata">>) => {
-    if (isClient) {
-      return;
-    }
+  const replaceDocWithServerVersion = useCallback((nextDoc: WorkspaceDocument) => {
+    setDocs((previous) => previous.map((doc) => (doc.id === nextDoc.id ? nextDoc : doc)));
+  }, []);
 
+  const autosave = useDocumentAutosave({
+    readOnly: isClient,
+    updateDocument: updateDocumentMutation.mutateAsync,
+    onSaved: replaceDocWithServerVersion
+  });
+
+  const updateDocDraft = useCallback((docId: string, patch: Partial<Pick<WorkspaceDocument, "title" | "content" | "kind" | "tags" | "metadata">>) => {
+    if (isClient) return;
+
+    let nextDraft: WorkspaceDocument | null = null;
     setDocs((previous) =>
-      previous.map((doc) =>
-        doc.id === docId
-          ? {
-              ...doc,
-              ...patch
-            }
-          : doc
-      )
+      previous.map((doc) => {
+        if (doc.id !== docId) return doc;
+        nextDraft = { ...doc, ...patch };
+        return nextDraft;
+      })
     );
-    dirtyDocIdsRef.current.add(docId);
-  }, [isClient]);
+    if (nextDraft) autosave.queue(nextDraft);
+  }, [autosave, isClient]);
 
   const appendDocDraft = useCallback((docId: string, chunk: string) => {
+    let nextDraft: WorkspaceDocument | null = null;
     setDocs((previous) =>
       previous.map((doc) => {
         if (doc.id !== docId) {
           return doc;
         }
-        return {
+        nextDraft = {
           ...doc,
           content: doc.content.trim().length === 0 ? chunk : `${doc.content.trimEnd()}\n\n${chunk}`
         };
+        return nextDraft;
       })
     );
-    dirtyDocIdsRef.current.add(docId);
-  }, []);
+    if (nextDraft) autosave.queue(nextDraft);
+  }, [autosave]);
 
-  const replaceDocWithServerVersion = useCallback((nextDoc: WorkspaceDocument) => {
-    setDocs((previous) => previous.map((doc) => (doc.id === nextDoc.id ? nextDoc : doc)));
-  }, []);
-
-  const selectDoc = useCallback((docId: string) => {
+  const selectDoc = useCallback(async (docId: string) => {
+    if (activeDocId && activeDocId !== docId) {
+      await autosave.flush(activeDocId);
+    }
     setActiveDocId(docId);
     setActiveFolderId(null);
-  }, []);
+  }, [activeDocId, autosave]);
 
-  const selectFolder = useCallback((folderId: string) => {
+  const selectFolder = useCallback(async (folderId: string) => {
+    if (activeDocId) {
+      await autosave.flush(activeDocId);
+    }
     setActiveFolderId(folderId);
     setActiveDocId(null);
     setSelectedSnippet("");
-  }, []);
-
-  const persistDocImmediately = useCallback(
-    async (document: WorkspaceDocument) => {
-      const nextSequence = (saveSeqByDocRef.current[document.id] ?? 0) + 1;
-      saveSeqByDocRef.current[document.id] = nextSequence;
-      setIsSavingDocId(document.id);
-
-      try {
-        const updated = await updateWorkspaceDocument(document.id, {
-          title: document.title,
-          content: document.content,
-          kind: normalizeDocumentKind(document.kind),
-          tags: document.tags ?? [],
-          metadata: document.metadata ?? {}
-        });
-
-        dirtyDocIdsRef.current.delete(document.id);
-        replaceDocWithServerVersion(updated);
-        setSaveError(null);
-        return updated;
-      } catch (error) {
-        setSaveError(error instanceof Error ? error.message : "Falha ao salvar esta doc.");
-        throw error;
-      } finally {
-        if (saveSeqByDocRef.current[document.id] === nextSequence) {
-          setIsSavingDocId((current) => (current === document.id ? null : current));
-        }
-      }
-    },
-    [replaceDocWithServerVersion, updateWorkspaceDocument]
-  );
+  }, [activeDocId, autosave]);
 
   useEffect(() => {
-    let mounted = true;
-    setIsDocsLoading(true);
+    setIsDocsLoading(documentsQuery.isLoading || foldersQuery.isLoading);
+    if (documentsQuery.error || foldersQuery.error) {
+      const error = documentsQuery.error ?? foldersQuery.error;
+      setLoadError(error instanceof Error ? error.message : "Falha ao carregar docs.");
+      return;
+    }
     setLoadError(null);
-    setSaveError(null);
-    setRunError(null);
-    setSelectedSnippet("");
-    dirtyDocIdsRef.current = new Set();
-    saveSeqByDocRef.current = {};
+  }, [documentsQuery.error, documentsQuery.isLoading, foldersQuery.error, foldersQuery.isLoading]);
 
-    Promise.all([listWorkspaceDocuments(), listWorkspaceDocumentFolders()])
-      .then(([fetchedDocs, fetchedFolders]) => {
-        if (!mounted) {
-          return;
-        }
-        setDocs(fetchedDocs);
-        setFolders(fetchedFolders);
-        setActiveDocId((current) => {
-          if (initialDocId && fetchedDocs.some((doc) => doc.id === initialDocId)) {
-            return initialDocId;
-          }
-          if (current && fetchedDocs.some((doc) => doc.id === current)) {
-            return current;
-          }
-          return fetchedDocs[0]?.id ?? null;
-        });
-        setActiveFolderId((current) =>
-          current && fetchedFolders.some((folder) => folder.id === current) ? current : null
-        );
-        setChatsByDoc((previous) => {
-          const next: Record<string, AssistantMessage[]> = {};
-          fetchedDocs.forEach((doc) => {
-            if (previous[doc.id]) {
-              next[doc.id] = previous[doc.id];
-            }
-          });
-          fetchedFolders.forEach((folder) => {
-            const key = `folder:${folder.id}`;
-            if (previous[key]) {
-              next[key] = previous[key];
-            }
-          });
-          return next;
-        });
-      })
-      .catch((error) => {
-        if (!mounted) {
-          return;
-        }
-        setLoadError(error instanceof Error ? error.message : "Falha ao carregar docs.");
-      })
-      .finally(() => {
-        if (mounted) {
-          setIsDocsLoading(false);
+  useEffect(() => {
+    if (!documentsQuery.data) return;
+
+    const fetchedDocs = documentsQuery.data;
+    setDocs((currentDocs) => {
+      const dirtyIds = new Set(currentDocs.filter((doc) => autosave.isDirty(doc.id)).map((doc) => doc.id));
+      return fetchedDocs.map((doc) => currentDocs.find((current) => current.id === doc.id && dirtyIds.has(doc.id)) ?? doc);
+    });
+    setActiveDocId((current) => {
+      if (initialDocId && fetchedDocs.some((doc) => doc.id === initialDocId)) {
+        return initialDocId;
+      }
+      if (current && fetchedDocs.some((doc) => doc.id === current)) {
+        return current;
+      }
+      return fetchedDocs[0]?.id ?? null;
+    });
+    setChatsByDoc((previous) => {
+      const next: Record<string, AssistantMessage[]> = {};
+      fetchedDocs.forEach((doc) => {
+        if (previous[doc.id]) {
+          next[doc.id] = previous[doc.id];
         }
       });
+      folders.forEach((folder) => {
+        const key = `folder:${folder.id}`;
+        if (previous[key]) {
+          next[key] = previous[key];
+        }
+      });
+      return next;
+    });
+  }, [autosave.isDirty, documentsQuery.data, folders, initialDocId]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [listWorkspaceDocumentFolders, listWorkspaceDocuments]);
+  useEffect(() => {
+    if (!foldersQuery.data) return;
+    const fetchedFolders = foldersQuery.data;
+    setFolders(fetchedFolders);
+    setActiveFolderId((current) =>
+      current && fetchedFolders.some((folder) => folder.id === current) ? current : null
+    );
+  }, [foldersQuery.data]);
 
   useEffect(() => {
     setSelectedSnippet("");
@@ -416,40 +464,6 @@ export function DocumentationPage() {
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [prompt]);
 
-  const persistDocDraft = useCallback(
-    async (document: WorkspaceDocument, sequence: number) => {
-      setIsSavingDocId(document.id);
-      try {
-        const updated = await updateWorkspaceDocument(document.id, {
-          title: document.title,
-          content: document.content,
-          kind: normalizeDocumentKind(document.kind),
-          tags: document.tags ?? [],
-          metadata: document.metadata ?? {}
-        });
-
-        if (saveSeqByDocRef.current[document.id] !== sequence) {
-          return;
-        }
-
-        dirtyDocIdsRef.current.delete(document.id);
-        replaceDocWithServerVersion(updated);
-        setSaveError(null);
-      } catch (error) {
-        if (saveSeqByDocRef.current[document.id] !== sequence) {
-          return;
-        }
-
-        setSaveError(error instanceof Error ? error.message : "Falha ao salvar esta doc.");
-      } finally {
-        if (saveSeqByDocRef.current[document.id] === sequence) {
-          setIsSavingDocId((current) => (current === document.id ? null : current));
-        }
-      }
-    },
-    [replaceDocWithServerVersion, updateWorkspaceDocument]
-  );
-
   useEffect(() => {
     let active = true;
     setSendModalCustomerEmails([]);
@@ -484,7 +498,7 @@ export function DocumentationPage() {
     };
   }, [listCustomers, sendModalDoc, snapshot?.tasks]);
 
-  async function sendActiveCommercialDocument(emails: string[]) {
+  async function sendActiveCommercialDocument(input: CommercialDocumentSendInput) {
     if (!sendModalDoc) {
       return;
     }
@@ -492,34 +506,26 @@ export function DocumentationPage() {
     setRunError(null);
     setSaveError(null);
 
-    if (dirtyDocIdsRef.current.has(sendModalDoc.id)) {
-      await persistDocImmediately(sendModalDoc);
+    await autosave.flush(sendModalDoc.id);
+    if (autosave.isDirty(sendModalDoc.id)) {
+      throw new Error("Nao foi possivel salvar as alteracoes antes do envio.");
     }
 
-    const sentDocument = await sendWorkspaceDocument(sendModalDoc.id, { emails });
+    const sentDocument = await sendDocumentMutation.mutateAsync({
+      documentId: sendModalDoc.id,
+      emails: input.recipients,
+      subject: input.subject,
+      message: input.message,
+      includeAttachments: input.includeAttachments,
+      selectedAssetIds: input.selectedAssetIds,
+      expirationDate: input.expirationDate,
+      requireLogin: input.requireLogin,
+      allowAcceptReject: input.allowAcceptReject,
+      linkedWorkItemId: input.linkedWorkItemId,
+      resolvedPreviewSnapshot: renderedMarkdown
+    });
     replaceDocWithServerVersion(sentDocument);
   }
-
-  useEffect(() => {
-    if (!activeDoc) {
-      return;
-    }
-
-    if (!dirtyDocIdsRef.current.has(activeDoc.id)) {
-      return;
-    }
-
-    const docSnapshot = { ...activeDoc };
-    const timeoutHandle = setTimeout(() => {
-      const nextSequence = (saveSeqByDocRef.current[docSnapshot.id] ?? 0) + 1;
-      saveSeqByDocRef.current[docSnapshot.id] = nextSequence;
-      void persistDocDraft(docSnapshot, nextSequence);
-    }, 500);
-
-    return () => {
-      clearTimeout(timeoutHandle);
-    };
-  }, [activeDoc, persistDocDraft]);
 
   async function createNewDoc(kind: DocumentKind) {
     setRunError(null);
@@ -527,7 +533,7 @@ export function DocumentationPage() {
 
     try {
       const template = getDocumentTemplate(kind);
-      const created = await createWorkspaceDocument({
+      const created = await createDocumentMutation.mutateAsync({
         title: template.title,
         content: template.content,
         kind,
@@ -555,7 +561,7 @@ export function DocumentationPage() {
     setSaveError(null);
 
     try {
-      const duplicated = await createWorkspaceDocument({
+      const duplicated = await createDocumentMutation.mutateAsync({
         title: `${activeDoc.title} (copia)`,
         content: activeDoc.content,
         kind: activeDocKind,
@@ -580,9 +586,8 @@ export function DocumentationPage() {
     setSaveError(null);
 
     try {
-      await deleteWorkspaceDocument(activeDoc.id);
-      dirtyDocIdsRef.current.delete(activeDoc.id);
-      delete saveSeqByDocRef.current[activeDoc.id];
+      await deleteDocumentMutation.mutateAsync(activeDoc.id);
+      autosave.discard(activeDoc.id);
       const nextDocs = docs.filter((doc) => doc.id !== activeDoc.id);
       setDocs(nextDocs);
       setActiveDocId(nextDocs[0]?.id ?? null);
@@ -695,6 +700,25 @@ export function DocumentationPage() {
     updateEditorFromToolbar(nextContent, cursor, cursor);
   }
 
+  function insertVariable(variableKey: string) {
+    if (!activeDoc) {
+      return;
+    }
+    const textarea = editorTextareaRef.current;
+    if (!textarea) {
+      updateDocDraft(activeDoc.id, {
+        content: `${activeDoc.content}${activeDoc.content.endsWith(" ") || activeDoc.content.length === 0 ? "" : " "}{{${variableKey}}}`
+      });
+      return;
+    }
+
+    const { selectionStart, selectionEnd, value } = textarea;
+    const insertion = `{{${variableKey}}}`;
+    const nextContent = `${value.slice(0, selectionStart)}${insertion}${value.slice(selectionEnd)}`;
+    const cursor = selectionStart + insertion.length;
+    updateEditorFromToolbar(nextContent, cursor, cursor);
+  }
+
   function handleMarkdownToolbarAction(action: string) {
     switch (action) {
       case "bold":
@@ -790,13 +814,25 @@ export function DocumentationPage() {
       pushMessage(chatKey, createMessage("assistant", inferredMode, result.content));
 
       if (activeDoc && result.action === "replace_document" && result.updatedDocument) {
-        updateDocDraft(activeDoc.id, { content: result.updatedDocument });
-        pushMessage(chatKey, createMessage("system", inferredMode, "A IA atualizou esta doc automaticamente."));
+        setAssistantSuggestion({
+          id: `${activeDoc.id}:${Date.now()}`,
+          docId: activeDoc.id,
+          mode: inferredMode,
+          action: "replace_document",
+          content: result.updatedDocument
+        });
+        pushMessage(chatKey, createMessage("system", inferredMode, "A IA preparou uma substituicao. Revise e aplique se estiver de acordo."));
       }
 
       if (activeDoc && result.action === "append_document" && result.updatedDocument) {
-        appendDocDraft(activeDoc.id, result.updatedDocument);
-        pushMessage(chatKey, createMessage("system", inferredMode, "A IA anexou novo trecho nesta doc."));
+        setAssistantSuggestion({
+          id: `${activeDoc.id}:${Date.now()}`,
+          docId: activeDoc.id,
+          mode: inferredMode,
+          action: "append_document",
+          content: result.updatedDocument
+        });
+        pushMessage(chatKey, createMessage("system", inferredMode, "A IA preparou um trecho novo. Revise e aplique se estiver de acordo."));
       }
 
       if (activeFolder && result.action !== "chat") {
@@ -825,6 +861,22 @@ export function DocumentationPage() {
     setRunError(null);
   }
 
+  function applyAssistantSuggestion() {
+    if (!assistantSuggestion) {
+      return;
+    }
+
+    if (assistantSuggestion.action === "replace_document") {
+      updateDocDraft(assistantSuggestion.docId, { content: assistantSuggestion.content });
+    } else {
+      appendDocDraft(assistantSuggestion.docId, assistantSuggestion.content);
+    }
+
+    const chatKey = assistantSuggestion.docId;
+    pushMessage(chatKey, createMessage("system", assistantSuggestion.mode, "Sugestao aplicada ao rascunho da doc."));
+    setAssistantSuggestion(null);
+  }
+
   const canDeleteDoc = docs.length > 0;
   const canSendCommercialDocument = activeDocKind === "proposal" || activeDocKind === "contract";
   const activeCommercialStatus = activeDoc ? getCommercialDocumentStatus(activeDoc) : "draft";
@@ -836,12 +888,19 @@ export function DocumentationPage() {
       (activeDocKind === "proposal" || activeDocKind === "contract") &&
       (clientDecisionState === "success" || !["approved", "accepted", "signed", "rejected"].includes(activeCommercialStatus))
   );
+  const canInternalDecideDocument = Boolean(
+    !isClient &&
+      activeDoc &&
+      (activeDocKind === "proposal" || activeDocKind === "contract") &&
+      (internalDecisionState === "success" || ["sent", "viewed"].includes(activeCommercialStatus))
+  );
   const canSend = !isRunning && !isLoading && !isDocsLoading && Boolean(activeDoc || activeFolder);
   const { status: assistantStatus, tone: assistantTone } = resolveDocumentationAssistantStatus({
     isRunning,
     activeDocId: activeDoc?.id ?? null,
-    isSavingDocId
+    isSavingDocId: autosave.isSavingDocId
   });
+  const activeSaveError = saveError ?? autosave.saveError;
 
   function handlePromptKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -850,6 +909,12 @@ export function DocumentationPage() {
         void handleRunAssistant();
       }
     }
+  }
+
+  function toggleTagFilter(tag: string) {
+    setSelectedTagFilters((current) =>
+      current.includes(tag) ? current.filter((entry) => entry !== tag) : [...current, tag]
+    );
   }
 
   function updateActiveProposalMetadata(patch: WorkspaceDocumentMetadata) {
@@ -865,60 +930,47 @@ export function DocumentationPage() {
     });
   }
 
-  async function createFolder(parentId: string | null = null) {
-    const name = window.prompt(parentId ? "Nome da subpasta" : "Nome da pasta");
-    if (!name?.trim()) {
+  async function submitFolderDialog(name: string) {
+    if (!folderDialog || !name.trim()) {
       return;
     }
 
     setRunError(null);
     try {
-      const created = await createWorkspaceDocumentFolder({
-        name: name.trim(),
-        parentId,
-        position: folders.filter((folder) => (folder.parentId ?? null) === parentId).length
-      });
-      setFolders((previous) => [...previous, created]);
-      selectFolder(created.id);
+      if (folderDialog.mode === "create") {
+        const parentId = folderDialog.parentId;
+        const created = await createFolderMutation.mutateAsync({
+          name: name.trim(),
+          parentId,
+          position: folders.filter((folder) => (folder.parentId ?? null) === parentId).length
+        });
+        setFolders((previous) => [...previous, created]);
+        await selectFolder(created.id);
+      } else {
+        const folder = folders.find((entry) => entry.id === folderDialog.folderId);
+        if (!folder || name.trim() === folder.name) {
+          setFolderDialog(null);
+          return;
+        }
+        const updated = await updateFolderMutation.mutateAsync({ folderId: folder.id, patch: { name: name.trim() } });
+        setFolders((previous) => previous.map((entry) => (entry.id === updated.id ? updated : entry)));
+      }
+      setFolderDialog(null);
     } catch (error) {
-      setRunError(error instanceof Error ? error.message : "Falha ao criar pasta.");
+      setRunError(error instanceof Error ? error.message : "Falha ao salvar pasta.");
     }
   }
 
-  async function renameFolder(folderId: string) {
+  async function confirmDeleteFolder() {
+    const folderId = deleteFolderId;
     const folder = folders.find((entry) => entry.id === folderId);
     if (!folder) {
       return;
     }
 
-    const name = window.prompt("Nome da pasta", folder.name);
-    if (!name?.trim() || name.trim() === folder.name) {
-      return;
-    }
-
     setRunError(null);
     try {
-      const updated = await updateWorkspaceDocumentFolder(folder.id, { name: name.trim() });
-      setFolders((previous) => previous.map((entry) => (entry.id === updated.id ? updated : entry)));
-    } catch (error) {
-      setRunError(error instanceof Error ? error.message : "Falha ao editar pasta.");
-    }
-  }
-
-  async function removeFolder(folderId: string) {
-    const folder = folders.find((entry) => entry.id === folderId);
-    if (!folder) {
-      return;
-    }
-
-    const confirmed = window.confirm(`Excluir a pasta "${folder.name}"? As docs voltam para a raiz.`);
-    if (!confirmed) {
-      return;
-    }
-
-    setRunError(null);
-    try {
-      await deleteWorkspaceDocumentFolder(folder.id);
+      await deleteFolderMutation.mutateAsync(folder.id);
       const folderIds = new Set([folder.id, ...getFolderDescendantIds(folders, folder.id)]);
       setFolders((previous) => previous.filter((entry) => !folderIds.has(entry.id)));
       setDocs((previous) =>
@@ -933,6 +985,7 @@ export function DocumentationPage() {
         })
       );
       setActiveFolderId((current) => current && folderIds.has(current) ? null : current);
+      setDeleteFolderId(null);
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "Falha ao excluir pasta.");
     }
@@ -940,7 +993,7 @@ export function DocumentationPage() {
 
   async function moveDocToFolder(docId: string, folderId: string | null) {
     const doc = docs.find((entry) => entry.id === docId);
-    if (!doc || isClient) {
+    if (!doc) {
       return;
     }
 
@@ -953,7 +1006,10 @@ export function DocumentationPage() {
 
     setDocs((previous) => previous.map((entry) => entry.id === docId ? { ...entry, metadata } : entry));
     try {
-      const updated = await updateWorkspaceDocument(docId, { metadata });
+      const updated = await updateDocumentMutation.mutateAsync({
+        documentId: docId,
+        patch: { metadata, expectedUpdatedAt: doc.updatedAt }
+      });
       replaceDocWithServerVersion(updated);
       setSaveError(null);
     } catch (error) {
@@ -962,8 +1018,62 @@ export function DocumentationPage() {
     }
   }
 
+  async function moveFolderToFolder(folderId: string, parentId: string | null) {
+    const folder = folders.find((entry) => entry.id === folderId);
+    if (!folder || folder.parentId === parentId) {
+      return;
+    }
+
+    if (parentId) {
+      const descendantIds = new Set(getFolderDescendantIds(folders, folder.id));
+      if (parentId === folder.id || descendantIds.has(parentId)) {
+        setSaveError("Nao e possivel mover uma pasta para dentro dela mesma.");
+        return;
+      }
+    }
+
+    setFolders((previous) =>
+      previous.map((entry) => entry.id === folderId ? { ...entry, parentId } : entry)
+    );
+    try {
+      const updated = await updateFolderMutation.mutateAsync({
+        folderId,
+        patch: {
+          parentId,
+          position: folders.filter((entry) => (entry.parentId ?? null) === parentId).length
+        }
+      });
+      setFolders((previous) => previous.map((entry) => entry.id === updated.id ? updated : entry));
+      setSaveError(null);
+    } catch (error) {
+      setFolders((previous) => previous.map((entry) => entry.id === folder.id ? folder : entry));
+      setSaveError(error instanceof Error ? error.message : "Falha ao mover pasta.");
+    }
+  }
+
+  async function submitInternalDocumentDecision(decision: "approve" | "accept" | "sign" | "reject") {
+    if (!activeDoc || internalDecisionState === "submitting") {
+      return;
+    }
+
+    setInternalDecisionState("submitting");
+    setInternalDecisionError(null);
+
+    try {
+      const updated = await decideDocumentMutation.mutateAsync({
+        documentId: activeDoc.id,
+        decision
+      });
+      replaceDocWithServerVersion(updated);
+      setInternalDecisionState("success");
+    } catch (error) {
+      setInternalDecisionState("error");
+      setInternalDecisionError(error instanceof Error ? error.message : "Nao foi possivel registrar a decisao.");
+    }
+  }
+
   async function submitClientDocumentDecision(decision: "approve" | "accept" | "reject") {
-    if (!activeDoc || !clientDocumentToken || clientDecisionState === "submitting") {
+    if (!activeDoc || !clientDocumentToken || clientDecisionState === "submitting" || publicDecisionMutation.isPending) {
       return;
     }
 
@@ -971,7 +1081,7 @@ export function DocumentationPage() {
     setClientDecisionError(null);
 
     try {
-      await publicCommercialDocumentService.decide(clientDocumentToken, decision);
+      await publicDecisionMutation.mutateAsync({ publicAccessId: clientDocumentToken, decision });
       const nextStatus =
         decision === "reject"
           ? "rejected"
@@ -1006,10 +1116,11 @@ export function DocumentationPage() {
 
     const nextMetadata = { ...(activeDoc.metadata ?? {}) };
     delete nextMetadata.clientLogoUrl;
+    delete nextMetadata.logoAssetId;
     updateDocDraft(activeDoc.id, { metadata: nextMetadata });
   }
 
-  function handleClientLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleClientLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
     if (!activeDoc) {
       return;
     }
@@ -1020,16 +1131,28 @@ export function DocumentationPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
+      setUploadProgress(0);
+      const asset = await uploadAssetMutation.mutateAsync({
+        documentId: activeDoc.id,
+        type: "logo",
+        file,
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        onProgress: (progress) => setUploadProgress(progress.percent)
+      });
       updateDocDraft(activeDoc.id, {
         metadata: {
           ...(activeDoc.metadata ?? {}),
-          clientLogoUrl: typeof reader.result === "string" ? reader.result : ""
+          logoAssetId: asset.id,
+          clientLogoUrl: asset.contentUrl
         }
       });
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Nao foi possivel enviar o logo.");
+    } finally {
+      setUploadProgress(null);
+    }
   }
 
   const topNavigation = (
@@ -1072,6 +1195,27 @@ export function DocumentationPage() {
           onSend={sendActiveCommercialDocument}
         />
       ) : null}
+      {folderDialog ? (
+        <DocumentationFolderDialog
+          mode={folderDialog.mode}
+          initialName={folderDialog.mode === "rename" ? folders.find((folder) => folder.id === folderDialog.folderId)?.name ?? "" : ""}
+          isSubmitting={createFolderMutation.isPending || updateFolderMutation.isPending}
+          onClose={() => setFolderDialog(null)}
+          onSubmit={submitFolderDialog}
+        />
+      ) : null}
+      {deleteFolderId ? (
+        <ConfirmModal
+          titleId="documentation-delete-folder-title"
+          title="Excluir pasta"
+          description={`As docs da pasta "${folders.find((folder) => folder.id === deleteFolderId)?.name ?? "selecionada"}" voltam para a raiz.`}
+          confirmLabel="Excluir pasta"
+          tone="danger"
+          isConfirming={deleteFolderMutation.isPending}
+          onClose={() => setDeleteFolderId(null)}
+          onConfirm={() => void confirmDeleteFolder()}
+        />
+      ) : null}
       <WorkspaceFrame className={`documentation-page${!isClient && isAssistantOpen ? " documentation-page--assistant-open" : ""}`}>
         <LoadingState
           text="Carregando documentação..."
@@ -1079,6 +1223,12 @@ export function DocumentationPage() {
           variant="frame"
           visible={isLoading || isDocsLoading}
         />
+        {loadError || activeSaveError || runError ? (
+          <div className="documentation-page__error-banner" role="alert">
+            <strong>Atencao</strong>
+            <span>{loadError ?? activeSaveError ?? runError}</span>
+          </div>
+        ) : null}
         <DocumentationFilesPane
           docsCount={docs.length}
           filteredDocs={filteredDocs}
@@ -1086,38 +1236,69 @@ export function DocumentationPage() {
           activeDocId={activeDoc?.id ?? null}
           activeFolderId={activeFolder?.id ?? null}
           documentKindFilter={documentKindFilter}
+          search={documentSearch}
+          tags={availableTags}
+          selectedTags={selectedTagFilters}
           fromCard={fromCard}
           isDocsLoading={isDocsLoading}
+          canManageFolders={!fromCard}
+          currentUserId={snapshot?.currentUserId ?? null}
+          isClient={Boolean(isClient)}
           onFilterChange={setDocumentKindFilter}
+          onSearchChange={setDocumentSearch}
+          onToggleTag={toggleTagFilter}
           onSelectDoc={selectDoc}
           onSelectFolder={selectFolder}
-          onCreateFolder={(parentId) => void createFolder(parentId ?? null)}
-          onRenameFolder={(folderId) => void renameFolder(folderId)}
-          onDeleteFolder={(folderId) => void removeFolder(folderId)}
+          onCreateFolder={(parentId) => setFolderDialog({ mode: "create", parentId: parentId ?? null })}
+          onRenameFolder={(folderId) => setFolderDialog({ mode: "rename", folderId })}
+          onDeleteFolder={(folderId) => setDeleteFolderId(folderId)}
           onMoveDocToFolder={(docId, folderId) => void moveDocToFolder(docId, folderId)}
+          onMoveFolderToFolder={(folderId, parentId) => void moveFolderToFolder(folderId, parentId)}
         />
 
         <DocumentationEditorPanel
           activeDoc={activeDoc}
           activeDocKind={activeDocKind}
+          linkedWorkItem={activeLinkedTask}
           editorTextareaRef={editorTextareaRef}
           logoFileInputRef={logoFileInputRef}
           selectedSnippet={selectedSnippet}
           wordCount={wordCount}
           renderedMarkdown={renderedMarkdown}
+          variableDiagnostics={variableDiagnostics}
+          variableItems={documentVariableRegistry.map((variable) => ({
+            id: variable.key,
+            label: variable.label,
+            hint: variable.key
+          }))}
+          autosaveStatus={activeDoc ? autosave.statusByDocId[activeDoc.id] ?? "saved" : "saved"}
+          saveError={activeSaveError}
+          uploadProgress={uploadProgress}
           editorViewMode={editorViewMode}
           readOnly={isClient}
           clientDecision={
             canClientDecideDocument
               ? {
                   positiveLabel: activeDocKind === "proposal" ? "Aprovar proposta" : "Aceitar contrato",
-                  isSubmitting: clientDecisionState === "submitting",
+                  description: "Seu aceite fica registrado com sua identidade autenticada.",
+                  isSubmitting: clientDecisionState === "submitting" || publicDecisionMutation.isPending,
                   error: clientDecisionError,
                   success: clientDecisionState === "success",
                   onAccept: () =>
                     void submitClientDocumentDecision(activeDocKind === "proposal" ? "approve" : "accept"),
                   onReject: () => void submitClientDocumentDecision("reject")
                 }
+              : canInternalDecideDocument
+                ? {
+                    positiveLabel: activeDocKind === "proposal" ? "Aprovar internamente" : "Aceitar internamente",
+                    description: "A decisao interna fica registrada com versao e hash do documento.",
+                    isSubmitting: internalDecisionState === "submitting",
+                    error: internalDecisionError,
+                    success: internalDecisionState === "success",
+                    onAccept: () =>
+                      void submitInternalDocumentDecision(activeDocKind === "proposal" ? "approve" : "accept"),
+                    onReject: () => void submitInternalDocumentDecision("reject")
+                  }
               : undefined
           }
           onUpdateDocDraft={updateDocDraft}
@@ -1126,6 +1307,7 @@ export function DocumentationPage() {
           onRemoveClientLogo={removeClientLogo}
           onClientLogoFileChange={handleClientLogoFileChange}
           onMarkdownToolbarAction={handleMarkdownToolbarAction}
+          onInsertVariable={insertVariable}
           onEditorViewModeChange={setEditorViewMode}
           onEditorSelection={handleEditorSelection}
         />
@@ -1148,8 +1330,9 @@ export function DocumentationPage() {
           lastRunLatencyMs={lastRunLatencyMs}
           includeSemanticContext={includeSemanticContext}
           loadError={loadError}
-          saveError={saveError}
+          saveError={activeSaveError}
           runError={runError}
+          pendingSuggestion={assistantSuggestion?.docId === activeDoc?.id ? assistantSuggestion : null}
           onClose={() => setIsAssistantOpen(false)}
           onClearChat={clearActiveChat}
           onModeChange={setActiveMode}
@@ -1157,6 +1340,8 @@ export function DocumentationPage() {
           onPromptChange={setPrompt}
           onPromptKeyDown={handlePromptKeyDown}
           onRunAssistant={() => void handleRunAssistant()}
+          onApplySuggestion={applyAssistantSuggestion}
+          onDismissSuggestion={() => setAssistantSuggestion(null)}
           onSemanticContextChange={setIncludeSemanticContext}
         />
         ) : null}

@@ -77,6 +77,10 @@ export interface RequestConfig {
   globalLoading?: boolean;
 }
 
+export interface UploadRequestConfig extends Omit<RequestConfig, "method" | "body"> {
+  onProgress?: (progress: { loaded: number; total: number | null; percent: number | null }) => void;
+}
+
 function createApiError(status: number, payload: unknown): ApiError {
   if (!payload || typeof payload !== "object") {
     return new ApiError({
@@ -252,5 +256,86 @@ export const apiClient = {
 
   delete<T>(path: string, config: Omit<RequestConfig, "method" | "body"> = {}): Promise<T> {
     return apiClient.request<T>(path, { ...config, method: "DELETE" });
+  },
+
+  uploadFormData<T>(path: string, body: FormData, config: UploadRequestConfig = {}): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const stopGlobalLoading = config.globalLoading
+        ? beginGlobalLoading({ source: "request", label: "Enviando arquivo" })
+        : () => undefined;
+      const headers: Record<string, string> = { ...config.headers };
+
+      if (!hasHeader(headers, "accept")) {
+        headers.Accept = "application/json";
+      }
+
+      if (authBridge && config.authMode !== "none") {
+        const accessToken = authBridge.getAccessToken();
+        if (accessToken) {
+          headers.Authorization = `Bearer ${accessToken}`;
+        } else if (config.authMode === "required" && appConfig.authTransportMode !== "cookie-session") {
+          stopGlobalLoading();
+          reject(new ApiError({ status: 401, message: "Authentication required." }));
+          return;
+        }
+
+        const csrfToken = authBridge.getCsrfToken?.();
+        if (csrfToken) {
+          headers[appConfig.csrfHeaderName] = csrfToken;
+        }
+      }
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", buildApiUrl(path));
+      xhr.withCredentials = resolveCredentialsMode() === "include";
+
+      Object.entries(headers).forEach(([name, value]) => {
+        xhr.setRequestHeader(name, value);
+      });
+
+      const abort = () => {
+        xhr.abort();
+      };
+      config.signal?.addEventListener("abort", abort, { once: true });
+
+      xhr.upload.onprogress = (event) => {
+        const total = event.lengthComputable ? event.total : null;
+        config.onProgress?.({
+          loaded: event.loaded,
+          total,
+          percent: total ? Math.round((event.loaded / total) * 100) : null
+        });
+      };
+
+      xhr.onerror = () => {
+        stopGlobalLoading();
+        reject(new ApiError({
+          status: 0,
+          message: "Network error. Please check your connection and try again.",
+          isNetworkError: true
+        }));
+      };
+      xhr.onabort = () => {
+        stopGlobalLoading();
+        reject(new ApiError({ status: 0, message: "Upload cancelado.", isNetworkError: true }));
+      };
+      xhr.onload = async () => {
+        stopGlobalLoading();
+        const response = new Response(xhr.responseText, {
+          status: xhr.status,
+          headers: { "content-type": xhr.getResponseHeader("content-type") ?? "" }
+        });
+        const payload = await readResponsePayload(response);
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(payload as T);
+          return;
+        }
+
+        reject(createApiError(xhr.status, payload));
+      };
+
+      xhr.send(body);
+    });
   }
 };

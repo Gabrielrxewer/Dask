@@ -5,6 +5,13 @@ import { DomainEventNames } from '@/core/events/event-names';
 import type { EventPublisher } from '@/core/events/event-publisher';
 import type { JobQueue } from '@/core/jobs/job-queue';
 import type { AIProvider } from '@/modules/ai/domain/providers';
+import type { AutomationWorkflowService } from '@/modules/automation/application/workflow-service';
+import type { AutomationWorkflowVersionService } from '@/modules/automation/application/workflow-version-service';
+import type {
+  AutomationWorkflowDefinition,
+  AutomationWorkflowGraph,
+  AutomationWorkflowStatus
+} from '@/modules/automation/application/workflow-execution-types';
 import {
   chooseWeightedVariant,
   htmlToText,
@@ -18,8 +25,20 @@ import type { MarketingEmailProvider } from '@/modules/marketing/providers/marke
 import type {
   MarketingCampaignDetails,
   MarketingDashboard,
-  MarketingRepository
+  MarketingRepository,
+  SignalInboxItem
 } from '@/modules/marketing/repositories/marketing-repository';
+import type { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
+
+type AutomationWorkflowServiceLike = Pick<
+  AutomationWorkflowService,
+  'createWorkflow' | 'updateWorkflow' | 'setWorkflowStatus'
+>;
+type AutomationWorkflowVersionServiceLike = Pick<
+  AutomationWorkflowVersionService,
+  'createDraftVersion' | 'publishVersion'
+>;
+type WorkspaceWorkItemsServiceLike = Pick<WorkspaceWorkItemsService, 'createWorkItem'>;
 
 interface MarketingServiceDeps {
   repo: MarketingRepository;
@@ -27,6 +46,9 @@ interface MarketingServiceDeps {
   jobQueue: JobQueue;
   aiProvider: AIProvider;
   emailProvider: MarketingEmailProvider;
+  automationWorkflowService?: AutomationWorkflowServiceLike;
+  automationWorkflowVersionService?: AutomationWorkflowVersionServiceLike;
+  workspaceWorkItemsService?: WorkspaceWorkItemsServiceLike;
 }
 
 function clampScore(value: number): number {
@@ -39,6 +61,17 @@ function parseInteger(value: unknown, fallback: number): number {
     return fallback;
   }
   return Math.trunc(numeric);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function getSourceWorkItemId(lead: Lead): string | null {
+  const metadata = isRecord(lead.metadata) ? lead.metadata : {};
+  return metadata.sourceEntityType === 'work_item' && typeof metadata.sourceWorkItemId === 'string'
+    ? metadata.sourceWorkItemId
+    : null;
 }
 
 function mapEventToSendStatus(
@@ -109,12 +142,103 @@ function ensureObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function readStringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readRecordText(source: Record<string, unknown>, key: string): string | null {
+  return readStringValue(source[key]);
+}
+
+function readPath(source: Record<string, unknown>, path: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(source, path)) {
+    return source[path];
+  }
+
+  return path
+    .split('.')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .reduce<unknown>((current, segment) => {
+      if (!isRecord(current)) {
+        return undefined;
+      }
+
+      return current[segment];
+    }, source);
+}
+
+function renderTemplateVariables(value: string, variables: Record<string, unknown>): string {
+  return value.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, path: string) => {
+    const resolved = readPath(variables, path);
+    return resolved === undefined || resolved === null ? '' : String(resolved);
+  });
+}
+
+function readRuntimeGraph(triggerDefinition: Record<string, unknown>): AutomationWorkflowGraph | null {
+  const metadata = ensureObject(triggerDefinition.metadata);
+  const graph = ensureObject(metadata.runtimeGraph);
+  if (graph.version !== 1 || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
+    return null;
+  }
+
+  return graph as AutomationWorkflowGraph;
+}
+
+function readRuntimeMetadata(triggerDefinition: Record<string, unknown>): Record<string, unknown> {
+  return ensureObject(ensureObject(triggerDefinition.metadata).runtime);
+}
+
+function withRuntimeMetadata(
+  triggerDefinition: Record<string, unknown>,
+  metadataPatch: Record<string, unknown>
+): Record<string, unknown> {
+  const metadata = ensureObject(triggerDefinition.metadata);
+  const runtime = readRuntimeMetadata(triggerDefinition);
+  return {
+    ...triggerDefinition,
+    metadata: {
+      ...metadata,
+      runtime: {
+        ...runtime,
+        ...metadataPatch
+      }
+    }
+  };
+}
+
+function mapMarketingFlowStatusToAutomationStatus(status: string | undefined): AutomationWorkflowStatus {
+  if (status === 'ACTIVE') {
+    return 'active';
+  }
+  if (status === 'PAUSED') {
+    return 'paused';
+  }
+  if (status === 'ARCHIVED') {
+    return 'archived';
+  }
+
+  return 'draft';
+}
+
 export class MarketingService {
   private readonly repo: MarketingRepository;
   private readonly eventPublisher: EventPublisher;
   private readonly jobQueue: JobQueue;
   private readonly aiProvider: AIProvider;
   private readonly emailProvider: MarketingEmailProvider;
+  private readonly automationWorkflowService?: AutomationWorkflowServiceLike;
+  private readonly automationWorkflowVersionService?: AutomationWorkflowVersionServiceLike;
+  private readonly workspaceWorkItemsService?: WorkspaceWorkItemsServiceLike;
 
   public constructor(deps: MarketingServiceDeps) {
     this.repo = deps.repo;
@@ -122,6 +246,9 @@ export class MarketingService {
     this.jobQueue = deps.jobQueue;
     this.aiProvider = deps.aiProvider;
     this.emailProvider = deps.emailProvider;
+    this.automationWorkflowService = deps.automationWorkflowService;
+    this.automationWorkflowVersionService = deps.automationWorkflowVersionService;
+    this.workspaceWorkItemsService = deps.workspaceWorkItemsService;
   }
 
   public async getDashboard(workspaceId: string): Promise<MarketingDashboard> {
@@ -496,6 +623,8 @@ export class MarketingService {
     let skippedWithoutEmail = 0;
 
     for (const lead of targetLeads) {
+      const sourceWorkItemId = getSourceWorkItemId(lead);
+      const relationalLeadId = sourceWorkItemId ? null : lead.id;
       const contactEmail = normalizeText(lead.email);
       if (!contactEmail) {
         skipped += 1;
@@ -505,7 +634,7 @@ export class MarketingService {
 
       const preference = await this.repo.upsertContactPreference({
         workspaceId: input.workspaceId,
-        leadId: lead.id,
+        leadId: relationalLeadId,
         email: contactEmail,
         messageKind: 'MARKETING'
       } as unknown as Prisma.InputJsonValue);
@@ -532,7 +661,7 @@ export class MarketingService {
           workspaceId: input.workspaceId,
           campaignId: input.campaignId,
           variantId: variant.id,
-          leadId: lead.id,
+          leadId: relationalLeadId,
           senderProfileId: senderProfile?.id ?? null,
           contactEmail,
           status: 'QUEUED',
@@ -543,7 +672,8 @@ export class MarketingService {
             replyTo,
             renderedSubject,
             renderedHtml,
-            renderedText: htmlToText(renderedHtml)
+            renderedText: htmlToText(renderedHtml),
+            ...(sourceWorkItemId ? { sourceWorkItemId, sourceEntityType: 'work_item' } : {})
           }
         } as unknown as Prisma.InputJsonValue);
 
@@ -551,7 +681,8 @@ export class MarketingService {
           workspaceId: input.workspaceId,
           campaignId: input.campaignId,
           variantId: variant.id,
-          leadId: lead.id,
+          leadId: relationalLeadId ?? undefined,
+          itemId: sourceWorkItemId ?? undefined,
           sendId: String(send.id),
           type: 'SEND_QUEUED',
           headline: 'Envio enfileirado',
@@ -562,20 +693,22 @@ export class MarketingService {
           }
         });
 
-        await this.repo.createLeadActivity({
-          workspaceId: input.workspaceId,
-          leadId: lead.id,
-          actorUserId: input.actorUserId ?? null,
-          type: 'NOTE',
-          title: 'Campanha de marketing enfileirada',
-          description: `Campanha ${campaign.name as string} preparada para envio.`,
-          payload: {
-            campaignId: input.campaignId,
-            variantId: variant.id,
-            contactEmail
-          },
-          occurredAt: new Date()
-        });
+        if (relationalLeadId) {
+          await this.repo.createLeadActivity({
+            workspaceId: input.workspaceId,
+            leadId: relationalLeadId,
+            actorUserId: input.actorUserId ?? null,
+            type: 'NOTE',
+            title: 'Campanha de marketing enfileirada',
+            description: `Campanha ${campaign.name as string} preparada para envio.`,
+            payload: {
+              campaignId: input.campaignId,
+              variantId: variant.id,
+              contactEmail
+            },
+            occurredAt: new Date()
+          });
+        }
 
         await this.jobQueue.enqueue(
           'marketing.send-email',
@@ -1101,6 +1234,76 @@ export class MarketingService {
     } as unknown as Prisma.InputJsonValue);
   }
 
+  public async sendTemplateTestEmail(input: {
+    workspaceId: string;
+    templateId: string;
+    to: string;
+    variables?: Record<string, string | number | boolean | null>;
+    actorUserId?: string | null;
+  }) {
+    const template = await this.repo.findTemplateById(input.workspaceId, input.templateId);
+    if (!template) {
+      throw new AppError('Template not found', 404);
+    }
+    if (template.isArchived === true) {
+      throw new AppError('Archived templates cannot send test emails', 422);
+    }
+
+    const subject = readRecordText(template, 'subject');
+    const bodyMarkdown = readRecordText(template, 'bodyMarkdown');
+    if (!subject || !bodyMarkdown) {
+      throw new AppError('Template subject and body are required before sending a test', 422);
+    }
+
+    const variables = input.variables ?? {};
+    const senderProfile = await this.resolveSenderProfile(input.workspaceId, undefined);
+    const fromEmail = readRecordText(senderProfile ?? {}, 'fromEmail');
+    if (!fromEmail) {
+      throw new AppError('Sender profile is required before sending a template test', 422);
+    }
+
+    const fromName = readRecordText(senderProfile ?? {}, 'fromName') ?? 'Dask Marketing';
+    const renderedSubject = renderTemplateVariables(subject, variables);
+    const renderedMarkdown = renderTemplateVariables(bodyMarkdown, variables);
+    const bodyHtml = readRecordText(template, 'bodyHtml');
+    const renderedHtml = bodyHtml
+      ? renderTemplateVariables(bodyHtml, variables)
+      : `<pre>${escapeHtml(renderedMarkdown)}</pre>`;
+
+    const sent = await this.emailProvider.sendEmail({
+      from: `${fromName} <${fromEmail}>`,
+      to: input.to,
+      subject: renderedSubject,
+      html: renderedHtml,
+      text: htmlToText(renderedHtml) || renderedMarkdown,
+      replyTo: readRecordText(senderProfile ?? {}, 'replyToEmail') ?? undefined,
+      metadata: {
+        workspaceId: input.workspaceId,
+        templateId: input.templateId,
+        mode: 'template_test'
+      }
+    });
+
+    await this.registerEvent({
+      workspaceId: input.workspaceId,
+      type: 'EMAIL_SENT',
+      headline: 'Teste de template enviado',
+      description: `Template enviado para ${input.to}.`,
+      payload: {
+        templateId: input.templateId,
+        providerKey: sent.providerKey,
+        providerMessageId: sent.messageId,
+        sentByUserId: input.actorUserId ?? null,
+        test: true
+      }
+    });
+
+    return {
+      providerKey: sent.providerKey,
+      providerMessageId: sent.messageId
+    };
+  }
+
   public async listCampaignAnalytics(input: {
     workspaceId: string;
     campaignId: string;
@@ -1111,6 +1314,129 @@ export class MarketingService {
 
   public async listAutomationFlows(workspaceId: string) {
     return this.repo.listAutomationFlows(workspaceId);
+  }
+
+  private buildAutomationDefinition(input: {
+    flowId: string;
+    triggerDefinition: Record<string, unknown>;
+    runtimeGraph: AutomationWorkflowGraph;
+  }): AutomationWorkflowDefinition {
+    return {
+      source: 'marketing_journey',
+      marketingFlowId: input.flowId,
+      trigger: isRecord(input.triggerDefinition.trigger) ? input.triggerDefinition.trigger : {},
+      status: readStringValue(input.triggerDefinition.status) ?? 'DRAFT',
+      metadata: {
+        source: 'marketing_journey',
+        compiledAt: readStringValue(ensureObject(input.triggerDefinition.metadata).compiledAt)
+      },
+      graph: input.runtimeGraph
+    };
+  }
+
+  private async syncAutomationRuntimeForFlow(input: {
+    workspaceId: string;
+    flowId: string;
+    name: string;
+    description?: string | null;
+    status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+    triggerDefinition: Record<string, unknown>;
+    actorUserId?: string | null;
+    publish: boolean;
+  }): Promise<Record<string, unknown>> {
+    const runtimeGraph = readRuntimeGraph(input.triggerDefinition);
+    if (!runtimeGraph) {
+      if (input.publish) {
+        throw new AppError('Journey runtime graph is required before activation', 422);
+      }
+
+      return input.triggerDefinition;
+    }
+
+    if (!this.automationWorkflowService || !this.automationWorkflowVersionService) {
+      throw new AppError('Automation runtime is not configured for marketing journeys', 500);
+    }
+
+    const runtimeMetadata = readRuntimeMetadata(input.triggerDefinition);
+    let workflowId = readStringValue(runtimeMetadata.workflowId);
+    const workflowStatus = input.publish ? 'draft' : mapMarketingFlowStatusToAutomationStatus(input.status);
+
+    if (workflowId) {
+      await this.automationWorkflowService.updateWorkflow({
+        workspaceId: input.workspaceId,
+        workflowId,
+        name: input.name,
+        description: input.description ?? null,
+        status: workflowStatus
+      });
+    } else {
+      const workflow = await this.automationWorkflowService.createWorkflow({
+        workspaceId: input.workspaceId,
+        name: input.name,
+        description: input.description ?? null,
+        status: 'draft',
+        createdById: input.actorUserId ?? null
+      });
+      workflowId = String(workflow.id);
+    }
+
+    const draftVersion = await this.automationWorkflowVersionService.createDraftVersion({
+      workspaceId: input.workspaceId,
+      workflowId,
+      definition: this.buildAutomationDefinition({
+        flowId: input.flowId,
+        triggerDefinition: input.triggerDefinition,
+        runtimeGraph
+      }),
+      graph: runtimeGraph
+    });
+
+    if (!input.publish) {
+      return withRuntimeMetadata(input.triggerDefinition, {
+        workflowId,
+        workflowVersionId: String(draftVersion.id),
+        status: mapMarketingFlowStatusToAutomationStatus(input.status),
+        syncedAt: new Date().toISOString()
+      });
+    }
+
+    const published = await this.automationWorkflowVersionService.publishVersion({
+      workspaceId: input.workspaceId,
+      workflowId,
+      versionId: String(draftVersion.id),
+      publishedById: input.actorUserId ?? null,
+      activateWorkflow: true
+    });
+
+    return withRuntimeMetadata(input.triggerDefinition, {
+      workflowId,
+      workflowVersionId: String(published.id),
+      status: 'active',
+      syncedAt: new Date().toISOString(),
+      publishedAt: published.publishedAt instanceof Date
+        ? published.publishedAt.toISOString()
+        : new Date().toISOString()
+    });
+  }
+
+  private async setMarketingRuntimeStatus(input: {
+    workspaceId: string;
+    triggerDefinition: Record<string, unknown>;
+    status: AutomationWorkflowStatus;
+  }): Promise<Record<string, unknown>> {
+    const workflowId = readStringValue(readRuntimeMetadata(input.triggerDefinition).workflowId);
+    if (workflowId && this.automationWorkflowService) {
+      await this.automationWorkflowService.setWorkflowStatus({
+        workspaceId: input.workspaceId,
+        workflowId,
+        status: input.status
+      });
+    }
+
+    return withRuntimeMetadata(input.triggerDefinition, {
+      status: input.status,
+      syncedAt: new Date().toISOString()
+    });
   }
 
   public async createAutomationFlow(input: {
@@ -1136,12 +1462,15 @@ export class MarketingService {
       throw new AppError('Flow name is required', 422);
     }
 
+    const initialStatus = input.status ?? 'DRAFT';
+    let triggerDefinition = input.triggerDefinition;
+
     const flow = await this.repo.createAutomationFlow({
       workspaceId: input.workspaceId,
       name,
       description: normalizeText(input.description),
-      status: input.status ?? 'DRAFT',
-      triggerDefinition: input.triggerDefinition,
+      status: initialStatus === 'ACTIVE' ? 'DRAFT' : initialStatus,
+      triggerDefinition,
       entryCriteria: input.entryCriteria ?? null,
       exitCriteria: input.exitCriteria ?? null,
       createdByUserId: input.actorUserId ?? null,
@@ -1161,7 +1490,27 @@ export class MarketingService {
       } as unknown as Prisma.InputJsonValue);
     }
 
-    return flow;
+    const needsRuntimeSync = initialStatus === 'ACTIVE';
+    if (!needsRuntimeSync) {
+      return flow;
+    }
+
+    triggerDefinition = await this.syncAutomationRuntimeForFlow({
+      workspaceId: input.workspaceId,
+      flowId: String(flow.id),
+      name,
+      description: normalizeText(input.description),
+      status: initialStatus,
+      triggerDefinition,
+      actorUserId: input.actorUserId ?? null,
+      publish: initialStatus === 'ACTIVE'
+    });
+
+    return this.repo.updateAutomationFlow(String(flow.id), input.workspaceId, {
+      status: initialStatus,
+      triggerDefinition,
+      updatedByUserId: input.actorUserId ?? null
+    } as unknown as Prisma.InputJsonValue);
   }
 
   public async updateAutomationFlow(input: {
@@ -1173,11 +1522,46 @@ export class MarketingService {
     triggerDefinition?: Record<string, unknown>;
     actorUserId: string | null;
   }) {
+    const current = await this.repo.findAutomationFlowById(input.workspaceId, input.flowId);
+    if (!current) {
+      throw new AppError('Automation flow not found', 404);
+    }
+
+    const currentTriggerDefinition = isRecord(current.triggerDefinition) ? current.triggerDefinition : {};
+    const currentStatus = readStringValue(current.status) as 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | null;
+    const nextStatus = input.status ?? currentStatus ?? 'DRAFT';
+    const nextName = input.name !== undefined ? normalizeText(input.name) ?? '' : String(current.name ?? '');
+    const nextDescription = input.description !== undefined
+      ? normalizeText(input.description)
+      : normalizeText(String(current.description ?? ''));
+    let nextTriggerDefinition = input.triggerDefinition ?? currentTriggerDefinition;
+
+    if (nextStatus === 'PAUSED' || nextStatus === 'ARCHIVED') {
+      nextTriggerDefinition = await this.setMarketingRuntimeStatus({
+        workspaceId: input.workspaceId,
+        triggerDefinition: nextTriggerDefinition,
+        status: mapMarketingFlowStatusToAutomationStatus(nextStatus)
+      });
+    } else if (nextStatus === 'ACTIVE') {
+      nextTriggerDefinition = await this.syncAutomationRuntimeForFlow({
+        workspaceId: input.workspaceId,
+        flowId: input.flowId,
+        name: nextName,
+        description: nextDescription,
+        status: nextStatus,
+        triggerDefinition: nextTriggerDefinition,
+        actorUserId: input.actorUserId ?? null,
+        publish: nextStatus === 'ACTIVE'
+      });
+    }
+
     const patch: Record<string, unknown> = { updatedByUserId: input.actorUserId ?? null };
-    if (input.name !== undefined) patch.name = normalizeText(input.name) ?? '';
-    if (input.description !== undefined) patch.description = normalizeText(input.description);
-    if (input.status !== undefined) patch.status = input.status;
-    if (input.triggerDefinition !== undefined) patch.triggerDefinition = input.triggerDefinition;
+    if (input.name !== undefined) patch.name = nextName;
+    if (input.description !== undefined) patch.description = nextDescription;
+    if (input.status !== undefined) patch.status = nextStatus;
+    if (input.triggerDefinition !== undefined || nextTriggerDefinition !== currentTriggerDefinition) {
+      patch.triggerDefinition = nextTriggerDefinition;
+    }
     return this.repo.updateAutomationFlow(input.flowId, input.workspaceId, patch as Prisma.InputJsonValue);
   }
 
@@ -1459,6 +1843,7 @@ export class MarketingService {
     variantId?: string;
     segmentId?: string;
     leadId?: string;
+    itemId?: string;
     sendId?: string;
     automationFlowId?: string;
     type: string;
@@ -1473,6 +1858,7 @@ export class MarketingService {
       variantId: input.variantId ?? null,
       segmentId: input.segmentId ?? null,
       leadId: input.leadId ?? null,
+      itemId: input.itemId ?? null,
       sendId: input.sendId ?? null,
       automationFlowId: input.automationFlowId ?? null,
       type: input.type,
@@ -1595,7 +1981,7 @@ export class MarketingService {
     types?: string[];
     includeDismissed?: boolean;
     limit?: number;
-  }): Promise<{ items: import('../repositories/marketing-repository').SignalInboxItem[]; unreadCount: number }> {
+  }): Promise<{ items: SignalInboxItem[]; unreadCount: number }> {
     const items = await this.repo.listSignalsInbox({
       workspaceId: input.workspaceId,
       types: input.types,
@@ -1610,5 +1996,163 @@ export class MarketingService {
 
   async markSignal(input: { workspaceId: string; eventId: string; action: 'seen' | 'dismissed' }): Promise<void> {
     await this.repo.markSignal(input.workspaceId, input.eventId, input.action);
+  }
+
+  async createSignalFollowUp(input: {
+    workspaceId: string;
+    eventId: string;
+    leadId: string;
+    title: string;
+    description?: string;
+    dueAt?: Date | null;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    createWorkItem?: boolean;
+    boardId?: string;
+    workflowStateId?: string;
+    assigneeId?: string | null;
+    actorUserId?: string | null;
+  }): Promise<{
+    signalId: string;
+    leadId: string;
+    activity: {
+      id: string;
+      title: string;
+      description: string | null;
+      occurredAt: Date;
+    };
+    lead: {
+      id: string;
+      lastContactAt: Date | null;
+      nextFollowUpAt: Date | null;
+      status: string;
+    } | null;
+    workItemId: string | null;
+  }> {
+    const signal = await this.repo.findMarketingEventById(input.workspaceId, input.eventId);
+    if (!signal) {
+      throw new AppError('Marketing signal not found', 404);
+    }
+
+    const signalLeadId = typeof signal.leadId === 'string' ? signal.leadId : null;
+    if (!signalLeadId || signalLeadId !== input.leadId) {
+      throw new AppError('Signal is not linked to this lead', 422);
+    }
+
+    const title = normalizeText(input.title);
+    if (!title) {
+      throw new AppError('Follow-up title is required', 422);
+    }
+
+    const description = normalizeText(input.description);
+    const dueAt = input.dueAt ?? null;
+    const occurredAt = new Date();
+    const marketingEventType = typeof signal.type === 'string' ? signal.type : null;
+    const priority = input.priority ?? 'medium';
+    let workItemId: string | null = null;
+
+    if (input.createWorkItem) {
+      if (!input.actorUserId) {
+        throw new AppError('Authenticated user is required to create follow-up work item', 401);
+      }
+      if (!this.workspaceWorkItemsService) {
+        throw new AppError('Work item service is not configured for marketing follow-ups', 500);
+      }
+
+      const workItem = await this.workspaceWorkItemsService.createWorkItem({
+        workspaceId: input.workspaceId,
+        userId: input.actorUserId,
+        payload: {
+          boardId: input.boardId,
+          stateId: input.workflowStateId,
+          title,
+          description: description ?? undefined,
+          assigneeId: input.assigneeId ?? null,
+          dueDate: dueAt,
+          fields: {
+            source: 'marketing_signal',
+            leadId: input.leadId,
+            marketingSignalId: input.eventId,
+            priority
+          },
+          metadata: {
+            source: 'marketing_signal',
+            marketing: {
+              signalId: input.eventId,
+              leadId: input.leadId,
+              eventType: marketingEventType,
+              priority,
+              dueAt: dueAt?.toISOString() ?? null
+            }
+          }
+        }
+      });
+
+      workItemId = String(workItem.id);
+    }
+
+    const activity = await this.repo.createLeadActivity({
+      workspaceId: input.workspaceId,
+      leadId: input.leadId,
+      actorUserId: input.actorUserId ?? null,
+      type: 'FOLLOW_UP',
+      title,
+      description,
+      payload: {
+        origin: 'marketing_signal',
+        signalId: input.eventId,
+        workItemId,
+        marketingEventType,
+        dueAt: dueAt?.toISOString() ?? null,
+        priority
+      },
+      occurredAt
+    });
+
+    const lead = await this.repo.updateLeadFollowUp({
+      workspaceId: input.workspaceId,
+      leadId: input.leadId,
+      nextFollowUpAt: dueAt,
+      note: description,
+      actorUserId: input.actorUserId ?? null
+    });
+
+    await this.repo.markSignal(input.workspaceId, input.eventId, 'seen');
+
+    await this.eventPublisher.publish({
+      id: crypto.randomUUID(),
+      name: DomainEventNames.LeadFollowUpRegistered,
+      aggregateType: 'lead',
+      aggregateId: input.leadId,
+      occurredAt,
+      payload: {
+        workspaceId: input.workspaceId,
+        leadId: input.leadId,
+        signalId: input.eventId,
+        workItemId,
+        nextFollowUpAt: dueAt?.toISOString() ?? null,
+        priority,
+        requestedBy: input.actorUserId ?? null
+      }
+    });
+
+    return {
+      signalId: input.eventId,
+      leadId: input.leadId,
+      activity: {
+        id: activity.id,
+        title: activity.title,
+        description: activity.description,
+        occurredAt: activity.occurredAt
+      },
+      lead: lead
+        ? {
+            id: lead.id,
+            lastContactAt: lead.lastContactAt,
+            nextFollowUpAt: lead.nextFollowUpAt,
+            status: String(lead.status)
+          }
+        : null,
+      workItemId
+    };
   }
 }

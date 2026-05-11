@@ -10,100 +10,23 @@
     12px
     calc(var(--global-footer-height, 0px) + 12px);
   overflow-y: auto;
-  z-index: 10000;
+  z-index: var(--z-modal, 10000);
 }
 
-.shared-modal-shell {
+.shared-dialog-shell {
   position: relative;
   max-width: 100%;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
   background: var(--surface-overlay-strong);
   color: var(--text);
+  pointer-events: auto;
 }
 
-.shared-form-modal {
-  width: min(720px, calc(100vw - 32px));
-  display: grid;
-  gap: 16px;
-  padding: 18px;
-  border: 1px solid color-mix(in oklab, var(--line) 78%, transparent);
-  background: var(--surface-overlay-strong);
-  color: var(--text);
-}
-
-.shared-form-modal__header,
-.shared-form-modal__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.shared-form-modal__title {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.shared-form-modal__title h2,
-.shared-form-modal__title p,
-.shared-form-modal__error {
-  margin: 0;
-}
-
-.shared-form-modal__title h2 {
-  color: var(--text-strong);
-  font-size: var(--font-size-title-sm);
-  font-weight: 900;
-}
-
-.shared-form-modal__title p {
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.shared-form-modal__close {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--control-surface);
-  color: var(--text-soft);
-  cursor: pointer;
-}
-
-.shared-form-modal__close:hover:not(:disabled) {
-  border-color: var(--selected-border);
-  color: var(--text-strong);
-}
-
-.shared-form-modal__close:disabled {
-  opacity: var(--state-disabled-opacity);
-  cursor: not-allowed;
-}
-
-.shared-form-modal__content {
-  display: grid;
-  gap: 12px;
-}
-
-.shared-form-modal__footer {
-  justify-content: flex-end;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-
-.shared-form-modal__error {
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  background: color-mix(in oklab, var(--danger) 8%, var(--surface-overlay));
-  color: var(--danger);
-  font-weight: 700;
+.shared-confirm-modal__dialog-body,
+.shared-drawer-shell__dialog-body {
+  padding: 0;
+  overflow: hidden;
 }
 
 .shared-confirm-modal {

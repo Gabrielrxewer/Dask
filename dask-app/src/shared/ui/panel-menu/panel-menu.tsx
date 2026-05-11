@@ -1,4 +1,4 @@
-import type { DragEventHandler, MouseEventHandler, ReactNode } from "react";
+import type { DragEventHandler, KeyboardEventHandler, MouseEventHandler, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
 // ── PanelMenu ─────────────────────────────────────────────────────────────────
@@ -123,26 +123,19 @@ export function PanelMenuItem({
   onDragEnd,
   onClick,
 }: PanelMenuItemProps) {
+  const useDivButton = Boolean(onClick && actions);
   const Tag = onClick || draggable ? "button" : "div";
-  const buttonProps = onClick
-    ? { type: "button" as const, onClick, disabled }
-    : undefined;
+  const buttonProps = onClick ? { type: "button" as const, onClick, disabled } : undefined;
+  const handleDivKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
+    if (disabled || !onClick) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick(event as unknown as Parameters<typeof onClick>[0]);
+    }
+  };
 
-  return (
-    <Tag
-      className={cn(
-        "panel-menu-item",
-        `panel-menu-item--${variant}`,
-        selected && "panel-menu-item--selected",
-        disabled && "panel-menu-item--disabled",
-        draggable && "panel-menu-item--draggable",
-        className
-      )}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      {...buttonProps}
-    >
+  const content = (
+    <>
       {leading ? <span className="panel-menu-item__leading">{leading}</span> : null}
       <span className="panel-menu-item__body">
         <span className="panel-menu-item__label-row">
@@ -153,6 +146,45 @@ export function PanelMenuItem({
         {meta ? <span className="panel-menu-item__meta">{meta}</span> : null}
       </span>
       {actions ? <span className="panel-menu-item__actions">{actions}</span> : null}
+    </>
+  );
+
+  const itemClassName = cn(
+    "panel-menu-item",
+    `panel-menu-item--${variant}`,
+    selected && "panel-menu-item--selected",
+    disabled && "panel-menu-item--disabled",
+    draggable && "panel-menu-item--draggable",
+    className
+  );
+
+  if (useDivButton) {
+    return (
+      <div
+        className={itemClassName}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled || undefined}
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onClick={disabled ? undefined : onClick}
+        onKeyDown={handleDivKeyDown}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Tag
+      className={itemClassName}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      {...buttonProps}
+    >
+      {content}
     </Tag>
   );
 }

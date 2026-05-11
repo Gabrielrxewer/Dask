@@ -122,6 +122,12 @@ export interface MarketingAudienceContact {
   lastEventAt: string | null;
 }
 
+export interface MarketingSegmentPreview {
+  segment: MarketingSegment;
+  estimatedContacts: number;
+  sample: MarketingAudienceContact['lead'][];
+}
+
 export interface MarketingAutomationFlow {
   id: string;
   name: string;
@@ -177,6 +183,42 @@ export interface MarketingSignal {
 export interface MarketingSignalsInbox {
   items: MarketingSignal[];
   unreadCount: number;
+}
+
+export interface CreateMarketingFollowUpInput {
+  signalId: string;
+  leadId: string;
+  title: string;
+  description?: string;
+  dueAt?: string | null;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  createWorkItem?: boolean;
+  boardId?: string;
+  workflowStateId?: string;
+  assigneeId?: string | null;
+}
+
+export interface SendMarketingTemplateTestInput {
+  to: string;
+  variables?: Record<string, string | number | boolean | null>;
+}
+
+export interface MarketingFollowUpResult {
+  signalId: string;
+  leadId: string;
+  activity: {
+    id: string;
+    title: string;
+    description: string | null;
+    occurredAt: string;
+  };
+  lead: {
+    id: string;
+    lastContactAt: string | null;
+    nextFollowUpAt: string | null;
+    status: string;
+  } | null;
+  workItemId: string | null;
 }
 
 export interface CreateMarketingCampaignInput {

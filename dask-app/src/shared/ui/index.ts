@@ -6,6 +6,8 @@ export { TextInput } from "@/shared/ui/input";
 export type { TextInputProps } from "@/shared/ui/input";
 export { Select } from "@/shared/ui/select";
 export type { SelectProps } from "@/shared/ui/select";
+export { AppSelect } from "@/shared/ui/select";
+export type { AppSelectItem, AppSelectProps } from "@/shared/ui/select";
 export { Textarea } from "@/shared/ui/textarea";
 export type { TextareaProps } from "@/shared/ui/textarea";
 export { Section } from "@/shared/ui/section";
@@ -22,18 +24,53 @@ export { StatusBadge } from "@/shared/ui/status-badge";
 export type { StatusBadgeProps, StatusBadgeSize, StatusBadgeTone } from "@/shared/ui/status-badge";
 export { Card } from "@/shared/ui/card";
 export type { CardAccent, CardProps, CardVariant } from "@/shared/ui/card";
-export { ModalShell } from "@/shared/ui/modal-shell";
-export type { ModalShellProps } from "@/shared/ui/modal-shell";
 export { ConfirmModal, ConfirmModalFrame } from "@/shared/ui/confirm-modal";
 export type { ConfirmModalFrameProps, ConfirmModalProps, ConfirmModalTone } from "@/shared/ui/confirm-modal";
-export { FormModal } from "@/shared/ui/form-modal";
-export type { FormModalProps } from "@/shared/ui/form-modal";
 export { DrawerShell, DrawerShellFrame } from "@/shared/ui/drawer-shell";
 export type { DrawerShellFrameProps, DrawerShellProps } from "@/shared/ui/drawer-shell";
 export { SidePanel } from "@/shared/ui/side-panel";
 export type { SidePanelProps, SidePanelVariant } from "@/shared/ui/side-panel";
 export { FormField } from "@/shared/ui/form-field";
 export type { FormFieldProps } from "@/shared/ui/form-field";
+export {
+  AppForm,
+  AppFormActions,
+  AppFormError,
+  AppFormField,
+  AppFormGrid,
+  AppFormHelpText,
+  AppFormSection,
+  useAppFormState
+} from "@/shared/ui/form";
+export type {
+  AppFormActionsProps,
+  AppFormErrorProps,
+  AppFormFieldProps,
+  AppFormGridProps,
+  AppFormHelpTextProps,
+  AppFormProps,
+  AppFormSectionProps
+} from "@/shared/ui/form";
+export {
+  AppCheckboxField,
+  AppDateField,
+  AppDateTimeField,
+  AppMoneyField,
+  AppSelectField,
+  AppSwitchField,
+  AppTextField,
+  AppTextareaField
+} from "@/shared/ui/field";
+export type {
+  AppCheckboxFieldProps,
+  AppDateFieldProps,
+  AppDateTimeFieldProps,
+  AppMoneyFieldProps,
+  AppSelectFieldProps,
+  AppSwitchFieldProps,
+  AppTextFieldProps,
+  AppTextareaFieldProps
+} from "@/shared/ui/field";
 export { MetricCard } from "@/shared/ui/metric-card";
 export type {
   MetricCardProps,
@@ -43,6 +80,33 @@ export type {
 } from "@/shared/ui/metric-card";
 export { Tabs, WorkspaceTopNavigation, StudioNavHeader } from "@/shared/ui/tabs";
 export type { TabsItem, TabsProps, WorkspaceTopNavigationProps, StudioNavHeaderProps } from "@/shared/ui/tabs";
+export { AppTabs } from "@/shared/ui/tabs";
+export type { AppTabsItem, AppTabsProps } from "@/shared/ui/tabs";
+export { AppDialog } from "@/shared/ui/dialog";
+export type { AppDialogProps } from "@/shared/ui/dialog";
+export { AppPopover } from "@/shared/ui/popover";
+export type { AppPopoverProps } from "@/shared/ui/popover";
+export { AppDropdownMenu } from "@/shared/ui/dropdown-menu";
+export type { AppDropdownMenuItemConfig, AppDropdownMenuProps } from "@/shared/ui/dropdown-menu";
+export { AppTooltip } from "@/shared/ui/tooltip";
+export type { AppTooltipProps } from "@/shared/ui/tooltip";
+export { AppCheckbox } from "@/shared/ui/checkbox";
+export type { AppCheckboxProps } from "@/shared/ui/checkbox";
+export { AppSwitch } from "@/shared/ui/switch";
+export type { AppSwitchProps } from "@/shared/ui/switch";
+export { AppDatePicker, AppDateRangePicker, AppDateTimePicker } from "@/shared/ui/date-picker";
+export type {
+  AppDatePickerProps,
+  AppDateRangePickerProps,
+  AppDateRangeValue,
+  AppDateTimePickerProps
+} from "@/shared/ui/date-picker";
+export { AppToaster, toast } from "@/shared/ui/toast";
+export type { AppToasterProps } from "@/shared/ui/toast";
+export { ErrorState, SkeletonCard } from "@/shared/ui/state";
+export type { ErrorStateProps, SkeletonCardProps } from "@/shared/ui/state";
+export { VirtualColumn, VirtualList } from "@/shared/ui/virtual-list";
+export type { VirtualColumnProps, VirtualListProps } from "@/shared/ui/virtual-list";
 export { StudioLayout, StudioSidebar } from "@/shared/ui/studio-layout";
 export type { StudioLayoutProps, StudioSidebarProps } from "@/shared/ui/studio-layout";
 export { PanelMenu, PanelMenuGroup, PanelMenuItem } from "@/shared/ui/panel-menu";
@@ -95,6 +159,35 @@ export type {
   FlowNodeSidebarMenuProps,
   FlowNodeSidebarMenuSection
 } from "@/shared/ui/flow-canvas";
+export {
+  FlowStudioAutoLayoutButton,
+  FlowStudioCanvas,
+  FlowStudioControls,
+  FlowStudioDebugPanel,
+  FlowStudioHeader,
+  FlowStudioInspector,
+  FlowStudioLayout,
+  FlowStudioMinimap,
+  FlowStudioNodePalette,
+  FlowStudioPreviewPanel,
+  FlowStudioRunPanel,
+  FlowStudioSidebar,
+  FlowStudioToolbar,
+  FlowStudioValidationPanel,
+  applyLayeredFlowLayout,
+  layeredFlowLayoutEngine,
+  manualFlowLayoutEngine
+} from "@/shared/ui/flow-studio";
+export type {
+  FlowLayoutEngine,
+  FlowLayoutOptions,
+  FlowStudioCanvasProps,
+  FlowStudioIssueSeverity,
+  FlowStudioLayoutProps,
+  FlowStudioRunStep,
+  FlowStudioRunStepStatus,
+  FlowStudioValidationIssue
+} from "@/shared/ui/flow-studio";
 export { ResourceTable } from "@/shared/ui/resource-table";
 export type { ResourceTableActions, ResourceTableColumn, ResourceTableProps } from "@/shared/ui/resource-table";
 export { RegistrationList } from "@/shared/ui/registration-list";

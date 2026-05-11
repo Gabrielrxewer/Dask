@@ -882,21 +882,6 @@
 
 /* ── Feedback ── */
 
-.general-settings__feedback,
-.general-settings__error {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: 800;
-}
-
-.general-settings__feedback {
-  color: var(--success);
-}
-
-.general-settings__error {
-  color: var(--danger);
-}
-
 /* ── Modal ── */
 
 .general-settings__template-modal {
@@ -908,6 +893,13 @@
   border-radius: 14px;
   background: var(--surface-overlay-strong);
   box-shadow: 0 28px 70px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.general-settings__template-modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  overflow: visible;
 }
 
 .general-settings__modal-preview {
@@ -1148,8 +1140,7 @@
 .app-theme[data-theme="dark"] .general-settings__templates header span,
 .app-theme[data-theme="dark"] .general-settings__active-panel header span,
 .app-theme[data-theme="dark"] .general-settings__workspace-profile header span,
-.app-theme[data-theme="dark"] .general-settings__modal-copy span,
-.app-theme[data-theme="dark"] .general-settings__feedback {
+.app-theme[data-theme="dark"] .general-settings__modal-copy span {
   color: var(--accent) !important;
 }
 
@@ -1189,8 +1180,4 @@
 .app-theme[data-theme="dark"] .general-settings__template-card p,
 .app-theme[data-theme="dark"] .general-settings__modal-copy p {
   color: var(--text-soft) !important;
-}
-
-.app-theme[data-theme="dark"] .general-settings__error {
-  color: var(--danger) !important;
 }

@@ -1,0 +1,145 @@
+.node-config-form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.node-config-form__section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.node-config-form__section-head {
+  display: grid;
+  gap: 3px;
+}
+
+.node-config-form__section-head h3 {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--text-secondary));
+}
+
+.node-config-form__section-head p {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted, var(--text-secondary));
+}
+
+.node-config-form__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.node-config-form__label {
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  color: var(--text-strong, var(--foreground));
+}
+
+.node-config-form__hint,
+.node-config-form__error {
+  font-size: var(--font-size-2xs);
+  line-height: 1.35;
+}
+
+.node-config-form__hint {
+  color: var(--text-muted, var(--text-secondary));
+}
+
+.node-config-form__error {
+  color: var(--danger, #dc2626);
+}
+
+.node-config-form__textarea,
+.node-config-form__json {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.node-config-form__textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.node-config-form__textarea--code,
+.node-config-form__json {
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.node-config-form__json {
+  border: var(--control-border);
+  border-radius: 14px;
+  background: var(--control-surface);
+  color: var(--text-primary, var(--foreground));
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+.node-config-form__switch,
+.node-config-form__check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary, var(--foreground));
+}
+
+.node-config-form__check-list {
+  display: grid;
+  gap: 7px;
+}
+
+.node-config-form__advanced {
+  display: grid;
+  gap: 8px;
+  min-width: min(420px, calc(100vw - 32px));
+}
+
+.node-config-form__advanced-head {
+  display: grid;
+  gap: 3px;
+  color: var(--text-muted, var(--text-secondary));
+  font-size: var(--font-size-xs);
+}
+
+.node-config-form__advanced-head strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.node-config-form__advanced .node-config-form__textarea {
+  min-height: 180px;
+}
+
+.node-config-form__advanced-form {
+  display: grid;
+  gap: 8px;
+}
+
+.node-config-form__advanced-field .shared-textarea {
+  min-height: 180px;
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.node-config-form__errors {
+  display: grid;
+  gap: 5px;
+  color: var(--danger, #dc2626);
+  font-size: var(--font-size-xs);
+}
+
+.node-config-form__submit {
+  justify-self: start;
+}

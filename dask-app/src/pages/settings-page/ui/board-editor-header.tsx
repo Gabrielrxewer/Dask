@@ -1,4 +1,5 @@
 import type { Ref } from "react";
+import { AppSelect } from "@/shared/ui";
 import { BoardEditorActions } from "./board-editor-actions";
 import type { BoardPerspective, PerspectiveTemplateSeed } from "./board-editor-settings.model";
 
@@ -45,6 +46,8 @@ export function BoardEditorHeader({
   onDiscard,
   onSave
 }: BoardEditorHeaderProps) {
+  const noTemplateValue = "__none__";
+
   return (
     <div className="board-editor__topbar">
       <div className="board-editor__tabs">
@@ -93,18 +96,19 @@ export function BoardEditorHeader({
                 }
               }}
             />
-            <select
+            <AppSelect
               className="board-editor__tab-template-select"
-              value={newPerspectiveTemplateKey}
-              onChange={(event) => onNewPerspectiveTemplateKeyChange(event.target.value)}
-            >
-              <option value="">Sem template</option>
-              {templateSeeds.map((seed) => (
-                <option key={seed.key} value={seed.key}>
-                  {seed.templateName} / {seed.perspectiveName}
-                </option>
-              ))}
-            </select>
+              value={newPerspectiveTemplateKey || noTemplateValue}
+              onValueChange={(value) => onNewPerspectiveTemplateKeyChange(value === noTemplateValue ? "" : value)}
+              aria-label="Template da perspectiva"
+              items={[
+                { value: noTemplateValue, label: "Sem template" },
+                ...templateSeeds.map((seed) => ({
+                  value: seed.key,
+                  label: `${seed.templateName} / ${seed.perspectiveName}`
+                }))
+              ]}
+            />
             <button type="button" className="board-editor__tab-confirm" onClick={onCreatePerspective}>
               Criar
             </button>

@@ -168,6 +168,11 @@
   gap: 12px;
 }
 
+.fiscal-view__settings-form {
+  display: grid;
+  gap: 12px;
+}
+
 .fiscal-view__field {
   gap: 6px;
 }
@@ -204,6 +209,21 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.fiscal-view__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--fiscal-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 760;
+}
+
+.fiscal-view__pagination-label {
+  min-width: 70px;
+  text-align: center;
 }
 
 .fiscal-view__table {
@@ -299,20 +319,20 @@
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item {
-  background: transparent !important;
-  color: var(--text-muted) !important;
+  background: transparent;
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item:hover {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
-  color: var(--text-soft) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item--active {
-  color: var(--text-strong) !important;
-  background: transparent !important;
-  border-color: transparent !important;
+  color: var(--text-strong);
+  background: transparent;
+  border-color: transparent;
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__summary-card,
@@ -320,32 +340,32 @@
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-input,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-select,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-textarea {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
-  color: var(--text-strong) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
+  color: var(--text-strong);
   box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__header {
-  border-bottom-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-bottom-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__row {
-  border-bottom-color: var(--line) !important;
-  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
-  color: var(--text) !important;
+  border-bottom-color: var(--line);
+  background: color-mix(in oklab, var(--panel) 86%, transparent);
+  color: var(--text);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel));
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-status-badge {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-muted) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-muted);
 }
 
 /* ── Portal do cliente ─────────────────────────────────────────────── */
@@ -402,8 +422,8 @@
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__portal-head {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 

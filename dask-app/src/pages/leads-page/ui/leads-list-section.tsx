@@ -3,7 +3,7 @@ import type { Task, TaskStatus } from "@/entities/task";
 import { getCustomerDisplayName, type Customer, type WorkspaceDocument } from "@/modules/workspace";
 import { formatMoney, formatMoneyCompact } from "@/shared/lib/money";
 import { cn } from "@/shared/lib/cn";
-import { AppIcon, Button, EmptyState, FormField, ResourceSection, StatusBadge, TextInput, type AppIconName } from "@/shared/ui";
+import { AppDropdownMenu, AppIcon, Button, EmptyState, FormField, ResourceSection, StatusBadge, TextInput, type AppIconName } from "@/shared/ui";
 import {
   getInitials,
   getNumberField,
@@ -53,6 +53,7 @@ interface OpportunityActionHandlers {
   onOpenCustomerFromLead: (task: Task) => void;
   onOpenLinkCustomer: (task: Task) => void;
   onCreateCharge: (task: Task) => void;
+  onTransformSignal: (task: Task) => void;
   onOpenFlow: (task: Task) => void;
   onOpenDocs: () => void;
   onOpenBoard: () => void;
@@ -78,6 +79,10 @@ const DOCUMENT_STATUS_LABELS: Record<string, string> = {
   accepted: "Aceita",
   signed: "Assinada"
 };
+
+function isSignalTask(task: Task, signalTypeIds: string[]): boolean {
+  return task.type === "signal" || task.type === "prospect" || signalTypeIds.includes(task.type);
+}
 
 function formatOpportunityValue(value: number | null): string {
   return value !== null && value > 0 ? formatMoney(value) : "A estimar";
@@ -148,7 +153,16 @@ function buildOpportunityStages(row: OpportunityRow): OpportunityStage[] {
   ];
 }
 
-function resolvePrimaryAction(row: OpportunityRow, handlers: OpportunityActionHandlers): OpportunityAction {
+function resolvePrimaryAction(row: OpportunityRow, handlers: OpportunityActionHandlers, signalTypeIds: string[]): OpportunityAction {
+  if (isSignalTask(row.task, signalTypeIds)) {
+    return {
+      label: "Transformar em Lead",
+      description: "Promove o Signal preservando os campos comerciais.",
+      icon: "trend-up",
+      onClick: () => handlers.onTransformSignal(row.task)
+    };
+  }
+
   if (!row.customer) {
     return {
       label: "Criar cliente",
@@ -243,22 +257,22 @@ function SecondaryActionsMenu({ actions }: { actions: Array<{ label: string; ico
   if (actions.length === 0) return null;
 
   return (
-    <details className="opportunity-actions-menu">
-      <summary aria-label="Acoes secundarias">
-        <AppIcon name="chevron-down" size={15} />
-      </summary>
-      <div className="opportunity-actions-menu__panel">
-        {actions.map((action) => (
-          <button key={action.label} type="button" onClick={action.onClick}>
-            <AppIcon name={action.icon} size={14} />
-            <span>{action.label}</span>
-          </button>
-        ))}
-      </div>
-    </details>
+    <AppDropdownMenu
+      className="opportunity-actions-menu__dropdown"
+      trigger={(
+        <button type="button" className="opportunity-actions-menu__trigger" aria-label="Acoes secundarias">
+          <AppIcon name="chevron-down" size={15} />
+        </button>
+      )}
+      items={actions.map((action) => ({
+        id: action.label,
+        label: action.label,
+        icon: <AppIcon name={action.icon} size={14} />,
+        onSelect: action.onClick
+      }))}
+    />
   );
 }
-
 export function LeadsListSection({
   filteredTasks,
   filteredLeadMetrics,
@@ -273,9 +287,15 @@ export function LeadsListSection({
   onOpenCustomerFromLead,
   onOpenLinkCustomer,
   onCreateCharge,
+  onTransformSignal,
   onOpenFlow,
   onOpenDocs,
-  onOpenBoard
+  onOpenBoard,
+  signalTypeIds,
+  totalCount,
+  hasMore = false,
+  isFetchingMore = false,
+  onLoadMore
 }: {
   filteredTasks: Task[];
   filteredLeadMetrics: FilteredLeadMetrics;
@@ -290,9 +310,15 @@ export function LeadsListSection({
   onOpenCustomerFromLead: (task: Task) => void;
   onOpenLinkCustomer: (task: Task) => void;
   onCreateCharge: (task: Task) => void;
+  onTransformSignal: (task: Task) => void;
   onOpenFlow: (task: Task) => void;
   onOpenDocs: () => void;
   onOpenBoard: () => void;
+  signalTypeIds?: string[];
+  totalCount?: number;
+  hasMore?: boolean;
+  isFetchingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   const rows = useMemo<OpportunityRow[]>(
     () =>
@@ -324,6 +350,7 @@ export function LeadsListSection({
     onOpenCustomerFromLead,
     onOpenLinkCustomer,
     onCreateCharge,
+    onTransformSignal,
     onOpenFlow,
     onOpenDocs,
     onOpenBoard
@@ -405,7 +432,7 @@ export function LeadsListSection({
         </FormField>
         <div className="leads-opportunities-toolbar__meta">
           <span>
-            {filteredTasks.length} lead{filteredTasks.length !== 1 ? "s" : ""}
+            {totalCount ?? filteredTasks.length} lead{(totalCount ?? filteredTasks.length) !== 1 ? "s" : ""}
             {search ? ` encontrado${filteredTasks.length !== 1 ? "s" : ""}` : " no total"}
           </span>
           <strong>{formatMoneyCompact(filteredLeadMetrics.totalValue)} em pipeline</strong>
@@ -430,9 +457,13 @@ export function LeadsListSection({
             const billingOpenValue = (isOpenBillingStatus(row.billingStatus) || (row.billingOrderId && !row.billingStatus)) && row.estimatedValue && row.estimatedValue > 0
               ? row.estimatedValue
               : null;
-            const primaryAction = resolvePrimaryAction(row, handlers);
+            const resolvedSignalTypeIds = signalTypeIds ?? [];
+            const primaryAction = resolvePrimaryAction(row, handlers, resolvedSignalTypeIds);
             const stages = buildOpportunityStages(row);
             const secondaryActions = [
+              isSignalTask(row.task, resolvedSignalTypeIds) && primaryAction.label !== "Transformar em Lead"
+                ? { label: "Transformar em Lead", icon: "trend-up" as AppIconName, onClick: () => onTransformSignal(row.task) }
+                : null,
               row.customer
                 ? { label: "Abrir cliente", icon: "user" as AppIconName, onClick: () => onOpenCustomerDetails(row.customer!.id) }
                 : { label: "Vincular cliente", icon: "link" as AppIconName, onClick: () => onOpenLinkCustomer(row.task) },
@@ -528,6 +559,13 @@ export function LeadsListSection({
               </article>
             );
           })}
+          {hasMore && onLoadMore ? (
+            <div className="leads-page__load-more">
+              <Button variant="outline" onClick={onLoadMore} loading={isFetchingMore}>
+                Carregar mais
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
     </ResourceSection>

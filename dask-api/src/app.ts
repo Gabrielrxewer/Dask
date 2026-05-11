@@ -40,6 +40,7 @@ import { buildCommercialIntakeRoutes } from '@/modules/commercial-intake/http/co
 import { buildMarketingRoutes } from '@/modules/marketing/http/routes';
 import { buildMarketingIntegrationRoutes } from '@/modules/marketing/http/integration-routes';
 import { buildPortalRoutes } from '@/modules/portal/http/portal-routes';
+import { buildDashboardRoutes } from '@/modules/dashboard/dashboard-routes';
 
 function parseAllowedOrigins(raw: string): string[] {
   const values = raw
@@ -197,7 +198,8 @@ export const createApp = (): Express => {
     billingService,
     fiscalService,
     commercialIntakeService,
-    marketingService
+    marketingService,
+    dashboardQueryService
   } = buildAppContainer();
   const requireSubscription = createSubscriptionMiddleware(prisma);
   const outboxRepository = new PrismaOutboxRepository(prisma);
@@ -280,7 +282,11 @@ export const createApp = (): Express => {
   // Portal routes — auth required but NO subscription check (CLIENT users have no personal subscription)
   app.use(
     env.API_PREFIX,
-    buildPortalRoutes({ prisma, workspaceDocumentsService })
+    buildPortalRoutes({
+      prisma,
+      workspaceDocumentsService,
+      billingPortalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET ?? env.JWT_SECRET
+    })
   );
   app.use(
     env.API_PREFIX,
@@ -352,6 +358,16 @@ export const createApp = (): Express => {
       prisma,
       authorizationService: roleAuthorizationService,
       auditService
+    })
+  );
+  app.use(
+    env.API_PREFIX,
+    authMiddleware,
+    requireSubscription,
+    buildDashboardRoutes({
+      prisma,
+      authorizationService: roleAuthorizationService,
+      dashboardQueryService
     })
   );
   app.use(

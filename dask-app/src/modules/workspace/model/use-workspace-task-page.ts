@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   applyFieldCapabilityOverrides,
   applyFieldDefinitionOverrides,
@@ -9,7 +9,7 @@ import {
   type TaskFieldOption
 } from "@/entities/task";
 import { applyDashboardFilter, useDashboardFilter } from "@/features/dashboard-filter";
-import { billingService } from "@/modules/billing";
+import { useBillingCatalogQuery, type ConnectCatalogItem } from "@/modules/billing";
 import { useWorkspace } from "@/modules/workspace/providers";
 
 type WorkspaceTaskPageUser = {
@@ -22,9 +22,7 @@ interface UseWorkspaceTaskPageOptions {
   currentUser?: WorkspaceTaskPageUser | null;
 }
 
-function mapCatalogItemsToFieldOptions(
-  items: Awaited<ReturnType<typeof billingService.listConnectCatalogItems>>["items"]
-): TaskFieldOption[] {
+function mapCatalogItemsToFieldOptions(items: ConnectCatalogItem[]): TaskFieldOption[] {
   return items
     .filter(item => item.isActive)
     .map(item => ({
@@ -71,7 +69,6 @@ export function useWorkspaceTaskPage(options: UseWorkspaceTaskPageOptions = {}) 
   const workspace = useWorkspace();
   const { filter, setQuery, toggleMineOnly } = useDashboardFilter();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [catalogFieldOptions, setCatalogFieldOptions] = useState<TaskFieldOption[]>([]);
 
   const tasks = workspace.snapshot?.tasks ?? [];
   const rawBoardConfig = workspace.snapshot?.boardConfig;
@@ -96,6 +93,21 @@ export function useWorkspaceTaskPage(options: UseWorkspaceTaskPageOptions = {}) 
       operationalMetadata: rawBoardConfig?.operationalMetadata
     }),
     [rawBoardConfig, workspace.snapshot?.preferences.settings]
+  );
+  const hasCatalogField = useMemo(
+    () => boardConfigWithTypes.fieldDefinitions.some(
+      f => f.type === "catalog_select" || f.config?.entityType === "billing_catalog_item"
+    ),
+    [boardConfigWithTypes.fieldDefinitions]
+  );
+  const catalogQuery = useBillingCatalogQuery(
+    workspace.snapshot?.id,
+    { includeInactive: false, status: "active" },
+    { enabled: hasCatalogField }
+  );
+  const catalogFieldOptions = useMemo(
+    () => mapCatalogItemsToFieldOptions(catalogQuery.data?.items ?? []),
+    [catalogQuery.data?.items]
   );
   const boardConfig = useMemo(
     () => injectCatalogOptionsIntoBoardConfig(boardConfigWithTypes, catalogFieldOptions),
@@ -128,32 +140,6 @@ export function useWorkspaceTaskPage(options: UseWorkspaceTaskPageOptions = {}) 
       }
     };
   }, [activeUser, options.currentUser?.avatarUrl, options.currentUser?.id, options.currentUser?.name, workspace.snapshot?.membersById]);
-
-  useEffect(() => {
-    const workspaceId = workspace.snapshot?.id;
-    if (!workspaceId) {
-      setCatalogFieldOptions([]);
-      return;
-    }
-
-    const hasCatalogField = boardConfigWithTypes.fieldDefinitions.some(
-      f => f.type === "catalog_select" || f.config?.entityType === "billing_catalog_item"
-    );
-    if (!hasCatalogField) {
-      setCatalogFieldOptions([]);
-      return;
-    }
-
-    let mounted = true;
-    void billingService.listConnectCatalogItems(workspaceId, false).then(({ items }) => {
-      if (mounted) {
-        setCatalogFieldOptions(mapCatalogItemsToFieldOptions(items));
-      }
-    }).catch(() => undefined);
-    return () => {
-      mounted = false;
-    };
-  }, [workspace.snapshot?.id, boardConfigWithTypes.fieldDefinitions]);
 
   const filteredTasks = useMemo(
     () => applyDashboardFilter(tasks, filter, boardConfig, activeMembers, activeUser),

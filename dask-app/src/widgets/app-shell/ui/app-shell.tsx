@@ -6,6 +6,7 @@ import {
   buildWorkspaceAutomationsPath,
   buildWorkspaceBillingPath,
   buildWorkspaceBoardPath,
+  buildWorkspaceDashboardPath,
   buildWorkspaceDocumentationPath,
   buildWorkspaceFiscalPath,
   buildWorkspaceLeadFlowPath,
@@ -24,9 +25,9 @@ import { cn } from "@/shared/lib/cn";
 import { AppIcon, PageHeader, type AppIconName } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "board" | "list" | "agenda" | "lead-flow" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
+type SidebarIconName = "dashboard" | "board" | "list" | "agenda" | "lead-flow" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
-type AppModuleKey = "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+type AppModuleKey = "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -44,6 +45,7 @@ interface AppShellProps {
 
 function SidebarIcon({ name }: { name: SidebarIconName }) {
   const iconByName: Record<SidebarIconName, AppIconName> = {
+    dashboard: "dashboard",
     board: "board",
     list: "list",
     agenda: "calendar-check",
@@ -78,12 +80,20 @@ export function AppShell({
   const { snapshot } = useWorkspace();
   const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
   const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
+    snapshot?.access?.allowedModules ?? ["dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
   );
   const navGroups = [
     {
       title: "Planejamento",
       items: [
+        {
+          to: buildWorkspaceDashboardPath(workspaceSlug),
+          label: "Dashboard",
+          icon: "dashboard" as const,
+          tone: "blue" as const,
+          module: "dashboard" as AppModuleKey,
+          hideForClient: true
+        },
         {
           to: buildWorkspaceBoardPath(workspaceSlug),
           label: "Board",

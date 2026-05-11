@@ -173,23 +173,6 @@
   accent-color: var(--accent, var(--brand-blue));
 }
 
-.ast__advanced-config {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ast__advanced-config summary {
-  cursor: pointer;
-  color: var(--text-muted, var(--text-secondary));
-  font-size: var(--font-size-xs, 0.8rem);
-  font-weight: 800;
-}
-
-.ast__advanced-config[open] {
-  display: flex;
-}
-
 .ast__inspector-muted {
   margin: 0;
   color: var(--text-muted, var(--text-secondary));

@@ -1,0 +1,139 @@
+.app-form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  color: var(--text-strong);
+}
+
+.app-form-section {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.app-form-section__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-form-section__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.app-form-section__copy h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.app-form-section__copy p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.app-form-section__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.app-form-grid {
+  min-width: 0;
+}
+
+.app-form-grid--one {
+  --shared-form-grid-columns: 1;
+}
+
+.app-form-field {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  justify-items: stretch;
+}
+
+.app-form-field > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-form-field__label {
+  line-height: 1.25;
+}
+
+.app-form-help-text {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.app-form-error {
+  color: var(--color-danger, var(--danger, #dc2626));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app-form-field--disabled {
+  opacity: 0.86;
+}
+
+.app-form-field .shared-input,
+.app-form-field .shared-select__control,
+.app-form-field .shared-textarea,
+.app-form-field .app-select__trigger,
+.app-form-field .app-date-picker__trigger {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.app-form-field .app-date-picker__trigger {
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 14px;
+  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent) inset;
+}
+
+.app-form-field--invalid .shared-input,
+.app-form-field--invalid .shared-select__control,
+.app-form-field--invalid .shared-textarea,
+.app-form-field--invalid .app-select__trigger,
+.app-form-field--invalid .app-date-picker__trigger {
+  border-color: var(--danger, #dc2626);
+}
+
+.app-form-actions {
+  min-width: 0;
+}
+
+.app-form-actions--start {
+  justify-content: flex-start;
+}
+
+.app-form-actions--end {
+  justify-content: flex-end;
+}
+
+.app-form-actions--between {
+  justify-content: space-between;
+}
+
+@media (max-width: 760px) {
+  .app-form-grid,
+  .app-form-grid.shared-form-grid--two,
+  .app-form-grid.shared-form-grid--three {
+    --shared-form-grid-columns: 1;
+  }
+}

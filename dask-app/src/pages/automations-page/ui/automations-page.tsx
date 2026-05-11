@@ -26,8 +26,14 @@ import type {
   CommunicationTemplate,
   WhatsAppConsent
 } from "@/modules/workspace/model";
-import { AppIcon, Button, EmptyState, FlowCanvas, FlowNodeCard, FlowNodeSidebarMenu, LoadingState, PanelMenu, PanelMenuItem, StatusBadge, StudioLayout, TextInput, WorkspaceActionButton, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
+import { AppIcon, Button, EmptyState, FlowNodeCard, FlowNodeSidebarMenu, FlowStudioCanvas, FlowStudioValidationPanel, LoadingState, PanelMenu, PanelMenuItem, StatusBadge, StudioLayout, TextInput, WorkspaceActionButton, WorkspaceFrame, WorkspaceTopNavigation, applyLayeredFlowLayout, toast } from "@/shared/ui";
+import type { FlowStudioValidationIssue } from "@/shared/ui";
+import { buildNodeConfigZodSchema, NodeConfigForm } from "@/shared/flow-node-config";
 import { AppShell } from "@/widgets/app-shell";
+import { useAutomationGraphValidation, useAutomationNodeInspector } from "@/pages/automations-page/hooks";
+import { createAutomationNodeConfigDescriptor } from "@/pages/automations-page/model/automation-node-registry";
+import { validateAutomationConnection } from "@/pages/automations-page/model/automation-validation-view-model";
+import { AutomationToolbar, countValidationIssues } from "./AutomationToolbar";
 import "./automations-page.css";
 
 type StudioTab = "flows" | "runs" | "approvals" | "inbox" | "templates" | "contacts" | "settings";
@@ -104,14 +110,6 @@ function summarizeConfig(config: Record<string, unknown>) {
     .slice(0, 2)
     .map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
     .join(" | ");
-}
-
-function toOptionValue(option: FieldOption) {
-  return option.slug ?? option.key ?? option.id ?? "";
-}
-
-function toOptionLabel(option: FieldOption) {
-  return option.name ?? option.label ?? option.slug ?? option.key ?? option.id ?? "";
 }
 
 function readVersionGraph(
@@ -255,6 +253,44 @@ export function buildWorkflowPreview(
       description: describePreviewStep(node.data.nodeType, node.data.config, nodeMeta)
     }))
   };
+}
+
+function buildNodeConfigValidationIssues(input: {
+  nodes: AutomationCanvasNode[];
+  nodeMeta: AutomationNodeMetaMap;
+  boardColumns: FieldOption[];
+  workflowStates: FieldOption[];
+  customFields: FieldOption[];
+  itemTypes: FieldOption[];
+}): FlowStudioValidationIssue[] {
+  const issues: FlowStudioValidationIssue[] = [];
+
+  for (const node of input.nodes) {
+    const meta = input.nodeMeta.get(node.data.nodeType);
+    const descriptor = createAutomationNodeConfigDescriptor({
+      nodeType: node.data.nodeType,
+      nodeLabel: meta?.label ?? node.data.label,
+      configSchema: meta?.configSchema,
+      boardColumns: input.boardColumns,
+      workflowStates: input.workflowStates,
+      customFields: input.customFields,
+      itemTypes: input.itemTypes
+    });
+    const result = buildNodeConfigZodSchema(descriptor).safeParse(node.data.config);
+    if (result.success) continue;
+
+    result.error.issues.forEach((issue, index) => {
+      issues.push({
+        id: `node-config-${node.id}-${index}`,
+        severity: "error",
+        nodeId: node.id,
+        path: issue.path.join("."),
+        message: `${node.data.label}: ${issue.message}`
+      });
+    });
+  }
+
+  return issues;
 }
 
 function readConfigPath(config: Record<string, unknown>, path: string): unknown {
@@ -429,7 +465,6 @@ export function AutomationsPage() {
   const [canvasNodes, setCanvasNodes] = useState<AutomationCanvasNode[]>([]);
   const [canvasEdges, setCanvasEdges] = useState<Edge[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [configText, setConfigText] = useState("{}");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [fitViewKey, setFitViewKey] = useState(0);
@@ -464,10 +499,33 @@ export function AutomationsPage() {
       return acc;
     }, {});
   }, [automationCapabilities, nodeMeta]);
-  const workflowPreview = useMemo(
-    () => buildWorkflowPreview(canvasNodes, canvasEdges, nodeMeta),
-    [canvasEdges, canvasNodes, nodeMeta]
+  const graphValidation = useAutomationGraphValidation(canvasNodes, canvasEdges, nodeMeta);
+  const nodeConfigValidationIssues = useMemo(() => buildNodeConfigValidationIssues({
+    nodes: canvasNodes,
+    nodeMeta,
+    boardColumns,
+    workflowStates,
+    customFields,
+    itemTypes
+  }), [boardColumns, canvasNodes, customFields, itemTypes, nodeMeta, workflowStates]);
+  const workflowPreview = useMemo(() => {
+    const nodeConfigErrors = nodeConfigValidationIssues
+      .filter((issue) => issue.severity === "error")
+      .map((issue) => issue.message);
+    return {
+      ...graphValidation.preview,
+      errors: Array.from(new Set([...graphValidation.preview.errors, ...nodeConfigErrors]))
+    };
+  }, [graphValidation.preview, nodeConfigValidationIssues]);
+  const validationIssues = useMemo(
+    () => [...graphValidation.issues, ...nodeConfigValidationIssues],
+    [graphValidation.issues, nodeConfigValidationIssues]
   );
+  const validationIssueCount = useMemo(
+    () => countValidationIssues(validationIssues),
+    [validationIssues]
+  );
+  const firstValidationError = validationIssues.find((issue) => issue.severity === "error")?.message ?? null;
   const nodeMenuSections = useMemo(() => {
     const groups = new Map<string, AutomationNodeMeta[]>();
     for (const node of automationCapabilities?.nodeCatalog ?? []) {
@@ -588,14 +646,6 @@ export function AutomationsPage() {
   }, [automationCapabilities, nodeMeta, selectedVersion]);
 
   useEffect(() => {
-    if (!selectedNode) {
-      setConfigText("{}");
-      return;
-    }
-    setConfigText(JSON.stringify(selectedNode.data.config, null, 2));
-  }, [selectedNode]);
-
-  useEffect(() => {
     if (activeTab === "runs") {
       void loadRuns();
     }
@@ -654,8 +704,13 @@ export function AutomationsPage() {
     }
   }, [createAutomationWorkflow, createAutomationWorkflowDraftVersion, loadWorkflows]);
 
-  const handleSaveWorkflow = useCallback(async () => {
-    if (!selectedWorkflow || !selectedVersion || selectedVersion.status !== "draft") return;
+  const handleSaveWorkflow = useCallback(async (): Promise<boolean> => {
+    if (!selectedWorkflow || !selectedVersion || selectedVersion.status !== "draft") return false;
+    if (firstValidationError) {
+      setFeedback(`Corrija antes de salvar: ${firstValidationError}`);
+      toast.warning("Payload invalido", { description: firstValidationError });
+      return false;
+    }
     setBusy(true);
     setFeedback(null);
     try {
@@ -673,6 +728,7 @@ export function AutomationsPage() {
       await loadWorkflows();
       await loadVersions(selectedWorkflow.id);
       setFeedback("Draft salvo.");
+      return true;
     } finally {
       setBusy(false);
     }
@@ -683,6 +739,7 @@ export function AutomationsPage() {
     loadWorkflows,
     selectedVersion,
     selectedWorkflow,
+    firstValidationError,
     updateAutomationWorkflow,
     updateAutomationWorkflowVersion,
     workflowDescription,
@@ -691,11 +748,13 @@ export function AutomationsPage() {
 
   const handlePublish = useCallback(async () => {
     if (!selectedWorkflow || !selectedVersion || selectedVersion.status !== "draft") return;
-    if (workflowPreview.errors.length > 0) {
-      setFeedback(`Corrija antes de publicar: ${workflowPreview.errors[0]}`);
+    if (firstValidationError) {
+      setFeedback(`Corrija antes de publicar: ${firstValidationError}`);
+      toast.warning("Payload invalido", { description: firstValidationError });
       return;
     }
-    await handleSaveWorkflow();
+    const saved = await handleSaveWorkflow();
+    if (!saved) return;
     setBusy(true);
     try {
       await publishAutomationWorkflowVersion(selectedWorkflow.id, selectedVersion.id, { activateWorkflow: true });
@@ -705,7 +764,7 @@ export function AutomationsPage() {
     } finally {
       setBusy(false);
     }
-  }, [handleSaveWorkflow, loadVersions, loadWorkflows, publishAutomationWorkflowVersion, selectedVersion, selectedWorkflow, workflowPreview.errors]);
+  }, [firstValidationError, handleSaveWorkflow, loadVersions, loadWorkflows, publishAutomationWorkflowVersion, selectedVersion, selectedWorkflow]);
 
   const handleCloneVersion = useCallback(async () => {
     if (!selectedWorkflow || !selectedVersion) return;
@@ -749,16 +808,6 @@ export function AutomationsPage() {
     }
   }, [loadRuns, runAutomationWorkflow, selectedWorkflow]);
 
-  const handleApplyConfig = useCallback(() => {
-    if (!selectedNode) return;
-    const parsed = JSON.parse(configText) as Record<string, unknown>;
-    setCanvasNodes((nodes) => nodes.map((node) => (
-      node.id === selectedNode.id
-        ? { ...node, data: { ...node.data, config: parsed, summary: summarizeConfig(parsed) } }
-        : node
-    )));
-  }, [configText, selectedNode]);
-
   const handleAddNodeFromPalette = useCallback((meta: AutomationNodeMeta) => {
     const index = canvasNodes.length;
     const config = buildDefaultNodeConfig(meta.type);
@@ -778,9 +827,18 @@ export function AutomationsPage() {
     ]);
   }, [canvasNodes.length]);
 
+  const handleAutoLayout = useCallback(() => {
+    setCanvasNodes((nodes) => applyLayeredFlowLayout(nodes, canvasEdges, {
+      origin: { x: 100, y: 160 },
+      columnGap: 285,
+      rowGap: 152
+    }) as AutomationCanvasNode[]);
+    setFitViewKey((value) => value + 1);
+    setFeedback("Layout automatico aplicado.");
+  }, [canvasEdges]);
+
   const handleSelectedNodeConfigChange = useCallback((config: Record<string, unknown>) => {
     if (!selectedNodeId) return;
-    setConfigText(JSON.stringify(config, null, 2));
     setCanvasNodes((nodes) => nodes.map((node) => (
       node.id === selectedNodeId
         ? { ...node, data: { ...node.data, config, summary: summarizeConfig(config) } }
@@ -897,6 +955,14 @@ export function AutomationsPage() {
 
         {activeTab === "flows" ? (
           <StudioLayout
+            toolbar={
+              <AutomationToolbar
+                issueCount={validationIssueCount.errors}
+                warningCount={validationIssueCount.warnings}
+                onAutoLayout={handleAutoLayout}
+                disabled={canvasNodes.length === 0}
+              />
+            }
             sidebar={
               <PanelMenu
                 title="Fluxos"
@@ -926,13 +992,11 @@ export function AutomationsPage() {
               selectedNode ? (
                 <NodeInspector
                   node={selectedNode}
+                  nodeMeta={nodeMeta}
                   boardColumns={boardColumns}
                   workflowStates={workflowStates}
                   customFields={customFields}
                   itemTypes={itemTypes}
-                  configText={configText}
-                  onConfigTextChange={setConfigText}
-                  onApplyConfig={handleApplyConfig}
                   onConfigChange={handleSelectedNodeConfigChange}
                   onLabelChange={(label) => setCanvasNodes((nodes) => nodes.map((node) => (
                     node.id === selectedNode.id
@@ -960,10 +1024,12 @@ export function AutomationsPage() {
             inspectorWidth={340}
           >
             {selectedWorkflow ? (
-              <FlowCanvas<AutomationCanvasData, AutomationNodeType>
+              <FlowStudioCanvas<AutomationCanvasData, AutomationNodeType>
                 nodes={canvasNodes}
                 edges={canvasEdges}
                 nodeTypes={automationNodeTypes}
+                validationIssues={validationIssues}
+                showMiniMap
                 paletteItems={automationCapabilities.nodeCatalog.map((node) => ({
                   kind: node.type,
                   label: node.label,
@@ -981,10 +1047,16 @@ export function AutomationsPage() {
                 onEdgesAdd={setCanvasEdges}
                 onNodesAdd={(nodes) => setCanvasNodes((current) => [...current, ...nodes])}
                 onNodeSelect={setSelectedNodeId}
+                validateConnection={(connection) => validateAutomationConnection(canvasNodes, canvasEdges, connection)}
+                onInvalidConnection={(_connection, reason) => {
+                  setFeedback(reason);
+                  toast.warning("Conexao bloqueada", { description: reason });
+                }}
                 fitViewKey={fitViewKey}
                 fitViewMaxZoom={0.78}
                 paletteTitle="Adicionar no"
                 paletteEyebrow="Workflow"
+                topPanel={<FlowStudioValidationPanel issues={validationIssues} />}
                 sidebarContent={
                   <FlowNodeSidebarMenu
                     sections={nodeMenuSections}
@@ -1154,41 +1226,32 @@ export function AutomationsPage() {
 
 function NodeInspector({
   node,
+  nodeMeta,
   boardColumns,
   workflowStates,
   customFields,
   itemTypes,
-  configText,
-  onConfigTextChange,
-  onApplyConfig,
   onConfigChange,
   onLabelChange
 }: {
   node: AutomationCanvasNode;
+  nodeMeta: AutomationNodeMetaMap;
   boardColumns: FieldOption[];
   workflowStates: FieldOption[];
   customFields: FieldOption[];
   itemTypes: FieldOption[];
-  configText: string;
-  onConfigTextChange: (value: string) => void;
-  onApplyConfig: () => void;
   onConfigChange: (config: Record<string, unknown>) => void;
   onLabelChange: (label: string) => void;
 }) {
   const config = node.data.config;
-  const setConfigValue = (key: string, value: unknown) => {
-    onConfigChange({ ...config, [key]: value });
-  };
-  const setConfigJsonValue = (key: string, value: string) => {
-    try {
-      setConfigValue(key, value.trim() ? JSON.parse(value) : {});
-    } catch {
-      setConfigValue(key, value);
-    }
-  };
-  const setCsvValue = (key: string, value: string) => {
-    setConfigValue(key, value.split(",").map((entry) => entry.trim()).filter(Boolean));
-  };
+  const descriptor = useAutomationNodeInspector({
+    node,
+    nodeMeta,
+    boardColumns,
+    workflowStates,
+    customFields,
+    itemTypes
+  });
 
   return (
     <div className="ast__inspector">
@@ -1197,340 +1260,13 @@ function NodeInspector({
         <TextInput value={node.data.label} onChange={(event) => onLabelChange(event.target.value)} />
       </label>
 
-      <NodeSpecificConfig
-        nodeType={node.data.nodeType}
-        config={config}
-        boardColumns={boardColumns}
-        workflowStates={workflowStates}
-        customFields={customFields}
-        itemTypes={itemTypes}
-        setConfigValue={setConfigValue}
-        setConfigJsonValue={setConfigJsonValue}
-        setCsvValue={setCsvValue}
+      <NodeConfigForm
+        descriptor={descriptor!}
+        value={config}
+        onChange={onConfigChange}
+        submitLabel="Validar config"
       />
-
-      <details className="ast__advanced-config">
-        <summary>Avancado JSON</summary>
-        <label className="ast__inspector-label">
-          <span>Config JSON</span>
-          <textarea className="ast__inspector-textarea" value={configText} onChange={(event) => onConfigTextChange(event.target.value)} />
-        </label>
-        <Button size="sm" variant="outline" onClick={onApplyConfig}>Aplicar JSON</Button>
-      </details>
     </div>
-  );
-}
-
-function NodeSpecificConfig({
-  nodeType,
-  config,
-  boardColumns,
-  workflowStates,
-  customFields,
-  itemTypes,
-  setConfigValue,
-  setConfigJsonValue,
-  setCsvValue
-}: {
-  nodeType: string;
-  config: Record<string, unknown>;
-  boardColumns: FieldOption[];
-  workflowStates: FieldOption[];
-  customFields: FieldOption[];
-  itemTypes: FieldOption[];
-  setConfigValue: (key: string, value: unknown) => void;
-  setConfigJsonValue: (key: string, value: string) => void;
-  setCsvValue: (key: string, value: string) => void;
-}) {
-  const triggerType = String(config.triggerType ?? "manual");
-  const selectedCustomFieldSlug = String(config.fieldSlug ?? customFields[0]?.slug ?? customFields[0]?.id ?? "");
-  const customFieldValues = isRecord(config.customFieldValues) ? config.customFieldValues : {};
-  const setCustomFieldValue = (fieldSlug: string, value: string) => {
-    setConfigValue("customFieldValues", {
-      ...customFieldValues,
-      [fieldSlug]: value
-    });
-    setConfigValue("fieldSlug", fieldSlug);
-  };
-
-  if (nodeType === "trigger") {
-    return (
-      <ConfigGroup title="Gatilho">
-        <SelectField
-          label="Evento"
-          value={triggerType}
-          onChange={(value) => setConfigValue("triggerType", value)}
-          options={[
-            { value: "manual", label: "Manual" },
-            { value: "work_item_created", label: "Card criado" },
-            { value: "work_item_moved_to_column", label: "Card entrou na coluna" },
-            { value: "work_item_state_changed", label: "Card mudou de estado" },
-            { value: "work_item_updated", label: "Card atualizado" },
-            { value: "work_item_field_updated", label: "Campo do card atualizado" },
-            { value: "proposal_created", label: "Proposta criada" },
-            { value: "proposal_status_changed", label: "Status da proposta" },
-            { value: "contract_created", label: "Contrato criado" },
-            { value: "contract_status_changed", label: "Status do contrato" },
-            { value: "billing_requested", label: "Cobranca gerada" },
-            { value: "billing_payment_confirmed", label: "Pagamento confirmado" },
-            { value: "billing_payment_failed", label: "Pagamento falhou" },
-            { value: "billing_overdue", label: "Cobranca vencida" },
-            { value: "lead_captured", label: "Lead capturado" }
-          ]}
-        />
-        {triggerType === "work_item_moved_to_column" ? (
-          <SelectField
-            label="Coluna"
-            value={String(config.column ?? "")}
-            onChange={(value) => setConfigValue("column", value)}
-            options={boardColumns.map((column) => ({ value: toOptionValue(column), label: toOptionLabel(column) }))}
-            placeholder="Qualquer coluna"
-          />
-        ) : null}
-        {triggerType === "work_item_state_changed" ? (
-          <SelectField
-            label="Estado"
-            value={String(config.stateSlug ?? "")}
-            onChange={(value) => setConfigValue("stateSlug", value)}
-            options={workflowStates.map((state) => ({ value: toOptionValue(state), label: toOptionLabel(state) }))}
-            placeholder="Qualquer estado"
-          />
-        ) : null}
-        {triggerType === "proposal_status_changed" || triggerType === "contract_status_changed" || triggerType.startsWith("billing") ? (
-          <TextConfigField label="Status" value={String(config.status ?? "")} onChange={(value) => setConfigValue("status", value)} />
-        ) : null}
-        {triggerType.startsWith("work_item") ? (
-          <TextConfigField
-            label="Tipos de card"
-            value={Array.isArray(config.itemTypeSlugs) ? config.itemTypeSlugs.join(", ") : String(config.itemTypeSlugs ?? "")}
-            onChange={(value) => setCsvValue("itemTypeSlugs", value)}
-            placeholder={itemTypes.map(toOptionValue).filter(Boolean).slice(0, 3).join(", ")}
-          />
-        ) : null}
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "move_work_item") {
-    return (
-      <ConfigGroup title="Movimentacao">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <SelectField label="Coluna" value={String(config.columnSlug ?? "")} onChange={(value) => setConfigValue("columnSlug", value)} options={boardColumns.map((column) => ({ value: toOptionValue(column), label: toOptionLabel(column) }))} placeholder="Resolver pela etapa" />
-        <SelectField label="Estado" value={String(config.stateSlug ?? "")} onChange={(value) => setConfigValue("stateSlug", value)} options={workflowStates.map((state) => ({ value: toOptionValue(state), label: toOptionLabel(state) }))} placeholder="Manter estado" />
-        <TextConfigField label="Motivo" value={String(config.reason ?? "")} onChange={(value) => setConfigValue("reason", value)} placeholder="Avanco automatico do fluxo comercial" />
-        <CheckboxConfigField label="Registrar historico" checked={config.registerHistory !== false} onChange={(value) => setConfigValue("registerHistory", value)} />
-        <CheckboxConfigField label="Bloquear loop para mesma etapa" checked={config.preventLoop !== false} onChange={(value) => setConfigValue("preventLoop", value)} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "create_proposal" || nodeType === "create_contract") {
-    const isContract = nodeType === "create_contract";
-    return (
-      <ConfigGroup title={isContract ? "Contrato" : "Proposta"}>
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? (isContract ? "event.payload.linkedEntityId" : "event.payload.itemId"))} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        {isContract ? (
-          <SelectField label="Campo da proposta base" value={String(config.proposalFieldSlug ?? "proposalId")} onChange={(value) => setConfigValue("proposalFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        ) : null}
-        <TextConfigField label="Template" value={String(config.templateKey ?? (isContract ? "commercial_contract" : "commercial_proposal"))} onChange={(value) => setConfigValue("templateKey", value)} />
-        <SelectField label="Campo de vinculo" value={String(config.targetFieldSlug ?? (isContract ? "contractId" : "proposalId"))} onChange={(value) => setConfigValue("targetFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Status inicial" value={String(config.status ?? "draft")} onChange={(value) => setConfigValue("status", value)} options={[{ value: "draft", label: "Rascunho" }, { value: "sent", label: "Enviado" }]} />
-        <TextConfigField label="Titulo" value={String(config.title ?? "")} onChange={(value) => setConfigValue("title", value)} placeholder={isContract ? "Contrato - {{item.title}}" : "Proposta - {{item.title}}"} />
-        <TextAreaConfigField label="Conteudo customizado" value={String(config.content ?? "")} onChange={(value) => setConfigValue("content", value)} />
-        <CheckboxConfigField label="Nao duplicar se ja existir" checked={config.skipIfExists !== false} onChange={(value) => setConfigValue("skipIfExists", value)} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "send_document" || nodeType === "update_document_status") {
-    return (
-      <ConfigGroup title="Documento">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <SelectField label="Tipo" value={String(config.kind ?? "proposal")} onChange={(value) => setConfigValue("kind", value)} options={[{ value: "proposal", label: "Proposta" }, { value: "contract", label: "Contrato" }]} />
-        <SelectField label="Campo do documento" value={String(config.documentFieldSlug ?? "")} onChange={(value) => setConfigValue("documentFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} placeholder="Selecione um campo" />
-        {nodeType === "send_document" ? (
-          <>
-            <SelectField label="Canal" value={String(config.channel ?? "email")} onChange={(value) => setConfigValue("channel", value)} options={[{ value: "email", label: "E-mail" }]} />
-            <TextConfigField label="E-mail fixo" value={String(config.email ?? "")} onChange={(value) => setConfigValue("email", value)} placeholder="cliente@empresa.com" />
-            <TextConfigField label="Caminho do e-mail" value={String(config.emailPath ?? "fields.contactEmail")} onChange={(value) => setConfigValue("emailPath", value)} />
-            <TextAreaConfigField label="Mensagem" value={String(config.message ?? "Segue o link do documento comercial para avaliacao.")} onChange={(value) => setConfigValue("message", value)} />
-            <CheckboxConfigField label="Permitir reenvio" checked={config.resend === true} onChange={(value) => setConfigValue("resend", value)} />
-          </>
-        ) : null}
-        {nodeType === "update_document_status" ? (
-          <SelectField label="Status" value={String(config.status ?? "sent")} onChange={(value) => setConfigValue("status", value)} options={["draft", "sent", "viewed", "approved", "rejected", "accepted", "signed"].map((status) => ({ value: status, label: status }))} />
-        ) : null}
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "ensure_customer_from_work_item") {
-    return (
-      <ConfigGroup title="Cliente">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <SelectField label="Campo cliente" value={String(config.targetFieldSlug ?? "customerId")} onChange={(value) => setConfigValue("targetFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Status" value={String(config.status ?? "active")} onChange={(value) => setConfigValue("status", value)} options={[{ value: "prospect", label: "Prospect" }, { value: "active", label: "Ativo" }, { value: "inactive", label: "Inativo" }, { value: "archived", label: "Arquivado" }]} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "create_billing_order") {
-    return (
-      <ConfigGroup title="Cobranca">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <SelectField label="Campo ordem" value={String(config.targetFieldSlug ?? "billingOrderId")} onChange={(value) => setConfigValue("targetFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Campo catalogo" value={String(config.catalogItemFieldSlug ?? "interest")} onChange={(value) => setConfigValue("catalogItemFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Campo valor" value={String(config.amountFieldSlug ?? "estimatedValue")} onChange={(value) => setConfigValue("amountFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Campo cliente" value={String(config.customerIdFieldSlug ?? "customerId")} onChange={(value) => setConfigValue("customerIdFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Documento vinculado" value={String(config.documentFieldSlug ?? "contractId")} onChange={(value) => setConfigValue("documentFieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: toOptionLabel(field) }))} />
-        <SelectField label="Unidade do valor" value={String(config.amountFieldUnit ?? "major")} onChange={(value) => setConfigValue("amountFieldUnit", value)} options={[{ value: "major", label: "Reais" }, { value: "minor", label: "Centavos" }]} />
-        <TextConfigField label="Vencimento em dias" value={String(config.dueInDays ?? "7")} onChange={(value) => setConfigValue("dueInDays", Number(value) || 7)} />
-        <SelectField label="Forma de pagamento" value={String(config.paymentMethod ?? "checkout")} onChange={(value) => setConfigValue("paymentMethod", value)} options={[{ value: "checkout", label: "Checkout" }, { value: "pix", label: "Pix" }, { value: "boleto", label: "Boleto" }]} />
-        <TextAreaConfigField label="Descricao" value={String(config.description ?? "{{item.title}}")} onChange={(value) => setConfigValue("description", value)} />
-        <CheckboxConfigField label="Enviar e-mail de cobranca" checked={config.sendEmail !== false} onChange={(value) => setConfigValue("sendEmail", value)} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "update_work_item_fields") {
-    return (
-      <ConfigGroup title="Campos do card">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <TextConfigField label="Titulo" value={String(config.title ?? "")} onChange={(value) => setConfigValue("title", value)} />
-        <TextAreaConfigField label="Descricao" value={String(config.description ?? "")} onChange={(value) => setConfigValue("description", value)} />
-        <SelectField label="Campo customizado" value={selectedCustomFieldSlug} onChange={(value) => setConfigValue("fieldSlug", value)} options={customFields.map((field) => ({ value: toOptionValue(field), label: `${toOptionLabel(field)} (${field.type ?? "campo"})` }))} />
-        <TextConfigField label="Valor do campo" value={String(customFieldValues[selectedCustomFieldSlug] ?? "")} onChange={(value) => setCustomFieldValue(selectedCustomFieldSlug, value)} placeholder="{{event.payload.valor}}" />
-        <TextConfigField label="Tipo do card" value={String(config.typeSlug ?? "")} onChange={(value) => setConfigValue("typeSlug", value)} placeholder={itemTypes.map(toOptionValue).filter(Boolean)[0]} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "create_followup_task") {
-    return (
-      <ConfigGroup title="Follow-up">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <TextConfigField label="Titulo" value={String(config.title ?? "Follow-up: {{item.title}}")} onChange={(value) => setConfigValue("title", value)} />
-        <TextAreaConfigField label="Descricao" value={String(config.description ?? "")} onChange={(value) => setConfigValue("description", value)} />
-        <TextConfigField label="Responsavel path" value={String(config.assigneeIdPath ?? "event.payload.requestedBy")} onChange={(value) => setConfigValue("assigneeIdPath", value)} />
-        <TextConfigField label="Prazo em dias" value={String(config.dueInDays ?? "1")} onChange={(value) => setConfigValue("dueInDays", Number(value) || 1)} />
-        <SelectField label="Canal" value={String(config.channel ?? "task")} onChange={(value) => setConfigValue("channel", value)} options={[{ value: "task", label: "Tarefa interna" }, { value: "email", label: "E-mail" }, { value: "whatsapp", label: "WhatsApp" }]} />
-        <SelectField label="Coluna" value={String(config.columnSlug ?? "")} onChange={(value) => setConfigValue("columnSlug", value)} options={boardColumns.map((column) => ({ value: toOptionValue(column), label: toOptionLabel(column) }))} placeholder="Mesma etapa" />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "register_card_activity") {
-    return (
-      <ConfigGroup title="Historico">
-        <TextConfigField label="Item ID path" value={String(config.itemIdPath ?? "event.payload.itemId")} onChange={(value) => setConfigValue("itemIdPath", value)} />
-        <TextConfigField label="Evento" value={String(config.eventName ?? "automation.activity")} onChange={(value) => setConfigValue("eventName", value)} />
-        <TextAreaConfigField label="Mensagem" value={String(config.message ?? "")} onChange={(value) => setConfigValue("message", value)} />
-        <SelectField label="Severidade" value={String(config.severity ?? "info")} onChange={(value) => setConfigValue("severity", value)} options={[{ value: "info", label: "Info" }, { value: "warning", label: "Aviso" }, { value: "critical", label: "Critico" }]} />
-        <SelectField label="Visibilidade" value={String(config.visibility ?? "internal")} onChange={(value) => setConfigValue("visibility", value)} options={[{ value: "internal", label: "Interna" }, { value: "customer", label: "Cliente" }]} />
-        <TextAreaConfigField label="Payload JSON" value={JSON.stringify(config.payload ?? {}, null, 2)} onChange={(value) => setConfigJsonValue("payload", value)} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "human_approval") {
-    return (
-      <ConfigGroup title="Aprovacao humana">
-        <SelectField label="Tipo" value={String(config.type ?? "apply_ai_recommendation")} onChange={(value) => setConfigValue("type", value)} options={[{ value: "send_message", label: "Enviar mensagem" }, { value: "move_card", label: "Mover card" }, { value: "create_task", label: "Criar tarefa" }, { value: "apply_ai_recommendation", label: "Aplicar sugestao de IA" }]} />
-        <TextConfigField label="Aprovador/solicitante" value={String(config.requestedBy ?? "{{event.payload.requestedBy}}")} onChange={(value) => setConfigValue("requestedBy", value)} />
-        <TextConfigField label="SLA em dias" value={String(config.expiresInDays ?? "2")} onChange={(value) => setConfigValue("expiresInDays", Number(value) || 2)} />
-        <TextConfigField label="Titulo" value={String(config.title ?? "Aprovar acao")} onChange={(value) => setConfigValue("title", value)} />
-        <TextAreaConfigField label="Motivo e mensagem" value={String(config.description ?? "")} onChange={(value) => setConfigValue("description", value)} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "delay") {
-    const delayFor = isRecord(config.delayFor) ? config.delayFor : {};
-    return (
-      <ConfigGroup title="Tempo">
-        <TextConfigField label="Quantidade" value={String(delayFor.amount ?? "1")} onChange={(value) => setConfigValue("delayFor", { ...delayFor, amount: Number(value) || 1 })} />
-        <SelectField label="Unidade" value={String(delayFor.unit ?? "days")} onChange={(value) => setConfigValue("delayFor", { ...delayFor, unit: value })} options={[{ value: "minutes", label: "Minutos" }, { value: "hours", label: "Horas" }, { value: "days", label: "Dias" }, { value: "weeks", label: "Semanas" }]} />
-      </ConfigGroup>
-    );
-  }
-
-  if (nodeType === "communication_send") {
-    return (
-      <ConfigGroup title="Comunicacao">
-        <SelectField label="Canal" value={String(config.channel ?? "email")} onChange={(value) => setConfigValue("channel", value)} options={[{ value: "email", label: "E-mail" }, { value: "whatsapp", label: "WhatsApp" }]} />
-        <TextConfigField label="Destinatario" value={String(config.to ?? "{{fields.contactEmail}}")} onChange={(value) => setConfigValue("to", value)} />
-        <TextConfigField label="Template" value={String(config.templateKey ?? "")} onChange={(value) => setConfigValue("templateKey", value)} />
-        <TextAreaConfigField label="Mensagem" value={String(config.body ?? "")} onChange={(value) => setConfigValue("body", value)} />
-      </ConfigGroup>
-    );
-  }
-
-  return (
-    <ConfigGroup title="Configuracao">
-      <p className="ast__inspector-muted">Use o painel avancado para configurar este no.</p>
-    </ConfigGroup>
-  );
-}
-
-function ConfigGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="ast__config-group">
-      <h3>{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-function TextConfigField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
-  return (
-    <label className="ast__inspector-label">
-      <span>{label}</span>
-      <TextInput value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
-    </label>
-  );
-}
-
-function TextAreaConfigField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="ast__inspector-label">
-      <span>{label}</span>
-      <textarea className="ast__inspector-textarea ast__inspector-textarea--compact" value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-  placeholder
-}: {
-  label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="ast__inspector-label">
-      <span>{label}</span>
-      <select className="ast__inspector-select" value={value} onChange={(event) => onChange(event.target.value)}>
-        {placeholder ? <option value="">{placeholder}</option> : null}
-        {options.filter((option) => option.value).map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function CheckboxConfigField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <label className="ast__checkbox-label">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span>{label}</span>
-    </label>
   );
 }
 

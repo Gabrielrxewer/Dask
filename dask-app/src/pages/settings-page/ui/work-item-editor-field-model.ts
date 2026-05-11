@@ -29,6 +29,25 @@ export interface FieldOptionDraft {
   value: string;
 }
 
+export type BillingSummaryAggregationMode = "sum" | "average" | "count" | "manual";
+export type BillingSummaryDisplayFormat = "currency" | "number" | "compact";
+
+export interface BillingSummaryDraftSettings {
+  billingCurrency: string;
+  billingSourceFields: string;
+  billingAggregationMode: BillingSummaryAggregationMode;
+  billingDisplayFormat: BillingSummaryDisplayFormat;
+  billingReadOnly: boolean;
+}
+
+export const DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS: BillingSummaryDraftSettings = {
+  billingCurrency: "BRL",
+  billingSourceFields: "",
+  billingAggregationMode: "sum",
+  billingDisplayFormat: "currency",
+  billingReadOnly: true
+};
+
 export interface TypeDraft {
   name: string;
   color: string;
@@ -44,6 +63,11 @@ export interface FieldDraft {
   options: FieldOptionDraft[];
   checklistIcon: string;
   checklistColor: string;
+  billingCurrency: string;
+  billingSourceFields: string;
+  billingAggregationMode: BillingSummaryAggregationMode;
+  billingDisplayFormat: BillingSummaryDisplayFormat;
+  billingReadOnly: boolean;
 }
 
 export interface PendingFieldSetup {
@@ -59,6 +83,11 @@ export interface PendingFieldSetup {
   options: FieldOptionDraft[];
   checklistIcon: string;
   checklistColor: string;
+  billingCurrency: string;
+  billingSourceFields: string;
+  billingAggregationMode: BillingSummaryAggregationMode;
+  billingDisplayFormat: BillingSummaryDisplayFormat;
+  billingReadOnly: boolean;
 }
 
 export type DragPayload =
@@ -133,11 +162,33 @@ export function buildFieldSettings(input: {
   allowAiGeneration: boolean;
   checklistIcon: string;
   checklistColor: string;
+  billingCurrency?: string;
+  billingSourceFields?: string;
+  billingAggregationMode?: BillingSummaryAggregationMode;
+  billingDisplayFormat?: BillingSummaryDisplayFormat;
+  billingReadOnly?: boolean;
 }): Record<string, unknown> {
+  const billingSourceFields = (input.billingSourceFields ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
   return {
     allowAiGeneration: supportsAiGeneration(input.type as TaskFieldDefinition["type"]) ? input.allowAiGeneration : false,
     ...(isCatalogSelectType(input.type) ? { entityType: "billing_catalog_item" } : {}),
-    ...(input.type === "billing_summary" ? { displayAs: "billing_summary" } : {}),
+    ...(input.type === "billing_summary"
+      ? {
+          publicType: "billing_summary",
+          displayAs: "billing_summary",
+          billingSummary: {
+            currency: input.billingCurrency?.trim() || "BRL",
+            sourceFields: billingSourceFields,
+            aggregationMode: input.billingAggregationMode ?? "sum",
+            displayFormat: input.billingDisplayFormat ?? "currency",
+            readOnly: input.billingReadOnly ?? true
+          }
+        }
+      : {}),
     ...(input.type === "checklist"
       ? {
           checklistDisplay: {
@@ -160,6 +211,27 @@ export function readChecklistDisplaySettings(source: Record<string, unknown> | n
   return {
     icon: typeof display.icon === "string" && display.icon.trim().length > 0 ? display.icon : "checklist",
     color: typeof display.color === "string" && /^#[0-9a-fA-F]{6}$/.test(display.color) ? display.color : "var(--brand-blue)"
+  };
+}
+
+export function readBillingSummarySettings(source: Record<string, unknown> | null | undefined): BillingSummaryDraftSettings {
+  const raw =
+    source && typeof source === "object" && !Array.isArray(source) &&
+    source.billingSummary && typeof source.billingSummary === "object" && !Array.isArray(source.billingSummary)
+      ? (source.billingSummary as Record<string, unknown>)
+      : {};
+  const aggregation = raw.aggregationMode;
+  const display = raw.displayFormat;
+  const sourceFields = Array.isArray(raw.sourceFields)
+    ? raw.sourceFields.filter((value): value is string => typeof value === "string")
+    : [];
+
+  return {
+    billingCurrency: typeof raw.currency === "string" && raw.currency.trim() ? raw.currency : DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS.billingCurrency,
+    billingSourceFields: sourceFields.join(", "),
+    billingAggregationMode: aggregation === "average" || aggregation === "count" || aggregation === "manual" ? aggregation : DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS.billingAggregationMode,
+    billingDisplayFormat: display === "number" || display === "compact" ? display : DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS.billingDisplayFormat,
+    billingReadOnly: typeof raw.readOnly === "boolean" ? raw.readOnly : DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS.billingReadOnly
   };
 }
 
@@ -274,6 +346,7 @@ export function resolveApiFieldDraftType(raw: ApiCustomField): CustomFieldType {
 
 export function buildFieldDraftFromApiField(raw: ApiCustomField, runtimeFieldId: string): FieldDraft {
   const checklistDisplay = readChecklistDisplaySettings((raw.settings as Record<string, unknown> | null | undefined) ?? undefined);
+  const billingSettings = readBillingSummarySettings((raw.settings as Record<string, unknown> | null | undefined) ?? undefined);
   return {
     id: raw.id,
     runtimeFieldId,
@@ -283,12 +356,14 @@ export function buildFieldDraftFromApiField(raw: ApiCustomField, runtimeFieldId:
     allowAiGeneration: readAllowAiGeneration(raw.settings),
     options: mapApiOptionsToDraft(raw.options),
     checklistIcon: checklistDisplay.icon,
-    checklistColor: checklistDisplay.color
+    checklistColor: checklistDisplay.color,
+    ...billingSettings
   };
 }
 
 export function buildFieldDraftFromDefinition(field: TaskFieldDefinition): FieldDraft {
   const checklistDisplay = readChecklistDisplaySettings((field.config as Record<string, unknown> | null | undefined) ?? undefined);
+  const billingSettings = readBillingSummarySettings((field.config as Record<string, unknown> | null | undefined) ?? undefined);
   return {
     id: field.definitionId ?? field.id,
     runtimeFieldId: field.id,
@@ -302,7 +377,8 @@ export function buildFieldDraftFromDefinition(field: TaskFieldDefinition): Field
       value: option.value
     })),
     checklistIcon: checklistDisplay.icon,
-    checklistColor: checklistDisplay.color
+    checklistColor: checklistDisplay.color,
+    ...billingSettings
   };
 }
 

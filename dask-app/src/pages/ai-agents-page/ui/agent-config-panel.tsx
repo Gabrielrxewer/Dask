@@ -1,28 +1,32 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import {
+  normalizeAiAgentKey,
+  type AiAgentMetaFormInput,
+  type AiAgentMetaFormValues
+} from "@/modules/ai";
 import type { AiCapabilities } from "@/modules/workspace/model";
-import { SidePanel } from "@/shared/ui";
+import { AppForm, AppSwitchField, AppTextField, AppTextareaField, SidePanel } from "@/shared/ui";
+import {
+  createConditionExpressionNodeConfigDescriptor,
+  createNodeLabelField,
+  createOutputNodeConfigDescriptor,
+  createTriggerNodeConfigDescriptor,
+  NodeConfigForm,
+  type NodeConfigDescriptor
+} from "@/shared/flow-node-config";
 import type {
   AgentFlowNode,
   AgentNodeData,
   AgentNodeKind,
-  ConditionNodeData,
   LlmNodeData,
-  OutputNodeData,
-  OutputType,
   RagNodeData,
-  RagSource,
-  ToolId,
-  ToolNodeData,
-  TriggerNodeData
 } from "./agent-flow-types";
 import { getNodeColor, NODE_KIND_META } from "./agent-flow-types";
 import "./agent-config-panel.css";
 
 export interface AgentMetaForm {
-  name: string;
-  key: string;
-  description: string;
-  isActive: boolean;
+  form: UseFormReturn<AiAgentMetaFormInput, unknown, AiAgentMetaFormValues>;
   isCreateMode: boolean;
 }
 
@@ -32,7 +36,105 @@ interface ConfigPanelProps {
   capabilities: AiCapabilities;
   onClose: () => void;
   onNodeDataChange: (nodeId: string, data: AgentNodeData) => void;
-  onAgentMetaChange: (patch: Partial<Omit<AgentMetaForm, "isCreateMode">>) => void;
+}
+
+function buildNodeConfigDescriptor(node: AgentFlowNode, capabilities: AiCapabilities): NodeConfigDescriptor {
+  if (node.type === "trigger") {
+    return createTriggerNodeConfigDescriptor({
+      type: "trigger",
+      label: "Trigger",
+      includeLabelField: true,
+      eventFieldName: "triggerType",
+      eventLabel: "Tipo de disparo",
+      triggerOptions: [
+        { value: "manual", label: "Manual" },
+        { value: "card_created", label: "Card criado" },
+        { value: "card_updated", label: "Card atualizado" },
+        { value: "card_status_changed", label: "Status alterado" }
+      ]
+    });
+  }
+
+  if (node.type === "llm") {
+    return {
+      type: "llm",
+      label: "LLM",
+      fields: [
+        createNodeLabelField(),
+        { name: "model", label: "Modelo", type: "model-selector", required: true, options: capabilities.models },
+        { name: "temperature", label: "Temperatura", type: "number", min: 0, max: 2, step: 0.1 },
+        { name: "systemPrompt", label: "System Prompt", type: "textarea", rows: 8 }
+      ]
+    };
+  }
+
+  if (node.type === "rag") {
+    const data = node.data as RagNodeData;
+    const usesCards = data.source === "card" || data.source === "card_and_documentation";
+    return {
+      type: "rag",
+      label: "Contexto",
+      fields: [
+        createNodeLabelField(),
+        { name: "source", label: "Fonte de contexto", type: "select", required: true, options: capabilities.ragSources },
+        {
+          name: "topK",
+          label: "Documentos recuperados",
+          type: "select",
+          required: true,
+          options: capabilities.topKContextDocsOptions.map((value) => ({ value: String(value), label: `${value} documentos` }))
+        },
+        { name: "includeSemanticContext", label: "Contexto semantico", type: "boolean", disabled: !usesCards },
+        { name: "includeLinkedDocuments", label: "Docs vinculadas ao card", type: "boolean", disabled: !usesCards },
+        { name: "contextInstruction", label: "Instrucao de contexto", type: "textarea", rows: 4, disabled: data.source === "none" }
+      ]
+    };
+  }
+
+  if (node.type === "tool") {
+    return {
+      type: "tool",
+      label: "Tool",
+      fields: [
+        createNodeLabelField(),
+        { name: "toolId", label: "Ferramenta", type: "tool-selector", required: true, options: capabilities.tools }
+      ]
+    };
+  }
+
+  if (node.type === "condition") {
+    return createConditionExpressionNodeConfigDescriptor({
+      type: "condition",
+      label: "Condicao",
+      includeLabelField: true,
+      expressionFieldName: "condition",
+      expressionLabel: "Expressao de condicao"
+    });
+  }
+
+  return createOutputNodeConfigDescriptor({
+    type: "output",
+    label: "Resposta",
+    includeLabelField: true
+  });
+}
+
+function normalizeNodeConfigValue(node: AgentFlowNode, value: Record<string, unknown>): AgentNodeData {
+  if (node.type === "rag") {
+    return {
+      ...value,
+      kind: "rag",
+      topK: Number(value.topK) || 1
+    } as RagNodeData;
+  }
+  if (node.type === "llm") {
+    return {
+      ...value,
+      kind: "llm",
+      temperature: Number(value.temperature) || 0
+    } as LlmNodeData;
+  }
+  return { ...value, kind: node.type } as AgentNodeData;
 }
 
 export function AgentConfigPanel({
@@ -40,8 +142,7 @@ export function AgentConfigPanel({
   agent,
   capabilities,
   onClose,
-  onNodeDataChange,
-  onAgentMetaChange
+  onNodeDataChange
 }: ConfigPanelProps) {
   if (!node && !agent) return null;
 
@@ -58,7 +159,7 @@ export function AgentConfigPanel({
         onClose={onClose}
         style={{ "--acp-color": "var(--primary)" } as CSSProperties}
       >
-        <AgentMetaConfig data={agent} patch={onAgentMetaChange} />
+        <AgentMetaConfig form={agent.form} isCreateMode={agent.isCreateMode} />
       </SidePanel>
     );
   }
@@ -66,10 +167,7 @@ export function AgentConfigPanel({
   if (!node) return null;
   const meta = NODE_KIND_META.find((item) => item.kind === node.type);
   const color = getNodeColor(node.type as AgentNodeKind);
-
-  function patch<T extends AgentNodeData>(partial: Partial<T>) {
-    onNodeDataChange(node!.id, { ...node!.data, ...partial } as AgentNodeData);
-  }
+  const descriptor = buildNodeConfigDescriptor(node, capabilities);
 
   return (
     <SidePanel
@@ -83,329 +181,72 @@ export function AgentConfigPanel({
       onClose={onClose}
       style={{ "--acp-color": color } as CSSProperties}
     >
-      {node.type === "trigger" ? <TriggerConfig data={node.data as TriggerNodeData} patch={patch} /> : null}
-      {node.type === "llm" ? <LlmConfig data={node.data as LlmNodeData} patch={patch} capabilities={capabilities} /> : null}
-      {node.type === "rag" ? <RagConfig data={node.data as RagNodeData} patch={patch} capabilities={capabilities} /> : null}
-      {node.type === "tool" ? <ToolConfig data={node.data as ToolNodeData} patch={patch} capabilities={capabilities} /> : null}
-      {node.type === "condition" ? <ConditionConfig data={node.data as ConditionNodeData} patch={patch} /> : null}
-      {node.type === "output" ? <OutputConfig data={node.data as OutputNodeData} patch={patch} /> : null}
+      <NodeConfigForm
+        descriptor={descriptor}
+        value={node.data as Record<string, unknown>}
+        onChange={(value) => onNodeDataChange(node.id, normalizeNodeConfigValue(node, value))}
+        submitLabel="Aplicar"
+      />
     </SidePanel>
   );
 }
 
-function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
-  return (
-    <div className="acp__field">
-      <label className="acp__field-label">{label}</label>
-      {children}
-      {hint ? <span className="acp__field-hint">{hint}</span> : null}
-    </div>
-  );
-}
-
-function Input({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  step,
-  min,
-  max,
-  disabled
-}: {
-  value: string | number;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-  step?: string;
-  min?: number;
-  max?: number;
-  disabled?: boolean;
-}) {
-  return (
-    <input
-      className="acp__input"
-      type={type}
-      step={step}
-      min={min}
-      max={max}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-    />
-  );
-}
-
-function Textarea({
-  value,
-  onChange,
-  placeholder,
-  rows = 4,
-  disabled
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
-  disabled?: boolean;
-}) {
-  return (
-    <textarea
-      className="acp__textarea"
-      rows={rows}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-    />
-  );
-}
-
-function SelectField({
-  value,
-  onChange,
-  options
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-}) {
-  return (
-    <select className="acp__select" value={value} onChange={(event) => onChange(event.target.value)}>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-  label,
-  disabled
-}: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  label: string;
-  disabled?: boolean;
-}) {
-  return (
-    <label className={`acp__toggle${disabled ? " acp__toggle--disabled" : ""}`}>
-      <div
-        className={`acp__toggle-track${checked ? " acp__toggle-track--on" : ""}`}
-        onClick={() => !disabled && onChange(!checked)}
-        role="switch"
-        aria-checked={checked}
-        tabIndex={0}
-        onKeyDown={(event) => event.key === "Enter" && !disabled && onChange(!checked)}
-      >
-        <div className="acp__toggle-thumb" />
-      </div>
-      <span>{label}</span>
-    </label>
-  );
-}
-
 function AgentMetaConfig({
-  data,
-  patch
+  form,
+  isCreateMode
 }: {
-  data: AgentMetaForm;
-  patch: (patch: Partial<Omit<AgentMetaForm, "isCreateMode">>) => void;
+  form: UseFormReturn<AiAgentMetaFormInput, unknown, AiAgentMetaFormValues>;
+  isCreateMode: boolean;
 }) {
-  return (
-    <div className="acp__form">
-      <Field label="Nome do agente">
-        <Input value={data.name} onChange={(value) => patch({ name: value })} placeholder="Ex.: Assistente Revenue Ops" />
-      </Field>
-      <Field label="Chave do agente" hint={data.isCreateMode ? "Gerada a partir do nome, mas pode ser ajustada antes de salvar." : "A chave fica fixa depois da criacao."}>
-        <Input value={data.key} onChange={(value) => patch({ key: value })} placeholder="assistente-revenue-ops" disabled={!data.isCreateMode} />
-      </Field>
-      <Field label="Descricao">
-        <Textarea rows={5} value={data.description} onChange={(value) => patch({ description: value })} placeholder="Descreva quando este agente deve ser usado..." />
-      </Field>
-      <Toggle checked={data.isActive} onChange={(value) => patch({ isActive: value })} label={data.isActive ? "Agente ativo" : "Agente inativo"} />
-    </div>
-  );
-}
-
-function TriggerConfig({ data, patch }: { data: TriggerNodeData; patch: (patch: Partial<TriggerNodeData>) => void }) {
-  return (
-    <div className="acp__form">
-      <Field label="Nome do no">
-        <Input value={data.label} onChange={(value) => patch({ label: value })} placeholder="Disparador" />
-      </Field>
-      <Field label="Tipo de disparo">
-        <SelectField
-          value={data.triggerType}
-          onChange={(value) => patch({ triggerType: value as TriggerNodeData["triggerType"] })}
-          options={[
-            { value: "manual", label: "Manual" },
-            { value: "card_created", label: "Card criado" },
-            { value: "card_updated", label: "Card atualizado" },
-            { value: "card_status_changed", label: "Status alterado" }
-          ]}
-        />
-      </Field>
-      <InfoBox>O no Trigger e o ponto de entrada do fluxo. Apenas um e permitido.</InfoBox>
-    </div>
-  );
-}
-
-function LlmConfig({
-  data,
-  patch,
-  capabilities
-}: {
-  data: LlmNodeData;
-  patch: (patch: Partial<LlmNodeData>) => void;
-  capabilities: AiCapabilities;
-}) {
-  return (
-    <div className="acp__form">
-      <Field label="Nome do no">
-        <Input value={data.label} onChange={(value) => patch({ label: value })} placeholder="LLM" />
-      </Field>
-      <Field label="Modelo">
-        <SelectField value={data.model || capabilities.defaults.model} onChange={(value) => patch({ model: value })} options={capabilities.models} />
-      </Field>
-      <Field label="Temperatura" hint="0 = deterministico; 2 = criativo">
-        <Input
-          type="number"
-          step="0.1"
-          min={0}
-          max={2}
-          value={data.temperature}
-          onChange={(value) => patch({ temperature: parseFloat(value) || 0.2 })}
-        />
-      </Field>
-      <Field label="System Prompt">
-        <Textarea rows={8} value={data.systemPrompt} onChange={(value) => patch({ systemPrompt: value })} placeholder="Descreva o comportamento do agente..." />
-      </Field>
-    </div>
-  );
-}
-
-function RagConfig({
-  data,
-  patch,
-  capabilities
-}: {
-  data: RagNodeData;
-  patch: (patch: Partial<RagNodeData>) => void;
-  capabilities: AiCapabilities;
-}) {
-  const usesCards = data.source === "card" || data.source === "card_and_documentation";
-  const ragEnabled = data.source !== "none";
-  const topKOptions = capabilities.topKContextDocsOptions.map((value) => ({
-    value: String(value),
-    label: `${value} documentos`
-  }));
+  const { setValue } = form;
+  const isActive = form.watch("isActive");
 
   return (
-    <div className="acp__form">
-      <Field label="Nome do no">
-        <Input value={data.label} onChange={(value) => patch({ label: value })} placeholder="Contexto" />
-      </Field>
-      <Field label="Fonte de contexto">
-        <SelectField value={data.source} onChange={(value) => patch({ source: value as RagSource })} options={capabilities.ragSources} />
-      </Field>
-      <Field label="Documentos recuperados">
-        <SelectField value={String(data.topK)} onChange={(value) => patch({ topK: parseInt(value, 10) })} options={topKOptions} />
-      </Field>
-      <Toggle checked={data.includeSemanticContext} onChange={(value) => patch({ includeSemanticContext: value })} label="Contexto semantico" disabled={!usesCards} />
-      <Toggle checked={data.includeLinkedDocuments} onChange={(value) => patch({ includeLinkedDocuments: value })} label="Docs vinculadas ao card" disabled={!usesCards} />
-      <Field label="Instrucao de contexto">
-        <Textarea
-          rows={4}
-          value={data.contextInstruction}
-          onChange={(value) => patch({ contextInstruction: value })}
-          placeholder="Ex.: Priorize documentacao oficial..."
-          disabled={!ragEnabled}
-        />
-      </Field>
-    </div>
-  );
-}
+    <AppForm<AiAgentMetaFormInput, AiAgentMetaFormValues>
+      form={form}
+      className="acp__form"
+      onRawSubmit={(event) => event.preventDefault()}
+    >
+      <AppTextField
+        name="name"
+        label="Nome do agente"
+        className="acp__field"
+        placeholder="Ex.: Assistente Revenue Ops"
+        autoFocus
+        onValueChange={(value) => {
+          if (isCreateMode) {
+            setValue("key", normalizeAiAgentKey(value), {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true
+            });
+          }
+        }}
+      />
 
-function ToolConfig({
-  data,
-  patch,
-  capabilities
-}: {
-  data: ToolNodeData;
-  patch: (patch: Partial<ToolNodeData>) => void;
-  capabilities: AiCapabilities;
-}) {
-  return (
-    <div className="acp__form">
-      <Field label="Nome do no">
-        <Input value={data.label} onChange={(value) => patch({ label: value })} placeholder="Tool" />
-      </Field>
-      <Field label="Ferramenta">
-        <div className="acp__tool-list">
-          {capabilities.tools.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`acp__tool-item${data.toolId === option.value ? " acp__tool-item--active" : ""}`}
-              onClick={() => patch({ toolId: option.value as ToolId })}
-            >
-              <span className="acp__tool-label">{option.label}</span>
-              <span className="acp__tool-group">{option.group ?? "Tool"}</span>
-            </button>
-          ))}
-        </div>
-      </Field>
-    </div>
-  );
-}
+      <AppTextField
+        name="key"
+        label="Chave do agente"
+        description={isCreateMode ? "Gerada a partir do nome, mas pode ser ajustada antes de salvar." : "A chave fica fixa depois da criacao."}
+        className="acp__field"
+        placeholder="assistente-revenue-ops"
+        disabled={!isCreateMode}
+        parseValue={normalizeAiAgentKey}
+      />
 
-function ConditionConfig({ data, patch }: { data: ConditionNodeData; patch: (patch: Partial<ConditionNodeData>) => void }) {
-  return (
-    <div className="acp__form">
-      <Field label="Nome do no">
-        <Input value={data.label} onChange={(value) => patch({ label: value })} placeholder="Condicao" />
-      </Field>
-      <Field label="Expressao de condicao" hint="Descreva a condicao em linguagem natural.">
-        <Textarea rows={4} value={data.condition} onChange={(value) => patch({ condition: value })} placeholder="Se o resultado contiver alta prioridade..." />
-      </Field>
-      <InfoBox>O no Condicao tem duas saidas: Verdadeiro e Falso.</InfoBox>
-    </div>
-  );
-}
+      <AppTextareaField
+        name="description"
+        label="Descricao"
+        className="acp__field"
+        rows={5}
+        placeholder="Descreva quando este agente deve ser usado..."
+      />
 
-const OUTPUT_TYPE_OPTIONS = [
-  { value: "text_response", label: "Texto ao usuario" },
-  { value: "update_card", label: "Atualizar card" }
-];
-
-function OutputConfig({ data, patch }: { data: OutputNodeData; patch: (patch: Partial<OutputNodeData>) => void }) {
-  return (
-    <div className="acp__form">
-      <Field label="Nome do no">
-        <Input value={data.label} onChange={(value) => patch({ label: value })} placeholder="Resposta" />
-      </Field>
-      <Field label="Tipo de saida">
-        <SelectField value={data.outputType} onChange={(value) => patch({ outputType: value as OutputType })} options={OUTPUT_TYPE_OPTIONS} />
-      </Field>
-      <InfoBox>O no Resposta e o ponto de saida do fluxo. Apenas um e permitido.</InfoBox>
-    </div>
-  );
-}
-
-function InfoBox({ children }: { children: ReactNode }) {
-  return (
-    <div className="acp__info-box">
-      <svg viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-      <span>{children}</span>
-    </div>
+      <AppSwitchField
+        name="isActive"
+        label={isActive ? "Agente ativo" : "Agente inativo"}
+        className="acp__field"
+      />
+    </AppForm>
   );
 }

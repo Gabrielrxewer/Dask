@@ -7,6 +7,7 @@ import { LoadingState, ModuleTabs, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import {
   buildWorkspaceSettingsItemTypesPath,
+  buildWorkspaceSettingsAuditPath,
   buildWorkspaceSettingsMembersPath,
   buildWorkspaceSettingsPerspectivesPath,
   buildWorkspaceSettingsPath,
@@ -30,6 +31,10 @@ const NAV_ITEMS = [
   {
     label: "Editor de work items",
     buildPath: buildWorkspaceSettingsItemTypesPath
+  },
+  {
+    label: "Auditoria",
+    buildPath: buildWorkspaceSettingsAuditPath
   }
 ];
 

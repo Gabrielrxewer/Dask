@@ -57,6 +57,16 @@ function pickPendingReasons(requirementsDue: string[], patterns: RegExp[]): stri
   return requirementsDue.filter((item) => patterns.some((pattern) => pattern.test(item)));
 }
 
+function getActionableRequirements(status: ConnectAccountStatus): string[] {
+  return Array.from(
+    new Set([
+      ...(status.requirementsPastDue ?? []),
+      ...(status.requirementsDue ?? []),
+      ...(status.requirementsPendingVerification ?? [])
+    ])
+  );
+}
+
 export function buildOnboardingChecklist(status: ConnectAccountStatus | null): OnboardingChecklistItem[] {
   if (!status) {
     return STEP_DEFS.map((step) => ({
@@ -69,7 +79,7 @@ export function buildOnboardingChecklist(status: ConnectAccountStatus | null): O
   }
 
   return STEP_DEFS.map((step) => {
-    const pendingReasons = pickPendingReasons(status.requirementsDue, step.patterns);
+    const pendingReasons = pickPendingReasons(getActionableRequirements(status), step.patterns);
     return {
       key: step.key,
       title: step.title,

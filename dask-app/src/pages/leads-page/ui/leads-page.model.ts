@@ -8,7 +8,15 @@ import type {
 import type { Customer, CustomerStatus, CreateCustomerInput, WorkspaceDocument } from "@/modules/workspace";
 
 export type LeadsTab = "overview" | "leads" | "customers";
-export type ModalMode = "lead" | "customer" | "customer-from-lead" | "link-customer" | "customer-detail";
+export type ModalMode =
+  | "lead"
+  | "signal"
+  | "customer"
+  | "customer-from-lead"
+  | "link-customer"
+  | "customer-detail"
+  | "billing-justification"
+  | "type-transformation";
 
 export type LeadFormState = {
   customerId: string;

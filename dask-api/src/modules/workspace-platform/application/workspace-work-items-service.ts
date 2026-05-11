@@ -1,4 +1,4 @@
-import { MembershipRole, type Prisma } from '@prisma/client';
+import { MembershipRole, Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { AppError } from '@/core/errors/app-error';
@@ -108,6 +108,120 @@ type SerializedWorkItemSource = {
   updatedAt: Date;
 };
 
+type ListWorkItemsFilters = {
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+  cursor?: string;
+  perspectiveId?: string;
+  boardColumnId?: string;
+  columnId?: string;
+  workItemTypeId?: string;
+  typeId?: string;
+  workflowStateId?: string;
+  workflowStateIds?: string[];
+  stateId?: string;
+  stateSlug?: string;
+  typeSlug?: string;
+  assignedToMe?: boolean;
+  assigneeId?: string;
+  responsibleId?: string;
+  search?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  dueDateFrom?: Date;
+  dueDateTo?: Date;
+  plannedStartFrom?: Date;
+  plannedStartTo?: Date;
+  createdAtFrom?: Date;
+  createdAtTo?: Date;
+  updatedAtFrom?: Date;
+  updatedAtTo?: Date;
+  source?: string;
+  customerId?: string;
+  converted?: boolean;
+  customFieldFilters?: Array<{
+    fieldId?: string;
+    fieldKey?: string;
+    value: string | number | boolean | null;
+  }>;
+  sortBy?: 'position' | 'title' | 'type' | 'status' | 'assignee' | 'dueDate' | 'createdAt' | 'updatedAt' | 'plannedStartAt';
+  sortDirection?: 'asc' | 'desc';
+  sort?: 'position_asc' | 'updated_desc' | 'updated_asc' | 'created_desc' | 'created_asc';
+};
+
+type WorkItemTypeTransformationPayload = {
+  transformationId?: string;
+  toTypeId?: string;
+  toTypeSlug?: string;
+  stateId?: string;
+  stateSlug?: string;
+  customFieldValues?: Record<string, unknown>;
+  defaultValuesForNewFields?: Record<string, unknown>;
+};
+
+type TransformationTypeSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  color: string;
+};
+
+type TransformationFieldSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  required: boolean;
+  defaultValue: unknown;
+};
+
+type TransformationConfig = {
+  id: string;
+  workspaceId: string;
+  fromTypeId: string;
+  toTypeId: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  mode: string;
+  fieldCompatibilityMode: string;
+  defaultValuesForNewFields: unknown;
+  stateMapping: unknown;
+  permission: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  fromType?: TransformationTypeSummary;
+  toType?: TransformationTypeSummary;
+};
+
+type TransformationPersistenceRow = Omit<TransformationConfig, 'fromType' | 'toType'> & {
+  fromType: TransformationTypeSummary;
+  toType: TransformationTypeSummary;
+};
+
+type WorkItemTypeTransformationDelegate = {
+  findMany(input: {
+    where: { workspaceId: string; enabled: boolean };
+    include: {
+      fromType: { select: { id: true; slug: true; name: true; color: true } };
+      toType: { select: { id: true; slug: true; name: true; color: true } };
+    };
+    orderBy: Array<{ createdAt: 'asc' }>;
+  }): Promise<TransformationPersistenceRow[]>;
+};
+
+type TransformationValidationResult = {
+  valid: boolean;
+  reason: string | null;
+  transformation: TransformationConfig;
+  fromType: TransformationTypeSummary;
+  toType: TransformationTypeSummary;
+  preservedFields: TransformationFieldSummary[];
+  missingFields: TransformationFieldSummary[];
+  newRequiredFields: TransformationFieldSummary[];
+  defaultValuesForNewFields: Record<string, unknown>;
+};
+
 export class WorkspaceWorkItemsService {
   public constructor(
     private readonly prisma: PrismaClient,
@@ -125,7 +239,7 @@ export class WorkspaceWorkItemsService {
         }
       : {};
     const customerFilter = this.buildClientWorkItemWhere(customerScope);
-    const itemScopeFilter = this.combineItemWhere(ownCardsFilter, customerFilter);
+    const itemScopeFilter = this.combineItemWhere(ownCardsFilter, customerFilter, this.activeWorkItemWhere());
 
     await ensureWorkspaceDefaultConfiguration(this.prisma, {
       workspaceId: input.workspaceId,
@@ -351,7 +465,11 @@ export class WorkspaceWorkItemsService {
           OR: [{ assigneeId: input.userId }, { createdBy: input.userId }]
         }
       : {};
-    const itemScopeFilter = this.combineItemWhere(ownCardsFilter, this.buildClientWorkItemWhere(customerScope));
+    const itemScopeFilter = this.combineItemWhere(
+      ownCardsFilter,
+      this.buildClientWorkItemWhere(customerScope),
+      this.activeWorkItemWhere()
+    );
 
     const items = await this.prisma.item.findMany({
       where: { workspaceId: input.workspaceId, ...itemScopeFilter },
@@ -360,6 +478,111 @@ export class WorkspaceWorkItemsService {
     });
 
     return items.map((item) => this.serializeWorkItem(item));
+  }
+
+  public async listWorkItemsPage(input: { workspaceId: string; userId: string; filters?: ListWorkItemsFilters }) {
+    const access = await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const customerScope = await resolveCustomerAccessScope(this.prisma, input);
+    const ownCardsFilter = access.ownCardsOnly && !customerScope.isClient
+      ? {
+          OR: [{ assigneeId: input.userId }, { createdBy: input.userId }]
+        }
+      : {};
+    const itemScopeFilter = this.combineItemWhere(
+      ownCardsFilter,
+      this.buildClientWorkItemWhere(customerScope),
+      this.activeWorkItemWhere()
+    );
+    const filters = input.filters ?? {};
+    const pageNumber = typeof filters.page === 'number' ? Math.max(filters.page, 1) : null;
+    const take = Math.min(Math.max(filters.pageSize ?? filters.limit ?? 80, 1), 200);
+    const where = this.combineItemWhere(
+      { workspaceId: input.workspaceId },
+      itemScopeFilter,
+      this.buildWorkItemListFilterWhere({
+        ...filters,
+        assigneeId: filters.assignedToMe ? input.userId : filters.assigneeId
+      })
+    );
+
+    const orderBy = this.buildWorkItemListOrderBy(filters);
+    const paginationArgs: { skip?: number; cursor?: Prisma.ItemWhereUniqueInput } =
+      pageNumber !== null
+        ? { skip: (pageNumber - 1) * take }
+        : filters.cursor
+          ? { cursor: { id: filters.cursor }, skip: 1 }
+          : {};
+
+    const [items, total, columnCounts, stateCounts, typeCounts] = await Promise.all([
+      this.prisma.item.findMany({
+        where,
+        include: this.itemInclude(),
+        orderBy,
+        take: take + 1,
+        ...paginationArgs
+      }),
+      this.prisma.item.count({ where }),
+      this.prisma.item.groupBy({
+        by: ['boardColumnId'],
+        where,
+        _count: { _all: true }
+      }),
+      this.prisma.item.groupBy({
+        by: ['stateId'],
+        where,
+        _count: { _all: true }
+      }),
+      this.prisma.item.groupBy({
+        by: ['type'],
+        where,
+        _count: { _all: true }
+      })
+    ]);
+
+    const pageItems = items.slice(0, take);
+    const trailing = items[take];
+    const totalPages = Math.max(Math.ceil(total / take), 1);
+    const currentPage = pageNumber ?? 1;
+
+    return {
+      items: pageItems.map((item) => this.serializeLegacyTask(this.serializeWorkItem(item))),
+      total,
+      totalCount: total,
+      nextCursor: trailing?.id ?? null,
+      hasMore: Boolean(trailing),
+      pageInfo: {
+        page: currentPage,
+        pageSize: take,
+        totalPages,
+        hasNextPage: pageNumber !== null ? currentPage < totalPages : Boolean(trailing),
+        hasPreviousPage: pageNumber !== null ? currentPage > 1 : Boolean(filters.cursor),
+        nextCursor: trailing?.id ?? null
+      },
+      columnCounts: columnCounts.reduce<Record<string, number>>((acc, entry) => {
+        if (entry.boardColumnId) {
+          acc[entry.boardColumnId] = entry._count._all;
+        }
+        return acc;
+      }, {}),
+      workflowStateCounts: stateCounts.reduce<Record<string, number>>((acc, entry) => {
+        if (entry.stateId) {
+          acc[entry.stateId] = entry._count._all;
+        }
+        return acc;
+      }, {}),
+      countsByState: stateCounts.reduce<Record<string, number>>((acc, entry) => {
+        if (entry.stateId) {
+          acc[entry.stateId] = entry._count._all;
+        }
+        return acc;
+      }, {}),
+      countsByType: typeCounts.reduce<Record<string, number>>((acc, entry) => {
+        if (entry.type) {
+          acc[entry.type] = entry._count._all;
+        }
+        return acc;
+      }, {})
+    };
   }
 
   public async createWorkItem(input: {
@@ -610,6 +833,161 @@ export class WorkspaceWorkItemsService {
     return updatedItem;
   }
 
+  public async bulkUpdateWorkItems(input: {
+    workspaceId: string;
+    userId: string;
+    payload: {
+      itemIds: string[];
+      patch: {
+        stateId?: string;
+        stateSlug?: string;
+        assigneeId?: string | null;
+        priority?: number;
+        archived?: boolean;
+      };
+    };
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+
+    const itemIds = Array.from(new Set(input.payload.itemIds));
+    const updated: ReturnType<typeof this.serializeLegacyTask>[] = [];
+    const failed: Array<{ itemId: string; message: string }> = [];
+    const basePatch = {
+      ...(input.payload.patch.stateId !== undefined ? { stateId: input.payload.patch.stateId } : {}),
+      ...(input.payload.patch.stateSlug !== undefined ? { stateSlug: input.payload.patch.stateSlug } : {}),
+      ...(input.payload.patch.assigneeId !== undefined ? { assigneeId: input.payload.patch.assigneeId } : {})
+    };
+    const shouldPatchMetadata =
+      input.payload.patch.priority !== undefined || input.payload.patch.archived !== undefined;
+
+    for (const itemId of itemIds) {
+      try {
+        let metadataPatch: { metadata?: JsonRecord } = {};
+        if (shouldPatchMetadata) {
+          const current = await this.prisma.item.findFirst({
+            where: {
+              id: itemId,
+              workspaceId: input.workspaceId
+            },
+            select: { metadata: true }
+          });
+          if (!current) {
+            throw new AppError('Work item not found', 404);
+          }
+
+          const metadata = isRecord(current.metadata) ? { ...current.metadata } : {};
+          if (input.payload.patch.priority !== undefined) {
+            metadata.priority = input.payload.patch.priority;
+          }
+          if (input.payload.patch.archived !== undefined) {
+            if (input.payload.patch.archived) {
+              metadata.archivedAt = new Date().toISOString();
+              metadata.archivedBy = input.userId;
+            } else {
+              delete metadata.archivedAt;
+              delete metadata.archivedBy;
+            }
+          }
+          metadataPatch = { metadata };
+        }
+
+        const item = await this.updateWorkItem({
+          workspaceId: input.workspaceId,
+          itemId,
+          userId: input.userId,
+          payload: {
+            ...basePatch,
+            ...metadataPatch
+          }
+        });
+        updated.push(this.serializeLegacyTask(item));
+      } catch (error) {
+        failed.push({
+          itemId,
+          message: error instanceof Error ? error.message : 'Unable to update work item'
+        });
+      }
+    }
+
+    return {
+      updatedCount: updated.length,
+      failedCount: failed.length,
+      items: updated,
+      failed
+    };
+  }
+
+  public async updateWorkItemSchedule(input: {
+    workspaceId: string;
+    itemId: string;
+    userId: string;
+    payload: {
+      plannedStartAt?: string | null;
+      plannedEndAt?: string | null;
+      reason?: string;
+    };
+  }) {
+    await this.configService.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+
+    const current = await this.prisma.item.findFirst({
+      where: {
+        id: input.itemId,
+        workspaceId: input.workspaceId
+      },
+      select: {
+        id: true,
+        fields: true
+      }
+    });
+
+    if (!current) {
+      throw new AppError('Work item not found', 404);
+    }
+
+    const currentFields = isRecord(current.fields) ? current.fields : {};
+    const nextFields: JsonRecord = {
+      ...currentFields
+    };
+    const schedulePatch: JsonRecord = {};
+
+    if (input.payload.plannedStartAt !== undefined) {
+      nextFields.plannedStartAt = input.payload.plannedStartAt;
+      schedulePatch.plannedStartAt = input.payload.plannedStartAt;
+    }
+
+    if (input.payload.plannedEndAt !== undefined) {
+      nextFields.plannedEndAt = input.payload.plannedEndAt;
+      schedulePatch.plannedEndAt = input.payload.plannedEndAt;
+    }
+
+    const updatedItem = await this.prisma.$transaction(async (tx) => {
+      await tx.item.update({
+        where: { id: current.id },
+        data: {
+          fields: toJsonValue(nextFields),
+          updatedBy: input.userId
+        }
+      });
+
+      const serialized = await this.getSerializedWorkItemById(input.workspaceId, current.id, tx);
+
+      await this.publishItemUpdatedEvent({
+        workspaceId: input.workspaceId,
+        item: serialized,
+        patch: {
+          fields: schedulePatch,
+          ...(input.payload.reason ? { reason: input.payload.reason } : {})
+        },
+        requestedBy: input.userId,
+        db: tx
+      });
+
+      return serialized;
+    });
+
+    return updatedItem;
+  }
+
   public async deleteWorkItem(input: {
     workspaceId: string;
     itemId: string;
@@ -822,6 +1200,147 @@ export class WorkspaceWorkItemsService {
     return transitionedItem;
   }
 
+  public async listWorkItemTypeTransformations(input: { workspaceId: string; userId: string }) {
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    const configured = await this.loadConfiguredTypeTransformations(input.workspaceId);
+    if (configured.length > 0) {
+      return Promise.all(configured.map((entry) => this.describeTypeTransformation(input.workspaceId, entry)));
+    }
+
+    const fallback = await this.buildDefaultCommercialTypeTransformations(input.workspaceId);
+    return Promise.all(fallback.map((entry) => this.describeTypeTransformation(input.workspaceId, entry)));
+  }
+
+  public async validateWorkItemTypeTransformation(input: {
+    workspaceId: string;
+    itemId: string;
+    userId: string;
+    payload: WorkItemTypeTransformationPayload;
+  }) {
+    await this.configService.ensureReadableWorkspace(input.workspaceId, input.userId);
+    return this.buildTypeTransformationValidation(input.workspaceId, input.itemId, input.payload);
+  }
+
+  public async transformWorkItemType(input: {
+    workspaceId: string;
+    itemId: string;
+    userId: string;
+    payload: WorkItemTypeTransformationPayload;
+  }) {
+    await this.configService.ensureItemTransitionWorkspace(input.workspaceId, input.userId);
+    const validation = await this.buildTypeTransformationValidation(input.workspaceId, input.itemId, input.payload);
+
+    if (!validation.valid) {
+      throw new AppError(
+        validation.reason ?? 'The target type cannot preserve all source fields.',
+        422,
+        {
+          code: 'WORK_ITEM_TYPE_TRANSFORMATION_INVALID',
+          missingFields: validation.missingFields.map((field) => field.slug)
+        }
+      );
+    }
+
+    const customFieldValues = {
+      ...(validation.defaultValuesForNewFields ?? {}),
+      ...(input.payload.customFieldValues ?? {})
+    };
+    const missingRequired = validation.newRequiredFields.filter((field) => this.isBlankCustomFieldValue(customFieldValues[field.id]));
+    if (missingRequired.length > 0) {
+      throw new AppError('Required fields for the target type must be filled before transforming.', 422, {
+        code: 'WORK_ITEM_TYPE_TRANSFORMATION_REQUIRED_FIELDS',
+        requiredFields: missingRequired.map((field) => field.slug)
+      });
+    }
+
+    const transformed = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.item.findFirst({
+        where: { id: input.itemId, workspaceId: input.workspaceId },
+        select: {
+          id: true,
+          typeId: true,
+          type: true,
+          stateId: true,
+          status: true,
+          metadata: true
+        }
+      });
+
+      if (!current) {
+        throw new AppError('Work item not found', 404);
+      }
+
+      const nextState = await this.resolveTransformationTargetState(
+        tx,
+        input.workspaceId,
+        current,
+        validation.transformation,
+        input.payload
+      );
+      const nextMetadata = this.mergeTransformationMetadata(current.metadata, {
+        transformationId: validation.transformation.id,
+        transformationName: validation.transformation.name,
+        fromTypeId: validation.fromType.id,
+        fromTypeSlug: validation.fromType.slug,
+        toTypeId: validation.toType.id,
+        toTypeSlug: validation.toType.slug,
+        requestedBy: input.userId
+      });
+
+      await tx.item.update({
+        where: { id: current.id },
+        data: {
+          typeId: validation.toType.id,
+          type: validation.toType.slug,
+          stateId: nextState?.id ?? current.stateId,
+          status: nextState?.slug ?? current.status,
+          metadata: toJsonValue(nextMetadata),
+          updatedBy: input.userId
+        }
+      });
+
+      if (Object.keys(customFieldValues).length > 0) {
+        await this.applyCustomFieldValues(tx, {
+          workspaceId: input.workspaceId,
+          itemId: current.id,
+          valuesByFieldId: customFieldValues,
+          updatedBy: input.userId,
+          itemTypeId: validation.toType.id,
+          mutateLegacyFields: true
+        });
+      }
+
+      const serialized = await this.getSerializedWorkItemById(input.workspaceId, current.id, tx);
+
+      await this.publishEvent(
+        {
+          id: uuid(),
+          name: DomainEventNames.WorkItemTypeTransformationExecuted,
+          aggregateType: 'item',
+          aggregateId: current.id,
+          occurredAt: new Date(),
+          payload: {
+            ...this.toAutomationEventPayload(input.workspaceId, serialized),
+            workspaceId: input.workspaceId,
+            itemId: current.id,
+            transformationId: validation.transformation.id,
+            fromTypeId: validation.fromType.id,
+            fromTypeSlug: validation.fromType.slug,
+            toTypeId: validation.toType.id,
+            toTypeSlug: validation.toType.slug,
+            preservedFields: validation.preservedFields.map((field) => field.slug),
+            requestedBy: input.userId
+          }
+        },
+        tx
+      );
+
+      return serialized;
+    });
+
+    return transformed;
+  }
+
   public async setWorkItemCustomFieldValue(input: {
     workspaceId: string;
     itemId: string;
@@ -989,6 +1508,262 @@ export class WorkspaceWorkItemsService {
   private combineItemWhere(...parts: Prisma.ItemWhereInput[]): Prisma.ItemWhereInput {
     const and = parts.filter((part) => Object.keys(part).length > 0);
     return and.length > 0 ? { AND: and } : {};
+  }
+
+  private activeWorkItemWhere(): Prisma.ItemWhereInput {
+    return {
+      metadata: {
+        path: ['archivedAt'],
+        equals: Prisma.AnyNull
+      }
+    };
+  }
+
+  private buildWorkItemListFilterWhere(filters: ListWorkItemsFilters): Prisma.ItemWhereInput {
+    const where: Prisma.ItemWhereInput = {};
+    const columnId = filters.boardColumnId ?? filters.columnId;
+    const stateId = filters.workflowStateId ?? filters.stateId;
+    const typeId = filters.workItemTypeId ?? filters.typeId;
+    const assigneeId = filters.responsibleId ?? filters.assigneeId;
+
+    if (columnId) {
+      where.boardColumnId = columnId;
+    }
+
+    if (stateId) {
+      where.stateId = stateId;
+    } else if (filters.workflowStateIds && filters.workflowStateIds.length > 0) {
+      where.stateId = { in: filters.workflowStateIds };
+    }
+
+    if (filters.stateSlug) {
+      where.status = toSlug(filters.stateSlug);
+    }
+
+    if (typeId) {
+      where.typeId = typeId;
+    }
+
+    if (filters.typeSlug) {
+      where.type = toSlug(filters.typeSlug);
+    }
+
+    if (assigneeId) {
+      where.assigneeId = assigneeId;
+    }
+
+    const dueDateFrom = filters.dueDateFrom ?? filters.dateFrom;
+    const dueDateTo = filters.dueDateTo ?? filters.dateTo;
+    if (dueDateFrom || dueDateTo) {
+      where.dueDate = {
+        ...(dueDateFrom ? { gte: dueDateFrom } : {}),
+        ...(dueDateTo ? { lte: dueDateTo } : {})
+      };
+    }
+
+    if (filters.createdAtFrom || filters.createdAtTo) {
+      where.createdAt = {
+        ...(filters.createdAtFrom ? { gte: filters.createdAtFrom } : {}),
+        ...(filters.createdAtTo ? { lte: filters.createdAtTo } : {})
+      };
+    }
+
+    if (filters.updatedAtFrom || filters.updatedAtTo) {
+      where.updatedAt = {
+        ...(filters.updatedAtFrom ? { gte: filters.updatedAtFrom } : {}),
+        ...(filters.updatedAtTo ? { lte: filters.updatedAtTo } : {})
+      };
+    }
+
+    const commercialFilters: Prisma.ItemWhereInput[] = [];
+    const source = filters.source?.trim();
+    if (source) {
+      commercialFilters.push(this.buildCommercialFieldFilter('source', source));
+    }
+
+    const customerId = filters.customerId?.trim();
+    if (customerId) {
+      commercialFilters.push(this.buildCommercialFieldFilter('customerId', customerId));
+    }
+
+    if (filters.converted !== undefined) {
+      commercialFilters.push(this.buildCommercialConvertedFilter(filters.converted));
+    }
+
+    for (const customFilter of filters.customFieldFilters ?? []) {
+      const fieldFilter = this.buildCustomFieldListFilter(customFilter);
+      if (fieldFilter) {
+        commercialFilters.push(fieldFilter);
+      }
+    }
+
+    if (filters.plannedStartFrom || filters.plannedStartTo) {
+      commercialFilters.push(this.buildJsonDateRangeFilter({
+        paths: [['plannedStartAt'], ['schedule', 'plannedStartAt']],
+        from: filters.plannedStartFrom,
+        to: filters.plannedStartTo
+      }));
+    }
+
+    const search = filters.search?.trim();
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { status: { contains: search, mode: 'insensitive' } },
+        { type: { contains: search, mode: 'insensitive' } },
+        {
+          tags: {
+            some: {
+              tag: {
+                name: { contains: search, mode: 'insensitive' }
+              }
+            }
+          }
+        }
+      ];
+    }
+
+    if (commercialFilters.length > 0) {
+      where.AND = [...(Array.isArray(where.AND) ? where.AND : []), ...commercialFilters];
+    }
+
+    return where;
+  }
+
+  private buildCommercialFieldFilter(slug: string, value: string): Prisma.ItemWhereInput {
+    return {
+      OR: [
+        {
+          fields: {
+            path: [slug],
+            equals: value
+          }
+        },
+        {
+          customFieldValues: {
+            some: {
+              field: { slug },
+              value: { equals: value }
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  private buildCommercialConvertedFilter(converted: boolean): Prisma.ItemWhereInput {
+    const hasCustomerField: Prisma.ItemWhereInput = {
+      customFieldValues: {
+        some: {
+          field: { slug: 'customerId' }
+        }
+      }
+    };
+
+    return converted ? hasCustomerField : { NOT: hasCustomerField };
+  }
+
+  private buildCustomFieldListFilter(filter: NonNullable<ListWorkItemsFilters['customFieldFilters']>[number]): Prisma.ItemWhereInput | null {
+    const fieldKey = filter.fieldId ?? this.normalizeCustomFieldFilterKey(filter.fieldKey);
+    if (!fieldKey) {
+      return null;
+    }
+
+    const value = filter.value as Prisma.InputJsonValue;
+
+    return {
+      OR: [
+        {
+          fields: {
+            path: [fieldKey],
+            equals: value
+          }
+        },
+        {
+          customFieldValues: {
+            some: {
+              field: {
+                OR: [
+                  { id: fieldKey },
+                  { slug: fieldKey },
+                  { variableKey: fieldKey }
+                ]
+              },
+              value: {
+                equals: value
+              }
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  private normalizeCustomFieldFilterKey(value: string | undefined): string | null {
+    const trimmed = value?.trim();
+    if (!trimmed || !/^[A-Za-z0-9_.:-]{1,120}$/.test(trimmed)) {
+      return null;
+    }
+
+    return trimmed;
+  }
+
+  private buildJsonDateRangeFilter(input: {
+    paths: string[][];
+    from?: Date;
+    to?: Date;
+  }): Prisma.ItemWhereInput {
+    return {
+      OR: input.paths.map((path) => ({
+        fields: {
+          path,
+          ...(input.from ? { gte: input.from.toISOString() } : {}),
+          ...(input.to ? { lte: input.to.toISOString() } : {})
+        }
+      }))
+    };
+  }
+
+  private buildWorkItemListOrderBy(filters: ListWorkItemsFilters): Prisma.ItemOrderByWithRelationInput[] {
+    const direction = filters.sortDirection ?? 'asc';
+
+    switch (filters.sortBy) {
+      case 'title':
+        return [{ title: direction }, { id: 'asc' }];
+      case 'type':
+        return [{ type: direction }, { id: 'asc' }];
+      case 'status':
+        return [{ status: direction }, { id: 'asc' }];
+      case 'assignee':
+        return [{ assigneeId: direction }, { id: 'asc' }];
+      case 'dueDate':
+        return [{ dueDate: direction }, { id: 'asc' }];
+      case 'createdAt':
+        return [{ createdAt: direction }, { id: 'asc' }];
+      case 'updatedAt':
+        return [{ updatedAt: direction }, { id: 'asc' }];
+      case 'position':
+        return [{ position: direction }, { updatedAt: 'desc' }, { id: 'asc' }];
+      case 'plannedStartAt':
+        return [{ updatedAt: 'desc' }, { id: 'asc' }];
+      default:
+        break;
+    }
+
+    switch (filters.sort) {
+      case 'updated_asc':
+        return [{ updatedAt: 'asc' }, { id: 'asc' }];
+      case 'created_desc':
+        return [{ createdAt: 'desc' }, { id: 'asc' }];
+      case 'created_asc':
+        return [{ createdAt: 'asc' }, { id: 'asc' }];
+      case 'updated_desc':
+        return [{ updatedAt: 'desc' }, { id: 'asc' }];
+      case 'position_asc':
+      default:
+        return [{ position: 'asc' }, { updatedAt: 'desc' }, { id: 'asc' }];
+    }
   }
 
   private buildClientWorkItemWhere(scope: CustomerAccessScope): Prisma.ItemWhereInput {
@@ -1367,6 +2142,371 @@ export class WorkspaceWorkItemsService {
     }
   }
 
+  private async loadConfiguredTypeTransformations(workspaceId: string): Promise<TransformationConfig[]> {
+    const prisma = this.prisma as unknown as { workItemTypeTransformation: WorkItemTypeTransformationDelegate };
+    const rows = await prisma.workItemTypeTransformation.findMany({
+      where: { workspaceId, enabled: true },
+      include: {
+        fromType: { select: { id: true, slug: true, name: true, color: true } },
+        toType: { select: { id: true, slug: true, name: true, color: true } }
+      },
+      orderBy: [{ createdAt: 'asc' }]
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      workspaceId: row.workspaceId,
+      fromTypeId: row.fromTypeId,
+      toTypeId: row.toTypeId,
+      name: row.name,
+      description: row.description ?? null,
+      enabled: Boolean(row.enabled),
+      mode: row.mode,
+      fieldCompatibilityMode: row.fieldCompatibilityMode,
+      defaultValuesForNewFields: row.defaultValuesForNewFields,
+      stateMapping: row.stateMapping,
+      permission: row.permission ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      fromType: row.fromType,
+      toType: row.toType
+    }));
+  }
+
+  private async buildDefaultCommercialTypeTransformations(workspaceId: string): Promise<TransformationConfig[]> {
+    const types = await this.prisma.workItemType.findMany({
+      where: {
+        workspaceId,
+        isActive: true,
+        slug: { in: ['signal', 'prospect', 'lead', 'commercial'] }
+      },
+      orderBy: { position: 'asc' },
+      select: { id: true, slug: true, name: true, color: true }
+    });
+    const source = types.find((type) => ['signal', 'prospect'].includes(type.slug));
+    const target = types.find((type) => ['lead', 'commercial'].includes(type.slug));
+
+    if (!source || !target || source.id === target.id) {
+      return [];
+    }
+
+    return [
+      {
+        id: `default:${source.id}:${target.id}`,
+        workspaceId,
+        fromTypeId: source.id,
+        toTypeId: target.id,
+        name: `Transformar ${source.name} em ${target.name}`,
+        description: 'Transformacao padrao de Signal/Prospect para Lead comercial mantendo o mesmo WorkItem.',
+        enabled: true,
+        mode: 'same_work_item_type_change',
+        fieldCompatibilityMode: 'strict_superset',
+        defaultValuesForNewFields: {},
+        stateMapping: {},
+        permission: 'lead.transform',
+        fromType: source,
+        toType: target
+      }
+    ];
+  }
+
+  private async describeTypeTransformation(workspaceId: string, transformation: TransformationConfig) {
+    const compatibility = await this.validateTypeFieldCompatibility(workspaceId, transformation.fromTypeId, transformation.toTypeId);
+    return {
+      ...transformation,
+      fromType: transformation.fromType ?? compatibility.fromType,
+      toType: transformation.toType ?? compatibility.toType,
+      valid: compatibility.missingFields.length === 0,
+      missingFields: compatibility.missingFields,
+      preservedFields: compatibility.preservedFields,
+      newRequiredFields: compatibility.newRequiredFields
+    };
+  }
+
+  private async buildTypeTransformationValidation(
+    workspaceId: string,
+    itemId: string,
+    payload: WorkItemTypeTransformationPayload
+  ): Promise<TransformationValidationResult> {
+    const item = await this.prisma.item.findFirst({
+      where: { id: itemId, workspaceId },
+      select: {
+        id: true,
+        typeId: true,
+        type: true,
+        customFieldValues: {
+          include: {
+            field: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                required: true,
+                defaultValue: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!item || !item.typeId) {
+      throw new AppError('Work item not found or has no configured type', 404);
+    }
+
+    const transformation = await this.resolveTypeTransformationConfig(workspaceId, item.typeId, payload);
+    const compatibility = await this.validateTypeFieldCompatibility(workspaceId, transformation.fromTypeId, transformation.toTypeId);
+    const currentValueFieldIds = new Set(item.customFieldValues.map((entry) => entry.fieldId));
+    const toFieldById = new Map(compatibility.toFields.map((field) => [field.id, field]));
+    const normalizedPayloadValues = this.normalizeValuesForFields(payload.customFieldValues, compatibility.toFields);
+    const defaultValuesForNewFields = {
+      ...this.normalizeValuesForFields(
+        isRecord(transformation.defaultValuesForNewFields) ? transformation.defaultValuesForNewFields : {},
+        compatibility.toFields
+      ),
+      ...this.normalizeValuesForFields(payload.defaultValuesForNewFields, compatibility.toFields)
+    };
+    const valuesForRequiredCheck = {
+      ...defaultValuesForNewFields,
+      ...normalizedPayloadValues
+    };
+
+    const sourceFieldsFromValues = item.customFieldValues
+      .map((entry) => ({
+        id: entry.field.id,
+        slug: entry.field.slug,
+        name: entry.field.name,
+        required: entry.field.required,
+        defaultValue: entry.field.defaultValue
+      }))
+      .filter((field) => !compatibility.fromFields.some((entry) => entry.id === field.id));
+    const sourceFields = [...compatibility.fromFields, ...sourceFieldsFromValues];
+    const missingFields = sourceFields.filter((field) => !toFieldById.has(field.id));
+    const preservedFields = sourceFields.filter((field) => toFieldById.has(field.id));
+    const newRequiredFields = compatibility.toFields.filter((field) => {
+      if (!field.required || currentValueFieldIds.has(field.id)) {
+        return false;
+      }
+      return this.isBlankCustomFieldValue(valuesForRequiredCheck[field.id]);
+    });
+
+    return {
+      valid: missingFields.length === 0,
+      reason:
+        missingFields.length > 0
+          ? 'O tipo destino nao contem todos os campos necessarios para preservar os dados.'
+          : null,
+      transformation,
+      fromType: compatibility.fromType,
+      toType: compatibility.toType,
+      preservedFields,
+      missingFields,
+      newRequiredFields,
+      defaultValuesForNewFields
+    };
+  }
+
+  private async resolveTypeTransformationConfig(
+    workspaceId: string,
+    currentTypeId: string,
+    payload: WorkItemTypeTransformationPayload
+  ): Promise<TransformationConfig> {
+    if (payload.transformationId) {
+      const configured = [
+        ...(await this.loadConfiguredTypeTransformations(workspaceId)),
+        ...(await this.buildDefaultCommercialTypeTransformations(workspaceId))
+      ];
+      const match = configured.find((entry) => entry.id === payload.transformationId);
+      if (!match) {
+        throw new AppError('Work item type transformation not found', 404);
+      }
+      if (match.fromTypeId !== currentTypeId) {
+        throw new AppError('Transformation cannot be applied to this work item type', 422);
+      }
+      return match;
+    }
+
+    if (payload.toTypeId || payload.toTypeSlug) {
+      const toType = await this.resolveWorkItemType(workspaceId, payload.toTypeId, payload.toTypeSlug);
+      const fromType = await this.resolveWorkItemType(workspaceId, currentTypeId, null);
+      return {
+        id: `adhoc:${fromType.id}:${toType.id}`,
+        workspaceId,
+        fromTypeId: fromType.id,
+        toTypeId: toType.id,
+        name: `Transformar ${fromType.name} em ${toType.name}`,
+        description: null,
+        enabled: true,
+        mode: 'same_work_item_type_change',
+        fieldCompatibilityMode: 'strict_superset',
+        defaultValuesForNewFields: {},
+        stateMapping: {},
+        permission: 'lead.transform',
+        fromType,
+        toType
+      };
+    }
+
+    const fallback = (await this.buildDefaultCommercialTypeTransformations(workspaceId)).find(
+      (entry) => entry.fromTypeId === currentTypeId
+    );
+    if (!fallback) {
+      throw new AppError('No valid target type transformation was found for this work item', 422);
+    }
+    return fallback;
+  }
+
+  private async validateTypeFieldCompatibility(workspaceId: string, fromTypeId: string, toTypeId: string) {
+    const [fromType, toType, fromFields, toFields] = await Promise.all([
+      this.resolveWorkItemType(workspaceId, fromTypeId, null),
+      this.resolveWorkItemType(workspaceId, toTypeId, null),
+      this.loadFieldsForType(workspaceId, fromTypeId),
+      this.loadFieldsForType(workspaceId, toTypeId)
+    ]);
+    const toFieldIds = new Set(toFields.map((field) => field.id));
+    const missingFields = fromFields.filter((field) => !toFieldIds.has(field.id));
+    const preservedFields = fromFields.filter((field) => toFieldIds.has(field.id));
+    const fromFieldIds = new Set(fromFields.map((field) => field.id));
+    const newRequiredFields = toFields.filter((field) => field.required && !fromFieldIds.has(field.id));
+
+    return {
+      fromType: { id: fromType.id, slug: fromType.slug, name: fromType.name, color: fromType.color },
+      toType: { id: toType.id, slug: toType.slug, name: toType.name, color: toType.color },
+      fromFields,
+      toFields,
+      missingFields,
+      preservedFields,
+      newRequiredFields
+    };
+  }
+
+  private async loadFieldsForType(workspaceId: string, typeId: string): Promise<TransformationFieldSummary[]> {
+    const fields = await this.prisma.customFieldDefinition.findMany({
+      where: { workspaceId, isActive: true },
+      include: {
+        scopes: { select: { typeId: true } },
+        bindings: {
+          where: { typeId },
+          select: { isRequiredOverride: true, isVisible: true, position: true }
+        }
+      },
+      orderBy: { position: 'asc' }
+    });
+
+    return fields
+      .filter((field) => {
+        if (field.isSystem) {
+          return false;
+        }
+        const scopedToType = field.scopes.some((scope) => scope.typeId === typeId);
+        return field.scopes.length === 0 || scopedToType || field.bindings.length > 0;
+      })
+      .sort((left, right) => {
+        const leftBinding = left.bindings[0]?.position ?? left.position;
+        const rightBinding = right.bindings[0]?.position ?? right.position;
+        return leftBinding - rightBinding;
+      })
+      .map((field) => {
+        const override = field.bindings.find((binding) => binding.isRequiredOverride !== null)?.isRequiredOverride;
+        return {
+          id: field.id,
+          slug: field.slug,
+          name: field.name,
+          required: override ?? field.required,
+          defaultValue: field.defaultValue
+        };
+      });
+  }
+
+  private normalizeValuesForFields(
+    values: Record<string, unknown> | undefined,
+    fields: TransformationFieldSummary[]
+  ): Record<string, unknown> {
+    if (!values) {
+      return {};
+    }
+
+    return fields.reduce<Record<string, unknown>>((acc, field) => {
+      if (Object.prototype.hasOwnProperty.call(values, field.id)) {
+        acc[field.id] = values[field.id];
+      } else if (Object.prototype.hasOwnProperty.call(values, field.slug)) {
+        acc[field.id] = values[field.slug];
+      }
+      return acc;
+    }, {});
+  }
+
+  private isBlankCustomFieldValue(value: unknown): boolean {
+    if (value === undefined || value === null) {
+      return true;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length === 0;
+    }
+    if (Array.isArray(value)) {
+      return value.length === 0;
+    }
+    return false;
+  }
+
+  private async resolveTransformationTargetState(
+    db: PrismaClient | Prisma.TransactionClient,
+    workspaceId: string,
+    current: { stateId: string | null; status: string },
+    transformation: TransformationConfig,
+    payload: WorkItemTypeTransformationPayload
+  ) {
+    const explicitStateId = payload.stateId;
+    const explicitStateSlug = payload.stateSlug;
+    const mapping = isRecord(transformation.stateMapping) ? transformation.stateMapping : {};
+    const mappedValue =
+      (current.stateId ? mapping[current.stateId] : undefined) ??
+      mapping[current.status];
+    const target = explicitStateId ?? explicitStateSlug ?? (typeof mappedValue === 'string' ? mappedValue : undefined);
+
+    if (!target) {
+      return null;
+    }
+
+    const state = await db.workflowState.findFirst({
+      where: {
+        workspaceId,
+        OR: [{ id: target }, { slug: toSlug(target) }]
+      }
+    });
+
+    if (!state) {
+      throw new AppError('Target workflow state for transformation was not found', 404);
+    }
+
+    return state;
+  }
+
+  private mergeTransformationMetadata(
+    currentMetadata: unknown,
+    entry: Record<string, unknown>
+  ): Record<string, unknown> {
+    const current = isRecord(currentMetadata) ? { ...currentMetadata } : {};
+    const history = Array.isArray(current.typeTransformations)
+      ? current.typeTransformations.filter((value): value is Record<string, unknown> => isRecord(value))
+      : [];
+
+    return {
+      ...current,
+      lastTypeTransformation: {
+        ...entry,
+        transformedAt: new Date().toISOString()
+      },
+      typeTransformations: [
+        ...history,
+        {
+          ...entry,
+          transformedAt: new Date().toISOString()
+        }
+      ].slice(-20)
+    };
+  }
+
   private async applyCustomFieldValues(
     prisma: PrismaClient | Prisma.TransactionClient,
     input: {
@@ -1633,6 +2773,8 @@ export class WorkspaceWorkItemsService {
     );
 
     const legacyFields = isRecord(item.fields) ? item.fields : {};
+    const plannedStartAt = typeof legacyFields.plannedStartAt === 'string' ? legacyFields.plannedStartAt : null;
+    const plannedEndAt = typeof legacyFields.plannedEndAt === 'string' ? legacyFields.plannedEndAt : null;
 
     return {
       id: item.id,
@@ -1684,6 +2826,8 @@ export class WorkspaceWorkItemsService {
       assigneeId: item.assigneeId,
       parentId: item.parentId,
       dueDate: item.dueDate,
+      plannedStartAt,
+      plannedEndAt,
       position: item.position,
       checklist: parseChecklist(item.checklist),
       tags: item.tags.map((entry) => ({
@@ -1711,9 +2855,9 @@ export class WorkspaceWorkItemsService {
   private serializeLegacyTask(workItem: ReturnType<WorkspaceWorkItemsService['serializeWorkItem']>) {
     const metadata = isRecord(workItem.metadata) ? workItem.metadata : {};
     const plannedStartAt =
-      typeof workItem.customFields.plannedStartAt === 'string' ? workItem.customFields.plannedStartAt : null;
+      typeof workItem.plannedStartAt === 'string' ? workItem.plannedStartAt : null;
     const plannedEndAt =
-      typeof workItem.customFields.plannedEndAt === 'string' ? workItem.customFields.plannedEndAt : null;
+      typeof workItem.plannedEndAt === 'string' ? workItem.plannedEndAt : null;
 
     return {
       id: workItem.id,

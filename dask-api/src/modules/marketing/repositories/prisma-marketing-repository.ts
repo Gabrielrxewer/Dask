@@ -4,11 +4,110 @@ import type {
   MarketingCampaignDetails,
   MarketingCampaignListItem,
   MarketingDashboard,
-  MarketingRepository
+  MarketingRepository,
+  SignalInboxItem
 } from '@/modules/marketing/repositories/marketing-repository';
 
 function asRecord(value: unknown): Record<string, unknown> {
   return (value ?? {}) as Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function textField(fields: unknown, ...keys: string[]): string | null {
+  if (!isRecord(fields)) {
+    return null;
+  }
+
+  for (const key of keys) {
+    const value = fields[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function numberField(fields: unknown, key: string): number {
+  if (!isRecord(fields)) {
+    return 0;
+  }
+  const value = fields[key];
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  const parsed = Number(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mapCommercialWorkItemToLead(item: {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  fields: unknown;
+  metadata: unknown;
+  assigneeId: string | null;
+  createdBy: string;
+  updatedBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): Lead {
+  const fields = isRecord(item.fields) ? item.fields : {};
+  const source = textField(fields, 'source', 'origin') ?? 'WORK_ITEM';
+  const converted = fields.converted === true || typeof fields.customerId === 'string';
+
+  return {
+    id: item.id,
+    workspaceId: item.workspaceId,
+    customerId: textField(fields, 'customerId'),
+    externalSource: null,
+    externalId: null,
+    captureSource: source as Lead['captureSource'],
+    status: (converted ? 'CONVERTED' : item.status.toUpperCase()) as LeadStatus,
+    qualificationStatus: 'UNQUALIFIED',
+    distributionStatus: item.assigneeId ? 'ASSIGNED' : 'UNASSIGNED',
+    score: numberField(fields, 'score'),
+    temperature: textField(fields, 'temperature'),
+    firstName: null,
+    lastName: null,
+    fullName: textField(fields, 'contactName', 'clientName') ?? item.title,
+    email: textField(fields, 'contactEmail', 'email'),
+    phone: textField(fields, 'contactPhone', 'phone'),
+    companyName: textField(fields, 'companyName', 'clientName'),
+    jobTitle: textField(fields, 'jobTitle'),
+    website: textField(fields, 'website'),
+    city: textField(fields, 'city'),
+    state: textField(fields, 'state'),
+    country: textField(fields, 'country'),
+    interest: textField(fields, 'interest'),
+    notes: item.description,
+    tags: [],
+    ownerUserId: item.assigneeId,
+    estimatedValue: null,
+    currency: 'BRL',
+    qualifiedAt: null,
+    distributedAt: null,
+    lastContactAt: null,
+    nextFollowUpAt: null,
+    nurturingStartedAt: null,
+    convertedAt: converted ? item.updatedAt : null,
+    lostAt: null,
+    metadata: {
+      ...(isRecord(item.metadata) ? item.metadata : {}),
+      sourceEntityType: 'work_item',
+      sourceWorkItemId: item.id,
+      workItemStatus: item.status
+    } as Prisma.JsonValue,
+    createdByUserId: item.createdBy,
+    updatedByUserId: item.updatedBy,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+  } as Lead;
 }
 
 function asLeadTags(lead: Lead): string[] {
@@ -512,28 +611,29 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }): Promise<Array<{ lead: Lead; preference: Record<string, unknown> | null; lastEventAt: Date | null }>> {
     const db = this.db;
 
-    const where: Prisma.LeadWhereInput = {
-      workspaceId: input.workspaceId
+    const workItemWhere: Prisma.ItemWhereInput = {
+      workspaceId: input.workspaceId,
+      type: { in: ['lead', 'commercial', 'signal', 'prospect'] },
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.search
+        ? {
+            OR: [
+              { title: { contains: input.search, mode: 'insensitive' } },
+              { description: { contains: input.search, mode: 'insensitive' } },
+              { fields: { path: ['contactEmail'], string_contains: input.search } },
+              { fields: { path: ['companyName'], string_contains: input.search } },
+              { fields: { path: ['interest'], string_contains: input.search } }
+            ]
+          }
+        : {})
     };
 
-    if (input.status) {
-      where.status = input.status as LeadStatus;
-    }
-
-    if (input.search) {
-      where.OR = [
-        { fullName: { contains: input.search, mode: 'insensitive' } },
-        { email: { contains: input.search, mode: 'insensitive' } },
-        { companyName: { contains: input.search, mode: 'insensitive' } },
-        { interest: { contains: input.search, mode: 'insensitive' } }
-      ];
-    }
-
-    const leads: Lead[] = await db.lead.findMany({
-      where,
-      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+    const workItems = await db.item.findMany({
+      where: workItemWhere,
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: input.limit
     });
+    const leads: Lead[] = workItems.map(mapCommercialWorkItemToLead);
 
     const leadIds = leads.map((lead) => lead.id);
     const emails = leads.map((lead) => lead.email).filter((entry): entry is string => Boolean(entry));
@@ -587,8 +687,9 @@ export class PrismaMarketingRepository implements MarketingRepository {
   }): Promise<Lead[]> {
     const db = this.db;
 
-    const seedWhere: Record<string, unknown> = {
-      workspaceId: input.workspaceId
+    const seedWhere: Prisma.ItemWhereInput = {
+      workspaceId: input.workspaceId,
+      type: { in: ['lead', 'commercial', 'signal', 'prospect'] }
     };
 
     for (const rule of input.filter.rules ?? []) {
@@ -597,24 +698,14 @@ export class PrismaMarketingRepository implements MarketingRepository {
           seedWhere.status = String(rule.value);
         }
       }
-      if (rule.field === 'score' && (rule.operator === 'gte' || rule.operator === 'lte')) {
-        const numeric = Number(rule.value ?? 0);
-        const current = (seedWhere.score as Record<string, number> | undefined) ?? {};
-        if (rule.operator === 'gte') {
-          current.gte = numeric;
-        }
-        if (rule.operator === 'lte') {
-          current.lte = numeric;
-        }
-        seedWhere.score = current;
-      }
     }
 
-    const preselected: Lead[] = await db.lead.findMany({
+    const preselectedItems = await db.item.findMany({
       where: seedWhere,
-      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: Math.max(200, input.limit * 4)
     });
+    const preselected: Lead[] = preselectedItems.map(mapCommercialWorkItemToLead);
 
     const emails = preselected.map((entry) => entry.email).filter((entry): entry is string => Boolean(entry));
     const billingUsers = emails.length
@@ -719,6 +810,15 @@ export class PrismaMarketingRepository implements MarketingRepository {
     return db.marketingEvent.create({ data: asRecord(data) });
   }
 
+  public async findMarketingEventById(workspaceId: string, eventId: string): Promise<Record<string, unknown> | null> {
+    return this.db.marketingEvent.findFirst({
+      where: {
+        id: eventId,
+        workspaceId
+      }
+    });
+  }
+
   public async listCampaignAnalytics(campaignId: string): Promise<{
     byType: Array<{ type: string; total: number }>;
     byStatus: Array<{ status: string; total: number }>;
@@ -749,6 +849,35 @@ export class PrismaMarketingRepository implements MarketingRepository {
 
   public async createLeadActivity(data: Prisma.LeadActivityUncheckedCreateInput): Promise<LeadActivity> {
     return this.prisma.leadActivity.create({ data });
+  }
+
+  public async updateLeadFollowUp(input: {
+    workspaceId: string;
+    leadId: string;
+    nextFollowUpAt?: Date | null;
+    note?: string | null;
+    actorUserId?: string | null;
+  }): Promise<Lead | null> {
+    await this.prisma.lead.updateMany({
+      where: {
+        id: input.leadId,
+        workspaceId: input.workspaceId
+      },
+      data: {
+        lastContactAt: new Date(),
+        nextFollowUpAt: input.nextFollowUpAt ?? null,
+        notes: input.note ?? undefined,
+        status: 'FOLLOW_UP',
+        updatedByUserId: input.actorUserId ?? null
+      }
+    });
+
+    return this.prisma.lead.findFirst({
+      where: {
+        id: input.leadId,
+        workspaceId: input.workspaceId
+      }
+    });
   }
 
   public async createLeadNurtureTouch(data: Prisma.LeadNurtureTouchUncheckedCreateInput): Promise<LeadNurtureTouch> {
@@ -813,6 +942,23 @@ export class PrismaMarketingRepository implements MarketingRepository {
     });
   }
 
+  public async findAutomationFlowById(workspaceId: string, flowId: string): Promise<Record<string, unknown> | null> {
+    const db = this.db;
+
+    return db.marketingAutomationFlow.findFirst({
+      where: { id: flowId, workspaceId },
+      include: {
+        steps: {
+          orderBy: { position: 'asc' }
+        },
+        enrollments: {
+          orderBy: { startedAt: 'desc' },
+          take: 30
+        }
+      }
+    });
+  }
+
   public async createAutomationFlow(data: Prisma.InputJsonValue): Promise<Record<string, unknown>> {
     const db = this.db;
     return db.marketingAutomationFlow.create({ data: asRecord(data) });
@@ -842,7 +988,7 @@ export class PrismaMarketingRepository implements MarketingRepository {
     onlyWithLead?: boolean;
     includeDismissed?: boolean;
     limit: number;
-  }): Promise<import('./marketing-repository').SignalInboxItem[]> {
+  }): Promise<SignalInboxItem[]> {
     const db = this.db;
 
     const INBOX_TYPES = input.types && input.types.length > 0 ? input.types : [

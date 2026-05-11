@@ -1,4 +1,4 @@
-import { MembershipRole, Prisma, type CustomFieldType, type PrismaClient } from '@prisma/client';
+import { AuditSeverity, MembershipRole, Prisma, type CustomFieldType, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { resolveWorkspaceAccessPolicy, type WorkspaceModuleKey } from '@/modules/identity/domain/access-policy';
 import { ensureWorkspaceDefaultConfiguration } from '@/modules/workspaces/application/default-workspace-seed';
@@ -142,7 +142,16 @@ export class WorkspaceConfigService {
       }
     });
 
-    return this.serializeItemType(itemType);
+    const serialized = this.serializeItemType(itemType);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'work_item_type',
+      entityId: itemType.id,
+      action: 'create',
+      after: serialized
+    });
+    return serialized;
   }
 
   public async updateItemType(input: {
@@ -193,7 +202,17 @@ export class WorkspaceConfigService {
       }
     });
 
-    return this.serializeItemType(itemType);
+    const serialized = this.serializeItemType(itemType);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'work_item_type',
+      entityId: itemType.id,
+      action: input.payload.isActive === false ? 'archive' : 'update',
+      before: this.serializeItemType(current),
+      after: serialized
+    });
+    return serialized;
   }
 
   public async replaceItemTypeFieldBindings(input: {
@@ -223,6 +242,14 @@ export class WorkspaceConfigService {
     if (!itemType) {
       throw new AppError('Work item type not found', 404);
     }
+
+    const currentBindings = await this.prisma.workItemFieldBinding.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        typeId: itemType.id
+      },
+      orderBy: [{ displayContext: 'asc' }, { position: 'asc' }]
+    });
 
     const uniqueFieldDefinitionIds = Array.from(
       new Set(input.payload.bindings.map((binding) => binding.fieldDefinitionId))
@@ -285,6 +312,25 @@ export class WorkspaceConfigService {
         });
       }
     });
+
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'work_item_layout',
+      entityId: itemType.id,
+      action: 'replace_bindings',
+      before: currentBindings.map((binding) => ({
+        fieldDefinitionId: binding.fieldId,
+        displayContext: binding.displayContext,
+        order: binding.position,
+        section: binding.section,
+        isVisible: binding.isVisible,
+        isRequiredOverride: binding.isRequiredOverride,
+        isReadonlyOverride: binding.isReadonlyOverride,
+        settings: binding.settings
+      })),
+      after: input.payload.bindings
+    });
   }
 
   public async listWorkflowStates(input: { workspaceId: string; userId: string }) {
@@ -328,7 +374,16 @@ export class WorkspaceConfigService {
       }
     });
 
-    return this.serializeWorkflowState(state);
+    const serialized = this.serializeWorkflowState(state);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'workflow_state',
+      entityId: state.id,
+      action: 'create',
+      after: serialized
+    });
+    return serialized;
   }
 
   public async updateWorkflowState(input: {
@@ -367,7 +422,17 @@ export class WorkspaceConfigService {
       }
     });
 
-    return this.serializeWorkflowState(state);
+    const serialized = this.serializeWorkflowState(state);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'workflow_state',
+      entityId: state.id,
+      action: input.payload.isActive === false ? 'archive' : 'update',
+      before: this.serializeWorkflowState(current),
+      after: serialized
+    });
+    return serialized;
   }
 
   public async listBoardColumns(input: { workspaceId: string; userId: string }) {
@@ -424,7 +489,16 @@ export class WorkspaceConfigService {
       await this.replaceColumnStateMappings(input.workspaceId, column.id, input.payload.stateIds);
     }
 
-    return this.getBoardColumnOrFail(column.id, input.workspaceId);
+    const serialized = await this.getBoardColumnOrFail(column.id, input.workspaceId);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'board_column',
+      entityId: column.id,
+      action: 'create',
+      after: serialized
+    });
+    return serialized;
   }
 
   public async updateBoardColumn(input: {
@@ -462,7 +536,17 @@ export class WorkspaceConfigService {
       await this.replaceColumnStateMappings(input.workspaceId, current.id, input.payload.stateIds);
     }
 
-    return this.getBoardColumnOrFail(current.id, input.workspaceId);
+    const serialized = await this.getBoardColumnOrFail(current.id, input.workspaceId);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'board_column',
+      entityId: current.id,
+      action: input.payload.isActive === false ? 'archive' : 'update',
+      before: current,
+      after: serialized
+    });
+    return serialized;
   }
 
   public async listTags(input: { workspaceId: string; userId: string }) {
@@ -612,7 +696,7 @@ export class WorkspaceConfigService {
         isRemovable: input.payload.isRemovable ?? true,
         position: input.payload.order ?? (await this.prisma.customFieldDefinition.count({ where: { workspaceId: input.workspaceId } })),
         isActive: input.payload.isActive ?? true,
-        settings: input.payload.settings ? toJsonValue(input.payload.settings) : undefined,
+        settings: toJsonValue(this.normalizeCustomFieldSettings(input.payload.type, input.payload.settings)),
         defaultValue: input.payload.defaultValue !== undefined ? toJsonValue(input.payload.defaultValue) : undefined
       }
     });
@@ -631,7 +715,16 @@ export class WorkspaceConfigService {
 
     await this.replaceCustomFieldScopes(input.workspaceId, field.id, scopeIds);
 
-    return this.getCustomFieldOrFail(field.id, input.workspaceId);
+    const serialized = await this.getCustomFieldOrFail(field.id, input.workspaceId);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'custom_field',
+      entityId: field.id,
+      action: 'create',
+      after: serialized
+    });
+    return serialized;
   }
 
   public async updateCustomField(input: {
@@ -709,7 +802,12 @@ export class WorkspaceConfigService {
         isRemovable: input.payload.isRemovable,
         position: input.payload.order,
         isActive: input.payload.isActive,
-        settings: input.payload.settings !== undefined ? toJsonValue(input.payload.settings) : undefined,
+        settings: input.payload.settings !== undefined || input.payload.type === 'billing_summary'
+          ? toJsonValue(this.normalizeCustomFieldSettings(
+              input.payload.type ?? mapCustomFieldTypeToInput(current.type),
+              input.payload.settings ?? (isRecord(current.settings) ? current.settings : undefined)
+            ))
+          : undefined,
         defaultValue: input.payload.defaultValue !== undefined ? toJsonValue(input.payload.defaultValue) : undefined
       }
     });
@@ -722,7 +820,17 @@ export class WorkspaceConfigService {
       await this.replaceCustomFieldScopes(input.workspaceId, current.id, input.payload.scopeTypeIds);
     }
 
-    return this.getCustomFieldOrFail(current.id, input.workspaceId);
+    const serialized = await this.getCustomFieldOrFail(current.id, input.workspaceId);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'custom_field',
+      entityId: current.id,
+      action: input.payload.isActive === false ? 'archive' : 'update',
+      before: this.serializeCustomField({ ...current, options: [], scopes: [] }),
+      after: serialized
+    });
+    return serialized;
   }
 
   public async getPreferences(input: { workspaceId: string; userId: string }) {
@@ -813,7 +921,83 @@ export class WorkspaceConfigService {
       });
     }
 
-    return this.serializePreferences(preferences);
+    const serialized = this.serializePreferences(preferences);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'workspace_preferences',
+      entityId: input.workspaceId,
+      action: 'update',
+      before: current ? this.serializePreferences(current) : null,
+      after: serialized
+    });
+    return serialized;
+  }
+
+  public async updateWorkItemListConfig(input: {
+    workspaceId: string;
+    userId: string;
+    workItemTypeId: string;
+    payload: JsonRecord;
+  }) {
+    await this.ensureItemWritableWorkspace(input.workspaceId, input.userId);
+
+    const current = await this.prisma.workspacePreferences.findUnique({ where: { workspaceId: input.workspaceId } });
+    const currentSettings =
+      current?.settings && typeof current.settings === 'object' && !Array.isArray(current.settings)
+        ? (current.settings as JsonRecord)
+        : {};
+    const currentConfigs = isRecord(currentSettings.workItemListConfigsByType)
+      ? currentSettings.workItemListConfigsByType
+      : {};
+    const now = new Date().toISOString();
+    const previousConfig = currentConfigs[input.workItemTypeId] ?? null;
+    const nextConfig = {
+      ...input.payload,
+      workspaceId: input.workspaceId,
+      workItemTypeId: input.workItemTypeId,
+      updatedAt: now,
+      updatedBy: input.userId,
+      createdAt:
+        isRecord(previousConfig) && typeof previousConfig.createdAt === 'string'
+          ? previousConfig.createdAt
+          : typeof input.payload.createdAt === 'string'
+          ? input.payload.createdAt
+          : now
+    };
+    const mergedSettings = {
+      ...currentSettings,
+      workItemListConfigsByType: {
+        ...currentConfigs,
+        [input.workItemTypeId]: nextConfig
+      }
+    };
+
+    const preferences = await this.prisma.workspacePreferences.upsert({
+      where: { workspaceId: input.workspaceId },
+      create: {
+        workspaceId: input.workspaceId,
+        defaultBoardMode: 'dev',
+        dateFormat: 'dd/mm/yyyy',
+        visibleCardFieldIds: toJsonValue([]),
+        settings: toJsonValue(mergedSettings)
+      },
+      update: {
+        settings: toJsonValue(mergedSettings)
+      }
+    });
+
+    const serialized = this.serializePreferences(preferences);
+    void this.recordConfigAuditEvent({
+      workspaceId: input.workspaceId,
+      actorId: input.userId,
+      entityType: 'work_item_list_config',
+      entityId: `${input.workspaceId}:${input.workItemTypeId}`,
+      action: previousConfig ? 'update' : 'create',
+      before: previousConfig,
+      after: nextConfig
+    });
+    return serialized;
   }
 
   public async resetWorkspaceToTemplate(input: {
@@ -1531,6 +1715,57 @@ export class WorkspaceConfigService {
     };
   }
 
+  private normalizeCustomFieldSettings(type: CustomFieldInputType, settings?: JsonRecord): JsonRecord {
+    const base = settings ?? {};
+    if (type !== 'billing_summary') {
+      return base;
+    }
+
+    return {
+      ...base,
+      publicType: 'billing_summary',
+      billingSummary: isRecord(base.billingSummary)
+        ? base.billingSummary
+        : {
+            currency: 'BRL',
+            sourceFields: [],
+            aggregationMode: 'sum',
+            displayFormat: 'currency',
+            readOnly: true
+          }
+    };
+  }
+
+  private async recordConfigAuditEvent(input: {
+    workspaceId: string;
+    actorId: string;
+    entityType: string;
+    entityId: string;
+    action: string;
+    before?: unknown;
+    after?: unknown;
+  }) {
+    try {
+      await this.prisma.auditEvent.create({
+        data: {
+          eventName: `workspace_config.${input.entityType}.${input.action}`,
+          severity: AuditSeverity.INFO,
+          actorId: input.actorId,
+          workspaceId: input.workspaceId,
+          metadata: toJsonValue({
+            entityType: input.entityType,
+            entityId: input.entityId,
+            action: input.action,
+            before: input.before,
+            after: input.after
+          })
+        }
+      });
+    } catch {
+      // Audit should not block configuration changes.
+    }
+  }
+
   private serializeCustomField(field: {
     id: string;
     workspaceId: string;
@@ -1574,6 +1809,8 @@ export class WorkspaceConfigService {
       type: { id: string; slug: string };
     }>;
   }) {
+    const settings = isRecord(field.settings) ? field.settings : {};
+    const publicType = settings.publicType === 'billing_summary' ? 'billing_summary' : mapCustomFieldTypeToInput(field.type);
     const base = serializeFieldDefinition({
       id: field.id,
       slug: field.slug,
@@ -1582,7 +1819,7 @@ export class WorkspaceConfigService {
       variableKey: field.variableKey,
       variableLabel: field.variableLabel,
       variableDescription: field.variableDescription,
-      type: mapCustomFieldTypeToInput(field.type),
+      type: publicType,
       required: field.required,
       isSystem: field.isSystem,
       isEditable: field.isEditable,

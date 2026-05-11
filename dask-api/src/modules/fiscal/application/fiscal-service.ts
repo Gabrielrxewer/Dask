@@ -197,6 +197,7 @@ export class FiscalService {
     to?: Date;
     search?: string;
     limit?: number;
+    cursor?: string;
   }) {
     return this.repo.listDocuments({
       workspaceId: input.workspaceId,
@@ -210,8 +211,16 @@ export class FiscalService {
       from: input.from,
       to: input.to,
       search: input.search,
-      limit: input.limit
+      limit: input.limit,
+      cursor: input.cursor
     });
+  }
+
+  public async listSyncRuns(
+    workspaceId: string,
+    options: { cursor?: string; pageSize?: number; limit?: number } = {}
+  ) {
+    return this.repo.listLatestSyncRuns(workspaceId, options);
   }
 
   public async getDocumentDetails(
@@ -414,6 +423,7 @@ export class FiscalService {
     to?: Date;
     search?: string;
     limit?: number;
+    cursor?: string;
     customerIds?: string[];
   }) {
     if (input.customerIds) {
@@ -428,16 +438,21 @@ export class FiscalService {
       from: input.from,
       to: input.to,
       search: input.search,
-      limit: input.limit
+      limit: input.limit,
+      cursor: input.cursor
     });
   }
 
-  public async listEmissionDrafts(workspaceId: string, limit?: number, customerIds?: string[]) {
+  public async listEmissionDrafts(
+    workspaceId: string,
+    options?: number | { cursor?: string; pageSize?: number; limit?: number },
+    customerIds?: string[]
+  ) {
     if (customerIds) {
       return [];
     }
 
-    return this.repo.listEmissionDrafts(workspaceId, limit ?? 100);
+    return this.repo.listEmissionDrafts(workspaceId, options ?? { pageSize: 100 });
   }
 
   public async emitDraft(input: { workspaceId: string; draftId: string; requestedByUserId: string }) {
@@ -644,8 +659,11 @@ export class FiscalService {
     }
   }
 
-  public async listCompanyConfigs(workspaceId: string) {
-    return this.repo.listCompanyConfigs(workspaceId);
+  public async listCompanyConfigs(
+    workspaceId: string,
+    options?: { cursor?: string; pageSize?: number; limit?: number; search?: string }
+  ) {
+    return this.repo.listCompanyConfigs(workspaceId, options);
   }
 
   public async createCompanyConfig(input: {

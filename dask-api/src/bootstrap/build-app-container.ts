@@ -53,6 +53,11 @@ import { MarketingService } from '@/modules/marketing/application/marketing-serv
 import { MockMarketingEmailProvider } from '@/modules/marketing/providers/mock-marketing-email-provider';
 import { ResendMarketingEmailProvider } from '@/modules/marketing/providers/resend-marketing-email-provider';
 import { PrismaMarketingRepository } from '@/modules/marketing/repositories/prisma-marketing-repository';
+import { DashboardFiltersService } from '@/modules/dashboard/dashboard-filters-service';
+import { DashboardMetricsService } from '@/modules/dashboard/dashboard-metrics-service';
+import { DashboardQueryService } from '@/modules/dashboard/dashboard-query-service';
+import { PrismaDashboardRepository } from '@/modules/dashboard/dashboard-repository';
+import { DashboardWidgetsService } from '@/modules/dashboard/dashboard-widgets-service';
 import { buildAIProviderStack } from '@/infra/providers/ai/build-ai-provider-stack';
 
 export type AppContainer = {
@@ -90,6 +95,7 @@ export type AppContainer = {
   fiscalService: FiscalService;
   commercialIntakeService: CommercialIntakeService;
   marketingService: MarketingService;
+  dashboardQueryService: DashboardQueryService;
 };
 
 export function buildAppContainer(): AppContainer {
@@ -138,6 +144,7 @@ export function buildAppContainer(): AppContainer {
         stripe: stripeClient,
         appPublicUrl: env.APP_PUBLIC_URL,
         webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        portalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET ?? env.JWT_SECRET,
         emailService,
         eventPublisher,
         priceIds: {
@@ -159,14 +166,6 @@ export function buildAppContainer(): AppContainer {
   const indexingRequestService = new IndexingRequestService(itemsRepository, eventPublisher);
   const hybridSearchService = new HybridSearchService(prisma, embeddingProvider);
   const aiAgentRepository = new PrismaAIAgentRepository(prisma);
-  const aiAgentService = new AIAgentService(
-    prisma,
-    aiAgentRepository,
-    aiProvider,
-    hybridSearchService,
-    roleAuthorizationService,
-    eventPublisher
-  );
   const automationAIService = new AutomationAIService(prisma, aiProvider);
   const automationWorkflowService = new AutomationWorkflowService(prisma);
   const automationWorkflowVersionService = new AutomationWorkflowVersionService(prisma);
@@ -196,6 +195,19 @@ export function buildAppContainer(): AppContainer {
     eventService: automationRunEventService,
     workflowExecutor: automationWorkflowExecutor
   });
+  const aiAgentService = new AIAgentService(
+    prisma,
+    aiAgentRepository,
+    aiProvider,
+    hybridSearchService,
+    roleAuthorizationService,
+    eventPublisher,
+    {
+      workflowService: automationWorkflowService,
+      workflowVersionService: automationWorkflowVersionService,
+      workflowRunnerService: automationWorkflowRunnerService
+    }
+  );
   const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
   const integrationService = new IntegrationService(eventPublisher);
   const auditService = new AuditService(prisma);
@@ -224,8 +236,22 @@ export function buildAppContainer(): AppContainer {
     eventPublisher,
     jobQueue,
     aiProvider,
-    emailProvider: marketingEmailProvider
+    emailProvider: marketingEmailProvider,
+    automationWorkflowService,
+    automationWorkflowVersionService,
+    workspaceWorkItemsService
   });
+  const dashboardFiltersService = new DashboardFiltersService();
+  const dashboardRepository = new PrismaDashboardRepository(prisma);
+  const dashboardMetricsService = new DashboardMetricsService(dashboardRepository);
+  const dashboardWidgetsService = new DashboardWidgetsService(dashboardFiltersService);
+  const dashboardQueryService = new DashboardQueryService(
+    prisma,
+    workspaceConfigService,
+    dashboardFiltersService,
+    dashboardMetricsService,
+    dashboardWidgetsService
+  );
 
   return {
     roleAuthorizationService,
@@ -261,6 +287,7 @@ export function buildAppContainer(): AppContainer {
     billingService,
     fiscalService,
     commercialIntakeService,
-    marketingService
+    marketingService,
+    dashboardQueryService
   };
 }

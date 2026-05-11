@@ -1,2 +1,9 @@
 export * from "./types";
-
+export * from "./fiscal-company.schema";
+export * from "./fiscal-document-draft.schema";
+export * from "./fiscal-issue-document.schema";
+export * from "./fiscal-received-sync.schema";
+export * from "./fiscal-emission-policy.schema";
+export * from "./fiscal-wizard.schema";
+export * from "./fiscal-profile.schema";
+export * from "./fiscal-operation-template.schema";

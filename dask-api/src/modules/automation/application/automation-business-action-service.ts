@@ -77,14 +77,6 @@ function renderTemplate(value: string, context: Record<string, unknown>): string
   });
 }
 
-function asBoolean(value: unknown, fallback = false): boolean {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  return fallback;
-}
-
 function toCurrencyMinorUnit(value: unknown, unit: 'major' | 'minor'): number | null {
   const numberValue = typeof value === 'number'
     ? value

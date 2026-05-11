@@ -626,6 +626,7 @@ model Workspace {
   boards                 Board[]
   templates              BoardTemplate[]
   itemTypes              WorkItemType[]
+  workItemTypeTransformations WorkItemTypeTransformation[]
   workflowStates         WorkflowState[]
   boardColumns           BoardColumn[]
   columnStateMappings    ColumnStateMapping[]
@@ -661,8 +662,10 @@ model Workspace {
   invites                WorkspaceInvite[]
   documents              WorkspaceDocument[]
   documentFolders        WorkspaceDocumentFolder[]
+  documentAssets         DocumentAsset[]
   workItemDocumentLinks  WorkItemDocumentLink[]
   connectPaymentOrders   ConnectPaymentOrder[]
+  billingPortalTokens    BillingPortalToken[]
   connectCatalogItems    ConnectCatalogItem[]
   fiscalCompanyConfigs   FiscalCompanyConfig[]
   fiscalDocuments        FiscalDocument[]
@@ -1349,12 +1352,32 @@ model WorkspaceDocument {
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   itemLinks   WorkItemDocumentLink[]
+  assets      DocumentAsset[]
   marketingAssets MarketingContentAsset[]
 
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])
   @@index([workspaceId, kind, updatedAt])
   @@index([workspaceId, linkedEntityType, linkedEntityId])
+}
+
+model DocumentAsset {
+  id          String    @id @default(uuid())
+  workspaceId String
+  documentId  String
+  type        String
+  storageKey  String    @unique
+  filename    String
+  contentType String
+  size        Int
+  checksum    String
+  uploadedBy  String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  document    WorkspaceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, documentId, type, createdAt])
+  @@index([workspaceId, storageKey])
 }
 
 model WorkspaceDocumentFolder {
@@ -1404,11 +1427,35 @@ model ConnectPaymentOrder {
   updatedAt             DateTime                  @updatedAt
   workspace             Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   customer              Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  portalTokens          BillingPortalToken[]
 
   @@index([workspaceId, createdAt])
   @@index([workspaceId, customerId, createdAt])
   @@index([status, createdAt])
   @@index([stripeConnectAccountId, createdAt])
+}
+
+model BillingPortalToken {
+  id              String   @id @default(uuid())
+  workspaceId     String
+  orderId         String
+  tokenId         String   @unique
+  tokenHash       String   @unique
+  customerEmail   String?
+  scopes          String[] @default([])
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  revokedByUserId String?
+  lastAccessedAt  DateTime?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  metadata        Json?
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  order           ConnectPaymentOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, orderId, createdAt])
+  @@index([workspaceId, expiresAt])
+  @@index([orderId, revokedAt])
 }
 
 model ConnectCatalogItem {
@@ -1876,6 +1923,8 @@ model WorkItemType {
   items               Item[]
   customFieldScopes   CustomFieldScope[]
   fieldBindings       WorkItemFieldBinding[]
+  transformationsFrom WorkItemTypeTransformation[] @relation("WorkItemTypeTransformationFrom")
+  transformationsTo   WorkItemTypeTransformation[] @relation("WorkItemTypeTransformationTo")
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, isActive])
@@ -1900,6 +1949,31 @@ model WorkflowState {
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, isActive])
+}
+
+model WorkItemTypeTransformation {
+  id                     String   @id @default(uuid())
+  workspaceId            String
+  fromTypeId             String
+  toTypeId               String
+  name                   String
+  description            String?
+  enabled                Boolean  @default(true)
+  mode                   String   @default("same_work_item_type_change")
+  fieldCompatibilityMode String   @default("strict_superset")
+  defaultValuesForNewFields Json?
+  stateMapping           Json?
+  permission             String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  fromType               WorkItemType @relation("WorkItemTypeTransformationFrom", fields: [fromTypeId], references: [id], onDelete: Cascade)
+  toType                 WorkItemType @relation("WorkItemTypeTransformationTo", fields: [toTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, fromTypeId, toTypeId, mode])
+  @@index([workspaceId, enabled])
+  @@index([workspaceId, fromTypeId])
+  @@index([workspaceId, toTypeId])
 }
 
 model BoardColumn {

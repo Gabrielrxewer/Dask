@@ -71,223 +71,27 @@
 
 .acp__field {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
-.acp__field-label {
+.acp .shared-form-field__label {
   font-size: var(--font-size-xs);
-  font-weight: 800;
-  color: var(--text-soft, var(--text-secondary));
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.acp__field-hint {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  line-height: 1.4;
+  font-weight: 760;
+  color: var(--text-strong);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* ── Controls ───────────────────────────────────────────────────────────────── */
 
-.acp__input,
-.acp__textarea,
-.acp__select {
-  width: 100%;
-  padding: 9px 11px;
-  border-radius: 9px;
-  border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
-  background: var(--surface-overlay, var(--neutral-white));
-  color: var(--text-strong, var(--foreground));
-  font-size: var(--font-size-sm);
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--neutral-black) 4%, transparent);
-}
-
-.acp__input:focus,
-.acp__textarea:focus,
-.acp__select:focus {
-  border-color: var(--acp-color);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 15%, transparent);
-}
-
-.acp__input:disabled,
-.acp__textarea:disabled,
-.acp__select:disabled {
-  color: var(--text-muted);
-  background: color-mix(in oklab, var(--line, var(--border-default)) 18%, var(--surface-overlay, var(--neutral-white)));
-  cursor: not-allowed;
-}
-
-.acp__input[type="number"] {
-  appearance: textfield;
-}
-
-.acp__textarea {
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.acp__select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 14px;
-  padding-right: 32px;
-  cursor: pointer;
-}
-
 /* ── Toggle ─────────────────────────────────────────────────────────────────── */
-
-.acp__toggle {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-soft, var(--text-secondary));
-  cursor: pointer;
-  user-select: none;
-}
-
-.acp__toggle--disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.acp__toggle-track {
-  width: 34px;
-  height: 20px;
-  border-radius: 20px;
-  background: color-mix(in oklab, var(--line, var(--border-default)) 80%, transparent);
-  border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 60%, transparent);
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  cursor: pointer;
-  transition: background 0.18s, border-color 0.18s;
-  flex-shrink: 0;
-  outline: none;
-}
-
-.acp__toggle-track--on {
-  background: var(--acp-color);
-  border-color: var(--acp-color);
-}
-
-.acp__toggle-track:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 20%, transparent);
-}
-
-.acp__toggle-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--neutral-white);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--neutral-black) 20%, transparent);
-  transition: transform 0.18s ease;
-}
-
-.acp__toggle-track--on .acp__toggle-thumb {
-  transform: translateX(14px);
-}
 
 /* ── Tool list ──────────────────────────────────────────────────────────────── */
 
-.acp__tool-list {
-  display: grid;
-  gap: 6px;
-}
-
-.acp__tool-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 9px;
-  border: 1.5px solid color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
-  background: var(--surface-overlay, var(--neutral-white));
-  cursor: pointer;
-  transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
-  text-align: left;
-}
-
-.acp__tool-item:hover {
-  border-color: color-mix(in oklab, var(--acp-color) 40%, var(--line, var(--border-default)));
-  background: color-mix(in oklab, var(--acp-color) 5%, var(--surface-overlay, var(--neutral-white)));
-}
-
-.acp__tool-item--active {
-  border-color: var(--acp-color);
-  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, var(--neutral-white)));
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--acp-color) 15%, transparent);
-}
-
-.acp__tool-label {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--text-strong, var(--foreground));
-}
-
-.acp__tool-group {
-  font-size: var(--font-size-2xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
 /* ── Info box ───────────────────────────────────────────────────────────────── */
-
-.acp__info-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 9px;
-  background: color-mix(in oklab, var(--acp-color) 8%, var(--surface-overlay, var(--surface-tint)));
-  border: 1px solid color-mix(in oklab, var(--acp-color) 20%, transparent);
-  color: var(--text-soft, var(--text-secondary));
-  font-size: var(--font-size-xs);
-  line-height: 1.45;
-}
-
-.acp__info-box svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  margin-top: 1px;
-  color: var(--acp-color);
-  opacity: 0.8;
-}
-
-.acp__info-box strong {
-  font-weight: 700;
-  color: var(--text-strong, var(--foreground));
-}
 
 /* ── Dark mode ──────────────────────────────────────────────────────────────── */
 
 .app-theme[data-theme="dark"] .acp {
   --acp-surface: var(--surface-raised, var(--text-primary));
-}
-
-.app-theme[data-theme="dark"] .acp__input,
-.app-theme[data-theme="dark"] .acp__textarea,
-.app-theme[data-theme="dark"] .acp__select {
-  background: var(--surface-elevated, var(--primary));
-  border-color: var(--line, var(--text-secondary));
-  color: var(--text-primary, var(--secondary));
-}
-
-.app-theme[data-theme="dark"] .acp__tool-item {
-  background: var(--surface-elevated, var(--primary));
-  border-color: var(--line, var(--text-secondary));
-}
-
-.app-theme[data-theme="dark"] .acp__tool-label {
-  color: var(--text-primary, var(--secondary));
 }

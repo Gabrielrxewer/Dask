@@ -250,6 +250,22 @@
   cursor: help;
 }
 
+.agenda-view__info-button {
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in oklab, var(--agenda-accent) 28%, var(--agenda-line));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--agenda-accent) 8%, var(--agenda-surface));
+  color: var(--agenda-accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: help;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
 .agenda-view__info > span {
   position: absolute;
   top: calc(100% + 8px);
@@ -566,6 +582,45 @@
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+}
+
+.agenda-view__event--draggable {
+  cursor: grab;
+}
+
+.agenda-view__event--draggable:active {
+  cursor: grabbing;
+}
+
+.agenda-view__event--dragging {
+  opacity: 0.42;
+}
+
+.agenda-view__event--overlay {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  width: 240px !important;
+  min-height: 72px;
+  pointer-events: none;
+  transform: rotate(1deg);
+}
+
+.agenda-view__drop-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  pointer-events: auto;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  z-index: 1;
+}
+
+.agenda-view__drop-slot--active {
+  border-color: color-mix(in oklab, var(--agenda-accent) 38%, transparent);
+  background: color-mix(in oklab, var(--agenda-accent) 13%, transparent);
 }
 
 .agenda-view__event strong {

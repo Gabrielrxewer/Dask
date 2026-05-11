@@ -1,7 +1,7 @@
 import type { Task } from "@/entities/task";
 import { getCustomerDisplayName, type Customer } from "@/modules/workspace";
 import { formatMoney } from "@/shared/lib/money";
-import { Button, FormModal } from "@/shared/ui";
+import { AppDialog, Button } from "@/shared/ui";
 import { CUSTOMER_STATUS_LABELS, formatCustomerAddress, getNumberField, getTextField } from "./leads-page.model";
 
 export function CustomerDetailModal({
@@ -22,16 +22,19 @@ export function CustomerDetailModal({
   const linkedTasks = commercialTasks.filter((t) => getTextField(t, "customerId") === customer.id);
 
   return (
-    <FormModal
-      titleId="customer-detail-modal"
+    <AppDialog
+      open
       title="Detalhes do cliente"
-      onClose={onClose}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
       className="leads-page__modal"
-      headerClassName="leads-page__modal-header"
-      titleWrapperClassName="leads-page__modal-title"
       contentClassName="leads-page__modal-content"
-      footerClassName="leads-page__row-actions"
-      footer={<Button onClick={() => onNewLead(customer)}>Novo lead para este cliente</Button>}
+      footer={
+        <div className="leads-page__row-actions">
+          <Button onClick={() => onNewLead(customer)}>Novo lead para este cliente</Button>
+        </div>
+      }
     >
         <div className="leads-page__customer-detail">
           <div className="leads-customer-avatar leads-customer-avatar--lg">
@@ -66,6 +69,6 @@ export function CustomerDetailModal({
                 );
               })}
         </ul>
-    </FormModal>
+    </AppDialog>
   );
 }

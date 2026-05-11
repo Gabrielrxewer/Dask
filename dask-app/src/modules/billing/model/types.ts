@@ -35,14 +35,22 @@ export interface BillingPlan {
 export interface ConnectAccountStatus {
   workspaceId: string;
   stripeAccountId: string;
+  controllerType: string | null;
+  dashboardType: string | null;
+  requirementCollection: string | null;
+  disabledReason: string | null;
   detailsSubmitted: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   cardPaymentsStatus: string | null;
   pixPaymentsStatus: string | null;
   boletoPaymentsStatus: string | null;
+  capabilities: Record<string, string | null>;
   onboardingComplete: boolean;
   requirementsDue: string[];
+  requirementsPastDue: string[];
+  requirementsEventuallyDue: string[];
+  requirementsPendingVerification: string[];
 }
 
 export interface CreateConnectCheckoutSessionInput {
@@ -57,6 +65,9 @@ export interface CreateConnectCheckoutSessionInput {
   applicationFeeAmount?: number;
   successUrl?: string;
   cancelUrl?: string;
+  sourceWorkItemId?: string;
+  hasProposalOrContract?: boolean;
+  justification?: string;
   metadata?: Record<string, string>;
 }
 
@@ -136,4 +147,10 @@ export interface BillingState {
   loadState: BillingLoadState;
   status: BillingStatus | null;
   error: string | null;
+}
+
+export interface BillingPortalToken {
+  url: string;
+  expiresAt: string;
+  scopes: Array<"view" | "pay" | "download_receipt" | "download_fiscal_document">;
 }

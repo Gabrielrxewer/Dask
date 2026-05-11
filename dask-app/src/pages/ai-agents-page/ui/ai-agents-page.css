@@ -247,6 +247,12 @@
   margin: 8px;
 }
 
+.ab-error--runtime {
+  background: color-mix(in oklab, var(--success) 10%, var(--panel));
+  border-color: color-mix(in oklab, var(--success) 42%, var(--line));
+  color: var(--success);
+}
+
 /* ── Canvas area ─────────────────────────────────────────────────────────────── */
 
 .ab-page .studio-layout__canvas {

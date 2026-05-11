@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { buildTaskTypeMetaMap, getTaskTypeDisplayMeta } from "@/entities/task";
-import { ModalShell, StatusBadge } from "@/shared/ui";
+import { AppDialog, StatusBadge } from "@/shared/ui";
 import {
   getStateLabel,
   toAgendaDayLabel,
@@ -23,17 +23,22 @@ export function AgendaSlotModal({
   onClose,
   onSelectTask
 }: AgendaSlotModalProps) {
+  const description = `${slotInspection.rowKind === "person" ? "Pessoa" : "Recurso"} - ${toAgendaDayLabel(slotInspection.slotStart)} - ${toHourLabel(slotInspection.slotStart)} - ${toHourLabel(slotInspection.slotEnd)}`;
+
   return (
-    <ModalShell titleId="agenda-slot-title" className="agenda-slot-modal" onClose={onClose}>
+    <AppDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+      title={slotInspection.rowLabel}
+      description={description}
+      className="agenda-slot-modal"
+    >
       <div className="agenda-slot-modal__content">
         <div className="agenda-slot-modal__header">
-          <div>
-            <h2 id="agenda-slot-title">{slotInspection.rowLabel}</h2>
-            <p>
-              {slotInspection.rowKind === "person" ? "Pessoa" : "Recurso"} • {toAgendaDayLabel(slotInspection.slotStart)} •{" "}
-              {`${toHourLabel(slotInspection.slotStart)} - ${toHourLabel(slotInspection.slotEnd)}`}
-            </p>
-          </div>
           <StatusBadge tone={slotInspection.state === "conflict" ? "warning" : "default"}>
             {getStateLabel(slotInspection.state, slotInspection.tasks.length)}
           </StatusBadge>
@@ -65,6 +70,6 @@ export function AgendaSlotModal({
           })}
         </div>
       </div>
-    </ModalShell>
+    </AppDialog>
   );
 }

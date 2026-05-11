@@ -17,10 +17,12 @@ import {
   createAutomationFlowDto,
   createCampaignDto,
   createSegmentDto,
+  createSignalFollowUpDto,
   createTemplateDto,
   markSignalDto,
   scheduleCampaignDto,
   segmentParamsDto,
+  sendTemplateTestEmailDto,
   sendTestEmailDto,
   signalEventParamsDto,
   signalInboxQueryDto,
@@ -48,6 +50,7 @@ export const buildMarketingRoutes = (deps: {
   const requireSegmentManage = requireWorkspacePermission(deps.authorizationService, 'marketing.segment.manage');
   const requireAnalytics = requireWorkspacePermission(deps.authorizationService, 'marketing.analytics.view');
   const requireSenderConfig = requireWorkspacePermission(deps.authorizationService, 'marketing.sender.manage');
+  const requireItemCreate = requireWorkspacePermission(deps.authorizationService, 'item.create');
 
   router.use('/marketing/workspaces/:workspaceId', resolveWorkspaceScope, requireWorkspaceModule('marketing'));
 
@@ -397,6 +400,49 @@ export const buildMarketingRoutes = (deps: {
       const payload = markSignalDto.parse(req.body ?? {});
       await deps.marketingService.markSignal({ workspaceId, eventId, action: payload.action });
       res.status(204).end();
+    })
+  );
+
+  router.post(
+    '/marketing/workspaces/:workspaceId/templates/:templateId/send-test',
+    requireTemplateManage,
+    requireCampaignSend,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, templateId } = templateParamsDto.parse(req.params);
+      const payload = sendTemplateTestEmailDto.parse(req.body ?? {});
+      const result = await deps.marketingService.sendTemplateTestEmail({
+        workspaceId,
+        templateId,
+        to: payload.to,
+        variables: payload.variables,
+        actorUserId: req.auth?.userId ?? null
+      });
+      res.status(200).json(result);
+    })
+  );
+
+  router.post(
+    '/marketing/workspaces/:workspaceId/signals/:eventId/follow-up',
+    requireMarketingView,
+    requireItemCreate,
+    asyncHandler(async (req, res) => {
+      const { workspaceId, eventId } = signalEventParamsDto.parse(req.params);
+      const payload = createSignalFollowUpDto.parse(req.body ?? {});
+      const result = await deps.marketingService.createSignalFollowUp({
+        workspaceId,
+        eventId,
+        leadId: payload.leadId,
+        title: payload.title,
+        description: payload.description,
+        dueAt: payload.dueAt ?? null,
+        priority: payload.priority,
+        createWorkItem: payload.createWorkItem,
+        boardId: payload.boardId,
+        workflowStateId: payload.workflowStateId,
+        assigneeId: payload.assigneeId ?? null,
+        actorUserId: req.auth?.userId ?? null
+      });
+      res.status(201).json(result);
     })
   );
 

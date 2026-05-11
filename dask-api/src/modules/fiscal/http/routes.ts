@@ -5,6 +5,7 @@ import { AppError } from '@/core/errors/app-error';
 import {
   requireWorkspaceModule,
   requireWorkspacePermission,
+  requireWorkspaceRole,
   workspaceScopeMiddleware
 } from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
@@ -14,10 +15,12 @@ import {
   createFiscalCompanyConfigDto,
   createFiscalDocumentDto,
   fiscalCompanyParamsDto,
+  fiscalCompaniesQueryDto,
   fiscalDraftParamsDto,
   fiscalDraftsQueryDto,
   fiscalDocumentParamsDto,
   fiscalDocumentsQueryDto,
+  fiscalSyncRunsQueryDto,
   receivedQueryDto,
   syncReceivedDto,
   updateFiscalCompanyConfigDto,
@@ -51,6 +54,18 @@ const sanitizeCompanyConfig = <T extends { focusToken: string | null }>(item: T)
   focusToken: maskFocusToken(item.focusToken)
 });
 
+function resolvePageSize(input: { pageSize?: number; limit?: number }, fallback = 50): number {
+  return Math.max(1, Math.min(input.pageSize ?? input.limit ?? fallback, 200));
+}
+
+function toCursorPage<T extends { id: string }>(items: T[], pageSize: number): { items: T[]; nextCursor: string | null } {
+  const pageItems = items.slice(0, pageSize);
+  return {
+    items: pageItems,
+    nextCursor: items.length > pageSize ? pageItems[pageItems.length - 1]?.id ?? null : null
+  };
+}
+
 export const buildFiscalRoutes = (deps: {
   prisma: PrismaClient;
   authorizationService: AuthorizationService;
@@ -61,7 +76,10 @@ export const buildFiscalRoutes = (deps: {
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
   const requireFiscalRead = requireWorkspacePermission(deps.authorizationService, 'fiscal.read');
   const requireFiscalIssue = requireWorkspacePermission(deps.authorizationService, 'fiscal.issue');
-  const requireFiscalConfig = requireWorkspacePermission(deps.authorizationService, 'fiscal.config');
+  const requireFiscalConfig = [
+    requireWorkspaceRole('OWNER'),
+    requireWorkspacePermission(deps.authorizationService, 'fiscal.config')
+  ];
   const resolveClientCustomerIds = async (
     req: { workspace?: { role?: string }; auth?: { userId?: string } },
     workspaceId: string
@@ -109,8 +127,13 @@ export const buildFiscalRoutes = (deps: {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
       const query = fiscalDraftsQueryDto.parse(req.query ?? {});
       const customerIds = await resolveClientCustomerIds(req, workspaceId);
-      const items = await deps.fiscalService.listEmissionDrafts(workspaceId, query.limit, customerIds);
-      res.status(200).json({ items });
+      const pageSize = resolvePageSize(query, 50);
+      const items = await deps.fiscalService.listEmissionDrafts(
+        workspaceId,
+        { cursor: query.cursor, pageSize: pageSize + 1 },
+        customerIds
+      );
+      res.status(200).json(toCursorPage(items, pageSize));
     })
   );
 
@@ -134,6 +157,7 @@ export const buildFiscalRoutes = (deps: {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
       const query = fiscalDocumentsQueryDto.parse(req.query ?? {});
       const customerIds = await resolveClientCustomerIds(req, workspaceId);
+      const pageSize = resolvePageSize(query, 50);
       const documents = await deps.fiscalService.listDocuments({
         workspaceId,
         workspaceBusinessId: query.workspaceBusinessId,
@@ -146,10 +170,11 @@ export const buildFiscalRoutes = (deps: {
         from: query.from ? new Date(query.from) : undefined,
         to: query.to ? new Date(query.to) : undefined,
         search: query.search,
-        limit: query.limit
+        limit: pageSize + 1,
+        cursor: query.cursor
       });
 
-      res.status(200).json({ items: documents });
+      res.status(200).json(toCursorPage(documents, pageSize));
     })
   );
 
@@ -255,6 +280,7 @@ export const buildFiscalRoutes = (deps: {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
       const query = receivedQueryDto.parse(req.query ?? {});
       const customerIds = await resolveClientCustomerIds(req, workspaceId);
+      const pageSize = resolvePageSize(query, 50);
       const items = await deps.fiscalService.listReceivedDocuments({
         workspaceId,
         workspaceBusinessId: query.workspaceBusinessId,
@@ -263,11 +289,12 @@ export const buildFiscalRoutes = (deps: {
         search: query.search,
         from: query.from ? new Date(query.from) : undefined,
         to: query.to ? new Date(query.to) : undefined,
-        limit: query.limit,
+        limit: pageSize + 1,
+        cursor: query.cursor,
         customerIds
       });
 
-      res.status(200).json({ items });
+      res.status(200).json(toCursorPage(items, pageSize));
     })
   );
 
@@ -290,14 +317,35 @@ export const buildFiscalRoutes = (deps: {
   );
 
   router.get(
+    '/fiscal/workspaces/:workspaceId/sync-runs',
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceParamsDto.parse(req.params);
+      const query = fiscalSyncRunsQueryDto.parse(req.query ?? {});
+      const pageSize = resolvePageSize(query, 50);
+      const items = await deps.fiscalService.listSyncRuns(workspaceId, {
+        cursor: query.cursor,
+        pageSize: pageSize + 1
+      });
+
+      res.status(200).json(toCursorPage(items, pageSize));
+    })
+  );
+
+  router.get(
     '/fiscal/workspaces/:workspaceId/companies',
     requireFiscalConfig,
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceParamsDto.parse(req.params);
-      const items = await deps.fiscalService.listCompanyConfigs(workspaceId);
+      const query = fiscalCompaniesQueryDto.parse(req.query ?? {});
+      const pageSize = resolvePageSize(query, 50);
+      const items = await deps.fiscalService.listCompanyConfigs(workspaceId, {
+        cursor: query.cursor,
+        pageSize: pageSize + 1,
+        search: query.search
+      });
       const sanitized = items.map((item) => sanitizeCompanyConfig(item));
 
-      res.status(200).json({ items: sanitized });
+      res.status(200).json(toCursorPage(sanitized, pageSize));
     })
   );
 

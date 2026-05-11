@@ -55,6 +55,24 @@ export interface FiscalDashboardResponse {
   }>;
 }
 
+export interface FiscalSyncRun {
+  id: string;
+  workspaceId: string;
+  companyConfigId: string | null;
+  syncType: string;
+  trigger: string;
+  status: string;
+  processedCount: number;
+  createdCount: number;
+  updatedCount: number;
+  failedCount: number;
+  lastError: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FiscalDocumentItem {
   id: string;
   itemType: "PRODUCT" | "SERVICE";
@@ -329,4 +347,3 @@ export interface CreateFiscalDocumentInput {
     metadata?: Record<string, unknown> | null;
   }>;
 }
-

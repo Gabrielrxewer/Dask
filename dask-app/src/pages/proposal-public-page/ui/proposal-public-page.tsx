@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth";
-import { interpolateDocumentTemplate } from "@/modules/workspace";
+import {
+  CommercialDocumentRenderer,
+  resolveDocumentMarkdown,
+  usePublicCommercialDocumentDecisionMutation,
+  usePublicCommercialDocumentQuery
+} from "@/modules/documentation";
 import { AppIcon, Button } from "@/shared/ui";
 import { isApiError } from "@/shared/api/http-client";
-import { publicCommercialDocumentService, type PublicCommercialDocument } from "@/pages/proposal-public-page/api/public-commercial-document-service";
+import type { PublicCommercialDocument } from "@/pages/proposal-public-page/api/public-commercial-document-service";
 import "./proposal-public-page.css";
 
 type LoadState = "loading" | "ready" | "invalid" | "expired" | "revoked" | "error";
@@ -43,43 +45,6 @@ function getPositiveDecision(document: PublicCommercialDocument) {
     : { action: "accept" as const, label: "Aceitar contrato", nextStatus: "accepted" as const };
 }
 
-function renderMarkdown(document: PublicCommercialDocument): string {
-  if (document.masked) {
-    return "";
-  }
-
-  const metadataVars = Object.entries(document.metadata ?? {}).reduce<Record<string, string>>((acc, [key, value]) => {
-    if ((typeof value === "string" || typeof value === "number" || typeof value === "boolean") && String(value).trim()) {
-      acc[key] = String(value);
-    }
-    return acc;
-  }, {});
-
-  return interpolateDocumentTemplate(document.content, metadataVars).replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "");
-}
-
-function markdownUrlTransform(url: string): string {
-  const trimmedUrl = url.trim();
-  const normalizedUrl = trimmedUrl.toLowerCase();
-
-  if (
-    normalizedUrl.startsWith("data:image/") ||
-    trimmedUrl.startsWith("#") ||
-    trimmedUrl.startsWith("/") ||
-    trimmedUrl.startsWith("./") ||
-    trimmedUrl.startsWith("../")
-  ) {
-    return trimmedUrl;
-  }
-
-  try {
-    const protocol = new URL(trimmedUrl).protocol;
-    return ["http:", "https:", "mailto:", "tel:"].includes(protocol) ? trimmedUrl : "";
-  } catch {
-    return trimmedUrl;
-  }
-}
-
 function getPrimaryRecipientEmail(document: PublicCommercialDocument): string {
   return document.recipientEmails?.[0] ?? document.recipientEmail ?? "";
 }
@@ -112,6 +77,8 @@ export function ProposalPublicPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const publicDocumentQuery = usePublicCommercialDocumentQuery(token);
+  const publicDecisionMutation = usePublicCommercialDocumentDecisionMutation();
   const [document, setDocument] = useState<PublicCommercialDocument | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [acceptedReading, setAcceptedReading] = useState(false);
@@ -122,32 +89,63 @@ export function ProposalPublicPage() {
     if (!auth.initialized || auth.status === "refreshing" || auth.status === "initializing") {
       return;
     }
+    void publicDocumentQuery.refetch();
+  }, [auth.initialized, auth.status, auth.user?.email, publicDocumentQuery.refetch]);
 
-    let active = true;
-    setLoadState("loading");
+  useEffect(() => {
     setDecisionError(null);
-
-    publicCommercialDocumentService
-      .getByToken(token)
-      .then((result) => {
-        if (!active) return;
-        setDocument(result);
-        setLoadState("ready");
-      })
-      .catch((error) => {
-        if (!active) return;
-        setDocument(null);
-        setLoadState(normalizeErrorState(error));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [auth.initialized, auth.status, auth.user?.email, token]);
+    if (publicDocumentQuery.isLoading || publicDocumentQuery.isFetching) {
+      setLoadState("loading");
+      return;
+    }
+    if (publicDocumentQuery.data) {
+      setDocument(publicDocumentQuery.data);
+      setLoadState("ready");
+      return;
+    }
+    if (publicDocumentQuery.error) {
+      setDocument(null);
+      setLoadState(normalizeErrorState(publicDocumentQuery.error));
+    }
+  }, [publicDocumentQuery.data, publicDocumentQuery.error, publicDocumentQuery.isFetching, publicDocumentQuery.isLoading]);
 
   const documentLabel = getDocumentLabel(document);
   const positiveDecision = document ? getPositiveDecision(document) : null;
-  const renderedMarkdown = useMemo(() => (document ? renderMarkdown(document) : ""), [document]);
+  const renderedDocument = useMemo(() => {
+    if (!document || document.masked) {
+      return { markdown: "", diagnostics: [] };
+    }
+    const resolved = resolveDocumentMarkdown(document.content, {
+      document: {
+        id: "public",
+        workspaceId: "public",
+        title: document.title,
+        content: document.content,
+        kind: document.kind,
+        tags: [],
+        metadata: document.metadata,
+        position: 0,
+        createdBy: "",
+        updatedBy: null,
+        createdAt: "",
+        updatedAt: ""
+      },
+      workspace: {
+        id: "public",
+        name: document.workspace.name,
+        currentUserId: "",
+        membersById: {},
+        tasks: [],
+        boardConfig: { columns: [] },
+        automations: [],
+        preferences: {}
+      } as never
+    });
+    return {
+      ...resolved,
+      markdown: resolved.markdown.replace(/!\[Logo do cliente\]\(\s*\)\s*/g, "")
+    };
+  }, [document]);
   const isFinal = Boolean(document && finalStatuses.has(document.status));
   const isAuthenticatedRecipient = Boolean(
     document &&
@@ -171,7 +169,7 @@ export function ProposalPublicPage() {
   }
 
   async function submitDecision(decision: "approve" | "accept" | "reject") {
-    if (!document || decisionState === "submitting") {
+    if (!document || decisionState === "submitting" || publicDecisionMutation.isPending) {
       return;
     }
 
@@ -189,7 +187,7 @@ export function ProposalPublicPage() {
     setDecisionError(null);
 
     try {
-      await publicCommercialDocumentService.decide(token, decision);
+      await publicDecisionMutation.mutateAsync({ publicAccessId: token, decision });
       setDocument((current) =>
         current
           ? {
@@ -205,6 +203,7 @@ export function ProposalPublicPage() {
       setDecisionState("success");
     } catch (error) {
       if (isApiError(error) && error.status === 401) {
+        publicDecisionMutation.reset();
         goToAuth();
         return;
       }
@@ -279,9 +278,10 @@ export function ProposalPublicPage() {
           aria-label={`${documentLabel} para leitura`}
         >
           {!document.masked ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={markdownUrlTransform}>
-              {renderedMarkdown.trim().length > 0 ? renderedMarkdown : "_Sem conteudo._"}
-            </ReactMarkdown>
+            <CommercialDocumentRenderer
+              markdown={renderedDocument.markdown.trim().length > 0 ? renderedDocument.markdown : "_Sem conteudo._"}
+              diagnostics={renderedDocument.diagnostics}
+            />
           ) : null}
           {document.masked && (
             <div className="proposal-public-page__document-guard">
@@ -326,19 +326,19 @@ export function ProposalPublicPage() {
                   <span>Li e aceito os termos deste documento.</span>
                 </label>
 
-                {decisionError ? <p className="proposal-public-page__error">{decisionError}</p> : null}
+                {decisionError ? <p className="proposal-public-page__error" role="alert">{decisionError}</p> : null}
 
                 <div className="proposal-public-page__actions">
                   <Button
                     variant="primary"
-                    disabled={!acceptedReading || decisionState === "submitting"}
+                    disabled={!acceptedReading || decisionState === "submitting" || publicDecisionMutation.isPending}
                     onClick={() => positiveDecision && void submitDecision(positiveDecision.action)}
                   >
-                    {decisionState === "submitting" ? "Registrando..." : positiveDecision?.label}
+                    {decisionState === "submitting" || publicDecisionMutation.isPending ? "Registrando..." : positiveDecision?.label}
                   </Button>
                   <Button
                     variant="outline"
-                    disabled={decisionState === "submitting"}
+                    disabled={decisionState === "submitting" || publicDecisionMutation.isPending}
                     onClick={() => void submitDecision("reject")}
                   >
                     Recusar
@@ -354,7 +354,9 @@ export function ProposalPublicPage() {
             ) : null}
 
             {decisionState === "success" ? (
-              <p className="proposal-public-page__success">Decisao registrada com sucesso.</p>
+              <p className="proposal-public-page__success" role="status" aria-live="polite">
+                Decisao registrada com sucesso.
+              </p>
             ) : null}
           </aside>
         )}

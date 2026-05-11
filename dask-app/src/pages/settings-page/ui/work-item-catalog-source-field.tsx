@@ -1,15 +1,15 @@
-import { FormField } from "@/shared/ui";
+import { AppSelect, FormField } from "@/shared/ui";
 
 export function CatalogSourceField() {
   return (
     <FormField label="Fonte das opções">
-      <select
+      <AppSelect
         className="wie__props-select"
         value="billing_catalog_item"
-        onChange={() => undefined}
-      >
-        <option value="billing_catalog_item">Catálogo de cobrança</option>
-      </select>
+        onValueChange={() => undefined}
+        aria-label="Fonte das opções"
+        items={[{ value: "billing_catalog_item", label: "Catálogo de cobrança" }]}
+      />
     </FormField>
   );
 }

@@ -18,6 +18,8 @@ import {
   createAiAgentDto,
   patchAiAgentDto,
   listAiRunsQueryDto,
+  publishAiAgentRuntimeDto,
+  runAiAgentRuntimeDto,
   runAgentOnItemDto,
   runRiskAnalysisDto,
   runDocumentationAssistantDto
@@ -32,6 +34,9 @@ export const buildAiRoutes = (deps: {
   const router = Router();
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
   const requireAiUse = requireWorkspacePermission(deps.authorizationService, 'ai.use');
+  const requireAiConfigure = requireWorkspacePermission(deps.authorizationService, 'ai.configure');
+  const requireAutomationPublish = requireWorkspacePermission(deps.authorizationService, 'automation.workflows.publish');
+  const requireAutomationRun = requireWorkspacePermission(deps.authorizationService, 'automation.workflows.run');
   const requireAiModule = requireWorkspaceModule('ai');
 
   router.use('/ai/workspaces/:workspaceId', resolveWorkspaceScope, requireAiUse, requireAiModule);
@@ -67,12 +72,14 @@ export const buildAiRoutes = (deps: {
 
   router.post(
     '/ai/workspaces/:workspaceId/agents',
+    requireAiConfigure,
     asyncHandler(async (req, res) => {
       const { workspaceId } = aiWorkspaceParamsDto.parse(req.params);
       const payload = createAiAgentDto.parse(req.body);
       const agent = await deps.aiAgentService.createAgent({
         workspaceId,
-        ...payload
+        ...payload,
+        requestedBy: req.auth!.userId
       });
       res.status(201).json(agent);
     })
@@ -80,15 +87,79 @@ export const buildAiRoutes = (deps: {
 
   router.patch(
     '/ai/workspaces/:workspaceId/agents/:agentId',
+    requireAiConfigure,
     asyncHandler(async (req, res) => {
       const params = aiWorkspaceAgentParamsDto.parse(req.params);
       const patch = patchAiAgentDto.parse(req.body);
       const agent = await deps.aiAgentService.updateAgent({
         workspaceId: params.workspaceId,
         agentId: params.agentId,
-        patch
+        patch,
+        requestedBy: req.auth!.userId
       });
       res.status(200).json(agent);
+    })
+  );
+
+  router.post(
+    '/ai/workspaces/:workspaceId/agents/:agentId/validate',
+    requireAiConfigure,
+    asyncHandler(async (req, res) => {
+      const params = aiWorkspaceAgentParamsDto.parse(req.params);
+      const validation = await deps.aiAgentService.validateAgentRuntime({
+        workspaceId: params.workspaceId,
+        agentId: params.agentId,
+        requestedBy: req.auth!.userId
+      });
+      res.status(200).json(validation);
+    })
+  );
+
+  router.post(
+    '/ai/workspaces/:workspaceId/agents/:agentId/publish',
+    requireAiConfigure,
+    requireAutomationPublish,
+    asyncHandler(async (req, res) => {
+      const params = aiWorkspaceAgentParamsDto.parse(req.params);
+      const payload = publishAiAgentRuntimeDto.parse(req.body ?? {});
+      const published = await deps.aiAgentService.publishAgentRuntime({
+        workspaceId: params.workspaceId,
+        agentId: params.agentId,
+        requestedBy: req.auth!.userId,
+        activateWorkflow: payload.activateWorkflow
+      });
+      res.status(200).json(published);
+    })
+  );
+
+  router.post(
+    '/ai/workspaces/:workspaceId/agents/:agentId/run',
+    requireAutomationRun,
+    asyncHandler(async (req, res) => {
+      const params = aiWorkspaceAgentParamsDto.parse(req.params);
+      const payload = runAiAgentRuntimeDto.parse(req.body ?? {});
+      const run = await deps.aiAgentService.runAgentRuntime({
+        workspaceId: params.workspaceId,
+        agentId: params.agentId,
+        requestedBy: req.auth!.userId,
+        instruction: payload.instruction,
+        context: payload.context
+      });
+      res.status(202).json(run);
+    })
+  );
+
+  router.post(
+    '/ai/workspaces/:workspaceId/agents/:agentId/archive',
+    requireAiConfigure,
+    asyncHandler(async (req, res) => {
+      const params = aiWorkspaceAgentParamsDto.parse(req.params);
+      const archived = await deps.aiAgentService.archiveAgent({
+        workspaceId: params.workspaceId,
+        agentId: params.agentId,
+        requestedBy: req.auth!.userId
+      });
+      res.status(200).json(archived);
     })
   );
 

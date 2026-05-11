@@ -4,7 +4,7 @@ import type { MembersById } from "@/entities/member";
 import type { CreateTaskInput } from "@/modules/workspace";
 import { TaskTypeIcon, resolveTaskTypeIconName } from "@/entities/task/ui/task-type-icon";
 import { cn } from "@/shared/lib/cn";
-import { AppIcon, Button, ModalShell, WorkspaceActionButton } from "@/shared/ui";
+import { AppDialog, AppIcon, Button, WorkspaceActionButton } from "@/shared/ui";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import "./create-task-button.css";
 
@@ -59,7 +59,15 @@ function TaskTypePickerDialog({ taskTypes, onClose, onSelect }: TaskTypePickerDi
   const typeCountLabel = formatTaskTypeCountLabel(taskTypes.length);
 
   return (
-    <ModalShell titleId="create-work-item-type-title" className="create-task-type-modal" onClose={onClose}>
+    <AppDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      className="create-task-type-modal"
+      bodyClassName="create-task-type-modal__dialog-body"
+      showClose={false}
+    >
       <div className="create-task-type-modal__surface">
         <header className="create-task-type-modal__header">
           <div className="create-task-type-modal__header-main">
@@ -136,7 +144,7 @@ function TaskTypePickerDialog({ taskTypes, onClose, onSelect }: TaskTypePickerDi
           </Button>
         </footer>
       </div>
-    </ModalShell>
+    </AppDialog>
   );
 }
 

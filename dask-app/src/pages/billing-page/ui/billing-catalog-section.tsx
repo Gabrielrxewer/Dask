@@ -1,38 +1,48 @@
-import { useMemo, useState, type ReactNode } from "react";
-import type { ConnectCatalogBillingType, ConnectCatalogItem, ConnectCatalogItemKind } from "@/modules/billing";
+import { useMemo, type ReactNode } from "react";
+import type { ConnectCatalogItem } from "@/modules/billing";
 import {
   AppIcon,
+  AppSelect,
   Button,
   EmptyState,
-  InlineAlert,
   PageToolbar,
   RegistrationList,
-  ResourceTable,
-  Select,
   StatusBadge,
-  TextInput,
-  type ResourceTableColumn
+  TextInput
 } from "@/shared/ui";
+import { BillingDataTable as ResourceTable, type BillingDataTableColumn as ResourceTableColumn } from "./billing-data-table";
 import { BillingCatalogForm, type BillingCatalogFormProps } from "./billing-catalog-form";
 import {
   CATALOG_BILLING_LABEL,
   CATALOG_KIND_LABEL,
   formatAmount,
   isRecurringCatalogBillingType,
-  type CatalogLoadState
+  type CatalogBillingFilter,
+  type CatalogKindFilter,
+  type CatalogLoadState,
+  type CatalogSort
 } from "./billing-page.model";
-
-type CatalogKindFilter = "ALL" | ConnectCatalogItemKind;
-type CatalogBillingFilter = "ALL" | ConnectCatalogBillingType;
-type CatalogSort = "recent" | "name" | "amount-desc" | "amount-asc";
 
 interface BillingCatalogSectionProps {
   catalogItems: ConnectCatalogItem[];
   catalogLoadState: CatalogLoadState;
-  catalogSavedNotice: "created" | "updated" | null;
+  catalogSearch: string;
+  catalogKindFilter: CatalogKindFilter;
+  catalogBillingFilter: CatalogBillingFilter;
+  catalogSort: CatalogSort;
+  catalogPage: number;
+  catalogHasPrevious: boolean;
+  catalogHasNext: boolean;
+  catalogIsFetching: boolean;
   isCatalogFormOpen: boolean;
   deletingCatalogItemId: string | null;
   formProps: BillingCatalogFormProps;
+  onCatalogSearchChange: (value: string) => void;
+  onCatalogKindFilterChange: (value: CatalogKindFilter) => void;
+  onCatalogBillingFilterChange: (value: CatalogBillingFilter) => void;
+  onCatalogSortChange: (value: CatalogSort) => void;
+  onCatalogPrevious: () => void;
+  onCatalogNext: () => void;
   onOpenCatalogForm: () => void;
   onCloseCatalogForm: () => void;
   onChargeNow: () => void;
@@ -91,10 +101,23 @@ function CatalogSummaryItem({ label, value, detail }: { label: string; value: Re
 export function BillingCatalogSection({
   catalogItems,
   catalogLoadState,
-  catalogSavedNotice,
+  catalogSearch,
+  catalogKindFilter,
+  catalogBillingFilter,
+  catalogSort,
+  catalogPage,
+  catalogHasPrevious,
+  catalogHasNext,
+  catalogIsFetching,
   isCatalogFormOpen,
   deletingCatalogItemId,
   formProps,
+  onCatalogSearchChange,
+  onCatalogKindFilterChange,
+  onCatalogBillingFilterChange,
+  onCatalogSortChange,
+  onCatalogPrevious,
+  onCatalogNext,
   onOpenCatalogForm,
   onCloseCatalogForm,
   onChargeNow,
@@ -102,11 +125,6 @@ export function BillingCatalogSection({
   onEditCatalogItem,
   onRequestDeleteCatalogItem
 }: BillingCatalogSectionProps) {
-  const [query, setQuery] = useState("");
-  const [kindFilter, setKindFilter] = useState<CatalogKindFilter>("ALL");
-  const [billingFilter, setBillingFilter] = useState<CatalogBillingFilter>("ALL");
-  const [sort, setSort] = useState<CatalogSort>("recent");
-
   const activeItems = useMemo(() => catalogItems.filter((item) => item.isActive), [catalogItems]);
   const recurringCount = useMemo(
     () => activeItems.filter((item) => isRecurringCatalogBillingType(item.billingType)).length,
@@ -117,43 +135,22 @@ export function BillingCatalogSection({
     return Math.round(activeItems.reduce((sum, item) => sum + item.amount, 0) / activeItems.length);
   }, [activeItems]);
 
-  const filteredItems = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
-    const nextItems = catalogItems.filter((item) => {
-      const matchesKind = kindFilter === "ALL" || item.kind === kindFilter;
-      const matchesBilling = billingFilter === "ALL" || item.billingType === billingFilter;
-      if (!matchesKind || !matchesBilling) return false;
-      if (!normalizedQuery) return true;
-
-      const searchable = [
-        item.name,
-        item.description,
-        metadataValue(item, "scope"),
-        metadataValue(item, "deliverables"),
-        metadataValue(item, "unit")
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("pt-BR");
-
-      return searchable.includes(normalizedQuery);
-    });
-
-    return [...nextItems].sort((a, b) => {
-      if (sort === "amount-desc") return b.amount - a.amount;
-      if (sort === "amount-asc") return a.amount - b.amount;
-      if (sort === "name") return a.name.localeCompare(b.name, "pt-BR");
+  const sortedItems = useMemo(() => {
+    return [...catalogItems].sort((a, b) => {
+      if (catalogSort === "amount-desc") return b.amount - a.amount;
+      if (catalogSort === "amount-asc") return a.amount - b.amount;
+      if (catalogSort === "name") return a.name.localeCompare(b.name, "pt-BR");
       return formatUpdatedAt(b) - formatUpdatedAt(a);
     });
-  }, [billingFilter, catalogItems, kindFilter, query, sort]);
+  }, [catalogItems, catalogSort]);
 
   const hasCatalogItems = catalogItems.length > 0;
-  const hasFilters = Boolean(query.trim()) || kindFilter !== "ALL" || billingFilter !== "ALL";
+  const hasFilters = Boolean(catalogSearch.trim()) || catalogKindFilter !== "ALL" || catalogBillingFilter !== "ALL";
   const resetFilters = () => {
-    setQuery("");
-    setKindFilter("ALL");
-    setBillingFilter("ALL");
-    setSort("recent");
+    onCatalogSearchChange("");
+    onCatalogKindFilterChange("ALL");
+    onCatalogBillingFilterChange("ALL");
+    onCatalogSortChange("recent");
   };
 
   const columns = useMemo<Array<ResourceTableColumn<ConnectCatalogItem>>>(
@@ -280,8 +277,8 @@ export function BillingCatalogSection({
               <label className="billing-catalog__search">
                 <AppIcon name="search" size={15} />
                 <TextInput
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  value={catalogSearch}
+                  onChange={(event) => onCatalogSearchChange(event.target.value)}
                   placeholder="Buscar por nome, descrição ou escopo"
                   aria-label="Buscar item do catálogo"
                 />
@@ -289,37 +286,40 @@ export function BillingCatalogSection({
             }
             filters={
               <>
-                <Select
-                  value={kindFilter}
-                  onChange={(event) => setKindFilter(event.target.value as CatalogKindFilter)}
+                <AppSelect
+                  value={catalogKindFilter}
+                  onValueChange={(value) => onCatalogKindFilterChange(value as CatalogKindFilter)}
                   aria-label="Filtrar por tipo"
                   className="billing-catalog__filter"
-                >
-                  <option value="ALL">Todos os tipos</option>
-                  <option value="SERVICE">Serviços</option>
-                  <option value="PRODUCT">Produtos</option>
-                </Select>
-                <Select
-                  value={billingFilter}
-                  onChange={(event) => setBillingFilter(event.target.value as CatalogBillingFilter)}
+                  items={[
+                    { value: "ALL", label: "Todos os tipos" },
+                    { value: "SERVICE", label: "Serviços" },
+                    { value: "PRODUCT", label: "Produtos" }
+                  ]}
+                />
+                <AppSelect
+                  value={catalogBillingFilter}
+                  onValueChange={(value) => onCatalogBillingFilterChange(value as CatalogBillingFilter)}
                   aria-label="Filtrar por modelo"
                   className="billing-catalog__filter"
-                >
-                  <option value="ALL">Todos os modelos</option>
-                  <option value="ONE_TIME">Avulso</option>
-                  <option value="ASSINATURA">Assinatura</option>
-                </Select>
-                <Select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as CatalogSort)}
+                  items={[
+                    { value: "ALL", label: "Todos os modelos" },
+                    { value: "ONE_TIME", label: "Avulso" },
+                    { value: "ASSINATURA", label: "Assinatura" }
+                  ]}
+                />
+                <AppSelect
+                  value={catalogSort}
+                  onValueChange={(value) => onCatalogSortChange(value as CatalogSort)}
                   aria-label="Ordenar catálogo"
                   className="billing-catalog__filter"
-                >
-                  <option value="recent">Mais recentes</option>
-                  <option value="name">Nome</option>
-                  <option value="amount-desc">Maior preço</option>
-                  <option value="amount-asc">Menor preço</option>
-                </Select>
+                  items={[
+                    { value: "recent", label: "Mais recentes" },
+                    { value: "name", label: "Nome" },
+                    { value: "amount-desc", label: "Maior preço" },
+                    { value: "amount-asc", label: "Menor preço" }
+                  ]}
+                />
               </>
             }
             end={
@@ -328,28 +328,14 @@ export function BillingCatalogSection({
                   Limpar
                 </Button>
               ) : (
-                <StatusBadge tone="muted" size="sm">{`${filteredItems.length} item${filteredItems.length === 1 ? "" : "s"}`}</StatusBadge>
+                <StatusBadge tone="muted" size="sm">{`${sortedItems.length} item${sortedItems.length === 1 ? "" : "s"}`}</StatusBadge>
               )
             }
           />
         }
       >
-        {catalogSavedNotice ? (
-          <InlineAlert
-            tone="success"
-            className="billing-catalog__notice"
-            action={
-              <Button type="button" size="sm" variant="outline" onClick={onChargeNow}>
-                Cobrar agora
-              </Button>
-            }
-          >
-            {catalogSavedNotice === "created" ? "Item criado e selecionado." : "Alterações salvas no catálogo."}
-          </InlineAlert>
-        ) : null}
-
         <ResourceTable
-          data={filteredItems}
+          data={sortedItems}
           columns={columns}
           rowKey="id"
           className="billing-view__table billing-catalog__table"
@@ -404,6 +390,31 @@ export function BillingCatalogSection({
             )
           }}
         />
+        {hasCatalogItems || catalogHasPrevious || catalogHasNext ? (
+          <div className="billing-view__pagination">
+            <span className="billing-view__pagination-label">Página {catalogPage}</span>
+            <div className="billing-view__pagination-actions">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onCatalogPrevious}
+                disabled={!catalogHasPrevious || catalogIsFetching}
+              >
+                Anterior
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onCatalogNext}
+                disabled={!catalogHasNext || catalogIsFetching}
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </RegistrationList>
 
       {isCatalogFormOpen ? <BillingCatalogForm {...formProps} onCancel={onCloseCatalogForm} /> : null}

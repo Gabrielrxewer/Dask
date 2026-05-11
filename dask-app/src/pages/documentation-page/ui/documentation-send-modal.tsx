@@ -1,6 +1,25 @@
-import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
+import {
+  commercialDocumentSendSchema,
+  type CommercialDocumentSendInput
+} from "@/modules/documentation";
 import type { WorkspaceDocument } from "@/modules/workspace";
-import { AppIcon, Button, FormField, FormModal } from "@/shared/ui";
+import {
+  AppCheckboxField,
+  AppDateTimeField,
+  AppDialog,
+  AppForm,
+  AppFormActions,
+  AppFormField,
+  AppFormGrid,
+  AppIcon,
+  AppTextField,
+  AppTextareaField,
+  Button
+} from "@/shared/ui";
 import {
   DOCUMENT_KIND_LABELS,
   formatRelativeDate,
@@ -13,15 +32,13 @@ interface DocumentationSendModalProps {
   document: WorkspaceDocument;
   initialEmails?: string[];
   onClose: () => void;
-  onSend: (emails: string[]) => Promise<void>;
+  onSend: (input: CommercialDocumentSendInput) => Promise<void>;
 }
+
+type CommercialDocumentSendFormValues = z.input<typeof commercialDocumentSendSchema>;
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function uniqueEmails(values: string[]): string[] {
@@ -46,11 +63,8 @@ function splitEmailDraft(value: string): string[] {
 }
 
 export function DocumentationSendModal({ document, initialEmails = [], onClose, onSend }: DocumentationSendModalProps) {
-  const [emails, setEmails] = useState(() => readInitialEmails(document, initialEmails));
   const [emailDraft, setEmailDraft] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const documentKind = normalizeDocumentKind(document.kind);
   const status = getCommercialDocumentStatus(document);
   const hasBeenSent = hasCommercialDocumentBeenSent(document);
@@ -62,14 +76,36 @@ export function DocumentationSendModal({ document, initialEmails = [], onClose, 
       : [];
   const submitLabel = hasBeenSent ? "Reenviar" : "Enviar para cliente";
 
+  const form = useForm<CommercialDocumentSendFormValues, unknown, CommercialDocumentSendInput>({
+    resolver: zodResolver(commercialDocumentSendSchema),
+    defaultValues: {
+      recipients: readInitialEmails(document, initialEmails),
+      subject: document.metadata?.sendSubject as string | undefined,
+      message: document.metadata?.sendMessage as string | undefined,
+      includeAttachments: true,
+      selectedAssetIds: [],
+      expirationDate: null,
+      requireLogin: true,
+      allowAcceptReject: true,
+      linkedWorkItemId: typeof document.metadata?.linkedWorkItemId === "string" ? document.metadata.linkedWorkItemId : null,
+      resolvedPreviewSnapshot: undefined
+    }
+  });
+
+  const recipients = form.watch("recipients") ?? [];
+  const {
+    formState: { errors, isSubmitting }
+  } = form;
+
   useEffect(() => {
     const nextEmails = readInitialEmails(document, initialEmails);
     if (nextEmails.length === 0) {
       return;
     }
-
-    setEmails((current) => uniqueEmails([...current, ...nextEmails]));
-  }, [document, initialEmails]);
+    form.setValue("recipients", uniqueEmails([...(form.getValues("recipients") ?? []), ...nextEmails]), {
+      shouldValidate: true
+    });
+  }, [document, form, initialEmails]);
 
   const sentInfo = useMemo(
     () => [
@@ -81,25 +117,23 @@ export function DocumentationSendModal({ document, initialEmails = [], onClose, 
 
   function addEmailDraft(value: string): boolean {
     const candidates = splitEmailDraft(value);
-
     if (candidates.length === 0) {
       return false;
     }
 
-    const invalidEmail = candidates.find((candidate) => !isValidEmail(candidate));
-    if (invalidEmail) {
-      setErrorMessage(`E-mail invalido: ${invalidEmail}`);
-      return false;
-    }
-
-    setEmails((current) => uniqueEmails([...current, ...candidates]));
+    form.setValue("recipients", uniqueEmails([...recipients, ...candidates]), {
+      shouldDirty: true,
+      shouldValidate: true
+    });
     setEmailDraft("");
-    setErrorMessage(null);
     return true;
   }
 
   function removeEmail(emailToRemove: string) {
-    setEmails((current) => current.filter((email) => email !== emailToRemove));
+    form.setValue("recipients", recipients.filter((email) => email !== emailToRemove), {
+      shouldDirty: true,
+      shouldValidate: true
+    });
   }
 
   function handleEmailKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -115,56 +149,42 @@ export function DocumentationSendModal({ document, initialEmails = [], onClose, 
     addEmailDraft(emailDraft);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) {
-      return;
-    }
+  async function submit(values: CommercialDocumentSendInput) {
+    const nextRecipients = uniqueEmails([...values.recipients, ...splitEmailDraft(emailDraft)]);
+    const expirationDate = values.expirationDate
+      ? new Date(values.expirationDate).toISOString()
+      : null;
+    const parsed = commercialDocumentSendSchema.parse({
+      ...values,
+      recipients: nextRecipients,
+      expirationDate
+    });
 
-    const nextEmails = uniqueEmails([...emails, ...splitEmailDraft(emailDraft)]);
-    const invalidEmail = nextEmails.find((candidate) => !isValidEmail(candidate));
-    if (invalidEmail) {
-      setErrorMessage(`E-mail invalido: ${invalidEmail}`);
-      return;
-    }
-
-    if (nextEmails.length === 0) {
-      setErrorMessage("Informe ao menos um e-mail do cliente.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      await onSend(nextEmails);
-      setEmails(nextEmails);
-      setEmailDraft("");
-      setSuccessMessage(
-        hasBeenSent
-          ? `Documento reenviado para ${nextEmails.length} destinatario${nextEmails.length > 1 ? "s" : ""}.`
-          : `Documento enviado para ${nextEmails.length} destinatario${nextEmails.length > 1 ? "s" : ""}.`
-      );
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Falha ao enviar documento.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    await onSend(parsed);
+    form.setValue("recipients", nextRecipients);
+    setEmailDraft("");
+    setSuccessMessage(
+      hasBeenSent
+        ? `Documento reenviado para ${nextRecipients.length} destinatario${nextRecipients.length > 1 ? "s" : ""}.`
+        : `Documento enviado para ${nextRecipients.length} destinatario${nextRecipients.length > 1 ? "s" : ""}.`
+    );
   }
 
   return (
-    <FormModal
-      titleId="documentation-send-modal-title"
+    <AppDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
       title="Enviar documento"
-      subtitle="Confirme o destinatario antes de gerar o link publico."
-      className="documentation-send-modal"
-      headerClassName="documentation-create-modal__header"
-      closeButtonClassName="documentation-create-modal__close"
-      footer={null}
-      onClose={onClose}
+      description="Confirme destinatarios, acesso e anexos antes de gerar o link publico autenticado."
+      className="documentation-send-modal app-dialog--form"
     >
-      <form className="documentation-send-modal__form" onSubmit={handleSubmit}>
+      <AppForm<CommercialDocumentSendFormValues, CommercialDocumentSendInput>
+        form={form}
+        className="documentation-send-modal__form"
+        onSubmit={submit}
+      >
         <section className="documentation-send-modal__summary" aria-label="Resumo do envio">
           <span className="documentation-send-modal__icon">
             <AppIcon name="send" size={18} />
@@ -190,9 +210,9 @@ export function DocumentationSendModal({ document, initialEmails = [], onClose, 
           </dl>
         ) : null}
 
-        <FormField label="E-mails do cliente">
+        <AppFormField label="E-mails do cliente" error={errors.recipients?.message}>
           <div className="documentation-send-modal__recipients">
-            {emails.map((email) => (
+            {recipients.map((email) => (
               <span className="documentation-send-modal__recipient-chip" key={email}>
                 {email}
                 <button
@@ -210,25 +230,44 @@ export function DocumentationSendModal({ document, initialEmails = [], onClose, 
               value={emailDraft}
               onChange={(event) => setEmailDraft(event.target.value)}
               onKeyDown={handleEmailKeyDown}
-              placeholder={emails.length > 0 ? "Adicionar outro e-mail" : "cliente@empresa.com"}
+              onBlur={() => addEmailDraft(emailDraft)}
+              placeholder={recipients.length > 0 ? "Adicionar outro e-mail" : "cliente@empresa.com"}
               autoFocus
               disabled={isSubmitting}
             />
           </div>
-        </FormField>
+        </AppFormField>
+
+        <AppFormGrid className="documentation-send-modal__grid" columns={2}>
+          <AppTextField name="subject" label="Assunto" placeholder={document.title} disabled={isSubmitting} />
+          <AppDateTimeField
+            name="expirationDate"
+            label="Validade do link"
+            placeholder="Selecionar data e hora"
+            disabled={isSubmitting}
+          />
+        </AppFormGrid>
+
+        <AppTextareaField name="message" label="Mensagem" rows={3} placeholder="Mensagem opcional para o cliente" disabled={isSubmitting} />
+
+        <div className="documentation-send-modal__options">
+          <AppCheckboxField name="includeAttachments" label="Incluir anexos autorizados" disabled={isSubmitting} />
+          <AppCheckboxField name="requireLogin" label="Exigir login do cliente" disabled={isSubmitting} />
+          <AppCheckboxField name="allowAcceptReject" label="Permitir aceite/recusa" disabled={isSubmitting} />
+        </div>
 
         {successMessage ? <p className="documentation-send-modal__success">{successMessage}</p> : null}
-        {errorMessage ? <p className="documentation-send-modal__error">{errorMessage}</p> : null}
+        {errors.root ? <p className="documentation-send-modal__error">{errors.root.message}</p> : null}
 
-        <footer className="documentation-send-modal__footer">
+        <AppFormActions className="documentation-send-modal__footer">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button type="submit" variant="primary" disabled={isSubmitting}>
             {isSubmitting ? "Enviando..." : submitLabel}
           </Button>
-        </footer>
-      </form>
-    </FormModal>
+        </AppFormActions>
+      </AppForm>
+    </AppDialog>
   );
 }

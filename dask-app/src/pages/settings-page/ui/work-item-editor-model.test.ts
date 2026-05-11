@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { FieldLibraryItem } from "./work-item-editor-field-model";
 import {
   buildFieldSettings,
+  DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS,
   normalizeOptionInputs,
   readChecklistDisplaySettings
 } from "./work-item-editor-field-model";
@@ -77,6 +78,34 @@ describe("work item editor field helpers", () => {
     });
   });
 
+  it("monta metadata publica para billing_summary configuravel", () => {
+    expect(
+      buildFieldSettings({
+        type: "billing_summary",
+        name: "Resumo financeiro",
+        allowAiGeneration: true,
+        checklistIcon: "checklist",
+        checklistColor: "#123456",
+        billingCurrency: "USD",
+        billingSourceFields: "setup_fee, monthly_fee",
+        billingAggregationMode: "sum",
+        billingDisplayFormat: "currency",
+        billingReadOnly: true
+      })
+    ).toEqual({
+      allowAiGeneration: false,
+      publicType: "billing_summary",
+      displayAs: "billing_summary",
+      billingSummary: {
+        currency: "USD",
+        sourceFields: ["setup_fee", "monthly_fee"],
+        aggregationMode: "sum",
+        displayFormat: "currency",
+        readOnly: true
+      }
+    });
+  });
+
   it("le configuracao visual de checklist com fallback seguro", () => {
     expect(readChecklistDisplaySettings({ checklistDisplay: { icon: "bug", color: "#FFAA00" } })).toEqual({
       icon: "bug",
@@ -104,7 +133,8 @@ describe("work item editor layout and preview helpers", () => {
           allowAiGeneration: false,
           options: [],
           checklistIcon: "checklist",
-          checklistColor: "var(--text-secondary)"
+          checklistColor: "var(--text-secondary)",
+          ...DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS
         },
         fieldsById
       )
@@ -123,7 +153,8 @@ describe("work item editor layout and preview helpers", () => {
       allowAiGeneration: false,
       options: [{ id: "1", label: "Feito", value: "" }],
       checklistIcon: "shield-check",
-      checklistColor: "#123456"
+      checklistColor: "#123456",
+      ...DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS
     });
 
     expect(preview).toMatchObject({

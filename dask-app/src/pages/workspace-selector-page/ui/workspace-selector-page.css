@@ -464,6 +464,13 @@
   font-weight: 700;
 }
 
+.workspace-selector-page__field-error {
+  color: var(--danger);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .workspace-selector-page__delete-dialog .shared-form-field {
   gap: 9px;
 }
@@ -609,7 +616,7 @@
     0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
 }
 
-.workspace-selector-page__delete-modal.shared-modal-shell {
+.workspace-selector-page__delete-modal.shared-dialog-shell {
   width: min(620px, 100%);
   border: 1px solid color-mix(in srgb, var(--info-border) 80%, transparent);
   border-radius: 32px;
@@ -650,6 +657,22 @@
   padding: clamp(22px, 3vw, 30px);
 }
 
+.workspace-selector-page__delete-dialog .app-dialog__header {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.workspace-selector-page__delete-dialog .app-dialog__heading {
+  gap: 10px;
+}
+
+.workspace-selector-page__delete-dialog .app-dialog__body {
+  display: grid;
+  gap: 18px;
+  padding: 0;
+  overflow: visible;
+}
+
 .workspace-selector-page__delete-header {
   display: grid;
   gap: 10px;
@@ -665,14 +688,19 @@
 }
 
 .workspace-selector-page__delete-title {
+  display: grid;
+  gap: 10px;
   margin: 0;
-  max-width: 15ch;
   color: var(--foreground);
   font-family: var(--font-family-heading);
   font-size: clamp(1.72rem, 1.44rem + 0.8vw, 2.3rem);
   line-height: 0.96;
   letter-spacing: -0.048em;
   text-wrap: balance;
+}
+
+.workspace-selector-page__delete-title-text {
+  max-width: 15ch;
 }
 
 .workspace-selector-page__delete-description {
@@ -1035,7 +1063,7 @@
     0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
 }
 
-.app-theme[data-theme="dark"] .workspace-selector-page__delete-modal.shared-modal-shell {
+.app-theme[data-theme="dark"] .workspace-selector-page__delete-modal.shared-dialog-shell {
   border-color: var(--workspace-selector-dark-border);
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 28%),
@@ -1201,7 +1229,7 @@
     grid-template-columns: 1fr;
   }
 
-  .workspace-selector-page__delete-modal.shared-modal-shell {
+  .workspace-selector-page__delete-modal.shared-dialog-shell {
     border-radius: 26px;
   }
 }

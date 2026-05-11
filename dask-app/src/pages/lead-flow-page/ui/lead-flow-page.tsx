@@ -1,15 +1,28 @@
-import { useCallback, useEffect, useMemo, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+  type DragCancelEvent,
+  type DragEndEvent,
+  type DragStartEvent
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { MarkerType, type Edge, type Node, type NodeProps, type OnEdgesChange, type OnNodesChange } from "@xyflow/react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { buildBoardMetrics, type BoardLeadOperationalMetadata, type Task, type TaskStatus } from "@/entities/task";
+import { flattenWorkItemPages, useLeadsQuery, useMoveLeadInFlowMutation, useSignalsQuery } from "@/modules/leads";
 import { useWorkspace } from "@/modules/workspace";
 import { formatMoneyCompact } from "@/shared/lib/money";
 import { cn } from "@/shared/lib/cn";
-import { AppIcon, EmptyState, FlowCanvas, FlowNodeCard, LoadingState, PanelMenu, PanelMenuItem, StatusBadge, StudioLayout, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
+import { AppIcon, EmptyState, FlowCanvas, FlowNodeCard, LoadingState, PanelMenu, StudioLayout, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
+import { createLeadFlowMoveCommand, isLeadFlowReadonly } from "../model";
 import "./lead-flow-page.css";
 
 const LEAD_FLOW_NODE_KIND = "lead-state";
+const LEAD_FLOW_DRAG_TYPE = "lead-flow-work-item";
 const MAIN_LANE_Y = 80;
 const STEP_X = 306;
 const MAX_PER_ROW = 6;
@@ -30,6 +43,8 @@ interface LeadFlowNodeData extends Record<string, unknown> {
   isTerminal: boolean;
   isOutcome: boolean;
   selectedLeadTitle: string;
+  canDrop: boolean;
+  isSaving: boolean;
 }
 
 type LeadFlowNode = Node<LeadFlowNodeData, LeadFlowNodeKind>;
@@ -83,6 +98,14 @@ function resolveConfiguredStatusGroups(
 
 function LeadStateNode({ data, selected }: NodeProps) {
   const nodeData = data as LeadFlowNodeData;
+  const { isOver, setNodeRef } = useDroppable({
+    id: nodeData.statusId,
+    disabled: !nodeData.canDrop,
+    data: {
+      type: "lead-flow-status",
+      statusId: nodeData.statusId
+    }
+  });
   const preview = nodeData.isCurrent
     ? "Lead selecionado esta aqui"
     : nodeData.isOutcome
@@ -95,7 +118,14 @@ function LeadStateNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={cn("lead-flow-node", nodeData.isCurrent && "lead-flow-node--current")}
+      ref={setNodeRef}
+      className={cn(
+        "lead-flow-node",
+        nodeData.isCurrent && "lead-flow-node--current",
+        nodeData.canDrop && "lead-flow-node--drop-target",
+        isOver && "lead-flow-node--drag-over",
+        nodeData.isSaving && "lead-flow-node--saving"
+      )}
       style={{ "--lead-flow-node-color": nodeData.color } as CSSProperties}
     >
       <FlowNodeCard
@@ -118,15 +148,84 @@ const nodeTypes = {
   [LEAD_FLOW_NODE_KIND]: LeadStateNode
 };
 
+interface LeadFlowSidebarItemProps {
+  task: Task;
+  status: TaskStatus | undefined;
+  selected: boolean;
+  canDrag: boolean;
+  onSelect: (taskId: string) => void;
+}
+
+function LeadFlowSidebarItem({ task, status, selected, canDrag, onSelect }: LeadFlowSidebarItemProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `lead-flow:${task.id}`,
+    disabled: !canDrag,
+    data: {
+      type: LEAD_FLOW_DRAG_TYPE,
+      leadId: task.id
+    }
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      className={cn(
+        "panel-menu-item",
+        "panel-menu-item--default",
+        "lf-lead-draggable",
+        selected && "panel-menu-item--selected",
+        canDrag && "panel-menu-item--draggable",
+        isDragging && "lf-lead-draggable--dragging"
+      )}
+      style={{ transform: CSS.Translate.toString(transform) }}
+      onClick={() => onSelect(task.id)}
+      {...attributes}
+      {...listeners}
+      aria-pressed={selected}
+    >
+      <span className="panel-menu-item__leading">
+        <span className="lf-lead-avatar" style={{ borderColor: status?.dot ?? "var(--lead-flow-accent)" }}>
+          {getInitials(task.title)}
+        </span>
+      </span>
+      <span className="panel-menu-item__body">
+        <span className="panel-menu-item__label-row">
+          <span className="panel-menu-item__label">{task.title}</span>
+        </span>
+        <span className="panel-menu-item__meta">
+          <span className="lf-stage-dot" style={{ background: status?.dot ?? "var(--lead-flow-accent)" }} />
+          {status?.label ?? task.status}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export function LeadFlowPage() {
   const { snapshot, isLoading } = useWorkspace();
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [draggingLeadId, setDraggingLeadId] = useState<string | null>(null);
   const selectedLeadId = searchParams.get("leadId") ?? "";
   const search = searchParams.get("q") ?? "";
 
-  const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
+  const workspaceIdentifier = snapshot?.key ?? snapshot?.workspace?.key ?? snapshot?.id ?? null;
+  const moveLeadInFlowMutation = useMoveLeadInFlowMutation(workspaceIdentifier);
   const boardStatuses = snapshot?.boardConfig.statuses ?? [];
   const leadMetadata = snapshot?.boardConfig.operationalMetadata?.leads ?? null;
+  const leadTypeId = leadMetadata?.defaultItemTypeId ?? "";
+  const signalTypeId = leadMetadata?.prospecting?.itemTypeIds?.[0] ?? "";
+  const leadsQuery = useLeadsQuery(workspaceSlug || workspaceIdentifier, leadTypeId || null, {
+    limit: 100,
+    sort: "position_asc"
+  });
+  const signalsQuery = useSignalsQuery(workspaceSlug || workspaceIdentifier, signalTypeId || null, {
+    limit: 100,
+    sort: "position_asc"
+  });
+  const pagedLeads = useMemo(() => flattenWorkItemPages(leadsQuery.data), [leadsQuery.data]);
+  const pagedSignals = useMemo(() => flattenWorkItemPages(signalsQuery.data), [signalsQuery.data]);
   const boardStatusById = useMemo(
     () => new Map(boardStatuses.map((status) => [status.id, status])),
     [boardStatuses]
@@ -135,11 +234,28 @@ export function LeadFlowPage() {
   const commercialTasks = useMemo(
     () => {
       if (!leadMetadata) return [];
+      if (leadsQuery.data || signalsQuery.data) {
+        return [...pagedSignals, ...pagedLeads];
+      }
+
       const commercialTypeIds = new Set(leadMetadata.itemTypeIds);
       return (snapshot?.tasks ?? []).filter((task) => commercialTypeIds.has(task.type));
     },
-    [leadMetadata, snapshot?.tasks]
+    [leadMetadata, leadsQuery.data, pagedLeads, pagedSignals, signalsQuery.data, snapshot?.tasks]
   );
+  const metrics = useMemo(() => buildBoardMetrics(commercialTasks), [commercialTasks]);
+
+  useEffect(() => {
+    if (leadsQuery.hasNextPage && !leadsQuery.isFetchingNextPage) {
+      void leadsQuery.fetchNextPage();
+    }
+  }, [leadsQuery.fetchNextPage, leadsQuery.hasNextPage, leadsQuery.isFetchingNextPage]);
+
+  useEffect(() => {
+    if (signalsQuery.hasNextPage && !signalsQuery.isFetchingNextPage) {
+      void signalsQuery.fetchNextPage();
+    }
+  }, [signalsQuery.fetchNextPage, signalsQuery.hasNextPage, signalsQuery.isFetchingNextPage]);
 
   const statusById = useMemo(
     () => boardStatusById,
@@ -179,6 +295,18 @@ export function LeadFlowPage() {
     () => commercialTasks.find((task) => task.id === selectedLeadId) ?? filteredLeads[0] ?? commercialTasks[0] ?? null,
     [commercialTasks, filteredLeads, selectedLeadId]
   );
+  const canEditLeadFlow = Boolean(selectedLead && !isLeadFlowReadonly(snapshot?.access));
+
+  const handleMoveLeadToStatus = useCallback((statusId: string | null, leadId?: string) => {
+    if (!statusId || !canEditLeadFlow || moveLeadInFlowMutation.isPending) return;
+    const targetLead = leadId
+      ? commercialTasks.find((task) => task.id === leadId)
+      : selectedLead;
+    if (!targetLead) return;
+    const command = createLeadFlowMoveCommand(targetLead, statusId);
+    if (!command) return;
+    moveLeadInFlowMutation.mutate(command);
+  }, [canEditLeadFlow, commercialTasks, moveLeadInFlowMutation, selectedLead]);
 
   useEffect(() => {
     if (!selectedLead || selectedLeadId === selectedLead.id) {
@@ -248,7 +376,9 @@ export function LeadFlowPage() {
           isTerminal: flowStatusGroups.terminalStatusIds.has(status.id) ||
             (index === flowStatusGroups.primary.length - 1 && !(flowStatusGroups.outcomes.length > 0 && status.id === branchSourceId)),
           isOutcome: false,
-          selectedLeadTitle: selectedLead?.title ?? ""
+          selectedLeadTitle: selectedLead?.title ?? "",
+          canDrop: canEditLeadFlow && !isCurrent && !moveLeadInFlowMutation.isPending,
+          isSaving: moveLeadInFlowMutation.isPending
         }
       };
     });
@@ -282,7 +412,9 @@ export function LeadFlowPage() {
           isFirst: false,
           isTerminal: true,
           isOutcome: true,
-          selectedLeadTitle: selectedLead?.title ?? ""
+          selectedLeadTitle: selectedLead?.title ?? "",
+          canDrop: canEditLeadFlow && !isCurrent && !moveLeadInFlowMutation.isPending,
+          isSaving: moveLeadInFlowMutation.isPending
         }
       };
     });
@@ -291,12 +423,14 @@ export function LeadFlowPage() {
   }, [
     branchSourceIndex,
     branchSourceId,
+    canEditLeadFlow,
     currentPrimaryIndex,
     flowStatusGroups.outcomes,
     flowStatusGroups.primary,
     flowStatusGroups.terminalStatusIds,
     isSelectedOutcome,
     leadValueByStatus,
+    moveLeadInFlowMutation.isPending,
     selectedLead
   ]);
 
@@ -379,12 +513,43 @@ export function LeadFlowPage() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const leadId = typeof event.active.data.current?.leadId === "string"
+      ? event.active.data.current.leadId
+      : null;
+    setDraggingLeadId(leadId);
+    if (leadId && leadId !== selectedLeadId) {
+      handleSelectLead(leadId);
+    }
+  }, [handleSelectLead, selectedLeadId]);
+
+  const clearDraggingLead = useCallback((_event?: DragCancelEvent) => {
+    setDraggingLeadId(null);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const leadId = typeof event.active.data.current?.leadId === "string"
+      ? event.active.data.current.leadId
+      : undefined;
+    const statusId = typeof event.over?.data.current?.statusId === "string"
+      ? event.over.data.current.statusId
+      : typeof event.over?.id === "string"
+        ? event.over.id
+        : null;
+
+    handleMoveLeadToStatus(statusId, leadId);
+    setDraggingLeadId(null);
+  }, [handleMoveLeadToStatus]);
+
   const noopNodesChange = useCallback<OnNodesChange<LeadFlowNode>>(() => undefined, []);
   const noopEdgesChange = useCallback<OnEdgesChange<Edge>>(() => undefined, []);
 
   const currentStatus = selectedLead ? statusById.get(selectedLead.status) : null;
   const selectedLeadValue = selectedLead ? getNumberField(selectedLead, "estimatedValue") : 0;
   const currentStatusNodeId = selectedLead?.status ?? null;
+  const handleMoveSelectedLeadToStatus = useCallback((statusId: string | null) => {
+    handleMoveLeadToStatus(statusId);
+  }, [handleMoveLeadToStatus]);
 
   const topNavigation = (
     <WorkspaceTopNavigation<"flow">
@@ -407,6 +572,7 @@ export function LeadFlowPage() {
         ) : null}
 
         {leadMetadata ? (
+        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={clearDraggingLead}>
         <StudioLayout
           sidebar={
             <PanelMenu
@@ -425,6 +591,10 @@ export function LeadFlowPage() {
                     <span>Valor estimado</span>
                     <strong>{formatMoneyCompact(selectedLeadValue)}</strong>
                   </div>
+                  <div>
+                    <span>Edicao</span>
+                    <strong>{canEditLeadFlow ? moveLeadInFlowMutation.isPending ? "Salvando..." : "Interativa" : "Somente leitura"}</strong>
+                  </div>
                 </div>
               }
             >
@@ -432,22 +602,13 @@ export function LeadFlowPage() {
                 const status = statusById.get(task.status);
                 const isSelected = selectedLead?.id === task.id;
                 return (
-                  <PanelMenuItem
+                  <LeadFlowSidebarItem
                     key={task.id}
+                    task={task}
+                    status={status}
                     selected={isSelected}
-                    onClick={() => handleSelectLead(task.id)}
-                    leading={
-                      <span className="lf-lead-avatar" style={{ borderColor: status?.dot ?? "var(--lead-flow-accent)" }}>
-                        {getInitials(task.title)}
-                      </span>
-                    }
-                    label={task.title}
-                    meta={
-                      <>
-                        <span className="lf-stage-dot" style={{ background: status?.dot ?? "var(--lead-flow-accent)" }} />
-                        {status?.label ?? task.status}
-                      </>
-                    }
+                    canDrag={canEditLeadFlow}
+                    onSelect={handleSelectLead}
                   />
                 );
               })}
@@ -468,16 +629,25 @@ export function LeadFlowPage() {
             onEdgesChange={noopEdgesChange}
             onEdgesAdd={() => undefined}
             onNodesAdd={() => undefined}
-            onNodeSelect={() => undefined}
+            onNodeSelect={handleMoveSelectedLeadToStatus}
             fitViewKey={selectedLead ? nodes.length + currentPrimaryIndex + selectedLead.id.length : nodes.length}
             focusNodeId={currentStatusNodeId}
             emptyHint="Nenhum estado configurado."
             nodesDraggable={false}
             nodesConnectable={false}
-            elementsSelectable={false}
+            elementsSelectable={canEditLeadFlow}
+            showMiniMap
             className="lf-canvas"
           />
         </StudioLayout>
+          <DragOverlay>
+            {draggingLeadId ? (
+              <div className="lf-drag-overlay">
+                {commercialTasks.find((task) => task.id === draggingLeadId)?.title ?? "Lead"}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
         ) : null}
       </WorkspaceFrame>
     </AppShell>

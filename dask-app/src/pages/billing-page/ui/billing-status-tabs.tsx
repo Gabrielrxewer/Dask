@@ -28,7 +28,7 @@ function buildBillingTabs({
   const items: Array<ModuleTabsItem<ActiveTab>> = [
     {
       id: "conta",
-      label: "Conta",
+      label: "Conta de recebimento",
       badge: pendingCount > 0 ? <StatusBadge count={pendingCount} size="sm" tone="warning" className={badgeClassName} /> : undefined,
       badgeClassName
     },
@@ -40,13 +40,13 @@ function buildBillingTabs({
     },
     {
       id: "cobrar",
-      label: "Cobrar",
+      label: "Cobrancas dos seus clientes",
       locked: !canCreateCheckout,
       className: !canCreateCheckout ? lockedClassName : undefined
     },
     {
       id: "historico",
-      label: customerMode ? "Portal do cliente" : "Hist\u00f3rico",
+      label: customerMode ? "Portal do cliente" : "Historico de cobrancas",
       badge: paymentOrderCount > 0 ? <StatusBadge count={paymentOrderCount} size="sm" tone="muted" className={countClassName} /> : undefined,
       badgeClassName: countClassName
     }

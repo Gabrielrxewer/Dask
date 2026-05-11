@@ -18,7 +18,11 @@ export function CustomersListSection({
   pipelineMetrics,
   onSearchChange,
   onOpenCustomerDetails,
-  onNewLead
+  onNewLead,
+  totalCount,
+  hasMore = false,
+  isFetchingMore = false,
+  onLoadMore
 }: {
   filteredCustomers: Customer[];
   commercialTasks: Task[];
@@ -27,6 +31,10 @@ export function CustomersListSection({
   onSearchChange: (value: string) => void;
   onOpenCustomerDetails: (customerId: string) => void;
   onNewLead: (customer: Customer) => void;
+  totalCount?: number;
+  hasMore?: boolean;
+  isFetchingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   const rows = useMemo<CustomerTableRow[]>(
     () =>
@@ -53,7 +61,7 @@ export function CustomersListSection({
         </FormField>
         <div className="leads-page__filter-meta">
           <span className="leads-filter-count">
-            {filteredCustomers.length} cliente{filteredCustomers.length !== 1 ? "s" : ""}
+            {totalCount ?? filteredCustomers.length} cliente{(totalCount ?? filteredCustomers.length) !== 1 ? "s" : ""}
           </span>
           <span className="leads-filter-pipeline">
             {pipelineMetrics.activeCustomers} ativo{pipelineMetrics.activeCustomers !== 1 ? "s" : ""}
@@ -150,6 +158,13 @@ export function CustomersListSection({
           )
         }}
       />
+      {hasMore && onLoadMore ? (
+        <div className="leads-page__load-more">
+          <Button variant="outline" onClick={onLoadMore} loading={isFetchingMore}>
+            Carregar mais
+          </Button>
+        </div>
+      ) : null}
     </ResourceSection>
   );
 }

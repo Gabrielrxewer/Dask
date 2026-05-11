@@ -4,6 +4,7 @@ import type { HTMLAttributes } from "react";
 export type LoadingAnimation =
   | "default"
   | "workspace"
+  | "dashboard"
   | "board"
   | "list"
   | "agenda"
@@ -26,6 +27,7 @@ export interface LoadingStateProps extends HTMLAttributes<HTMLDivElement> {
 const animationGlyphs: Record<LoadingAnimation, string[]> = {
   default: ["01", "02", "03"],
   workspace: ["D", "A", "S", "K"],
+  dashboard: ["kpi", "bar", "run"],
   board: ["todo", "doing", "done"],
   list: ["01", "02", "03"],
   agenda: ["seg", "qua", "sex"],
@@ -106,10 +108,16 @@ export function LoadingState({
           minHeight: "100%"
         }
       : undefined;
+  const hiddenStyle = !visible
+    ? {
+        pointerEvents: "none" as const,
+        visibility: "hidden" as const
+      }
+    : undefined;
 
   return (
     <div
-      style={{ ...style, ...frameStyle }}
+      style={{ ...style, ...frameStyle, ...hiddenStyle }}
       className={cn(
         "shared-loading-state",
         `shared-loading-state--${variant}`,

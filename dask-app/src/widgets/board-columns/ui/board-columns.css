@@ -92,11 +92,43 @@
   gap: 8px;
   align-content: start;
   background: var(--surface-2);
+  overflow: hidden;
+}
+
+.board-column__list--over {
+  background: color-mix(in oklab, var(--selected-bg) 48%, var(--surface-2));
 }
 
 .board-column__item {
   display: grid;
   gap: 8px;
+  touch-action: manipulation;
+}
+
+.board-column__item--dragging {
+  opacity: 0.45;
+}
+
+.board-column__drag-overlay {
+  width: var(--board-column-width, 360px);
+  max-width: calc(100vw - 24px);
+  cursor: grabbing;
+  transform: rotate(1deg);
+  filter: drop-shadow(0 18px 28px color-mix(in oklab, var(--ink-shadow) 18%, transparent));
+}
+
+.board-column__virtual-list {
+  min-height: 0;
+  height: 100%;
+}
+
+.board-column__virtual-viewport {
+  height: 100%;
+  padding-right: 2px;
+}
+
+.board-column__virtual-item {
+  padding-bottom: 8px;
 }
 
 .board-column__drop-indicator {
@@ -187,10 +219,15 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-columns {
-  gap: 1px;
+  --board-column-line: color-mix(in oklab, var(--line) 72%, transparent);
+  --board-column-canvas-surface: color-mix(in srgb, var(--surface-tint) 76%, var(--surface-1));
+  --board-column-header-surface: var(--surface-table-header);
+  --board-column-body-surface: var(--surface-1);
+  --board-column-body-surface-over: color-mix(in srgb, var(--selected-bg) 54%, var(--board-column-body-surface));
+  gap: 0;
   padding: 0;
   border-radius: 0;
-  background: var(--border-default);
+  background: var(--board-column-canvas-surface);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column {
@@ -198,8 +235,8 @@
   overflow: hidden;
   border-radius: 0;
   border-color: transparent;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 94%, transparent) 100%);
+  border-right-color: var(--board-column-line);
+  background: var(--board-column-body-surface);
   box-shadow: none;
 }
 
@@ -221,27 +258,28 @@
 
 .app-theme:not([data-theme="dark"]) .board-column--drop-target {
   border-color: transparent;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 7%, transparent) 100%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent);
+  background: var(--board-column-body-surface-over);
+  box-shadow: inset 0 0 0 1px var(--selected-border);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__head {
   position: relative;
   z-index: 1;
-  min-height: 52px;
-  padding: 11px 13px 10px 14px;
-  border-bottom-color: transparent;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 42%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 8%, transparent) 100%);
-  box-shadow: inset 0 -1px 0 var(--border-default);
+  min-height: 40px;
+  height: 40px;
+  padding: 0 13px 0 14px;
+  border-bottom-color: var(--board-column-line);
+  background: var(--board-column-header-surface);
+  box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__title h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-heading);
-  font-size: 0.86rem;
+  color: var(--text-muted);
+  font-family: var(--font-family-sans);
+  font-size: 0.69rem;
   font-weight: 800;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__counter {
@@ -250,8 +288,8 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--selected-bg);
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--border-default) 28%, transparent);
+  color: var(--text-muted);
   box-shadow: none;
   font-size: 0.72rem;
 }
@@ -265,7 +303,11 @@
   z-index: 1;
   gap: 8px;
   padding: 10px;
-  background: transparent;
+  background: var(--board-column-body-surface);
+}
+
+.app-theme:not([data-theme="dark"]) .board-column__list--over {
+  background: var(--board-column-body-surface-over);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__item {
@@ -299,10 +341,15 @@
 }
 
 .app-theme[data-theme="dark"] .board-columns {
-  gap: 1px;
+  --board-column-line: color-mix(in oklab, var(--line) 86%, transparent);
+  --board-column-canvas-surface: var(--surface-1);
+  --board-column-header-surface: var(--surface-table-header);
+  --board-column-body-surface: color-mix(in oklab, var(--surface-1) 94%, var(--surface-2));
+  --board-column-body-surface-over: color-mix(in oklab, var(--selected-bg) 62%, var(--board-column-body-surface));
+  gap: 0;
   padding: 0;
   border-radius: 0;
-  background: var(--surface-1);
+  background: var(--board-column-canvas-surface);
 }
 
 .app-theme[data-theme="dark"] .board-column {
@@ -310,8 +357,8 @@
   overflow: hidden;
   border-radius: 0;
   border-color: transparent;
-  background:
-    linear-gradient(180deg, var(--surface-1) 0%, var(--surface-1) 100%);
+  border-right-color: var(--board-column-line);
+  background: var(--board-column-body-surface);
   box-shadow: none;
 }
 
@@ -333,27 +380,28 @@
 
 .app-theme[data-theme="dark"] .board-column--drop-target {
   border-color: transparent;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 16%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 10%, transparent) 100%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 24%, transparent);
+  background: var(--board-column-body-surface-over);
+  box-shadow: inset 0 0 0 1px var(--selected-border);
 }
 
 .app-theme[data-theme="dark"] .board-column__head {
   position: relative;
   z-index: 1;
-  min-height: 52px;
-  padding: 11px 13px 10px 14px;
-  border-bottom-color: transparent;
-  background: var(--surface-1);
-  box-shadow: inset 0 -1px 0 var(--border-default);
+  min-height: 40px;
+  height: 40px;
+  padding: 0 13px 0 14px;
+  border-bottom-color: var(--board-column-line);
+  background: var(--board-column-header-surface);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-column__title h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-heading);
-  font-size: 0.86rem;
+  color: var(--text-muted);
+  font-family: var(--font-family-sans);
+  font-size: 0.69rem;
   font-weight: 800;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .app-theme[data-theme="dark"] .board-column__counter {
@@ -362,8 +410,8 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--selected-bg);
-  color: var(--text-primary);
+  background: color-mix(in oklab, var(--border-default) 38%, transparent);
+  color: var(--text-muted);
   box-shadow: none;
   font-size: 0.72rem;
 }
@@ -377,7 +425,11 @@
   z-index: 1;
   gap: 8px;
   padding: 10px;
-  background: transparent;
+  background: var(--board-column-body-surface);
+}
+
+.app-theme[data-theme="dark"] .board-column__list--over {
+  background: var(--board-column-body-surface-over);
 }
 
 .app-theme[data-theme="dark"] .board-column__item {

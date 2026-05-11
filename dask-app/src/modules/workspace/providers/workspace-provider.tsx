@@ -1,12 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import type { TaskCustomFieldValue, TaskPriority, TaskStatusId } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api";
+import { setWorkspaceSnapshotQueryData, useWorkspaceSnapshotQuery } from "@/modules/workspace/query";
 import type {
   AiCapabilities,
   AiAgentSummary,
   AiObservability,
   AiRunSummary,
+  AiAgentRuntimePublishResult,
+  AiAgentRuntimeValidationResult,
   ApiBoardColumn,
   ApiCustomField,
   ApiItemType,
@@ -33,6 +37,8 @@ import type {
   CommunicationTemplateVersion,
   RunDocumentationAssistantInput,
   RunDocumentationAssistantResult,
+  RunAiAgentRuntimeInput,
+  RunAiAgentRuntimeResult,
   DocumentLinkedEntityType,
   DocumentKind,
   Customer,
@@ -198,6 +204,10 @@ interface WorkspaceContextValue {
     agentId: string,
     patch: Omit<Partial<CreateAiAgentInput>, "description"> & { description?: string | null }
   ) => Promise<{ id: string }>;
+  validateAiAgent: (agentId: string) => Promise<AiAgentRuntimeValidationResult>;
+  publishAiAgent: (agentId: string, input?: { activateWorkflow?: boolean }) => Promise<AiAgentRuntimePublishResult>;
+  runAiAgent: (agentId: string, input?: RunAiAgentRuntimeInput) => Promise<RunAiAgentRuntimeResult>;
+  archiveAiAgent: (agentId: string) => Promise<{ id: string }>;
   runAiAgentOnItem: (
     itemId: string,
     agentId: string,
@@ -267,36 +277,19 @@ interface WorkspaceProviderProps {
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
-  const [snapshot, setSnapshot] = useState<WorkspaceSnapshot | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const snapshotQuery = useWorkspaceSnapshotQuery(workspaceSlug);
+  const snapshot = snapshotQuery.data ?? null;
+  const isLoading = Boolean(workspaceSlug) && snapshotQuery.isLoading;
 
-  useEffect(() => {
-    if (!workspaceSlug) {
-      setIsLoading(false);
-      setSnapshot(null);
-      return;
-    }
-
-    let mounted = true;
-    setIsLoading(true);
-    workspaceService
-      .getSnapshot(workspaceSlug)
-      .then(nextSnapshot => {
-        if (mounted) {
-          setSnapshot(nextSnapshot);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [workspaceSlug]);
+  const setSnapshot = useCallback(
+    (nextSnapshot: WorkspaceSnapshot | null) => {
+      if (workspaceSlug && nextSnapshot) {
+        setWorkspaceSnapshotQueryData(queryClient, workspaceSlug, nextSnapshot);
+      }
+    },
+    [queryClient, workspaceSlug]
+  );
 
   const createTask = useCallback(async (input: CreateTaskInput) => {
     if (!workspaceSlug) {
@@ -976,6 +969,54 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [workspaceSlug]
   );
 
+  const validateAiAgent = useCallback(
+    async (agentId: string): Promise<AiAgentRuntimeValidationResult> => {
+      if (!workspaceSlug) {
+        return { agentId, valid: false, issues: ["Nenhum workspace selecionado."], definition: {} };
+      }
+      return workspaceService.validateAiAgent(workspaceSlug, agentId);
+    },
+    [workspaceSlug]
+  );
+
+  const publishAiAgent = useCallback(
+    async (agentId: string, input?: { activateWorkflow?: boolean }): Promise<AiAgentRuntimePublishResult> => {
+      if (!workspaceSlug) {
+        return { agentId, workflowId: "", workflowVersionId: "", valid: false, issues: ["Nenhum workspace selecionado."] };
+      }
+      return workspaceService.publishAiAgent(workspaceSlug, agentId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const runAiAgent = useCallback(
+    async (agentId: string, input?: RunAiAgentRuntimeInput): Promise<RunAiAgentRuntimeResult> => {
+      if (!workspaceSlug) {
+        return {
+          agentId,
+          workflowId: "",
+          workflowVersionId: "",
+          runId: "",
+          status: "failed",
+          executionStatus: "failed",
+          executedNodeIds: []
+        };
+      }
+      return workspaceService.runAiAgent(workspaceSlug, agentId, input);
+    },
+    [workspaceSlug]
+  );
+
+  const archiveAiAgent = useCallback(
+    async (agentId: string): Promise<{ id: string }> => {
+      if (!workspaceSlug) {
+        return { id: "" };
+      }
+      return workspaceService.archiveAiAgent(workspaceSlug, agentId);
+    },
+    [workspaceSlug]
+  );
+
   const runAiAgentOnItem = useCallback(
     async (
       itemId: string,
@@ -1269,6 +1310,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       getAiObservability,
       createAiAgent,
       updateAiAgent,
+      validateAiAgent,
+      publishAiAgent,
+      runAiAgent,
+      archiveAiAgent,
       runAiAgentOnItem,
       runAiRiskAnalysis,
       runDocumentationAssistant,
@@ -1370,6 +1415,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       getAiObservability,
       createAiAgent,
       updateAiAgent,
+      validateAiAgent,
+      publishAiAgent,
+      runAiAgent,
+      archiveAiAgent,
       runAiAgentOnItem,
       runAiRiskAnalysis,
       runDocumentationAssistant,

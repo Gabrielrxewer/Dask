@@ -1,7 +1,9 @@
-import type { DragEvent } from "react";
+import type { CSSProperties } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { ApiBoardColumn, ApiWorkflowState } from "@/modules/workspace/model";
+import { ConfirmModal } from "@/shared/ui";
 import { IconEye, IconEyeOff, IconGrip, IconPencil, IconPlus, IconTrash } from "./board-editor-icons";
-import { BoardColumnDeleteModal } from "./board-column-delete-modal";
 import { BoardColumnForm } from "./board-column-form";
 import { BoardEditorPreview } from "./board-editor-preview";
 
@@ -17,10 +19,6 @@ type BoardColumnCardProps = {
   editingColumnName: string;
   editingColumnStateId: string;
   saving: boolean;
-  onDragStart: (event: DragEvent<HTMLDivElement>, columnId: string) => void;
-  onDragEnd: () => void;
-  onDragOver: (event: DragEvent<HTMLDivElement>, columnId: string) => void;
-  onDrop: (event: DragEvent<HTMLDivElement>, columnId: string) => void;
   onStartEdit: (column: ApiBoardColumn) => void;
   onEditingColumnNameChange: (value: string) => void;
   onEditingColumnStateIdChange: (value: string) => void;
@@ -45,10 +43,6 @@ export function BoardColumnCard({
   editingColumnName,
   editingColumnStateId,
   saving,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDrop,
   onStartEdit,
   onEditingColumnNameChange,
   onEditingColumnStateIdChange,
@@ -61,24 +55,37 @@ export function BoardColumnCard({
   onToggleCreateTaskColumn
 }: BoardColumnCardProps) {
   const stateForColumn = activeStates.find((state) => state.id === column.stateIds[0]);
+  const isSortableDisabled = isHidden || isEditing || isConfirmingDelete;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging
+  } = useSortable({
+    id: column.id,
+    disabled: isSortableDisabled
+  });
+  const sortableStyle: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  };
 
   return (
     <div
+      ref={setNodeRef}
+      style={sortableStyle}
       className={[
         "board-editor__column",
         isHidden ? "board-editor__column--hidden" : "",
         isEditing ? "board-editor__column--editing" : "",
         isConfirmingDelete ? "board-editor__column--confirming" : "",
-        isDragging ? "board-editor__column--dragging" : "",
+        isDragging || isSortableDragging ? "board-editor__column--dragging" : "",
         isDragOver ? "board-editor__column--drag-over" : ""
       ]
         .filter(Boolean)
         .join(" ")}
-      draggable={!isHidden && !isEditing && !isConfirmingDelete}
-      onDragStart={(event) => onDragStart(event, column.id)}
-      onDragEnd={onDragEnd}
-      onDragOver={(event) => onDragOver(event, column.id)}
-      onDrop={(event) => onDrop(event, column.id)}
       onClick={(event) => event.stopPropagation()}
     >
       {isEditing ? (
@@ -100,7 +107,12 @@ export function BoardColumnCard({
         <>
           <div className="board-editor__column-head">
             {!isHidden && (
-              <span className="board-editor__drag-handle" title="Arrastar para reorganizar">
+              <span
+                className="board-editor__drag-handle"
+                title="Arrastar para reorganizar"
+                {...attributes}
+                {...listeners}
+              >
                 <IconGrip />
               </span>
             )}
@@ -179,11 +191,16 @@ export function BoardColumnCard({
           <BoardEditorPreview isHidden={isHidden} />
 
           {isConfirmingDelete && (
-            <BoardColumnDeleteModal
-              columnName={column.name}
-              saving={saving}
+            <ConfirmModal
+              titleId="board-column-delete-title"
+              eyebrow="Remover coluna"
+              title={<>Remover <strong>{column.name}</strong>?</>}
+              description="A coluna sera removida desta configuracao de board."
+              confirmLabel={saving ? "Removendo..." : "Sim, remover"}
+              isConfirming={saving}
+              tone="danger"
               onConfirm={() => onDeleteColumn(column.id)}
-              onCancel={onCancelDelete}
+              onClose={onCancelDelete}
             />
           )}
         </>

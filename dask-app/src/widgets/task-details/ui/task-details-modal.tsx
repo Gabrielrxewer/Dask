@@ -31,17 +31,19 @@ import type {
   WorkspaceDocument
 } from "@/modules/workspace/model";
 import {
-  FieldShell,
-  WorkItemFieldRenderer,
   normalizeTaskFieldPresentationValue,
-  resolveFieldShellStyle,
   validateTaskFieldPresentationValue
 } from "@/entities/task/ui/field-presentation";
+import {
+  WorkItemDynamicForm,
+  WorkItemFormProvider,
+  useWorkItemForm,
+  type WorkItemFormValues
+} from "@/entities/work-item-form";
+import { legacyFieldBindingsToPublicSchema, type WorkItemPublicField, type WorkItemPublicSchema } from "@/entities/work-item-schema";
 import { cn } from "@/shared/lib/cn";
-import { Button, ModalShell } from "@/shared/ui";
+import { AppDialog, Button, toast } from "@/shared/ui";
 import "./task-details-modal.css";
-
-type DetailZone = "main" | "side";
 
 type TaskDetailsModalProps =
   | {
@@ -105,14 +107,6 @@ function toJsonComparable(value: unknown) {
   return JSON.stringify(value ?? null);
 }
 
-function isReadonlyField(field: TaskFieldDefinition) {
-  return (
-    field.isEditable === false ||
-    field.config?.readOnlyAfterCreate === true ||
-    matchesTaskFieldStorage(field, { kind: "item_property", property: "createdBy" })
-  );
-}
-
 const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   wiki: "Wiki",
   proposal: "Proposta",
@@ -144,18 +138,6 @@ function formatDocumentDate(value: string | Date | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
-function resolveFieldLayoutClass(field: TaskFieldDefinition, zone: DetailZone) {
-  const shouldSpan =
-    zone === "main" &&
-    (field.type === "long_text" ||
-      field.type === "checklist" ||
-      field.type === "schedule" ||
-      matchesTaskFieldStorage(field, { kind: "item_property", property: "title" }) ||
-      matchesTaskFieldStorage(field, { kind: "item_property", property: "description" }));
-
-  return shouldSpan ? "task-details__field-frame--wide" : "task-details__field-frame--compact";
-}
-
 function applyCreateFieldDraftDefaults(
   drafts: Record<string, TaskCustomFieldValue>,
   fields: TaskFieldDefinition[],
@@ -184,6 +166,33 @@ function applyCreateFieldDraftDefaults(
   return next;
 }
 
+export function createTaskDetailsInitialFieldDrafts(input: {
+  task: Task | null | undefined;
+  fields: TaskFieldDefinition[];
+  isCreateMode: boolean;
+  initialStatusId: TaskStatusId;
+  selectedTypeId: string;
+  currentDrafts?: Record<string, TaskCustomFieldValue>;
+}): Record<string, TaskCustomFieldValue> {
+  const seeded = createTaskFieldDrafts(input.task, input.fields);
+  const nextSeeded = input.isCreateMode
+    ? applyCreateFieldDraftDefaults(seeded, input.fields, {
+        initialStatusId: input.initialStatusId,
+        selectedTypeId: input.selectedTypeId
+      })
+    : seeded;
+
+  if (input.isCreateMode && input.currentDrafts) {
+    for (const field of input.fields) {
+      if (field.id in input.currentDrafts) {
+        nextSeeded[field.id] = input.currentDrafts[field.id];
+      }
+    }
+  }
+
+  return nextSeeded;
+}
+
 function formatCustomerAddress(address: CustomerAddress | null | undefined): string {
   if (!address) {
     return "";
@@ -201,6 +210,160 @@ function formatCustomerAddress(address: CustomerAddress | null | undefined): str
     .join(" - ");
 }
 
+function getTaskFieldFormKey(field: TaskFieldDefinition): string {
+  return field.variableKey ?? field.slug ?? field.id;
+}
+
+export function buildTaskDetailsOfficialFormValues(
+  fields: TaskFieldDefinition[],
+  drafts: Record<string, TaskCustomFieldValue>
+): WorkItemFormValues {
+  return fields.reduce<WorkItemFormValues>((acc, field) => {
+    acc[getTaskFieldFormKey(field)] = normalizeTaskFieldPresentationValue(field, drafts[field.id] ?? null) ?? null;
+    return acc;
+  }, {});
+}
+
+export function mergeTaskDetailsFieldDraft(
+  current: Record<string, TaskCustomFieldValue>,
+  field: TaskFieldDefinition,
+  value: TaskCustomFieldValue
+): Record<string, TaskCustomFieldValue> {
+  return {
+    ...current,
+    [field.id]: value
+  };
+}
+
+function toPublicOptions(options: Array<{ id?: string; label: string; value: string; color?: string | null }>) {
+  return options.map((option) => ({
+    id: option.id ?? option.value,
+    label: option.label,
+    value: option.value,
+    color: option.color ?? null
+  }));
+}
+
+function withOperationalFormOptions(
+  schema: WorkItemPublicSchema,
+  input: {
+    legacyFields: TaskFieldDefinition[];
+    statuses: TaskStatus[];
+    boardConfig: BoardConfig;
+    membersById: MembersById;
+  }
+): WorkItemPublicSchema {
+  const legacyFieldsByKey = new Map(input.legacyFields.map((field) => [getTaskFieldFormKey(field), field]));
+  const memberOptions = toPublicOptions(
+    Object.values(input.membersById)
+      .filter((member) => member.id && member.name)
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((member) => ({ id: member.id, value: member.id, label: member.name }))
+  );
+  const statusOptions = toPublicOptions(input.statuses.map((status) => ({
+    id: status.id,
+    value: status.id,
+    label: status.label,
+    color: status.dot
+  })));
+  const typeOptions = toPublicOptions(input.boardConfig.taskTypes.map((type) => ({
+    id: type.id,
+    value: type.id,
+    label: type.label,
+    color: type.text
+  })));
+
+  return {
+    ...schema,
+    fields: schema.fields.map((field) => {
+      const legacyField = legacyFieldsByKey.get(field.key);
+      const storage = legacyField ? readTaskFieldStorage(legacyField) : null;
+      const property = typeof storage?.property === "string" ? storage.property : "";
+
+      if (property === "stateSlug") {
+        return { ...field, type: "select", options: statusOptions };
+      }
+      if (property === "typeSlug") {
+        return { ...field, type: "select", options: typeOptions };
+      }
+      if (property === "assigneeId") {
+        return { ...field, type: "user", options: memberOptions };
+      }
+      if (property === "dueDate") {
+        return { ...field, type: "date" };
+      }
+      if (property === "description") {
+        return { ...field, type: "textarea" };
+      }
+
+      return field;
+    })
+  };
+}
+
+function resolveOfficialFields(
+  schema: WorkItemPublicSchema,
+  fields: TaskFieldDefinition[]
+): WorkItemPublicField[] {
+  return fields
+    .map((field) => {
+      const key = getTaskFieldFormKey(field);
+      return schema.fields.find((candidate) =>
+        candidate.key === key ||
+        candidate.id === field.id ||
+        candidate.id === field.definitionId
+      );
+    })
+    .filter((field): field is WorkItemPublicField => Boolean(field));
+}
+
+function getCreateDraftStorageKey(typeId: string): string {
+  return `dask:work-item-form:draft:${typeId}`;
+}
+
+function readCreateDraft(storageKey: string): Record<string, TaskCustomFieldValue> | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawDraft = window.sessionStorage.getItem(storageKey);
+    if (!rawDraft) {
+      return null;
+    }
+    const parsed = JSON.parse(rawDraft);
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, TaskCustomFieldValue>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCreateDraft(storageKey: string, drafts: Record<string, TaskCustomFieldValue>) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(storageKey, JSON.stringify(drafts));
+  } catch {
+    // Draft storage is best effort; form submit remains the source of truth.
+  }
+}
+
+function clearCreateDraft(storageKey: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(storageKey);
+  } catch {
+    // Best effort cleanup.
+  }
+}
+
 export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const isCreateMode = props.mode === "create";
   const task = props.mode === "edit" ? props.task : null;
@@ -213,11 +376,13 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
   const unlinkDocumentFromWorkItem = props.mode === "edit" ? props.unlinkDocumentFromWorkItem : null;
   const openDocument = props.mode === "edit" ? props.onOpenDocument : undefined;
   const listCustomers = props.mode === "edit" ? (props.listCustomers ?? null) : null;
+  const onClose = props.onClose;
 
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
   const initialTypeId = task?.type ?? (props.mode === "create" ? props.initialTypeId : boardConfig.taskTypes[0]?.id ?? "task");
   const [selectedTypeId, setSelectedTypeId] = useState(initialTypeId);
   const [fieldDrafts, setFieldDrafts] = useState<Record<string, TaskCustomFieldValue>>({});
+  const fieldDraftsRef = useRef<Record<string, TaskCustomFieldValue>>({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [workspaceDocuments, setWorkspaceDocuments] = useState<WorkspaceDocument[]>([]);
@@ -259,42 +424,101 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     [detailBindings, isCreateMode]
   );
 
-  const initialFieldDrafts = useMemo(
+  const officialFormSchema = useMemo(
     () => {
-      const drafts = createTaskFieldDrafts(task, orderedVisibleFields);
-      return isCreateMode
-        ? applyCreateFieldDraftDefaults(drafts, orderedVisibleFields, {
-            initialStatusId: initialCreateStatusId,
-            selectedTypeId
-          })
-        : drafts;
+      const schema = legacyFieldBindingsToPublicSchema({
+        schemaId: selectedTypeId,
+        workspaceId: "workspace",
+        name: getTaskTypeDisplayMeta(typeMap, selectedTypeId)?.label ?? selectedTypeId,
+        boardConfig,
+        fieldDefinitions: orderedVisibleFields,
+        fieldBindings: detailBindings.map((binding, index) => ({
+          id: binding.bindingId ?? `${selectedTypeId}:detail:${binding.field.id}:${index}`,
+          fieldId: binding.field.id,
+          typeId: selectedTypeId,
+          displayContext: "detail",
+          order: binding.order,
+          section: binding.section,
+          isVisible: binding.visible,
+          isRequiredOverride: binding.required,
+          isReadonlyOverride: binding.readonly,
+          settings: binding.settings
+        })),
+        workflowStateIds: statuses.map((status) => status.id)
+      });
+
+      return withOperationalFormOptions(schema, {
+        legacyFields: orderedVisibleFields,
+        statuses,
+        boardConfig,
+        membersById: props.membersById
+      });
     },
+    [boardConfig, detailBindings, orderedVisibleFields, props.membersById, selectedTypeId, statuses, typeMap]
+  );
+  const officialForm = useWorkItemForm(officialFormSchema, task);
+  const {
+    reset: resetOfficialForm,
+    setValue: setOfficialFormValue,
+    trigger: triggerOfficialForm
+  } = officialForm;
+
+  const initialFieldDrafts = useMemo(
+    () => createTaskDetailsInitialFieldDrafts({
+      task,
+      fields: orderedVisibleFields,
+      isCreateMode,
+      initialStatusId: initialCreateStatusId,
+      selectedTypeId
+    }),
     [initialCreateStatusId, isCreateMode, orderedVisibleFields, selectedTypeId, task]
   );
+
+  const formFieldIdentityKey = useMemo(
+    () =>
+      orderedVisibleFields
+        .map((field) => `${field.id}:${field.definitionId ?? ""}:${getTaskFieldFormKey(field)}:${field.type}`)
+        .join("|"),
+    [orderedVisibleFields]
+  );
+  const formDraftResetKey = `${props.mode}:${task?.id ?? "new"}:${initialCreateStatusId}:${selectedTypeId}:${formFieldIdentityKey}`;
+  const lastFormDraftResetKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSelectedTypeId(initialTypeId);
   }, [initialTypeId]);
 
   useEffect(() => {
-    setFieldDrafts(current => {
-      const seeded = createTaskFieldDrafts(task, orderedVisibleFields);
-      const nextSeeded = isCreateMode
-        ? applyCreateFieldDraftDefaults(seeded, orderedVisibleFields, {
-            initialStatusId: initialCreateStatusId,
-            selectedTypeId
-          })
-        : seeded;
-      if (isCreateMode) {
-        for (const field of orderedVisibleFields) {
-          if (field.id in current) {
-            nextSeeded[field.id] = current[field.id];
-          }
-        }
-      }
-      return nextSeeded;
+    if (lastFormDraftResetKeyRef.current === formDraftResetKey) {
+      return;
+    }
+
+    const nextDrafts = createTaskDetailsInitialFieldDrafts({
+      task,
+      fields: orderedVisibleFields,
+      isCreateMode,
+      initialStatusId: initialCreateStatusId,
+      selectedTypeId,
+      currentDrafts: fieldDraftsRef.current
     });
-  }, [initialCreateStatusId, isCreateMode, orderedVisibleFields, selectedTypeId, task]);
+
+    fieldDraftsRef.current = nextDrafts;
+    setFieldDrafts(nextDrafts);
+    resetOfficialForm(buildTaskDetailsOfficialFormValues(orderedVisibleFields, nextDrafts));
+    lastFormDraftResetKeyRef.current = formDraftResetKey;
+  }, [
+    formDraftResetKey,
+    initialCreateStatusId,
+    isCreateMode,
+    orderedVisibleFields,
+    resetOfficialForm,
+    selectedTypeId,
+    task
+  ]);
+
+  useEffect(() => {
+    fieldDraftsRef.current = fieldDrafts;
+  }, [fieldDrafts]);
 
   useEffect(() => {
     setError("");
@@ -381,35 +605,43 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
     setCustomerDropdownOpen(false);
     setCustomerSearch(customer.name);
 
-    setFieldDrafts(current => {
-      const next = { ...current };
-      const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>(
-        (acc, f) => { acc[f.slug ?? f.id] = f; return acc; },
-        {}
-      );
+    const next = { ...fieldDraftsRef.current };
+    const updatedFields: TaskFieldDefinition[] = [];
+    const fieldMap = boardConfig.fieldDefinitions.reduce<Record<string, TaskFieldDefinition>>(
+      (acc, f) => { acc[f.slug ?? f.id] = f; return acc; },
+      {}
+    );
 
-      const set = (slug: string, value: string) => {
-        const field = fieldMap[slug];
-        if (field) {
-          next[field.id] = value;
-        }
-      };
-
-      if (customerSelectorField) {
-        next[customerSelectorField.id] = customer.id;
+    const set = (slug: string, value: string) => {
+      const field = fieldMap[slug];
+      if (field) {
+        next[field.id] = value;
+        updatedFields.push(field);
       }
-      set("clientName", customer.name);
-      set("companyName", customer.tradeName ?? customer.legalName ?? customer.name);
-      set("clientLegalName", customer.legalName ?? customer.tradeName ?? customer.name);
-      set("clientLogoUrl", customer.logoUrl ?? "");
-      set("contactEmail", customer.email ?? "");
-      set("contactPhone", customer.phone ?? "");
-      set("clientDocument", customer.document ?? "");
-      set("clientAddress", formatCustomerAddress(customer.address));
+    };
 
-      return next;
-    });
-  }, [boardConfig.fieldDefinitions, customerSelectorField]);
+    if (customerSelectorField) {
+      next[customerSelectorField.id] = customer.id;
+      updatedFields.push(customerSelectorField);
+    }
+    set("clientName", customer.name);
+    set("companyName", customer.tradeName ?? customer.legalName ?? customer.name);
+    set("clientLegalName", customer.legalName ?? customer.tradeName ?? customer.name);
+    set("clientLogoUrl", customer.logoUrl ?? "");
+    set("contactEmail", customer.email ?? "");
+    set("contactPhone", customer.phone ?? "");
+    set("clientDocument", customer.document ?? "");
+    set("clientAddress", formatCustomerAddress(customer.address));
+
+    fieldDraftsRef.current = next;
+    setFieldDrafts(next);
+    for (const field of updatedFields) {
+      setOfficialFormValue(getTaskFieldFormKey(field), next[field.id] ?? null, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+    }
+  }, [boardConfig.fieldDefinitions, customerSelectorField, setOfficialFormValue]);
 
   const mainColumnFields = useMemo(
     () =>
@@ -428,6 +660,16 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         .filter(field => orderedVisibleFields.some(visibleField => visibleField.id === field.id))
         .filter(field => hasCustomerSelector ? field.config?.entityType !== "customer" : true),
     [detailBindings, orderedVisibleFields, hasCustomerSelector]
+  );
+
+  const officialMainFields = useMemo(
+    () => resolveOfficialFields(officialFormSchema, mainColumnFields),
+    [officialFormSchema, mainColumnFields]
+  );
+
+  const officialSideFields = useMemo(
+    () => resolveOfficialFields(officialFormSchema, sideColumnFields),
+    [officialFormSchema, sideColumnFields]
   );
 
   const workspaceDocumentsById = useMemo(
@@ -464,6 +706,49 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       }, {}),
     [fieldDrafts, orderedVisibleFields]
   );
+
+  const createDraftStorageKey = useMemo(
+    () => getCreateDraftStorageKey(selectedTypeId),
+    [selectedTypeId]
+  );
+  const createDraftLoadKey = `${createDraftStorageKey}:${formFieldIdentityKey}`;
+  const lastCreateDraftLoadKeyRef = useRef<string | null>(null);
+
+  const handleClose = useCallback(() => {
+    if (isCreateMode) {
+      clearCreateDraft(createDraftStorageKey);
+    }
+    onClose();
+  }, [createDraftStorageKey, isCreateMode, onClose]);
+
+  useEffect(() => {
+    if (!isCreateMode) {
+      return;
+    }
+
+    if (lastCreateDraftLoadKeyRef.current === createDraftLoadKey) {
+      return;
+    }
+    lastCreateDraftLoadKeyRef.current = createDraftLoadKey;
+
+    const savedDraft = readCreateDraft(createDraftStorageKey);
+    if (!savedDraft) {
+      return;
+    }
+
+    const nextDrafts = { ...fieldDraftsRef.current, ...savedDraft };
+    fieldDraftsRef.current = nextDrafts;
+    setFieldDrafts(nextDrafts);
+    resetOfficialForm(buildTaskDetailsOfficialFormValues(orderedVisibleFields, nextDrafts));
+  }, [createDraftLoadKey, createDraftStorageKey, isCreateMode, orderedVisibleFields, resetOfficialForm]);
+
+  useEffect(() => {
+    if (!isCreateMode || Object.keys(fieldDrafts).length === 0) {
+      return;
+    }
+
+    writeCreateDraft(createDraftStorageKey, fieldDrafts);
+  }, [createDraftStorageKey, fieldDrafts, isCreateMode]);
 
   const hasChanges = useMemo(() => {
     if (isCreateMode || !task) {
@@ -511,70 +796,33 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
 
   const canSave = isCreateMode ? !saving && !firstFieldError : !saving && hasChanges && !firstFieldError;
 
-  const updateFieldDraft = (field: TaskFieldDefinition, value: TaskCustomFieldValue) => {
-    setFieldDrafts(current => ({
-      ...current,
-      [field.id]: value
-    }));
+  const updateFieldDraft = useCallback((field: TaskFieldDefinition, value: TaskCustomFieldValue) => {
+    setFieldDrafts(current => {
+      const next = mergeTaskDetailsFieldDraft(current, field, value);
+      fieldDraftsRef.current = next;
+      return next;
+    });
 
     if (field.type === "work_item_type" && typeof value === "string" && value.trim().length > 0) {
       setSelectedTypeId(value);
     }
-  };
+  }, []);
 
-  const renderFieldPanel = (field: TaskFieldDefinition, zone: DetailZone) => {
-    const readOnly = isReadonlyField(field) && !isCreateMode;
-    const fieldError = fieldErrorsById[field.id] ?? null;
-    const mode = readOnly ? "display" : "edit";
-    const context = isCreateMode ? "form" : "detail";
-    const shellStyle = resolveFieldShellStyle({
-      field,
-      mode,
-      context,
-      readonly: readOnly
-    });
+  const handleOfficialFieldChange = useCallback(
+    (field: WorkItemPublicField, value: unknown) => {
+      const legacyField = orderedVisibleFields.find((candidate) =>
+        getTaskFieldFormKey(candidate) === field.key ||
+        candidate.id === field.id ||
+        candidate.definitionId === field.id
+      );
+      if (!legacyField) {
+        return;
+      }
 
-    return (
-      <section
-        key={field.id}
-        className={cn(
-          zone === "main" ? "task-details__section" : "task-details__panel",
-          "task-details__field-frame",
-          `task-details__field-frame--${shellStyle.kind}`,
-          resolveFieldLayoutClass(field, zone),
-          readOnly && "task-details__field-frame--readonly"
-        )}
-        data-field-type={field.type}
-      >
-        <FieldShell
-          label={field.label}
-          hint={field.description}
-          required={field.required}
-          error={fieldError}
-          readonly={readOnly}
-          kind={shellStyle.kind}
-          helpMode={shellStyle.helpMode}
-        >
-          <WorkItemFieldRenderer
-            field={field}
-            value={normalizedCurrentDrafts[field.id]}
-            mode={mode}
-            context={context}
-            boardConfig={boardConfig}
-            statuses={statuses}
-            membersById={props.membersById}
-            availableTags={availableTags}
-            task={task}
-            readonly={readOnly}
-            disabled={saving}
-            autoFocus={isCreateMode && orderedVisibleFields[0]?.id === field.id}
-            onChange={value => updateFieldDraft(field, value)}
-            error={fieldError}
-          />
-        </FieldShell>
-      </section>
-    );
-  };
+      updateFieldDraft(legacyField, value as TaskCustomFieldValue);
+    },
+    [orderedVisibleFields, updateFieldDraft]
+  );
 
   const handleUnlinkDocument = async (documentId: string) => {
     if (!task || !unlinkDocumentFromWorkItem) {
@@ -589,12 +837,19 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       setLinkedDocuments((current) => current.filter((document) => document.id !== documentId));
     } catch {
       setDocumentsError("Nao foi possivel remover o vinculo do documento.");
+      toast.error("Nao foi possivel remover o vinculo do documento.");
     } finally {
       setDocumentsLoading(false);
     }
   };
 
   const handleSubmit = async () => {
+    const officialFormValid = await triggerOfficialForm();
+    if (!officialFormValid) {
+      setError("Revise os campos obrigatorios antes de salvar.");
+      return;
+    }
+
     if (firstFieldError) {
       setError(firstFieldError);
       return;
@@ -627,7 +882,9 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         };
 
         await Promise.resolve(props.onCreateTask(payload));
-        props.onClose();
+        clearCreateDraft(createDraftStorageKey);
+        toast.success("Item criado.");
+        onClose();
         return;
       }
 
@@ -687,22 +944,35 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
       }
 
       await Promise.resolve(props.onSaveTask(task.id, nextPayload));
-    } catch {
-      setError(isCreateMode ? "Nao foi possivel criar o item." : "Nao foi possivel salvar as alteracoes.");
+      toast.success("Alteracoes salvas.");
+    } catch (error) {
+      const message = isCreateMode ? "Nao foi possivel criar o item." : "Nao foi possivel salvar as alteracoes.";
+      setError(message);
+      toast.error(message, {
+        description: error instanceof Error ? error.message : "Tente novamente."
+      });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <ModalShell titleId="task-details-title" className="task-details" onClose={props.onClose}>
+    <AppDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
+      className="task-details"
+      bodyClassName="task-details__dialog-body"
+      showClose={false}
+    >
       <div className="task-details__surface" style={accentVars}>
         <header className="task-details__topbar">
           <div className="task-details__header-copy">
             <p className="task-details__breadcrumbs">{isCreateMode ? "Novo item" : "Work item"}</p>
             <h2 id="task-details-title">{isCreateMode ? "Criar work item" : "Editar work item"}</h2>
           </div>
-          <button className="task-details__close" type="button" onClick={props.onClose} aria-label="Fechar editor">
+          <button className="task-details__close" type="button" onClick={handleClose} aria-label="Fechar editor">
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" width="16" height="16">
               <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
             </svg>
@@ -710,9 +980,16 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
         </header>
 
         <div className={`task-details__body ${isCreateMode ? "task-details__body--create" : "task-details__body--edit"}`}>
+          <WorkItemFormProvider form={officialForm}>
           <section className="task-details__main">
-            {mainColumnFields.length > 0 ? (
-              mainColumnFields.map(field => renderFieldPanel(field, "main"))
+            {officialMainFields.length > 0 ? (
+              <WorkItemDynamicForm
+                schema={officialFormSchema}
+                fields={officialMainFields}
+                className="task-details__official-form task-details__official-form--main"
+                layoutZone="main"
+                onFieldChange={handleOfficialFieldChange}
+              />
             ) : (
               <section className="task-details__section">
                 <div className="task-details__section-head">
@@ -795,7 +1072,15 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
                 </div>
               </section>
             ) : null}
-            {sideColumnFields.map(field => renderFieldPanel(field, "side"))}
+            {officialSideFields.length > 0 ? (
+              <WorkItemDynamicForm
+                schema={officialFormSchema}
+                fields={officialSideFields}
+                className="task-details__official-form task-details__official-form--side"
+                layoutZone="side"
+                onFieldChange={handleOfficialFieldChange}
+              />
+            ) : null}
             {!isCreateMode ? (
               <section className="task-details__panel task-details__documents">
                 <h3 className="task-details__summary-style-title">Documentos</h3>
@@ -846,6 +1131,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
               </section>
             ) : null}
           </aside>
+          </WorkItemFormProvider>
         </div>
 
         <footer className="task-details__actionbar">
@@ -861,7 +1147,7 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
             )}
           </div>
           <div className="task-details__actionbar-actions">
-            <Button type="button" size="sm" variant="outline" onClick={props.onClose} disabled={saving}>
+            <Button type="button" size="sm" variant="outline" onClick={handleClose} disabled={saving}>
               Cancelar
             </Button>
             <Button
@@ -876,6 +1162,6 @@ export function TaskDetailsModal(props: TaskDetailsModalProps) {
           </div>
         </footer>
       </div>
-    </ModalShell>
+    </AppDialog>
   );
 }

@@ -15,6 +15,9 @@ export type ReviewStep = "closed" | "preparing" | "ready";
 export type ActiveTab = "conta" | "catalogo" | "cobrar" | "historico";
 export type HistoryAction = "copy" | "resend" | "cancel";
 export type PaymentCapability = "boleto_payments";
+export type CatalogKindFilter = "ALL" | ConnectCatalogItemKind;
+export type CatalogBillingFilter = "ALL" | ConnectCatalogBillingType;
+export type CatalogSort = "recent" | "name" | "amount-desc" | "amount-asc";
 export type BillingOnboardingStage = "Cadastro" | "Cobrança" | "Repasse" | "Concluído";
 
 export interface BillingStatusCard {
@@ -37,22 +40,8 @@ export interface BillingChecklistItem {
   done: boolean;
 }
 
-export interface CatalogCommercialMetadataInput {
-  unit: string;
-  defaultQuantity: string;
-  scope: string;
-  deliverables: string;
-  deliveryTerms: string;
-  paymentTerms: string;
-  proposalValidity: string;
-  contractTerm: string;
-  cancellationTerms: string;
-  clientResponsibilities: string;
-  acceptanceCriteria: string;
-  contractNotes: string;
-}
-
 export const HISTORY_PAGE_SIZE = 5;
+export const CATALOG_PAGE_SIZE = 25;
 
 export const ORDER_STATUS_LABEL: Record<ConnectPaymentOrderStatus, string> = {
   DRAFT: "Rascunho",
@@ -93,21 +82,6 @@ export function formatCapabilityStatus(status: string | null | undefined): strin
 
 export function isLocalPaymentMethodEnabled(status: string | null | undefined): boolean {
   return status === "active" || status === "enabled" || status === "pending";
-}
-
-export function parseAmountInCents(rawAmount: string): number | null {
-  const normalized = rawAmount.trim().replace(",", ".");
-  const value = Number(normalized);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return Math.round(value * 100);
-}
-
-export function buildCatalogCommercialMetadata(input: CatalogCommercialMetadataInput): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(input)
-      .map(([key, value]) => [key, value.trim()])
-      .filter(([, value]) => value.length > 0)
-  );
 }
 
 export const BADGE_TONE_BY_STATUS: Record<StatusTone, "default" | "success" | "warning"> = {

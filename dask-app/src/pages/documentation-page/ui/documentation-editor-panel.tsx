@@ -1,15 +1,14 @@
 import type { ChangeEvent, Ref } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import type { Task } from "@/entities/task";
+import { DocumentDecisionBlock, DocumentPreview, type DocumentVariableDiagnostic } from "@/modules/documentation";
 import type { DocumentKind, WorkspaceDocument, WorkspaceDocumentMetadata } from "@/modules/workspace";
-import { AppIcon, Button, EmptyState, StatusBadge, TextInput, Textarea } from "@/shared/ui";
+import { AppDropdownMenu, AppIcon, AppTooltip, Button, EmptyState, StatusBadge, TextInput, Textarea } from "@/shared/ui";
 import {
   DOCUMENT_KIND_DESCRIPTIONS,
   DOCUMENT_KIND_LABELS,
   EDITOR_VIEW_LABELS,
   formatRelativeDate,
   getCommercialDocumentStatus,
-  markdownUrlTransform,
   type EditorViewMode
 } from "./documentation-page.local";
 
@@ -23,15 +22,22 @@ function commercialStatusKind(status: ReturnType<typeof getCommercialDocumentSta
 interface DocumentationEditorPanelProps {
   activeDoc: WorkspaceDocument | null;
   activeDocKind: DocumentKind;
+  linkedWorkItem?: Task | null;
   editorTextareaRef: Ref<HTMLTextAreaElement>;
   logoFileInputRef: Ref<HTMLInputElement>;
   selectedSnippet: string;
   wordCount: number;
   renderedMarkdown: string;
+  variableDiagnostics?: DocumentVariableDiagnostic[];
+  variableItems?: Array<{ id: string; label: string; hint?: string }>;
+  autosaveStatus?: "saved" | "dirty" | "saving" | "error" | "conflict";
+  saveError?: string | null;
+  uploadProgress?: number | null;
   editorViewMode: EditorViewMode;
   readOnly?: boolean;
   clientDecision?: {
     positiveLabel: string;
+    description?: string;
     isSubmitting: boolean;
     error: string | null;
     success: boolean;
@@ -47,6 +53,7 @@ interface DocumentationEditorPanelProps {
   onRemoveClientLogo: () => void;
   onClientLogoFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onMarkdownToolbarAction: (action: string) => void;
+  onInsertVariable: (variableKey: string) => void;
   onEditorViewModeChange: (mode: EditorViewMode) => void;
   onEditorSelection: (textarea: HTMLTextAreaElement) => void;
 }
@@ -54,11 +61,17 @@ interface DocumentationEditorPanelProps {
 export function DocumentationEditorPanel({
   activeDoc,
   activeDocKind,
+  linkedWorkItem,
   editorTextareaRef,
   logoFileInputRef,
   selectedSnippet,
   wordCount,
   renderedMarkdown,
+  variableDiagnostics = [],
+  variableItems = [],
+  autosaveStatus = "saved",
+  saveError,
+  uploadProgress,
   editorViewMode,
   readOnly = false,
   clientDecision,
@@ -68,6 +81,7 @@ export function DocumentationEditorPanel({
   onRemoveClientLogo,
   onClientLogoFileChange,
   onMarkdownToolbarAction,
+  onInsertVariable,
   onEditorViewModeChange,
   onEditorSelection
 }: DocumentationEditorPanelProps) {
@@ -91,6 +105,34 @@ export function DocumentationEditorPanel({
               ) : null}
               <p>{DOCUMENT_KIND_DESCRIPTIONS[activeDocKind]}</p>
             </div>
+            <div className="documentation-page__document-context-row">
+              <StatusBadge
+                size="sm"
+                kind={autosaveStatus === "error" || autosaveStatus === "conflict" ? "error" : autosaveStatus === "saved" ? "approved" : "sent"}
+              >
+                {autosaveStatus === "saved"
+                  ? "Salvo"
+                  : autosaveStatus === "saving"
+                    ? "Salvando"
+                    : autosaveStatus === "dirty"
+                      ? "Alteracoes pendentes"
+                      : autosaveStatus === "conflict"
+                        ? "Conflito"
+                        : "Erro ao salvar"}
+              </StatusBadge>
+              <span className="documentation-page__linked-work-item">
+                <AppIcon name="board" size={15} />
+                {linkedWorkItem ? (
+                  <>
+                    <strong>{linkedWorkItem.title}</strong>
+                    <span>{linkedWorkItem.status}</span>
+                  </>
+                ) : (
+                  <span>Nenhum card vinculado</span>
+                )}
+              </span>
+            </div>
+            {saveError ? <p className="documentation-page__inline-error">{saveError}</p> : null}
             {readOnly ? (
               <h2 className="documentation-page__preview-title">{activeDoc.title}</h2>
             ) : (
@@ -126,7 +168,7 @@ export function DocumentationEditorPanel({
                       placeholder="Cole a URL da imagem ou envie um arquivo"
                     />
                     <Button type="button" variant="outline" size="sm" onClick={onChooseClientLogoFile}>
-                      Adicionar/Substituir
+                      {typeof uploadProgress === "number" ? `Enviando ${uploadProgress}%` : "Adicionar/Substituir"}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={onRemoveClientLogo} disabled={!activeDoc.metadata?.clientLogoUrl}>
                       Remover
@@ -227,6 +269,31 @@ export function DocumentationEditorPanel({
               </button>
             </div>
 
+            <div className="documentation-page__editor-toolbar-separator" aria-hidden="true" />
+
+            <div className="documentation-page__editor-toolbar-group">
+              <AppDropdownMenu
+                align="start"
+                trigger={
+                  <Button type="button" variant="ghost" size="sm" className="documentation-page__variable-picker-trigger">
+                    <AppIcon name="zap" size={15} />
+                    Variaveis
+                  </Button>
+                }
+                items={variableItems.map((variable) => ({
+                  id: variable.id,
+                  label: variable.label,
+                  hint: variable.hint,
+                  onSelect: () => onInsertVariable(variable.id)
+                }))}
+              />
+              <AppTooltip content="Insere variaveis seguras do card vinculado no Markdown.">
+                <span className="documentation-page__toolbar-help" tabIndex={0}>
+                  <AppIcon name="info" size={15} />
+                </span>
+              </AppTooltip>
+            </div>
+
             <div className="documentation-page__editor-view-switch">
               {(Object.keys(EDITOR_VIEW_LABELS) as EditorViewMode[]).map((mode) => (
                 <button
@@ -257,44 +324,12 @@ export function DocumentationEditorPanel({
 
             {editorViewMode !== "write" ? (
               <article className={`documentation-page__editor-preview markdown-body documentation-page__editor-preview--${activeDocKind}`}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={markdownUrlTransform}>
-                  {renderedMarkdown.trim().length > 0 ? renderedMarkdown : "_Sem conteudo ainda._"}
-                </ReactMarkdown>
+                <DocumentPreview markdown={renderedMarkdown} diagnostics={variableDiagnostics} />
               </article>
             ) : null}
           </div>
 
-          {clientDecision ? (
-            <section className="documentation-page__client-decision" aria-label="Decisao do cliente">
-              <div>
-                <strong>Revise o documento completo antes de continuar.</strong>
-                <p>Seu aceite fica registrado no historico deste documento.</p>
-              </div>
-              {clientDecision.error ? <p className="documentation-page__client-decision-error">{clientDecision.error}</p> : null}
-              {clientDecision.success ? (
-                <p className="documentation-page__client-decision-success">Decisao registrada com sucesso.</p>
-              ) : (
-                <div className="documentation-page__client-decision-actions">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    disabled={clientDecision.isSubmitting}
-                    onClick={clientDecision.onAccept}
-                  >
-                    {clientDecision.isSubmitting ? "Registrando..." : clientDecision.positiveLabel}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={clientDecision.isSubmitting}
-                    onClick={clientDecision.onReject}
-                  >
-                    Recusar
-                  </Button>
-                </div>
-              )}
-            </section>
-          ) : null}
+          {clientDecision ? <DocumentDecisionBlock {...clientDecision} /> : null}
 
           <footer className="documentation-page__editor-footer">
             <p>

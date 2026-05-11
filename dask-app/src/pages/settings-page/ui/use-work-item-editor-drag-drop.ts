@@ -10,6 +10,7 @@ import {
   type LayoutDraft,
   type LayoutScope
 } from "@/pages/settings-page/model/work-item-layout-editor";
+import { DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS } from "./work-item-editor-settings.model";
 import type { DragPayload, FieldDraft, PendingFieldSetup, TypeDraft } from "./work-item-editor-settings.model";
 
 interface UseWorkItemEditorDragDropInput {
@@ -103,7 +104,8 @@ export function useWorkItemEditorDragDrop({
           allowAiGeneration: false,
           options: [],
           checklistIcon: "checklist",
-          checklistColor: "var(--text-secondary)"
+          checklistColor: "var(--text-secondary)",
+          ...DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS
         });
         updateDropTarget(null);
         setDragPayload(null);

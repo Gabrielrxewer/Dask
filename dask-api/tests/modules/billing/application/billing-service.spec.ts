@@ -106,6 +106,7 @@ function makeRepo(): Mocked<BillingRepository> {
     findWorkspaceMembership: vi.fn(),
     findCustomerIdsForUser: vi.fn(),
     findWorkspaceBillingConnectInfo: vi.fn(),
+    findCustomerById: vi.fn(),
     findCustomerByEmail: vi.fn(),
     createCustomerForBilling: vi.fn(),
     linkCustomerToUser: vi.fn(),
@@ -115,11 +116,14 @@ function makeRepo(): Mocked<BillingRepository> {
     findConnectPaymentOrderByCheckoutSessionId: vi.fn(),
     findConnectPaymentOrderByPaymentIntentId: vi.fn(),
     listConnectPaymentOrdersByWorkspace: vi.fn(),
+    hasWorkItemProposalOrContract: vi.fn().mockResolvedValue(true),
     upsertStripeCustomerId: vi.fn().mockResolvedValue(undefined),
     upsertWorkspaceConnectAccountId: vi.fn().mockResolvedValue(undefined),
     createConnectCatalogItem: vi.fn(),
     createConnectPaymentOrder: vi.fn(),
     updateConnectPaymentOrder: vi.fn(),
+    createBillingPortalTokenRecord: vi.fn(),
+    revokeBillingPortalTokensForOrder: vi.fn().mockResolvedValue(undefined),
     syncWorkItemBillingSnapshot: vi.fn().mockResolvedValue(undefined),
     createSubscription: vi.fn(),
     updateSubscription: vi.fn(),
@@ -332,6 +336,20 @@ describe('BillingService', () => {
       repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
         makeWorkspace({ connectAccountId: 'acct_existing' })
       );
+      repo.findCustomerById.mockResolvedValue({
+        id: 'customer-1',
+        workspaceId: 'workspace-1',
+        name: 'Cliente Teste',
+        tradeName: null,
+        legalName: 'Cliente Teste Ltda',
+        document: '12.345.678/0001-90',
+        stateRegistration: null,
+        municipalRegistration: null,
+        taxRegime: null,
+        email: 'cliente@example.com',
+        phone: null,
+        address: null
+      });
       repo.createConnectPaymentOrder.mockResolvedValue({
         id: 'order-connect-1',
         workspaceId: 'workspace-1',
@@ -342,7 +360,12 @@ describe('BillingService', () => {
         amount: 10000,
         currency: 'brl',
         description: 'Servico mensal',
+        customerId: 'customer-1',
+        customerName: 'Cliente Teste Ltda',
         customerEmail: null,
+        customerDocument: '12.345.678/0001-90',
+        customerPhone: null,
+        customerAddress: null,
         applicationFeeAmount: 500,
         status: 'DRAFT',
         statusReason: null,
@@ -366,7 +389,12 @@ describe('BillingService', () => {
         amount: 10000,
         currency: 'brl',
         description: 'Servico mensal',
+        customerId: 'customer-1',
+        customerName: 'Cliente Teste Ltda',
         customerEmail: null,
+        customerDocument: '12.345.678/0001-90',
+        customerPhone: null,
+        customerAddress: null,
         applicationFeeAmount: 500,
         status: 'CHECKOUT_OPEN',
         statusReason: null,
@@ -389,6 +417,7 @@ describe('BillingService', () => {
         amount: 10000,
         currency: 'brl',
         description: 'Servico mensal',
+        customerId: 'customer-1',
         metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' }
       });
 
@@ -452,9 +481,11 @@ describe('BillingService', () => {
       await service.listConnectPaymentOrders('workspace-1', 'user-client', 30);
 
       expect(repo.listConnectPaymentOrdersByWorkspace).toHaveBeenCalledWith(
-        'workspace-1',
-        30,
-        ['customer-1', 'customer-2']
+        expect.objectContaining({
+          workspaceId: 'workspace-1',
+          pageSize: 30,
+          customerIds: ['customer-1', 'customer-2']
+        })
       );
     });
 

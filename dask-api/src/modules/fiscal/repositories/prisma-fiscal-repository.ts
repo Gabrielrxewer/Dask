@@ -45,17 +45,43 @@ function resolveLimit(input?: number, fallback = 100, max = 500): number {
   return Math.max(1, Math.min(max, Math.round(input)));
 }
 
+function resolveCursorPagination(
+  input?: number | { pageSize?: number; limit?: number; cursor?: string },
+  fallback = 100,
+  max = 500
+): { take: number; cursor?: { id: string }; skip?: number } {
+  const pageSize = typeof input === 'number'
+    ? input
+    : input?.pageSize ?? input?.limit;
+  const cursor = typeof input === 'number' ? undefined : input?.cursor;
+
+  return {
+    take: resolveLimit(pageSize, fallback, max),
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {})
+  };
+}
+
 export class PrismaFiscalRepository implements FiscalRepository {
   public constructor(private readonly prisma: PrismaClient) {}
 
-  public async listCompanyConfigs(workspaceId: string): Promise<FiscalCompanyConfig[]> {
+  public async listCompanyConfigs(
+    workspaceId: string,
+    options?: { cursor?: string; pageSize?: number; limit?: number; search?: string }
+  ): Promise<FiscalCompanyConfig[]> {
+    const search = options?.search?.trim();
     return this.prisma.fiscalCompanyConfig.findMany({
       where: {
-        workspaceId
+        workspaceId,
+        OR: search
+          ? [
+              { displayName: { contains: search, mode: 'insensitive' } },
+              { legalName: { contains: search, mode: 'insensitive' } },
+              { cnpj: { contains: search.replace(/\D/g, ''), mode: 'insensitive' } }
+            ]
+          : undefined
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(options ? resolveCursorPagination(options, 100, 201) : {})
     });
   }
 
@@ -189,10 +215,9 @@ export class PrismaFiscalRepository implements FiscalRepository {
         items: true,
         parties: true
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: resolveLimit(query.limit, 120)
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      take: resolveLimit(query.limit, 120, 201)
     });
   }
 
@@ -426,15 +451,16 @@ export class PrismaFiscalRepository implements FiscalRepository {
     });
   }
 
-  public async listEmissionDrafts(workspaceId: string, limit?: number): Promise<FiscalEmissionDraft[]> {
+  public async listEmissionDrafts(
+    workspaceId: string,
+    options?: number | { cursor?: string; pageSize?: number; limit?: number }
+  ): Promise<FiscalEmissionDraft[]> {
     return this.prisma.fiscalEmissionDraft.findMany({
       where: {
         workspaceId
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: resolveLimit(limit, 50)
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...resolveCursorPagination(options, 50, 201)
     });
   }
 
@@ -604,10 +630,9 @@ export class PrismaFiscalRepository implements FiscalRepository {
             ]
           : undefined
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: resolveLimit(query.limit, 120)
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      take: resolveLimit(query.limit, 120, 201)
     });
   }
 
@@ -665,15 +690,16 @@ export class PrismaFiscalRepository implements FiscalRepository {
     });
   }
 
-  public async listLatestSyncRuns(workspaceId: string, limit?: number): Promise<FiscalSyncRun[]> {
+  public async listLatestSyncRuns(
+    workspaceId: string,
+    options?: number | { cursor?: string; pageSize?: number; limit?: number }
+  ): Promise<FiscalSyncRun[]> {
     return this.prisma.fiscalSyncRun.findMany({
       where: {
         workspaceId
       },
-      orderBy: {
-        startedAt: 'desc'
-      },
-      take: resolveLimit(limit, 20)
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+      ...resolveCursorPagination(options, 20, 201)
     });
   }
 

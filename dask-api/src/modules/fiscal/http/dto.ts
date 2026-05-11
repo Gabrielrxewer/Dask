@@ -19,6 +19,12 @@ export const fiscalDraftParamsDto = z.object({
   draftId: z.string().uuid()
 });
 
+const cursorPaginationDto = z.object({
+  cursor: z.string().uuid().optional(),
+  pageSize: z.coerce.number().int().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional()
+});
+
 export const fiscalDocumentsQueryDto = z.object({
   workspaceBusinessId: z.string().optional(),
   documentType: z.enum(['NFE', 'NFSE']).optional(),
@@ -28,9 +34,8 @@ export const fiscalDocumentsQueryDto = z.object({
   customerId: z.string().optional(),
   search: z.string().optional(),
   from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
-  limit: z.coerce.number().int().min(1).max(500).optional()
-});
+  to: z.string().datetime().optional()
+}).merge(cursorPaginationDto);
 
 const fiscalItemDto = z.object({
   itemType: z.enum(['PRODUCT', 'SERVICE']),
@@ -109,9 +114,8 @@ export const receivedQueryDto = z.object({
   status: z.string().optional(),
   search: z.string().optional(),
   from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
-  limit: z.coerce.number().int().min(1).max(500).optional()
-});
+  to: z.string().datetime().optional()
+}).merge(cursorPaginationDto);
 
 export const syncReceivedDto = z.object({
   companyConfigId: z.string().uuid(),
@@ -119,9 +123,15 @@ export const syncReceivedDto = z.object({
   trigger: z.enum(['MANUAL', 'SCHEDULED', 'WEBHOOK', 'RETRY']).default('MANUAL')
 });
 
+export const fiscalSyncRunsQueryDto = z.object({
+}).merge(cursorPaginationDto);
+
 export const fiscalDraftsQueryDto = z.object({
-  limit: z.coerce.number().int().min(1).max(500).optional()
-});
+}).merge(cursorPaginationDto);
+
+export const fiscalCompaniesQueryDto = z.object({
+  search: z.string().trim().max(120).optional()
+}).merge(cursorPaginationDto);
 
 export const createFiscalCompanyConfigDto = z.object({
   workspaceBusinessId: z.string().optional().nullable(),

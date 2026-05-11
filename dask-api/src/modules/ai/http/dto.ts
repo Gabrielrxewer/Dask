@@ -55,6 +55,15 @@ export const runAgentOnItemDto = z.object({
   topKContextDocs: z.number().int().min(1).max(10).default(5)
 });
 
+export const publishAiAgentRuntimeDto = z.object({
+  activateWorkflow: z.boolean().default(true)
+});
+
+export const runAiAgentRuntimeDto = z.object({
+  instruction: z.string().min(2).max(4_000).optional(),
+  context: z.record(z.unknown()).default({})
+});
+
 export const runRiskAnalysisDto = z.object({
   includeSemanticContext: z.boolean().default(true),
   topKContextDocs: z.number().int().min(1).max(10).default(5)

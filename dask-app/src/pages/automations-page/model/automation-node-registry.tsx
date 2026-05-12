@@ -35,7 +35,7 @@ export function buildDefaultNodeConfig(type: string): Record<string, unknown> {
     case "move_work_item":
       return { itemIdPath: "event.payload.itemId", stateSlug: "" };
     case "update_work_item_fields":
-      return { itemIdPath: "event.payload.itemId", customFieldValues: { leadTemperature: "hot" } };
+      return { itemIdPath: "event.payload.itemId", customFieldValues: { workItemTemperature: "hot" } };
     case "create_proposal":
       return { itemIdPath: "event.payload.itemId", templateKey: "commercial_proposal", binding: "commercial_proposal", targetFieldSlug: "proposalId", status: "draft", skipIfExists: true };
     case "create_contract":
@@ -100,7 +100,7 @@ function optionList(options: FieldOption[]) {
 }
 
 function commercialFieldOptions(fields: FieldOption[]) {
-  const officialKeys = new Set(listCommercialFieldKeys("lead"));
+  const officialKeys = new Set(listCommercialFieldKeys("workItem"));
   const options = optionList(fields);
   const byValue = new Map(options.map((option) => [option.value, option]));
   for (const key of officialKeys) {
@@ -162,7 +162,7 @@ export function createAutomationNodeConfigDescriptor(input: {
           { value: "billing_payment_confirmed", label: "Pagamento confirmado" },
           { value: "billing_payment_failed", label: "Pagamento falhou" },
           { value: "billing_overdue", label: "Cobranca vencida" },
-          { value: "lead_captured", label: "Lead capturado" }
+          { value: "commercial_work_item_created", label: "WorkItem comercial criado" }
       ],
       extraFields: [
         { name: "column", label: "Coluna", type: "select", options: optionList(boardColumns), placeholder: "Qualquer coluna" },
@@ -271,7 +271,15 @@ export function createAutomationNodeConfigDescriptor(input: {
         { name: "description", label: "Descricao", type: "textarea" },
         { name: "fieldSlug", label: "Campo customizado", type: "template-selector", options: fields },
         { name: "typeSlug", label: "Tipo do card", type: "work-item-type-selector", options: optionList(itemTypes) },
-        { name: "customFieldValues", label: "Valores customizados", type: "json", rows: 5 }
+        {
+          name: "customFieldValues",
+          label: "Valores customizados",
+          type: "key-value-list",
+          options: fields,
+          keyLabel: "Campo",
+          valueLabel: "Valor",
+          valuePlaceholder: "Valor do campo"
+        }
       ]
     };
   }
@@ -300,7 +308,14 @@ export function createAutomationNodeConfigDescriptor(input: {
         { name: "message", label: "Mensagem", type: "textarea", required: true },
         { name: "severity", label: "Severidade", type: "select", options: [{ value: "info", label: "Info" }, { value: "warning", label: "Aviso" }, { value: "critical", label: "Critico" }] },
         { name: "visibility", label: "Visibilidade", type: "select", options: [{ value: "internal", label: "Interna" }, { value: "customer", label: "Cliente" }] },
-        { name: "payload", label: "Payload JSON", type: "json" }
+        {
+          name: "payload",
+          label: "Dados adicionais",
+          type: "key-value-list",
+          keyLabel: "Chave",
+          valueLabel: "Valor",
+          valuePlaceholder: "Valor registrado no historico"
+        }
       ]
     };
   }

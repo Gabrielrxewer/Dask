@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const marketingCampaignObjectiveSchema = z.enum([
-  "LEAD_NURTURE",
+  "COMMERCIAL_NURTURE",
   "ONBOARDING",
   "REACTIVATION",
   "BILLING_REMINDER",

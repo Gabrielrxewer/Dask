@@ -45,7 +45,7 @@ Escopo: arquitetura de frontend, tamanho de arquivos, responsabilidade por pagin
 | 316 | `src/modules/fiscal/model/types.ts` |
 | 284 | `src/pages/settings-page/ui/use-work-item-editor-layout.ts` |
 | 275 | `src/pages/settings-page/ui/work-item-editor-field-model.ts` |
-| 269 | `src/pages/leads-page/ui/leads-page.model.ts` |
+| 269 | `src/pages/commercial-page/ui/commercial-page.model.ts` |
 | 263 | `src/pages/marketing-page/ui/marketing-page.model.ts` |
 | 239 | `src/entities/task/model/task-card-render-model.ts` |
 | 238 | `src/pages/settings-page/ui/work-item-editor-preview-model.ts` |
@@ -63,7 +63,7 @@ Escopo: arquitetura de frontend, tamanho de arquivos, responsabilidade por pagin
 | 2153 | `src/widgets/task-details/ui/task-details-modal.css` |
 | 2055 | `src/pages/settings-page/ui/work-item-editor-settings.css` |
 | 1767 | `src/pages/documentation-page/ui/documentation-page.css` |
-| 1418 | `src/pages/leads-page/ui/leads-page.css` |
+| 1418 | `src/pages/commercial-page/ui/commercial-page.css` |
 | 1257 | `src/pages/agenda-page/ui/agenda-page.css` |
 | 1164 | `src/pages/settings-page/ui/members-settings.css` |
 | 1136 | `src/pages/settings-page/ui/board-editor-settings.css` |
@@ -80,7 +80,7 @@ Escopo: arquitetura de frontend, tamanho de arquivos, responsabilidade por pagin
 | `billing-page` | 5930 | 15 | 2383 | 3547 | `ui/billing-page.css` |
 | `documentation-page` | 3301 | 10 | 1534 | 1767 | `ui/documentation-page.css` |
 | `home-page` | 3206 | 5 | 522 | 2684 | `ui/home-page.css` |
-| `leads-page` | 3080 | 13 | 1662 | 1418 | `ui/leads-page.css` |
+| `commercial-page` | 3080 | 13 | 1662 | 1418 | `ui/commercial-page.css` |
 | `agenda-page` | 2292 | 8 | 1035 | 1257 | `ui/agenda-page.css` |
 | `automations-page` | 2265 | 4 | 1467 | 798 | `ui/automations-page.css` |
 | `ai-agents-page` | 2119 | 8 | 1375 | 744 | `ui/ai-agents-page.tsx` |
@@ -100,13 +100,13 @@ Escopo: arquitetura de frontend, tamanho de arquivos, responsabilidade por pagin
 
 | Componente | Papel | Principais usos observados |
 | --- | --- | --- |
-| `Button` | Botao base de formularios, modais e acoes | Auth, billing, leads, settings, workspace selector, filters |
-| `TextInput`, `Select`, `Textarea`, `FormField` | Formularios compactos | Billing, leads, marketing, settings, workspace selector, task field presentation |
-| `ModalShell`, `FormModal`, `DrawerShell` | Modais/drawers padronizados | Create task, billing, documentation, leads, settings access drawers |
-| `LoadingState` | Loading tematico inline/frame | App routes, agenda, AI agents, automations, board, documentation, fiscal, leads, list, marketing, settings |
+| `Button` | Botao base de formularios, modais e acoes | Auth, billing, commercial, settings, workspace selector, filters |
+| `TextInput`, `Select`, `Textarea`, `FormField` | Formularios compactos | Billing, commercial, marketing, settings, workspace selector, task field presentation |
+| `ModalShell`, `FormModal`, `DrawerShell` | Modais/drawers padronizados | Create task, billing, documentation, commercial, settings access drawers |
+| `LoadingState` | Loading tematico inline/frame | App routes, agenda, AI agents, automations, board, documentation, fiscal, commercial, list, marketing, settings |
 | `EmptyState` | Mensagem vazia simples | Agenda, billing catalog, fiscal fallback, list |
 | `SkeletonBlock`, `SkeletonLayout`, `SkeletonColumns` | Skeleton estrutural | Board/settings loaders, work item editor |
-| `ResourceSection`, `ResourceTable`, `DataTable` | Secoes/tabelas de dados | Leads, fiscal, list, members |
+| `ResourceSection`, `ResourceTable`, `DataTable` | Secoes/tabelas de dados | Commercial, fiscal, list, members |
 | `Tabs`, `WorkspaceTopNavigation` | Navegacao segmentada | Billing, board perspectives, marketing, settings |
 | `MetricCard`, `StatusBadge` | KPIs e status | App shell metrics, platform admin, billing, fiscal, marketing, members |
 | `WorkspaceFrame`, `WorkspaceActionButton`, `PageHeader` | Chrome de paginas internas | Workspace pages, documentation, dashboard filter, app shell |
@@ -219,4 +219,3 @@ Antes de criar UI nova:
 - Todo export publico em `shared/ui/index.ts` revisado junto com o componente.
 - Duplicacao de loading/empty/skeleton reduzida a estados realmente tematicos.
 - Hooks de page model com helpers puros testados quando passam de 400 linhas.
-

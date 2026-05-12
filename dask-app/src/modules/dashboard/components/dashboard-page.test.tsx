@@ -9,9 +9,9 @@ import { WidgetRenderer } from "./WidgetRenderer";
 
 const filterOptions: DashboardFilterOptions = {
   members: [{ id: "user-1", label: "Ana" }],
-  itemTypes: [{ id: "type-lead", label: "Lead" }],
+  itemTypes: [{ id: "type-workItem", label: "WorkItem" }],
   states: [{ id: "state-new", label: "Novo" }],
-  columns: [{ id: "col-new", label: "Novo lead" }],
+  columns: [{ id: "col-new", label: "Novo WorkItem" }],
   workflows: [{ id: "workflow-1", label: "Follow-up" }],
   automationStatuses: [{ id: "failed", label: "Falhou" }]
 };
@@ -53,7 +53,7 @@ const widgets: DashboardWidget[] = [
     metricKey: "crm.cardsByColumn",
     data: {
       items: [
-        { id: "col-new", label: "Novo lead", value: 10 },
+        { id: "col-new", label: "Novo WorkItem", value: 10 },
         { id: "col-empty", label: "Sem movimento", value: 0 }
       ]
     }
@@ -63,7 +63,7 @@ const widgets: DashboardWidget[] = [
     type: "funnel",
     title: "Funil operacional",
     metricKey: "crm.commercialFunnel",
-    data: { items: [{ id: "col-new", label: "Novo lead", value: 10 }] }
+    data: { items: [{ id: "col-new", label: "Novo WorkItem", value: 10 }] }
   },
   {
     id: "cards-by-state",
@@ -287,7 +287,7 @@ describe("WidgetRenderer", () => {
 
     expect(kpi).toContain("42");
     expect(chart).toContain("dashboard-chart");
-    expect(chart).toContain("Novo lead");
+    expect(chart).toContain("Novo WorkItem");
   });
 
   it("keeps zero-value chart rows collapsed behind a toggle", () => {

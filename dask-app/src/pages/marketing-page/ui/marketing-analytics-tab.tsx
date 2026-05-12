@@ -4,7 +4,7 @@ import type {
   MarketingCampaignObjective,
   MarketingDashboard
 } from "@/modules/marketing";
-import { AppSelect, EmptyState } from "@/shared/ui";
+import { AppSelect, Button, EmptyState, ResourceTable, StatusBadge } from "@/shared/ui";
 import {
   OBJECTIVE_OPTIONS,
   campaignObjectiveLabel,
@@ -32,6 +32,7 @@ interface MarketingAnalyticsTabProps {
   analyticsInsights: string[];
   analyticsObjectiveFilter: MarketingCampaignObjective | "ALL";
   isLoadingAnalytics: boolean;
+  analyticsError: unknown;
   hasEnoughAnalyticsData: boolean;
   setAnalyticsObjectiveFilter: (objective: MarketingCampaignObjective | "ALL") => void;
   setTab: (tab: MarketingTab) => void;
@@ -46,6 +47,7 @@ export function MarketingAnalyticsTab({
   analyticsInsights,
   analyticsObjectiveFilter,
   isLoadingAnalytics,
+  analyticsError,
   hasEnoughAnalyticsData,
   setAnalyticsObjectiveFilter,
   setTab,
@@ -112,8 +114,8 @@ export function MarketingAnalyticsTab({
                     <span className="mkt-kpi__sub">por campanhas ativas</span>
                   </div>
                   <div className="mkt-kpi">
-                    <span className="mkt-kpi__value">{fmtNum(dashboard?.influencedLeads)}</span>
-                    <span className="mkt-kpi__label">Leads gerados</span>
+                    <span className="mkt-kpi__value">{fmtNum(dashboard?.influencedWorkItems)}</span>
+                    <span className="mkt-kpi__label">Comercial gerados</span>
                     <span className="mkt-kpi__sub">atribuídos a campanhas</span>
                   </div>
                   <div className="mkt-kpi">
@@ -124,7 +126,7 @@ export function MarketingAnalyticsTab({
                   <div className="mkt-kpi">
                     <span className="mkt-kpi__value">{fmtPct(dashboard?.conversionRate)}</span>
                     <span className="mkt-kpi__label">Conversão geral</span>
-                    <span className="mkt-kpi__sub">lead → cliente</span>
+                    <span className="mkt-kpi__sub">workItem → cliente</span>
                   </div>
                   <div className="mkt-kpi">
                     <span className="mkt-kpi__value">{fmtNum(dashboard?.activeCampaigns)}</span>
@@ -139,11 +141,11 @@ export function MarketingAnalyticsTab({
                   <div className="mkt-funnel">
                     {[
                       { label: "Campanhas", value: campaigns.length, sub: "criadas", accent: false },
-                      { label: "Leads gerados", value: dashboard?.influencedLeads ?? 0, sub: "atribuídos", accent: false },
+                      { label: "Comercial gerados", value: dashboard?.influencedWorkItems ?? 0, sub: "atribuídos", accent: false },
                       { label: "Clientes", value: dashboard?.influencedCustomers ?? 0, sub: "convertidos", accent: true },
                       { label: "Receita", value: null, formatted: fmtRevenue(dashboard?.influencedRevenue), sub: "influenciada", accent: true },
                     ].map((stage, i) => {
-                      const max = Math.max(campaigns.length, dashboard?.influencedLeads ?? 0, 1);
+                      const max = Math.max(campaigns.length, dashboard?.influencedWorkItems ?? 0, 1);
                       const pct = stage.value != null ?Math.max(22, (stage.value / max) * 100) : 22;
                       return (
                         <div key={stage.label} className={`mkt-funnel__stage${stage.accent ?" mkt-funnel__stage--accent" : ""}`} style={{ "--funnel-w": `${pct}%` } as CSSProperties}>
@@ -166,50 +168,92 @@ export function MarketingAnalyticsTab({
                   {/* Performance por campanha */}
                   <div className="mkt-analytics__section mkt-analytics__section--perf">
                     <h3 className="mkt-analytics__section-title">Performance por campanha</h3>
-                    <div className="mkt-perf-table">
-                      <div className="mkt-perf-table__head">
-                        <span>Campanha</span>
-                        <span>Status</span>
-                        <span>Enviados</span>
-                        <span>Abertura</span>
-                        <span>Clique</span>
-                        <span>Impacto</span>
-                      </div>
-                      {enrichedCampaigns.length === 0 ?(
-                        <EmptyState className="mkt-perf-table__empty" size="compact">Nenhuma campanha encontrada.</EmptyState>
-                      ) : null}
-                      {enrichedCampaigns.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="mkt-perf-table__row"
-                          onClick={() => {
-                            void loadCampaignDetails(c.id);
-                            setTab("campaigns");
-                          }}
-                        >
-                          <span className="mkt-perf-table__name">
-                            <strong>{c.name}</strong>
-                            <span>{campaignObjectiveLabel(c.objective)}</span>
-                          </span>
-                          <span>
-                            <span className={`mkt-badge mkt-badge--${statusTone(c.status)}`}>{c.status}</span>
-                          </span>
-                          <span className="mkt-perf-table__num">{c.sent > 0 ?fmtNum(c.sent) : "—"}</span>
-                          <span className={`mkt-perf-table__num${c.openRate != null && c.openRate < 0.2 ?" mkt-perf-table__num--warn" : ""}`}>
-                            {fmtPct(c.openRate)}
-                          </span>
-                          <span className={`mkt-perf-table__num${c.clickRate != null && c.clickRate < 0.04 ?" mkt-perf-table__num--warn" : ""}`}>
-                            {fmtPct(c.clickRate)}
-                          </span>
-                          <span className="mkt-perf-table__impact">
-                            {c.status === "ACTIVE" ?<span className="mkt-badge mkt-badge--success">Ativo</span> : null}
-                            {c.status === "COMPLETED" ?<span className="mkt-badge mkt-badge--default">Concluído</span> : null}
-                            {c.status === "SCHEDULED" ?<span className="mkt-badge mkt-badge--warning">Agendado</span> : null}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                    <ResourceTable
+                      data={enrichedCampaigns}
+                      rowKey="id"
+                      className="mkt-resource-table"
+                      responsiveMinWidth="900px"
+                      loading={isLoadingAnalytics}
+                      loadingState="Carregando metricas..."
+                      error={analyticsError}
+                      emptyState={<EmptyState size="compact">Nenhuma campanha encontrada.</EmptyState>}
+                      columns={[
+                        {
+                          id: "campaign",
+                          header: "Campanha",
+                          width: "minmax(240px, 1.5fr)",
+                          render: (campaign) => (
+                            <span className="mkt-perf-table__name">
+                              <strong>{campaign.name}</strong>
+                              <span>{campaignObjectiveLabel(campaign.objective)}</span>
+                            </span>
+                          )
+                        },
+                        {
+                          id: "status",
+                          header: "Status",
+                          width: "0.8fr",
+                          render: (campaign) => <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
+                        },
+                        {
+                          id: "sent",
+                          header: "Enviados",
+                          width: "0.75fr",
+                          render: (campaign) => (campaign.sent > 0 ? fmtNum(campaign.sent) : "-")
+                        },
+                        {
+                          id: "open",
+                          header: "Abertura",
+                          width: "0.75fr",
+                          cellClassName: (campaign) => campaign.openRate != null && campaign.openRate < 0.2 ? "mkt-perf-table__num--warn" : undefined,
+                          render: (campaign) => fmtPct(campaign.openRate)
+                        },
+                        {
+                          id: "click",
+                          header: "Clique",
+                          width: "0.75fr",
+                          cellClassName: (campaign) => campaign.clickRate != null && campaign.clickRate < 0.04 ? "mkt-perf-table__num--warn" : undefined,
+                          render: (campaign) => fmtPct(campaign.clickRate)
+                        }
+                      ]}
+                      actions={{
+                        header: "Acoes",
+                        width: "0.7fr",
+                        render: (campaign) => (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              void loadCampaignDetails(campaign.id);
+                              setTab("campaigns");
+                            }}
+                          >
+                            Abrir
+                          </Button>
+                        )
+                      }}
+                      mobileCard={{
+                        render: (campaign) => (
+                          <>
+                            <strong>{campaign.name}</strong>
+                            <span>{campaignObjectiveLabel(campaign.objective)}</span>
+                            <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
+                            <span>{campaign.sent > 0 ? fmtNum(campaign.sent) : "-"} enviados</span>
+                            <span>{fmtPct(campaign.openRate)} abertura - {fmtPct(campaign.clickRate)} clique</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                void loadCampaignDetails(campaign.id);
+                                setTab("campaigns");
+                              }}
+                            >
+                              Abrir
+                            </Button>
+                          </>
+                        )
+                      }}
+                    />
                   </div>
 
                   {/* Coluna direita */}

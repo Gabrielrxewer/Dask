@@ -10,6 +10,7 @@ import {
   Button,
   EmptyState,
   FormField,
+  ResourceTable,
   StatusBadge,
   TextInput
 } from "@/shared/ui";
@@ -66,6 +67,8 @@ interface MarketingCampaignsTabProps {
   setScheduleAt: Dispatch<SetStateAction<string>>;
   selectedVariantId: string;
   setSelectedVariantId: Dispatch<SetStateAction<string>>;
+  isLoading: boolean;
+  error: unknown;
   isSubmitting: boolean;
   createCampaign: () => Promise<void>;
   loadCampaignDetails: (campaignIdValue: string) => Promise<void>;
@@ -105,6 +108,8 @@ export function MarketingCampaignsTab({
   setScheduleAt,
   selectedVariantId,
   setSelectedVariantId,
+  isLoading,
+  error,
   isSubmitting,
   createCampaign,
   loadCampaignDetails,
@@ -159,7 +164,7 @@ export function MarketingCampaignsTab({
 
                       <div className="mkt-preset-grid">
                         {[
-                          "Nutrir leads com score alto e última interação antiga",
+                          "Nutrir commercial com score alto e última interação antiga",
                           "Reativar oportunidades paradas com convite consultivo",
                           "Criar campanha de onboarding para novos clientes",
                           "Preparar lembrete de renovação com valor entregue"
@@ -285,33 +290,69 @@ export function MarketingCampaignsTab({
                       </FormField>
                     </div>
 
-                    <div className="mkt-perf-table mkt-perf-table--compact">
-                      <div className="mkt-perf-table__head">
-                        <span>Campanha</span>
-                        <span>Status</span>
-                        <span>Agenda</span>
-                        <span>Ações</span>
-                      </div>
-                      {campaigns.map((campaign) => (
-                        <button
-                          key={campaign.id}
-                          type="button"
-                          className={`mkt-perf-table__row${selectedCampaignId === campaign.id ?" mkt-perf-table__row--active" : ""}`}
-                          onClick={() => void loadCampaignDetails(campaign.id)}
-                        >
-                          <span className="mkt-perf-table__name">
+                    <ResourceTable
+                      data={campaigns}
+                      rowKey="id"
+                      className="mkt-resource-table"
+                      responsiveMinWidth="760px"
+                      loading={isLoading}
+                      loadingState="Carregando campanhas..."
+                      error={error}
+                      rowClassName={(campaign) => (selectedCampaignId === campaign.id ? "mkt-perf-table__row--active" : undefined)}
+                      emptyState={<EmptyState size="compact">Nenhuma campanha no workspace.</EmptyState>}
+                      columns={[
+                        {
+                          id: "campaign",
+                          header: "Campanha",
+                          width: "minmax(240px, 1.6fr)",
+                          render: (campaign) => (
+                            <span className="mkt-perf-table__name">
+                              <strong>{campaign.name}</strong>
+                              <span>{campaignObjectiveLabel(campaign.objective)} - {toLocalDate(campaign.updatedAt)}</span>
+                            </span>
+                          )
+                        },
+                        {
+                          id: "status",
+                          header: "Status",
+                          width: "0.85fr",
+                          render: (campaign) => (
+                            <StatusBadge tone={statusTone(campaign.status)}>
+                              {campaignStatusLabel(campaign.status)}
+                            </StatusBadge>
+                          )
+                        },
+                        {
+                          id: "scheduled",
+                          header: "Agenda",
+                          width: "0.95fr",
+                          render: (campaign) => toLocalDate(campaign.scheduledAt)
+                        }
+                      ]}
+                      actions={{
+                        header: "Acoes",
+                        width: "0.7fr",
+                        render: (campaign) => (
+                          <Button size="sm" variant="outline" onClick={() => void loadCampaignDetails(campaign.id)}>
+                            Abrir
+                          </Button>
+                        )
+                      }}
+                      mobileCard={{
+                        render: (campaign) => (
+                          <>
                             <strong>{campaign.name}</strong>
-                            <span>{campaignObjectiveLabel(campaign.objective)} · {toLocalDate(campaign.updatedAt)}</span>
-                          </span>
-                          <span><span className={`mkt-badge mkt-badge--${statusTone(campaign.status)}`}>{campaignStatusLabel(campaign.status)}</span></span>
-                          <span className="mkt-perf-table__num">{toLocalDate(campaign.scheduledAt)}</span>
-                          <span className="mkt-perf-table__impact"><span className="mkt-badge mkt-badge--default">Abrir</span></span>
-                        </button>
-                      ))}
-                      {campaigns.length === 0 ?(
-                        <EmptyState className="mkt-perf-table__empty" size="compact">Nenhuma campanha no workspace.</EmptyState>
-                      ) : null}
-                    </div>
+                            <span>{campaignObjectiveLabel(campaign.objective)} - {toLocalDate(campaign.updatedAt)}</span>
+                            <StatusBadge tone={statusTone(campaign.status)}>
+                              {campaignStatusLabel(campaign.status)}
+                            </StatusBadge>
+                            <Button size="sm" variant="outline" onClick={() => void loadCampaignDetails(campaign.id)}>
+                              Abrir
+                            </Button>
+                          </>
+                        )
+                      }}
+                    />
                   </article>
                 </section>
 

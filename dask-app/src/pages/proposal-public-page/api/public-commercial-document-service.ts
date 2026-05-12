@@ -10,6 +10,10 @@ export interface PublicCommercialDocument {
   status: CommercialDocumentStatus;
   metadata: WorkspaceDocumentMetadata;
   masked: boolean;
+  access: "public_token" | "authenticated_recipient";
+  requiresLogin: boolean;
+  allowAcceptReject: boolean;
+  canDecide: boolean;
   workspace: {
     name: string;
   };

@@ -89,7 +89,7 @@ describe('AutomationRunObservabilityService', () => {
           triggerType: 'manual',
           triggerRefId: null,
           status: 'failed',
-          contextJson: { apiKey: 'secret-key', leadId: 'lead-1' },
+          contextJson: { apiKey: 'secret-key', workItemId: 'workItem-1' },
           startedAt,
           finishedAt,
           cancelledAt: null,

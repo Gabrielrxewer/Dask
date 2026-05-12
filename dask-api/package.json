@@ -12,6 +12,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.prisma\" \"*.json\" \"*.md\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
+    "test:integration:real": "vitest run -c vitest.real-smoke.config.ts --reporter=verbose",
     "test:mock": "prisma db push --skip-generate && node scripts/seed-test-mock.cjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

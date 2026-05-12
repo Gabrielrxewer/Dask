@@ -35,11 +35,11 @@ interface CreateFollowUpDialogProps {
 type CreateMarketingFollowUpFormValues = z.input<typeof createMarketingFollowUpSchema>;
 
 function buildDefaults(signal: MarketingSignal | null): CreateMarketingFollowUpValues {
-  const leadName = signal?.lead?.fullName ?? signal?.lead?.email ?? "lead";
+  const contactName = signal?.workItem?.contactName ?? signal?.workItem?.email ?? "contato";
   return {
     signalId: signal?.id ?? "00000000-0000-0000-0000-000000000000",
-    leadId: signal?.leadId ?? signal?.lead?.id ?? "00000000-0000-0000-0000-000000000000",
-    title: `Follow-up com ${leadName}`,
+    workItemId: signal?.workItemId ?? signal?.workItem?.id ?? "00000000-0000-0000-0000-000000000000",
+    title: `Follow-up com ${contactName}`,
     description: signal?.headline ?? signal?.description ?? "",
     dueAt: null,
     priority: "medium",
@@ -64,14 +64,14 @@ export function CreateFollowUpDialog({
     form.reset(defaultValues);
   }, [defaultValues, form]);
 
-  const leadName = signal?.lead?.fullName ?? signal?.lead?.email ?? "Lead desconhecido";
+  const contactName = signal?.workItem?.contactName ?? signal?.workItem?.email ?? "Contato desconhecido";
 
   return (
     <AppDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Criar follow-up"
-      description={leadName}
+      description={contactName}
       contentClassName="mkt-follow-up-dialog"
     >
       <AppForm<CreateMarketingFollowUpFormValues, CreateMarketingFollowUpValues>
@@ -102,7 +102,7 @@ export function CreateFollowUpDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting || !signal?.leadId}>
+          <Button type="submit" disabled={isSubmitting || !signal?.workItemId}>
             {isSubmitting ? "Criando..." : "Criar follow-up"}
           </Button>
         </AppFormActions>

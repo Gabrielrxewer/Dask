@@ -7,6 +7,10 @@ export {
   useSessionStatus,
   useProtectedRouteGuard,
   usePublicRouteGuard,
+  useConfirmPasswordResetMutation,
+  useRequestPasswordResetMutation,
+  useResendVerificationEmailMutation,
+  verifyEmailOnce,
   createAuthStore,
   AuthStore
 } from "@/features/auth/model";

@@ -1,13 +1,8 @@
 import { z } from 'zod';
-
-const secretPatterns: RegExp[] = [
-  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, // email
-  /\b(?:sk|rk|pk|ghp|xoxb|xoxp|AIza)[A-Za-z0-9_-]{10,}\b/g, // common API key prefixes
-  /\b(?:\d[ -]*?){13,19}\b/g // card-like numbers
-];
+import { redactSensitiveText as redactText } from '@/core/security/redaction';
 
 export function redactSensitiveText(value: string): string {
-  return secretPatterns.reduce((text, pattern) => text.replace(pattern, '[REDACTED]'), value);
+  return redactText(value);
 }
 
 export function parseJsonObject(value: string): Record<string, unknown> | null {
@@ -66,4 +61,3 @@ export function formatRiskAnalysisAsText(value: RiskAnalysisOutput): string {
     ...value.nextActions.map((action, index) => `${index + 1}. ${action}`)
   ].join('\n');
 }
-

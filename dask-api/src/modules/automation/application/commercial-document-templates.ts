@@ -40,7 +40,7 @@ Apresentamos esta proposta com o objetivo de formalizar a solucao, escopo, condi
 | Data da proposta | {{proposalDate}} |
 | Validade da proposta | {{proposalValidity}} |
 | Codigo da proposta | {{proposalCode}} |
-| Origem do lead | {{leadSource}} |
+| Origem comercial | {{commercialSource}} |
 
 ## 3. Objetivo
 

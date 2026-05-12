@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { workspaceService } from "@/modules/workspace/api";
-import type { AutomationApprovalsFilters, AutomationRunsFilters } from "./automation-query-keys";
+import type { AutomationApprovalsFilters, AutomationConsentsFilters, AutomationRunsFilters } from "./automation-query-keys";
 import { automationsQueryKeys } from "./automation-query-keys";
+
+interface AutomationQueryOptions {
+  enabled?: boolean;
+}
 
 function isWorkspaceReady(workspaceId: string | null | undefined): workspaceId is string {
   return Boolean(workspaceId?.trim());
@@ -43,55 +47,84 @@ export function useAutomationWorkflowEditor(
 
 export function useAutomationRuns(
   workspaceId: string | null | undefined,
-  filters?: AutomationRunsFilters
+  filters?: AutomationRunsFilters,
+  options?: AutomationQueryOptions
 ) {
   return useQuery({
     queryKey: automationsQueryKeys.runs(workspaceId ?? "__missing_workspace__", filters),
     queryFn: () => workspaceService.listAutomationRuns(requireWorkspace(workspaceId), filters),
-    enabled: isWorkspaceReady(workspaceId)
+    enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
   });
 }
 
 export function useAutomationRunDetail(
   workspaceId: string | null | undefined,
-  runId: string | null | undefined
+  runId: string | null | undefined,
+  options?: AutomationQueryOptions
 ) {
   return useQuery({
     queryKey: automationsQueryKeys.run(workspaceId ?? "__missing_workspace__", runId ?? "__missing_run__"),
     queryFn: () => workspaceService.getAutomationRunDetail(requireWorkspace(workspaceId), runId ?? ""),
-    enabled: isWorkspaceReady(workspaceId) && Boolean(runId?.trim())
+    enabled: isWorkspaceReady(workspaceId) && Boolean(runId?.trim()) && (options?.enabled ?? true)
   });
 }
 
 export function useAutomationApprovals(
   workspaceId: string | null | undefined,
-  filters?: AutomationApprovalsFilters
+  filters?: AutomationApprovalsFilters,
+  options?: AutomationQueryOptions
 ) {
   return useQuery({
     queryKey: automationsQueryKeys.approvals(workspaceId ?? "__missing_workspace__", filters),
     queryFn: () => workspaceService.listAutomationApprovals(requireWorkspace(workspaceId), filters),
-    enabled: isWorkspaceReady(workspaceId)
+    enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
   });
 }
 
 export function useAutomationInbox(
   workspaceId: string | null | undefined,
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
+  options?: AutomationQueryOptions
 ) {
   return useQuery({
     queryKey: automationsQueryKeys.inbox(workspaceId ?? "__missing_workspace__", filters),
     queryFn: () => workspaceService.listCommunicationInbox(requireWorkspace(workspaceId), filters),
-    enabled: isWorkspaceReady(workspaceId)
+    enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
+  });
+}
+
+export function useAutomationConversationDetail(
+  workspaceId: string | null | undefined,
+  conversationId: string | null | undefined,
+  options?: AutomationQueryOptions
+) {
+  return useQuery({
+    queryKey: automationsQueryKeys.conversation(workspaceId ?? "__missing_workspace__", conversationId ?? "__missing_conversation__"),
+    queryFn: () => workspaceService.getCommunicationConversation(requireWorkspace(workspaceId), conversationId ?? ""),
+    enabled: isWorkspaceReady(workspaceId) && Boolean(conversationId?.trim()) && (options?.enabled ?? true)
   });
 }
 
 export function useAutomationTemplates(
   workspaceId: string | null | undefined,
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
+  options?: AutomationQueryOptions
 ) {
   return useQuery({
     queryKey: automationsQueryKeys.templates(workspaceId ?? "__missing_workspace__", filters),
     queryFn: () => workspaceService.listCommunicationTemplates(requireWorkspace(workspaceId), filters),
-    enabled: isWorkspaceReady(workspaceId)
+    enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
+  });
+}
+
+export function useAutomationConsents(
+  workspaceId: string | null | undefined,
+  filters?: AutomationConsentsFilters,
+  options?: AutomationQueryOptions
+) {
+  return useQuery({
+    queryKey: automationsQueryKeys.consents(workspaceId ?? "__missing_workspace__", filters),
+    queryFn: () => workspaceService.listWhatsAppConsents(requireWorkspace(workspaceId), filters),
+    enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
   });
 }

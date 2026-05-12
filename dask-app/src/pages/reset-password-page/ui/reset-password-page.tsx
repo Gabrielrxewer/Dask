@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
-import { authService } from "@/features/auth/api/auth-service";
+import { useConfirmPasswordResetMutation } from "@/features/auth";
 import { isApiError } from "@/shared/api/http-client";
 import { cn } from "@/shared/lib/cn";
 import { routePaths } from "@/app/router";
@@ -31,6 +31,7 @@ function mapConfirmError(error: unknown): string {
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const confirmPasswordResetMutation = useConfirmPasswordResetMutation();
   const token = searchParams.get("token") ?? "";
 
   const [newPassword, setNewPassword] = useState("");
@@ -58,7 +59,7 @@ export function ResetPasswordPage() {
     setStatus("loading");
 
     try {
-      await authService.confirmPasswordReset({ token, newPassword });
+      await confirmPasswordResetMutation.mutateAsync({ token, newPassword });
       setStatus("success");
     } catch (error) {
       setStatus("error");

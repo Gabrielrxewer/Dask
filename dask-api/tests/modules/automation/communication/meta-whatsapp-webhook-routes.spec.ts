@@ -6,8 +6,9 @@ import { buildMetaWhatsAppWebhookRoutes } from '@/modules/automation/communicati
 
 function makeApp(input?: {
   enabled?: boolean;
-  verifyToken?: string;
-  appSecret?: string;
+  verifyToken?: string | null;
+  appSecret?: string | null;
+  environment?: 'development' | 'test' | 'production';
   receiveEvent?: ReturnType<typeof vi.fn>;
 }) {
   const app = express();
@@ -23,12 +24,13 @@ function makeApp(input?: {
   app.use('/api/v1', buildMetaWhatsAppWebhookRoutes({
     prisma: {} as any,
     enabled: input?.enabled ?? true,
-    verifyToken: input?.verifyToken ?? 'verify-token',
-    appSecret: input?.appSecret,
+    verifyToken: input?.verifyToken === null ? undefined : input?.verifyToken ?? 'verify-token',
+    appSecret: input?.appSecret === null ? undefined : input?.appSecret,
+    environment: input?.environment,
     providerEventService: { receiveEvent } as any
   }));
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    res.status(err.statusCode ?? 500).json({ message: err.message });
+    res.status(err.statusCode ?? 500).json({ message: err.message, details: err.details });
   });
   return { app, receiveEvent };
 }
@@ -119,6 +121,29 @@ describe('Meta WhatsApp webhook routes', () => {
       path: '/api/v1/public/webhooks/whatsapp/meta?hub.mode=subscribe&hub.verify_token=valid-token&hub.challenge=abc123'
     });
     expect(disabled.status).toBe(404);
+  });
+
+  it('requires verify token and app secret when enabled in production', async () => {
+    const missingVerifyToken = await request(makeApp({ environment: 'production', verifyToken: null }).app, {
+      method: 'GET',
+      path: '/api/v1/public/webhooks/whatsapp/meta?hub.mode=subscribe&hub.verify_token=valid-token&hub.challenge=abc123'
+    });
+    expect(missingVerifyToken.status).toBe(503);
+    expect(missingVerifyToken.body.details).toMatchObject({
+      code: 'META_WHATSAPP_WEBHOOK_VERIFY_TOKEN_MISSING',
+      missingEnv: ['META_WHATSAPP_WEBHOOK_VERIFY_TOKEN']
+    });
+
+    const missingAppSecret = await request(makeApp({ environment: 'production', appSecret: null }).app, {
+      method: 'POST',
+      path: '/api/v1/public/webhooks/whatsapp/meta',
+      body: inboundPayload
+    });
+    expect(missingAppSecret.status).toBe(503);
+    expect(missingAppSecret.body.details).toMatchObject({
+      code: 'META_WHATSAPP_WEBHOOK_APP_SECRET_MISSING',
+      missingEnv: ['META_WHATSAPP_WEBHOOK_APP_SECRET']
+    });
   });
 
   it('accepts valid POST payloads without user auth', async () => {

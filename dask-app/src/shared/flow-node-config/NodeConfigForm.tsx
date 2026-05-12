@@ -1,7 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { Controller, useForm, useFormContext, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   AppCheckbox,
   AppDatePicker,
@@ -10,10 +9,10 @@ import {
   AppFormActions,
   AppFormField,
   AppFormSection,
+  AppIcon,
   AppPopover,
   AppSelect,
   AppSwitch,
-  AppTextareaField,
   Button,
   Textarea,
   TextInput
@@ -40,34 +39,25 @@ function toNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseJson(value: string): unknown {
-  if (!value.trim()) return {};
-  return JSON.parse(value);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseJsonRecord(value: string): Record<string, unknown> {
-  const parsed = parseJson(value);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("Informe um objeto JSON valido.");
-  }
-  return parsed as Record<string, unknown>;
+function scalarToText(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
 }
 
-const advancedConfigSchema = z.object({
-  json: z.string().superRefine((value, ctx) => {
-    try {
-      parseJsonRecord(value);
-    } catch (error) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: error instanceof Error ? error.message : "JSON invalido. Corrija antes de aplicar."
-      });
-    }
-  })
-}).transform(({ json }) => parseJsonRecord(json));
-
-type AdvancedConfigInput = z.input<typeof advancedConfigSchema>;
-type AdvancedConfigValues = z.output<typeof advancedConfigSchema>;
+function nextRecordKey(value: unknown, field: NodeConfigFieldDescriptor): string {
+  const currentKeys = new Set(Object.keys(isRecord(value) ? value : {}));
+  const optionKey = field.options?.find((option) => !currentKeys.has(option.value))?.value;
+  if (optionKey) return optionKey;
+  let index = currentKeys.size + 1;
+  while (currentKeys.has(`campo${index}`)) index += 1;
+  return `campo${index}`;
+}
 
 function fieldError(errors: unknown, name: string): string | undefined {
   const segments = name.split(".");
@@ -210,6 +200,14 @@ export function NodeConfigField({ field, componentRegistry, context }: NodeConfi
               </div>
             ) : null}
 
+            {field.type === "key-value-list" || field.type === "json" ? (
+              <NodeConfigKeyValueEditor
+                field={field}
+                value={value}
+                onChange={onChange}
+              />
+            ) : null}
+
             {field.type === "date" ? (
               <AppDatePicker
                 value={typeof value === "string" ? value : null}
@@ -229,26 +227,129 @@ export function NodeConfigField({ field, componentRegistry, context }: NodeConfi
                 aria-label={field.label}
               />
             ) : null}
-
-            {field.type === "json" ? (
-              <Textarea
-                className="node-config-form__textarea node-config-form__textarea--code"
-                rows={field.rows ?? 5}
-                value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)}
-                disabled={field.disabled}
-                onChange={(event) => {
-                  try {
-                    onChange(parseJson(event.target.value));
-                  } catch {
-                    onChange(event.target.value);
-                  }
-                }}
-              />
-            ) : null}
           </FieldFrame>
         );
       }}
     />
+  );
+}
+
+function NodeConfigKeyValueEditor({
+  field,
+  value,
+  onChange
+}: {
+  field: NodeConfigFieldDescriptor;
+  value: unknown;
+  onChange: (value: Record<string, unknown>) => void;
+}) {
+  const entries = Object.entries(isRecord(value) ? value : {});
+  const keyLabel = field.keyLabel ?? "Campo";
+  const valueLabel = field.valueLabel ?? "Valor";
+  const options = field.options ?? [];
+  const hasFixedKeys = options.length > 0;
+  const currentKeys = new Set(entries.map(([key]) => key));
+  const canAddEntry = !field.disabled && (!hasFixedKeys || options.some((option) => !currentKeys.has(option.value)));
+
+  function commit(nextEntries: Array<[string, unknown]>) {
+    const nextValue = nextEntries.reduce<Record<string, unknown>>((acc, [key, entryValue]) => {
+      const normalizedKey = key.trim();
+      if (normalizedKey) {
+        acc[normalizedKey] = entryValue;
+      }
+      return acc;
+    }, {});
+    onChange(nextValue);
+  }
+
+  function addEntry() {
+    if (!canAddEntry) return;
+    commit([...entries, [nextRecordKey(value, field), ""]]);
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="node-config-form__kv-empty">
+        <span>Nenhum valor configurado.</span>
+        <Button type="button" size="sm" variant="outline" onClick={addEntry} disabled={!canAddEntry}>
+          <AppIcon name="plus" size={13} />
+          Adicionar
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="node-config-form__kv-list">
+      {entries.map(([key, entryValue], index) => (
+        <div key={`${key}-${index}`} className="node-config-form__kv-row">
+          <label className="node-config-form__kv-control">
+            <span>{keyLabel}</span>
+            {hasFixedKeys ? (
+              <AppSelect
+                items={[
+                  ...(options.some((option) => option.value === key)
+                    ? []
+                    : [{ value: key, label: key, description: "Campo nao encontrado" }]),
+                  ...options
+                ].map((option) => ({
+                  ...option,
+                  disabled: option.disabled || entries.some(([entryKey], entryIndex) => entryIndex !== index && entryKey === option.value)
+                }))}
+                value={key}
+                onValueChange={(nextKey) => {
+                  const nextEntries = [...entries];
+                  nextEntries[index] = [nextKey, entryValue];
+                  commit(nextEntries);
+                }}
+                placeholder="Selecione"
+                disabled={field.disabled}
+                aria-label={keyLabel}
+              />
+            ) : (
+              <TextInput
+                value={key}
+                placeholder={field.placeholder ?? "campo"}
+                disabled={field.disabled}
+                onChange={(event) => {
+                  const nextEntries = [...entries];
+                  nextEntries[index] = [event.target.value, entryValue];
+                  commit(nextEntries);
+                }}
+              />
+            )}
+          </label>
+          <label className="node-config-form__kv-control">
+            <span>{valueLabel}</span>
+            <TextInput
+              value={scalarToText(entryValue)}
+              placeholder={field.valuePlaceholder}
+              disabled={field.disabled}
+              onChange={(event) => {
+                const nextEntries = [...entries];
+                nextEntries[index] = [key, event.target.value];
+                commit(nextEntries);
+              }}
+            />
+          </label>
+          <Button
+            type="button"
+            className="node-config-form__kv-remove"
+            size="icon"
+            variant="ghost"
+            aria-label={`Remover ${key}`}
+            disabled={field.disabled}
+            onClick={() => commit(entries.filter((_, currentIndex) => currentIndex !== index))}
+          >
+            <AppIcon name="x" size={12} />
+          </Button>
+        </div>
+      ))}
+      <Button type="button" className="node-config-form__kv-add" size="sm" variant="outline" onClick={addEntry} disabled={!canAddEntry}>
+        <AppIcon name="plus" size={13} />
+        Adicionar
+      </Button>
+    </div>
   );
 }
 
@@ -306,52 +407,26 @@ export function NodeConfigValidationErrors({ errors }: { errors: string[] }) {
 }
 
 export function NodeConfigAdvancedSettings({
-  value,
-  onChange
+  value
 }: {
   value: Record<string, unknown>;
-  onChange: (value: Record<string, unknown>) => void;
+  onChange?: (value: Record<string, unknown>) => void;
 }) {
-  const form = useForm<AdvancedConfigInput, unknown, AdvancedConfigValues>({
-    resolver: zodResolver(advancedConfigSchema),
-    defaultValues: { json: JSON.stringify(value, null, 2) },
-    mode: "onChange"
-  });
-
-  useEffect(() => {
-    form.reset({ json: JSON.stringify(value, null, 2) });
-  }, [form, value]);
-
   return (
     <AppPopover
       align="end"
       contentClassName="node-config-form__advanced"
       trigger={
         <Button size="sm" variant="ghost">
-          Config tecnica
+          Ver config tecnica
         </Button>
       }
     >
       <div className="node-config-form__advanced-head">
         <strong>Config tecnica</strong>
-        <span>Use apenas para propriedades sem campo estruturado.</span>
+        <span>Visualizacao read-only para debug. Edite pelos campos estruturados.</span>
       </div>
-      <AppForm
-        form={form}
-        className="node-config-form__advanced-form"
-        onSubmit={(nextValue) => onChange(nextValue)}
-      >
-        <AppTextareaField<AdvancedConfigInput, "json">
-          name="json"
-          label="JSON"
-          className="node-config-form__advanced-field"
-          inputMode="text"
-          rows={8}
-        />
-        <Button size="sm" variant="outline" type="submit">
-          Aplicar JSON
-        </Button>
-      </AppForm>
+      <NodeConfigJsonPreview value={value} />
     </AppPopover>
   );
 }

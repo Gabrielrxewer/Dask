@@ -25,7 +25,7 @@ const TEMPLATE_OBJECTIVE_ITEMS = OBJECTIVE_OPTIONS.map((option) => ({
 const DEFAULT_TEMPLATE_VALUES: MarketingTemplateFormValues = {
   name: "",
   category: "newsletter",
-  objective: "LEAD_NURTURE",
+  objective: "COMMERCIAL_NURTURE",
   funnelStage: "mql",
   subject: "",
   bodyMarkdown: "## Assunto principal\n\nMensagem com contexto operacional.\n\n- ponto 1\n- ponto 2",
@@ -43,7 +43,7 @@ function templateToFormValues(template?: MarketingTemplate | null): MarketingTem
   return {
     name: template.name,
     category: template.category ?? "newsletter",
-    objective: template.objective ?? "LEAD_NURTURE",
+    objective: template.objective ?? "COMMERCIAL_NURTURE",
     funnelStage: template.funnelStage ?? "mql",
     subject: template.subject,
     bodyMarkdown: template.bodyMarkdown,
@@ -109,7 +109,7 @@ export function EmailTemplateEditor({
           name="objective"
           label="Objetivo"
           options={TEMPLATE_OBJECTIVE_ITEMS}
-          formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : "LEAD_NURTURE")}
+          formatValue={(value) => (typeof value === "string" && value.length > 0 ? value : "COMMERCIAL_NURTURE")}
         />
 
         <AppTextField name="subject" label="Assunto" />

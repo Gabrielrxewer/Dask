@@ -1,6 +1,7 @@
 import { env } from '@/core/config/env';
 import { AppError } from '@/core/errors/app-error';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
+import { redactSensitiveText } from '@/core/security/redaction';
 import type { EmbeddingProvider } from '@/modules/ai/domain/providers';
 
 type EmbeddingResponse = {
@@ -38,6 +39,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
+      const safeErrorText = redactSensitiveText(errorText, { maskPersonalData: true });
       this.embeddingLogger.error(
         {
           model: env.AI_EMBEDDING_MODEL,
@@ -45,7 +47,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
         },
         'OpenAI embedding request failed'
       );
-      throw new AppError(`OpenAI embeddings failed: ${errorText.slice(0, 400)}`, 502);
+      throw new AppError(`OpenAI embeddings failed: ${safeErrorText.slice(0, 400)}`, 502);
     }
 
     const payload = (await response.json()) as EmbeddingResponse;

@@ -3,6 +3,10 @@ export { billingStore, BillingStore } from "./model/billing-store";
 export { useBilling } from "./model/use-billing";
 export { buildOnboardingChecklist, getNextOnboardingAction } from "./model/connect-onboarding";
 export {
+  canManageSensitiveConnectSettings,
+  sensitiveConnectSettingsPermissionMessage
+} from "./model/connect-permissions";
+export {
   billingCatalogItemFormSchema,
   formatCentsToMoneyInput,
   normalizeMoneyInput,

@@ -38,7 +38,7 @@ export const MARKETING_TABS: Array<{ id: MarketingTab; label: string }> = [
 ];
 
 export const OBJECTIVE_OPTIONS: Array<{ value: MarketingCampaignObjective; label: string }> = [
-  { value: "LEAD_NURTURE", label: "Nutrição de leads" },
+  { value: "COMMERCIAL_NURTURE", label: "Nutrição comercial" },
   { value: "ONBOARDING", label: "Onboarding" },
   { value: "REACTIVATION", label: "Reativação" },
   { value: "BILLING_REMINDER", label: "Lembrete de cobrança" },
@@ -94,7 +94,7 @@ export const INITIAL_SEGMENT_FILTERS = JSON.stringify(
 
 export const SEGMENT_FILTER_FIELDS = [
   { value: "score", label: "Score" },
-  { value: "status", label: "Status do lead" },
+  { value: "status", label: "Status do workItem" },
   { value: "captureSource", label: "Origem" },
   { value: "companyName", label: "Empresa" }
 ];
@@ -112,7 +112,7 @@ export const SIGNAL_INBOX_TYPES = [
   "EMAIL_BOUNCED",
   "EMAIL_COMPLAINT",
   "EMAIL_UNSUBSCRIBED",
-  "LEAD_SCORE_CHANGED"
+  "COMMERCIAL_SCORE_CHANGED"
 ] as const;
 
 export const SIGNAL_TYPE_LABELS: Record<string, string> = {
@@ -121,7 +121,7 @@ export const SIGNAL_TYPE_LABELS: Record<string, string> = {
   EMAIL_BOUNCED: "Bounce",
   EMAIL_COMPLAINT: "Marcou como spam",
   EMAIL_UNSUBSCRIBED: "Descadastrou",
-  LEAD_SCORE_CHANGED: "Score alterado"
+  COMMERCIAL_SCORE_CHANGED: "Score alterado"
 };
 
 export const SIGNAL_TYPE_FILTER_LABELS: Record<string, string> = {
@@ -131,7 +131,7 @@ export const SIGNAL_TYPE_FILTER_LABELS: Record<string, string> = {
   EMAIL_BOUNCED: "Bounces",
   EMAIL_COMPLAINT: "Reclamações",
   EMAIL_UNSUBSCRIBED: "Cancelamentos",
-  LEAD_SCORE_CHANGED: "Score"
+  COMMERCIAL_SCORE_CHANGED: "Score"
 };
 
 export function stringifyObject(value: Record<string, unknown>): string {
@@ -202,7 +202,7 @@ export function fmtNum(value: number | undefined | null): string {
 export function signalPriority(signal: MarketingSignal): MarketingSignalPriority {
   if (signal.type === "EMAIL_COMPLAINT" || signal.type === "EMAIL_BOUNCED") return "urgent";
   if (signal.type === "EMAIL_UNSUBSCRIBED") return "high";
-  if (signal.type === "LEAD_SCORE_CHANGED") {
+  if (signal.type === "COMMERCIAL_SCORE_CHANGED") {
     const nextScore = typeof signal.payload?.nextScore === "number" ?signal.payload.nextScore : 0;
     if (nextScore >= 75) return "high";
     return "medium";
@@ -219,7 +219,7 @@ export function signalPriorityLabel(priority: MarketingSignalPriority): string {
 }
 
 export function signalSuggestion(signal: MarketingSignal): string {
-  const name = signal.lead?.fullName ?? signal.lead?.email ?? "Lead";
+  const name = signal.workItem?.contactName ?? signal.workItem?.email ?? "Contato";
   switch (signal.type) {
     case "EMAIL_CLICKED":
       return `${name} demonstrou interesse — crie uma tarefa de follow-up agora.`;
@@ -231,7 +231,7 @@ export function signalSuggestion(signal: MarketingSignal): string {
       return `${name} marcou como spam — remova do funil e verifique o segmento.`;
     case "EMAIL_UNSUBSCRIBED":
       return `${name} descadastrou — respeite a preferência e atualize o CRM.`;
-    case "LEAD_SCORE_CHANGED": {
+    case "COMMERCIAL_SCORE_CHANGED": {
       const score = typeof signal.payload?.nextScore === "number" ?signal.payload.nextScore : "?";
       return `Score de ${name} chegou a ${score} — qualifique e distribua para o comercial.`;
     }

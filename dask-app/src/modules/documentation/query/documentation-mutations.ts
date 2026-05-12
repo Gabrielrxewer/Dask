@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   publicCommercialDocumentService,
@@ -9,7 +10,10 @@ import type {
   DocumentLinkedEntityType,
   DocumentKind,
   WorkspaceDocument,
-  WorkspaceDocumentMetadata
+  WorkspaceDocumentMetadata,
+  RunDocumentationAssistantInput,
+  RunDocumentationAssistantResult,
+  WorkItemLinkedDocument
 } from "@/modules/workspace";
 import { workspaceQueryKeys } from "@/modules/workspace/query";
 import { toast } from "@/shared/ui/toast";
@@ -197,6 +201,7 @@ export function useLinkDocumentWorkItemMutation(workspaceId: string | null | und
     onSuccess: (_documents, input) => {
       const resolvedWorkspaceId = requireWorkspace(workspaceId);
       void queryClient.invalidateQueries({ queryKey: documentationQueryKeys.workItemContext(resolvedWorkspaceId, input.workItemId) });
+      void queryClient.invalidateQueries({ queryKey: documentationQueryKeys.workItemDocuments(resolvedWorkspaceId, input.workItemId) });
       invalidateDocumentation(queryClient, resolvedWorkspaceId);
       toast.success("Documento vinculado ao card.");
     },
@@ -213,6 +218,7 @@ export function useUnlinkDocumentWorkItemMutation(workspaceId: string | null | u
     onSuccess: (_void, input) => {
       const resolvedWorkspaceId = requireWorkspace(workspaceId);
       void queryClient.invalidateQueries({ queryKey: documentationQueryKeys.workItemContext(resolvedWorkspaceId, input.workItemId) });
+      void queryClient.invalidateQueries({ queryKey: documentationQueryKeys.workItemDocuments(resolvedWorkspaceId, input.workItemId) });
       invalidateDocumentation(queryClient, resolvedWorkspaceId);
       toast.success("Vinculo removido.");
     },
@@ -362,4 +368,64 @@ export function useDeleteDocumentAssetMutation(workspaceId: string | null | unde
     },
     onError: handleMutationError("Nao foi possivel remover o asset.")
   });
+}
+
+export function useRunDocumentationAssistantMutation(workspaceId: string | null | undefined) {
+  return useMutation({
+    mutationFn: (input: RunDocumentationAssistantInput) =>
+      workspaceService.runDocumentationAssistant(requireWorkspace(workspaceId), input),
+    onError: handleMutationError("Nao foi possivel processar a IA de documentacao.")
+  });
+}
+
+export interface WorkspaceDocumentActions {
+  listWorkspaceDocuments: () => Promise<WorkspaceDocument[]>;
+  createWorkspaceDocument: (input: {
+    title: string;
+    content?: string;
+    kind?: DocumentKind;
+    linkedEntityType?: DocumentLinkedEntityType;
+    linkedEntityId?: string;
+    tags?: string[];
+    metadata?: WorkspaceDocumentMetadata;
+    position?: number;
+  }) => Promise<WorkspaceDocument>;
+  listWorkItemLinkedDocuments: (itemId: string) => Promise<WorkItemLinkedDocument[]>;
+  linkDocumentToWorkItem: (itemId: string, documentId: string) => Promise<WorkItemLinkedDocument[]>;
+  unlinkDocumentFromWorkItem: (itemId: string, documentId: string) => Promise<void>;
+  runDocumentationAssistant: (input: RunDocumentationAssistantInput) => Promise<RunDocumentationAssistantResult>;
+}
+
+export function useWorkspaceDocumentActions(workspaceId: string | null | undefined): WorkspaceDocumentActions {
+  const queryClient = useQueryClient();
+  const { mutateAsync: createDocument } = useCreateDocumentMutation(workspaceId);
+  const { mutateAsync: linkDocument } = useLinkDocumentWorkItemMutation(workspaceId);
+  const { mutateAsync: unlinkDocument } = useUnlinkDocumentWorkItemMutation(workspaceId);
+  const { mutateAsync: runAssistant } = useRunDocumentationAssistantMutation(workspaceId);
+
+  return useMemo(
+    () => ({
+      listWorkspaceDocuments: () => {
+        if (!isWorkspaceReady(workspaceId)) return Promise.resolve([]);
+        return queryClient.fetchQuery({
+          queryKey: documentationQueryKeys.documents(workspaceId),
+          queryFn: () => workspaceService.listWorkspaceDocuments(workspaceId)
+        });
+      },
+      createWorkspaceDocument: (input) => createDocument(input),
+      listWorkItemLinkedDocuments: (itemId) => {
+        if (!isWorkspaceReady(workspaceId)) return Promise.resolve([]);
+        return queryClient.fetchQuery({
+          queryKey: documentationQueryKeys.workItemDocuments(workspaceId, itemId),
+          queryFn: () => workspaceService.listWorkItemLinkedDocuments(workspaceId, itemId)
+        });
+      },
+      linkDocumentToWorkItem: (itemId, documentId) => linkDocument({ workItemId: itemId, documentId }),
+      unlinkDocumentFromWorkItem: async (itemId, documentId) => {
+        await unlinkDocument({ workItemId: itemId, documentId });
+      },
+      runDocumentationAssistant: (input) => runAssistant(input)
+    }),
+    [createDocument, linkDocument, queryClient, runAssistant, unlinkDocument, workspaceId]
+  );
 }

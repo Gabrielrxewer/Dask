@@ -1,10 +1,10 @@
 import { Button } from "@/shared/ui";
 
 const DEFAULT_VARIABLES = [
-  "{{lead.firstName}}",
-  "{{lead.fullName}}",
-  "{{lead.email}}",
-  "{{lead.companyName}}",
+  "{{contact.firstName}}",
+  "{{contact.fullName}}",
+  "{{contact.email}}",
+  "{{contact.companyName}}",
   "{{campaign.name}}",
   "{{workspace.name}}"
 ];

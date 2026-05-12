@@ -9,7 +9,7 @@ export type MarketingCampaignStatus =
   | 'ARCHIVED';
 
 export type MarketingCampaignObjective =
-  | 'LEAD_NURTURE'
+  | 'COMMERCIAL_NURTURE'
   | 'ONBOARDING'
   | 'REACTIVATION'
   | 'BILLING_REMINDER'
@@ -27,7 +27,7 @@ export interface MarketingDashboard {
   openRate: number;
   clickRate: number;
   conversionRate: number;
-  influencedLeads: number;
+  influencedWorkItems: number;
   influencedCustomers: number;
   influencedRevenue: number;
   automationsRunning: number;
@@ -103,8 +103,9 @@ export interface MarketingCampaignDetails {
 }
 
 export interface MarketingAudienceContact {
-  lead: {
+  contact: {
     id: string;
+    workItemId: string;
     fullName: string | null;
     email: string | null;
     companyName: string | null;
@@ -125,7 +126,7 @@ export interface MarketingAudienceContact {
 export interface MarketingSegmentPreview {
   segment: MarketingSegment;
   estimatedContacts: number;
-  sample: MarketingAudienceContact['lead'][];
+  sample: MarketingAudienceContact['contact'][];
 }
 
 export interface MarketingAutomationFlow {
@@ -150,7 +151,7 @@ export type MarketingSignalType =
   | 'EMAIL_BOUNCED'
   | 'EMAIL_COMPLAINT'
   | 'EMAIL_UNSUBSCRIBED'
-  | 'LEAD_SCORE_CHANGED';
+  | 'COMMERCIAL_SCORE_CHANGED';
 
 export type MarketingSignalPriority = 'urgent' | 'high' | 'medium' | 'low';
 
@@ -163,13 +164,15 @@ export interface MarketingSignal {
   occurredAt: string;
   seenAt: string | null;
   dismissedAt: string | null;
-  leadId: string | null;
+  workItemId: string | null;
   campaignId: string | null;
-  lead: {
+  workItem: {
     id: string;
-    fullName: string | null;
+    title: string | null;
+    contactName: string | null;
     email: string | null;
     companyName: string | null;
+    customerId: string | null;
     score: number;
     status: string;
   } | null;
@@ -187,7 +190,7 @@ export interface MarketingSignalsInbox {
 
 export interface CreateMarketingFollowUpInput {
   signalId: string;
-  leadId: string;
+  workItemId: string;
   title: string;
   description?: string;
   dueAt?: string | null;
@@ -205,20 +208,20 @@ export interface SendMarketingTemplateTestInput {
 
 export interface MarketingFollowUpResult {
   signalId: string;
-  leadId: string;
   activity: {
     id: string;
     title: string;
     description: string | null;
     occurredAt: string;
   };
-  lead: {
+  workItem: {
     id: string;
     lastContactAt: string | null;
     nextFollowUpAt: string | null;
     status: string;
   } | null;
-  workItemId: string | null;
+  sourceWorkItemId: string;
+  createdFollowUpWorkItemId: string | null;
 }
 
 export interface CreateMarketingCampaignInput {

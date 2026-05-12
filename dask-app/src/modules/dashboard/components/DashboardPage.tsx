@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { buildBoardMetrics } from "@/entities/task";
-import { useWorkspace } from "@/modules/workspace";
+import { useCurrentWorkspace } from "@/modules/workspace";
 import type { WorkspaceSnapshot } from "@/modules/workspace/model";
 import { useDashboardFilters, useDashboardOverview } from "@/modules/dashboard/hooks";
 import { buildDashboardKpis, getDashboardWidgetsForTab, type DashboardTabId } from "@/modules/dashboard/model";
@@ -134,7 +134,7 @@ export function DashboardPageView({
 }
 
 export function DashboardPage() {
-  const { snapshot } = useWorkspace();
+  const { snapshot } = useCurrentWorkspace();
   const [activeTab, setActiveTab] = useState<DashboardTabId>("overview");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const { filters, applyFilters, resetFilters, activeFilterCount } = useDashboardFilters();

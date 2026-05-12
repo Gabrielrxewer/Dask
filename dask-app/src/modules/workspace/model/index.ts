@@ -116,6 +116,7 @@ export type {
   WorkspaceDateFormat,
   WorkspacePreferences,
   WorkspaceProfile,
+  WorkspaceRole,
   WorkspacePermissionKey,
   WorkspaceModuleKey,
   WorkspaceAccessGroup,

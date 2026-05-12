@@ -620,6 +620,15 @@
   color: var(--text-primary);
 }
 
+.wie__dnd-source {
+  touch-action: none;
+}
+
+.wie__dnd-source.is-dragging,
+.panel-menu-tile.is-dragging {
+  opacity: 0.62;
+}
+
 .wie__card-field--badge,
 .wie__card-field--meta {
   display: inline-flex;
@@ -839,6 +848,7 @@
   background: transparent;
   box-shadow: none;
   cursor: grab;
+  touch-action: none;
   transition: border-color 0.12s, box-shadow 0.12s, background 0.12s, transform 0.12s;
 }
 
@@ -1892,13 +1902,13 @@
 .app-theme[data-theme="dark"] .wie__props-idle-tip,
 .app-theme[data-theme="dark"] .wie__summary span,
 .app-theme[data-theme="dark"] .wie__tab {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .wie__body {
-  background: color-mix(in oklab, var(--panel-soft) 82%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--panel-soft) 82%, var(--panel));
 }
 
 .app-theme[data-theme="dark"] .wie__field-editor-stage,
@@ -1908,29 +1918,29 @@
 .app-theme[data-theme="dark"] .wie__canvas-panel--field {
   background:
     radial-gradient(circle at top left, color-mix(in oklab, var(--accent-soft) 8%, transparent), transparent 30%),
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) 0%, color-mix(in oklab, var(--surface-muted) 92%, var(--panel)) 100%) !important;
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) 0%, color-mix(in oklab, var(--surface-muted) 92%, var(--panel)) 100%);
 }
 
 .app-theme[data-theme="dark"] .wie__field-editor-preview-card,
 .app-theme[data-theme="dark"] .wie__props-panel,
 .app-theme[data-theme="dark"] .wie__detail-slot-wrap {
-  background: transparent !important;
+  background: transparent;
 }
 
 .app-theme[data-theme="dark"] .wie__form-hero,
 .app-theme[data-theme="dark"] .wie__form-summary-panel,
 .app-theme[data-theme="dark"] .wie__form-zone,
 .app-theme[data-theme="dark"] .wie__form-summary-chips span {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .wie__form-column,
 .app-theme[data-theme="dark"] .wie__form-sidebar {
-  border-color: color-mix(in oklab, var(--line) 64%, transparent) !important;
-  background: color-mix(in oklab, var(--surface-raised) 74%, transparent) !important;
-  box-shadow: none !important;
+  border-color: color-mix(in oklab, var(--line) 64%, transparent);
+  background: color-mix(in oklab, var(--surface-raised) 74%, transparent);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wie__form-hero,
@@ -1940,20 +1950,20 @@
 .app-theme[data-theme="dark"] .wie__detail-field-card--simple,
 .app-theme[data-theme="dark"] .wie__detail-field-card--complex,
 .app-theme[data-theme="dark"] .wie__detail-field-card--meta {
-  border-color: transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wie__form-summary-panel,
 .app-theme[data-theme="dark"] .wie__form-sidebar .wie__detail-slot-wrap + .wie__detail-slot-wrap {
-  border-bottom-color: color-mix(in oklab, var(--line) 48%, transparent) !important;
-  border-top-color: color-mix(in oklab, var(--line) 48%, transparent) !important;
+  border-bottom-color: color-mix(in oklab, var(--line) 48%, transparent);
+  border-top-color: color-mix(in oklab, var(--line) 48%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__detail-field-card.is-selected {
-  background: color-mix(in oklab, var(--selected-bg) 52%, transparent) !important;
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent) !important;
+  background: color-mix(in oklab, var(--selected-bg) 52%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__tab.is-active,
@@ -1962,9 +1972,9 @@
 .app-theme[data-theme="dark"] .wie__canvas-tab.is-active,
 .app-theme[data-theme="dark"] .wie__props-type-btn.is-active,
 .app-theme[data-theme="dark"] .wie__props-area-btn.is-active {
-  border-color: color-mix(in oklab, var(--accent) 36%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 90%, var(--surface-raised)) !important;
-  color: var(--text-strong) !important;
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 90%, var(--surface-raised));
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__tab-btn,
@@ -1978,7 +1988,7 @@
 .app-theme[data-theme="dark"] .wie__field-editor-config-head strong,
 .app-theme[data-theme="dark"] .wie__detail-field-card-label,
 .app-theme[data-theme="dark"] .wie__props-usage-label span:first-child {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__tab-edit,
@@ -2013,7 +2023,7 @@
 .app-theme[data-theme="dark"] .wie__form-zone-empty,
 .app-theme[data-theme="dark"] .wie__field-editor-empty span,
 .app-theme[data-theme="dark"] .wie__field-editor-empty p {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__field-editor-empty strong,
@@ -2021,34 +2031,34 @@
 .app-theme[data-theme="dark"] .wie__form-zone-head strong,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-type,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-badges span {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__field-editor-preview-type,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-badges span,
 .app-theme[data-theme="dark"] .wie__detail-insert-target {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
 }
 
 .app-theme[data-theme="dark"] .wie__stage-hint,
 .app-theme[data-theme="dark"] .wie__card-empty-slot {
-  background: color-mix(in oklab, var(--surface-raised) 72%, transparent) !important;
-  border-color: color-mix(in oklab, var(--line) 72%, transparent) !important;
-  box-shadow: none !important;
+  background: color-mix(in oklab, var(--surface-raised) 72%, transparent);
+  border-color: color-mix(in oklab, var(--line) 72%, transparent);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wie__card-empty-slot.is-target,
 .app-theme[data-theme="dark"] .wie__stage-hint.is-visible {
-  background: color-mix(in oklab, var(--selected-bg) 62%, var(--surface-raised)) !important;
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--line)) !important;
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 12%, transparent) !important;
+  background: color-mix(in oklab, var(--selected-bg) 62%, var(--surface-raised));
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__card-empty-slot-count,
 .app-theme[data-theme="dark"] .wie__stage-hint,
 .app-theme[data-theme="dark"] .wie__card-empty-slot-label {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie input,
@@ -2059,32 +2069,32 @@
 .app-theme[data-theme="dark"] .wie .shared-select__control,
 .app-theme[data-theme="dark"] .wie__lib-search,
 .app-theme[data-theme="dark"] .wie__detail-preview-input {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-strong) !important;
-  box-shadow: none !important;
+  border-color: var(--line);
+  background: var(--control-surface);
+  color: var(--text-strong);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wie input::placeholder,
 .app-theme[data-theme="dark"] .wie textarea::placeholder {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .wie__unsaved-indicator {
-  border-color: color-mix(in oklab, var(--warn) 32%, var(--line)) !important;
-  background: color-mix(in oklab, var(--warn-soft) 24%, var(--panel)) !important;
-  color: var(--warn) !important;
+  border-color: color-mix(in oklab, var(--warn) 32%, var(--line));
+  background: color-mix(in oklab, var(--warn-soft) 24%, var(--panel));
+  color: var(--warn);
 }
 
 .app-theme[data-theme="dark"] .wie__slot-bar {
-  background: color-mix(in oklab, var(--line) 80%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--line) 80%, var(--panel));
 }
 
 .app-theme[data-theme="dark"] .wie__props-idle-icon,
 .app-theme[data-theme="dark"] .wie__props-idle-tip {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__tab-create,
@@ -2092,22 +2102,22 @@
 .app-theme[data-theme="dark"] .wie__card-empty-slot,
 .app-theme[data-theme="dark"] .wie__props-zone-switcher,
 .app-theme[data-theme="dark"] .wie__props-idle-icon {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__tab-input,
 .app-theme[data-theme="dark"] .wie__props-zone-btn {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__props-zone-btn.is-active,
 .app-theme[data-theme="dark"] .wie__card-empty-slot.is-target,
 .app-theme[data-theme="dark"] .wie__stage-hint.is-visible {
-  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised)) !important;
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
-  color: var(--text-strong) !important;
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised));
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
+  color: var(--text-strong);
   box-shadow: var(--shadow-1);
 }
 
@@ -2115,12 +2125,12 @@
 .app-theme[data-theme="dark"] .wie__stage-empty p,
 .app-theme[data-theme="dark"] .wie__card-empty-slot-count,
 .app-theme[data-theme="dark"] .wie__slot-overflow {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__card-empty-slot-label,
 .app-theme[data-theme="dark"] .wie__props-idle strong {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__lib-chip-badge,
@@ -2131,16 +2141,16 @@
 .app-theme[data-theme="dark"] .wie__detail-preview-pill,
 .app-theme[data-theme="dark"] .wie__props-badge,
 .app-theme[data-theme="dark"] .wie__props-type-badge {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab.is-active .wie__canvas-tab-count,
 .app-theme[data-theme="dark"] .wie__props-badge.is-active {
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised)) !important;
-  color: var(--text-strong) !important;
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised));
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__props-target-info strong,
@@ -2149,66 +2159,66 @@
 .app-theme[data-theme="dark"] .wie__field-editor-preview-type,
 .app-theme[data-theme="dark"] .wie__field-editor-preview-badges span,
 .app-theme[data-theme="dark"] .wie__lib-chip-badge {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__card-field.is-replace-target,
 .app-theme[data-theme="dark"] .wie__detail-field-card.is-replace-target,
 .app-theme[data-theme="dark"] .wie__detail-insert-target.is-target {
-  background: color-mix(in oklab, var(--selected-bg) 86%, var(--surface-raised)) !important;
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  background: color-mix(in oklab, var(--selected-bg) 86%, var(--surface-raised));
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
 }
 
 .app-theme[data-theme="dark"] .wie__card-field.is-replace-target::after,
 .app-theme[data-theme="dark"] .wie__detail-field-card.is-replace-target::after {
-  background: color-mix(in oklab, var(--selected-bg) 78%, var(--surface-muted)) !important;
-  color: var(--text-strong) !important;
+  background: color-mix(in oklab, var(--selected-bg) 78%, var(--surface-muted));
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tabs {
   gap: 8px;
   padding: 0;
-  border: none !important;
+  border: none;
   border-radius: 0;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab {
   min-height: 36px;
   padding: 0 18px;
-  border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--line));
   border-radius: 999px;
-  background: color-mix(in oklab, var(--surface-raised) 88%, var(--panel)) !important;
-  color: var(--text-strong) !important;
+  background: color-mix(in oklab, var(--surface-raised) 88%, var(--panel));
+  color: var(--text-strong);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab:hover {
-  border-color: color-mix(in oklab, var(--accent) 48%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 60%, var(--surface-raised)) !important;
+  border-color: color-mix(in oklab, var(--accent) 48%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 60%, var(--surface-raised));
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab.is-active {
-  border-color: color-mix(in oklab, var(--accent) 56%, var(--neutral-white) 6%) !important;
-  background: color-mix(in oklab, var(--selected-bg) 82%, var(--surface-raised)) !important;
-  color: var(--text-strong) !important;
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--neutral-white) 6%);
+  background: color-mix(in oklab, var(--selected-bg) 82%, var(--surface-raised));
+  color: var(--text-strong);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent),
     0 8px 18px color-mix(in srgb, var(--primary) 22%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) !important;
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab-count {
-  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line)) !important;
-  background: color-mix(in oklab, var(--surface-muted) 90%, var(--panel)) !important;
-  color: var(--text-soft) !important;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
+  background: color-mix(in oklab, var(--surface-muted) 90%, var(--panel));
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab.is-active .wie__canvas-tab-count {
-  border-color: color-mix(in oklab, var(--accent) 36%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 78%, var(--surface-raised)) !important;
-  color: var(--text-strong) !important;
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 78%, var(--surface-raised));
+  color: var(--text-strong);
 }

@@ -214,12 +214,12 @@ export const buildWorkspacePlatformRoutes = (deps: {
     requireWorkspacePermission(deps.authorizationService, 'item.write'),
     requireWorkspaceRole(MembershipRole.MEMBER)
   ];
-  const requireLeadTransform = [
-    requireWorkspacePermission(deps.authorizationService, 'lead.transform'),
+  const requireCommercialTransform = [
+    requireWorkspacePermission(deps.authorizationService, 'commercial.transform'),
     requireWorkspaceRole(MembershipRole.MEMBER)
   ];
-  const requireLeadConvertToCustomer = [
-    requireWorkspacePermission(deps.authorizationService, 'lead.convert_to_customer'),
+  const requireCommercialConvertToCustomer = [
+    requireWorkspacePermission(deps.authorizationService, 'commercial.convert_to_customer'),
     requireWorkspaceRole(MembershipRole.MEMBER)
   ];
 
@@ -1130,6 +1130,10 @@ export const buildWorkspacePlatformRoutes = (deps: {
           query.dateTo ||
           query.dueDateFrom ||
           query.dueDateTo ||
+          query.plannedStartFrom ||
+          query.plannedStartTo ||
+          query.plannedWindowFrom ||
+          query.plannedWindowTo ||
           query.createdAtFrom ||
           query.createdAtTo ||
           query.updatedAtFrom ||
@@ -1194,7 +1198,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/type-transformation',
     requireWorkspaceModule('board'),
-    ...requireLeadTransform,
+    ...requireCommercialTransform,
     asyncHandler(async (req, res) => {
       const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
       const payload = workItemTypeTransformationDto.parse(req.body ?? {});
@@ -1555,7 +1559,7 @@ export const buildWorkspacePlatformRoutes = (deps: {
   router.post(
     '/workspaces/:workspaceId/work-items/:itemId/convert-to-customer',
     requireWorkspaceModule('board'),
-    ...requireLeadConvertToCustomer,
+    ...requireCommercialConvertToCustomer,
     asyncHandler(async (req, res) => {
       const { workspaceId, itemId } = workItemParamsDto.parse(req.params);
       const payload = convertWorkItemToCustomerDto.parse(req.body ?? {});

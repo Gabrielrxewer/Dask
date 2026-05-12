@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, TextInput } from "@/shared/ui";
-import { useAuth, useLogin } from "@/features/auth";
-import { authService } from "@/features/auth/api/auth-service";
+import { useAuth, useLogin, useRequestPasswordResetMutation } from "@/features/auth";
 import { cn } from "@/shared/lib/cn";
 import { buildApiUrl } from "@/shared/config/env";
 import { isApiError } from "@/shared/api/http-client";
 import { routePaths } from "@/app/router/route-paths";
-import { workspaceService } from "@/modules/workspace/api";
-import type { PublicWorkspaceInvite } from "@/modules/workspace/model";
+import { usePublicWorkspaceInviteQuery } from "@/modules/workspace";
 import "./login-form.css";
 
 interface LoginLocationState {
@@ -133,6 +131,12 @@ export function LoginForm() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login, isSubmitting } = useLogin();
+  const searchParams = new URLSearchParams(location.search);
+  const inviteToken = searchParams.get("invite") ?? undefined;
+  const invitedEmail = searchParams.get("email");
+  const returnTo = searchParams.get("returnTo") ?? "";
+  const inviteQuery = usePublicWorkspaceInviteQuery(inviteToken);
+  const requestPasswordResetMutation = useRequestPasswordResetMutation();
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -151,52 +155,24 @@ export function LoginForm() {
   const [forgotStatus, setForgotStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [isAuthMessageOpen, setIsAuthMessageOpen] = useState(false);
-  const [inviteInfo, setInviteInfo] = useState<PublicWorkspaceInvite | null>(null);
-  const [inviteInfoError, setInviteInfoError] = useState<string | null>(null);
 
   const locationState = (location.state as LoginLocationState | null) ?? null;
-  const searchParams = new URLSearchParams(location.search);
   const oauthLinkRequired = searchParams.get("oauth") === "link_required";
   const oauthError = searchParams.get("oauth") === "error";
   const oauthProvider = searchParams.get("provider");
   const oauthErrorCode = searchParams.get("error");
-  const inviteToken = searchParams.get("invite") ?? undefined;
-  const invitedEmail = searchParams.get("email");
-  const returnTo = searchParams.get("returnTo") ?? "";
+  const inviteInfo = inviteQuery.data ?? null;
+  const inviteInfoError = inviteQuery.isError
+    ? "Este convite nao e mais valido. Voce ainda pode entrar normalmente."
+    : null;
   const isRegisterStep = authStep === "register";
   const isForgotStep = authStep === "forgot-password";
 
   useEffect(() => {
-    if (!inviteToken) {
-      setInviteInfo(null);
-      setInviteInfoError(null);
-      return;
+    if (inviteInfo?.email && !email) {
+      setEmail(inviteInfo.email);
     }
-
-    let mounted = true;
-    workspaceService
-      .getWorkspaceInviteByToken(inviteToken)
-      .then((data) => {
-        if (!mounted) {
-          return;
-        }
-        setInviteInfo(data);
-        setInviteInfoError(null);
-        if (!email && data.email) {
-          setEmail(data.email);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setInviteInfo(null);
-          setInviteInfoError("Este convite nao e mais valido. Voce ainda pode entrar normalmente.");
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [inviteToken]);
+  }, [email, inviteInfo?.email]);
 
   useEffect(() => {
     if (!invitedEmail) {
@@ -359,7 +335,7 @@ export function LoginForm() {
     setForgotStatus("loading");
     setForgotError(null);
     try {
-      await authService.requestPasswordReset({ email: trimmedEmail });
+      await requestPasswordResetMutation.mutateAsync({ email: trimmedEmail });
       setForgotStatus("sent");
     } catch {
       setForgotStatus("error");

@@ -1,10 +1,12 @@
 import Stripe from 'stripe';
 import { AuditSeverity, type Prisma, type PrismaClient } from '@prisma/client';
 import { env } from '@/core/config/env';
+import { assertProductionCriticalConfig } from '@/core/config/production-config';
 import type { DomainEvent } from '@/core/events/domain-event';
 import type { OutboxPendingEvent } from '@/core/events/outbox-repository';
 import { EventPublisher } from '@/core/events/event-publisher';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
+import { redactErrorMessage } from '@/core/security/redaction';
 import { recordTelemetryEvent } from '@/core/telemetry/telemetry-recorder';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { MockEmailService } from '@/infra/email/mock-email-service';
@@ -75,8 +77,7 @@ function toRetryDelayMs(retries: number): number {
 }
 
 function sanitizeErrorMessage(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  return raw.slice(0, 2000);
+  return redactErrorMessage(error, 2000);
 }
 
 async function recordAuditEvent(
@@ -104,6 +105,24 @@ export type RelayWorkerHandle = {
 };
 
 export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle {
+  assertProductionCriticalConfig({
+    nodeEnv: env.NODE_ENV,
+    rawEnv: process.env,
+    stripeEnvironment: env.STRIPE_ENVIRONMENT,
+    stripeSecretKey: env.STRIPE_SECRET_KEY,
+    stripePublicKey: env.STRIPE_PUBLIC_KEY,
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    stripeFiscalWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL,
+    billingPortalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET,
+    stripePriceIdPersonalMonthly: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY,
+    stripePriceIdBusinessMonthly: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY,
+    stripeConnectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS,
+    stripeConnectRequiredCapabilities: env.STRIPE_CONNECT_REQUIRED_CAPABILITIES,
+    focusApiEnvironment: env.FOCUS_API_ENVIRONMENT,
+    focusApiBaseUrl: env.FOCUS_API_BASE_URL,
+    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+  });
+
   const outboxRepository = new PrismaOutboxRepository(prisma);
   const eventPublisher = new EventPublisher(outboxRepository, prisma);
   const jobQueue = new BullMqJobQueue();
@@ -123,13 +142,19 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
         stripe: stripeClient,
         appPublicUrl: env.APP_PUBLIC_URL,
         webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        portalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET,
+        environment: env.NODE_ENV,
+        stripeSecretConfigured: Boolean(env.STRIPE_SECRET_KEY?.trim()),
+        webhookSecretConfigured: Boolean(env.STRIPE_WEBHOOK_SECRET?.trim()),
+        portalTokenSecretConfigured: Boolean(env.BILLING_PORTAL_TOKEN_SECRET?.trim()),
         emailService,
         eventPublisher,
         priceIds: {
           PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
           BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
         },
-        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
+        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS,
+        connectRequiredCapabilities: env.STRIPE_CONNECT_REQUIRED_CAPABILITIES
       })
     : null;
   const automationRunEventService = new AutomationRunEventService(prisma);

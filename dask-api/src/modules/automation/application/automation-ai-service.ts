@@ -371,24 +371,6 @@ export class AutomationAIService {
       data: input.data
     });
     const sanitizedPrompt = redactSensitiveText(userPrompt).slice(0, 12_000);
-    const startedAt = new Date();
-    const run = await this.prisma.aIAgentRun.create({
-      data: {
-        workspaceId: input.workspaceId,
-        agentId: agent.id,
-        itemId: null,
-        requestedBy: 'automation-runtime',
-        status: 'running',
-        input: toJsonValue({
-          type: 'automation_ai_node',
-          taskKey: input.taskKey,
-          promptPreview: sanitizedPrompt.slice(0, 1800),
-          toolsEnabled: false,
-          requireJsonOutput: true
-        }),
-        startedAt
-      }
-    });
 
     try {
       const generation = await this.aiProvider.generateText({
@@ -403,38 +385,9 @@ export class AutomationAIService {
         requireJsonOutput: true
       });
       const parsed = parseJsonObject(generation.content) ?? input.fallback();
-      const estimatedCostUsd = Number(((generation.usage.totalTokens / 1_000_000) * 0.8).toFixed(6));
-
-      await this.prisma.aIAgentRun.update({
-        where: { id: run.id },
-        data: {
-          status: 'completed',
-          output: toJsonValue({
-            type: 'automation_ai_node',
-            taskKey: input.taskKey,
-            parsed
-          }),
-          provider: generation.provider,
-          model: generation.model,
-          latencyMs: generation.latencyMs,
-          inputTokens: generation.usage.inputTokens,
-          outputTokens: generation.usage.outputTokens,
-          totalTokens: generation.usage.totalTokens,
-          estimatedCostUsd,
-          finishedAt: new Date()
-        }
-      });
 
       return parsed;
-    } catch (error) {
-      await this.prisma.aIAgentRun.update({
-        where: { id: run.id },
-        data: {
-          status: 'failed',
-          error: error instanceof Error ? error.message.slice(0, 1900) : String(error).slice(0, 1900),
-          finishedAt: new Date()
-        }
-      });
+    } catch {
       return input.fallback();
     }
   }

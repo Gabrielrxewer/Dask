@@ -145,6 +145,7 @@ h4 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Accessibility override: this must beat component-level animations and transitions. */
   *,
   *::before,
   *::after {

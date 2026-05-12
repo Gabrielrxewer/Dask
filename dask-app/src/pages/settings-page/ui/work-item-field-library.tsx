@@ -1,4 +1,6 @@
-import type { DragEvent } from "react";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import type { ReactNode } from "react";
 import { getTaskFieldTypeLabel } from "@/entities/task";
 import type { CustomFieldType } from "@/modules/workspace/model";
 import { EmptyState, PanelMenu, PanelMenuGroup, PanelMenuItem } from "@/shared/ui";
@@ -19,10 +21,75 @@ interface WorkItemFieldLibraryProps {
   selectedFieldId: string | null;
   onSearchChange: (value: string) => void;
   onSelectField: (fieldId: string) => void;
-  onDragStartField: (event: DragEvent<HTMLElement>, fieldId: string, origin: "library") => void;
-  onDragStartType: (event: DragEvent<HTMLElement>, type: CustomFieldType) => void;
-  onDragEnd: () => void;
   onOpenNewFieldPanel: (type: CustomFieldType) => void;
+}
+
+function DraggableLibraryFieldChip({
+  field,
+  selected,
+  trailing,
+  onSelectField
+}: {
+  field: FieldLibraryItem;
+  selected: boolean;
+  trailing?: ReactNode;
+  onSelectField: (fieldId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `work-item-field-library:${field.id}`,
+    data: {
+      payload: { kind: "field", fieldId: field.id, origin: "library" }
+    }
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={isDragging ? "wie__dnd-source is-dragging" : "wie__dnd-source"}
+      style={{ transform: CSS.Translate.toString(transform) }}
+      {...attributes}
+      {...listeners}
+      aria-label={`Mover campo ${field.label}`}
+    >
+      <PanelMenuItem
+        variant="chip"
+        selected={selected}
+        onClick={() => onSelectField(field.id)}
+        label={field.label}
+        trailing={trailing}
+      />
+    </div>
+  );
+}
+
+function DraggableFieldTypeTile({
+  option,
+  onOpenNewFieldPanel
+}: {
+  option: (typeof FIELD_TYPE_OPTIONS)[number];
+  onOpenNewFieldPanel: (type: CustomFieldType) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `work-item-field-type:${option.value}`,
+    data: {
+      payload: { kind: "type", type: option.value }
+    }
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`panel-menu-tile${isDragging ? " is-dragging" : ""}`}
+      style={{ transform: CSS.Translate.toString(transform) }}
+      onClick={() => onOpenNewFieldPanel(option.value)}
+      {...attributes}
+      {...listeners}
+      aria-label={`Criar campo ${option.label}`}
+    >
+      <strong>{option.label}</strong>
+      <span>{option.caption}</span>
+    </div>
+  );
 }
 
 export function WorkItemFieldLibrary({
@@ -37,9 +104,6 @@ export function WorkItemFieldLibrary({
   selectedFieldId,
   onSearchChange,
   onSelectField,
-  onDragStartField,
-  onDragStartType,
-  onDragEnd,
   onOpenNewFieldPanel
 }: WorkItemFieldLibraryProps) {
   const renderFieldChip = (field: FieldLibraryItem) => {
@@ -53,18 +117,11 @@ export function WorkItemFieldLibrary({
     else if (inDetail) usageLabel = "form";
 
     return (
-      <PanelMenuItem
+      <DraggableLibraryFieldChip
         key={field.id}
-        variant="chip"
+        field={field}
         selected={isSelected}
-        draggable
-        onDragStart={(e) => {
-          e.stopPropagation();
-          onDragStartField(e as DragEvent<HTMLElement>, field.id, "library");
-        }}
-        onDragEnd={onDragEnd}
-        onClick={() => onSelectField(field.id)}
-        label={field.label}
+        onSelectField={onSelectField}
         trailing={usageLabel ? <span className="wie__lib-usage">{usageLabel}</span> : undefined}
       />
     );
@@ -107,20 +164,11 @@ export function WorkItemFieldLibrary({
           <PanelMenuGroup label="Novo campo" tone="new">
             <div className="panel-menu-tile-grid">
               {FIELD_TYPE_OPTIONS.map((opt) => (
-                <div
+                <DraggableFieldTypeTile
                   key={opt.value}
-                  className="panel-menu-tile"
-                  draggable
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    onDragStartType(e, opt.value);
-                  }}
-                  onDragEnd={onDragEnd}
-                  onClick={() => onOpenNewFieldPanel(opt.value)}
-                >
-                  <strong>{opt.label}</strong>
-                  <span>{opt.caption}</span>
-                </div>
+                  option={opt}
+                  onOpenNewFieldPanel={onOpenNewFieldPanel}
+                />
               ))}
             </div>
           </PanelMenuGroup>

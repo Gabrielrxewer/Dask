@@ -10,6 +10,8 @@ export type NodeConfigFieldType =
   | "multi-select"
   | "date"
   | "datetime"
+  | "key-value-list"
+  | "custom"
   | "json"
   | "secret-reference"
   | "model-selector"
@@ -34,6 +36,9 @@ export interface NodeConfigFieldDescriptor {
   placeholder?: string;
   required?: boolean;
   options?: NodeConfigFieldOption[];
+  keyLabel?: string;
+  valueLabel?: string;
+  valuePlaceholder?: string;
   min?: number;
   max?: number;
   step?: number;

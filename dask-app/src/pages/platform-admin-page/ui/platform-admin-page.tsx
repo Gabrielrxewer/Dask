@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth";
-import { adminTelemetryService } from "@/pages/platform-admin-page/api/admin-telemetry-service";
-import type { AdminTelemetryOverview } from "@/pages/platform-admin-page/model/types";
+import { usePlatformAdminTelemetryOverviewQuery } from "@/pages/platform-admin-page/model/use-platform-admin-telemetry";
 import { Button, EmptyState, InlineAlert, LoadingState, MetricCard, StatusBadge } from "@/shared/ui";
 import "./platform-admin-page.css";
 
@@ -79,10 +78,11 @@ function InfoHint({ label, detail }: { label: string; detail: string }) {
 
 export function PlatformAdminPage() {
   const { user } = useAuth();
-  const [overview, setOverview] = useState<AdminTelemetryOverview | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const telemetryQuery = usePlatformAdminTelemetryOverviewQuery({ enabled: Boolean(user?.isPlatformAdmin) });
+  const overview = telemetryQuery.data ?? null;
+  const isLoading = telemetryQuery.isLoading;
+  const isRefreshing = telemetryQuery.isFetching && !telemetryQuery.isLoading;
+  const errorMessage = telemetryQuery.isError ? "Nao foi possivel carregar a telemetria agora." : null;
   const authHealthTone = useMemo(() => {
     const refreshFailures = overview?.auth.refreshFailures24h ?? 0;
     const lockedUsers = overview?.users.lockedNow ?? 0;
@@ -95,53 +95,6 @@ export function PlatformAdminPage() {
     }
     return "ok";
   }, [overview?.auth.refreshFailures24h, overview?.users.lockedNow]);
-
-  useEffect(() => {
-    if (!user?.isPlatformAdmin) {
-      setIsLoading(false);
-      return;
-    }
-
-    let active = true;
-
-    const fetchOverview = async (silent = false) => {
-      if (silent) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-
-      try {
-        const next = await adminTelemetryService.getOverview();
-        if (!active) {
-          return;
-        }
-        setOverview(next);
-        setErrorMessage(null);
-      } catch {
-        if (!active) {
-          return;
-        }
-        setErrorMessage("Nao foi possivel carregar a telemetria agora.");
-      } finally {
-        if (!active) {
-          return;
-        }
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    };
-
-    void fetchOverview();
-    const interval = window.setInterval(() => {
-      void fetchOverview(true);
-    }, 30000);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [user?.isPlatformAdmin]);
 
   if (!user?.isPlatformAdmin) {
     return (
@@ -213,12 +166,7 @@ export function PlatformAdminPage() {
               size="sm"
               variant="primary"
               onClick={() => {
-                setIsRefreshing(true);
-                adminTelemetryService
-                  .getOverview()
-                  .then(setOverview)
-                  .catch(() => setErrorMessage("Nao foi possivel atualizar agora."))
-                  .finally(() => setIsRefreshing(false));
+                void telemetryQuery.refetch();
               }}
               disabled={isRefreshing}
             >

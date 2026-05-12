@@ -7,6 +7,7 @@ import { buildResendWebhookRoutes } from '@/modules/automation/communication/res
 function makeApp(input?: {
   enabled?: boolean;
   secret?: string;
+  environment?: 'development' | 'test' | 'production';
   receiveEvent?: ReturnType<typeof vi.fn>;
 }) {
   const app = express();
@@ -23,10 +24,11 @@ function makeApp(input?: {
     prisma: {} as any,
     enabled: input?.enabled ?? true,
     secret: input?.secret,
+    environment: input?.environment,
     providerEventService: { receiveEvent } as any
   }));
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    res.status(err.statusCode ?? 500).json({ message: err.message });
+    res.status(err.statusCode ?? 500).json({ message: err.message, details: err.details });
   });
 
   return { app, receiveEvent };
@@ -93,6 +95,22 @@ describe('Resend webhook routes', () => {
     });
 
     expect(response.status).toBe(401);
+    expect(receiveEvent).not.toHaveBeenCalled();
+  });
+
+  it('requires a webhook secret when enabled in production', async () => {
+    const { app, receiveEvent } = makeApp({ environment: 'production' });
+
+    const response = await postJson(app, {
+      path: '/api/v1/webhooks/resend',
+      body: { id: 'evt-1', type: 'email.delivered', data: {} }
+    });
+
+    expect(response.status).toBe(503);
+    expect(response.body.details).toMatchObject({
+      code: 'RESEND_WEBHOOK_SECRET_MISSING',
+      missingEnv: ['RESEND_WEBHOOK_SECRET']
+    });
     expect(receiveEvent).not.toHaveBeenCalled();
   });
 

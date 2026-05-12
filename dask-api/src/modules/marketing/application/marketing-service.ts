@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import type { Lead, Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { DomainEventNames } from '@/core/events/event-names';
 import type { EventPublisher } from '@/core/events/event-publisher';
@@ -7,17 +7,15 @@ import type { JobQueue } from '@/core/jobs/job-queue';
 import type { AIProvider } from '@/modules/ai/domain/providers';
 import type { AutomationWorkflowService } from '@/modules/automation/application/workflow-service';
 import type { AutomationWorkflowVersionService } from '@/modules/automation/application/workflow-version-service';
-import type {
-  AutomationWorkflowDefinition,
-  AutomationWorkflowGraph,
-  AutomationWorkflowStatus
-} from '@/modules/automation/application/workflow-execution-types';
+import type { AutomationWorkflowStatus } from '@/modules/automation/application/workflow-execution-types';
+import { compileMarketingJourneyRuntime } from '@/modules/marketing/application/marketing-runtime-compiler';
 import {
   chooseWeightedVariant,
   htmlToText,
+  type MarketingCommercialContact,
   normalizeSlug,
   normalizeText,
-  renderLeadVariables,
+  renderCommercialContactVariables,
   toSegmentFilter,
   type SegmentFilter
 } from '@/modules/marketing/domain/types';
@@ -38,11 +36,12 @@ type AutomationWorkflowVersionServiceLike = Pick<
   AutomationWorkflowVersionService,
   'createDraftVersion' | 'publishVersion'
 >;
+type EventPublisherLike = Pick<EventPublisher, 'publish'>;
 type WorkspaceWorkItemsServiceLike = Pick<WorkspaceWorkItemsService, 'createWorkItem'>;
 
 interface MarketingServiceDeps {
   repo: MarketingRepository;
-  eventPublisher: EventPublisher;
+  eventPublisher: EventPublisherLike;
   jobQueue: JobQueue;
   aiProvider: AIProvider;
   emailProvider: MarketingEmailProvider;
@@ -67,11 +66,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-function getSourceWorkItemId(lead: Lead): string | null {
-  const metadata = isRecord(lead.metadata) ? lead.metadata : {};
-  return metadata.sourceEntityType === 'work_item' && typeof metadata.sourceWorkItemId === 'string'
-    ? metadata.sourceWorkItemId
-    : null;
+function getContactWorkItemId(contact: MarketingCommercialContact): string {
+  return contact.workItemId;
+}
+
+function getSendWorkItemId(send: Record<string, unknown>): string | null {
+  const metadata = isRecord(send.metadata) ? send.metadata : {};
+  return typeof metadata.sourceWorkItemId === 'string' ? metadata.sourceWorkItemId : null;
 }
 
 function mapEventToSendStatus(
@@ -184,16 +185,6 @@ function renderTemplateVariables(value: string, variables: Record<string, unknow
   });
 }
 
-function readRuntimeGraph(triggerDefinition: Record<string, unknown>): AutomationWorkflowGraph | null {
-  const metadata = ensureObject(triggerDefinition.metadata);
-  const graph = ensureObject(metadata.runtimeGraph);
-  if (graph.version !== 1 || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
-    return null;
-  }
-
-  return graph as AutomationWorkflowGraph;
-}
-
 function readRuntimeMetadata(triggerDefinition: Record<string, unknown>): Record<string, unknown> {
   return ensureObject(ensureObject(triggerDefinition.metadata).runtime);
 }
@@ -232,7 +223,7 @@ function mapMarketingFlowStatusToAutomationStatus(status: string | undefined): A
 
 export class MarketingService {
   private readonly repo: MarketingRepository;
-  private readonly eventPublisher: EventPublisher;
+  private readonly eventPublisher: EventPublisherLike;
   private readonly jobQueue: JobQueue;
   private readonly aiProvider: AIProvider;
   private readonly emailProvider: MarketingEmailProvider;
@@ -582,7 +573,7 @@ export class MarketingService {
     skipped: number;
     skippedWithoutConsent: number;
     skippedWithoutEmail: number;
-    leadsEvaluated: number;
+    contactsEvaluated: number;
   }> {
     const details = await this.getCampaignDetails(input.workspaceId, input.campaignId);
     const campaign = details.campaign;
@@ -595,7 +586,7 @@ export class MarketingService {
 
     const segment = details.segment;
     const filter = toSegmentFilter((segment?.filters as unknown) ?? { logic: 'AND', rules: [] });
-    const targetLeads = await this.repo.listLeadsForSegment({
+    const targetContacts = await this.repo.listContactsForSegment({
       workspaceId: input.workspaceId,
       filter,
       limit: 5000
@@ -622,10 +613,9 @@ export class MarketingService {
     let skippedWithoutConsent = 0;
     let skippedWithoutEmail = 0;
 
-    for (const lead of targetLeads) {
-      const sourceWorkItemId = getSourceWorkItemId(lead);
-      const relationalLeadId = sourceWorkItemId ? null : lead.id;
-      const contactEmail = normalizeText(lead.email);
+    for (const contact of targetContacts) {
+      const sourceWorkItemId = getContactWorkItemId(contact);
+      const contactEmail = normalizeText(contact.email);
       if (!contactEmail) {
         skipped += 1;
         skippedWithoutEmail += 1;
@@ -634,7 +624,6 @@ export class MarketingService {
 
       const preference = await this.repo.upsertContactPreference({
         workspaceId: input.workspaceId,
-        leadId: relationalLeadId,
         email: contactEmail,
         messageKind: 'MARKETING'
       } as unknown as Prisma.InputJsonValue);
@@ -648,20 +637,20 @@ export class MarketingService {
       }
 
       const variant = chooseWeightedVariant(variants);
-      const renderedMarkdown = renderLeadVariables(variant.bodyMarkdown, lead);
+      const renderedMarkdown = renderCommercialContactVariables(variant.bodyMarkdown, contact);
       const renderedHtml = variant.bodyHtml
-        ? renderLeadVariables(variant.bodyHtml, lead)
+        ? renderCommercialContactVariables(variant.bodyHtml, contact)
         : `<pre>${renderedMarkdown.replace(/[<>]/g, '')}</pre>`;
-      const renderedSubject = renderLeadVariables(variant.subject, lead);
+      const renderedSubject = renderCommercialContactVariables(variant.subject, contact);
 
-      const idempotencyKey = `mkt:${input.workspaceId}:${input.campaignId}:${lead.id}:${variant.id}`;
+      const idempotencyKey = `mkt:${input.workspaceId}:${input.campaignId}:${contact.id}:${variant.id}`;
 
       if (!input.dryRun) {
         const send = await this.repo.createCampaignSend({
           workspaceId: input.workspaceId,
           campaignId: input.campaignId,
           variantId: variant.id,
-          leadId: relationalLeadId,
+          workItemId: sourceWorkItemId,
           senderProfileId: senderProfile?.id ?? null,
           contactEmail,
           status: 'QUEUED',
@@ -673,7 +662,8 @@ export class MarketingService {
             renderedSubject,
             renderedHtml,
             renderedText: htmlToText(renderedHtml),
-            ...(sourceWorkItemId ? { sourceWorkItemId, sourceEntityType: 'work_item' } : {})
+            sourceWorkItemId,
+            sourceEntityType: 'work_item'
           }
         } as unknown as Prisma.InputJsonValue);
 
@@ -681,7 +671,6 @@ export class MarketingService {
           workspaceId: input.workspaceId,
           campaignId: input.campaignId,
           variantId: variant.id,
-          leadId: relationalLeadId ?? undefined,
           itemId: sourceWorkItemId ?? undefined,
           sendId: String(send.id),
           type: 'SEND_QUEUED',
@@ -693,22 +682,20 @@ export class MarketingService {
           }
         });
 
-        if (relationalLeadId) {
-          await this.repo.createLeadActivity({
-            workspaceId: input.workspaceId,
-            leadId: relationalLeadId,
-            actorUserId: input.actorUserId ?? null,
-            type: 'NOTE',
-            title: 'Campanha de marketing enfileirada',
-            description: `Campanha ${campaign.name as string} preparada para envio.`,
-            payload: {
-              campaignId: input.campaignId,
-              variantId: variant.id,
-              contactEmail
-            },
-            occurredAt: new Date()
-          });
-        }
+        await this.repo.createWorkItemActivity({
+          workspaceId: input.workspaceId,
+          workItemId: sourceWorkItemId,
+          actorUserId: input.actorUserId ?? null,
+          type: 'NOTE',
+          title: 'Campanha de marketing enfileirada',
+          description: `Campanha ${campaign.name as string} preparada para envio.`,
+          payload: {
+            campaignId: input.campaignId,
+            variantId: variant.id,
+            contactEmail
+          },
+          occurredAt: new Date()
+        });
 
         await this.jobQueue.enqueue(
           'marketing.send-email',
@@ -767,7 +754,7 @@ export class MarketingService {
       skipped,
       skippedWithoutConsent,
       skippedWithoutEmail,
-      leadsEvaluated: targetLeads.length
+      contactsEvaluated: targetContacts.length
     };
   }
 
@@ -844,6 +831,7 @@ export class MarketingService {
     const text = normalizeText(String(metadata.renderedText ?? '')) ?? htmlToText(html);
     const subject = normalizeText(String(metadata.renderedSubject ?? '')) ?? 'Mensagem Dask Marketing';
     const from = normalizeText(String(metadata.from ?? ''));
+    const sourceWorkItemId = getSendWorkItemId(send);
 
     if (!from) {
       throw new AppError('Sender profile is not configured for campaign send', 422);
@@ -875,7 +863,7 @@ export class MarketingService {
         workspaceId: String(send.workspaceId),
         campaignId: String(send.campaignId),
         variantId: String(send.variantId),
-        leadId: typeof send.leadId === 'string' ? send.leadId : undefined,
+        itemId: sourceWorkItemId ?? undefined,
         sendId,
         type: 'EMAIL_SENT',
         headline: 'E-mail enviado',
@@ -886,21 +874,20 @@ export class MarketingService {
         }
       });
 
-      if (typeof send.leadId === 'string') {
-        await this.repo.createLeadNurtureTouch({
+      if (sourceWorkItemId) {
+        await this.repo.createWorkItemActivity({
           workspaceId: String(send.workspaceId),
-          leadId: send.leadId,
-          status: 'SENT',
-          channel: 'EMAIL_MARKETING',
-          templateKey: typeof send.variantId === 'string' ? send.variantId : undefined,
-          subject,
-          message: text,
-          sentAt: new Date(),
-          metadata: {
+          workItemId: sourceWorkItemId,
+          type: 'EMAIL_MARKETING_SENT',
+          title: 'E-mail de marketing enviado',
+          description: `E-mail enviado para ${String(send.contactEmail)}.`,
+          payload: {
             marketingCampaignId: String(send.campaignId),
             marketingSendId: sendId,
-            providerMessageId: sent.messageId
-          }
+            providerMessageId: sent.messageId,
+            subject
+          },
+          occurredAt: new Date()
         });
       }
 
@@ -914,7 +901,7 @@ export class MarketingService {
           workspaceId: String(send.workspaceId),
           campaignId: String(send.campaignId),
           sendId,
-          leadId: typeof send.leadId === 'string' ? send.leadId : null,
+          itemId: sourceWorkItemId,
           providerMessageId: sent.messageId
         }
       });
@@ -931,7 +918,7 @@ export class MarketingService {
         workspaceId: String(send.workspaceId),
         campaignId: String(send.campaignId),
         variantId: String(send.variantId),
-        leadId: typeof send.leadId === 'string' ? send.leadId : undefined,
+        itemId: sourceWorkItemId ?? undefined,
         sendId,
         type: 'EMAIL_BOUNCED',
         headline: 'Falha de envio',
@@ -964,6 +951,7 @@ export class MarketingService {
       return;
     }
 
+    const sourceWorkItemId = getSendWorkItemId(send);
     const status = mapEventToSendStatus(input.eventType);
 
     if (status) {
@@ -998,7 +986,7 @@ export class MarketingService {
       workspaceId: input.workspaceId,
       campaignId: String(send.campaignId),
       variantId: String(send.variantId),
-      leadId: typeof send.leadId === 'string' ? send.leadId : undefined,
+      itemId: sourceWorkItemId ?? undefined,
       sendId: String(send.id),
       type: input.eventType,
       headline: this.eventHeadline(input.eventType),
@@ -1011,10 +999,10 @@ export class MarketingService {
       occurredAt: input.occurredAt
     });
 
-    if (typeof send.leadId === 'string') {
-      await this.applyLeadScoreFromEvent({
+    if (sourceWorkItemId) {
+      await this.applyWorkItemScoreFromEvent({
         workspaceId: input.workspaceId,
-        leadId: send.leadId,
+        workItemId: sourceWorkItemId,
         campaignId: String(send.campaignId),
         eventId: String(event.id),
         eventType: input.eventType,
@@ -1024,7 +1012,6 @@ export class MarketingService {
       if (input.eventType === 'EMAIL_UNSUBSCRIBED') {
         await this.repo.upsertContactPreference({
           workspaceId: input.workspaceId,
-          leadId: send.leadId,
           email: String(send.contactEmail),
           messageKind: 'MARKETING',
           consentStatus: 'UNSUBSCRIBED',
@@ -1033,12 +1020,12 @@ export class MarketingService {
           unsubscribeAt: input.occurredAt ?? new Date()
         } as unknown as Prisma.InputJsonValue);
 
-        await this.repo.createLeadActivity({
+        await this.repo.createWorkItemActivity({
           workspaceId: input.workspaceId,
-          leadId: send.leadId,
+          workItemId: sourceWorkItemId,
           actorUserId: null,
           type: 'NOTE',
-          title: 'Lead realizou unsubscribe',
+          title: 'Contato realizou unsubscribe',
           description: 'Contato saiu das comunicacoes de marketing.',
           payload: {
             campaignId: String(send.campaignId),
@@ -1134,21 +1121,21 @@ export class MarketingService {
     }
 
     const filter = toSegmentFilter((segment.filters as unknown) ?? { logic: 'AND', rules: [] });
-    const leads = await this.repo.listLeadsForSegment({
+    const contacts = await this.repo.listContactsForSegment({
       workspaceId: input.workspaceId,
       filter,
       limit: Math.max(1, Math.min(input.limit ?? 200, 500))
     });
 
     await this.repo.updateSegment(input.workspaceId, input.segmentId, {
-      estimatedContacts: leads.length,
+      estimatedContacts: contacts.length,
       lastEvaluatedAt: new Date()
     } as unknown as Prisma.InputJsonValue);
 
     return {
       segment,
-      estimatedContacts: leads.length,
-      sample: leads.slice(0, 30)
+      estimatedContacts: contacts.length,
+      sample: contacts.slice(0, 30)
     };
   }
 
@@ -1316,24 +1303,6 @@ export class MarketingService {
     return this.repo.listAutomationFlows(workspaceId);
   }
 
-  private buildAutomationDefinition(input: {
-    flowId: string;
-    triggerDefinition: Record<string, unknown>;
-    runtimeGraph: AutomationWorkflowGraph;
-  }): AutomationWorkflowDefinition {
-    return {
-      source: 'marketing_journey',
-      marketingFlowId: input.flowId,
-      trigger: isRecord(input.triggerDefinition.trigger) ? input.triggerDefinition.trigger : {},
-      status: readStringValue(input.triggerDefinition.status) ?? 'DRAFT',
-      metadata: {
-        source: 'marketing_journey',
-        compiledAt: readStringValue(ensureObject(input.triggerDefinition.metadata).compiledAt)
-      },
-      graph: input.runtimeGraph
-    };
-  }
-
   private async syncAutomationRuntimeForFlow(input: {
     workspaceId: string;
     flowId: string;
@@ -1344,8 +1313,14 @@ export class MarketingService {
     actorUserId?: string | null;
     publish: boolean;
   }): Promise<Record<string, unknown>> {
-    const runtimeGraph = readRuntimeGraph(input.triggerDefinition);
-    if (!runtimeGraph) {
+    const compiledRuntime = compileMarketingJourneyRuntime({
+      flowId: input.flowId,
+      name: input.name,
+      description: input.description,
+      status: input.status,
+      triggerDefinition: input.triggerDefinition
+    });
+    if (!compiledRuntime) {
       if (input.publish) {
         throw new AppError('Journey runtime graph is required before activation', 422);
       }
@@ -1383,12 +1358,8 @@ export class MarketingService {
     const draftVersion = await this.automationWorkflowVersionService.createDraftVersion({
       workspaceId: input.workspaceId,
       workflowId,
-      definition: this.buildAutomationDefinition({
-        flowId: input.flowId,
-        triggerDefinition: input.triggerDefinition,
-        runtimeGraph
-      }),
-      graph: runtimeGraph
+      definition: compiledRuntime.definition,
+      graph: compiledRuntime.graph
     });
 
     if (!input.publish) {
@@ -1583,7 +1554,7 @@ export class MarketingService {
       `Objetivo da campanha: ${input.objective}`,
       `Tom desejado: ${input.tone ?? 'consultivo e premium'}`,
       `Estagio do funil: ${input.targetStage ?? 'MQL'}`,
-      `Segmento sugerido: ${input.segmentHint ?? 'leads com fit'}`,
+      `Segmento sugerido: ${input.segmentHint ?? 'contatos comerciais com fit'}`,
       'Resumo de documentos do workspace:',
       ...recentDocs.map((doc, index) => `Documento ${index + 1}: ${doc.title}\n${doc.content.slice(0, 800)}`),
       'Retorne em JSON com os campos: campaignName, campaignDescription, hypothesis, persona, subjectA, subjectB, contentMarkdown, cta, segmentRules(array).'
@@ -1591,7 +1562,7 @@ export class MarketingService {
 
     const generated = await this.aiProvider.generateText({
       systemPrompt:
-        'Voce e estrategista de marketing B2B para software houses. Gere campanhas conectadas ao ciclo lead -> oportunidade -> cliente -> faturamento. Responda em JSON valido.',
+        'Voce e estrategista de marketing B2B para software houses. Gere campanhas conectadas ao ciclo sinal comercial -> WorkItem -> cliente -> faturamento. Responda em JSON valido.',
       userPrompt: prompt,
       temperature: 0.3,
       requireJsonOutput: true
@@ -1746,7 +1717,7 @@ export class MarketingService {
 
     if (
       [
-        'LEAD_NURTURE',
+        'COMMERCIAL_NURTURE',
         'ONBOARDING',
         'REACTIVATION',
         'BILLING_REMINDER',
@@ -1842,7 +1813,6 @@ export class MarketingService {
     campaignId?: string;
     variantId?: string;
     segmentId?: string;
-    leadId?: string;
     itemId?: string;
     sendId?: string;
     automationFlowId?: string;
@@ -1857,7 +1827,6 @@ export class MarketingService {
       campaignId: input.campaignId ?? null,
       variantId: input.variantId ?? null,
       segmentId: input.segmentId ?? null,
-      leadId: input.leadId ?? null,
       itemId: input.itemId ?? null,
       sendId: input.sendId ?? null,
       automationFlowId: input.automationFlowId ?? null,
@@ -1869,9 +1838,9 @@ export class MarketingService {
     } as unknown as Prisma.InputJsonValue);
   }
 
-  private async applyLeadScoreFromEvent(input: {
+  private async applyWorkItemScoreFromEvent(input: {
     workspaceId: string;
-    leadId: string;
+    workItemId: string;
     campaignId: string;
     eventId: string;
     eventType: string;
@@ -1885,52 +1854,34 @@ export class MarketingService {
     const contacts = await this.repo.listAudienceContacts({
       workspaceId: input.workspaceId,
       limit: 1,
-      search: input.leadId
+      search: input.workItemId
     });
-    const currentLead = contacts.find((entry) => entry.lead.id === input.leadId)?.lead;
+    const currentContact = contacts.find((entry) => entry.contact.workItemId === input.workItemId)?.contact;
 
-    let lead: Lead | null = currentLead ?? null;
-    if (!lead) {
-      const segmentLeads = await this.repo.listLeadsForSegment({
+    let contact: MarketingCommercialContact | null = currentContact ?? null;
+    if (!contact) {
+      const segmentContacts = await this.repo.listContactsForSegment({
         workspaceId: input.workspaceId,
         filter: { logic: 'OR', rules: [{ field: 'score', operator: 'gte', value: 0 }] },
         limit: 5000
       });
-      lead = segmentLeads.find((entry) => entry.id === input.leadId) ?? null;
+      contact = segmentContacts.find((entry) => entry.workItemId === input.workItemId) ?? null;
     }
 
-    if (!lead) {
+    if (!contact) {
       return;
     }
 
-    const previousScore = lead.score;
+    const previousScore = contact.score;
     const nextScore = clampScore(previousScore + delta);
-    await this.repo.updateLeadScore(input.workspaceId, input.leadId, nextScore);
+    await this.repo.updateWorkItemScore(input.workspaceId, input.workItemId, nextScore);
 
-    await this.repo.createLeadScoreEvent({
+    await this.repo.createWorkItemActivity({
       workspaceId: input.workspaceId,
-      leadId: input.leadId,
-      campaignId: input.campaignId,
-      eventId: input.eventId,
-      delta,
-      previousScore,
-      nextScore,
-      reason: `Score ajustado por evento ${input.eventType}.`,
-      isAutomated: true,
-      explanation: {
-        eventType: input.eventType,
-        rule: 'score_delta_by_event',
-        formula: `${previousScore} ${delta >= 0 ? '+' : '-'} ${Math.abs(delta)} = ${nextScore}`
-      },
-      createdByUserId: input.actorUserId ?? null
-    } as unknown as Prisma.InputJsonValue);
-
-    await this.repo.createLeadActivity({
-      workspaceId: input.workspaceId,
-      leadId: input.leadId,
+      workItemId: input.workItemId,
       actorUserId: input.actorUserId ?? null,
       type: 'NOTE',
-      title: 'Score de lead atualizado',
+      title: 'Score comercial atualizado',
       description: `Score alterado de ${previousScore} para ${nextScore} por ${input.eventType}.`,
       payload: {
         campaignId: input.campaignId,
@@ -1946,9 +1897,9 @@ export class MarketingService {
     await this.registerEvent({
       workspaceId: input.workspaceId,
       campaignId: input.campaignId,
-      leadId: input.leadId,
-      type: 'LEAD_SCORE_CHANGED',
-      headline: 'Lead score ajustado',
+      itemId: input.workItemId,
+      type: 'COMMERCIAL_SCORE_CHANGED',
+      headline: 'Score comercial ajustado',
       description: `Score atualizado para ${nextScore}.`,
       payload: {
         previousScore,
@@ -1960,13 +1911,13 @@ export class MarketingService {
 
     await this.eventPublisher.publish({
       id: crypto.randomUUID(),
-      name: DomainEventNames.MarketingLeadScoreChanged,
-      aggregateType: 'lead',
-      aggregateId: input.leadId,
+      name: DomainEventNames.MarketingCommercialWorkItemScoreChanged,
+      aggregateType: 'item',
+      aggregateId: input.workItemId,
       occurredAt: new Date(),
       payload: {
         workspaceId: input.workspaceId,
-        leadId: input.leadId,
+        itemId: input.workItemId,
         campaignId: input.campaignId,
         previousScore,
         nextScore,
@@ -1985,7 +1936,7 @@ export class MarketingService {
     const items = await this.repo.listSignalsInbox({
       workspaceId: input.workspaceId,
       types: input.types,
-      onlyWithLead: true,
+      onlyWithWorkItem: true,
       includeDismissed: input.includeDismissed ?? false,
       limit: input.limit ?? 80
     });
@@ -2001,7 +1952,7 @@ export class MarketingService {
   async createSignalFollowUp(input: {
     workspaceId: string;
     eventId: string;
-    leadId: string;
+    workItemId: string;
     title: string;
     description?: string;
     dueAt?: Date | null;
@@ -2013,29 +1964,29 @@ export class MarketingService {
     actorUserId?: string | null;
   }): Promise<{
     signalId: string;
-    leadId: string;
     activity: {
       id: string;
       title: string;
       description: string | null;
       occurredAt: Date;
     };
-    lead: {
+    workItem: {
       id: string;
       lastContactAt: Date | null;
       nextFollowUpAt: Date | null;
       status: string;
     } | null;
-    workItemId: string | null;
+    sourceWorkItemId: string;
+    createdFollowUpWorkItemId: string | null;
   }> {
     const signal = await this.repo.findMarketingEventById(input.workspaceId, input.eventId);
     if (!signal) {
       throw new AppError('Marketing signal not found', 404);
     }
 
-    const signalLeadId = typeof signal.leadId === 'string' ? signal.leadId : null;
-    if (!signalLeadId || signalLeadId !== input.leadId) {
-      throw new AppError('Signal is not linked to this lead', 422);
+    const signalWorkItemId = typeof signal.itemId === 'string' ? signal.itemId : null;
+    if (!signalWorkItemId || signalWorkItemId !== input.workItemId) {
+      throw new AppError('Signal is not linked to this commercial work item', 422);
     }
 
     const title = normalizeText(input.title);
@@ -2048,7 +1999,7 @@ export class MarketingService {
     const occurredAt = new Date();
     const marketingEventType = typeof signal.type === 'string' ? signal.type : null;
     const priority = input.priority ?? 'medium';
-    let workItemId: string | null = null;
+    let createdFollowUpWorkItemId: string | null = null;
 
     if (input.createWorkItem) {
       if (!input.actorUserId) {
@@ -2070,7 +2021,7 @@ export class MarketingService {
           dueDate: dueAt,
           fields: {
             source: 'marketing_signal',
-            leadId: input.leadId,
+            sourceWorkItemId: input.workItemId,
             marketingSignalId: input.eventId,
             priority
           },
@@ -2078,7 +2029,7 @@ export class MarketingService {
             source: 'marketing_signal',
             marketing: {
               signalId: input.eventId,
-              leadId: input.leadId,
+              sourceWorkItemId: input.workItemId,
               eventType: marketingEventType,
               priority,
               dueAt: dueAt?.toISOString() ?? null
@@ -2087,12 +2038,12 @@ export class MarketingService {
         }
       });
 
-      workItemId = String(workItem.id);
+      createdFollowUpWorkItemId = String(workItem.id);
     }
 
-    const activity = await this.repo.createLeadActivity({
+    const activity = await this.repo.createWorkItemActivity({
       workspaceId: input.workspaceId,
-      leadId: input.leadId,
+      workItemId: input.workItemId,
       actorUserId: input.actorUserId ?? null,
       type: 'FOLLOW_UP',
       title,
@@ -2100,7 +2051,7 @@ export class MarketingService {
       payload: {
         origin: 'marketing_signal',
         signalId: input.eventId,
-        workItemId,
+        createdFollowUpWorkItemId,
         marketingEventType,
         dueAt: dueAt?.toISOString() ?? null,
         priority
@@ -2108,9 +2059,9 @@ export class MarketingService {
       occurredAt
     });
 
-    const lead = await this.repo.updateLeadFollowUp({
+    const updatedWorkItem = await this.repo.updateWorkItemFollowUp({
       workspaceId: input.workspaceId,
-      leadId: input.leadId,
+      workItemId: input.workItemId,
       nextFollowUpAt: dueAt,
       note: description,
       actorUserId: input.actorUserId ?? null
@@ -2120,15 +2071,15 @@ export class MarketingService {
 
     await this.eventPublisher.publish({
       id: crypto.randomUUID(),
-      name: DomainEventNames.LeadFollowUpRegistered,
-      aggregateType: 'lead',
-      aggregateId: input.leadId,
+      name: DomainEventNames.CommercialWorkItemFollowUpRegistered,
+      aggregateType: 'item',
+      aggregateId: input.workItemId,
       occurredAt,
       payload: {
         workspaceId: input.workspaceId,
-        leadId: input.leadId,
+        itemId: input.workItemId,
         signalId: input.eventId,
-        workItemId,
+        createdFollowUpWorkItemId,
         nextFollowUpAt: dueAt?.toISOString() ?? null,
         priority,
         requestedBy: input.actorUserId ?? null
@@ -2137,22 +2088,22 @@ export class MarketingService {
 
     return {
       signalId: input.eventId,
-      leadId: input.leadId,
       activity: {
         id: activity.id,
         title: activity.title,
         description: activity.description,
         occurredAt: activity.occurredAt
       },
-      lead: lead
+      workItem: updatedWorkItem
         ? {
-            id: lead.id,
-            lastContactAt: lead.lastContactAt,
-            nextFollowUpAt: lead.nextFollowUpAt,
-            status: String(lead.status)
+            id: updatedWorkItem.id,
+            lastContactAt: updatedWorkItem.lastContactAt,
+            nextFollowUpAt: updatedWorkItem.nextFollowUpAt,
+            status: String(updatedWorkItem.status)
           }
         : null,
-      workItemId
+      sourceWorkItemId: input.workItemId,
+      createdFollowUpWorkItemId
     };
   }
 }

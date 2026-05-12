@@ -1,3 +1,5 @@
+import { redactLogData, redactSensitiveText } from '@/core/security/redaction';
+
 export type TelemetryEventInput = {
   category: string;
   eventName: string;
@@ -36,7 +38,11 @@ export async function recordTelemetryEvent(event: TelemetryEventInput): Promise<
   }
 
   try {
-    await recorder(event);
+    await recorder({
+      ...event,
+      reason: event.reason ? redactSensitiveText(event.reason, { maskPersonalData: true }) : event.reason,
+      metadata: event.metadata ? redactLogData(event.metadata) : event.metadata
+    });
   } catch {
     // Telemetry is best-effort and must never block product execution.
   }

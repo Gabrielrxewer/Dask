@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -8,9 +7,11 @@ import {
   billingCatalogItemFormSchema,
   billingCheckoutFormSchema,
   buildOnboardingChecklist,
+  canManageSensitiveConnectSettings as canManageSensitiveConnectSettingsForRole,
   formatCentsToMoneyInput,
   hasBrazilianFiscalDocument,
   parseMoneyToCents,
+  sensitiveConnectSettingsPermissionMessage,
   toBillingCatalogItemPayload,
   useArchiveCatalogItemMutation,
   useBillingCatalogQuery,
@@ -30,9 +31,11 @@ import type {
   BillingConnectCapability,
   BillingCheckoutFormValues,
   ConnectCatalogItem,
-  ConnectPaymentOrder
+  ConnectPaymentOrder,
+  ConnectPaymentOrderStatus
 } from "@/modules/billing";
 import { getCustomerDisplayName, useWorkspace } from "@/modules/workspace";
+import { useWorkspaceCustomersQuery } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
 import { toast } from "@/shared/ui/toast";
 import {
@@ -46,7 +49,6 @@ import {
   type CatalogBillingFilter,
   type CatalogKindFilter,
   type CatalogLoadState,
-  type CatalogSort,
   type ChargeSource,
   type ConnectLoadState,
   type CustomersLoadState,
@@ -140,10 +142,12 @@ function getCurrentCursor(cursorStack: string[]): string | null {
 export function useBillingPageModel() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
   const [searchParams] = useSearchParams();
-  const { snapshot, listCustomers } = useWorkspace();
+  const { snapshot } = useWorkspace();
   const workspaceId = snapshot?.id ?? "";
   const metrics = buildBoardMetrics(snapshot?.tasks ?? []);
-  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
+  const workspaceRole = snapshot?.access?.role ?? null;
+  const isClient = snapshot?.access?.isClient || workspaceRole === "CLIENT";
+  const canManageSensitiveConnectSettings = canManageSensitiveConnectSettingsForRole(workspaceRole);
   const checkoutResultToastKeyRef = useRef<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("conta");
@@ -160,7 +164,8 @@ export function useBillingPageModel() {
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogKindFilter, setCatalogKindFilter] = useState<CatalogKindFilter>("ALL");
   const [catalogBillingFilter, setCatalogBillingFilter] = useState<CatalogBillingFilter>("ALL");
-  const [catalogSort, setCatalogSort] = useState<CatalogSort>("recent");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<ConnectPaymentOrderStatus | "ALL">("ALL");
   const [catalogCursorStack, setCatalogCursorStack] = useState<string[]>([]);
   const [historyCursorStack, setHistoryCursorStack] = useState<string[]>([]);
   const chargeForm = useForm<BillingCheckoutFormValues>({
@@ -188,22 +193,21 @@ export function useBillingPageModel() {
     pageSize: 100
   });
   const paymentOrdersQuery = useBillingPaymentOrdersQuery(workspaceId, {
+    status: historyStatusFilter === "ALL" ? undefined : historyStatusFilter,
+    search: historySearch.trim() || undefined,
     pageSize: HISTORY_PAGE_SIZE,
     cursor: historyCursor
   });
-  const customersQuery = useQuery({
-    queryKey: ["billing", "workspace", workspaceId, "customers"],
-    queryFn: () => listCustomers(),
-    enabled: !isClient && Boolean(workspaceId),
-    staleTime: 30_000
+  const customersQuery = useWorkspaceCustomersQuery(workspaceSlug || null, undefined, {
+    enabled: !isClient && Boolean(workspaceId)
   });
-  const createConnectAccountMutation = useCreateConnectAccountMutation(isClient ? null : workspaceId);
+  const createConnectAccountMutation = useCreateConnectAccountMutation(canManageSensitiveConnectSettings ? workspaceId : null);
   const createCatalogItemMutation = useCreateCatalogItemMutation(isClient ? null : workspaceId);
   const updateCatalogItemMutation = useUpdateCatalogItemMutation(isClient ? null : workspaceId);
   const archiveCatalogItemMutation = useArchiveCatalogItemMutation(isClient ? null : workspaceId);
   const createCheckoutSessionMutation = useCreateCheckoutSessionMutation(isClient ? null : workspaceId);
   const syncPostCheckoutMutation = useSyncPostCheckoutMutation(isClient ? null : workspaceId);
-  const requestConnectCapabilityMutation = useRequestConnectCapabilityMutation(isClient ? null : workspaceId);
+  const requestConnectCapabilityMutation = useRequestConnectCapabilityMutation(canManageSensitiveConnectSettings ? workspaceId : null);
   const resendConnectEmailMutation = useResendConnectEmailMutation(workspaceId);
   const cancelPaymentOrderMutation = useCancelPaymentOrderMutation(workspaceId);
   const chargeSource = chargeForm.watch("chargeSource");
@@ -423,10 +427,14 @@ export function useBillingPageModel() {
 
   useEffect(() => {
     setHistoryCursorStack([]);
-  }, [workspaceId]);
+  }, [workspaceId, historySearch, historyStatusFilter]);
 
   async function handleOpenOnboarding() {
     if (!workspaceId || isOpeningOnboarding) return;
+    if (!canManageSensitiveConnectSettings) {
+      toast.warning(sensitiveConnectSettingsPermissionMessage);
+      return;
+    }
     try {
       const response = await createConnectAccountMutation.mutateAsync(undefined);
       if (!response.url) {
@@ -440,6 +448,10 @@ export function useBillingPageModel() {
 
   async function handleRequestPaymentCapability(capability: BillingConnectCapability) {
     if (!workspaceId || requestingCapability) return;
+    if (!canManageSensitiveConnectSettings) {
+      toast.warning("Apenas o proprietario do workspace pode alterar formas de pagamento do Stripe Connect.");
+      return;
+    }
 
     try {
       await requestConnectCapabilityMutation.mutateAsync(capability);
@@ -712,6 +724,7 @@ export function useBillingPageModel() {
     activeTab,
     isClient,
     canCreateCheckout,
+    canManageSensitiveConnectSettings,
     catalogItemPendingDelete,
     deletingCatalogItemId,
     isBillingFrameLoading,
@@ -732,6 +745,7 @@ export function useBillingPageModel() {
       completedItems,
       connectError,
       isOpeningOnboarding,
+      canManageSensitiveConnectSettings,
       requestingCapability,
       onOpenOnboarding: handleOpenOnboarding,
       onRequestPaymentCapability: handleRequestPaymentCapability
@@ -742,7 +756,6 @@ export function useBillingPageModel() {
       catalogSearch,
       catalogKindFilter,
       catalogBillingFilter,
-      catalogSort,
       catalogPage,
       catalogHasPrevious: catalogCursorStack.length > 0,
       catalogHasNext: Boolean(catalogNextCursor),
@@ -753,7 +766,6 @@ export function useBillingPageModel() {
       onCatalogSearchChange: setCatalogSearch,
       onCatalogKindFilterChange: setCatalogKindFilter,
       onCatalogBillingFilterChange: setCatalogBillingFilter,
-      onCatalogSortChange: setCatalogSort,
       onCatalogPrevious: () => setCatalogCursorStack((current) => current.slice(0, -1)),
       onCatalogNext: () => {
         if (catalogNextCursor) setCatalogCursorStack((current) => [...current, catalogNextCursor]);
@@ -801,6 +813,8 @@ export function useBillingPageModel() {
       paginatedPaymentOrders,
       paymentOrdersLoadState,
       paymentOrdersError,
+      historySearch,
+      historyStatusFilter,
       focusedOrderId,
       historyActionOrderId,
       historyActionType,
@@ -808,6 +822,8 @@ export function useBillingPageModel() {
       historyHasPrevious: historyCursorStack.length > 0,
       historyHasNext: Boolean(paymentOrdersNextCursor),
       historyIsFetching: paymentOrdersQuery.isFetching,
+      onHistorySearchChange: setHistorySearch,
+      onHistoryStatusFilterChange: setHistoryStatusFilter,
       onHistoryPrevious: () => setHistoryCursorStack((current) => current.slice(0, -1)),
       onHistoryNext: () => {
         if (paymentOrdersNextCursor) setHistoryCursorStack((current) => [...current, paymentOrdersNextCursor]);

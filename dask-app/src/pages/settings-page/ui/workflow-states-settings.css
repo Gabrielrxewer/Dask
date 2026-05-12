@@ -564,24 +564,24 @@
 .app-theme[data-theme="dark"] .wse__status-pill,
 .app-theme[data-theme="dark"] .wse__editable-row,
 .app-theme[data-theme="dark"] .wse__empty-row {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .wse__body {
-  background: color-mix(in oklab, var(--panel-soft) 82%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--panel-soft) 82%, var(--panel));
 }
 
 .app-theme[data-theme="dark"] .wse__canvas-surface {
   background:
     radial-gradient(circle at top left, color-mix(in oklab, var(--accent-soft) 12%, transparent), transparent 32%),
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) 0%, color-mix(in oklab, var(--surface-muted) 92%, var(--panel)) 100%) !important;
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-section-content) 88%, var(--panel)) 0%, color-mix(in oklab, var(--surface-muted) 92%, var(--panel)) 100%);
 }
 
 .app-theme[data-theme="dark"] .wse__ghost-card {
-  background: color-mix(in oklab, var(--surface-muted) 88%, transparent) !important;
-  border-style: dashed !important;
+  background: color-mix(in oklab, var(--surface-muted) 88%, transparent);
+  border-style: dashed;
 }
 
 .app-theme[data-theme="dark"] .wse__tab.is-active,
@@ -590,9 +590,9 @@
 .app-theme[data-theme="dark"] .wse__preset:hover,
 .app-theme[data-theme="dark"] .wse__preset.is-selected,
 .app-theme[data-theme="dark"] .wse__canvas-tab.is-active {
-  border-color: color-mix(in oklab, var(--accent) 36%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 90%, var(--surface-raised)) !important;
-  color: var(--text-strong) !important;
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 90%, var(--surface-raised));
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wse__add-tab,
@@ -605,7 +605,7 @@
 .app-theme[data-theme="dark"] .wse__detail-card-title,
 .app-theme[data-theme="dark"] .wse__lane-title,
 .app-theme[data-theme="dark"] .wse__status-pill {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wse__panel-head p,
@@ -620,14 +620,14 @@
 .app-theme[data-theme="dark"] .wse__card p,
 .app-theme[data-theme="dark"] .wse__lane-count,
 .app-theme[data-theme="dark"] .wse__detail-field span {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wse__card strong,
 .app-theme[data-theme="dark"] .wse__detail-header h3,
 .app-theme[data-theme="dark"] .wse__detail-field strong,
 .app-theme[data-theme="dark"] .wse__card-foot {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wse input,
@@ -636,99 +636,99 @@
 .app-theme[data-theme="dark"] .wse .shared-input,
 .app-theme[data-theme="dark"] .wse .shared-textarea,
 .app-theme[data-theme="dark"] .wse .shared-select__control {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-strong) !important;
-  box-shadow: none !important;
+  border-color: var(--line);
+  background: var(--control-surface);
+  color: var(--text-strong);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wse input::placeholder,
 .app-theme[data-theme="dark"] .wse textarea::placeholder {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .wse__unsaved-indicator {
-  border-color: color-mix(in oklab, var(--warn) 32%, var(--line)) !important;
-  background: color-mix(in oklab, var(--warn-soft) 24%, var(--panel)) !important;
-  color: var(--warn) !important;
+  border-color: color-mix(in oklab, var(--warn) 32%, var(--line));
+  background: color-mix(in oklab, var(--warn-soft) 24%, var(--panel));
+  color: var(--warn);
 }
 
 .app-theme[data-theme="dark"] .wse__message {
-  border-color: color-mix(in oklab, var(--success) 30%, var(--line)) !important;
-  background: color-mix(in oklab, var(--success-soft) 22%, var(--panel)) !important;
-  color: var(--success) !important;
+  border-color: color-mix(in oklab, var(--success) 30%, var(--line));
+  background: color-mix(in oklab, var(--success-soft) 22%, var(--panel));
+  color: var(--success);
 }
 
 .app-theme[data-theme="dark"] .wse__error {
-  border-color: color-mix(in oklab, var(--danger) 30%, var(--line)) !important;
-  background: color-mix(in oklab, var(--danger-soft) 20%, var(--panel)) !important;
-  color: var(--danger) !important;
+  border-color: color-mix(in oklab, var(--danger) 30%, var(--line));
+  background: color-mix(in oklab, var(--danger-soft) 20%, var(--panel));
+  color: var(--danger);
 }
 
 .app-theme[data-theme="dark"] .wse__empty {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wse__chip-meta span,
 .app-theme[data-theme="dark"] .wse__badge-meta span,
 .app-theme[data-theme="dark"] .wse__color-picker,
 .app-theme[data-theme="dark"] .wse__toggle {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
   box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .wse__toggle:hover,
 .app-theme[data-theme="dark"] .wse__toggle:focus-within {
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 84%, var(--surface-muted)) !important;
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 84%, var(--surface-muted));
 }
 
 .app-theme[data-theme="dark"] .wse__toggle strong {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .wse__toggle small,
 .app-theme[data-theme="dark"] .wse__badge-meta span,
 .app-theme[data-theme="dark"] .wse__chip-meta span {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .wse__canvas-tabs {
   gap: 8px;
   padding: 0;
-  border: none !important;
+  border: none;
   border-radius: 0;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wse__canvas-tab {
   min-height: 36px;
   padding: 0 18px;
-  border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
+  border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--line));
   border-radius: 999px;
-  background: color-mix(in oklab, var(--surface-raised) 88%, var(--panel)) !important;
-  color: var(--text-strong) !important;
+  background: color-mix(in oklab, var(--surface-raised) 88%, var(--panel));
+  color: var(--text-strong);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wse__canvas-tab:hover {
-  border-color: color-mix(in oklab, var(--accent) 48%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 60%, var(--surface-raised)) !important;
+  border-color: color-mix(in oklab, var(--accent) 48%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 60%, var(--surface-raised));
 }
 
 .app-theme[data-theme="dark"] .wse__canvas-tab.is-active {
-  border-color: color-mix(in oklab, var(--accent) 56%, var(--neutral-white) 6%) !important;
-  background: color-mix(in oklab, var(--selected-bg) 82%, var(--surface-raised)) !important;
-  color: var(--text-strong) !important;
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--neutral-white) 6%);
+  background: color-mix(in oklab, var(--selected-bg) 82%, var(--surface-raised));
+  color: var(--text-strong);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent),
     0 8px 18px color-mix(in srgb, var(--primary) 22%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) !important;
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent);
 }

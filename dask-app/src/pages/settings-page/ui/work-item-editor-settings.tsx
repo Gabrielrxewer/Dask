@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DragEvent, MouseEvent } from "react";
+import type { MouseEvent } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent
+} from "@dnd-kit/core";
 import {
   applyFieldCapabilityOverrides
 } from "@/entities/task";
@@ -10,10 +20,11 @@ import type {
   TaskFieldVisualPriority
 } from "@/entities/task";
 import type { ApiBoardColumn, ApiCustomField, ApiItemType, ApiWorkflowState, CustomFieldType } from "@/modules/workspace/model";
-import { useWorkspace } from "@/modules/workspace";
+import { useCurrentWorkspace, useWorkspaceWorkItemConfigActions } from "@/modules/workspace";
 import {
   applyFieldDrop,
   type DetailZone,
+  type EditorDropTarget,
   type LayoutScope
 } from "@/pages/settings-page/model/work-item-layout-editor";
 import { WorkItemCardEmptySlot } from "./work-item-card-empty-slot";
@@ -43,6 +54,7 @@ import {
   supportsSelectableOptions,
   type FieldDraft,
   type FieldLibraryItem,
+  type DragPayload,
   type PendingFieldSetup,
   type TypeDraft,
   type WorkItemEditorCanvasTab
@@ -61,11 +73,33 @@ const emptyBoardConfig: BoardConfig = {
   perspectives: []
 };
 
+type WorkItemEditorDndData = {
+  payload?: DragPayload;
+  target?: EditorDropTarget;
+};
+
+function readEditorDragPayload(data: unknown): DragPayload | null {
+  return (data as WorkItemEditorDndData | undefined)?.payload ?? null;
+}
+
+function readEditorDropTarget(data: unknown): EditorDropTarget | null {
+  return (data as WorkItemEditorDndData | undefined)?.target ?? null;
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkItemEditorSettings() {
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6
+      }
+    }),
+    useSensor(KeyboardSensor)
+  );
+  const currentWorkspace = useCurrentWorkspace();
+  const workItemConfigActions = useWorkspaceWorkItemConfigActions(currentWorkspace.workspaceSlug);
   const {
-    snapshot,
     fetchBoardColumns,
     fetchWorkflowStates,
     fetchItemTypes,
@@ -78,7 +112,8 @@ export function WorkItemEditorSettings() {
     deleteCustomField,
     replaceItemTypeFieldBindings,
     updatePreferences
-  } = useWorkspace();
+  } = workItemConfigActions;
+  const snapshot = currentWorkspace.snapshot;
 
   const boardConfig = snapshot?.boardConfig ?? emptyBoardConfig;
   const settings = (snapshot?.preferences.settings as Record<string, unknown> | undefined) ?? {};
@@ -262,16 +297,9 @@ export function WorkItemEditorSettings() {
     isDragging,
     isDraggingType,
     updateDropTarget,
-    handleDragStartField,
-    beginDetailMouseDrag,
-    handleDragStartType,
+    beginDrag,
     handleDragEnd,
-    applyResolvedDropTarget,
-    handleDropOnTarget,
-    handlePreviewSurfaceDragOver,
-    handleDetailZoneDragOver,
-    handleDetailZoneMouseMove,
-    makeSurfaceDragLeaveHandler
+    completeDrop
   } = useWorkItemEditorDragDrop({
     activeType,
     activeLayout,
@@ -287,6 +315,21 @@ export function WorkItemEditorSettings() {
     setSelectedFieldId,
     setTypeComposer
   });
+
+  const handleEditorDragStart = useCallback((event: DragStartEvent) => {
+    const payload = readEditorDragPayload(event.active.data.current);
+    if (payload) {
+      beginDrag(payload);
+    }
+  }, [beginDrag]);
+
+  const handleEditorDragOver = useCallback((event: DragOverEvent) => {
+    updateDropTarget(readEditorDropTarget(event.over?.data.current));
+  }, [updateDropTarget]);
+
+  const handleEditorDragEnd = useCallback((event: DragEndEvent) => {
+    completeDrop(readEditorDropTarget(event.over?.data.current) ?? dropTarget);
+  }, [completeDrop, dropTarget]);
   // ── Type CRUD ─────────────────────────────────────────────────────────────
   const persistFieldCapabilities = useCallback(
     async (fieldId: string, aiEnhance: boolean) => {
@@ -585,7 +628,6 @@ export function WorkItemEditorSettings() {
       dropTarget.kind === "replace-field" &&
       dropTarget.targetFieldId === fieldId;
     const isSelected = selectedFieldId === fieldId;
-    const isSelfDrag = dragPayload?.kind === "field" && dragPayload.fieldId === fieldId;
 
     return {
       className: `wie__card-field wie__card-field--${area}${isSelected ? " is-selected" : ""}${isReplaceTarget ? " is-replace-target" : ""}`,
@@ -594,41 +636,13 @@ export function WorkItemEditorSettings() {
       "data-visual-priority": visualPriority,
       "data-drop-intent": isReplaceTarget ? "replace" : undefined,
       "data-drop-label": isReplaceTarget ? "Mover aqui" : undefined,
-      draggable: true,
       onClick: (event: MouseEvent<HTMLElement>) => {
         event.stopPropagation();
         setSelectedFieldId(fieldId);
         setFieldDraft(null);
         setPendingFieldSetup(null);
         setTypeComposer(null);
-      },
-      onDragStart: (event: DragEvent<HTMLElement>) => {
-        event.stopPropagation();
-        setSelectedFieldId(fieldId);
-        handleDragStartField(event, fieldId, "card");
-      },
-      onDragOver: (event: DragEvent<HTMLElement>) => {
-        if (!dragPayload || isSelfDrag) return;
-        event.preventDefault();
-        event.stopPropagation();
-        event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
-        updateDropTarget({
-          surface: "card",
-          kind: "replace-field",
-          targetFieldId: fieldId,
-          area
-        });
-      },
-      onDrop: (event: DragEvent<HTMLElement>) => {
-        if (isSelfDrag) return;
-        handleDropOnTarget(event, {
-          surface: "card",
-          kind: "replace-field",
-          targetFieldId: fieldId,
-          area
-        });
-      },
-      onDragEnd: handleDragEnd
+      }
     };
   };
 
@@ -654,7 +668,6 @@ export function WorkItemEditorSettings() {
       dropTarget={dropTarget}
       dragPayload={dragPayload}
       onUpdateDropTarget={updateDropTarget}
-      onDropOnTarget={handleDropOnTarget}
     />
   );
 
@@ -665,7 +678,6 @@ export function WorkItemEditorSettings() {
       dropTarget={dropTarget}
       dragPayload={dragPayload}
       onUpdateDropTarget={updateDropTarget}
-      onDropOnTarget={handleDropOnTarget}
     />
   );
 
@@ -675,7 +687,6 @@ export function WorkItemEditorSettings() {
       zone={zone}
       index={index}
       selectedFieldId={selectedFieldId}
-      dragPayload={dragPayload}
       isDragging={isDragging}
       previewTask={previewTask}
       previewBoardConfig={previewBoardConfig}
@@ -683,11 +694,6 @@ export function WorkItemEditorSettings() {
       previewMembersById={previewMembersById}
       renderDetailInsertTarget={renderDetailInsertTarget}
       onSelectField={selectFieldForEditing}
-      onBeginDetailMouseDrag={beginDetailMouseDrag}
-      onDragStartField={handleDragStartField}
-      onDragEnd={handleDragEnd}
-      onUpdateDropTarget={updateDropTarget}
-      onDropOnTarget={handleDropOnTarget}
     />
   );
   // ── Slot panel ────────────────────────────────────────────────────────────
@@ -730,6 +736,13 @@ export function WorkItemEditorSettings() {
           <WorkItemEditorLoadingState />
         ) : (
           <>
+            <DndContext
+              sensors={dndSensors}
+              onDragStart={handleEditorDragStart}
+              onDragOver={handleEditorDragOver}
+              onDragEnd={handleEditorDragEnd}
+              onDragCancel={handleDragEnd}
+            >
             {/* ── Library ────────────────────────────────────────────────────── */}
             <WorkItemFieldLibrary
               activeCanvasTab={activeCanvasTab}
@@ -748,9 +761,6 @@ export function WorkItemEditorSettings() {
                 setPendingFieldSetup(null);
                 setTypeComposer(null);
               }}
-              onDragStartField={handleDragStartField}
-              onDragStartType={handleDragStartType}
-              onDragEnd={handleDragEnd}
               onOpenNewFieldPanel={openNewFieldPanel}
             />
             {/* ── Canvas ───────────────────────────────────────────────────────── */}
@@ -780,15 +790,10 @@ export function WorkItemEditorSettings() {
               renderCardEmptySlot={renderCardEmptySlot}
               renderDetailInsertTarget={renderDetailInsertTarget}
               renderDetailFieldCard={renderDetailFieldCard}
-              onPreviewSurfaceDragOver={handlePreviewSurfaceDragOver}
-              onSurfaceDragLeave={makeSurfaceDragLeaveHandler}
-              onApplyResolvedDropTarget={applyResolvedDropTarget}
-              onDragEnd={handleDragEnd}
               onClearSelectedField={() => setSelectedFieldId(null)}
               onDebugSnapshot={setPreviewCardDebug}
-              onDetailZoneDragOver={handleDetailZoneDragOver}
-              onDetailZoneMouseMove={handleDetailZoneMouseMove}
             />
+            </DndContext>
             {/* ── Properties ──────────────────────────────────────────────────── */}
             <aside className="wie__props">
               <WorkItemEditorProperties

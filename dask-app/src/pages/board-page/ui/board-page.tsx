@@ -12,6 +12,8 @@ import {
 } from "@/entities/task";
 import { DashboardFilter } from "@/features/dashboard-filter";
 import { useAuth } from "@/features/auth";
+import { useAiWorkItemActions } from "@/modules/ai";
+import { useWorkspaceDocumentActions } from "@/modules/documentation";
 import {
   useWorkflowStatesQuery,
   useWorkspaceBoardsQuery,
@@ -20,7 +22,7 @@ import {
   type CreateTaskInput,
   type WorkspaceBoardMode
 } from "@/modules/workspace";
-import { useCustomerLookupAction } from "@/modules/leads";
+import { useCustomerLookupAction } from "@/modules/commercial";
 import type { AiAgentSummary } from "@/modules/workspace/model";
 import { LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { BoardPerspectiveTabs } from "./board-perspective-tabs";
@@ -31,14 +33,6 @@ export function BoardPage() {
   const {
     snapshot,
     isLoading,
-    listAiAgents,
-    runAiAgentOnItem,
-    runAiRiskAnalysis,
-    listWorkspaceDocuments,
-    createWorkspaceDocument,
-    listWorkItemLinkedDocuments,
-    linkDocumentToWorkItem,
-    unlinkDocumentFromWorkItem,
     filter,
     setFilterQuery,
     toggleMineFilter,
@@ -51,6 +45,18 @@ export function BoardPage() {
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
   const listCustomers = useCustomerLookupAction(workspaceSlug || null);
+  const {
+    listAiAgents,
+    runAiAgentOnItem,
+    runAiRiskAnalysis
+  } = useAiWorkItemActions(workspaceSlug || null);
+  const {
+    listWorkspaceDocuments,
+    createWorkspaceDocument,
+    listWorkItemLinkedDocuments,
+    linkDocumentToWorkItem,
+    unlinkDocumentFromWorkItem
+  } = useWorkspaceDocumentActions(workspaceSlug || null);
   const {
     createTask,
     deleteTask,

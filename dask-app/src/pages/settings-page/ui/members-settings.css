@@ -141,7 +141,7 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  box-shadow: none !important;
+  box-shadow: none;
   transform: none;
   color: var(--text-secondary);
   font-size: 0.69rem;
@@ -1068,6 +1068,12 @@
   flex-shrink: 0;
 }
 
+.ms-drawer__nav-tabs {
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: max-content;
+}
+
 .ms-drawer__nav-btn {
   display: inline-flex;
   align-items: center;
@@ -1087,6 +1093,7 @@
 .ms-drawer__nav-btn:hover {
   background: color-mix(in oklab, var(--line) 20%, transparent);
   color: var(--text-strong);
+  transform: none;
 }
 
 .ms-drawer__nav-btn--active {
@@ -1274,29 +1281,29 @@
 .app-theme[data-theme="dark"] .ms-module-card,
 .app-theme[data-theme="dark"] .ms-group-card,
 .app-theme[data-theme="dark"] .ms-member-row {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 
 .app-theme[data-theme="dark"] .ms-summary__grid span,
 .app-theme[data-theme="dark"] .ms-section .shared-section__content {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
 }
 
 .app-theme[data-theme="dark"] .ms-summary__copy span {
-  color: var(--accent) !important;
+  color: var(--accent);
 }
 
 .app-theme[data-theme="dark"] .ms-summary__copy h2,
 .app-theme[data-theme="dark"] .ms-summary__grid strong {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .ms-summary__copy p,
 .app-theme[data-theme="dark"] .ms-summary__grid span {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .ms-tabs.shared-tabs {
@@ -1304,20 +1311,20 @@
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item {
-  background: transparent !important;
-  border-color: transparent !important;
+  background: transparent;
+  border-color: transparent;
   color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item:hover {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item--active {
-  border-color: transparent !important;
-  background: transparent !important;
+  border-color: transparent;
+  background: transparent;
   color: var(--text-primary);
 }
 
@@ -1346,8 +1353,8 @@
 .app-theme[data-theme="dark"] .members-settings__member-card,
 .app-theme[data-theme="dark"] .members-settings__permissions-table,
 .app-theme[data-theme="dark"] .members-settings__permission-card {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-1);
 }
 
@@ -1355,19 +1362,19 @@
 .app-theme[data-theme="dark"] .members-settings__permissions-header span,
 .app-theme[data-theme="dark"] .members-settings__permissions-row span,
 .app-theme[data-theme="dark"] .members-settings__permission-card h3 {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .members-settings__permissions-header {
-  background: color-mix(in oklab, var(--selected-bg) 72%, var(--surface-muted)) !important;
+  background: color-mix(in oklab, var(--selected-bg) 72%, var(--surface-muted));
 }
 
 .app-theme[data-theme="dark"] .members-settings__permissions-row:nth-child(even) {
-  background: color-mix(in oklab, var(--surface-muted) 82%, var(--surface-raised)) !important;
+  background: color-mix(in oklab, var(--surface-muted) 82%, var(--surface-raised));
 }
 
 .app-theme[data-theme="dark"] .members-settings__permissions-header span,
 .app-theme[data-theme="dark"] .members-settings__permissions-row span,
 .app-theme[data-theme="dark"] .members-settings__permissions-row + .members-settings__permissions-row {
-  border-color: color-mix(in oklab, var(--line) 86%, transparent) !important;
+  border-color: color-mix(in oklab, var(--line) 86%, transparent);
 }

@@ -21,7 +21,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { MembersById } from "@/entities/member";
 import { MemberAvatar } from "@/entities/member";
-import { TaskCard, groupTasksByStatus } from "@/entities/task";
+import { groupTasksByStatus } from "@/entities/task";
+import { TaskCard } from "@/entities/task/ui/task-card";
 import type {
   BoardConfig,
   Task,
@@ -287,7 +288,6 @@ function BoardTaskCard({
         task={task}
         boardConfig={boardConfig}
         compact={compactCards}
-        draggable={false}
         contextualDisplay={{
           suppressCreatedByWhenAssigneeVisible: true
         }}
@@ -297,8 +297,6 @@ function BoardTaskCard({
         creatorName={creatorName}
         assigneeName={membersById[task.assignee]?.name ?? "Usuario"}
         assigneeSlot={<MemberAvatar member={membersById[task.assignee]} />}
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
         isDragging={isDragging || isSortableDragging}
         onOpen={onOpen}
         onDelete={onDelete}
@@ -678,7 +676,6 @@ export function BoardColumns({
                 task={activeDragTask}
                 boardConfig={boardConfig}
                 compact={compactCards}
-                draggable={false}
                 contextualDisplay={{
                   suppressCreatedByWhenAssigneeVisible: true
                 }}
@@ -688,8 +685,6 @@ export function BoardColumns({
                 creatorName={resolveCreatorName(activeDragTask)}
                 assigneeName={membersById[activeDragTask.assignee]?.name ?? "Usuario"}
                 assigneeSlot={<MemberAvatar member={membersById[activeDragTask.assignee]} />}
-                onDragStart={() => undefined}
-                onDragEnd={() => undefined}
                 isDragging
                 onUpdatePriority={onUpdatePriority}
                 onUpdateChecklist={onUpdateTaskChecklist}

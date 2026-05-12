@@ -4,7 +4,7 @@ import type { DashboardReferenceData, DashboardRepository } from '@/modules/dash
 
 const reference: DashboardReferenceData = {
   columns: [
-    { id: 'col-new', name: 'Novo lead', slug: 'novo-lead' },
+    { id: 'col-new', name: 'Entrada comercial', slug: 'commercial-intake' },
     { id: 'col-won', name: 'Ganho', slug: 'ganho' }
   ],
   states: [
@@ -12,7 +12,7 @@ const reference: DashboardReferenceData = {
     { id: 'state-won', name: 'Ganho', slug: 'ganho', color: '#16a34a', isTerminal: true }
   ],
   itemTypes: [
-    { id: 'type-lead', name: 'Lead', slug: 'lead', color: '#2563eb' }
+    { id: 'type-workItem', name: 'WorkItem', slug: 'workItem', color: '#2563eb' }
   ],
   members: [
     { id: 'user-1', name: 'Ana' },
@@ -61,7 +61,7 @@ describe('DashboardMetricsService', () => {
     const service = new DashboardMetricsService(repo);
     const metrics = await service.buildCrmMetrics({
       workspaceId: 'workspace-1',
-      filters: { assigneeId: 'user-1', itemTypeId: 'type-lead', columnId: 'col-new' },
+      filters: { assigneeId: 'user-1', itemTypeId: 'type-workItem', columnId: 'col-new' },
       itemVisibility: { ownCardsOnlyUserId: 'user-1' }
     }, reference, new Date('2026-05-09T12:00:00.000Z'));
 
@@ -69,7 +69,7 @@ describe('DashboardMetricsService', () => {
     expect(metrics.overdueWorkItems).toBe(2);
     expect(metrics.unassignedWorkItems).toBe(3);
     expect(metrics.createdWorkItemsInPeriod).toBe(5);
-    expect(metrics.cardsByColumn).toContainEqual(expect.objectContaining({ id: 'col-new', label: 'Novo lead', value: 6 }));
+    expect(metrics.cardsByColumn).toContainEqual(expect.objectContaining({ id: 'col-new', label: 'Entrada comercial', value: 6 }));
     expect(metrics.cardsByState).toContainEqual(expect.objectContaining({ id: 'state-won', label: 'Ganho', value: 2 }));
     expect(metrics.cardsByAssignee).toContainEqual(expect.objectContaining({ id: null, label: 'Sem responsavel', value: 3 }));
   });

@@ -133,6 +133,8 @@ type ListWorkItemsFilters = {
   dueDateTo?: Date;
   plannedStartFrom?: Date;
   plannedStartTo?: Date;
+  plannedWindowFrom?: Date;
+  plannedWindowTo?: Date;
   createdAtFrom?: Date;
   createdAtTo?: Date;
   updatedAtFrom?: Date;
@@ -1605,6 +1607,13 @@ export class WorkspaceWorkItemsService {
       }));
     }
 
+    if (filters.plannedWindowFrom || filters.plannedWindowTo) {
+      commercialFilters.push(this.buildJsonScheduleWindowFilter({
+        from: filters.plannedWindowFrom,
+        to: filters.plannedWindowTo
+      }));
+    }
+
     const search = filters.search?.trim();
     if (search) {
       where.OR = [
@@ -1721,6 +1730,48 @@ export class WorkspaceWorkItemsService {
           ...(input.from ? { gte: input.from.toISOString() } : {}),
           ...(input.to ? { lte: input.to.toISOString() } : {})
         }
+      }))
+    };
+  }
+
+  private buildJsonScheduleWindowFilter(input: { from?: Date; to?: Date }): Prisma.ItemWhereInput {
+    const from = input.from?.toISOString();
+    const to = input.to?.toISOString();
+    const schedulePaths = [
+      { start: ['plannedStartAt'], end: ['plannedEndAt'] },
+      { start: ['schedule', 'plannedStartAt'], end: ['schedule', 'plannedEndAt'] }
+    ];
+
+    return {
+      OR: schedulePaths.map(({ start, end }) => ({
+        AND: [
+          ...(to
+            ? [{
+                fields: {
+                  path: start,
+                  lte: to
+                }
+              }]
+            : []),
+          ...(from
+            ? [{
+                OR: [
+                  {
+                    fields: {
+                      path: end,
+                      gte: from
+                    }
+                  },
+                  {
+                    fields: {
+                      path: start,
+                      gte: from
+                    }
+                  }
+                ]
+              }]
+            : [])
+        ]
       }))
     };
   }
@@ -2178,13 +2229,13 @@ export class WorkspaceWorkItemsService {
       where: {
         workspaceId,
         isActive: true,
-        slug: { in: ['signal', 'prospect', 'lead', 'commercial'] }
+        slug: { in: ['signal', 'prospect', 'commercial'] }
       },
       orderBy: { position: 'asc' },
       select: { id: true, slug: true, name: true, color: true }
     });
     const source = types.find((type) => ['signal', 'prospect'].includes(type.slug));
-    const target = types.find((type) => ['lead', 'commercial'].includes(type.slug));
+    const target = types.find((type) => type.slug === 'commercial');
 
     if (!source || !target || source.id === target.id) {
       return [];
@@ -2197,13 +2248,13 @@ export class WorkspaceWorkItemsService {
         fromTypeId: source.id,
         toTypeId: target.id,
         name: `Transformar ${source.name} em ${target.name}`,
-        description: 'Transformacao padrao de Signal/Prospect para Lead comercial mantendo o mesmo WorkItem.',
+        description: 'Transformacao padrao de Signal/Prospect para WorkItem comercial mantendo o mesmo WorkItem.',
         enabled: true,
         mode: 'same_work_item_type_change',
         fieldCompatibilityMode: 'strict_superset',
         defaultValuesForNewFields: {},
         stateMapping: {},
-        permission: 'lead.transform',
+        permission: 'commercial.transform',
         fromType: source,
         toType: target
       }
@@ -2341,7 +2392,7 @@ export class WorkspaceWorkItemsService {
         fieldCompatibilityMode: 'strict_superset',
         defaultValuesForNewFields: {},
         stateMapping: {},
-        permission: 'lead.transform',
+        permission: 'commercial.transform',
         fromType,
         toType
       };
@@ -2903,7 +2954,7 @@ export class WorkspaceWorkItemsService {
       input.db
     );
 
-    if (await this.isLeadOperationalItem({ workspaceId: input.workspaceId, typeSlug: input.item.type.slug })) {
+    if (await this.isCommercialOperationalItem({ workspaceId: input.workspaceId, typeSlug: input.item.type.slug })) {
       await this.publishEvent(
         {
           id: uuid(),
@@ -2965,7 +3016,7 @@ export class WorkspaceWorkItemsService {
     if (
       customerId &&
       this.patchTouchesCustomerLink(input.patch) &&
-      await this.isLeadOperationalItem({ workspaceId: input.workspaceId, typeSlug: input.item.type.slug })
+      await this.isCommercialOperationalItem({ workspaceId: input.workspaceId, typeSlug: input.item.type.slug })
     ) {
       await this.publishEvent(
         {
@@ -3096,7 +3147,7 @@ export class WorkspaceWorkItemsService {
     return false;
   }
 
-  private async isLeadOperationalItem(input: { workspaceId: string; typeSlug: string }): Promise<boolean> {
+  private async isCommercialOperationalItem(input: { workspaceId: string; typeSlug: string }): Promise<boolean> {
     const config = await this.configService.loadWorkspaceConfig(input.workspaceId);
     const statuses = config.workflowStates
       .filter((state) => state.isActive)
@@ -3125,7 +3176,7 @@ export class WorkspaceWorkItemsService {
       itemTypes: config.itemTypes
     });
 
-    return metadata.leads?.itemTypeIds.includes(input.typeSlug) ?? false;
+    return metadata.commercial?.itemTypeIds.includes(input.typeSlug) ?? false;
   }
 
   private readTemplateKey(settings: unknown): string | undefined {
@@ -3379,7 +3430,7 @@ export class WorkspaceWorkItemsService {
     }
 
     const statusById = new Map(input.statuses.map((status) => [status.id, status]));
-    const leadState = this.readStringRule(input.templateRules, 'leadState');
+    const commercialEntryState = this.readStringRule(input.templateRules, 'commercialEntryState');
     const doneState = this.readStringRule(input.templateRules, 'doneState');
     const lostState = this.readStringRule(input.templateRules, 'lostState');
     const funnelPerspectives = input.perspectives.filter((perspective) => perspective.analyticsRole === 'funnel');
@@ -3405,8 +3456,8 @@ export class WorkspaceWorkItemsService {
     );
     const defaultItemTypeId = itemTypeIds[0] ?? input.itemTypes.find((itemType) => itemType.isActive)?.slug ?? null;
     const initialStatusId =
-      leadState && statusById.has(leadState)
-        ? leadState
+      commercialEntryState && statusById.has(commercialEntryState)
+        ? commercialEntryState
         : funnel[0]?.statusIds[0] ?? null;
 
     if (!defaultItemTypeId || !initialStatusId || funnel.length === 0) {
@@ -3448,7 +3499,7 @@ export class WorkspaceWorkItemsService {
 
     return {
       schemaVersion: 1 as const,
-      leads: {
+      commercial: {
         schemaVersion: 1 as const,
         itemTypeIds,
         defaultItemTypeId,

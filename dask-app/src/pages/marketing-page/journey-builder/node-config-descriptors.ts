@@ -30,12 +30,21 @@ function actionFields(config: JourneyNodeConfig): NodeConfigFieldDescriptor[] {
   ];
 
   if (action.type === "send_campaign") {
-    fields.push({ name: "campaignId", label: "Campanha", type: "text" });
+    fields.push({ name: "campaignId", label: "Campanha", type: "text", required: true });
+  }
+  if (action.type === "human_approval" || action.type === "approval") {
+    fields.push(
+      { name: "approvalType", label: "Tipo de aprovacao", type: "text" },
+      { name: "title", label: "Titulo", type: "text" },
+      { name: "description", label: "Descricao", type: "textarea" },
+      { name: "requestedBy", label: "Solicitante", type: "text" },
+      { name: "requestedByPath", label: "Caminho do solicitante", type: "text" }
+    );
   }
   if (action.type === "update_score") {
     fields.push({ name: "scoreChange", label: "Variacao do score", type: "number" });
   }
-  if (action.type === "move_lead") {
+  if (action.type === "move_work_item") {
     fields.push({ name: "targetStatus", label: "Status de destino", type: "text" });
   }
   if (action.type === "create_task") {
@@ -47,7 +56,7 @@ function actionFields(config: JourneyNodeConfig): NodeConfigFieldDescriptor[] {
   if (action.type === "start_flow") {
     fields.push({ name: "targetFlowId", label: "Fluxo de destino", type: "text" });
   }
-  if (action.type === "tag_lead") {
+  if (action.type === "tag_work_item") {
     fields.push({ name: "tag", label: "Tag", type: "text" });
   }
   if (action.type === "webhook") {
@@ -90,7 +99,7 @@ export function createMarketingJourneyNodeConfigDescriptor(
       {
         name: "rules",
         label: "Regras",
-        type: "json",
+        type: "custom",
         component: "marketing-condition-rules",
         required: true
       },
@@ -110,6 +119,6 @@ export function createMarketingJourneyNodeConfigDescriptor(
   }
 
   return createBaseNodeConfigDescriptor({ type: "EXIT", label: "Saida" }, [
-    { name: "reason", label: "Motivo", type: "text", placeholder: "Ex: Lead convertido" }
+    { name: "reason", label: "Motivo", type: "text", placeholder: "Ex: WorkItem convertido" }
   ]);
 }

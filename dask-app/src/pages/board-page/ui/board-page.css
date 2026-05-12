@@ -56,7 +56,7 @@
   gap: 2px;
   border: 0;
   border-radius: 0;
-  background: transparent !important;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -67,7 +67,7 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  box-shadow: none !important;
+  box-shadow: none;
   transform: none;
   font-size: 0.69rem;
   font-weight: 760;
@@ -280,25 +280,25 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button {
-  min-height: 34px !important;
+  min-height: 34px;
   height: 34px;
   min-width: auto;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: var(--text-secondary) !important;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent) !important;
-  color: var(--text-secondary) !important;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  color: var(--text-secondary);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button.active,
@@ -308,9 +308,9 @@
     color-mix(in srgb, var(--primary) 10%, transparent) 0%,
     color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 100%
   ),
-  linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 99%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 96%, transparent) 100%) !important;
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent) !important;
-  color: var(--text-primary) !important;
+  linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 99%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 96%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
+  color: var(--text-primary);
   font-weight: 860;
 }
 
@@ -392,30 +392,30 @@
   overflow: hidden;
   margin-bottom: 0;
   border-radius: 10px;
-  background: transparent !important;
+  background: transparent;
   color: var(--text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  box-shadow: none !important;
-  border: 1px solid transparent !important;
+  box-shadow: none;
+  border: 1px solid transparent;
   transform: none;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item:hover {
-  background: var(--selected-bg) !important;
+  background: var(--selected-bg);
   color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active {
   font-weight: 860;
-  background: transparent !important;
+  background: transparent;
   color: var(--text-primary);
-  border-color: transparent !important;
-  box-shadow: none !important;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active::before {
@@ -475,7 +475,7 @@
   padding-left: 10px;
   padding-right: 10px;
   border: none;
-  background: transparent !important;
+  background: transparent;
   color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
@@ -497,32 +497,32 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button {
-  min-height: 34px !important;
+  min-height: 34px;
   height: 34px;
   min-width: auto;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: var(--text-muted) !important;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: var(--selected-bg) !important;
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: var(--selected-bg);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: var(--selected-bg) !important;
-  border-color: var(--selected-border) !important;
-  color: var(--text-primary) !important;
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--text-primary);
   font-weight: 860;
 }
 

@@ -12,6 +12,7 @@ export const DomainEventNames = {
   CommercialWorkItemLinkedToCustomer: 'commercial_work_item.linked_to_customer',
   CommercialWorkItemUnlinkedFromCustomer: 'commercial_work_item.unlinked_from_customer',
   CommercialWorkItemConvertedToCustomer: 'commercial_work_item.converted_to_customer',
+  CommercialWorkItemFollowUpRegistered: 'commercial_work_item.followup.registered',
   WorkItemTypeTransformationConfigured: 'work_item.type_transformation.configured',
   WorkItemTypeTransformationExecuted: 'work_item.type_transformation.executed',
   CustomerCreated: 'customer.created',
@@ -36,12 +37,6 @@ export const DomainEventNames = {
   BillingPaymentConfirmed: 'billing.payment.confirmed',
   BillingPaymentFailed: 'billing.payment.failed',
   BillingOverdue: 'billing.overdue',
-  LeadCaptured: 'lead.captured',
-  LeadQualified: 'lead.qualified',
-  LeadDistributed: 'lead.distributed',
-  LeadFollowUpRegistered: 'lead.followup.registered',
-  LeadNurtureScheduled: 'lead.nurture.scheduled',
-  LeadConverted: 'lead.converted',
   AiAgentCreated: 'ai.agent.created',
   AiAgentUpdated: 'ai.agent.updated',
   AiAgentValidated: 'ai.agent.validated',
@@ -53,5 +48,5 @@ export const DomainEventNames = {
   MarketingCampaignApproved: 'marketing.campaign.approved',
   MarketingCampaignLaunched: 'marketing.campaign.launched',
   MarketingEmailSent: 'marketing.email.sent',
-  MarketingLeadScoreChanged: 'marketing.lead.score.changed'
+  MarketingCommercialWorkItemScoreChanged: 'marketing.commercial_work_item.score.changed'
 } as const;

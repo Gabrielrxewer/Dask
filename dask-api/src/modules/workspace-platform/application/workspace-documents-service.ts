@@ -59,6 +59,31 @@ const maxAssetSizeByType: Record<DocumentAssetType, number> = {
   generated_pdf: 25 * 1024 * 1024,
   exported_html: 10 * 1024 * 1024
 };
+const defaultPublicTokenTtlMs = 30 * 24 * 60 * 60 * 1000;
+const publicMetadataBlockedKeys = new Set([
+  'publicToken',
+  'publicTokenRevokedAt',
+  'sentBy',
+  'sentToEmail',
+  'sentToEmails',
+  'sendSubject',
+  'sendMessage',
+  'selectedAssetIds',
+  'linkedWorkItemId',
+  'clientUserId',
+  'acceptedByEmail',
+  'acceptedByUserId',
+  'acceptedIp',
+  'acceptedUserAgent',
+  'rejectedByEmail',
+  'rejectedByUserId',
+  'rejectedIp',
+  'rejectedUserAgent',
+  'decisionContentHash',
+  'decisionVersion',
+  'sentContentHash',
+  'sentVersion'
+]);
 
 const documentKinds = new Set<DocumentKind>(['wiki', 'proposal', 'contract']);
 const commercialDocumentStatuses = new Set<CommercialDocumentStatus>([
@@ -180,6 +205,24 @@ function assertPublicTokenCanOpen(metadata: DocumentMetadata): void {
   if (expiresAt && expiresAt < new Date()) {
     throw new AppError('Document link has expired.', 410, { code: 'TOKEN_EXPIRED' });
   }
+}
+
+function readRequireLogin(metadata: DocumentMetadata): boolean {
+  return metadata.requireLogin !== false;
+}
+
+function readAllowAcceptReject(metadata: DocumentMetadata): boolean {
+  return metadata.allowAcceptReject !== false;
+}
+
+function sanitizePublicDocumentMetadata(metadata: DocumentMetadata): DocumentMetadata {
+  return Object.fromEntries(
+    Object.entries(metadata).filter(([key]) => !publicMetadataBlockedKeys.has(key))
+  );
+}
+
+function buildDefaultPublicTokenExpiresAt(base: Date): string {
+  return new Date(base.getTime() + defaultPublicTokenTtlMs).toISOString();
 }
 
 export class WorkspaceDocumentsService {
@@ -650,7 +693,7 @@ export class WorkspaceDocumentsService {
       sendMessage: input.payload.message,
       includeAttachments: input.payload.includeAttachments ?? true,
       selectedAssetIds: input.payload.selectedAssetIds ?? [],
-      publicTokenExpiresAt: input.payload.expirationDate ?? tokenMetadata.publicTokenExpiresAt,
+      publicTokenExpiresAt: input.payload.expirationDate ?? tokenMetadata.publicTokenExpiresAt ?? buildDefaultPublicTokenExpiresAt(sentAt),
       requireLogin: input.payload.requireLogin ?? true,
       allowAcceptReject: input.payload.allowAcceptReject ?? true,
       linkedWorkItemId: input.payload.linkedWorkItemId ?? tokenMetadata.linkedWorkItemId,
@@ -671,14 +714,13 @@ export class WorkspaceDocumentsService {
       userId: input.userId,
       document,
       sentAt,
-      sentToEmails: recipientEmails,
-      publicToken
+      sentToEmails: recipientEmails
     });
 
     return this.serialize(document);
   }
 
-  public async resolvePublicDocumentToken(input: { token: string }) {
+  public async resolvePublicDocumentToken(input: { token: string; includeRecipients?: boolean }) {
     const document = await this.findPublicDocumentByToken(input.token);
     const kind = normalizeDocumentKind(document.kind);
     const metadata = normalizeDocumentMetadata(kind, document.metadata);
@@ -699,8 +741,8 @@ export class WorkspaceDocumentsService {
       documentId: document.id,
       documentTitle: document.title,
       documentKind: kind,
-      recipientEmail: recipientEmails[0] ?? '',
-      recipientEmails
+      recipientEmail: input.includeRecipients ? recipientEmails[0] ?? '' : '',
+      recipientEmails: input.includeRecipients ? recipientEmails : []
     };
   }
 
@@ -715,12 +757,26 @@ export class WorkspaceDocumentsService {
     const recipientEmails = readRecipientEmails(metadata);
     const requestingUserEmail = normalizeEmail(input.requestingUserEmail ?? '');
     const clientUserId = typeof metadata.clientUserId === 'string' ? metadata.clientUserId.trim() : '';
-    const canRevealSensitiveData = Boolean(
+    const requiresLogin = readRequireLogin(metadata);
+    const allowAcceptReject = readAllowAcceptReject(metadata);
+    const authenticatedRecipient = Boolean(
       input.requestingUserId &&
         ((requestingUserEmail && recipientEmails.includes(requestingUserEmail)) ||
           (clientUserId && clientUserId === input.requestingUserId))
     );
-    const recipientUserExists = canRevealSensitiveData
+    const canRevealSensitiveData = !requiresLogin || authenticatedRecipient;
+
+    if (requiresLogin && !input.requestingUserId) {
+      throw new AppError('Authentication required.', 401, { code: 'DOCUMENT_AUTH_REQUIRED' });
+    }
+
+    if (requiresLogin && input.requestingUserId && !authenticatedRecipient) {
+      throw new AppError('This document was sent to another email address.', 403, {
+        code: 'RECIPIENT_EMAIL_MISMATCH'
+      });
+    }
+
+    const recipientUserExists = canRevealSensitiveData && authenticatedRecipient
       ? Boolean(
           await this.prisma.user.findFirst({
             where: { email: { in: recipientEmails } },
@@ -728,24 +784,30 @@ export class WorkspaceDocumentsService {
           })
         )
       : false;
-    const revealedMetadata = canRevealSensitiveData ? { ...metadata } : {};
+    const revealedMetadata = canRevealSensitiveData ? sanitizePublicDocumentMetadata(metadata) : {};
     if (canRevealSensitiveData && typeof metadata.logoAssetId === 'string') {
       revealedMetadata.clientLogoUrl = buildPublicAssetUrl(input.token, metadata.logoAssetId);
     }
+    const currentStatus = normalizeCommercialStatus(kind, metadata);
+    const canDecide = authenticatedRecipient && allowAcceptReject && !isTerminalCommercialStatus(currentStatus);
 
     return {
       title: document.title,
       content: canRevealSensitiveData ? document.content : '',
       kind,
-      status: normalizeCommercialStatus(kind, metadata),
+      status: currentStatus,
       metadata: revealedMetadata,
       masked: !canRevealSensitiveData,
+      access: authenticatedRecipient ? 'authenticated_recipient' : 'public_token',
+      requiresLogin,
+      allowAcceptReject,
+      canDecide,
       workspace: {
         name: document.workspace.name
       },
-      recipientEmail: canRevealSensitiveData ? recipientEmails[0] ?? '' : '',
-      recipientEmails: canRevealSensitiveData ? recipientEmails : [],
-      recipientUserExists: canRevealSensitiveData ? recipientUserExists : false
+      recipientEmail: authenticatedRecipient ? recipientEmails[0] ?? '' : '',
+      recipientEmails: authenticatedRecipient ? recipientEmails : [],
+      recipientUserExists: authenticatedRecipient ? recipientUserExists : false
     };
   }
 
@@ -768,6 +830,12 @@ export class WorkspaceDocumentsService {
 
     if (!user) {
       throw new AppError('User not found.', 404);
+    }
+
+    if (!readAllowAcceptReject(metadata)) {
+      throw new AppError('Document decisions are disabled for this link.', 403, {
+        code: 'DOCUMENT_DECISION_DISABLED'
+      });
     }
 
     const recipientEmails = readRecipientEmails(metadata);
@@ -1493,6 +1561,10 @@ export class WorkspaceDocumentsService {
     const recipientEmails = readRecipientEmails(metadata);
     const requestingUserEmail = normalizeEmail(input.requestingUserEmail ?? '');
     const clientUserId = typeof metadata.clientUserId === 'string' ? metadata.clientUserId.trim() : '';
+    if (!readRequireLogin(metadata)) {
+      return;
+    }
+
     const canRevealSensitiveData = Boolean(
       input.requestingUserId &&
         ((requestingUserEmail && recipientEmails.includes(requestingUserEmail)) ||
@@ -1654,7 +1726,6 @@ export class WorkspaceDocumentsService {
     document: { id: string; kind?: string | null; linkedEntityType?: string | null; linkedEntityId?: string | null };
     sentAt: Date;
     sentToEmails: string[];
-    publicToken: string;
   }) {
     const kind = normalizeDocumentKind(input.document.kind);
     const eventName =
@@ -1681,7 +1752,7 @@ export class WorkspaceDocumentsService {
         sentAt: input.sentAt.toISOString(),
         sentToEmail: input.sentToEmails[0] ?? '',
         sentToEmails: input.sentToEmails,
-        publicToken: input.publicToken,
+        publicTokenIssued: true,
         linkedEntityType: input.document.linkedEntityType ?? null,
         linkedEntityId: input.document.linkedEntityId ?? null,
         requestedBy: input.userId

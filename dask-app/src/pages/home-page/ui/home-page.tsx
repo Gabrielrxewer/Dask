@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth/model";
-import { billingService } from "@/modules/billing";
-import type { BillingPlan, SubscriptionPlan } from "@/modules/billing";
+import { useBillingPlansQuery, type BillingPlan, type SubscriptionPlan } from "@/modules/billing";
 import { cn } from "@/shared/lib/cn";
 import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
 import {
@@ -142,7 +141,7 @@ function HomeHeroView({
         <p className="home-page__eyebrow">Plataforma operacional para software houses e startups</p>
         <h1 className="home-page__title">Seu processo inteiro, no mesmo sistema.</h1>
         <p className="home-page__description">
-          Do lead ao faturamento, o Dask conecta comercial, escopo, documentacao, execucao, agenda e cobranca no
+          Do workItem ao faturamento, o Dask conecta comercial, escopo, documentacao, execucao, agenda e cobranca no
           mesmo contexto. A IA acompanha essa jornada inteira, sem transformar sua operacao em ilhas de ferramenta.
         </p>
 
@@ -215,7 +214,7 @@ function IntelligenceView({ isActive }: { isActive: boolean }) {
       <div className="home-page__workflow-copy">
         <SectionIntro
           eyebrow="Como funciona"
-          title="Do lead a cobranca, sem perder contexto."
+          title="Do workItem a cobranca, sem perder contexto."
           description="No Dask, a operacao nao reinicia a cada etapa. O que nasce no comercial continua no escopo, vira documentacao, alimenta a execucao, organiza acompanhamento e sustenta cobranca e faturamento."
         />
       </div>
@@ -365,37 +364,9 @@ export function HomePage() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const activeSection = getHomeSectionFromHash(location.hash);
-  const [plans, setPlans] = useState<BillingPlan[]>([]);
-  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-  const [planLoadError, setPlanLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    billingService
-      .listPlans()
-      .then((result) => {
-        if (!mounted) return;
-        setPlans(
-          result.items
-            .filter((plan) => plan.isActive)
-        );
-        setPlanLoadError(null);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setPlans([]);
-        setPlanLoadError("Nao foi possivel carregar os planos configurados.");
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setIsLoadingPlans(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const plansQuery = useBillingPlansQuery();
+  const plans = useMemo(() => plansQuery.data?.items.filter((plan) => plan.isActive) ?? [], [plansQuery.data]);
+  const planLoadError = plansQuery.isError ? "Nao foi possivel carregar os planos configurados." : null;
 
   function handleSubscribeClick(_plan: SubscriptionPlan) {
     if (isAuthenticated) {
@@ -441,7 +412,7 @@ export function HomePage() {
             isActive={activeSection === "precos"}
             onSubscribeClick={handleSubscribeClick}
             plans={plans}
-            isLoadingPlans={isLoadingPlans}
+            isLoadingPlans={plansQuery.isLoading}
             planLoadError={planLoadError}
           />
         </div>

@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { redactErrorMessage } from '@/core/security/redaction';
 import type { AuthorizationService, Permission } from '@/modules/identity/domain/authorization';
 import type { BillingService } from '@/modules/billing/application/billing-service';
 import type { WorkspaceCustomersService } from '@/modules/workspace-platform/application/workspace-customers-service';
@@ -427,7 +428,7 @@ export class AutomationBusinessActionService {
       await this.markDocumentPartialFailure(input.workspaceId, document.id, error);
       throw new AppError('Document was created but could not be fully linked to the card.', 500, {
         documentId: document.id,
-        reason: error instanceof Error ? error.message : String(error)
+        reason: redactErrorMessage(error)
       });
     }
 
@@ -746,12 +747,12 @@ export class AutomationBusinessActionService {
         payload: {
           billingOrderId: result.orderId,
           checkoutUrl: result.url,
-          reason: error instanceof Error ? error.message : String(error)
+          reason: redactErrorMessage(error)
         }
       });
       throw new AppError('Billing order was created but could not be linked to the card.', 500, {
         billingOrderId: result.orderId,
-        reason: error instanceof Error ? error.message : String(error)
+        reason: redactErrorMessage(error)
       });
     }
 
@@ -865,7 +866,7 @@ export class AutomationBusinessActionService {
         metadata: toInputJson({
           ...metadata,
           automationPartialFailure: true,
-          automationPartialFailureReason: error instanceof Error ? error.message : String(error)
+          automationPartialFailureReason: redactErrorMessage(error)
         })
       }
     });
@@ -1126,7 +1127,7 @@ export class AutomationBusinessActionService {
     return {
       item,
       fields: item.customFields,
-      lead: item.customFields,
+      contact: item.customFields,
       customer: item.customFields
     };
   }

@@ -1681,7 +1681,7 @@ button.documentation-page__file-item.documentation-page__file-item--active:hover
 .documentation-page__composer-input,
 .documentation-page__composer-input.shared-textarea {
   display: block;
-  border: 0 !important;
+  border: 0;
   border-radius: 0;
   height: 62px;
   min-height: 62px;
@@ -1690,9 +1690,9 @@ button.documentation-page__file-item.documentation-page__file-item--active:hover
   padding: 4px 0;
   line-height: 1.5;
   font-size: 0.95rem;
-  background: transparent !important;
-  color: var(--doc-ink) !important;
-  box-shadow: none !important;
+  background: transparent;
+  color: var(--doc-ink);
+  box-shadow: none;
   outline: none;
   overflow-y: auto;
   appearance: none;
@@ -1702,9 +1702,9 @@ button.documentation-page__file-item.documentation-page__file-item--active:hover
 .documentation-page__composer-input:focus,
 .documentation-page__composer-input.shared-textarea:hover,
 .documentation-page__composer-input.shared-textarea:focus {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .documentation-page__composer-input::placeholder {
@@ -2169,17 +2169,17 @@ button.documentation-page__file-item.documentation-page__file-item--active:hover
 }
 
 .app-theme[data-theme="dark"] .documentation-page__composer-input {
-  border: 0 !important;
-  background: transparent !important;
-  color: var(--text) !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .documentation-page__composer-input:hover,
 .app-theme[data-theme="dark"] .documentation-page__composer-input:focus {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .documentation-page__error {

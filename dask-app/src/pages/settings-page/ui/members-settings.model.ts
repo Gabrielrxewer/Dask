@@ -1,34 +1,56 @@
+import { z } from "zod";
 import type { WorkspaceModuleKey, WorkspacePermissionKey } from "@/modules/workspace/model";
 
-export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER" | "CLIENT";
+const WORKSPACE_ROLE_VALUES = ["OWNER", "ADMIN", "MEMBER", "VIEWER", "CLIENT"] as const;
+const ASSIGNABLE_ROLE_VALUES = ["ADMIN", "MEMBER", "VIEWER", "CLIENT"] as const;
+const WORKSPACE_MODULE_KEY_VALUES = [
+  "dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "commercial", "marketing"
+] as const satisfies readonly WorkspaceModuleKey[];
+
+const workspacePermissionKeySchema = z.custom<WorkspacePermissionKey>(
+  (value) => typeof value === "string" && value.trim().length > 0,
+  { message: "Permissao invalida." }
+);
+
+export const workspaceRoleSchema = z.enum(WORKSPACE_ROLE_VALUES);
+export const assignableWorkspaceRoleSchema = z.enum(ASSIGNABLE_ROLE_VALUES);
+export const workspaceModuleKeySchema = z.enum(WORKSPACE_MODULE_KEY_VALUES);
+
+export const workspaceInviteFormSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Informe um e-mail valido."),
+  role: assignableWorkspaceRoleSchema
+});
+
+export const memberAccessFormSchema = z.object({
+  role: workspaceRoleSchema,
+  allowOverrides: z.array(workspacePermissionKeySchema),
+  denyOverrides: z.array(workspacePermissionKeySchema),
+  groupIds: z.array(z.string().trim().min(1, "Grupo invalido.")),
+  allowedModules: z.array(workspaceModuleKeySchema),
+  boardViewKeys: z.string().trim(),
+  ownCardsOnly: z.boolean()
+});
+
+export const accessGroupFormSchema = z.object({
+  name: z.string().trim().min(2, "Informe um nome com pelo menos 2 caracteres."),
+  description: z.string().trim(),
+  allow: z.array(workspacePermissionKeySchema),
+  deny: z.array(workspacePermissionKeySchema),
+  allowedModules: z.array(workspaceModuleKeySchema),
+  boardViewKeys: z.string().trim(),
+  ownCardsOnly: z.boolean()
+});
+
+export type WorkspaceRole = z.infer<typeof workspaceRoleSchema>;
 export type ActiveTab = "members" | "invites" | "modules" | "groups" | "matrix";
-
-export interface MemberEditorDraft {
-  role: WorkspaceRole;
-  allowOverrides: WorkspacePermissionKey[];
-  denyOverrides: WorkspacePermissionKey[];
-  groupIds: string[];
-  allowedModules: WorkspaceModuleKey[];
-  boardViewKeys: string;
-  ownCardsOnly: boolean;
-}
-
-export interface GroupDraft {
-  name: string;
-  description: string;
-  allow: WorkspacePermissionKey[];
-  deny: WorkspacePermissionKey[];
-  allowedModules: WorkspaceModuleKey[];
-  boardViewKeys: string;
-  ownCardsOnly: boolean;
-}
+export type WorkspaceInviteFormInput = z.input<typeof workspaceInviteFormSchema>;
+export type WorkspaceInviteFormValues = z.output<typeof workspaceInviteFormSchema>;
+export type MemberEditorDraft = z.output<typeof memberAccessFormSchema>;
+export type GroupDraft = z.output<typeof accessGroupFormSchema>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const MODULE_KEYS: WorkspaceModuleKey[] = [
-  "dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"
-];
+export const MODULE_KEYS: WorkspaceModuleKey[] = [...WORKSPACE_MODULE_KEY_VALUES];
 
 export const TAB_ITEMS: Array<{ id: ActiveTab; label: string }> = [
   { id: "members", label: "Membros" },
@@ -74,7 +96,7 @@ export const MODULE_META: Record<WorkspaceModuleKey, { label: string; descriptio
   ai: { label: "Inteligência Artificial", description: "Assistente de IA e geração de conteúdo" },
   settings: { label: "Configurações", description: "Acesso ao painel de configurações do workspace" },
   fiscal: { label: "Fiscal", description: "Emissão de notas fiscais e gestão fiscal" },
-  leads: { label: "Leads", description: "Captação e qualificação de leads comerciais" },
+  commercial: { label: "Comercial", description: "Captação e qualificação de sinais e oportunidades comerciais" },
   marketing: { label: "Marketing", description: "Campanhas, segmentação e analytics de marketing" },
 };
 
@@ -93,7 +115,7 @@ export const PERMISSION_CATEGORY_PREFIXES: Array<{ prefix: string; label: string
   { prefix: "integration.", label: "Integrações" },
   { prefix: "billing.", label: "Cobrança" },
   { prefix: "fiscal.", label: "Fiscal" },
-  { prefix: "lead.", label: "Leads" },
+  { prefix: "commercial.", label: "Comercial" },
   { prefix: "marketing.", label: "Marketing" },
   { prefix: "audit.", label: "Auditoria" },
   { prefix: "ai.", label: "IA" },

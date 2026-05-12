@@ -72,7 +72,7 @@ export function WeeklyDetailGrid({
                     dayStart={day}
                     agendaStartOffset={agendaStartOffset}
                     onSelectTask={onSelectTask}
-                    draggable={!drag.isDragDisabled && segment.kind === "work-item"}
+                    canDrag={!drag.isDragDisabled && segment.kind === "work-item"}
                   />
                 ))}
               </div>

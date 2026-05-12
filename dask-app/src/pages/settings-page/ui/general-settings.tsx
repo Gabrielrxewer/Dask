@@ -1,50 +1,43 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { Link, useParams } from "react-router-dom";
 import { mergeCardFieldDefinitions } from "@/entities/task";
 import {
   buildOnboardingChecklist,
+  canManageSensitiveConnectSettings as canManageSensitiveConnectSettingsForRole,
   getNextOnboardingAction,
+  sensitiveConnectSettingsPermissionMessage,
   useConnectAccountQuery,
   useCreateConnectAccountMutation
 } from "@/modules/billing";
 import type { ConnectAccountStatus } from "@/modules/billing";
 import {
   useUpdateWorkspaceProfileMutation,
-  useWorkspace,
-  useWorkspaceListQuery,
   useWorkspaceProfileQuery,
+  useWorkspaceSettings,
+  useWorkspaceSettingsPermissions,
+  useWorkspaceSummaryQuery,
   useWorkspaceTemplatesQuery
 } from "@/modules/workspace";
 import type { WorkspaceTemplateOption } from "@/modules/workspace/model";
 import { buildWorkspaceSettingsMembersPath, buildWorkspaceSelectorPath } from "@/app/router";
 import { isApiError } from "@/shared/api/http-client";
-import { AppDialog, AppSelect, Button, FormField, Textarea, TextInput, toast } from "@/shared/ui";
+import { AppDialog, AppForm, AppFormField, AppSelect, Button, FormField, Textarea, TextInput, toast } from "@/shared/ui";
+import {
+  emptyCompanyProfile,
+  emptyWorkspaceProfileSettingsForm,
+  workspaceProfileSettingsFormSchema,
+  type CompanyProfileForm,
+  type WorkspaceProfileSettingsFormInput,
+  type WorkspaceProfileSettingsFormValues
+} from "./general-settings.model";
 import "./general-settings.css";
 
 type BoardPerspective = {
   id: string;
   label: string;
   caption?: string;
-};
-
-type CompanyProfileForm = {
-  name: string;
-  legalName: string;
-  document: string;
-  address: string;
-  jurisdictionCity: string;
-  jurisdictionState: string;
-  noticePeriod: string;
-};
-
-const emptyCompanyProfile: CompanyProfileForm = {
-  name: "",
-  legalName: "",
-  document: "",
-  address: "",
-  jurisdictionCity: "",
-  jurisdictionState: "",
-  noticePeriod: ""
 };
 
 function resolvePerspectives(rawBoardConfig: unknown): BoardPerspective[] {
@@ -97,6 +90,35 @@ function readCompanyProfile(settings: Record<string, unknown> | undefined): Comp
   };
 }
 
+function buildWorkspaceProfileFormValues(
+  workspaceProfile: {
+    name: string;
+    key: string;
+    info: {
+      description: string;
+      company: string;
+      website: string;
+    };
+  } | null,
+  settings: Record<string, unknown> | undefined
+): WorkspaceProfileSettingsFormInput {
+  if (!workspaceProfile) {
+    return {
+      ...emptyWorkspaceProfileSettingsForm,
+      companyProfile: readCompanyProfile(settings)
+    };
+  }
+
+  return {
+    workspaceName: workspaceProfile.name,
+    workspaceKey: workspaceProfile.key,
+    workspaceDescription: workspaceProfile.info.description,
+    workspaceCompany: workspaceProfile.info.company,
+    workspaceWebsite: workspaceProfile.info.website,
+    companyProfile: readCompanyProfile(settings)
+  };
+}
+
 function getCompanyProfileMissingFields(profile: CompanyProfileForm): string[] {
   return [
     { label: "Razao social / nome legal", value: profile.legalName },
@@ -110,32 +132,38 @@ function getCompanyProfileMissingFields(profile: CompanyProfileForm): string[] {
 
 export function GeneralSettings() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
-  const { snapshot, updatePreferences, resetWorkspaceTemplate } = useWorkspace();
+  const { snapshot, updatePreferences, resetWorkspaceTemplate, settings } = useWorkspaceSettings();
   const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplateOption["key"] | "">("");
   const [isResettingTemplate, setIsResettingTemplate] = useState(false);
   const [templateToConfirm, setTemplateToConfirm] = useState<WorkspaceTemplateOption | null>(null);
-  const [workspaceNameDraft, setWorkspaceNameDraft] = useState("");
-  const [workspaceKeyDraft, setWorkspaceKeyDraft] = useState("");
-  const [workspaceDescriptionDraft, setWorkspaceDescriptionDraft] = useState("");
-  const [workspaceCompanyDraft, setWorkspaceCompanyDraft] = useState("");
-  const [workspaceWebsiteDraft, setWorkspaceWebsiteDraft] = useState("");
-  const [isSavingWorkspaceProfile, setIsSavingWorkspaceProfile] = useState(false);
-  const settings = (snapshot?.preferences.settings as Record<string, unknown> | undefined) ?? {};
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfileForm>(() => readCompanyProfile(settings));
-  const [isSavingCompanyProfile, setIsSavingCompanyProfile] = useState(false);
+  const workspaceProfileForm = useForm<WorkspaceProfileSettingsFormInput, unknown, WorkspaceProfileSettingsFormValues>({
+    resolver: zodResolver(workspaceProfileSettingsFormSchema),
+    defaultValues: {
+      ...emptyWorkspaceProfileSettingsForm,
+      companyProfile: readCompanyProfile(settings)
+    },
+    mode: "onChange"
+  });
   const [connectStatus, setConnectStatus] = useState<ConnectAccountStatus | null>(null);
   const [connectLoadState, setConnectLoadState] = useState<"idle" | "loading" | "missing" | "ready" | "error">("idle");
   const [isOpeningOnboarding, setIsOpeningOnboarding] = useState(false);
-  const workspaceListQuery = useWorkspaceListQuery();
+  const workspaceSummaryQuery = useWorkspaceSummaryQuery(workspaceSlug);
   const templatesQuery = useWorkspaceTemplatesQuery();
   const workspaceProfileQuery = useWorkspaceProfileQuery(workspaceSlug);
   const updateWorkspaceProfileMutation = useUpdateWorkspaceProfileMutation(workspaceSlug);
+  const permissions = useWorkspaceSettingsPermissions(workspaceSlug, snapshot);
+  const canManageSensitiveConnectSettings = canManageSensitiveConnectSettingsForRole(permissions.role);
+  const companyProfile = workspaceProfileForm.watch("companyProfile");
+  const isSavingWorkspaceProfile = workspaceProfileForm.formState.isSubmitting;
+  const isSavingCompanyProfile = workspaceProfileForm.formState.isSubmitting;
   const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
   const workspaceProfile = workspaceProfileQuery.data ?? null;
   const isLoadingTemplates = templatesQuery.isLoading;
-  const isCorporateWorkspace = workspaceListQuery.data?.find(workspace => workspace.slug === workspaceSlug)?.kind === "CORPORATE";
+  const isCorporateWorkspace = workspaceSummaryQuery.data?.kind === "CORPORATE";
   const connectAccountQuery = useConnectAccountQuery(workspaceProfile?.id);
-  const connectOnboardingMutation = useCreateConnectAccountMutation(workspaceProfile?.id);
+  const connectOnboardingMutation = useCreateConnectAccountMutation(
+    canManageSensitiveConnectSettings ? workspaceProfile?.id : null
+  );
   const templateTrackRef = useRef<HTMLDivElement>(null);
   const previewTrackRef = useRef<HTMLDivElement>(null);
 
@@ -165,10 +193,6 @@ export function GeneralSettings() {
   };
   const completedSteps = Object.values(stepStates).filter(value => value === "done").length;
   const progress = Math.round((completedSteps / 4) * 100);
-
-  useEffect(() => {
-    setCompanyProfile(readCompanyProfile(settings));
-  }, [snapshot?.preferences.settings]);
 
   useEffect(() => {
     if (templates.length > 0) {
@@ -231,16 +255,8 @@ export function GeneralSettings() {
   ]);
 
   useEffect(() => {
-    if (!workspaceProfile) {
-      return;
-    }
-
-    setWorkspaceNameDraft(workspaceProfile.name);
-    setWorkspaceKeyDraft(workspaceProfile.key);
-    setWorkspaceDescriptionDraft(workspaceProfile.info.description);
-    setWorkspaceCompanyDraft(workspaceProfile.info.company);
-    setWorkspaceWebsiteDraft(workspaceProfile.info.website);
-  }, [workspaceProfile]);
+    workspaceProfileForm.reset(buildWorkspaceProfileFormValues(workspaceProfile, settings));
+  }, [snapshot?.preferences.settings, workspaceProfile, workspaceProfileForm]);
 
   const members = useMemo(() => Object.values(snapshot?.membersById ?? {}), [snapshot?.membersById]);
   const adminsCount = useMemo(
@@ -249,6 +265,11 @@ export function GeneralSettings() {
   );
 
   const handleResetTemplate = async (template: WorkspaceTemplateOption) => {
+    if (!permissions.canManageWorkspace) {
+      toast.error("Voce nao tem permissao para alterar configuracoes do workspace.");
+      return;
+    }
+
     setSelectedTemplate(template.key);
     setIsResettingTemplate(true);
 
@@ -263,63 +284,42 @@ export function GeneralSettings() {
     }
   };
 
-  const handleSaveAll = async () => {
-    const normalizedName = workspaceNameDraft.trim();
-    const normalizedKey = workspaceKeyDraft.trim().toUpperCase();
-
-    if (normalizedName.length < 2) {
-      toast.error("O nome do workspace precisa ter pelo menos 2 caracteres.");
+  const handleSaveAll = async (values: WorkspaceProfileSettingsFormValues) => {
+    if (!permissions.canManageWorkspace) {
+      toast.error("Voce nao tem permissao para alterar configuracoes do workspace.");
       return;
     }
-
-    if (normalizedKey.length < 2) {
-      toast.error("A chave do workspace precisa ter pelo menos 2 caracteres.");
-      return;
-    }
-
-    const nextProfile = {
-      name: companyProfile.name.trim(),
-      legalName: companyProfile.legalName.trim(),
-      document: companyProfile.document.trim(),
-      address: companyProfile.address.trim(),
-      jurisdictionCity: companyProfile.jurisdictionCity.trim(),
-      jurisdictionState: companyProfile.jurisdictionState.trim(),
-      noticePeriod: companyProfile.noticePeriod.trim()
-    };
-
-    setIsSavingWorkspaceProfile(true);
-    setIsSavingCompanyProfile(true);
 
     try {
       const [updated] = await Promise.all([
         updateWorkspaceProfileMutation.mutateAsync({
-          name: normalizedName,
-          key: normalizedKey,
+          name: values.workspaceName,
+          key: values.workspaceKey,
           info: {
-            description: workspaceDescriptionDraft.trim(),
-            company: workspaceCompanyDraft.trim(),
-            website: workspaceWebsiteDraft.trim()
+            description: values.workspaceDescription,
+            company: values.workspaceCompany,
+            website: values.workspaceWebsite
           }
         }),
         updatePreferences({
           settings: {
             ...settings,
-            companyProfile: nextProfile
+            companyProfile: values.companyProfile
           }
         })
       ]);
 
-      setWorkspaceNameDraft(updated.name);
-      setWorkspaceKeyDraft(updated.key);
-      setWorkspaceDescriptionDraft(updated.info.description);
-      setWorkspaceCompanyDraft(updated.info.company);
-      setWorkspaceWebsiteDraft(updated.info.website);
+      workspaceProfileForm.reset({
+        workspaceName: updated.name,
+        workspaceKey: updated.key,
+        workspaceDescription: updated.info.description,
+        workspaceCompany: updated.info.company,
+        workspaceWebsite: updated.info.website,
+        companyProfile: values.companyProfile
+      });
       toast.success("Dados salvos.");
     } catch {
       toast.error("Nao foi possivel salvar agora. Tente novamente.");
-    } finally {
-      setIsSavingWorkspaceProfile(false);
-      setIsSavingCompanyProfile(false);
     }
   };
 
@@ -338,6 +338,11 @@ export function GeneralSettings() {
 
   const handleOpenConnectOnboarding = async () => {
     if (!workspaceProfile?.id || isOpeningOnboarding) {
+      return;
+    }
+
+    if (!canManageSensitiveConnectSettings) {
+      toast.warning(sensitiveConnectSettingsPermissionMessage);
       return;
     }
 
@@ -432,7 +437,7 @@ export function GeneralSettings() {
                   type="button"
                   size="sm"
                   onClick={() => setTemplateToConfirm(template)}
-                  disabled={isLoadingTemplates || isResettingTemplate}
+                  disabled={!permissions.canManageWorkspace || isLoadingTemplates || isResettingTemplate}
                 >
                   Usar
                 </Button>
@@ -490,7 +495,7 @@ export function GeneralSettings() {
               <AppSelect
                 value={defaultMode}
                 onValueChange={value => void updatePreferences({ defaultBoardMode: value })}
-                disabled={perspectives.length === 0}
+                disabled={!permissions.canManageWorkspace || perspectives.length === 0}
                 aria-label="Perspectiva inicial"
                 items={perspectives.map(perspective => ({ value: perspective.id, label: perspective.label }))}
               />
@@ -504,6 +509,7 @@ export function GeneralSettings() {
                   })
                 }
                 aria-label="Formato de data"
+                disabled={!permissions.canManageWorkspace}
                 items={[
                   { value: "dd/mm/yyyy", label: "DD/MM/YYYY" },
                   { value: "mm/dd/yyyy", label: "MM/DD/YYYY" }
@@ -527,106 +533,123 @@ export function GeneralSettings() {
             <small>Pendente: {missingCompanyProfileFields.join(", ")}</small>
           </div>
         ) : null}
+        <AppForm
+          form={workspaceProfileForm}
+          onSubmit={handleSaveAll}
+          className="general-settings__workspace-profile-form"
+          disabled={!permissions.canManageWorkspace}
+          loading={isSavingWorkspaceProfile || isSavingCompanyProfile}
+        >
         <div className="general-settings__workspace-profile-grid">
-          <FormField label="Nome do workspace">
+          <AppFormField label="Nome do workspace" error={workspaceProfileForm.formState.errors.workspaceName?.message}>
             <TextInput
-              value={workspaceNameDraft}
-              onChange={(event) => setWorkspaceNameDraft(event.target.value)}
+              {...workspaceProfileForm.register("workspaceName")}
               placeholder="Ex.: Produto Core"
+              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
+              aria-invalid={workspaceProfileForm.formState.errors.workspaceName ? true : undefined}
             />
-          </FormField>
-          <FormField label="Chave do workspace (A-Z e 0-9)">
+          </AppFormField>
+          <AppFormField label="Chave do workspace (A-Z e 0-9)" error={workspaceProfileForm.formState.errors.workspaceKey?.message}>
             <TextInput
-              value={workspaceKeyDraft}
-              onChange={(event) => setWorkspaceKeyDraft(event.target.value.toUpperCase())}
+              {...workspaceProfileForm.register("workspaceKey", {
+                onChange: event => {
+                  event.target.value = event.target.value.toUpperCase();
+                }
+              })}
               placeholder="PRODCORE"
+              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
+              aria-invalid={workspaceProfileForm.formState.errors.workspaceKey ? true : undefined}
             />
-          </FormField>
-          <FormField label="Website">
+          </AppFormField>
+          <AppFormField label="Website" error={workspaceProfileForm.formState.errors.workspaceWebsite?.message}>
             <TextInput
-              value={workspaceWebsiteDraft}
-              onChange={(event) => setWorkspaceWebsiteDraft(event.target.value)}
+              {...workspaceProfileForm.register("workspaceWebsite")}
               placeholder="https://suaempresa.com"
+              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
             />
-          </FormField>
-          <FormField label="Descricao" className="general-settings__field--full">
+          </AppFormField>
+          <AppFormField label="Descricao" className="general-settings__field--full" error={workspaceProfileForm.formState.errors.workspaceDescription?.message}>
             <Textarea
-              value={workspaceDescriptionDraft}
-              onChange={(event) => setWorkspaceDescriptionDraft(event.target.value)}
+              {...workspaceProfileForm.register("workspaceDescription")}
               placeholder="Resumo da area, objetivo ou contexto deste workspace."
               rows={3}
+              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
             />
-          </FormField>
+          </AppFormField>
 
           <div className="general-settings__form-divider">
             <span>Dados legais da contratada</span>
           </div>
 
-          <FormField label="Nome fantasia / empresa">
+          <AppFormField label="Nome fantasia / empresa" error={workspaceProfileForm.formState.errors.companyProfile?.name?.message}>
             <TextInput
-              value={companyProfile.name}
-              onChange={(event) => {
-                const value = event.target.value;
-                setCompanyProfile(current => ({ ...current, name: value }));
-                setWorkspaceCompanyDraft(value);
-              }}
+              {...workspaceProfileForm.register("companyProfile.name", {
+                onChange: event => {
+                  workspaceProfileForm.setValue("workspaceCompany", event.target.value, {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  });
+                }
+              })}
               placeholder="Ex.: Dask Labs"
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
             />
-          </FormField>
-          <FormField label="Razao social / nome legal">
+          </AppFormField>
+          <AppFormField label="Razao social / nome legal" error={workspaceProfileForm.formState.errors.companyProfile?.legalName?.message}>
             <TextInput
-              value={companyProfile.legalName}
-              onChange={(event) => setCompanyProfile(current => ({ ...current, legalName: event.target.value }))}
+              {...workspaceProfileForm.register("companyProfile.legalName")}
               placeholder="Ex.: Dask Labs Tecnologia Ltda"
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
             />
-          </FormField>
-          <FormField label="CPF / CNPJ">
+          </AppFormField>
+          <AppFormField label="CPF / CNPJ" error={workspaceProfileForm.formState.errors.companyProfile?.document?.message}>
             <TextInput
-              value={companyProfile.document}
-              onChange={(event) => setCompanyProfile(current => ({ ...current, document: event.target.value }))}
+              {...workspaceProfileForm.register("companyProfile.document")}
               placeholder="Ex.: 00.000.000/0001-00"
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
             />
-          </FormField>
-          <FormField label="Aviso previo padrao (dias)">
+          </AppFormField>
+          <AppFormField label="Aviso previo padrao (dias)" error={workspaceProfileForm.formState.errors.companyProfile?.noticePeriod?.message}>
             <TextInput
-              value={companyProfile.noticePeriod}
-              onChange={(event) => setCompanyProfile(current => ({ ...current, noticePeriod: event.target.value }))}
+              {...workspaceProfileForm.register("companyProfile.noticePeriod")}
               placeholder="Ex.: 30"
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+              aria-invalid={workspaceProfileForm.formState.errors.companyProfile?.noticePeriod ? true : undefined}
             />
-          </FormField>
-          <FormField label="Endereco da contratada" className="general-settings__field--full">
+          </AppFormField>
+          <AppFormField label="Endereco da contratada" className="general-settings__field--full" error={workspaceProfileForm.formState.errors.companyProfile?.address?.message}>
             <Textarea
-              value={companyProfile.address}
-              onChange={(event) => setCompanyProfile(current => ({ ...current, address: event.target.value }))}
+              {...workspaceProfileForm.register("companyProfile.address")}
               placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
               rows={3}
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
             />
-          </FormField>
-          <FormField label="Cidade do foro">
+          </AppFormField>
+          <AppFormField label="Cidade do foro" error={workspaceProfileForm.formState.errors.companyProfile?.jurisdictionCity?.message}>
             <TextInput
-              value={companyProfile.jurisdictionCity}
-              onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionCity: event.target.value }))}
+              {...workspaceProfileForm.register("companyProfile.jurisdictionCity")}
               placeholder="Ex.: Sao Paulo"
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
             />
-          </FormField>
-          <FormField label="Estado do foro">
+          </AppFormField>
+          <AppFormField label="Estado do foro" error={workspaceProfileForm.formState.errors.companyProfile?.jurisdictionState?.message}>
             <TextInput
-              value={companyProfile.jurisdictionState}
-              onChange={(event) => setCompanyProfile(current => ({ ...current, jurisdictionState: event.target.value }))}
+              {...workspaceProfileForm.register("companyProfile.jurisdictionState")}
               placeholder="Ex.: SP"
+              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
             />
-          </FormField>
+          </AppFormField>
         </div>
         <div className="general-settings__workspace-profile-actions">
           <Button
-            type="button"
-            onClick={() => void handleSaveAll()}
-            disabled={isSavingWorkspaceProfile || isSavingCompanyProfile}
+            type="submit"
+            disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile || isSavingCompanyProfile}
           >
             {isSavingWorkspaceProfile || isSavingCompanyProfile ? "Salvando..." : "Salvar"}
           </Button>
           {workspaceProfile?.kind ? <small>Tipo: {workspaceProfile.kind}</small> : null}
         </div>
+        </AppForm>
       </section>
 
       <section className="general-settings__billing-connect">
@@ -697,7 +720,12 @@ export function GeneralSettings() {
         </ul>
 
         <div className="general-settings__billing-actions">
-          <Button type="button" onClick={() => void handleOpenConnectOnboarding()} disabled={isOpeningOnboarding}>
+          <Button
+            type="button"
+            onClick={() => void handleOpenConnectOnboarding()}
+            disabled={!canManageSensitiveConnectSettings || isOpeningOnboarding}
+            title={!canManageSensitiveConnectSettings ? sensitiveConnectSettingsPermissionMessage : undefined}
+          >
             {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
           </Button>
         </div>
@@ -733,7 +761,7 @@ export function GeneralSettings() {
               <Button
                 type="button"
                 onClick={() => void handleResetTemplate(templateToConfirm)}
-                disabled={isResettingTemplate}
+                disabled={!permissions.canManageWorkspace || isResettingTemplate}
               >
                 {isResettingTemplate ? "Aplicando..." : "Usar template"}
               </Button>

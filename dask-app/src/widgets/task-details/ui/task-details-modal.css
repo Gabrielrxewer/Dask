@@ -264,30 +264,30 @@
   letter-spacing: normal;
 }
 
-.task-details__title-input:hover {
-  border-color: color-mix(in srgb, var(--task-accent-border, var(--info-border)) 90%, color-mix(in srgb, var(--neutral-white) 22%, transparent)) !important;
+.task-details .task-details__title-input.shared-input:hover {
+  border-color: color-mix(in srgb, var(--task-accent-border, var(--info-border)) 90%, color-mix(in srgb, var(--neutral-white) 22%, transparent));
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--task-accent-background, var(--info-bg)) 62%, transparent) 0%, transparent 34%),
     linear-gradient(
       180deg,
       color-mix(in srgb, var(--task-accent-background, var(--info-bg)) 42%, color-mix(in srgb, var(--neutral-white) 100%, transparent)) 0%,
       color-mix(in srgb, var(--neutral-white) 98%, transparent) 100%
-    ) !important;
+    );
 }
 
-.task-details__title-input:focus {
-  border-color: color-mix(in srgb, var(--task-accent-border, var(--info-border)) 94%, color-mix(in srgb, var(--neutral-white) 28%, transparent)) !important;
+.task-details .task-details__title-input.shared-input:focus {
+  border-color: color-mix(in srgb, var(--task-accent-border, var(--info-border)) 94%, color-mix(in srgb, var(--neutral-white) 28%, transparent));
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--task-accent-background, var(--info-bg)) 68%, transparent) 0%, transparent 34%),
     linear-gradient(
       180deg,
       color-mix(in srgb, var(--task-accent-background, var(--info-bg)) 48%, color-mix(in srgb, var(--neutral-white) 100%, transparent)) 0%,
       color-mix(in srgb, var(--neutral-white) 100%, transparent) 100%
-    ) !important;
+    );
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--neutral-white) 82%, transparent) inset,
     0 0 0 4px color-mix(in srgb, var(--task-accent-border, var(--info-border)) 20%, transparent),
-    0 16px 28px color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 12%, color-mix(in srgb, var(--primary) 12%, transparent)) !important;
+    0 16px 28px color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 12%, color-mix(in srgb, var(--primary) 12%, transparent));
 }
 
 .task-details .shared-form-field {
@@ -967,16 +967,16 @@
 .task-details__ai-composer-input,
 .task-details__ai-composer-input.shared-textarea {
   display: block;
-  border: 0 !important;
+  border: 0;
   border-radius: 0;
   min-height: 32px;
   max-height: 88px;
   resize: none;
   padding: 6px 0;
   line-height: 1.35;
-  background: transparent !important;
-  color: var(--card-chat-ink) !important;
-  box-shadow: none !important;
+  background: transparent;
+  color: var(--card-chat-ink);
+  box-shadow: none;
   outline: none;
   overflow-y: auto;
 }
@@ -985,9 +985,9 @@
 .task-details__ai-composer-input:focus,
 .task-details__ai-composer-input.shared-textarea:hover,
 .task-details__ai-composer-input.shared-textarea:focus {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .task-details__ai-composer-input::placeholder {
@@ -1138,7 +1138,7 @@
 }
 
 .task-details__error {
-  color: var(--danger) !important;
+  color: var(--danger);
 }
 
 .task-details__actionbar-copy {
@@ -1505,30 +1505,30 @@
     0 12px 24px color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 12%, color-mix(in srgb, var(--primary) 14%, transparent));
 }
 
-.app-theme[data-theme="dark"] .task-details__title-input:hover {
-  border-color: color-mix(in srgb, var(--task-accent-border, var(--primary)) 90%, color-mix(in srgb, var(--neutral-white) 22%, transparent)) !important;
+.app-theme[data-theme="dark"] .task-details .task-details__title-input.shared-input:hover {
+  border-color: color-mix(in srgb, var(--task-accent-border, var(--primary)) 90%, color-mix(in srgb, var(--neutral-white) 22%, transparent));
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--task-accent-background, var(--primary)) 22%, transparent) 0%, transparent 34%),
     linear-gradient(
       180deg,
       color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 22%, color-mix(in srgb, var(--primary) 92%, transparent)) 0%,
       color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 14%, color-mix(in srgb, var(--primary) 97%, transparent)) 100%
-    ) !important;
+    );
 }
 
-.app-theme[data-theme="dark"] .task-details__title-input:focus {
-  border-color: color-mix(in srgb, var(--task-accent-border, var(--primary)) 94%, color-mix(in srgb, var(--neutral-white) 28%, transparent)) !important;
+.app-theme[data-theme="dark"] .task-details .task-details__title-input.shared-input:focus {
+  border-color: color-mix(in srgb, var(--task-accent-border, var(--primary)) 94%, color-mix(in srgb, var(--neutral-white) 28%, transparent));
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--task-accent-background, var(--primary)) 26%, transparent) 0%, transparent 34%),
     linear-gradient(
       180deg,
       color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 26%, color-mix(in srgb, var(--primary) 95%, transparent)) 0%,
       color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 18%, color-mix(in srgb, var(--primary) 100%, transparent)) 100%
-    ) !important;
+    );
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--neutral-white) 6%, transparent) inset,
     0 0 0 4px color-mix(in srgb, var(--task-accent-border, var(--primary)) 20%, transparent),
-    0 16px 28px color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 16%, color-mix(in srgb, var(--primary) 18%, transparent)) !important;
+    0 16px 28px color-mix(in srgb, var(--task-accent-text, var(--text-primary)) 16%, color-mix(in srgb, var(--primary) 18%, transparent));
 }
 
 .app-theme[data-theme="dark"] .task-details__linked-docs button {
@@ -1653,18 +1653,18 @@
     inset 0 1px 0 color-mix(in oklab, var(--neutral-white) 6%, transparent);
 }
 
-.app-theme[data-theme="dark"] .task-details__ai-composer-input {
-  border: 0 !important;
-  background: transparent !important;
-  color: var(--text) !important;
-  box-shadow: none !important;
+.app-theme[data-theme="dark"] .task-details__ai-composer-input.shared-textarea {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
 }
 
-.app-theme[data-theme="dark"] .task-details__ai-composer-input:hover,
-.app-theme[data-theme="dark"] .task-details__ai-composer-input:focus {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+.app-theme[data-theme="dark"] .task-details__ai-composer-input.shared-textarea:hover,
+.app-theme[data-theme="dark"] .task-details__ai-composer-input.shared-textarea:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .task-details__ai-composer-input::placeholder {
@@ -2399,9 +2399,9 @@
 .app-theme[data-theme="dark"] .task-details .task-field-shell--complex .shared-input,
 .app-theme[data-theme="dark"] .task-details .task-field-shell--complex .shared-select__control,
 .app-theme[data-theme="dark"] .task-details .task-field-shell--complex .shared-textarea {
-  background: var(--control-surface) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-primary) !important;
+  background: var(--control-surface);
+  border-color: var(--border-default);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
@@ -2410,8 +2410,8 @@
 .app-theme[data-theme="dark"] .task-details .shared-textarea:hover,
 .app-theme[data-theme="dark"] .task-details__customer-input:hover,
 .app-theme[data-theme="dark"] .task-details .dtp__trigger:hover:not(:disabled) {
-  background: var(--control-surface-hover) !important;
-  border-color: var(--selected-border) !important;
+  background: var(--control-surface-hover);
+  border-color: var(--selected-border);
 }
 
 .app-theme[data-theme="dark"] .task-details .shared-input:focus,
@@ -2419,9 +2419,9 @@
 .app-theme[data-theme="dark"] .task-details .shared-textarea:focus,
 .app-theme[data-theme="dark"] .task-details__customer-input:focus,
 .app-theme[data-theme="dark"] .task-details .dtp__trigger:focus-visible {
-  background: var(--control-surface-active) !important;
-  border-color: var(--selected-border) !important;
-  box-shadow: var(--focus) !important;
+  background: var(--control-surface-active);
+  border-color: var(--selected-border);
+  box-shadow: var(--focus);
 }
 
 .app-theme[data-theme="dark"] .task-details .task-field-presentation__text,

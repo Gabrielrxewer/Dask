@@ -68,7 +68,7 @@
 }
 
 .task-card--drag-preview {
-  opacity: 0.96 !important;
+  opacity: 0.96;
   transform: rotate(2deg);
   cursor: grabbing;
 }
@@ -585,12 +585,12 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid var(--board-card-line) !important;
-  border-left: 0 !important;
-  border-radius: 12px !important;
-  background: var(--board-card-surface) !important;
-  padding: 12px 12px 11px !important;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink-shadow) 5%, transparent) !important;
+  border: 1px solid var(--board-card-line);
+  border-left: 0;
+  border-radius: 12px;
+  background: var(--board-card-surface);
+  padding: 12px 12px 11px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink-shadow) 5%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"]::before {
@@ -598,8 +598,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: color-mix(in oklab, var(--task-card-priority-border) 76%, var(--border-default)) !important;
-  box-shadow: none !important;
+  background: color-mix(in oklab, var(--task-card-priority-border) 76%, var(--border-default));
+  box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"]::after {
@@ -613,19 +613,19 @@
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"]:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--border-strong) 78%, var(--task-card-priority-border) 14%) !important;
-  background: var(--board-card-hover-surface) !important;
-  box-shadow: 0 8px 16px color-mix(in srgb, var(--ink-shadow) 7%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 78%, var(--task-card-priority-border) 14%);
+  background: var(--board-card-hover-surface);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--ink-shadow) 7%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"].task-card--dragging {
-  border-color: color-mix(in srgb, var(--border-default) 86%, var(--task-card-priority-border) 12%) !important;
-  box-shadow: 0 5px 10px color-mix(in srgb, var(--ink-shadow) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-default) 86%, var(--task-card-priority-border) 12%);
+  box-shadow: 0 5px 10px color-mix(in srgb, var(--ink-shadow) 6%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"].task-card--compact {
-  padding: 11px 11px 10px !important;
-  border-radius: 10px !important;
+  padding: 11px 11px 10px;
+  border-radius: 10px;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view .task-card__head {
@@ -644,7 +644,7 @@
   flex: 0 0 26px;
   border: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
   border-radius: 8px;
-  background: var(--surface-chip) !important;
+  background: var(--surface-chip);
   color: var(--text-secondary);
   box-shadow: none;
 }
@@ -727,10 +727,10 @@
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"] .task-field-presentation__pill,
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"] .task-field-presentation__chip,
 .app-theme:not([data-theme="dark"]) .board-view article.task-card[data-board-card="true"] .billing-summary__card-badge {
-  border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent) !important;
-  background: color-mix(in srgb, var(--surface-tint) 68%, var(--surface-1)) !important;
+  border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-tint) 68%, var(--surface-1));
   color: var(--text-secondary);
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"] {
@@ -740,12 +740,12 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid var(--board-card-line) !important;
-  border-left: 0 !important;
-  border-radius: 12px !important;
-  background: var(--board-card-surface) !important;
-  padding: 12px 12px 11px !important;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--neutral-black) 22%, transparent) !important;
+  border: 1px solid var(--board-card-line);
+  border-left: 0;
+  border-radius: 12px;
+  background: var(--board-card-surface);
+  padding: 12px 12px 11px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--neutral-black) 22%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"]::before {
@@ -753,8 +753,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: color-mix(in oklab, var(--task-card-priority-border) 72%, var(--border-default)) !important;
-  box-shadow: none !important;
+  background: color-mix(in oklab, var(--task-card-priority-border) 72%, var(--border-default));
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"]::after {
@@ -785,19 +785,19 @@
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"]:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--border-strong) 82%, var(--task-card-priority-border) 14%) !important;
-  background: var(--board-card-hover-surface) !important;
-  box-shadow: 0 8px 16px color-mix(in srgb, var(--neutral-black) 26%, transparent) !important;
+  border-color: color-mix(in oklab, var(--border-strong) 82%, var(--task-card-priority-border) 14%);
+  background: var(--board-card-hover-surface);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--neutral-black) 26%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"].task-card--dragging {
-  border-color: color-mix(in oklab, var(--border-default) 88%, var(--task-card-priority-border) 12%) !important;
-  box-shadow: 0 5px 10px color-mix(in srgb, var(--neutral-black) 22%, transparent) !important;
+  border-color: color-mix(in oklab, var(--border-default) 88%, var(--task-card-priority-border) 12%);
+  box-shadow: 0 5px 10px color-mix(in srgb, var(--neutral-black) 22%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"].task-card--compact {
-  padding: 11px 11px 10px !important;
-  border-radius: 10px !important;
+  padding: 11px 11px 10px;
+  border-radius: 10px;
 }
 
 .app-theme[data-theme="dark"] .board-view .task-card__head {
@@ -816,7 +816,7 @@
   flex: 0 0 26px;
   border: 1px solid color-mix(in oklab, var(--border-default) 72%, transparent);
   border-radius: 8px;
-  background: var(--surface-chip) !important;
+  background: var(--surface-chip);
   color: var(--text-secondary);
   box-shadow: none;
 }
@@ -899,10 +899,10 @@
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"] .task-field-presentation__pill,
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"] .task-field-presentation__chip,
 .app-theme[data-theme="dark"] .board-view article.task-card[data-board-card="true"] .billing-summary__card-badge {
-  border: 1px solid color-mix(in oklab, var(--border-default) 72%, transparent) !important;
-  background: color-mix(in oklab, var(--surface-2) 72%, var(--surface-1)) !important;
+  border: 1px solid color-mix(in oklab, var(--border-default) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-2) 72%, var(--surface-1));
   color: var(--text-secondary);
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 @media (max-width: 520px) {

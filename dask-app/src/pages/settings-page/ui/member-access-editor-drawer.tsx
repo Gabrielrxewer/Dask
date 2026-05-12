@@ -1,17 +1,20 @@
 ﻿import { useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import type {
   WorkspaceAccessControlMember,
   WorkspaceAccessControlSnapshot,
   WorkspacePermissionKey
 } from "@/modules/workspace/model";
-import { Button, DrawerShell, FormField, TextInput, UserAvatar } from "@/shared/ui";
+import { AppForm, AppFormField, Button, DrawerShell, Tabs, TextInput, UserAvatar } from "@/shared/ui";
 import { GroupPicker } from "./group-picker";
 import { ModulePicker } from "./module-picker";
 import { PermissionPicker } from "./permission-picker";
 import type { MemberEditorDraft, WorkspaceRole } from "./members-settings.model";
-import { ASSIGNABLE_ROLES, getInitials, MODULE_META, ROLE_LABELS } from "./members-settings.model";
+import { ASSIGNABLE_ROLES, getInitials, memberAccessFormSchema, MODULE_META, ROLE_LABELS } from "./members-settings.model";
 
 type MemberEditorSection = "role" | "groups" | "allow" | "deny" | "modules" | "summary";
+const MEMBER_ACCESS_FORM_ID = "member-access-editor-form";
 
 export function MemberAccessEditorDrawer({
   member,
@@ -24,19 +27,24 @@ export function MemberAccessEditorDrawer({
   onSave: (userId: string, draft: MemberEditorDraft) => Promise<void>;
   onClose: () => void;
 }) {
-  const [draft, setDraft] = useState<MemberEditorDraft>({
-    role: member.role,
-    allowOverrides: member.overrides.allow,
-    denyOverrides: member.overrides.deny,
-    groupIds: member.overrides.groupIds ?? [],
-    allowedModules: member.overrides.allowedModules ?? [],
-    boardViewKeys: (member.overrides.allowedBoardViewKeys ?? []).join(", "),
-    ownCardsOnly: member.overrides.ownCardsOnly === true,
+  const form = useForm<MemberEditorDraft, unknown, MemberEditorDraft>({
+    resolver: zodResolver(memberAccessFormSchema),
+    defaultValues: {
+      role: member.role,
+      allowOverrides: member.overrides.allow,
+      denyOverrides: member.overrides.deny,
+      groupIds: member.overrides.groupIds ?? [],
+      allowedModules: member.overrides.allowedModules ?? [],
+      boardViewKeys: (member.overrides.allowedBoardViewKeys ?? []).join(", "),
+      ownCardsOnly: member.overrides.ownCardsOnly === true,
+    },
+    mode: "onChange"
   });
   const [section, setSection] = useState<MemberEditorSection>("role");
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const draft = form.watch();
+  const isSaving = form.formState.isSubmitting;
   const isOwner = member.role === "OWNER";
   const catalog = accessControl.catalog;
   const groups = accessControl.groups ?? [];
@@ -63,14 +71,12 @@ export function MemberAccessEditorDrawer({
     return Array.from(base);
   }, [rolePerms, groupPerms, draft.allowOverrides, draft.denyOverrides]);
 
-  const handleSave = async () => {
-    setIsSaving(true);
+  const handleSave = async (values: MemberEditorDraft) => {
     setError("");
     try {
-      await onSave(member.userId, draft);
+      await onSave(member.userId, values);
     } catch {
-      setError("Não foi possível salvar as alterações.");
-      setIsSaving(false);
+      setError("Nao foi possivel salvar as alteracoes.");
     }
   };
 
@@ -84,24 +90,24 @@ export function MemberAccessEditorDrawer({
   ];
 
   const drawerNav = (
-    <>
-      {SECTIONS.map(s => (
-        <button
-          key={s.id}
-          type="button"
-          className={`ms-drawer__nav-btn${section === s.id ? " ms-drawer__nav-btn--active" : ""}`}
-          onClick={() => setSection(s.id)}
-        >
-          {s.label}
-          {s.id === "allow" && draft.allowOverrides.length > 0 && (
+    <Tabs<MemberEditorSection>
+      value={section}
+      onChange={setSection}
+      ariaLabel="Secoes do acesso do membro"
+      className="ms-drawer__nav-tabs"
+      itemClassName="ms-drawer__nav-btn"
+      activeItemClassName="ms-drawer__nav-btn--active"
+      items={SECTIONS.map((s) => ({
+        id: s.id,
+        label: s.label,
+        badge:
+          s.id === "allow" && draft.allowOverrides.length > 0 ? (
             <span className="ms-badge ms-badge--green">{draft.allowOverrides.length}</span>
-          )}
-          {s.id === "deny" && draft.denyOverrides.length > 0 && (
+          ) : s.id === "deny" && draft.denyOverrides.length > 0 ? (
             <span className="ms-badge ms-badge--red">{draft.denyOverrides.length}</span>
-          )}
-        </button>
-      ))}
-    </>
+          ) : null
+      }))}
+    />
   );
 
   const drawerFooter = (
@@ -110,7 +116,7 @@ export function MemberAccessEditorDrawer({
         Cancelar
       </Button>
       {!isOwner && (
-        <Button type="button" onClick={() => void handleSave()} disabled={isSaving}>
+        <Button type="submit" form={MEMBER_ACCESS_FORM_ID} disabled={isSaving}>
           {isSaving ? "Salvando..." : "Salvar acesso"}
         </Button>
       )}
@@ -142,6 +148,14 @@ export function MemberAccessEditorDrawer({
       footer={drawerFooter}
       footerClassName="ms-drawer__footer"
     >
+      <AppForm
+        id={MEMBER_ACCESS_FORM_ID}
+        form={form}
+        onSubmit={handleSave}
+        className="ms-drawer__form"
+        disabled={isOwner}
+        loading={isSaving}
+      >
         {section === "role" && (
           <div className="ms-drawer__section">
             <p className="ms-drawer__section-hint">Define o nível base de acesso deste membro.</p>
@@ -151,7 +165,7 @@ export function MemberAccessEditorDrawer({
                   key={role}
                   type="button"
                   className={`ms-role-btn${draft.role === role ? " ms-role-btn--active" : ""}`}
-                  onClick={() => setDraft(d => ({ ...d, role }))}
+                  onClick={() => form.setValue("role", role, { shouldDirty: true, shouldValidate: true })}
                   disabled={isOwner || isSaving || role === "OWNER"}
                 >
                   <strong>{ROLE_LABELS[role]}</strong>
@@ -187,7 +201,7 @@ export function MemberAccessEditorDrawer({
             <GroupPicker
               groups={groups}
               selected={draft.groupIds}
-              onChange={ids => setDraft(d => ({ ...d, groupIds: ids }))}
+              onChange={ids => form.setValue("groupIds", ids, { shouldDirty: true, shouldValidate: true })}
               disabled={isOwner || isSaving}
             />
             {groupPerms.allow.length > 0 && (
@@ -225,7 +239,7 @@ export function MemberAccessEditorDrawer({
             <PermissionPicker
               catalog={catalog}
               selected={draft.allowOverrides}
-              onChange={keys => setDraft(d => ({ ...d, allowOverrides: keys }))}
+              onChange={keys => form.setValue("allowOverrides", keys, { shouldDirty: true, shouldValidate: true })}
               disabled={isOwner || isSaving}
             />
           </div>
@@ -239,7 +253,7 @@ export function MemberAccessEditorDrawer({
             <PermissionPicker
               catalog={catalog}
               selected={draft.denyOverrides}
-              onChange={keys => setDraft(d => ({ ...d, denyOverrides: keys }))}
+              onChange={keys => form.setValue("denyOverrides", keys, { shouldDirty: true, shouldValidate: true })}
               disabled={isOwner || isSaving}
             />
           </div>
@@ -250,30 +264,35 @@ export function MemberAccessEditorDrawer({
             <p className="ms-drawer__section-hint">
               Módulos do workspace acessíveis a este membro.
             </p>
-            <FormField label="Módulos habilitados">
+            <AppFormField label="Modulos habilitados" error={form.formState.errors.allowedModules?.message}>
               <ModulePicker
                 selected={draft.allowedModules}
-                onChange={keys => setDraft(d => ({ ...d, allowedModules: keys }))}
+                onChange={keys => form.setValue("allowedModules", keys, { shouldDirty: true, shouldValidate: true })}
                 disabled={isOwner || isSaving}
               />
-            </FormField>
-            <FormField label="Views do board permitidas (separadas por vírgula)">
+            </AppFormField>
+            <AppFormField label="Views do board permitidas (separadas por virgula)" error={form.formState.errors.boardViewKeys?.message}>
               <TextInput
-                value={draft.boardViewKeys}
+                {...form.register("boardViewKeys")}
                 placeholder="kanban, list, agenda..."
-                onChange={e => setDraft(d => ({ ...d, boardViewKeys: e.target.value }))}
                 disabled={isOwner || isSaving}
               />
-            </FormField>
-            <label className="ms-toggle-label">
-              <input
-                type="checkbox"
-                checked={draft.ownCardsOnly}
-                onChange={e => setDraft(d => ({ ...d, ownCardsOnly: e.target.checked }))}
-                disabled={isOwner || isSaving}
-              />
-              <span>Mostrar somente cards do próprio membro</span>
-            </label>
+            </AppFormField>
+            <Controller
+              control={form.control}
+              name="ownCardsOnly"
+              render={({ field }) => (
+                <label className="ms-toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={event => field.onChange(event.target.checked)}
+                    disabled={isOwner || isSaving}
+                  />
+                  <span>Mostrar somente cards do proprio membro</span>
+                </label>
+              )}
+            />
           </div>
         )}
 
@@ -359,6 +378,7 @@ export function MemberAccessEditorDrawer({
             </div>
           </div>
         )}
+      </AppForm>
     </DrawerShell>
   );
 }

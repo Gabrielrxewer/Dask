@@ -1,3 +1,5 @@
+import { maskEmail, maskPhone } from '@/core/security/redaction';
+
 const basicEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function normalizeCommunicationAddress(channel: string, address: string): string {
@@ -20,15 +22,10 @@ export function isValidEmailAddress(address: string): boolean {
 export function maskCommunicationAddress(channel: string, address: string): string {
   const normalized = normalizeCommunicationAddress(channel, address);
   if (channel.trim().toLowerCase() !== 'email') {
-    return normalized.length <= 4 ? '****' : `${normalized.slice(0, 3)}******${normalized.slice(-4)}`;
+    return maskPhone(normalized) ?? '****';
   }
 
-  const [local, domain] = normalized.split('@');
-  if (!local || !domain) {
-    return '***';
-  }
-
-  return `${local.slice(0, 1)}***@${domain}`;
+  return maskEmail(normalized) ?? '***';
 }
 
 export type NormalizedPhone = {

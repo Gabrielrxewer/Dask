@@ -4,6 +4,7 @@ import { MODULE_META } from "./members-settings.model";
 
 interface AccessGroupsSectionProps {
   groups: WorkspaceAccessGroup[];
+  canManageGroups: boolean;
   isDeletingGroupId: string | null;
   onCreateGroup: () => void;
   onEditGroup: (group: WorkspaceAccessGroup) => void;
@@ -12,6 +13,7 @@ interface AccessGroupsSectionProps {
 
 export function AccessGroupsSection({
   groups,
+  canManageGroups,
   isDeletingGroupId,
   onCreateGroup,
   onEditGroup,
@@ -24,7 +26,7 @@ export function AccessGroupsSection({
       className="ms-section"
     >
       <div className="ms-section-top-action">
-        <Button type="button" onClick={onCreateGroup}>
+        <Button type="button" onClick={onCreateGroup} disabled={!canManageGroups}>
           Criar grupo
         </Button>
       </div>
@@ -45,6 +47,7 @@ export function AccessGroupsSection({
                     size="sm"
                     variant="outline"
                     onClick={() => onEditGroup(group)}
+                    disabled={!canManageGroups}
                   >
                     Editar
                   </Button>
@@ -53,7 +56,7 @@ export function AccessGroupsSection({
                     size="sm"
                     variant="outline"
                     onClick={() => void onDeleteGroup(group.id)}
-                    disabled={isDeletingGroupId === group.id}
+                    disabled={!canManageGroups || isDeletingGroupId === group.id}
                   >
                     {isDeletingGroupId === group.id ? "Removendo..." : "Remover"}
                   </Button>

@@ -1,5 +1,6 @@
 import { Prisma, type AutomationSideEffect, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { redactErrorMessage } from '@/core/security/redaction';
 import { AutomationApprovalRequestService } from '@/modules/automation/application/automation-approval-request-service';
 import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
 import { CommunicationConversationService } from '@/modules/automation/communication/communication-conversation-service';
@@ -211,7 +212,7 @@ export class AutomationSideEffectService {
             channel,
             provider,
             approvalRequestId,
-            reason: error instanceof Error ? error.message : String(error)
+            reason: redactErrorMessage(error)
           }
         });
         throw error;

@@ -72,6 +72,7 @@ describe("Automation Studio commercial automation UI", () => {
     expect(html).toContain("Contratos");
     expect(html).toContain("Criar contrato");
     expect(html).not.toContain("create_document");
+    expect(html).not.toContain("draggable");
   });
 
   it("blocks publish preview when required visual config is missing", () => {
@@ -113,9 +114,9 @@ describe("Automation Studio commercial automation UI", () => {
         position: { x: 0, y: 0 },
         data: {
           nodeType: "trigger",
-          label: "Lead capturado",
+          label: "WorkItem comercial criado",
           summary: "",
-          config: { triggerType: "lead_captured" }
+          config: { triggerType: "commercial_work_item_created" }
         }
       },
       {

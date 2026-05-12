@@ -1,5 +1,6 @@
-import type { ComponentProps, Dispatch, DragEvent, MouseEvent, ReactNode, SetStateAction } from "react";
-import { getTaskFieldTypeLabel, TaskCard } from "@/entities/task";
+import type { ComponentProps, Dispatch, ReactNode, SetStateAction } from "react";
+import { getTaskFieldTypeLabel } from "@/entities/task/model/card-fields";
+import { TaskCard } from "@/entities/task/ui/task-card";
 import type {
   BoardConfig,
   Task,
@@ -7,7 +8,7 @@ import type {
   TaskFieldDefinition
 } from "@/entities/task";
 import type { ApiItemType } from "@/modules/workspace/model";
-import type { DetailZone, EditorDropTarget, LayoutScope } from "@/pages/settings-page/model/work-item-layout-editor";
+import type { DetailZone, EditorDropTarget } from "@/pages/settings-page/model/work-item-layout-editor";
 import { EmptyState } from "@/shared/ui";
 import {
   PREVIEW_CARD_DESCRIPTION,
@@ -42,14 +43,8 @@ interface WorkItemEditorCanvasProps {
   renderCardEmptySlot: NonNullable<ComponentProps<typeof TaskCard>["renderEmptySlot"]>;
   renderDetailInsertTarget: (zone: DetailZone, index: number) => ReactNode;
   renderDetailFieldCard: (field: FieldLibraryItem, zone: DetailZone, index: number) => ReactNode;
-  onPreviewSurfaceDragOver: (event: DragEvent<HTMLElement>) => void;
-  onSurfaceDragLeave: (surface: LayoutScope) => (event: DragEvent<HTMLElement>) => void;
-  onApplyResolvedDropTarget: (target: EditorDropTarget) => void;
-  onDragEnd: () => void;
   onClearSelectedField: () => void;
   onDebugSnapshot: (snapshot: TaskCardDebugSnapshot | null) => void;
-  onDetailZoneDragOver: (event: DragEvent<HTMLElement>, zone: DetailZone, index: number) => void;
-  onDetailZoneMouseMove: (event: MouseEvent<HTMLElement>, zone: DetailZone, index: number) => void;
 }
 
 export function WorkItemEditorCanvas({
@@ -78,14 +73,8 @@ export function WorkItemEditorCanvas({
   renderCardEmptySlot,
   renderDetailInsertTarget,
   renderDetailFieldCard,
-  onPreviewSurfaceDragOver,
-  onSurfaceDragLeave,
-  onApplyResolvedDropTarget,
-  onDragEnd,
   onClearSelectedField,
-  onDebugSnapshot,
-  onDetailZoneDragOver,
-  onDetailZoneMouseMove
+  onDebugSnapshot
 }: WorkItemEditorCanvasProps) {
   return (
     <div className="wie__canvas">
@@ -125,14 +114,6 @@ export function WorkItemEditorCanvas({
       <section className={`wie__canvas-panel wie__canvas-panel--card${activeCanvasTab === "card" ? "" : " is-hidden"}`}>
         <div
           className={`wie__card-stage${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-          onDragOver={onPreviewSurfaceDragOver}
-          onDragLeave={onSurfaceDragLeave("card")}
-          onDrop={(event) => {
-            event.preventDefault();
-            if (dropTarget?.surface === "card") {
-              onApplyResolvedDropTarget(dropTarget);
-            }
-          }}
           onClick={onClearSelectedField}
         >
           <TaskCard
@@ -144,16 +125,9 @@ export function WorkItemEditorCanvas({
             }}
             membersById={previewMembersById}
             displayStatuses={previewRuntimeStatuses}
-            draggable={false}
             getFieldSlotProps={getCardPreviewFieldProps}
             renderEmptySlot={renderCardEmptySlot}
             onDebugSnapshot={onDebugSnapshot}
-            onDragStart={(e) => {
-              if (e.target === e.currentTarget) {
-                e.preventDefault();
-              }
-            }}
-            onDragEnd={onDragEnd}
           />
           <div className={`wie__stage-hint${isDragging ? " is-visible" : ""}`}>
             {isDraggingType
@@ -176,15 +150,6 @@ export function WorkItemEditorCanvas({
             </div>
             <div
               className={`wie__form-zone${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-              onDragOver={(event) => onDetailZoneDragOver(event, "main", detailMainFields.length)}
-              onMouseMove={(event) => onDetailZoneMouseMove(event, "main", detailMainFields.length)}
-              onDragLeave={onSurfaceDragLeave("detail")}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (dropTarget?.surface === "detail" && dropTarget.zone === "main") {
-                  onApplyResolvedDropTarget(dropTarget);
-                }
-              }}
             >
               <div className="wie__form-zone-head">
                 <span>Coluna principal</span>
@@ -212,15 +177,6 @@ export function WorkItemEditorCanvas({
             </div>
             <div
               className={`wie__form-zone is-side${isDragging ? " is-drop-ready" : ""}${isDraggingType ? " is-type-target" : ""}`}
-              onDragOver={(event) => onDetailZoneDragOver(event, "side", detailSideFields.length)}
-              onMouseMove={(event) => onDetailZoneMouseMove(event, "side", detailSideFields.length)}
-              onDragLeave={onSurfaceDragLeave("detail")}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (dropTarget?.surface === "detail" && dropTarget.zone === "side") {
-                  onApplyResolvedDropTarget(dropTarget);
-                }
-              }}
             >
               <div className="wie__form-zone-head">
                 <span>Barra lateral</span>

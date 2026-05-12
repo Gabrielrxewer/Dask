@@ -97,8 +97,10 @@ describe('automation business capabilities', () => {
 
     expect(capabilities.recipeCatalog.map((recipe) => recipe.id)).toEqual(
       expect.arrayContaining([
-        'lead-captured-to-new-lead',
-        'first-contact-on-new-lead',
+        'commercial-work-item-created-to-intake',
+        'first-contact-on-commercial-intake',
+        'hot-opportunity-followup',
+        'no-response-followup',
         'proposal-preparing-create-proposal',
         'proposal-approved-create-contract',
         'contract-accepted-create-billing',

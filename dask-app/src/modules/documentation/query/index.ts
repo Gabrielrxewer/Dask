@@ -25,10 +25,13 @@ export {
   useMoveFolderMutation,
   usePublicCommercialDocumentDecisionMutation,
   useRejectCommercialDocumentMutation,
+  useRunDocumentationAssistantMutation,
   useSendCommercialDocumentMutation,
   useUnlinkDocumentWorkItemMutation,
   useUpdateDocumentMutation,
   useUpdateDocumentTagsMutation,
   useUpdateFolderMutation,
+  useWorkspaceDocumentActions,
   useUploadDocumentAssetMutation
 } from "@/modules/documentation/query/documentation-mutations";
+export type { WorkspaceDocumentActions } from "@/modules/documentation/query/documentation-mutations";

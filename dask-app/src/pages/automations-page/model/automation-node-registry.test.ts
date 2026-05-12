@@ -34,7 +34,7 @@ describe("automation node config descriptors", () => {
     }).success).toBe(true);
   });
 
-  it("rejects invalid JSON text in structured config fields", () => {
+  it("uses structured key-value config fields instead of raw JSON text", () => {
     const descriptor = createAutomationNodeConfigDescriptor({
       ...descriptorInput,
       nodeType: "register_card_activity",
@@ -48,6 +48,9 @@ describe("automation node config descriptors", () => {
       payload: { severity: "info" }
     }).success).toBe(true);
 
+    expect(descriptor.fields.find((field) => field.name === "payload")).toMatchObject({
+      type: "key-value-list"
+    });
     expect(schema.safeParse({
       ...baseConfig,
       payload: "{ invalid"

@@ -9,6 +9,7 @@ interface MembersListSectionProps {
   isLoadingAccessControl: boolean;
   members: WorkspaceAccessControlMember[];
   accessControl: WorkspaceAccessControlSnapshot | null;
+  canEditMembers: boolean;
   onEditMember: (member: WorkspaceAccessControlMember) => void;
 }
 
@@ -16,6 +17,7 @@ export function MembersListSection({
   isLoadingAccessControl,
   members,
   accessControl,
+  canEditMembers,
   onEditMember,
 }: MembersListSectionProps) {
   return (
@@ -67,9 +69,9 @@ export function MembersListSection({
                   size="sm"
                   variant="outline"
                   onClick={() => editableMember && onEditMember(editableMember)}
-                  disabled={isOwner || !editableMember}
+                  disabled={!canEditMembers || isOwner || !editableMember}
                 >
-                  {isOwner ? "Proprietário" : "Editar acesso"}
+                  {isOwner ? "Proprietário" : canEditMembers ? "Editar acesso" : "Somente leitura"}
                 </Button>
               </div>
             );

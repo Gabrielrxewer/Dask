@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import type { MarketingTemplate, SendMarketingTemplateTestEmailValues } from "@/modules/marketing";
 import { sendMarketingTemplateTestEmailSchema } from "@/modules/marketing";
-import { AppDialog, AppForm, AppFormActions, AppTextField, AppTextareaField, Button } from "@/shared/ui";
+import { AppDialog, AppForm, AppFormActions, AppTextField, Button } from "@/shared/ui";
 
 interface EmailTemplateTestDialogProps {
   template: MarketingTemplate | null;
@@ -16,10 +16,21 @@ interface EmailTemplateTestDialogProps {
 
 type EmailTemplateTestFormValues = z.input<typeof sendMarketingTemplateTestEmailSchema>;
 
-const DEFAULT_VALUES: EmailTemplateTestFormValues = {
+const TEMPLATE_VARIABLE_PATTERN = /\{\{\s*([^{}\s]+)\s*\}\}/g;
+
+function extractTemplateVariables(template: MarketingTemplate | null): string[] {
+  if (!template) {
+    return [];
+  }
+
+  const source = [template.subject, template.bodyMarkdown, template.bodyHtml ?? ""].join("\n");
+  return Array.from(new Set(Array.from(source.matchAll(TEMPLATE_VARIABLE_PATTERN), (match) => match[1])));
+}
+
+const buildDefaultValues = (template: MarketingTemplate | null): EmailTemplateTestFormValues => ({
   to: "",
-  variables: "{\n  \"lead.firstName\": \"Ana\",\n  \"companyName\": \"Dask\"\n}"
-};
+  variables: extractTemplateVariables(template).map((key) => ({ key, value: "" }))
+});
 
 export function EmailTemplateTestDialog({
   template,
@@ -30,14 +41,16 @@ export function EmailTemplateTestDialog({
 }: EmailTemplateTestDialogProps) {
   const form = useForm<EmailTemplateTestFormValues, unknown, SendMarketingTemplateTestEmailValues>({
     resolver: zodResolver(sendMarketingTemplateTestEmailSchema),
-    defaultValues: DEFAULT_VALUES
+    defaultValues: buildDefaultValues(template)
   });
 
   useEffect(() => {
     if (open) {
-      form.reset(DEFAULT_VALUES);
+      form.reset(buildDefaultValues(template));
     }
-  }, [open, form]);
+  }, [open, form, template]);
+
+  const variableFields = form.watch("variables") ?? [];
 
   return (
     <AppDialog
@@ -60,7 +73,16 @@ export function EmailTemplateTestDialog({
         }}
       >
         <AppTextField name="to" label="E-mail de destino" type="email" placeholder="ana@empresa.com" autoFocus />
-        <AppTextareaField name="variables" label="Variaveis JSON" rows={6} />
+        {variableFields.map((variable, index) => (
+          <div key={`${variable.key}-${index}`}>
+            <input type="hidden" {...form.register(`variables.${index}.key` as const)} />
+            <AppTextField
+              name={`variables.${index}.value` as const}
+              label={variable.key}
+              placeholder="Valor para o teste"
+            />
+          </div>
+        ))}
 
         <AppFormActions className="mkt-follow-up-dialog__actions">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>

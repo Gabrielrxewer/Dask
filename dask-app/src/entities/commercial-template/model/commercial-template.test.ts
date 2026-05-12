@@ -8,16 +8,16 @@ import {
 
 describe("commercial template registry", () => {
   it("resolves versioned commercial fields from the official registry", () => {
-    const leadTemplate = getCommercialTemplate("lead", 1);
+    const workItemTemplate = getCommercialTemplate("workItem", 1);
 
-    expect(leadTemplate.version).toBe(1);
-    expect(listCommercialFieldKeys("lead")).toContain("customerName");
-    expect(getCommercialFieldDefinition("lead", "estimatedValue")?.type).toBe("currency");
+    expect(workItemTemplate.version).toBe(1);
+    expect(listCommercialFieldKeys("workItem")).toContain("customerName");
+    expect(getCommercialFieldDefinition("workItem", "estimatedValue")?.type).toBe("currency");
   });
 
-  it("declares a compatible Signal to Lead field migration", () => {
+  it("declares a compatible Signal to WorkItem field migration", () => {
     const migration = commercialTemplateMigrations.find(
-      (entry) => entry.fromTemplate === "signal" && entry.toTemplate === "lead"
+      (entry) => entry.fromTemplate === "signal" && entry.toTemplate === "workItem"
     );
 
     expect(migration?.fieldMap.customerName).toBe("customerName");

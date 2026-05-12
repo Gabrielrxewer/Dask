@@ -51,5 +51,7 @@ export const documentationQueryKeys = {
   publicDocument: (publicAccessId: string | null | undefined) =>
     [...documentationQueryKeys.all, "public", publicAccessId ?? "__missing_public_access__"] as const,
   workItemContext: (workspaceId: string, workItemId: string | null | undefined) =>
-    [...documentationQueryKeys.workspace(workspaceId), "work-item-context", workItemId ?? "__missing_work_item__"] as const
+    [...documentationQueryKeys.workspace(workspaceId), "work-item-context", workItemId ?? "__missing_work_item__"] as const,
+  workItemDocuments: (workspaceId: string, workItemId: string | null | undefined) =>
+    [...documentationQueryKeys.workspace(workspaceId), "work-item-documents", workItemId ?? "__missing_work_item__"] as const
 };

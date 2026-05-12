@@ -213,8 +213,12 @@
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
+  color: inherit;
+  font: inherit;
+  appearance: none;
   text-align: left;
   cursor: grab;
+  touch-action: none;
   user-select: none;
   outline: none;
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
@@ -273,15 +277,22 @@
   transform: scale(0.985);
 }
 
+.flow-canvas-ui__sidebar-item--dragging {
+  opacity: 0.48;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
 .flow-canvas-ui__sidebar-item:hover,
 .flow-canvas-ui__sidebar-item:focus-visible {
   background: color-mix(in oklab, var(--item-color) 8%, var(--surface-raised, var(--neutral-white)));
   border-color: color-mix(in oklab, var(--item-color) 26%, transparent);
 }
 
+.flow-canvas-ui__sidebar-item:disabled,
 .flow-canvas-ui__sidebar-item[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.58;
+  transform: none;
 }
 
 .flow-canvas-ui__sidebar-dot {
@@ -416,6 +427,25 @@
 .flow-canvas-ui__edge--invalid .react-flow__edge-path {
   stroke: var(--danger, #dc2626);
   stroke-dasharray: 8 6;
+}
+
+.flow-canvas-ui__drag-overlay {
+  --item-color: var(--text-primary);
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 224px;
+  min-height: 48px;
+  padding: 8px 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--item-color) 28%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 94%, transparent);
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--primary) 18%, transparent);
+  pointer-events: none;
+  user-select: none;
 }
 
 .app-theme[data-theme="dark"] .flow-canvas-ui {

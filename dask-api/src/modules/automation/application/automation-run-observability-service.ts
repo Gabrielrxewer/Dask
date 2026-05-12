@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { maskEmail, maskPhone } from '@/core/security/redaction';
 import {
   isAutomationRunStatus,
   normalizeAutomationLimit,
@@ -15,6 +16,8 @@ type RunListInput = {
   workflowId?: string;
   status?: string;
   triggerType?: string;
+  triggerTypes?: string[];
+  triggerRefIdContains?: string;
   dateFrom?: Date;
   dateTo?: Date;
   search?: string;
@@ -83,31 +86,6 @@ function summarizePayload(value: unknown): unknown {
   return Object.keys(summary).length > 0 ? summary : safe;
 }
 
-function maskEmail(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const [local, domain] = normalized.split('@');
-  if (!local || !domain) {
-    return '***';
-  }
-
-  return `${local.slice(0, 1)}***@${domain}`;
-}
-
-function maskPhone(value: string | null | undefined): string | null {
-  const digits = value?.replace(/\D/g, '') ?? '';
-  if (!digits) {
-    return null;
-  }
-
-  const suffix = digits.slice(-4);
-  const prefix = digits.startsWith('55') ? '+55' : '+';
-  return `${prefix}******${suffix}`;
-}
-
 function millisecondsBetween(start: Date | null, end: Date | null): number | null {
   if (!start) {
     return null;
@@ -141,7 +119,10 @@ export class AutomationRunObservabilityService {
       workspaceId: input.workspaceId,
       workflowId: input.workflowId,
       status: input.status as AutomationRunStatus | undefined,
-      triggerType: input.triggerType,
+      triggerType: input.triggerTypes?.length ? { in: input.triggerTypes } : input.triggerType,
+      triggerRefId: input.triggerRefIdContains
+        ? { contains: input.triggerRefIdContains, mode: 'insensitive' }
+        : undefined,
       createdAt: buildDateWhere(input),
       ...(search
         ? {

@@ -12,9 +12,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mocked } from 'vitest';
 import { BillingService } from '@/modules/billing/application/billing-service';
+import { listMissingStripeBillingProductionEnv } from '@/modules/billing/application/billing-runtime-env';
+import { redactBillingMetadata, redactBillingSecretValue } from '@/modules/billing/domain/redaction';
 import type {
   BillingRepository,
   BillingUser,
+  ConnectPaymentOrder,
   Subscription
 } from '@/modules/billing/repositories/billing-repository';
 import type { SubscriptionPlan, SubscriptionStatus } from '@/modules/billing/domain/types';
@@ -43,6 +46,7 @@ type MockStripeInstance = {
 
 const APP_URL = 'http://localhost:5173';
 const WEBHOOK_SECRET = 'whsec_test';
+const PORTAL_TOKEN_SECRET = 'billing-portal-token-secret-for-unit-tests';
 
 function makeUser(overrides: Partial<BillingUser> = {}): BillingUser {
   return {
@@ -86,6 +90,74 @@ function makeWorkspace(overrides: Record<string, unknown> = {}) {
     id: 'workspace-1',
     name: 'Workspace Test',
     connectAccountId: null as string | null,
+    ...overrides
+  };
+}
+
+function makeConnectAccount(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'acct_existing',
+    details_submitted: true,
+    charges_enabled: true,
+    payouts_enabled: true,
+    capabilities: {
+      card_payments: 'active',
+      transfers: 'active',
+      boleto_payments: 'active',
+      pix_payments: 'inactive'
+    },
+    requirements: { currently_due: [] },
+    ...overrides
+  };
+}
+
+function makeBillingCustomer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'customer-1',
+    workspaceId: 'workspace-1',
+    name: 'Cliente Teste',
+    tradeName: null,
+    legalName: 'Cliente Teste Ltda',
+    document: '12.345.678/0001-90',
+    stateRegistration: null,
+    municipalRegistration: null,
+    taxRegime: null,
+    email: 'cliente@example.com',
+    phone: null,
+    address: null,
+    ...overrides
+  };
+}
+
+function makeConnectPaymentOrder(overrides: Partial<ConnectPaymentOrder> = {}): ConnectPaymentOrder {
+  return {
+    id: 'order-connect-1',
+    workspaceId: 'workspace-1',
+    createdByUserId: 'user-1',
+    stripeConnectAccountId: 'acct_existing',
+    stripeCheckoutSessionId: null,
+    stripePaymentIntentId: null,
+    amount: 10000,
+    currency: 'brl',
+    description: 'Servico mensal',
+    customerId: 'customer-1',
+    customerName: 'Cliente Teste Ltda',
+    customerEmail: 'cliente@example.com',
+    customerDocument: '12.345.678/0001-90',
+    customerPhone: null,
+    customerAddress: null,
+    applicationFeeAmount: 500,
+    status: 'DRAFT',
+    statusReason: null,
+    metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' },
+    checkoutUrl: null,
+    paidAt: null,
+    failedAt: null,
+    canceledAt: null,
+    refundedAt: null,
+    lastWebhookEvent: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
     ...overrides
   };
 }
@@ -166,6 +238,7 @@ describe('BillingService', () => {
       stripe: stripe as any,
       appPublicUrl: APP_URL,
       webhookSecret: WEBHOOK_SECRET,
+      portalTokenSecret: PORTAL_TOKEN_SECRET,
       priceIds: {
         PERSONAL: 'price_personal',
         BUSINESS: 'price_business'
@@ -229,6 +302,31 @@ describe('BillingService', () => {
       const call = (stripe.checkout.sessions.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(call.success_url).toContain('/billing/success');
       expect(call.cancel_url).toContain('/billing/cancel');
+    });
+
+    it('blocks production Stripe actions when STRIPE_SECRET_KEY is not configured', async () => {
+      const productionService = new BillingService({
+        repo,
+        stripe: stripe as any,
+        appPublicUrl: APP_URL,
+        webhookSecret: WEBHOOK_SECRET,
+        environment: 'production',
+        stripeSecretConfigured: false,
+        priceIds: {
+          PERSONAL: 'price_personal',
+          BUSINESS: 'price_business'
+        }
+      });
+
+      await expect(productionService.createCheckoutSession('user-1', 'PERSONAL')).rejects.toMatchObject({
+        statusCode: 503,
+        details: {
+          code: 'STRIPE_BILLING_ENV_MISSING',
+          missingEnv: ['STRIPE_SECRET_KEY']
+        }
+      });
+      expect(repo.findUserById).not.toHaveBeenCalled();
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
     });
   });
 
@@ -300,7 +398,7 @@ describe('BillingService', () => {
       repo.findWorkspaceMembership.mockResolvedValue({
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: 'ADMIN'
+        role: 'OWNER'
       });
       repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
         makeWorkspace({ connectAccountId: 'acct_existing' })
@@ -315,7 +413,22 @@ describe('BillingService', () => {
       expect(result.accountId).toBe('acct_existing');
     });
 
-    it('blocks connect setup for non-admin workspace member', async () => {
+    it('blocks sensitive connect setup for workspace admin', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-admin',
+        role: 'ADMIN'
+      });
+
+      await expect(service.createConnectOnboardingLink('workspace-1', 'user-admin')).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'Only workspace OWNER can manage sensitive billing connect settings'
+      });
+      expect(repo.findWorkspaceBillingConnectInfo).not.toHaveBeenCalled();
+      expect(stripe.accountLinks.create).not.toHaveBeenCalled();
+    });
+
+    it('blocks sensitive connect setup for workspace member', async () => {
       repo.findWorkspaceMembership.mockResolvedValue({
         workspaceId: 'workspace-1',
         userId: 'user-1',
@@ -327,6 +440,68 @@ describe('BillingService', () => {
       });
     });
 
+    it('allows owner to update sensitive connect payment method configuration', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      (stripe.paymentMethodConfigurations.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [{ id: 'pmc_1', is_default: true, boleto: { available: false } }]
+      });
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount({
+        capabilities: {
+          card_payments: 'active',
+          transfers: 'active',
+          boleto_payments: 'inactive'
+        }
+      }));
+
+      const status = await service.requestConnectLocalPaymentMethod('workspace-1', 'user-1', 'boleto');
+
+      expect(stripe.paymentMethodConfigurations.update).toHaveBeenCalledWith(
+        'pmc_1',
+        { boleto: { display_preference: { preference: 'on' } } },
+        { stripeAccount: 'acct_existing' }
+      );
+      expect(status.boletoPaymentsStatus).toBe('enabled');
+    });
+
+    it('blocks admin from sensitive connect payment method configuration', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-admin',
+        role: 'ADMIN'
+      });
+
+      await expect(
+        service.requestConnectLocalPaymentMethod('workspace-1', 'user-admin', 'boleto')
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'Only workspace OWNER can manage sensitive billing connect settings'
+      });
+      expect(repo.findWorkspaceBillingConnectInfo).not.toHaveBeenCalled();
+      expect(stripe.paymentMethodConfigurations.update).not.toHaveBeenCalled();
+    });
+
+    it('blocks member from sensitive connect payment method configuration', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-member',
+        role: 'MEMBER'
+      });
+
+      await expect(
+        service.requestConnectLocalPaymentMethod('workspace-1', 'user-member', 'boleto')
+      ).rejects.toMatchObject({
+        statusCode: 403
+      });
+      expect(stripe.paymentMethodConfigurations.update).not.toHaveBeenCalled();
+    });
+
     it('creates connected checkout session with platform fee', async () => {
       repo.findWorkspaceMembership.mockResolvedValue({
         workspaceId: 'workspace-1',
@@ -336,78 +511,14 @@ describe('BillingService', () => {
       repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
         makeWorkspace({ connectAccountId: 'acct_existing' })
       );
-      repo.findCustomerById.mockResolvedValue({
-        id: 'customer-1',
-        workspaceId: 'workspace-1',
-        name: 'Cliente Teste',
-        tradeName: null,
-        legalName: 'Cliente Teste Ltda',
-        document: '12.345.678/0001-90',
-        stateRegistration: null,
-        municipalRegistration: null,
-        taxRegime: null,
-        email: 'cliente@example.com',
-        phone: null,
-        address: null
-      });
-      repo.createConnectPaymentOrder.mockResolvedValue({
-        id: 'order-connect-1',
-        workspaceId: 'workspace-1',
-        createdByUserId: 'user-1',
-        stripeConnectAccountId: 'acct_existing',
-        stripeCheckoutSessionId: null,
-        stripePaymentIntentId: null,
-        amount: 10000,
-        currency: 'brl',
-        description: 'Servico mensal',
-        customerId: 'customer-1',
-        customerName: 'Cliente Teste Ltda',
-        customerEmail: null,
-        customerDocument: '12.345.678/0001-90',
-        customerPhone: null,
-        customerAddress: null,
-        applicationFeeAmount: 500,
-        status: 'DRAFT',
-        statusReason: null,
-        metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' },
-        checkoutUrl: null,
-        paidAt: null,
-        failedAt: null,
-        canceledAt: null,
-        refundedAt: null,
-        lastWebhookEvent: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-      repo.updateConnectPaymentOrder.mockResolvedValue({
-        id: 'order-connect-1',
-        workspaceId: 'workspace-1',
-        createdByUserId: 'user-1',
-        stripeConnectAccountId: 'acct_existing',
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount());
+      repo.findCustomerById.mockResolvedValue(makeBillingCustomer());
+      repo.createConnectPaymentOrder.mockResolvedValue(makeConnectPaymentOrder());
+      repo.updateConnectPaymentOrder.mockResolvedValue(makeConnectPaymentOrder({
         stripeCheckoutSessionId: 'cs_connect_1',
-        stripePaymentIntentId: null,
-        amount: 10000,
-        currency: 'brl',
-        description: 'Servico mensal',
-        customerId: 'customer-1',
-        customerName: 'Cliente Teste Ltda',
-        customerEmail: null,
-        customerDocument: '12.345.678/0001-90',
-        customerPhone: null,
-        customerAddress: null,
-        applicationFeeAmount: 500,
         status: 'CHECKOUT_OPEN',
-        statusReason: null,
-        metadata: { orderId: 'order-1', sourceWorkItemId: 'item-1' },
-        checkoutUrl: 'https://checkout.stripe.com/connect/cs_connect_1',
-        paidAt: null,
-        failedAt: null,
-        canceledAt: null,
-        refundedAt: null,
-        lastWebhookEvent: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+        checkoutUrl: 'https://checkout.stripe.com/connect/cs_connect_1'
+      }));
       (stripe.checkout.sessions.create as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'cs_connect_1',
         url: 'https://checkout.stripe.com/connect/cs_connect_1'
@@ -424,6 +535,7 @@ describe('BillingService', () => {
       expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           mode: 'payment',
+          payment_method_types: ['card', 'boleto'],
           payment_intent_data: expect.objectContaining({
             application_fee_amount: 500,
             transfer_data: {
@@ -434,6 +546,18 @@ describe('BillingService', () => {
       );
       expect(response.sessionId).toBe('cs_connect_1');
       expect(response.orderId).toBe('order-connect-1');
+      expect(stripe.accounts.retrieve).toHaveBeenCalledWith('acct_existing');
+      const metadataUpdate = repo.updateConnectPaymentOrder.mock.calls.find(([, input]) =>
+        Boolean(input.metadata?.clientPortalTokenId)
+      )?.[1].metadata;
+      expect(metadataUpdate).toMatchObject({
+        clientPortalTokenId: expect.any(String),
+        clientPortalTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/)
+      });
+      expect(metadataUpdate).not.toHaveProperty('clientPortalUrl');
+      const sessionPayload = (stripe.checkout.sessions.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(JSON.stringify(sessionPayload)).not.toContain('clientPortalUrl');
+      expect(JSON.stringify(sessionPayload)).not.toContain('/portal/billing?token=');
       expect(repo.syncWorkItemBillingSnapshot).toHaveBeenCalledWith(
         expect.objectContaining({
           workspaceId: 'workspace-1',
@@ -442,6 +566,147 @@ describe('BillingService', () => {
           billingStatus: 'pending'
         })
       );
+    });
+
+    it('blocks connected checkout when required capabilities are missing', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      repo.findCustomerById.mockResolvedValue(makeBillingCustomer());
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount({
+        charges_enabled: true,
+        capabilities: {
+          card_payments: 'inactive',
+          transfers: 'active',
+          boleto_payments: 'active'
+        }
+      }));
+
+      await expect(service.createConnectCheckoutSession('workspace-1', 'user-1', {
+        amount: 10000,
+        currency: 'brl',
+        description: 'Servico mensal',
+        customerId: 'customer-1'
+      })).rejects.toMatchObject({
+        statusCode: 409,
+        details: {
+          code: 'STRIPE_CONNECT_CAPABILITY_MISSING',
+          missingCapabilities: ['card_payments']
+        }
+      });
+      expect(repo.createConnectPaymentOrder).not.toHaveBeenCalled();
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+
+    it('honors configured Stripe Connect required capabilities before dependent checkout flow', async () => {
+      const capabilityService = new BillingService({
+        repo,
+        stripe: stripe as any,
+        appPublicUrl: APP_URL,
+        webhookSecret: WEBHOOK_SECRET,
+        portalTokenSecret: PORTAL_TOKEN_SECRET,
+        connectRequiredCapabilities: ['charges_enabled', 'transfers', 'card_payments', 'pix_payments'],
+        priceIds: {
+          PERSONAL: 'price_personal',
+          BUSINESS: 'price_business'
+        }
+      });
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      repo.findCustomerById.mockResolvedValue(makeBillingCustomer());
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount({
+        capabilities: {
+          card_payments: 'active',
+          transfers: 'active',
+          boleto_payments: 'active',
+          pix_payments: 'inactive'
+        }
+      }));
+
+      await expect(capabilityService.createConnectCheckoutSession('workspace-1', 'user-1', {
+        amount: 10000,
+        currency: 'brl',
+        description: 'Servico mensal',
+        customerId: 'customer-1'
+      })).rejects.toMatchObject({
+        statusCode: 409,
+        details: {
+          code: 'STRIPE_CONNECT_CAPABILITY_MISSING',
+          missingCapabilities: ['pix_payments']
+        }
+      });
+      expect(repo.createConnectPaymentOrder).not.toHaveBeenCalled();
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+
+    it('does not derive billing portal token secrets from webhook secrets', async () => {
+      const noPortalSecretService = new BillingService({
+        repo,
+        stripe: stripe as any,
+        appPublicUrl: APP_URL,
+        webhookSecret: WEBHOOK_SECRET,
+        priceIds: {
+          PERSONAL: 'price_personal',
+          BUSINESS: 'price_business'
+        }
+      });
+
+      await expect(noPortalSecretService.createConnectPaymentOrderPortalToken(
+        'workspace-1',
+        'user-1',
+        'order-connect-1'
+      )).rejects.toMatchObject({
+        statusCode: 503,
+        details: {
+          code: 'BILLING_PORTAL_TOKEN_SECRET_MISSING'
+        }
+      });
+      expect(repo.findWorkspaceMembership).not.toHaveBeenCalled();
+    });
+
+    it('returns safe provider errors without leaking Stripe secrets or portal tokens', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        role: 'OWNER'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount());
+      repo.findCustomerById.mockResolvedValue(makeBillingCustomer());
+      repo.createConnectPaymentOrder.mockResolvedValue(makeConnectPaymentOrder());
+      repo.updateConnectPaymentOrder.mockResolvedValue(makeConnectPaymentOrder({ status: 'FAILED' }));
+      (stripe.checkout.sessions.create as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Stripe failed with sk_live_secret123456 and https://app.test/portal/billing?token=raw-token')
+      );
+
+      await expect(service.createConnectCheckoutSession('workspace-1', 'user-1', {
+        amount: 10000,
+        currency: 'brl',
+        description: 'Servico mensal',
+        customerId: 'customer-1'
+      })).rejects.toMatchObject({
+        statusCode: 500,
+        details: {
+          reason: expect.not.stringContaining('sk_live_secret123456')
+        }
+      });
+
+      const failedUpdate = repo.updateConnectPaymentOrder.mock.calls.find(([, input]) => input.status === 'FAILED')?.[1];
+      expect(failedUpdate?.statusReason).toContain('[REDACTED]');
+      expect(failedUpdate?.statusReason).not.toContain('raw-token');
     });
 
     it('returns connect account status', async () => {
@@ -465,6 +730,35 @@ describe('BillingService', () => {
 
       expect(status.onboardingComplete).toBe(true);
       expect(status.stripeAccountId).toBe('acct_existing');
+    });
+
+    it('keeps connect account status readable for workspace admin', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-admin',
+        role: 'ADMIN'
+      });
+      repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
+        makeWorkspace({ connectAccountId: 'acct_existing' })
+      );
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount());
+
+      const status = await service.getConnectAccountStatus('workspace-1', 'user-admin');
+
+      expect(status.stripeAccountId).toBe('acct_existing');
+    });
+
+    it('blocks connect account status for workspace member', async () => {
+      repo.findWorkspaceMembership.mockResolvedValue({
+        workspaceId: 'workspace-1',
+        userId: 'user-member',
+        role: 'MEMBER'
+      });
+
+      await expect(service.getConnectAccountStatus('workspace-1', 'user-member')).rejects.toMatchObject({
+        statusCode: 403
+      });
+      expect(stripe.accounts.retrieve).not.toHaveBeenCalled();
     });
   });
 
@@ -505,6 +799,29 @@ describe('BillingService', () => {
   });
 
   describe('handleWebhook', () => {
+    it('fails explicitly when webhook secret is absent', async () => {
+      const missingSecretService = new BillingService({
+        repo,
+        stripe: stripe as any,
+        appPublicUrl: APP_URL,
+        webhookSecret: '',
+        webhookSecretConfigured: false,
+        priceIds: {
+          PERSONAL: 'price_personal',
+          BUSINESS: 'price_business'
+        }
+      });
+
+      await expect(missingSecretService.handleWebhook(Buffer.from('{}'), 'sig')).rejects.toMatchObject({
+        statusCode: 503,
+        details: {
+          code: 'STRIPE_WEBHOOK_SECRET_MISSING',
+          missingEnv: ['STRIPE_WEBHOOK_SECRET']
+        }
+      });
+      expect(stripe.webhooks.constructEvent).not.toHaveBeenCalled();
+    });
+
     it('rejects invalid webhook signature', async () => {
       (stripe.webhooks.constructEvent as ReturnType<typeof vi.fn>).mockImplementation(() => {
         throw new Error('Invalid signature');
@@ -636,6 +953,45 @@ describe('BillingService', () => {
       // Should not throw
       await expect(service.handleWebhook(Buffer.from('{}'), 'sig')).resolves.toBeUndefined();
       expect(repo.revokeUserAccess).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('runtime env and redaction', () => {
+    it('lists production Stripe envs required by platform billing and secure portal links', () => {
+      expect(listMissingStripeBillingProductionEnv({
+        nodeEnv: 'production',
+        stripeSecretKey: '',
+        stripePublicKey: '',
+        stripeWebhookSecret: undefined,
+        billingPortalTokenSecret: null,
+        priceIds: {
+          PERSONAL: '',
+          BUSINESS: 'price_business'
+        }
+      })).toEqual([
+        'STRIPE_SECRET_KEY',
+        'STRIPE_PUBLIC_KEY',
+        'STRIPE_WEBHOOK_SECRET',
+        'BILLING_PORTAL_TOKEN_SECRET',
+        'STRIPE_PRICE_ID_PERSONAL_MONTHLY'
+      ]);
+    });
+
+    it('redacts Stripe secrets and raw billing portal tokens from diagnostic text and metadata', () => {
+      expect(redactBillingSecretValue(
+        'failed sk_live_123456789 webhook whsec_123456789 url=https://app.test/portal/billing?token=raw-token'
+      )).not.toContain('sk_live_123456789');
+      expect(redactBillingSecretValue(
+        'failed sk_live_123456789 webhook whsec_123456789 url=https://app.test/portal/billing?token=raw-token'
+      )).not.toContain('raw-token');
+
+      expect(redactBillingMetadata({
+        clientPortalUrl: 'https://app.test/portal/billing?token=raw-token',
+        harmless: 'price_123'
+      })).toEqual({
+        clientPortalUrl: '[REDACTED]',
+        harmless: 'price_123'
+      });
     });
   });
 });

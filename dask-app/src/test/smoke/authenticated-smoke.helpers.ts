@@ -1,9 +1,24 @@
-export type SmokeFlow = "auth" | "workspace" | "billing" | "fiscal" | "ai";
+export type SmokeFlow =
+  | "auth"
+  | "workspace"
+  | "dashboard"
+  | "list"
+  | "agenda"
+  | "board"
+  | "marketing"
+  | "automation"
+  | "documentation"
+  | "billing"
+  | "fiscal"
+  | "ai";
 export type SmokeOutcome = "passed" | "failed" | "environment_gap" | "skipped";
 
 export interface SmokeConfig {
+  releaseSmoke: boolean;
   baseUrl: string;
   apiUrl: string;
+  hasExplicitBaseUrl: boolean;
+  hasExplicitApiUrl: boolean;
   email?: string;
   password?: string;
   workspaceSlug?: string;
@@ -76,9 +91,15 @@ function normalizeUrl(value: string): string {
 }
 
 export function readSmokeConfig(env: SmokeEnv): SmokeConfig {
+  const explicitBaseUrl = trimOptional(env.DASK_SMOKE_BASE_URL);
+  const explicitApiUrl = trimOptional(env.DASK_SMOKE_API_URL);
+
   return {
-    baseUrl: normalizeUrl(trimOptional(env.DASK_SMOKE_BASE_URL) ?? DEFAULT_BASE_URL),
-    apiUrl: normalizeUrl(trimOptional(env.DASK_SMOKE_API_URL) ?? DEFAULT_API_URL),
+    releaseSmoke: readBoolean(env.DASK_RELEASE_SMOKE),
+    baseUrl: normalizeUrl(explicitBaseUrl ?? DEFAULT_BASE_URL),
+    apiUrl: normalizeUrl(explicitApiUrl ?? DEFAULT_API_URL),
+    hasExplicitBaseUrl: Boolean(explicitBaseUrl),
+    hasExplicitApiUrl: Boolean(explicitApiUrl),
     email: trimOptional(env.DASK_SMOKE_EMAIL),
     password: trimOptional(env.DASK_SMOKE_PASSWORD),
     workspaceSlug: trimOptional(env.DASK_SMOKE_WORKSPACE_SLUG),
@@ -96,6 +117,8 @@ export function readSmokeConfig(env: SmokeEnv): SmokeConfig {
 
 export function getMissingRequiredSmokeConfig(config: SmokeConfig): string[] {
   const missing: string[] = [];
+  if (config.releaseSmoke && !config.hasExplicitBaseUrl) missing.push("DASK_SMOKE_BASE_URL");
+  if (config.releaseSmoke && !config.hasExplicitApiUrl) missing.push("DASK_SMOKE_API_URL");
   if (!config.email) missing.push("DASK_SMOKE_EMAIL");
   if (!config.password) missing.push("DASK_SMOKE_PASSWORD");
   if (!config.workspaceId && !config.workspaceSlug) {
@@ -110,6 +133,15 @@ export function formatSmokeConfigHelp(missing: string[]): string {
     `Missing: ${missing.join(", ")}`,
     "Set DASK_SMOKE_API_URL, DASK_SMOKE_EMAIL, DASK_SMOKE_PASSWORD and either DASK_SMOKE_WORKSPACE_ID or DASK_SMOKE_WORKSPACE_SLUG.",
     "External Stripe/Focus/AI calls stay disabled unless DASK_SMOKE_RUN_EXTERNALS=true and the specific skip flag is false."
+  ].join("\n");
+}
+
+export function formatReleaseSmokeConfigError(missing: string[]): string {
+  return [
+    "[smoke] Release authenticated smoke failed: required environment is missing.",
+    `Missing: ${missing.join(", ")}`,
+    "Set DASK_RELEASE_SMOKE=1 only in release/staging gates with DASK_SMOKE_BASE_URL, DASK_SMOKE_API_URL, DASK_SMOKE_EMAIL, DASK_SMOKE_PASSWORD and either DASK_SMOKE_WORKSPACE_ID or DASK_SMOKE_WORKSPACE_SLUG.",
+    "Secrets are intentionally not printed."
   ].join("\n");
 }
 

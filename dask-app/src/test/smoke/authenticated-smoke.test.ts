@@ -6,6 +6,7 @@ import {
   assertRecord,
   classifySmokeError,
   formatSmokeConfigHelp,
+  formatReleaseSmokeConfigError,
   getMissingRequiredSmokeConfig,
   makeAiAgentPayload,
   makeBillingCatalogPayload,
@@ -35,6 +36,12 @@ function skip(flow: SmokeFlow, name: string, message: string): SmokeStepResult {
   return { flow, name, outcome: "skipped", message };
 }
 
+function optionalNotRun(flow: SmokeFlow, name: string, message: string): SmokeStepResult {
+  return config.releaseSmoke
+    ? pass(flow, name, `Not run by non-destructive release smoke policy: ${message}`)
+    : skip(flow, name, message);
+}
+
 function logResults(results: SmokeStepResult[]): void {
   console.info("\n[smoke] authenticated smoke results");
   for (const result of results) {
@@ -47,6 +54,20 @@ function logResults(results: SmokeStepResult[]): void {
 function assertNoFailures(results: SmokeStepResult[]): void {
   const failures = results.filter((result) => result.outcome === "failed");
   expect(failures).toEqual([]);
+}
+
+function assertReleaseGate(results: SmokeStepResult[]): void {
+  const nonPassed = results.filter((result) => result.outcome !== "passed");
+  if (nonPassed.length > 0) {
+    const summary = nonPassed
+      .map((result) => {
+        const status = result.status ? ` HTTP ${result.status}` : "";
+        const message = result.message ? ` - ${result.message}` : "";
+        return `[${result.outcome}] ${result.flow} :: ${result.name}${status}${message}`;
+      })
+      .join("\n");
+    throw new Error(`[smoke] Release smoke requires every step to pass. Non-passed steps:\n${summary}`);
+  }
 }
 
 async function runStep(
@@ -126,6 +147,95 @@ async function resolveWorkspace(
   });
 
   return resolved;
+}
+
+async function smokeCriticalProductSurfaces(client: SmokeHttpClient, workspace: SmokeWorkspace, results: SmokeStepResult[]): Promise<void> {
+  const now = new Date();
+  const startAt = new Date(now);
+  startAt.setDate(now.getDate() - 7);
+  const endAt = new Date(now);
+  endAt.setDate(now.getDate() + 30);
+
+  await runStep(results, "workspace", "load workspace profile", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}`);
+    assertRecord(response.payload, "workspace profile");
+  });
+
+  await runStep(results, "dashboard", "load overview", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/dashboard/overview`);
+    assertRecord(response.payload, "dashboard overview");
+  });
+
+  await runStep(results, "dashboard", "load widgets", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/dashboard/widgets`);
+    assertRecord(response.payload, "dashboard widgets");
+  });
+
+  await runStep(results, "board", "load workspace snapshot", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/snapshot?limit=25`);
+    assertRecord(response.payload, "workspace snapshot");
+    if (!Array.isArray(response.payload.tasks)) {
+      throw new Error("workspace snapshot must include tasks array.");
+    }
+  });
+
+  await runStep(results, "list", "load paged work items", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/work-items?paged=true&pageSize=10&sort=updated_desc`);
+    assertPageResponse(response.payload, "work items list");
+  });
+
+  await runStep(results, "agenda", "load planned work item window", async () => {
+    const query = new URLSearchParams({
+      paged: "true",
+      pageSize: "10",
+      plannedWindowFrom: startAt.toISOString(),
+      plannedWindowTo: endAt.toISOString(),
+      sortBy: "plannedStartAt",
+      sortDirection: "asc"
+    });
+    const response = await client.request(`/workspaces/${workspace.id}/work-items?${query.toString()}`);
+    assertPageResponse(response.payload, "agenda work items");
+  });
+
+  await runStep(results, "marketing", "load dashboard", async () => {
+    const response = await client.request(`/marketing/workspaces/${workspace.id}/dashboard`);
+    assertRecord(response.payload, "marketing dashboard");
+  });
+
+  await runStep(results, "marketing", "load campaigns", async () => {
+    const response = await client.request(`/marketing/workspaces/${workspace.id}/campaigns?limit=10`);
+    assertPageResponse(response.payload, "marketing campaigns");
+  });
+
+  await runStep(results, "marketing", "load journey flows", async () => {
+    const response = await client.request(`/marketing/workspaces/${workspace.id}/automations/flows`);
+    assertPageResponse(response.payload, "marketing automation flows");
+  });
+
+  await runStep(results, "automation", "load capabilities", async () => {
+    const response = await client.request(`/automation/workspaces/${workspace.id}/capabilities`);
+    assertRecord(response.payload, "automation capabilities");
+  });
+
+  await runStep(results, "automation", "load workflows", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/automation-workflows?limit=10`);
+    assertPageResponse(response.payload, "automation workflows");
+  });
+
+  await runStep(results, "automation", "load runs", async () => {
+    const response = await client.request(`/automation/workspaces/${workspace.id}/runs?limit=10`);
+    assertArrayResponse(response.payload, "automation runs");
+  });
+
+  await runStep(results, "documentation", "load documents", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/documents?paged=true&pageSize=10&sort=updated_desc`);
+    assertPageResponse(response.payload, "workspace documents");
+  });
+
+  await runStep(results, "documentation", "load folders", async () => {
+    const response = await client.request(`/workspaces/${workspace.id}/document-folders`);
+    assertArrayResponse(response.payload, "workspace document folders");
+  });
 }
 
 async function smokeBilling(client: SmokeHttpClient, workspace: SmokeWorkspace, results: SmokeStepResult[]): Promise<void> {
@@ -219,7 +329,7 @@ async function smokeBilling(client: SmokeHttpClient, workspace: SmokeWorkspace, 
       assertRecord(response.payload, "post-checkout sync");
     });
   } else {
-    results.push(skip("billing", "sync post-checkout", "No checkout session was created."));
+    results.push(optionalNotRun("billing", "sync post-checkout", "No checkout session was created."));
   }
 
   await runStep(results, "billing", "request boleto capability", async () => {
@@ -247,7 +357,7 @@ async function smokeBilling(client: SmokeHttpClient, workspace: SmokeWorkspace, 
       assertRecord(response.payload, "portal token");
     });
   } else {
-    results.push(skip("billing", "resend email/portal token", "No payment order was created."));
+    results.push(optionalNotRun("billing", "resend email/portal token", "No payment order was created."));
   }
 
   if (catalogItemId) {
@@ -319,7 +429,7 @@ async function smokeFiscal(client: SmokeHttpClient, smokeConfig: SmokeConfig, wo
       }
     });
   } else {
-    results.push(skip("fiscal", "create fiscal company", "Set DASK_SMOKE_CREATE_FISCAL_COMPANY=true and DASK_SMOKE_FOCUS_TOKEN to create one."));
+    results.push(optionalNotRun("fiscal", "create fiscal company", "Set DASK_SMOKE_CREATE_FISCAL_COMPANY=true and DASK_SMOKE_FOCUS_TOKEN to create one."));
   }
 
   if (companyId) {
@@ -331,7 +441,7 @@ async function smokeFiscal(client: SmokeHttpClient, smokeConfig: SmokeConfig, wo
       assertRecord(response.payload, "fiscal company validation");
     }, { external: true });
   } else {
-    results.push(skip("fiscal", "validate fiscal company", "No fiscal company id available."));
+    results.push(optionalNotRun("fiscal", "validate fiscal company", "No fiscal company id available."));
   }
 
   if (smokeConfig.createFiscalDraft) {
@@ -344,7 +454,7 @@ async function smokeFiscal(client: SmokeHttpClient, smokeConfig: SmokeConfig, wo
       draftDocumentId = typeof response.payload.id === "string" ? response.payload.id : null;
     });
   } else {
-    results.push(skip("fiscal", "create fiscal draft/document", "Set DASK_SMOKE_CREATE_FISCAL_DRAFT=true to create persistent fiscal smoke data."));
+    results.push(optionalNotRun("fiscal", "create fiscal draft/document", "Set DASK_SMOKE_CREATE_FISCAL_DRAFT=true to create persistent fiscal smoke data."));
   }
 
   if (smokeConfig.runExternals && !smokeConfig.skipFocus && draftDocumentId) {
@@ -356,7 +466,7 @@ async function smokeFiscal(client: SmokeHttpClient, smokeConfig: SmokeConfig, wo
       assertRecord(response.payload, "issued fiscal document");
     }, { external: true });
   } else {
-    results.push(skip("fiscal", "issue/retry/sync Focus", "Focus external calls require DASK_SMOKE_RUN_EXTERNALS=true, DASK_SMOKE_SKIP_FOCUS=false and a created draft."));
+    results.push(optionalNotRun("fiscal", "issue/retry/sync Focus", "Focus external calls require DASK_SMOKE_RUN_EXTERNALS=true, DASK_SMOKE_SKIP_FOCUS=false and a created draft."));
   }
 
   if (smokeConfig.runExternals && !smokeConfig.skipFocus && companyId) {
@@ -459,7 +569,7 @@ async function smokeAi(client: SmokeHttpClient, smokeConfig: SmokeConfig, worksp
       assertRecord(response.payload, "AI run");
     }, { external: true });
   } else {
-    results.push(skip("ai", "run agent", "Set DASK_SMOKE_RUN_EXTERNALS=true to exercise the runtime/provider path."));
+    results.push(optionalNotRun("ai", "run agent", "Set DASK_SMOKE_RUN_EXTERNALS=true to exercise the runtime/provider path."));
   }
 
   await runStep(results, "ai", "load runs", async () => {
@@ -478,9 +588,14 @@ async function smokeAi(client: SmokeHttpClient, smokeConfig: SmokeConfig, worksp
 
 describe("authenticated contract smoke", () => {
   if (missingConfig.length > 0) {
-    it("prints useful setup guidance when credentials are missing", () => {
-      const message = formatSmokeConfigHelp(missingConfig);
+    it(config.releaseSmoke ? "fails release smoke when required environment is missing" : "prints useful setup guidance when credentials are missing", () => {
+      const message = config.releaseSmoke
+        ? formatReleaseSmokeConfigError(missingConfig)
+        : formatSmokeConfigHelp(missingConfig);
       console.info(message);
+      if (config.releaseSmoke) {
+        throw new Error(message);
+      }
       expect(message).toContain("Authenticated smoke skipped");
     });
     return;
@@ -497,6 +612,8 @@ describe("authenticated contract smoke", () => {
         throw new Error("Smoke workspace could not be resolved.");
       }
 
+      await smokeCriticalProductSurfaces(client, workspace, results);
+
       if (config.skipStripe) {
         results.push(skip("billing", "Billing smoke", "DASK_SMOKE_SKIP_STRIPE=true."));
       } else {
@@ -510,5 +627,8 @@ describe("authenticated contract smoke", () => {
     }
 
     assertNoFailures(results);
+    if (config.releaseSmoke) {
+      assertReleaseGate(results);
+    }
   }, 120_000);
 });

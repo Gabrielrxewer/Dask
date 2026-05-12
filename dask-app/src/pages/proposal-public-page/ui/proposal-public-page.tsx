@@ -13,12 +13,12 @@ import { isApiError } from "@/shared/api/http-client";
 import type { PublicCommercialDocument } from "@/pages/proposal-public-page/api/public-commercial-document-service";
 import "./proposal-public-page.css";
 
-type LoadState = "loading" | "ready" | "invalid" | "expired" | "revoked" | "error";
+type LoadState = "loading" | "ready" | "invalid" | "expired" | "revoked" | "auth_required" | "forbidden" | "error";
 type DecisionState = "idle" | "submitting" | "success" | "error";
 
 const finalStatuses = new Set(["approved", "accepted", "signed", "rejected"]);
 
-function normalizeErrorState(error: unknown): LoadState {
+export function normalizePublicDocumentErrorState(error: unknown): LoadState {
   if (!isApiError(error)) {
     return "error";
   }
@@ -30,8 +30,67 @@ function normalizeErrorState(error: unknown): LoadState {
 
   if (code === "TOKEN_EXPIRED") return "expired";
   if (code === "TOKEN_REVOKED") return "revoked";
+  if (code === "DOCUMENT_AUTH_REQUIRED" || error.status === 401) return "auth_required";
+  if (code === "RECIPIENT_EMAIL_MISMATCH" || error.status === 403) return "forbidden";
   if (error.status === 404 || code === "TOKEN_INVALID" || code === "DOCUMENT_NOT_SENT") return "invalid";
   return "error";
+}
+
+export function getPublicDocumentLoadMessage(state: Exclude<LoadState, "ready">): { title: string; body: string } {
+  const messages: Record<Exclude<LoadState, "ready">, { title: string; body: string }> = {
+    loading: {
+      title: "Carregando documento",
+      body: "Estamos validando o link seguro recebido por e-mail."
+    },
+    invalid: {
+      title: "Link invalido",
+      body: "Nao encontramos um documento enviado com este token."
+    },
+    expired: {
+      title: "Link expirado",
+      body: "Este link nao esta mais disponivel. Solicite um novo envio ao responsavel comercial."
+    },
+    revoked: {
+      title: "Link revogado",
+      body: "O acesso publico deste documento foi revogado pelo remetente."
+    },
+    auth_required: {
+      title: "Login necessario",
+      body: "Este documento exige uma sessao valida do destinatario para abrir."
+    },
+    forbidden: {
+      title: "Permissao insuficiente",
+      body: "Entre com o e-mail destinatario ou solicite um novo envio ao responsavel comercial."
+    },
+    error: {
+      title: "Nao foi possivel abrir",
+      body: "Tente novamente em instantes ou solicite um novo link."
+    }
+  };
+
+  return messages[state];
+}
+
+export function getPublicDecisionErrorMessage(error: unknown): string {
+  if (!isApiError(error)) {
+    return error instanceof Error ? error.message : "Nao foi possivel registrar sua decisao.";
+  }
+
+  const code =
+    error.details && typeof error.details === "object"
+      ? (error.details as { code?: unknown }).code
+      : null;
+
+  if (code === "TOKEN_EXPIRED") return "Este link expirou. Solicite um novo envio antes de decidir.";
+  if (code === "TOKEN_REVOKED") return "Este link foi revogado pelo remetente.";
+  if (code === "RECIPIENT_EMAIL_MISMATCH") return "Use a conta do e-mail destinatario para registrar a decisao.";
+  if (code === "DOCUMENT_DECISION_DISABLED") return "O aceite e a recusa estao desativados para este link.";
+  if (code === "DOCUMENT_ALREADY_ACCEPTED") return "Este documento ja foi aceito.";
+  if (code === "DOCUMENT_ALREADY_REJECTED") return "Este documento ja foi recusado.";
+  if (error.status === 401) return "Faca login com o e-mail destinatario para registrar a decisao.";
+  if (error.status === 403) return "Sua conta nao tem permissao para decidir este documento.";
+
+  return error.message || "Nao foi possivel registrar sua decisao.";
 }
 
 function getDocumentLabel(document: PublicCommercialDocument | null): string {
@@ -58,15 +117,15 @@ function getAuthButtonLabel(document: PublicCommercialDocument, isAuthenticated:
   return `${document.recipientUserExists ? "Entrar" : "Criar conta"} - ${recipientEmail}`;
 }
 
-function buildLoginTarget(pathname: string, search: string, document: PublicCommercialDocument) {
+function buildLoginTarget(pathname: string, search: string, document?: PublicCommercialDocument | null) {
   const returnTo = `${pathname}${search}`;
   const params = new URLSearchParams({ returnTo });
-  const recipientEmail = getPrimaryRecipientEmail(document);
+  const recipientEmail = document ? getPrimaryRecipientEmail(document) : "";
 
   if (recipientEmail) {
     params.set("email", recipientEmail);
   }
-  if (recipientEmail && !document.recipientUserExists) {
+  if (recipientEmail && document && !document.recipientUserExists) {
     params.set("step", "register");
   }
   return `${routePaths.login}?${params.toString()}`;
@@ -105,7 +164,7 @@ export function ProposalPublicPage() {
     }
     if (publicDocumentQuery.error) {
       setDocument(null);
-      setLoadState(normalizeErrorState(publicDocumentQuery.error));
+      setLoadState(normalizePublicDocumentErrorState(publicDocumentQuery.error));
     }
   }, [publicDocumentQuery.data, publicDocumentQuery.error, publicDocumentQuery.isFetching, publicDocumentQuery.isLoading]);
 
@@ -155,6 +214,8 @@ export function ProposalPublicPage() {
         : auth.user?.email.toLowerCase() === document.recipientEmail.toLowerCase())
   );
   const needsAuth = Boolean(document && !isAuthenticatedRecipient);
+  const decisionAuthRequired = Boolean(document && !isFinal && document.allowAcceptReject && !document.canDecide);
+  const decisionsDisabled = Boolean(document && !document.allowAcceptReject);
 
   function goToAuth() {
     if (!document) return;
@@ -173,7 +234,7 @@ export function ProposalPublicPage() {
       return;
     }
 
-    if (!isAuthenticatedRecipient) {
+    if (!document.canDecide) {
       goToAuth();
       return;
     }
@@ -208,44 +269,31 @@ export function ProposalPublicPage() {
         return;
       }
       setDecisionState("error");
-      setDecisionError(error instanceof Error ? error.message : "Nao foi possivel registrar sua decisao.");
+      setDecisionError(getPublicDecisionErrorMessage(error));
     }
   }
 
   if (loadState !== "ready" || !document) {
-    const messages: Record<Exclude<LoadState, "ready">, { title: string; body: string }> = {
-      loading: {
-        title: "Carregando documento",
-        body: "Estamos validando o link seguro recebido por e-mail."
-      },
-      invalid: {
-        title: "Link invalido",
-        body: "Nao encontramos um documento enviado com este token."
-      },
-      expired: {
-        title: "Link expirado",
-        body: "Este link nao esta mais disponivel. Solicite um novo envio ao responsavel comercial."
-      },
-      revoked: {
-        title: "Link revogado",
-        body: "O acesso publico deste documento foi revogado pelo remetente."
-      },
-      error: {
-        title: "Nao foi possivel abrir",
-        body: "Tente novamente em instantes ou solicite um novo link."
-      }
-    };
-    const message = messages[loadState === "ready" ? "error" : loadState];
+    const state = loadState === "ready" ? "error" : loadState;
+    const message = getPublicDocumentLoadMessage(state);
+    const shouldOfferLogin = state === "auth_required" || state === "forbidden";
+    const loginTarget = buildLoginTarget(location.pathname, location.search, document);
 
     return (
       <main className="proposal-public-page proposal-public-page--center">
         <section className="proposal-public-page__state-panel">
-          <AppIcon name={loadState === "loading" ? "refresh" : "alert-circle"} size={24} />
+          <AppIcon name={loadState === "loading" ? "refresh" : state === "auth_required" || state === "forbidden" ? "lock" : "alert-circle"} size={24} />
           <h1>{message.title}</h1>
           <p>{message.body}</p>
-          <Link className="proposal-public-page__button proposal-public-page__button--secondary" to={routePaths.home}>
-            Voltar ao Dask
-          </Link>
+          {shouldOfferLogin ? (
+            <Link className="proposal-public-page__button" to={loginTarget}>
+              Entrar para abrir
+            </Link>
+          ) : (
+            <Link className="proposal-public-page__button proposal-public-page__button--secondary" to={routePaths.home}>
+              Voltar ao Dask
+            </Link>
+          )}
         </section>
       </main>
     );
@@ -301,21 +349,29 @@ export function ProposalPublicPage() {
           <aside className="proposal-public-page__decision-panel" aria-label="Decisao do documento">
             <div>
               <span>Destinatario</span>
-              <strong>{document.recipientEmail}</strong>
+              <strong>{document.recipientEmail || "Disponivel apos login"}</strong>
             </div>
 
-            {needsAuth && auth.isAuthenticated ? (
+            {decisionAuthRequired ? (
               <div className="proposal-public-page__auth-box">
                 <p>
-                  Para vincular a decisao ao cliente, entre ou crie uma conta com o e-mail destinatario.
+                  {auth.isAuthenticated && needsAuth
+                    ? "Sua conta atual nao e o destinatario deste documento."
+                    : "Entre com o e-mail destinatario para registrar aceite ou recusa."}
                 </p>
                 <Button variant="primary" onClick={goToAuth}>
-                  {document.recipientUserExists ? "Entrar para decidir" : "Criar conta para decidir"}
+                  {auth.isAuthenticated && needsAuth ? "Trocar conta" : "Entrar para decidir"}
                 </Button>
               </div>
             ) : null}
 
-            {isAuthenticatedRecipient && !isFinal ? (
+            {decisionsDisabled ? (
+              <p className="proposal-public-page__final-message">
+                O aceite e a recusa nao estao habilitados para este link.
+              </p>
+            ) : null}
+
+            {document.canDecide && !isFinal ? (
               <>
                 <label className="proposal-public-page__accept-check">
                   <input

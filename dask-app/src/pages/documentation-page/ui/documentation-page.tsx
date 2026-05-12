@@ -12,6 +12,7 @@ import {
   useDocumentsQuery,
   useFoldersQuery,
   usePublicCommercialDocumentDecisionMutation,
+  useRunDocumentationAssistantMutation,
   useSendCommercialDocumentMutation,
   useUpdateDocumentMutation,
   useUpdateFolderMutation,
@@ -20,7 +21,15 @@ import {
   type DocumentVariableDiagnostic
 } from "@/modules/documentation";
 import { getDocumentTemplate } from "@/modules/workspace/model/document-templates";
-import { useWorkspace, type DocumentKind, type DocumentationAssistantMode, type WorkspaceDocument, type WorkspaceDocumentFolder, type WorkspaceDocumentMetadata } from "@/modules/workspace";
+import {
+  useWorkspace,
+  useWorkspaceCustomerLookupAction,
+  type DocumentKind,
+  type DocumentationAssistantMode,
+  type WorkspaceDocument,
+  type WorkspaceDocumentFolder,
+  type WorkspaceDocumentMetadata
+} from "@/modules/workspace";
 import { buildWorkspaceBoardPathWithTask } from "@/app/router";
 import { AppIcon, Button, ConfirmModal, LoadingState, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
@@ -97,7 +106,7 @@ function findLinkedTask(document: WorkspaceDocument, tasks: Task[]): Task | null
     metadata.sourceWorkItemId,
     metadata.itemId,
     metadata.taskId,
-    metadata.leadId
+    metadata.workItemId
   ].map(readString).filter(Boolean);
 
   return tasks.find((task) => candidateIds.includes(task.id)) ?? null;
@@ -136,9 +145,7 @@ function collectDocumentRecipientEmails(document: WorkspaceDocument, linkedTask:
 export function DocumentationPage() {
   const {
     snapshot,
-    isLoading,
-    runDocumentationAssistant,
-    listCustomers,
+    isLoading
   } = useWorkspace();
   const navigate = useNavigate();
   const { workspaceSlug = "" } = useParams();
@@ -210,6 +217,8 @@ export function DocumentationPage() {
   const decideDocumentMutation = useDecideCommercialDocumentMutation(workspaceSlug);
   const publicDecisionMutation = usePublicCommercialDocumentDecisionMutation();
   const uploadAssetMutation = useUploadDocumentAssetMutation(workspaceSlug);
+  const runDocumentationAssistantMutation = useRunDocumentationAssistantMutation(workspaceSlug);
+  const listCustomers = useWorkspaceCustomerLookupAction(workspaceSlug || null);
 
   useEffect(() => {
     if (isClient) {
@@ -798,7 +807,7 @@ export function DocumentationPage() {
     const runStartedAt = Date.now();
 
     try {
-      const result = await runDocumentationAssistant({
+      const result = await runDocumentationAssistantMutation.mutateAsync({
         mode: inferredMode,
         instruction,
         documentTitle: docTitle,

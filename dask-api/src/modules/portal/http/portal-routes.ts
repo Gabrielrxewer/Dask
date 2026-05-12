@@ -341,7 +341,10 @@ export const buildPortalRoutes = (deps: {
 
       if (body.docToken !== undefined) {
         const { docToken } = onboardByDocumentDto.parse(body);
-        const resolved = await deps.workspaceDocumentsService.resolvePublicDocumentToken({ token: docToken });
+        const resolved = await deps.workspaceDocumentsService.resolvePublicDocumentToken({
+          token: docToken,
+          includeRecipients: true
+        });
 
         if (!resolved.recipientEmail || normalizeEmail(user.email) !== normalizeEmail(resolved.recipientEmail)) {
           throw new AppError(
@@ -397,6 +400,12 @@ export const buildPortalRoutes = (deps: {
       if (body.billingToken !== undefined) {
         const { billingToken } = onboardByBillingDto.parse(body);
         let tokenClaims: ReturnType<typeof verifyBillingPortalToken>;
+
+        if (!deps.billingPortalTokenSecret.trim()) {
+          throw new AppError('Billing portal token secret is not configured.', 503, {
+            code: 'BILLING_PORTAL_TOKEN_SECRET_MISSING'
+          });
+        }
 
         try {
           tokenClaims = verifyBillingPortalToken(billingToken, deps.billingPortalTokenSecret);

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import { buildBoardMetrics } from "@/entities/task";
-import { useWorkspace } from "@/modules/workspace";
-import { workspaceService } from "@/modules/workspace/api";
+import { useCurrentWorkspace, useWorkspaceSummaryQuery } from "@/modules/workspace";
 import { LoadingState, ModuleTabs, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import {
@@ -40,32 +39,9 @@ const NAV_ITEMS = [
 
 export function SettingsShell() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
-  const { snapshot, isLoading } = useWorkspace();
-  const [isCorporateWorkspace, setIsCorporateWorkspace] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-
-    workspaceService
-      .listWorkspaces()
-      .then((workspaces) => {
-        if (!mounted) {
-          return;
-        }
-
-        const currentWorkspace = workspaces.find((workspace) => workspace.slug === workspaceSlug);
-        setIsCorporateWorkspace(currentWorkspace?.kind === "CORPORATE");
-      })
-      .catch(() => {
-        if (mounted) {
-          setIsCorporateWorkspace(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [workspaceSlug]);
+  const { snapshot, isSnapshotLoading } = useCurrentWorkspace();
+  const workspaceSummaryQuery = useWorkspaceSummaryQuery(workspaceSlug);
+  const isCorporateWorkspace = workspaceSummaryQuery.data?.kind === "CORPORATE";
 
   const tasks = snapshot?.tasks ?? [];
   const metrics = buildBoardMetrics(tasks);
@@ -114,7 +90,7 @@ export function SettingsShell() {
           text="Carregando configuracoes..."
           animation="settings"
           variant="frame"
-          visible={isLoading && !snapshot}
+          visible={isSnapshotLoading && !snapshot}
         />
         <main className="settings-shell__content">
           <Outlet />

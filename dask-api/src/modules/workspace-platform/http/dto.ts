@@ -138,6 +138,8 @@ export const workItemListQueryDto = z.object({
   dueDateTo: z.coerce.date().optional(),
   plannedStartFrom: z.coerce.date().optional(),
   plannedStartTo: z.coerce.date().optional(),
+  plannedWindowFrom: z.coerce.date().optional(),
+  plannedWindowTo: z.coerce.date().optional(),
   createdAtFrom: z.coerce.date().optional(),
   createdAtTo: z.coerce.date().optional(),
   updatedAtFrom: z.coerce.date().optional(),
@@ -669,9 +671,6 @@ export const convertWorkItemToCustomerDto = z
     customer: createCustomerDto.optional(),
     fields: z.record(z.unknown()).optional(),
     customFieldValues: z.record(z.unknown()).optional()
-  })
-  .refine((payload) => Boolean(payload.customerId || payload.customer), {
-    message: 'customerId or customer is required'
   });
 
 export const moveWorkItemDto = z.object({

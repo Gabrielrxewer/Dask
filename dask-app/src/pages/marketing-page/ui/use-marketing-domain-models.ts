@@ -17,6 +17,7 @@ import type {
   MarketingTemplate
 } from "@/modules/marketing/model";
 import {
+  type CompileMarketingJourneyResult,
   compileJourneyGraphToAutomationDefinition,
   createMarketingCampaignSchema,
   getMarketingJourneyActivationErrors,
@@ -93,6 +94,22 @@ function getFirstSchemaError(error: { issues: Array<{ message: string }> }): str
   return error.issues[0]?.message ?? "Revise os campos informados.";
 }
 
+function getJourneyRuntimeErrorMessage(result: CompileMarketingJourneyResult): string | null {
+  const issues = getMarketingJourneyActivationErrors(result);
+  if (issues.length > 0) {
+    const [first, ...rest] = issues;
+    return rest.length > 0
+      ? `${first?.message ?? "Revise a jornada antes de continuar."} (+${rest.length} pendencias)`
+      : first?.message ?? "Revise a jornada antes de continuar.";
+  }
+
+  if (!result.definition || !result.runtimeGraph || !result.automationDefinition) {
+    return "RuntimeGraph nao pode ser gerado para esta jornada.";
+  }
+
+  return null;
+}
+
 async function runMarketingAction(
   controls: MarketingFeedbackControls,
   handler: () => Promise<void>,
@@ -115,18 +132,18 @@ function isMutationPending(...values: Array<{ isPending: boolean }>): boolean {
 const DEFAULT_CAMPAIGN_FORM: CampaignFormState = {
   name: "",
   description: "",
-  objective: "LEAD_NURTURE",
+  objective: "COMMERCIAL_NURTURE",
   segmentId: "",
   templateId: "",
   subject: "",
-  bodyMarkdown: "Ola {{lead.firstName}},\n\nQuero compartilhar um update rapido com contexto da sua operacao.\n\n[]"
+  bodyMarkdown: "Ola {{contact.firstName}},\n\nQuero compartilhar um update rapido com contexto da sua operacao.\n\n[]"
 };
 
 const DEFAULT_AI_FORM: AiFormState = {
-  objective: "Gerar campanha de nutricao para leads com score acima de 60 e ultima interacao maior que 14 dias",
+  objective: "Gerar campanha de nutricao para commercial com score acima de 60 e ultima interacao maior que 14 dias",
   tone: "consultivo premium",
   targetStage: "MQL",
-  segmentHint: "leads com fit em software sob medida"
+  segmentHint: "commercial com fit em software sob medida"
 };
 
 const DEFAULT_SEGMENT_FORM: SegmentFormState = {
@@ -607,9 +624,10 @@ export function useMarketingSignalsModel(
 ) {
   const [signalTypeFilter, setSignalTypeFilter] = useState<string>("ALL");
   const [signalShowDismissed, setSignalShowDismissed] = useState(false);
-  const [signalGroupByLead, setSignalGroupByLead] = useState(false);
+  const [signalGroupByWorkItem, setSignalGroupByWorkItem] = useState(false);
 
   const signalsQuery = useMarketingSignalsQuery(workspaceId, {
+    types: signalTypeFilter === "ALL" ? undefined : [signalTypeFilter],
     includeDismissed: signalShowDismissed,
     limit: 100
   });
@@ -632,7 +650,7 @@ export function useMarketingSignalsModel(
   const createFollowUp = useCallback(async (input: CreateMarketingFollowUpInput) => {
     await runMarketingAction(controls, async () => {
       await createFollowUpMutation.mutateAsync(input);
-      controls.setMessage("Follow-up registrado no historico do lead.");
+      controls.setMessage("Follow-up registrado no historico do workItem.");
     }, "Nao foi possivel criar o follow-up.");
   }, [controls, createFollowUpMutation]);
 
@@ -644,10 +662,10 @@ export function useMarketingSignalsModel(
     signalsError: getErrorMessage(signalsQuery.error, ""),
     signalTypeFilter,
     signalShowDismissed,
-    signalGroupByLead,
+    signalGroupByWorkItem,
     setSignalTypeFilter,
     setSignalShowDismissed,
-    setSignalGroupByLead,
+    setSignalGroupByWorkItem,
     setMessage: controls.setMessage,
     setTab,
     loadSignals,
@@ -705,7 +723,7 @@ export function useMarketingAnalyticsModel(
       totalEvents,
       hasExecutedCampaigns: totalSent > 0 || totalEvents > 0,
       hasBusinessImpact:
-        (dashboard?.influencedLeads ?? 0) > 0 ||
+        (dashboard?.influencedWorkItems ?? 0) > 0 ||
         (dashboard?.influencedCustomers ?? 0) > 0 ||
         (dashboard?.influencedRevenue ?? 0) > 0
     };
@@ -727,7 +745,7 @@ export function useMarketingAnalyticsModel(
     if (dashboard.clickRate < 0.05) {
       insights.push("Click rate abaixo de 5% - revisar CTA e alinhamento entre assunto e conteudo do corpo.");
     } else {
-      insights.push(`Click rate de ${fmtPct(dashboard.clickRate)} - considere aumentar frequencia para leads engajados.`);
+      insights.push(`Click rate de ${fmtPct(dashboard.clickRate)} - considere aumentar frequencia para commercial engajados.`);
     }
 
     if (dashboard.influencedRevenue > 0 && dashboard.influencedCustomers > 0) {
@@ -744,7 +762,7 @@ export function useMarketingAnalyticsModel(
     if (highBounce) {
       insights.push(`"${highBounce.name}" com bounce rate elevado - limpar lista antes do proximo envio.`);
     } else if (dashboard.activeCampaigns > 0) {
-      insights.push(`${fmtNum(dashboard.influencedLeads)} leads influenciados por campanhas ativas - qualificar e distribuir.`);
+      insights.push(`${fmtNum(dashboard.influencedWorkItems)} commercial influenciados por campanhas ativas - qualificar e distribuir.`);
     }
 
     return insights;
@@ -795,7 +813,7 @@ export function useMarketingTemplatesModel(workspaceId: string, controls: Market
       const source = values ?? {
         name: "",
         category: "newsletter",
-        objective: "LEAD_NURTURE",
+        objective: "COMMERCIAL_NURTURE",
         funnelStage: "mql",
         subject: "",
         bodyMarkdown: "## Assunto principal\n\nMensagem com contexto operacional.\n\n- ponto 1\n- ponto 2",
@@ -909,54 +927,49 @@ export function useMarketingJourneysModel(workspaceId: string, controls: Marketi
         workspaceId,
         name,
         status: activeFlowId ? undefined : "DRAFT",
-        allowDraft: true
+        allowDraft: false
       });
-      const triggerDefinition = compiled.definition as unknown as Record<string, unknown>;
+      const runtimeError = getJourneyRuntimeErrorMessage(compiled);
+      if (runtimeError || !compiled.definition) {
+        throw new Error(runtimeError ?? "Revise a jornada antes de salvar.");
+      }
+
       const saved = await saveJourneyMutation.mutateAsync({
         flowId: activeFlowId,
         name,
         status: activeFlowId ? undefined : "DRAFT",
-        triggerDefinition,
+        triggerDefinition: compiled.definition,
         steps: compiled.definition.steps
       });
       setActiveFlowId(saved.id);
-      if (compiled.errors.length > 0 || compiled.warnings.length > 0) {
-        controls.setMessage("Jornada salva como rascunho com pendencias de validacao.");
-      } else {
-        controls.setMessage("Jornada salva com definicao versionada.");
-      }
+      controls.setMessage("Jornada salva com definicao versionada.");
     }, "Nao foi possivel salvar a jornada.");
   }, [activeFlowId, controls, saveJourneyMutation, workspaceId]);
 
-  const handleJourneyActivate = useCallback(async (flowId: string) => {
+  const handleJourneyActivate = useCallback(async (flowId: string, name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => {
     await runMarketingAction(controls, async () => {
-      const flow = flows.find((entry) => entry.id === flowId);
-      const savedDefinition = (flow?.triggerDefinition ?? {}) as { nodes?: JourneyNode[]; edges?: JourneyEdge[] };
-      const nodes = Array.isArray(savedDefinition.nodes) ? savedDefinition.nodes : [];
-      const edges = Array.isArray(savedDefinition.edges) ? savedDefinition.edges : [];
       const compiled = compileJourneyGraphToAutomationDefinition(nodes, edges, {
         flowId,
         workspaceId,
-        name: flow?.name ?? "Jornada",
+        name,
         status: "ACTIVE",
         allowDraft: false
       });
-      const activationErrors = getMarketingJourneyActivationErrors(compiled);
-      if (activationErrors.length > 0) {
-        controls.setError(activationErrors[0]?.message ?? "Revise a jornada antes de ativar.");
-        return;
+      const runtimeError = getJourneyRuntimeErrorMessage(compiled);
+      if (runtimeError || !compiled.definition) {
+        throw new Error(runtimeError ?? "Revise a jornada antes de ativar.");
       }
 
       await saveJourneyMutation.mutateAsync({
         flowId,
-        name: flow?.name ?? "Jornada",
+        name,
         status: "DRAFT",
-        triggerDefinition: compiled.definition as unknown as Record<string, unknown>,
+        triggerDefinition: compiled.definition,
         steps: compiled.definition.steps
       });
       await activateJourneyMutation.mutateAsync(flowId);
     }, "Nao foi possivel ativar a jornada.");
-  }, [activateJourneyMutation, controls, flows, saveJourneyMutation, workspaceId]);
+  }, [activateJourneyMutation, controls, saveJourneyMutation, workspaceId]);
 
   const handleJourneyDeactivate = useCallback(async (flowId: string) => {
     await runMarketingAction(controls, async () => {

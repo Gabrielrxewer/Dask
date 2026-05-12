@@ -8,6 +8,7 @@ import { MODULE_META } from "./members-settings.model";
 interface WorkspaceModulesSectionProps {
   moduleCatalog: WorkspaceModuleKey[];
   accessControl: WorkspaceAccessControlSnapshot | null;
+  canManageModules: boolean;
   isSavingModuleEntitlements: boolean;
   onToggleModule: (moduleKey: WorkspaceModuleKey, enabled: boolean) => Promise<void>;
 }
@@ -15,6 +16,7 @@ interface WorkspaceModulesSectionProps {
 export function WorkspaceModulesSection({
   moduleCatalog,
   accessControl,
+  canManageModules,
   isSavingModuleEntitlements,
   onToggleModule,
 }: WorkspaceModulesSectionProps) {
@@ -47,7 +49,7 @@ export function WorkspaceModulesSection({
                   aria-checked={enabled}
                   className={`ms-toggle${enabled ? " ms-toggle--on" : ""}`}
                   onClick={() => void onToggleModule(moduleKey, !enabled)}
-                  disabled={isSavingModuleEntitlements}
+                  disabled={!canManageModules || isSavingModuleEntitlements}
                   aria-label={`${enabled ? "Desabilitar" : "Habilitar"} ${meta.label}`}
                 >
                   <span className="ms-toggle__knob" />

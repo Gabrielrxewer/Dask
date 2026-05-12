@@ -192,6 +192,23 @@
   overflow: hidden;
 }
 
+.agenda-view__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+  color: var(--agenda-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.agenda-view__pagination-status {
+  white-space: nowrap;
+}
+
 .agenda-view__topbar {
   display: flex;
   align-items: center;
@@ -423,7 +440,7 @@
 
 .agenda-view__day-strip button {
   flex-shrink: 0;
-  width: auto !important;
+  width: auto;
 }
 
 .agenda-view__ghost-button {
@@ -598,10 +615,10 @@
 }
 
 .agenda-view__event--overlay {
-  position: relative !important;
-  top: auto !important;
-  left: auto !important;
-  width: 240px !important;
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 240px;
   min-height: 72px;
   pointer-events: none;
   transform: rotate(1deg);
@@ -940,30 +957,30 @@
 }
 
 .app-theme:not([data-theme="dark"]) .agenda-top-nav__filter .dashboard-filter__mine-button {
-  min-height: 34px !important;
+  min-height: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: var(--text-secondary) !important;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .agenda-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent) !important;
-  color: var(--text-secondary) !important;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  color: var(--text-secondary);
 }
 
 .app-theme:not([data-theme="dark"]) .agenda-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme:not([data-theme="dark"]) .agenda-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
+  color: var(--text-primary);
   font-weight: 860;
 }
 
@@ -1222,7 +1239,7 @@
 .app-theme[data-theme="dark"] .agenda-top-nav__filter .dashboard-filter .shared-input {
   min-height: 34px;
   border: none;
-  background: transparent !important;
+  background: transparent;
   color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
@@ -1230,30 +1247,30 @@
 }
 
 .app-theme[data-theme="dark"] .agenda-top-nav__filter .dashboard-filter__mine-button {
-  min-height: 34px !important;
+  min-height: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: var(--text-muted) !important;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .agenda-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .agenda-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .agenda-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--primary) 16%, transparent) !important;
-  border-color: color-mix(in srgb, var(--primary) 92%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 92%, transparent);
+  color: var(--text-primary);
   font-weight: 860;
 }
 
@@ -1262,43 +1279,43 @@
 }
 
 .app-theme[data-theme="dark"] .agenda-view__topbar {
-  border-color: var(--line) !important;
-  background: var(--agenda-surface) !important;
+  border-color: var(--line);
+  background: var(--agenda-surface);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .agenda-view__section .shared-section__header,
 .app-theme[data-theme="dark"] .agenda-view__person-toolbar,
 .app-theme[data-theme="dark"] .agenda-view__day-strip {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__section .shared-section__content {
-  background: transparent !important;
+  background: transparent;
 }
 
 .app-theme[data-theme="dark"] .agenda-view__ghost-button,
 .app-theme[data-theme="dark"] .agenda-view__switch {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__legend span {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-muted) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__action-hints .shared-status-badge {
-  border-color: color-mix(in oklab, var(--line) 86%, transparent) !important;
-  background: color-mix(in oklab, var(--surface-muted) 92%, var(--panel)) !important;
-  color: var(--text-soft) !important;
+  border-color: color-mix(in oklab, var(--line) 86%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 92%, var(--panel));
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__action-hints .shared-status-badge--warning {
-  border-color: color-mix(in oklab, var(--warning) 44%, var(--line)) !important;
-  background: color-mix(in oklab, var(--warning) 18%, var(--panel)) !important;
-  color: var(--warning-border) !important;
+  border-color: color-mix(in oklab, var(--warning) 44%, var(--line));
+  background: color-mix(in oklab, var(--warning) 18%, var(--panel));
+  color: var(--warning-border);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__info > button {
@@ -1317,21 +1334,21 @@
 .app-theme[data-theme="dark"] .agenda-view__time-head,
 .app-theme[data-theme="dark"] .agenda-view__day-head,
 .app-theme[data-theme="dark"] .agenda-view__availability-table thead th {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__time-column,
 .app-theme[data-theme="dark"] .agenda-view__day,
 .app-theme[data-theme="dark"] .agenda-view__availability-table th,
 .app-theme[data-theme="dark"] .agenda-view__availability-table td {
-  border-color: var(--line) !important;
-  background: color-mix(in oklab, var(--panel) 86%, transparent) !important;
+  border-color: var(--line);
+  background: color-mix(in oklab, var(--panel) 86%, transparent);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__availability-table tbody th {
-  background: var(--surface-raised) !important;
+  background: var(--surface-raised);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__canvas {
@@ -1342,27 +1359,27 @@
       transparent 33px,
       color-mix(in oklab, var(--line) 68%, transparent) 34px
     ),
-    color-mix(in oklab, var(--panel) 86%, transparent) !important;
+    color-mix(in oklab, var(--panel) 86%, transparent);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__cell--free {
-  background: color-mix(in oklab, var(--success) 18%, var(--panel)) !important;
-  color: var(--success-border) !important;
+  background: color-mix(in oklab, var(--success) 18%, var(--panel));
+  color: var(--success-border);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__cell--partial {
-  background: color-mix(in oklab, var(--warning) 24%, var(--panel)) !important;
-  color: var(--warning-border) !important;
+  background: color-mix(in oklab, var(--warning) 24%, var(--panel));
+  color: var(--warning-border);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__cell--busy {
-  background: color-mix(in oklab, var(--danger) 22%, var(--panel)) !important;
-  color: var(--danger-border) !important;
+  background: color-mix(in oklab, var(--danger) 22%, var(--panel));
+  color: var(--danger-border);
 }
 
 .app-theme[data-theme="dark"] .agenda-view__cell--conflict {
-  background: color-mix(in oklab, var(--brand-indigo) 24%, var(--panel)) !important;
-  color: color-mix(in oklab, var(--decorative-purple) 28%, var(--border-default)) !important;
+  background: color-mix(in oklab, var(--brand-indigo) 24%, var(--panel));
+  color: color-mix(in oklab, var(--decorative-purple) 28%, var(--border-default));
 }
 
 .app-theme[data-theme="dark"] .agenda-view__cell button {
@@ -1372,15 +1389,15 @@
 
 .app-theme[data-theme="dark"] .agenda-view__mobile-card,
 .app-theme[data-theme="dark"] .agenda-slot-modal {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
   box-shadow:
     0 28px 56px color-mix(in srgb, var(--neutral-black) 34%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset;
 }
 
 .app-theme[data-theme="dark"] .agenda-slot-modal__content {
-  background: color-mix(in oklab, var(--panel-soft) 90%, var(--surface-raised)) !important;
+  background: color-mix(in oklab, var(--panel-soft) 90%, var(--surface-raised));
 }
 
 .app-theme[data-theme="dark"] .agenda-slot-modal__header {
@@ -1388,8 +1405,8 @@
 }
 
 .app-theme[data-theme="dark"] .agenda-slot-modal__item {
-  border-color: color-mix(in oklab, var(--agenda-slot-item-border) 68%, var(--line)) !important;
-  background: color-mix(in oklab, var(--agenda-slot-item-accent-soft) 14%, var(--surface-raised)) !important;
+  border-color: color-mix(in oklab, var(--agenda-slot-item-border) 68%, var(--line));
+  background: color-mix(in oklab, var(--agenda-slot-item-accent-soft) 14%, var(--surface-raised));
   box-shadow:
     0 10px 24px color-mix(in srgb, var(--neutral-black) 22%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset;
@@ -1400,8 +1417,8 @@
 }
 
 .app-theme[data-theme="dark"] .agenda-slot-modal__item:hover {
-  border-color: color-mix(in oklab, var(--agenda-slot-item-border) 82%, var(--line)) !important;
-  background: color-mix(in oklab, var(--agenda-slot-item-accent-soft) 20%, var(--surface-raised)) !important;
+  border-color: color-mix(in oklab, var(--agenda-slot-item-border) 82%, var(--line));
+  background: color-mix(in oklab, var(--agenda-slot-item-accent-soft) 20%, var(--surface-raised));
   box-shadow:
     0 14px 28px color-mix(in srgb, var(--neutral-black) 28%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;

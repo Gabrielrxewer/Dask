@@ -24,26 +24,21 @@ export function useAppFormState() {
   return useContext(AppFormStateContext);
 }
 
-type AppFormSubmitHandler<
-  TFieldValues extends FieldValues,
-  TTransformedValues extends FieldValues | undefined
-> = TTransformedValues extends FieldValues ? SubmitHandler<TTransformedValues> : SubmitHandler<TFieldValues>;
-
 export interface AppFormProps<
   TFieldValues extends FieldValues = FieldValues,
-  TTransformedValues extends FieldValues | undefined = undefined
+  TTransformedValues extends FieldValues = TFieldValues
 >
   extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   form?: UseFormReturn<TFieldValues, unknown, TTransformedValues>;
   disabled?: boolean;
   loading?: boolean;
-  onSubmit?: AppFormSubmitHandler<TFieldValues, TTransformedValues>;
+  onSubmit?: SubmitHandler<TTransformedValues>;
   onRawSubmit?: FormEventHandler<HTMLFormElement>;
 }
 
 export function AppForm<
   TFieldValues extends FieldValues = FieldValues,
-  TTransformedValues extends FieldValues | undefined = undefined
+  TTransformedValues extends FieldValues = TFieldValues
 >({
   form,
   disabled = false,
@@ -57,7 +52,7 @@ export function AppForm<
 }: AppFormProps<TFieldValues, TTransformedValues>) {
   const submitHandler =
     form && onSubmit
-      ? form.handleSubmit(onSubmit as Parameters<UseFormReturn<TFieldValues, unknown, TTransformedValues>["handleSubmit"]>[0])
+      ? form.handleSubmit(onSubmit)
       : onRawSubmit;
 
   const content = (

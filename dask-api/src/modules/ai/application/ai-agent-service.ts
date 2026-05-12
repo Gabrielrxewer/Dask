@@ -1,12 +1,10 @@
-import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { type Prisma, type PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
+import { redactErrorMessage, redactSensitiveText, redactSensitiveValue } from '@/core/security/redaction';
 import { DomainEventNames } from '@/core/events/event-names';
-import type { AIProvider, AIToolDefinition } from '@/modules/ai/domain/providers';
 import type { HybridSearchService } from '@/modules/search/application/hybrid-search-service';
-import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { EventPublisher } from '@/core/events/event-publisher';
 import type { AIAgentRepository } from '@/modules/ai/repositories/ai-agent-repository';
 import type { AIAgentData } from '@/modules/ai/repositories/ai-agent-repository';
@@ -15,18 +13,19 @@ import {
   mergeAiAgentRuntimeConfig
 } from '@/modules/ai/model/ai-agent-runtime-compiler';
 import type { AutomationWorkflowRunnerService } from '@/modules/automation/application/automation-workflow-runner-service';
+import { AutomationRunObservabilityService } from '@/modules/automation/application/automation-run-observability-service';
 import { AutomationWorkflowService } from '@/modules/automation/application/workflow-service';
 import { AutomationWorkflowVersionService } from '@/modules/automation/application/workflow-version-service';
-import {
-  ensureRiskAnalysisOutput,
-  formatRiskAnalysisAsText,
-  parseJsonObject,
-  redactSensitiveText
-} from '@/modules/ai/application/ai-guardrails';
-import { AIToolExecutor } from '@/modules/ai/application/ai-tool-executor';
 
-// ─── Max error length stored in the database ───────────────────────────────
-const RUN_ERROR_MAX_LENGTH = 1900;
+const AI_RUNTIME_TRIGGER_TYPES = [
+  'ai.agent.run',
+  'ai.agent.item.run',
+  'ai.agent.risk_analysis',
+  'ai.documentation.run'
+] as const;
+
+const AI_RUNTIME_REDACTION_KEY_PATTERN =
+  /(system[-_]?prompt|user[-_]?prompt|developer[-_]?prompt|prompt|messages|raw[-_]?payload|payload[-_]?json|request[-_]?payload|response[-_]?payload|request[-_]?body|response[-_]?body)/i;
 
 type RunAgentInput = {
   workspaceId: string;
@@ -60,85 +59,8 @@ type RuntimeServices = {
   workflowService?: AutomationWorkflowService;
   workflowVersionService?: AutomationWorkflowVersionService;
   workflowRunnerService?: AutomationWorkflowRunnerService;
+  runObservabilityService?: AutomationRunObservabilityService;
 };
-
-const documentationAssistantOutputSchema = z.object({
-  response: z.string().min(1).max(20_000),
-  action: z.enum(['chat', 'replace_document', 'append_document']).default('chat'),
-  updatedDocument: z.string().max(180_000).nullable().optional()
-});
-
-// ─── Agent config schema (validated, not cast) ─────────────────────────────
-const agentConfigSchema = z
-  .object({
-    limits: z
-      .object({
-        maxRequestsPerMinute: z.number().int().positive().optional(),
-        maxTokensPerDay: z.number().int().positive().optional()
-      })
-      .optional(),
-    tools: z
-      .object({
-        enabled: z.boolean().optional(),
-        allowed: z.array(z.string()).optional(),
-        nativeEnabled: z.boolean().optional(),
-        nativeAllowed: z.array(z.string()).optional(),
-        gptEnabled: z.boolean().optional(),
-        gptAllowed: z.array(z.string()).optional()
-      })
-      .optional(),
-    guardrails: z
-      .object({
-        redactSensitive: z.boolean().optional(),
-        requireJsonOutput: z.boolean().optional()
-      })
-      .optional(),
-    rag: z
-      .object({
-        enabled: z.boolean().optional(),
-        source: z.enum(['none', 'documentation', 'card', 'card_and_documentation']).optional(),
-        contextInstruction: z.string().max(2000).optional(),
-        includeSemanticContext: z.boolean().optional(),
-        includeLinkedDocuments: z.boolean().optional(),
-        topKContextDocs: z.number().int().min(1).max(10).optional()
-      })
-      .optional()
-  })
-  .passthrough();
-
-type AgentConfig = z.infer<typeof agentConfigSchema>;
-type AgentRagSource = 'none' | 'documentation' | 'card' | 'card_and_documentation';
-type AgentNativeTool = 'update_item_description' | 'set_item_status' | 'set_item_priority';
-type AgentGPTTool = 'web_search';
-type AgentRagResolved = {
-  source: AgentRagSource;
-  useCardContext: boolean;
-  useDocumentationContext: boolean;
-  includeSemanticContext: boolean;
-  includeLinkedDocuments: boolean;
-  topKContextDocs: number;
-  contextInstruction: string;
-};
-
-const agentNativeTools = new Set<AgentNativeTool>([
-  'update_item_description',
-  'set_item_status',
-  'set_item_priority'
-]);
-
-const agentGPTTools = new Set<AgentGPTTool>(['web_search']);
-
-function parseAgentConfig(value: Prisma.JsonValue | null): AgentConfig {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-  const result = agentConfigSchema.safeParse(value);
-  if (!result.success) {
-    // Unknown/malformed config — fall back to safe defaults instead of crashing
-    return {};
-  }
-  return result.data;
-}
 
 function asRecord(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -147,12 +69,53 @@ function asRecord(value: Prisma.JsonValue | null | undefined): Record<string, un
   return value as Record<string, unknown>;
 }
 
-function estimateTokensFromText(value: string): number {
-  return Math.ceil(value.length / 4);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function floorToUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+function sanitizeAiRuntimeValue<T>(value: T): T {
+  return redactSensitiveValue(value, {
+    maskPersonalData: true,
+    maxStringLength: 2000,
+    maxArrayLength: 50,
+    maxObjectKeys: 80,
+    maxDepth: 8,
+    omitKeys: ['stack'],
+    additionalSensitiveKeyPattern: AI_RUNTIME_REDACTION_KEY_PATTERN
+  });
+}
+
+function sanitizeAiRuntimeContext(value: Record<string, unknown> | undefined): Record<string, unknown> {
+  return sanitizeAiRuntimeValue(value ?? {}) as Record<string, unknown>;
+}
+
+function sanitizeAiInstruction(value: string): string {
+  return redactSensitiveText(value, { maskPersonalData: false }).slice(0, 4000);
+}
+
+function parseAgentIdFromTriggerRef(value: string | null | undefined): string {
+  return typeof value === 'string' && value.includes(':') ? value.split(':')[0] ?? '' : '';
+}
+
+function parseItemIdFromTriggerRef(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const [, itemId] = value.split(':');
+  return itemId && itemId !== 'documentation' ? itemId : null;
+}
+
+function errorMessage(value: unknown): string | null {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (isRecord(value) && typeof value.message === 'string') {
+    return value.message;
+  }
+  return null;
 }
 
 function normalizeToken(value: string): string {
@@ -172,178 +135,25 @@ function buildSearchTokens(value: string): string[] {
   return Array.from(new Set(tokens)).slice(0, 12);
 }
 
-function clampTopK(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 5;
-  }
-  return Math.min(Math.max(Math.round(value), 1), 10);
-}
-
-function resolveRagSource(rawSource: unknown): AgentRagSource {
-  return rawSource === 'none' ||
-    rawSource === 'documentation' ||
-    rawSource === 'card' ||
-    rawSource === 'card_and_documentation'
-    ? rawSource
-    : 'card_and_documentation';
-}
-
-function resolveAgentRagConfig(input: {
-  config: AgentConfig;
-  includeSemanticContext: boolean;
-  topKContextDocs: number;
-}): AgentRagResolved {
-  const rag = input.config.rag;
-  const source =
-    rag?.enabled === false
-      ? 'none'
-      : resolveRagSource(rag?.source);
-
-  const useCardContext = source === 'card' || source === 'card_and_documentation';
-  const useDocumentationContext = source === 'documentation' || source === 'card_and_documentation';
-  const includeSemanticContext = useCardContext && rag?.includeSemanticContext !== false && input.includeSemanticContext;
-
-  return {
-    source,
-    useCardContext,
-    useDocumentationContext,
-    includeSemanticContext,
-    includeLinkedDocuments: rag?.includeLinkedDocuments !== false,
-    topKContextDocs: clampTopK(rag?.topKContextDocs ?? input.topKContextDocs),
-    contextInstruction: (rag?.contextInstruction ?? '').trim().slice(0, 1800)
-  };
-}
-
-function normalizeNativeToolList(value: unknown): AgentNativeTool[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const unique = new Set<AgentNativeTool>();
-  for (const entry of value) {
-    if (typeof entry !== 'string') {
-      continue;
-    }
-    if (agentNativeTools.has(entry as AgentNativeTool)) {
-      unique.add(entry as AgentNativeTool);
-    }
-  }
-
-  return Array.from(unique);
-}
-
-function normalizeGptToolList(value: unknown): AgentGPTTool[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const unique = new Set<AgentGPTTool>();
-  for (const entry of value) {
-    if (typeof entry !== 'string') {
-      continue;
-    }
-    if (agentGPTTools.has(entry as AgentGPTTool)) {
-      unique.add(entry as AgentGPTTool);
-    }
-  }
-
-  return Array.from(unique);
-}
-
-function resolveAgentTools(config: AgentConfig): {
-  nativeEnabled: boolean;
-  nativeAllowed: AgentNativeTool[];
-  gptEnabled: boolean;
-  gptAllowed: AgentGPTTool[];
-} {
-  const tools = config.tools;
-  const nativeAllowed = normalizeNativeToolList(tools?.nativeAllowed ?? tools?.allowed);
-  const nativeEnabled = (tools?.nativeEnabled ?? tools?.enabled ?? false) === true && nativeAllowed.length > 0;
-  const gptAllowed = normalizeGptToolList(tools?.gptAllowed);
-  const gptEnabled = tools?.gptEnabled === true && gptAllowed.length > 0;
-
-  return {
-    nativeEnabled,
-    nativeAllowed,
-    gptEnabled,
-    gptAllowed
-  };
-}
-
-function buildDocumentationModeGuidance(mode: RunDocumentationAssistantInput['mode']): string {
-  if (mode === 'write') {
-    return [
-      '- Write clear and structured technical documentation in markdown.',
-      '- Prefer sections, short paragraphs, and practical examples.',
-      '- Keep terminology consistent with the existing content.'
-    ].join('\n');
-  }
-
-  if (mode === 'maintain') {
-    return [
-      '- Review and improve the existing document for clarity, consistency and freshness.',
-      '- Highlight outdated or contradictory sections and provide corrected content.',
-      '- Preserve intent and avoid unnecessary rewrites.'
-    ].join('\n');
-  }
-
-  return [
-    '- Answer questions about the document objectively and directly.',
-    '- Reference the current document content when possible.',
-    '- If information is missing, state assumptions explicitly.'
-  ].join('\n');
-}
-
-function shouldAttachConversationContext(input: {
-  mode: RunDocumentationAssistantInput['mode'];
-  instruction: string;
-  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
-}): boolean {
-  if (input.conversationHistory.length === 0) {
-    return false;
-  }
-
-  if (input.mode === 'chat') {
-    return true;
-  }
-
-  const normalized = input.instruction.toLowerCase();
-  return /(continue|continua|como falamos|como voce disse|mesmo estilo|anterior|acima|contexto da conversa|retomar)/.test(
-    normalized
-  );
-}
-
-function shouldAttachSemanticContext(input: {
-  mode: RunDocumentationAssistantInput['mode'];
-  instruction: string;
-}): boolean {
-  if (input.mode === 'chat') {
-    return true;
-  }
-
-  const normalized = input.instruction.toLowerCase();
-  return /(workspace|time|equipe|backlog|sprint|ticket|task|tarefa|roadmap|produto|contexto)/.test(normalized);
-}
-
 export class AIAgentService {
-  private readonly toolExecutor: AIToolExecutor;
   private readonly workflowService: AutomationWorkflowService;
   private readonly workflowVersionService: AutomationWorkflowVersionService;
   private readonly workflowRunnerService?: AutomationWorkflowRunnerService;
+  private readonly runObservabilityService: AutomationRunObservabilityService;
 
   public constructor(
     private readonly prisma: PrismaClient,
     private readonly agentRepository: AIAgentRepository,
-    private readonly aiProvider: AIProvider,
+    _aiProvider: unknown,
     private readonly hybridSearchService: HybridSearchService,
-    private readonly authorizationService: AuthorizationService,
+    _authorizationService: unknown,
     private readonly eventPublisher: EventPublisher,
     runtimeServices?: RuntimeServices
   ) {
-    this.toolExecutor = new AIToolExecutor(prisma, authorizationService, eventPublisher);
     this.workflowService = runtimeServices?.workflowService ?? new AutomationWorkflowService(prisma);
     this.workflowVersionService = runtimeServices?.workflowVersionService ?? new AutomationWorkflowVersionService(prisma);
     this.workflowRunnerService = runtimeServices?.workflowRunnerService;
+    this.runObservabilityService = runtimeServices?.runObservabilityService ?? new AutomationRunObservabilityService(prisma);
   }
 
   private async ensureDefaultAgent(workspaceId: string): Promise<void> {
@@ -533,7 +343,7 @@ export class AIAgentService {
         workspaceId: input.workspaceId,
         agentId: input.agentId,
         requestedBy: input.requestedBy ?? null,
-        ...(input.payload ?? {})
+        ...sanitizeAiRuntimeValue(input.payload ?? {})
       }
     });
   }
@@ -713,6 +523,8 @@ export class AIAgentService {
     requestedBy: string;
     instruction?: string;
     context?: Record<string, unknown>;
+    triggerType?: (typeof AI_RUNTIME_TRIGGER_TYPES)[number];
+    triggerRefId?: string | null;
   }): Promise<{
     agentId: string;
     workflowId: string;
@@ -731,35 +543,53 @@ export class AIAgentService {
       throw new AppError('Inactive AI agents cannot be executed.', 422);
     }
 
-    const runtime = this.readRuntimeConfig(agent.config);
-    const workflowId = typeof runtime.workflowId === 'string' ? runtime.workflowId : '';
+    let runtime = this.readRuntimeConfig(agent.config);
+    let workflowId = typeof runtime.workflowId === 'string' ? runtime.workflowId : '';
     if (!workflowId) {
-      throw new AppError('AI agent must be published before it can run on Automation Runtime.', 422);
+      const published = await this.publishAgentRuntime({
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        requestedBy: input.requestedBy,
+        activateWorkflow: true
+      });
+      runtime = {
+        ...runtime,
+        workflowId: published.workflowId,
+        workflowVersionId: published.workflowVersionId
+      };
+      workflowId = published.workflowId;
     }
 
-    const instruction = (input.instruction ?? '').trim() || `Execute AI agent ${agent.name}.`;
+    await this.enforceRuntimeRunLimits({
+      workspaceId: input.workspaceId,
+      agentId: agent.id
+    });
+
+    const instruction = sanitizeAiInstruction(
+      (input.instruction ?? '').trim() || `Execute AI agent ${agent.name}.`
+    );
+    const safeContext = sanitizeAiRuntimeContext(input.context);
+    const triggerType = input.triggerType ?? 'ai.agent.run';
+    const triggerRefId = input.triggerRefId ?? `${agent.id}:${randomUUID()}`;
+    const eventPayload = sanitizeAiRuntimeContext({
+      ...safeContext,
+      instruction,
+      agentId: agent.id,
+      agentKey: agent.key,
+      requestedBy: input.requestedBy
+    });
 
     try {
       const run = await this.workflowRunnerService.startRun({
         workspaceId: input.workspaceId,
         workflowId,
-        triggerType: 'ai.agent.run',
-        triggerRefId: `${agent.id}:${randomUUID()}`,
+        triggerType,
+        triggerRefId,
         context: {
-          ...(input.context ?? {}),
-          instruction,
-          agentId: agent.id,
-          agentKey: agent.key,
-          requestedBy: input.requestedBy,
+          ...eventPayload,
           event: {
-            name: 'ai.agent.run',
-            payload: {
-              ...(input.context ?? {}),
-              instruction,
-              agentId: agent.id,
-              agentKey: agent.key,
-              requestedBy: input.requestedBy
-            }
+            name: triggerType,
+            payload: eventPayload
           }
         }
       });
@@ -794,11 +624,42 @@ export class AIAgentService {
         requestedBy: input.requestedBy,
         payload: {
           workflowId,
-          error: error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000)
+          error: redactErrorMessage(error, 1000)
         }
       });
 
       throw error;
+    }
+  }
+
+  private async enforceRuntimeRunLimits(input: {
+    workspaceId: string;
+    agentId: string;
+  }): Promise<void> {
+    const oneMinuteAgo = new Date(Date.now() - 60_000);
+    const [workspaceRuns, agentRuns] = await Promise.all([
+      this.prisma.automationRun.count({
+        where: {
+          workspaceId: input.workspaceId,
+          triggerType: { in: [...AI_RUNTIME_TRIGGER_TYPES] },
+          createdAt: { gte: oneMinuteAgo }
+        }
+      }),
+      this.prisma.automationRun.count({
+        where: {
+          workspaceId: input.workspaceId,
+          triggerType: { in: [...AI_RUNTIME_TRIGGER_TYPES] },
+          triggerRefId: { startsWith: `${input.agentId}:` },
+          createdAt: { gte: oneMinuteAgo }
+        }
+      })
+    ]);
+
+    if (workspaceRuns >= env.AI_MAX_REQUESTS_PER_MIN_WORKSPACE) {
+      throw new AppError('Workspace AI rate limit exceeded. Try again in a minute.', 429);
+    }
+    if (agentRuns >= env.AI_MAX_REQUESTS_PER_MIN_AGENT) {
+      throw new AppError('Agent AI rate limit exceeded. Try again in a minute.', 429);
     }
   }
 
@@ -983,287 +844,62 @@ export class AIAgentService {
       .join('\n\n');
   }
 
-  private async enforceRunLimits(input: {
+  private async readRuntimeRunContent(input: {
     workspaceId: string;
-    agentId: string;
-    estimatedTokens: number;
-    config: AgentConfig;
-  }): Promise<void> {
-    const now = new Date();
-    const oneMinuteAgo = new Date(now.getTime() - 60_000);
-    const dayStart = floorToUtcDay(now);
-
-    const [workspaceRpm, agentRpm, workspaceDay] = await Promise.all([
-      this.prisma.aIAgentRun.count({
-        where: {
-          workspaceId: input.workspaceId,
-          createdAt: { gte: oneMinuteAgo }
-        }
-      }),
-      this.prisma.aIAgentRun.count({
-        where: {
-          workspaceId: input.workspaceId,
-          agentId: input.agentId,
-          createdAt: { gte: oneMinuteAgo }
-        }
-      }),
-      this.prisma.aIAgentRun.aggregate({
-        where: {
-          workspaceId: input.workspaceId,
-          createdAt: { gte: dayStart }
-        },
-        _sum: { totalTokens: true }
-      })
-    ]);
-
-    const maxWorkspaceRpm = input.config.limits?.maxRequestsPerMinute ?? env.AI_MAX_REQUESTS_PER_MIN_WORKSPACE;
-    const maxAgentRpm = input.config.limits?.maxRequestsPerMinute ?? env.AI_MAX_REQUESTS_PER_MIN_AGENT;
-    const maxWorkspaceDailyTokens =
-      input.config.limits?.maxTokensPerDay ?? env.AI_MAX_TOKENS_PER_DAY_WORKSPACE;
-    const maxAgentDailyTokens = input.config.limits?.maxTokensPerDay ?? env.AI_MAX_TOKENS_PER_DAY_AGENT;
-
-    if (workspaceRpm >= maxWorkspaceRpm) {
-      throw new AppError('Workspace AI rate limit exceeded. Try again in a minute.', 429);
-    }
-    if (agentRpm >= maxAgentRpm) {
-      throw new AppError('Agent AI rate limit exceeded. Try again in a minute.', 429);
-    }
-
-    const workspaceUsedTokens = workspaceDay._sum.totalTokens ?? 0;
-    if (workspaceUsedTokens + input.estimatedTokens > maxWorkspaceDailyTokens) {
-      throw new AppError('Workspace daily AI token budget exceeded.', 429);
-    }
-
-    const agentDay = await this.prisma.aIAgentRun.aggregate({
+    runId: string;
+  }): Promise<string> {
+    const steps = await this.prisma.automationStepRun.findMany({
       where: {
         workspaceId: input.workspaceId,
-        agentId: input.agentId,
-        createdAt: { gte: dayStart }
+        runId: input.runId,
+        status: 'completed'
       },
-      _sum: { totalTokens: true }
+      select: {
+        nodeType: true,
+        outputJson: true,
+        finishedAt: true,
+        createdAt: true
+      },
+      orderBy: [{ finishedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 10
     });
-    const agentUsedTokens = agentDay._sum.totalTokens ?? 0;
-    if (agentUsedTokens + input.estimatedTokens > maxAgentDailyTokens) {
-      throw new AppError('Agent daily AI token budget exceeded.', 429);
-    }
-  }
 
-  private buildToolDefinitions(allowedTools: AgentNativeTool[]): AIToolDefinition[] {
-    const tools: AIToolDefinition[] = [];
-    if (allowedTools.includes('update_item_description')) {
-      tools.push({
-        name: 'update_item_description',
-        description: 'Update item description with a cleaner actionable text.',
-        inputSchema: {
-          type: 'object',
-          properties: { description: { type: 'string' } },
-          required: ['description'],
-          additionalProperties: false
+    for (const step of steps) {
+      const output = asRecord(step.outputJson);
+      for (const key of ['content', 'response', 'draftText', 'summary']) {
+        const value = output[key];
+        if (typeof value === 'string' && value.trim().length > 0) {
+          return value.trim();
         }
-      });
+      }
     }
-    if (allowedTools.includes('set_item_status')) {
-      tools.push({
-        name: 'set_item_status',
-        description: 'Set item status slug.',
-        inputSchema: {
-          type: 'object',
-          properties: { status: { type: 'string' } },
-          required: ['status'],
-          additionalProperties: false
-        }
-      });
-    }
-    if (allowedTools.includes('set_item_priority')) {
-      tools.push({
-        name: 'set_item_priority',
-        description: 'Set item numeric priority from 0 to 4.',
-        inputSchema: {
-          type: 'object',
-          properties: { priority: { type: 'number' } },
-          required: ['priority'],
-          additionalProperties: false
-        }
-      });
-    }
-    return tools;
-  }
 
+    return '';
+  }
   public async runAgentOnItem(input: RunAgentInput): Promise<{ runId: string; content: string }> {
-    const agent = await this.agentRepository.findActiveById(input.agentId, input.workspaceId);
-
-    if (!agent) {
-      throw new AppError('Agent not found', 404);
-    }
-
-    const config = parseAgentConfig(agent.config);
-    const ragConfig = resolveAgentRagConfig({
-      config,
-      includeSemanticContext: input.includeSemanticContext,
-      topKContextDocs: input.topKContextDocs
-    });
-    const resolvedTools = resolveAgentTools(config);
-
-    // ── Fix: authorize write access before any I/O when tools may mutate the item ──
-    if (resolvedTools.nativeEnabled) {
-      const canWrite = await this.authorizationService.can(input.requestedBy, 'item.write', {
-        workspaceId: input.workspaceId,
-        itemId: input.itemId
-      });
-      if (!canWrite) {
-        throw new AppError('User is not allowed to execute AI tools for item mutations.', 403);
-      }
-    }
-
-    const redactSensitive = config.guardrails?.redactSensitive !== false;
-
-    const context = await this.buildItemContext({
+    const run = await this.runAgentRuntime({
       workspaceId: input.workspaceId,
-      itemId: input.itemId,
-      includeSemanticContext: ragConfig.useCardContext && ragConfig.includeSemanticContext,
-      topKContextDocs: ragConfig.topKContextDocs,
-      redactSensitive,
-      includeLinkedDocuments: ragConfig.includeLinkedDocuments
-    });
-
-    const instruction = redactSensitive ? redactSensitiveText(input.instruction) : input.instruction;
-    let documentationContext = '';
-    if (ragConfig.useDocumentationContext) {
-      documentationContext = await this.buildDocumentationContext({
-        workspaceId: input.workspaceId,
-        query: [instruction, context.itemContext].join('\n').slice(0, 8000),
-        topKContextDocs: ragConfig.topKContextDocs,
-        redactSensitive
-      });
-    }
-
-    const promptBody = [
-      `Instruction:\n${instruction}`,
-      ragConfig.contextInstruction.length > 0 ? `Context Guidance:\n${ragConfig.contextInstruction}` : '',
-      ragConfig.useCardContext ? `Card Context:\n${context.itemContext}` : '',
-      ragConfig.useCardContext && context.semanticContext.length > 0
-        ? `Card Semantic Context:\n${context.semanticContext}`
-        : '',
-      ragConfig.useDocumentationContext && documentationContext.length > 0
-        ? `Documentation Context:\n${documentationContext}`
-        : '',
-      !ragConfig.useCardContext && !ragConfig.useDocumentationContext
-        ? 'RAG Context: disabled for this agent configuration.'
-        : ''
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-
-    await this.enforceRunLimits({
-      workspaceId: input.workspaceId,
-      agentId: agent.id,
-      estimatedTokens: estimateTokensFromText(agent.systemPrompt + promptBody),
-      config
-    });
-
-    const run = await this.prisma.aIAgentRun.create({
-      data: {
-        workspaceId: input.workspaceId,
-        agentId: agent.id,
+      agentId: input.agentId,
+      requestedBy: input.requestedBy,
+      instruction: input.instruction,
+      triggerType: input.riskStrictMode ? 'ai.agent.risk_analysis' : 'ai.agent.item.run',
+      triggerRefId: `${input.agentId}:${input.itemId}:${randomUUID()}`,
+      context: {
         itemId: input.itemId,
-        requestedBy: input.requestedBy,
-        status: 'running',
-        input: {
-          instruction,
-          includeSemanticContext: ragConfig.includeSemanticContext,
-          topKContextDocs: ragConfig.topKContextDocs,
-          ragSource: ragConfig.source,
-          nativeTools: resolvedTools.nativeEnabled ? resolvedTools.nativeAllowed : [],
-          gptTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : []
-        },
-        startedAt: new Date()
+        includeSemanticContext: input.includeSemanticContext,
+        topKContextDocs: input.topKContextDocs,
+        riskStrictMode: input.riskStrictMode === true
       }
     });
 
-    try {
-      const allowedNativeTools = resolvedTools.nativeEnabled ? resolvedTools.nativeAllowed : [];
-
-      const toolDefinitions = this.buildToolDefinitions(allowedNativeTools);
-      const generation = await this.aiProvider.generateText({
-        model: agent.model,
-        temperature: agent.temperature,
-        systemPrompt: [
-          agent.systemPrompt,
-          '',
-          'You are integrated in a work management platform. Respond with practical and concise output.'
-        ].join('\n'),
-        userPrompt: promptBody,
-        tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-        nativeTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : undefined,
-        requireJsonOutput: Boolean(config.guardrails?.requireJsonOutput)
-      });
-
-      const toolExecutionSummary = await this.toolExecutor.execute({
+    return {
+      runId: run.runId,
+      content: await this.readRuntimeRunContent({
         workspaceId: input.workspaceId,
-        itemId: input.itemId,
-        boardId: context.boardId,
-        requestedBy: input.requestedBy,
-        toolCalls: generation.toolCalls,
-        allowedTools: allowedNativeTools
-      });
-
-      let finalContent = generation.content;
-      if (input.riskStrictMode) {
-        const risk = ensureRiskAnalysisOutput(generation.content);
-        finalContent = formatRiskAnalysisAsText(risk);
-      } else if (config.guardrails?.requireJsonOutput) {
-        const parsed = parseJsonObject(generation.content);
-        if (!parsed) {
-          throw new AppError('Agent output must be valid JSON object due to guardrails.', 422);
-        }
-      }
-
-      if (toolExecutionSummary.length > 0) {
-        finalContent = [finalContent, '', 'Acoes executadas:', ...toolExecutionSummary.map((entry) => `- ${entry}`)].join('\n');
-      }
-
-      const estimatedCostUsd = Number(((generation.usage.totalTokens / 1_000_000) * 0.8).toFixed(6));
-
-      await this.prisma.aIAgentRun.update({
-        where: { id: run.id },
-        data: {
-          status: 'completed',
-          output: {
-            content: finalContent,
-            toolCalls: generation.toolCalls,
-            toolExecutionSummary
-          } as Prisma.InputJsonValue,
-          provider: generation.provider,
-          model: generation.model,
-          latencyMs: generation.latencyMs,
-          inputTokens: generation.usage.inputTokens,
-          outputTokens: generation.usage.outputTokens,
-          totalTokens: generation.usage.totalTokens,
-          estimatedCostUsd,
-          finishedAt: new Date()
-        }
-      });
-
-      return {
-        runId: run.id,
-        content: finalContent
-      };
-    } catch (error) {
-      await this.prisma.aIAgentRun.update({
-        where: { id: run.id },
-        data: {
-          status: 'failed',
-          error:
-            error instanceof Error
-              ? error.message.slice(0, RUN_ERROR_MAX_LENGTH)
-              : String(error).slice(0, RUN_ERROR_MAX_LENGTH),
-          finishedAt: new Date()
-        }
-      });
-      throw error;
-    }
+        runId: run.runId
+      })
+    };
   }
-
   public async runDocumentationAssistant(
     input: RunDocumentationAssistantInput
   ): Promise<{
@@ -1279,208 +915,36 @@ export class AIAgentService {
       throw new AppError('No active AI agent configured for this workspace', 400);
     }
 
-    const config = parseAgentConfig(agent.config);
-    const ragConfig = resolveAgentRagConfig({
-      config,
-      includeSemanticContext: input.includeSemanticContext,
-      topKContextDocs: input.topKContextDocs
-    });
-    const resolvedTools = resolveAgentTools(config);
-    const redactSensitive = config.guardrails?.redactSensitive !== false;
-    const redact = (value: string): string => (redactSensitive ? redactSensitiveText(value) : value);
-
-    const documentTitle = redact((input.documentTitle ?? '').trim());
-    const documentPath = redact((input.documentPath ?? '').trim());
-    const instruction = redact(input.instruction);
-    const selection = input.selection ? redact(input.selection) : '';
-    const documentContent = redact(input.documentContent);
-    const currentDocumentForPrompt = ragConfig.useDocumentationContext
-      ? documentContent || '(empty document)'
-      : '(documentation source disabled by this agent configuration)';
-    const modeGuidance = buildDocumentationModeGuidance(input.mode);
-    const sanitizedConversationHistory = (input.conversationHistory ?? [])
-      .slice(-10)
-      .map((entry) => ({
-        role: entry.role,
-        content: redact(entry.content).slice(0, 1800)
-      }));
-    const includeConversationContext = shouldAttachConversationContext({
-      mode: input.mode,
-      instruction,
-      conversationHistory: sanitizedConversationHistory
-    });
-    const conversationContext = includeConversationContext
-      ? sanitizedConversationHistory
-          .map((entry, index) => `${index + 1}. ${entry.role.toUpperCase()}: ${entry.content}`)
-          .join('\n')
-      : '';
-    const includeSemanticContext =
-      ragConfig.useCardContext &&
-      ragConfig.includeSemanticContext &&
-      documentContent.trim().length > 0 &&
-      shouldAttachSemanticContext({
-        mode: input.mode,
-        instruction
-      });
-
-    let semanticContext = '';
-    if (includeSemanticContext) {
-      const query = [documentTitle, instruction, documentContent.slice(0, 3000)]
-        .filter(Boolean)
-        .join('\n');
-
-      const relatedDocs = await this.hybridSearchService.search({
-        query,
-        filters: { workspaceId: input.workspaceId },
-        limit: ragConfig.topKContextDocs
-      });
-
-      semanticContext = redact(
-        relatedDocs
-          .map(
-            (doc, index) =>
-              `${index + 1}. itemId=${doc.itemId} score=${doc.score.toFixed(4)}\n${doc.content.slice(0, 600)}`
-          )
-          .join('\n\n')
-      );
-    }
-
-    let relatedDocumentationContext = '';
-    if (ragConfig.useDocumentationContext) {
-      relatedDocumentationContext = await this.buildDocumentationContext({
-        workspaceId: input.workspaceId,
-        query: [documentTitle, documentPath, instruction, documentContent.slice(0, 3000)]
-          .filter(Boolean)
-          .join('\n'),
-        topKContextDocs: ragConfig.topKContextDocs,
-        redactSensitive
-      });
-    }
-
-    const promptBody = [
-      `Mode: ${input.mode}`,
-      documentTitle ? `Document title: ${documentTitle}` : '',
-      documentPath ? `Document path: ${documentPath}` : '',
-      `Instruction:\n${instruction}`,
-      ragConfig.contextInstruction.length > 0 ? `Context Guidance:\n${ragConfig.contextInstruction}` : '',
-      selection && ragConfig.useDocumentationContext ? `Current selection:\n${selection}` : '',
-      `Current document:\n${currentDocumentForPrompt}`,
-      relatedDocumentationContext ? `Related documentation context:\n${relatedDocumentationContext}` : '',
-      conversationContext ? `Recent conversation context:\n${conversationContext}` : '',
-      semanticContext ? `Related workspace context:\n${semanticContext}` : ''
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-
-    await this.enforceRunLimits({
+    const run = await this.runAgentRuntime({
       workspaceId: input.workspaceId,
       agentId: agent.id,
-      estimatedTokens: estimateTokensFromText(agent.systemPrompt + promptBody),
-      config
-    });
-
-    const run = await this.prisma.aIAgentRun.create({
-      data: {
-        workspaceId: input.workspaceId,
-        agentId: agent.id,
-        itemId: null,
-        requestedBy: input.requestedBy,
-        status: 'running',
-        input: {
-          type: 'documentation_assistant',
-          mode: input.mode,
-          instruction,
-          documentTitle,
-          documentPath,
-          selection,
-          conversationHistory: includeConversationContext ? sanitizedConversationHistory : [],
-          includeSemanticContext,
-          topKContextDocs: ragConfig.topKContextDocs,
-          ragSource: ragConfig.source,
-          gptTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : []
-        },
-        startedAt: new Date()
+      requestedBy: input.requestedBy,
+      instruction: input.instruction,
+      triggerType: 'ai.documentation.run',
+      triggerRefId: `${agent.id}:documentation:${randomUUID()}`,
+      context: {
+        documentationAssistant: true,
+        mode: input.mode,
+        documentTitle: input.documentTitle,
+        documentPath: input.documentPath,
+        documentContent: input.documentContent,
+        selection: input.selection,
+        conversationHistory: input.conversationHistory ?? [],
+        includeSemanticContext: input.includeSemanticContext,
+        topKContextDocs: input.topKContextDocs
       }
     });
 
-    try {
-      const generation = await this.aiProvider.generateText({
-        model: agent.model,
-        temperature: agent.temperature,
-        systemPrompt: [
-          agent.systemPrompt,
-          '',
-          'You are a documentation copilot integrated in a work management platform.',
-          'You must always return a JSON object with the exact keys: response, action, updatedDocument.',
-          'action options:',
-          '- "chat": only answer/explain. updatedDocument must be null.',
-          '- "replace_document": user asked to rewrite/edit/update existing content. updatedDocument must contain the full final document.',
-          '- "append_document": user asked to add a new section/snippet. updatedDocument must contain only the new snippet to append.',
-          'When user asks to reescrever, revisar, atualizar, corrigir, editar or melhorar documentation content, prefer "replace_document".',
-          'Keep response concise and practical.',
-          '',
-          `Mode guidance:\n${modeGuidance}`
-        ].join('\n'),
-        userPrompt: promptBody,
-        nativeTools: resolvedTools.gptEnabled ? resolvedTools.gptAllowed : undefined,
-        requireJsonOutput: true
-      });
-
-      const parsed = documentationAssistantOutputSchema.safeParse(parseJsonObject(generation.content));
-      const structuredOutput = parsed.success
-        ? parsed.data
-        : {
-            response: generation.content,
-            action: 'chat' as const,
-            updatedDocument: null
-          };
-
-      const estimatedCostUsd = Number(((generation.usage.totalTokens / 1_000_000) * 0.8).toFixed(6));
-
-      await this.prisma.aIAgentRun.update({
-        where: { id: run.id },
-        data: {
-          status: 'completed',
-          output: {
-            type: 'documentation_assistant',
-            mode: input.mode,
-            content: structuredOutput.response,
-            action: structuredOutput.action,
-            updatedDocument: structuredOutput.updatedDocument ?? null
-          } as Prisma.InputJsonValue,
-          provider: generation.provider,
-          model: generation.model,
-          latencyMs: generation.latencyMs,
-          inputTokens: generation.usage.inputTokens,
-          outputTokens: generation.usage.outputTokens,
-          totalTokens: generation.usage.totalTokens,
-          estimatedCostUsd,
-          finishedAt: new Date()
-        }
-      });
-
-      return {
-        runId: run.id,
-        content: structuredOutput.response,
-        action: structuredOutput.action,
-        updatedDocument: structuredOutput.updatedDocument ?? null
-      };
-    } catch (error) {
-      await this.prisma.aIAgentRun.update({
-        where: { id: run.id },
-        data: {
-          status: 'failed',
-          error:
-            error instanceof Error
-              ? error.message.slice(0, RUN_ERROR_MAX_LENGTH)
-              : String(error).slice(0, RUN_ERROR_MAX_LENGTH),
-          finishedAt: new Date()
-        }
-      });
-      throw error;
-    }
+    return {
+      runId: run.runId,
+      content: await this.readRuntimeRunContent({
+        workspaceId: input.workspaceId,
+        runId: run.runId
+      }),
+      action: 'chat',
+      updatedDocument: null
+    };
   }
-
   public async runRiskAnalysis(input: {
     workspaceId: string;
     itemId: string;
@@ -1551,28 +1015,27 @@ export class AIAgentService {
       error: string | null;
     }>
   > {
-    return this.prisma.aIAgentRun.findMany({
-      where: {
-        workspaceId: input.workspaceId,
-        itemId: input.itemId
-      },
-      select: {
-        id: true,
-        agentId: true,
-        itemId: true,
-        status: true,
-        provider: true,
-        model: true,
-        latencyMs: true,
-        totalTokens: true,
-        estimatedCostUsd: true,
-        createdAt: true,
-        finishedAt: true,
-        error: true
-      },
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(input.limit ?? 50, 200)
+    const result = await this.runObservabilityService.listRuns({
+      workspaceId: input.workspaceId,
+      triggerTypes: [...AI_RUNTIME_TRIGGER_TYPES],
+      triggerRefIdContains: input.itemId ? `:${input.itemId}:` : undefined,
+      limit: input.limit
     });
+
+    return result.items.map((run) => ({
+      id: run.runId,
+      agentId: parseAgentIdFromTriggerRef(run.triggerRefId) || 'automation-runtime',
+      itemId: parseItemIdFromTriggerRef(run.triggerRefId),
+      status: run.status,
+      provider: 'automation-runtime',
+      model: null,
+      latencyMs: run.durationMs,
+      totalTokens: null,
+      estimatedCostUsd: null,
+      createdAt: run.createdAt,
+      finishedAt: run.finishedAt,
+      error: errorMessage(run.error)
+    }));
   }
 
   public async getObservability(input: { workspaceId: string }): Promise<{
@@ -1594,73 +1057,38 @@ export class AIAgentService {
     }>;
   }> {
     const start = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const rows = await this.prisma.aIAgentRun.findMany({
-      where: {
-        workspaceId: input.workspaceId,
-        createdAt: { gte: start }
-      },
-      select: {
-        status: true,
-        provider: true,
-        latencyMs: true,
-        totalTokens: true,
-        estimatedCostUsd: true
-      }
+    const result = await this.runObservabilityService.listRuns({
+      workspaceId: input.workspaceId,
+      triggerTypes: [...AI_RUNTIME_TRIGGER_TYPES],
+      dateFrom: start,
+      limit: 500
     });
 
+    const rows = result.items;
     const runs24h = rows.length;
     const failed24h = rows.filter((row) => row.status === 'failed').length;
-    const failureRate24h = runs24h > 0 ? Number((failed24h / runs24h).toFixed(4)) : 0;
-    const avgLatencyMs24h =
-      runs24h > 0
-        ? Math.round(rows.reduce((sum, row) => sum + (row.latencyMs ?? 0), 0) / runs24h)
-        : 0;
-    const tokens24h = rows.reduce((sum, row) => sum + (row.totalTokens ?? 0), 0);
-    const estimatedCostUsd24h = Number(
-      rows.reduce((sum, row) => sum + (row.estimatedCostUsd ?? 0), 0).toFixed(6)
-    );
-
-    const byProviderMap = new Map<
-      string,
-      { runs24h: number; failed24h: number; latencySum: number; tokens24h: number; cost24h: number }
-    >();
-
-    for (const row of rows) {
-      const provider = row.provider ?? 'unknown';
-      const current = byProviderMap.get(provider) ?? {
-        runs24h: 0,
-        failed24h: 0,
-        latencySum: 0,
-        tokens24h: 0,
-        cost24h: 0
-      };
-      current.runs24h += 1;
-      if (row.status === 'failed') {
-        current.failed24h += 1;
-      }
-      current.latencySum += row.latencyMs ?? 0;
-      current.tokens24h += row.totalTokens ?? 0;
-      current.cost24h += row.estimatedCostUsd ?? 0;
-      byProviderMap.set(provider, current);
-    }
+    const avgLatencyMs24h = runs24h > 0
+      ? Math.round(rows.reduce((sum, row) => sum + (row.durationMs ?? 0), 0) / runs24h)
+      : 0;
+    const summary = {
+      provider: 'automation-runtime',
+      runs24h,
+      failed24h,
+      avgLatencyMs24h,
+      tokens24h: 0,
+      estimatedCostUsd24h: 0
+    };
 
     return {
       totals: {
         runs24h,
         failed24h,
-        failureRate24h,
+        failureRate24h: runs24h > 0 ? Number((failed24h / runs24h).toFixed(4)) : 0,
         avgLatencyMs24h,
-        tokens24h,
-        estimatedCostUsd24h
+        tokens24h: 0,
+        estimatedCostUsd24h: 0
       },
-      byProvider: Array.from(byProviderMap.entries()).map(([provider, stats]) => ({
-        provider,
-        runs24h: stats.runs24h,
-        failed24h: stats.failed24h,
-        avgLatencyMs24h: stats.runs24h > 0 ? Math.round(stats.latencySum / stats.runs24h) : 0,
-        tokens24h: stats.tokens24h,
-        estimatedCostUsd24h: Number(stats.cost24h.toFixed(6))
-      }))
+      byProvider: runs24h > 0 ? [summary] : []
     };
   }
 }

@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { EventPublisher } from '@/core/events/event-publisher';
 import { env } from '@/core/config/env';
+import { assertProductionCriticalConfig } from '@/core/config/production-config';
 import { prisma } from '@/infra/db/prisma';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { BullMqJobQueue } from '@/infra/queue/bullmq-job-queue';
@@ -99,6 +100,24 @@ export type AppContainer = {
 };
 
 export function buildAppContainer(): AppContainer {
+  assertProductionCriticalConfig({
+    nodeEnv: env.NODE_ENV,
+    rawEnv: process.env,
+    stripeEnvironment: env.STRIPE_ENVIRONMENT,
+    stripeSecretKey: env.STRIPE_SECRET_KEY,
+    stripePublicKey: env.STRIPE_PUBLIC_KEY,
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    stripeFiscalWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL,
+    billingPortalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET,
+    stripePriceIdPersonalMonthly: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY,
+    stripePriceIdBusinessMonthly: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY,
+    stripeConnectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS,
+    stripeConnectRequiredCapabilities: env.STRIPE_CONNECT_REQUIRED_CAPABILITIES,
+    focusApiEnvironment: env.FOCUS_API_ENVIRONMENT,
+    focusApiBaseUrl: env.FOCUS_API_BASE_URL,
+    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+  });
+
   const outboxRepository = new PrismaOutboxRepository(prisma);
   const eventPublisher = new EventPublisher(outboxRepository, prisma);
   const jobQueue = new BullMqJobQueue();
@@ -144,14 +163,19 @@ export function buildAppContainer(): AppContainer {
         stripe: stripeClient,
         appPublicUrl: env.APP_PUBLIC_URL,
         webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
-        portalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET ?? env.JWT_SECRET,
+        portalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET,
+        environment: env.NODE_ENV,
+        stripeSecretConfigured: Boolean(env.STRIPE_SECRET_KEY?.trim()),
+        webhookSecretConfigured: Boolean(env.STRIPE_WEBHOOK_SECRET?.trim()),
+        portalTokenSecretConfigured: Boolean(env.BILLING_PORTAL_TOKEN_SECRET?.trim()),
         emailService,
         eventPublisher,
         priceIds: {
           PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
           BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
         },
-        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS
+        connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS,
+        connectRequiredCapabilities: env.STRIPE_CONNECT_REQUIRED_CAPABILITIES
       })
     : null;
   const automationBusinessActionService = new AutomationBusinessActionService({
@@ -205,7 +229,8 @@ export function buildAppContainer(): AppContainer {
     {
       workflowService: automationWorkflowService,
       workflowVersionService: automationWorkflowVersionService,
-      workflowRunnerService: automationWorkflowRunnerService
+      workflowRunnerService: automationWorkflowRunnerService,
+      runObservabilityService: automationRunObservabilityService
     }
   );
   const automationViewService = new AutomationViewService(prisma, workspaceConfigService);
@@ -213,19 +238,31 @@ export function buildAppContainer(): AppContainer {
   const auditService = new AuditService(prisma);
 
   const fiscalRepo = new PrismaFiscalRepository(prisma);
-  const focusProvider = new FocusFiscalProvider();
+  const focusProvider = new FocusFiscalProvider({
+    baseUrl: env.FOCUS_API_BASE_URL,
+    environment: env.NODE_ENV,
+    providerEnvironment: env.FOCUS_API_ENVIRONMENT,
+    isBaseUrlExplicit: Boolean(process.env.FOCUS_API_BASE_URL?.trim()),
+    requireExplicitBaseUrl: env.NODE_ENV === 'production',
+    timeoutMs: env.FOCUS_API_TIMEOUT_MS,
+    retryAttempts: env.FOCUS_API_RETRY_ATTEMPTS,
+    retryBackoffMs: env.FOCUS_API_RETRY_BACKOFF_MS
+  });
   const fiscalService = new FiscalService({
     repo: fiscalRepo,
     provider: focusProvider,
     jobQueue,
     stripe: stripeClient,
-    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL ?? env.STRIPE_WEBHOOK_SECRET,
-    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL,
+    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET,
+    environment: env.NODE_ENV
   });
   const commercialIntakeService = new CommercialIntakeService({
     prisma,
     workspaceWorkItemsService,
-    webhookSecret: env.LEADS_WEBHOOK_SECRET
+    webhookSecret: env.COMMERCIAL_INTAKE_WEBHOOK_SECRET,
+    environment: env.NODE_ENV,
+    allowInsecureWebhooks: env.COMMERCIAL_INTAKE_WEBHOOK_ALLOW_INSECURE
   });
   const marketingRepo = new PrismaMarketingRepository(prisma);
   const marketingEmailProvider = env.RESEND_API_KEY

@@ -29,6 +29,20 @@ const debugChannelsSchema = z
     )
   );
 
+const csvListSchema = z
+  .string()
+  .default('')
+  .transform((raw) =>
+    Array.from(
+      new Set(
+        raw
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      )
+    )
+  );
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(3333),
@@ -109,16 +123,27 @@ const envSchema = z.object({
   AUTOMATION_SIDE_EFFECT_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
 
   // Stripe Billing
+  STRIPE_ENVIRONMENT: z.enum(['test', 'live']).optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLIC_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_WEBHOOK_SECRET_FISCAL: z.string().optional(),
   BILLING_PORTAL_TOKEN_SECRET: z.string().min(16).optional(),
   STRIPE_PRICE_ID_PERSONAL_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ID_BUSINESS_MONTHLY: z.string().optional(),
   STRIPE_CONNECT_APPLICATION_FEE_BPS: z.coerce.number().int().min(0).max(10_000).default(500),
+  STRIPE_CONNECT_REQUIRED_CAPABILITIES: csvListSchema,
+  FOCUS_API_ENVIRONMENT: z.enum(['homologacao', 'producao']).default('homologacao'),
   FOCUS_API_BASE_URL: z.string().default('https://api.focusnfe.com.br/v2'),
+  FOCUS_API_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
+  FOCUS_API_RETRY_ATTEMPTS: z.coerce.number().int().min(0).max(5).default(2),
+  FOCUS_API_RETRY_BACKOFF_MS: z.coerce.number().int().min(0).max(5000).default(250),
   FOCUS_WEBHOOK_SECRET: z.string().optional(),
-  LEADS_WEBHOOK_SECRET: z.string().optional(),
+  COMMERCIAL_INTAKE_WEBHOOK_SECRET: z.string().optional(),
+  COMMERCIAL_INTAKE_WEBHOOK_ALLOW_INSECURE: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
   MARKETING_WEBHOOK_SECRET: z.string().optional(),
   APP_PUBLIC_URL: z.string().default('http://localhost:5173'),
   API_PUBLIC_URL: z.string().default('http://localhost:3333'),

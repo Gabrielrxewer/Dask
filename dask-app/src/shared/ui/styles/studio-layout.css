@@ -1,4 +1,4 @@
-/* ── Studio Layout — shared shell for AI Agents, Automations, Lead Flow ─────── */
+/* ── Studio Layout — shared shell for AI Agents, Automations, WorkItem Flow ─────── */
 
 .studio-layout {
   --studio-sidebar-w: 280px;
@@ -174,7 +174,7 @@
 
 @media (max-width: 1100px) {
   .studio-layout__body {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
     grid-template-rows: auto;
     overflow-y: auto;
   }

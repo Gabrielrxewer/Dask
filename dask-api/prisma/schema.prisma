@@ -329,7 +329,7 @@ enum MarketingCampaignChannel {
 }
 
 enum MarketingCampaignObjective {
-  LEAD_NURTURE
+  COMMERCIAL_NURTURE
   ONBOARDING
   REACTIVATION
   BILLING_REMINDER
@@ -360,6 +360,7 @@ enum MarketingEventType {
   EMAIL_BOUNCED
   EMAIL_COMPLAINT
   EMAIL_UNSUBSCRIBED
+  COMMERCIAL_SCORE_CHANGED
   LEAD_SCORE_CHANGED
   AUTOMATION_ENROLLED
   AUTOMATION_EXITED
@@ -427,7 +428,8 @@ enum MarketingAttributionType {
 }
 
 enum MarketingAttributionEntityType {
-  LEAD
+  WORK_ITEM
+  LEGACY_LEAD
   OPPORTUNITY
   CUSTOMER
   SUBSCRIPTION
@@ -435,73 +437,68 @@ enum MarketingAttributionEntityType {
 }
 
 model User {
-  id                       String                    @id @default(uuid())
-  email                    String                    @unique
-  name                     String
-  emailVerified            Boolean                   @default(false)
-  isPlatformAdmin          Boolean                   @default(false)
-  passwordHash             String?
+  id                                     String                         @id @default(uuid())
+  email                                  String                         @unique
+  name                                   String
+  emailVerified                          Boolean                        @default(false)
+  isPlatformAdmin                        Boolean                        @default(false)
+  passwordHash                           String?
   // 0 = legacy plain-bcrypt (pre-migration), 1 = HMAC-SHA256+bcrypt with pepper
-  passwordHashVersion      Int                       @default(0)
-  loginFailureCount        Int                       @default(0)
-  lockedUntil              DateTime?
-  preferences              Json?
+  passwordHashVersion                    Int                            @default(0)
+  loginFailureCount                      Int                            @default(0)
+  lockedUntil                            DateTime?
+  preferences                            Json?
   // Billing / Stripe
-  stripeCustomerId         String?                   @unique
-  subscriptionPlan         SubscriptionPlan?
-  subscriptionStatus       SubscriptionStatus?
-  subscriptionId           String?
-  currentPeriodEnd         DateTime?
-  hasActiveSubscription    Boolean                   @default(false)
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime                  @updatedAt
-  organizations            OrganizationMembership[]
-  teams                    TeamMembership[]
-  workspaces               WorkspaceMembership[]
-  createdItems             Item[]                    @relation("ItemCreatedBy")
-  assignedItems            Item[]                    @relation("ItemAssignee")
-  updatedItems             Item[]                    @relation("ItemUpdatedBy")
-  comments                 ItemComment[]
-  updatedCustomFieldValues CustomFieldValue[]        @relation("CustomFieldValueUpdatedBy")
-  updatedViewPlacements    WorkItemViewPlacement[]   @relation("WorkItemViewPlacementUpdatedBy")
-  customerWorkspaceLinks    WorkspaceCustomerUser[]
-  refreshTokens            RefreshToken[]
-  resetTokens              PasswordResetToken[]
-  verificationTokens       EmailVerificationToken[]
-  externalIdentities       ExternalIdentity[]
-  subscriptions            Subscription[]
-  sentWorkspaceInvites     WorkspaceInvite[]        @relation("WorkspaceInviteSentBy")
-  acceptedWorkspaceInvites WorkspaceInvite[]        @relation("WorkspaceInviteAcceptedBy")
-  createdAutomationWorkflows AutomationWorkflow[]   @relation("AutomationWorkflowCreatedBy")
-  publishedAutomationWorkflowVersions AutomationWorkflowVersion[] @relation("AutomationWorkflowVersionPublishedBy")
-  createdCommunicationTemplates CommunicationTemplate[] @relation("CommunicationTemplateCreatedBy")
+  stripeCustomerId                       String?                        @unique
+  subscriptionPlan                       SubscriptionPlan?
+  subscriptionStatus                     SubscriptionStatus?
+  subscriptionId                         String?
+  currentPeriodEnd                       DateTime?
+  hasActiveSubscription                  Boolean                        @default(false)
+  createdAt                              DateTime                       @default(now())
+  updatedAt                              DateTime                       @updatedAt
+  organizations                          OrganizationMembership[]
+  teams                                  TeamMembership[]
+  workspaces                             WorkspaceMembership[]
+  createdItems                           Item[]                         @relation("ItemCreatedBy")
+  assignedItems                          Item[]                         @relation("ItemAssignee")
+  updatedItems                           Item[]                         @relation("ItemUpdatedBy")
+  comments                               ItemComment[]
+  updatedCustomFieldValues               CustomFieldValue[]             @relation("CustomFieldValueUpdatedBy")
+  updatedViewPlacements                  WorkItemViewPlacement[]        @relation("WorkItemViewPlacementUpdatedBy")
+  customerWorkspaceLinks                 WorkspaceCustomerUser[]
+  refreshTokens                          RefreshToken[]
+  resetTokens                            PasswordResetToken[]
+  verificationTokens                     EmailVerificationToken[]
+  externalIdentities                     ExternalIdentity[]
+  subscriptions                          Subscription[]
+  sentWorkspaceInvites                   WorkspaceInvite[]              @relation("WorkspaceInviteSentBy")
+  acceptedWorkspaceInvites               WorkspaceInvite[]              @relation("WorkspaceInviteAcceptedBy")
+  createdAutomationWorkflows             AutomationWorkflow[]           @relation("AutomationWorkflowCreatedBy")
+  publishedAutomationWorkflowVersions    AutomationWorkflowVersion[]    @relation("AutomationWorkflowVersionPublishedBy")
+  createdCommunicationTemplates          CommunicationTemplate[]        @relation("CommunicationTemplateCreatedBy")
   publishedCommunicationTemplateVersions CommunicationTemplateVersion[] @relation("CommunicationTemplateVersionPublishedBy")
-  assignedCommunicationConversations CommunicationConversation[] @relation("CommunicationConversationAssignedTo")
-  ownedLeads               Lead[]                  @relation("LeadOwner")
-  leadActivities           LeadActivity[]          @relation("LeadActivityActor")
-  leadAssignments          LeadAssignment[]        @relation("LeadAssignmentActor")
-  leadConversions          LeadConversion[]        @relation("LeadConversionActor")
-  leadNurtureTouches       LeadNurtureTouch[]      @relation("LeadNurtureActor")
+  assignedCommunicationConversations     CommunicationConversation[]    @relation("CommunicationConversationAssignedTo")
 }
 
 model Subscription {
-  id                       String             @id @default(uuid())
-  userId                   String
-  stripeCustomerId         String
-  stripeSubscriptionId     String             @unique
-  stripeCheckoutSessionId  String?
-  planCode                 SubscriptionPlan
-  status                   SubscriptionStatus
-  currency                 String             @default("brl")
-  amount                   Int                // in cents
-  interval                 String             @default("month")
-  currentPeriodStart       DateTime?
-  currentPeriodEnd         DateTime?
-  cancelAtPeriodEnd        Boolean            @default(false)
-  lastWebhookEvent         String?
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                      String             @id @default(uuid())
+  userId                  String
+  stripeCustomerId        String
+  stripeSubscriptionId    String             @unique
+  stripeCheckoutSessionId String?
+  planCode                SubscriptionPlan
+  status                  SubscriptionStatus
+  currency                String             @default("brl")
+  amount                  Int // in cents
+  interval                String             @default("month")
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd       Boolean            @default(false)
+  lastWebhookEvent        String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([stripeCustomerId])
@@ -565,169 +562,162 @@ model EmailVerificationToken {
 }
 
 model Organization {
-  id              String                    @id @default(uuid())
-  name            String
-  slug            String                    @unique
-  settings        Json?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  memberships     OrganizationMembership[]
-  teams           Team[]
-  workspaces      Workspace[]
+  id          String                   @id @default(uuid())
+  name        String
+  slug        String                   @unique
+  settings    Json?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  memberships OrganizationMembership[]
+  teams       Team[]
+  workspaces  Workspace[]
 }
 
 model OrganizationMembership {
-  id              String                    @id @default(uuid())
-  organizationId  String
-  userId          String
-  role            MembershipRole            @default(MEMBER)
-  permissions     Json?
-  createdAt       DateTime                  @default(now())
-  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String         @id @default(uuid())
+  organizationId String
+  userId         String
+  role           MembershipRole @default(MEMBER)
+  permissions    Json?
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
 }
 
 model Team {
-  id              String                    @id @default(uuid())
-  organizationId  String
-  name            String
-  metadata        Json?
-  createdAt       DateTime                  @default(now())
-  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  memberships     TeamMembership[]
+  id             String           @id @default(uuid())
+  organizationId String
+  name           String
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships    TeamMembership[]
 }
 
 model TeamMembership {
-  id              String                    @id @default(uuid())
-  teamId          String
-  userId          String
-  role            MembershipRole            @default(MEMBER)
-  permissions     Json?
-  createdAt       DateTime                  @default(now())
-  team            Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String         @id @default(uuid())
+  teamId      String
+  userId      String
+  role        MembershipRole @default(MEMBER)
+  permissions Json?
+  createdAt   DateTime       @default(now())
+  team        Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
 }
 
 model Workspace {
-  id                     String                    @id @default(uuid())
-  organizationId         String?
-  kind                   WorkspaceKind             @default(CORPORATE)
-  name                   String
-  key                    String
-  config                 Json?
-  createdAt              DateTime                  @default(now())
-  updatedAt              DateTime                  @updatedAt
-  organization           Organization?             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  memberships            WorkspaceMembership[]
-  boards                 Board[]
-  templates              BoardTemplate[]
-  itemTypes              WorkItemType[]
-  workItemTypeTransformations WorkItemTypeTransformation[]
-  workflowStates         WorkflowState[]
-  boardColumns           BoardColumn[]
-  columnStateMappings    ColumnStateMapping[]
-  tagDefinitions         TagDefinition[]
-  customFieldDefinitions CustomFieldDefinition[]
-  fieldBindings          WorkItemFieldBinding[]
-  preferences            WorkspacePreferences?
-  workItems              Item[]
-  automationViews        AutomationView[]
-  automationViewColumns  AutomationViewColumn[]
-  itemViewPlacements     WorkItemViewPlacement[]
-  automationWorkflows    AutomationWorkflow[]
-  automationWorkflowVersions AutomationWorkflowVersion[]
-  automationRuns         AutomationRun[]
-  automationStepRuns     AutomationStepRun[]
-  automationScheduledSteps AutomationScheduledStep[]
-  automationRunEvents    AutomationRunEvent[]
-  automationSideEffects  AutomationSideEffect[]
-  automationApprovalRequests AutomationApprovalRequest[]
-  communicationTemplates CommunicationTemplate[]
-  communicationTemplateVersions CommunicationTemplateVersion[]
-  contactConsents        ContactConsent[]
-  communicationSuppressions CommunicationSuppression[]
-  communicationUnsubscribeTokens CommunicationUnsubscribeToken[]
-  communicationProviderEvents CommunicationProviderEvent[]
-  communicationContacts CommunicationContact[]
-  communicationContactChannels CommunicationContactChannel[]
-  communicationConversations CommunicationConversation[]
-  communicationInteractions CommunicationInteraction[]
+  id                               String                            @id @default(uuid())
+  organizationId                   String?
+  kind                             WorkspaceKind                     @default(CORPORATE)
+  name                             String
+  key                              String
+  config                           Json?
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
+  organization                     Organization?                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships                      WorkspaceMembership[]
+  boards                           Board[]
+  templates                        BoardTemplate[]
+  itemTypes                        WorkItemType[]
+  workItemTypeTransformations      WorkItemTypeTransformation[]
+  workflowStates                   WorkflowState[]
+  boardColumns                     BoardColumn[]
+  columnStateMappings              ColumnStateMapping[]
+  tagDefinitions                   TagDefinition[]
+  customFieldDefinitions           CustomFieldDefinition[]
+  fieldBindings                    WorkItemFieldBinding[]
+  preferences                      WorkspacePreferences?
+  workItems                        Item[]
+  automationViews                  AutomationView[]
+  automationViewColumns            AutomationViewColumn[]
+  itemViewPlacements               WorkItemViewPlacement[]
+  automationWorkflows              AutomationWorkflow[]
+  automationWorkflowVersions       AutomationWorkflowVersion[]
+  automationRuns                   AutomationRun[]
+  automationStepRuns               AutomationStepRun[]
+  automationScheduledSteps         AutomationScheduledStep[]
+  automationRunEvents              AutomationRunEvent[]
+  automationSideEffects            AutomationSideEffect[]
+  automationApprovalRequests       AutomationApprovalRequest[]
+  communicationTemplates           CommunicationTemplate[]
+  communicationTemplateVersions    CommunicationTemplateVersion[]
+  contactConsents                  ContactConsent[]
+  communicationSuppressions        CommunicationSuppression[]
+  communicationUnsubscribeTokens   CommunicationUnsubscribeToken[]
+  communicationProviderEvents      CommunicationProviderEvent[]
+  communicationContacts            CommunicationContact[]
+  communicationContactChannels     CommunicationContactChannel[]
+  communicationConversations       CommunicationConversation[]
+  communicationInteractions        CommunicationInteraction[]
   communicationConversationWindows CommunicationConversationWindow[]
-  aiAgents               AIAgent[]
-  aiAgentRuns            AIAgentRun[]
-  invites                WorkspaceInvite[]
-  documents              WorkspaceDocument[]
-  documentFolders        WorkspaceDocumentFolder[]
-  documentAssets         DocumentAsset[]
-  workItemDocumentLinks  WorkItemDocumentLink[]
-  connectPaymentOrders   ConnectPaymentOrder[]
-  billingPortalTokens    BillingPortalToken[]
-  connectCatalogItems    ConnectCatalogItem[]
-  fiscalCompanyConfigs   FiscalCompanyConfig[]
-  fiscalDocuments        FiscalDocument[]
-  fiscalEmissionDrafts   FiscalEmissionDraft[]
-  fiscalReceivedDocuments FiscalReceivedDocument[]
-  fiscalSyncRuns         FiscalSyncRun[]
-  fiscalWebhookEvents    FiscalWebhookEvent[]
-  fiscalIntegrationLogs  FiscalIntegrationLog[]
-  fiscalCatalogProfiles  FiscalCatalogProfile[]
-  fiscalOperationTemplates FiscalOperationTemplate[]
-  customers              Customer[]
-  customerUserLinks      WorkspaceCustomerUser[]
-  leads                  Lead[]
-  leadActivities         LeadActivity[]
-  leadAssignments        LeadAssignment[]
-  leadNurtureTouches     LeadNurtureTouch[]
-  leadConversions        LeadConversion[]
-  leadIntegrationEvents  LeadIntegrationEvent[]
-  marketingCampaigns     MarketingCampaign[]
-  marketingCampaignVariants MarketingCampaignVariant[]
-  marketingAudienceSegments MarketingAudienceSegment[]
-  marketingContactPreferences MarketingContactPreference[]
-  marketingEmailTemplates MarketingEmailTemplate[]
-  marketingAutomationFlows MarketingAutomationFlow[]
-  marketingAutomationSteps MarketingAutomationStep[]
-  marketingAutomationEnrollments MarketingAutomationEnrollment[]
-  marketingEvents        MarketingEvent[]
-  marketingAttributions  MarketingAttribution[]
-  marketingSenderProfiles MarketingSenderProfile[]
-  marketingConsentRecords MarketingConsentRecord[]
-  marketingLeadScoreEvents MarketingLeadScoreEvent[]
-  marketingContentAssets MarketingContentAsset[]
-  marketingCampaignSends MarketingCampaignSend[]
+  aiAgents                         AIAgent[]
+  aiAgentRuns                      AIAgentRun[]
+  invites                          WorkspaceInvite[]
+  documents                        WorkspaceDocument[]
+  documentFolders                  WorkspaceDocumentFolder[]
+  documentAssets                   DocumentAsset[]
+  workItemDocumentLinks            WorkItemDocumentLink[]
+  connectPaymentOrders             ConnectPaymentOrder[]
+  billingPortalTokens              BillingPortalToken[]
+  connectCatalogItems              ConnectCatalogItem[]
+  fiscalCompanyConfigs             FiscalCompanyConfig[]
+  fiscalDocuments                  FiscalDocument[]
+  fiscalEmissionDrafts             FiscalEmissionDraft[]
+  fiscalReceivedDocuments          FiscalReceivedDocument[]
+  fiscalSyncRuns                   FiscalSyncRun[]
+  fiscalWebhookEvents              FiscalWebhookEvent[]
+  fiscalIntegrationLogs            FiscalIntegrationLog[]
+  fiscalCatalogProfiles            FiscalCatalogProfile[]
+  fiscalOperationTemplates         FiscalOperationTemplate[]
+  customers                        Customer[]
+  customerUserLinks                WorkspaceCustomerUser[]
+  marketingCampaigns               MarketingCampaign[]
+  marketingCampaignVariants        MarketingCampaignVariant[]
+  marketingAudienceSegments        MarketingAudienceSegment[]
+  marketingContactPreferences      MarketingContactPreference[]
+  marketingEmailTemplates          MarketingEmailTemplate[]
+  marketingAutomationFlows         MarketingAutomationFlow[]
+  marketingAutomationSteps         MarketingAutomationStep[]
+  marketingAutomationEnrollments   MarketingAutomationEnrollment[]
+  marketingEvents                  MarketingEvent[]
+  marketingAttributions            MarketingAttribution[]
+  marketingSenderProfiles          MarketingSenderProfile[]
+  marketingConsentRecords          MarketingConsentRecord[]
+  marketingWorkItemScoreEvents     MarketingWorkItemScoreEvent[]
+  marketingContentAssets           MarketingContentAsset[]
+  marketingCampaignSends           MarketingCampaignSend[]
 
   @@unique([organizationId, key])
 }
 
 model Customer {
-  id          String    @id @default(uuid())
-  workspaceId String
-  name        String
-  tradeName   String?
-  legalName   String?
-  document    String?
-  stateRegistration String?
+  id                    String                  @id @default(uuid())
+  workspaceId           String
+  name                  String
+  tradeName             String?
+  legalName             String?
+  document              String?
+  stateRegistration     String?
   municipalRegistration String?
-  taxRegime   String?
-  email       String?
-  phone       String?
-  website     String?
-  logoUrl     String?
-  address     Json?
-  status      String    @default("prospect")
-  notes       String?
-  createdBy   String?
-  updatedBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  leads       Lead[]
-  connectPaymentOrders ConnectPaymentOrder[]
-  userLinks   WorkspaceCustomerUser[]
+  taxRegime             String?
+  email                 String?
+  phone                 String?
+  website               String?
+  logoUrl               String?
+  address               Json?
+  status                String                  @default("prospect")
+  notes                 String?
+  createdBy             String?
+  updatedBy             String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  workspace             Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectPaymentOrders  ConnectPaymentOrder[]
+  userLinks             WorkspaceCustomerUser[]
 
   @@index([workspaceId, status, updatedAt])
   @@index([workspaceId, name])
@@ -753,62 +743,55 @@ model WorkspaceCustomerUser {
   @@index([workspaceId, customerId])
 }
 
+// Historical commercial intake table kept for data compatibility with old migrations.
+// Active commercial flows must use Item/WorkItem + Customer; do not expose this model
+// through Prisma Client, routes, Marketing, or UI-facing services.
 model Lead {
-  id                   String                    @id @default(uuid())
-  workspaceId          String
-  customerId           String?
-  externalSource       LeadIntegrationSource?
-  externalId           String?
-  captureSource        LeadSource                @default(MANUAL)
-  status               LeadStatus                @default(CAPTURED)
-  qualificationStatus  LeadQualificationStatus   @default(UNQUALIFIED)
-  distributionStatus   LeadDistributionStatus    @default(UNASSIGNED)
-  score                Int                       @default(0)
-  temperature          String?
-  firstName            String?
-  lastName             String?
-  fullName             String?
-  email                String?
-  phone                String?
-  companyName          String?
-  jobTitle             String?
-  website              String?
-  city                 String?
-  state                String?
-  country              String?
-  interest             String?
-  notes                String?
-  tags                 Json?
-  ownerUserId          String?
-  estimatedValue       Decimal?                  @db.Decimal(18, 2)
-  currency             String                    @default("BRL")
-  qualifiedAt          DateTime?
-  distributedAt        DateTime?
-  lastContactAt        DateTime?
-  nextFollowUpAt       DateTime?
-  nurturingStartedAt   DateTime?
-  convertedAt          DateTime?
-  lostAt               DateTime?
-  metadata             Json?
-  createdByUserId      String?
-  updatedByUserId      String?
-  createdAt            DateTime                  @default(now())
-  updatedAt            DateTime                  @updatedAt
-  workspace            Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  customer             Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  owner                User?                     @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  activities           LeadActivity[]
-  assignments          LeadAssignment[]
-  nurtureTouches       LeadNurtureTouch[]
-  conversion           LeadConversion?
-  integrationEvents    LeadIntegrationEvent[]
-  marketingPreferences MarketingContactPreference[]
-  marketingEvents      MarketingEvent[]
-  marketingAttributions MarketingAttribution[]
-  marketingLeadScoreEvents MarketingLeadScoreEvent[]
-  marketingCampaignSends MarketingCampaignSend[]
-  marketingAutomationEnrollments MarketingAutomationEnrollment[]
-  marketingConsentRecords MarketingConsentRecord[]
+  id                  String                  @id @default(uuid())
+  workspaceId         String
+  customerId          String?
+  externalSource      LeadIntegrationSource?
+  externalId          String?
+  captureSource       LeadSource              @default(MANUAL)
+  status              LeadStatus              @default(CAPTURED)
+  qualificationStatus LeadQualificationStatus @default(UNQUALIFIED)
+  distributionStatus  LeadDistributionStatus  @default(UNASSIGNED)
+  score               Int                     @default(0)
+  temperature         String?
+  firstName           String?
+  lastName            String?
+  fullName            String?
+  email               String?
+  phone               String?
+  companyName         String?
+  jobTitle            String?
+  website             String?
+  city                String?
+  state               String?
+  country             String?
+  interest            String?
+  notes               String?
+  tags                Json?
+  ownerUserId         String?
+  estimatedValue      Decimal?                @db.Decimal(18, 2)
+  currency            String                  @default("BRL")
+  qualifiedAt         DateTime?
+  distributedAt       DateTime?
+  lastContactAt       DateTime?
+  nextFollowUpAt      DateTime?
+  nurturingStartedAt  DateTime?
+  convertedAt         DateTime?
+  lostAt              DateTime?
+  metadata            Json?
+  createdByUserId     String?
+  updatedByUserId     String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  activities          LeadActivity[]
+  assignments         LeadAssignment[]
+  nurtureTouches      LeadNurtureTouch[]
+  conversion          LeadConversion?
+  integrationEvents   LeadIntegrationEvent[]
 
   @@unique([workspaceId, externalSource, externalId])
   @@index([workspaceId, status, createdAt])
@@ -816,131 +799,133 @@ model Lead {
   @@index([workspaceId, qualificationStatus, distributionStatus, createdAt])
   @@index([workspaceId, ownerUserId, nextFollowUpAt])
   @@index([workspaceId, email, phone])
+  @@ignore
 }
 
+// Historical Lead child table retained only for old database rows and migrations.
 model LeadActivity {
-  id            String            @id @default(uuid())
-  workspaceId   String
-  leadId        String
-  type          LeadActivityType
-  title         String
-  description   String?
-  payload       Json?
-  actorUserId   String?
-  occurredAt    DateTime          @default(now())
-  createdAt     DateTime          @default(now())
-  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead          Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  actor         User?             @relation("LeadActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  id          String           @id @default(uuid())
+  workspaceId String
+  leadId      String
+  type        LeadActivityType
+  title       String
+  description String?
+  payload     Json?
+  actorUserId String?
+  occurredAt  DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+  lead        Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, leadId, occurredAt])
   @@index([workspaceId, type, occurredAt])
+  @@ignore
 }
 
+// Historical Lead child table retained only for old database rows and migrations.
 model LeadAssignment {
-  id                  String                    @id @default(uuid())
-  workspaceId         String
-  leadId              String
-  fromUserId          String?
-  toUserId            String?
-  strategy            LeadDistributionStrategy  @default(MANUAL)
-  reason              String?
-  assignedByUserId    String?
-  createdAt           DateTime                  @default(now())
-  workspace           Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead                Lead                      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  actor               User?                     @relation("LeadAssignmentActor", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  id               String                   @id @default(uuid())
+  workspaceId      String
+  leadId           String
+  fromUserId       String?
+  toUserId         String?
+  strategy         LeadDistributionStrategy @default(MANUAL)
+  reason           String?
+  assignedByUserId String?
+  createdAt        DateTime                 @default(now())
+  lead             Lead                     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, leadId, createdAt])
   @@index([workspaceId, toUserId, createdAt])
+  @@ignore
 }
 
+// Historical Lead child table retained only for old database rows and migrations.
 model LeadNurtureTouch {
-  id                 String             @id @default(uuid())
-  workspaceId        String
-  leadId             String
-  status             LeadNurtureStatus  @default(DRAFT)
-  channel            String
-  templateKey        String?
-  subject            String?
-  message            String?
-  scheduledAt        DateTime?
-  sentAt             DateTime?
-  respondedAt        DateTime?
-  providerMessageId  String?
-  errorMessage       String?
-  metadata           Json?
-  createdByUserId    String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead               Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  actor              User?              @relation("LeadNurtureActor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  id                String            @id @default(uuid())
+  workspaceId       String
+  leadId            String
+  status            LeadNurtureStatus @default(DRAFT)
+  channel           String
+  templateKey       String?
+  subject           String?
+  message           String?
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  respondedAt       DateTime?
+  providerMessageId String?
+  errorMessage      String?
+  metadata          Json?
+  createdByUserId   String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lead              Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, leadId, status, createdAt])
   @@index([workspaceId, scheduledAt])
+  @@ignore
 }
 
+// Historical Lead child table retained only for old database rows and migrations.
 model LeadConversion {
-  id                 String              @id @default(uuid())
-  workspaceId        String
-  leadId             String              @unique
-  conversionType     LeadConversionType  @default(CUSTOMER)
-  conversionRef      String
-  amount             Decimal?            @db.Decimal(18, 2)
-  currency           String              @default("BRL")
-  notes              String?
-  convertedByUserId  String?
-  convertedAt        DateTime            @default(now())
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead               Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  actor              User?               @relation("LeadConversionActor", fields: [convertedByUserId], references: [id], onDelete: SetNull)
+  id                String             @id @default(uuid())
+  workspaceId       String
+  leadId            String             @unique
+  conversionType    LeadConversionType @default(CUSTOMER)
+  conversionRef     String
+  amount            Decimal?           @db.Decimal(18, 2)
+  currency          String             @default("BRL")
+  notes             String?
+  convertedByUserId String?
+  convertedAt       DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  lead              Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, conversionType, convertedAt])
+  @@ignore
 }
 
+// Historical Lead integration inbox retained only for old database rows and migrations.
 model LeadIntegrationEvent {
-  id               String                      @id @default(uuid())
-  workspaceId      String?
-  leadId           String?
-  source           LeadIntegrationSource       @default(GENERIC_WEBHOOK)
-  eventType        String
-  providerEventId  String?
-  idempotencyKey   String                      @unique
-  status           LeadIntegrationEventStatus  @default(RECEIVED)
-  headers          Json?
-  payload          Json
-  attempts         Int                         @default(0)
-  receivedAt       DateTime                    @default(now())
-  processedAt      DateTime?
-  lastError        String?
-  createdAt        DateTime                    @default(now())
-  updatedAt        DateTime                    @updatedAt
-  workspace        Workspace?                  @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-  lead             Lead?                       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  id              String                     @id @default(uuid())
+  workspaceId     String?
+  leadId          String?
+  source          LeadIntegrationSource      @default(GENERIC_WEBHOOK)
+  eventType       String
+  providerEventId String?
+  idempotencyKey  String                     @unique
+  status          LeadIntegrationEventStatus @default(RECEIVED)
+  headers         Json?
+  payload         Json
+  attempts        Int                        @default(0)
+  receivedAt      DateTime                   @default(now())
+  processedAt     DateTime?
+  lastError       String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  lead            Lead?                      @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, status, createdAt])
   @@index([source, eventType, createdAt])
+  @@ignore
 }
 
 model MarketingAudienceSegment {
-  id                String               @id @default(uuid())
+  id                String                @id @default(uuid())
   workspaceId       String
   name              String
   description       String?
   kind              MarketingAudienceType @default(DYNAMIC)
   filters           Json
-  isActive          Boolean              @default(true)
-  isSystem          Boolean              @default(false)
+  isActive          Boolean               @default(true)
+  isSystem          Boolean               @default(false)
   lastEvaluatedAt   DateTime?
   estimatedContacts Int?
   createdByUserId   String?
   updatedByUserId   String?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  workspace         Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   campaigns         MarketingCampaign[]
   events            MarketingEvent[]
 
@@ -949,100 +934,100 @@ model MarketingAudienceSegment {
 }
 
 model MarketingEmailTemplate {
-  id                   String                    @id @default(uuid())
-  workspaceId          String
-  name                 String
-  slug                 String
-  category             String?
-  objective            MarketingCampaignObjective?
-  funnelStage          String?
-  subject              String
-  bodyMarkdown         String
-  bodyHtml             String?
-  blocks               Json?
-  performanceSnapshot  Json?
-  isSystem             Boolean                   @default(false)
-  isArchived           Boolean                   @default(false)
-  createdByUserId      String?
-  updatedByUserId      String?
-  createdAt            DateTime                  @default(now())
-  updatedAt            DateTime                  @updatedAt
-  workspace            Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaigns            MarketingCampaign[]
-  variants             MarketingCampaignVariant[]
-  assets               MarketingContentAsset[]
+  id                  String                      @id @default(uuid())
+  workspaceId         String
+  name                String
+  slug                String
+  category            String?
+  objective           MarketingCampaignObjective?
+  funnelStage         String?
+  subject             String
+  bodyMarkdown        String
+  bodyHtml            String?
+  blocks              Json?
+  performanceSnapshot Json?
+  isSystem            Boolean                     @default(false)
+  isArchived          Boolean                     @default(false)
+  createdByUserId     String?
+  updatedByUserId     String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  workspace           Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns           MarketingCampaign[]
+  variants            MarketingCampaignVariant[]
+  assets              MarketingContentAsset[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, isArchived, updatedAt])
 }
 
 model MarketingSenderProfile {
-  id             String                   @id @default(uuid())
-  workspaceId    String
-  name           String
-  fromName       String
-  fromEmail      String
-  replyToEmail   String?
-  providerKey    String                   @default("default")
-  domainStatus   String?
-  isDefault      Boolean                  @default(false)
-  isVerified     Boolean                  @default(false)
-  config         Json?
+  id              String                  @id @default(uuid())
+  workspaceId     String
+  name            String
+  fromName        String
+  fromEmail       String
+  replyToEmail    String?
+  providerKey     String                  @default("default")
+  domainStatus    String?
+  isDefault       Boolean                 @default(false)
+  isVerified      Boolean                 @default(false)
+  config          Json?
   createdByUserId String?
   updatedByUserId String?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  workspace      Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaigns      MarketingCampaign[]
-  sends          MarketingCampaignSend[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  workspace       Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns       MarketingCampaign[]
+  sends           MarketingCampaignSend[]
 
   @@unique([workspaceId, fromEmail])
   @@index([workspaceId, isDefault])
 }
 
 model MarketingCampaign {
-  id                 String                    @id @default(uuid())
-  workspaceId        String
-  name               String
-  description        String?
-  objective          MarketingCampaignObjective
-  channel            MarketingCampaignChannel  @default(EMAIL)
-  status             MarketingCampaignStatus   @default(DRAFT)
-  hypothesis         String?
-  persona            String?
-  icp                String?
-  offer              String?
-  productRef         String?
-  billingContext     String?
-  segmentId          String?
-  templateId         String?
-  senderProfileId    String?
-  abTestEnabled      Boolean                   @default(false)
-  abTestConfig       Json?
-  scheduledAt        DateTime?
-  launchedAt         DateTime?
-  completedAt        DateTime?
-  archivedAt         DateTime?
-  approvalRequestedAt DateTime?
-  approvedAt         DateTime?
-  approvedByUserId   String?
-  aiGenerated        Boolean                   @default(false)
-  aiContext          Json?
-  createdByUserId    String?
-  updatedByUserId    String?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  workspace          Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  segment            MarketingAudienceSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
-  template           MarketingEmailTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  senderProfile      MarketingSenderProfile?   @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
-  variants           MarketingCampaignVariant[]
-  events             MarketingEvent[]
-  attributions       MarketingAttribution[]
-  sends              MarketingCampaignSend[]
-  contentAssets      MarketingContentAsset[]
+  id                    String                          @id @default(uuid())
+  workspaceId           String
+  name                  String
+  description           String?
+  objective             MarketingCampaignObjective
+  channel               MarketingCampaignChannel        @default(EMAIL)
+  status                MarketingCampaignStatus         @default(DRAFT)
+  hypothesis            String?
+  persona               String?
+  icp                   String?
+  offer                 String?
+  productRef            String?
+  billingContext        String?
+  segmentId             String?
+  templateId            String?
+  senderProfileId       String?
+  abTestEnabled         Boolean                         @default(false)
+  abTestConfig          Json?
+  scheduledAt           DateTime?
+  launchedAt            DateTime?
+  completedAt           DateTime?
+  archivedAt            DateTime?
+  approvalRequestedAt   DateTime?
+  approvedAt            DateTime?
+  approvedByUserId      String?
+  aiGenerated           Boolean                         @default(false)
+  aiContext             Json?
+  createdByUserId       String?
+  updatedByUserId       String?
+  createdAt             DateTime                        @default(now())
+  updatedAt             DateTime                        @updatedAt
+  workspace             Workspace                       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  segment               MarketingAudienceSegment?       @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  template              MarketingEmailTemplate?         @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  senderProfile         MarketingSenderProfile?         @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
+  variants              MarketingCampaignVariant[]
+  events                MarketingEvent[]
+  attributions          MarketingAttribution[]
+  sends                 MarketingCampaignSend[]
+  contentAssets         MarketingContentAsset[]
   automationEnrollments MarketingAutomationEnrollment[]
-  leadScoreEvents    MarketingLeadScoreEvent[]
+  workItemScoreEvents   MarketingWorkItemScoreEvent[]
 
   @@index([workspaceId, status, scheduledAt])
   @@index([workspaceId, objective, createdAt])
@@ -1050,26 +1035,26 @@ model MarketingCampaign {
 }
 
 model MarketingCampaignVariant {
-  id              String              @id @default(uuid())
+  id              String                  @id @default(uuid())
   workspaceId     String
   campaignId      String
   templateId      String?
   name            String
-  isControl       Boolean             @default(false)
-  weight          Int                 @default(100)
+  isControl       Boolean                 @default(false)
+  weight          Int                     @default(100)
   subject         String
   preheader       String?
   bodyMarkdown    String
   bodyHtml        String?
   variables       Json?
-  aiGenerated     Boolean             @default(false)
+  aiGenerated     Boolean                 @default(false)
   aiMetadata      Json?
   createdByUserId String?
   updatedByUserId String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaign        MarketingCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  workspace       Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign        MarketingCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   template        MarketingEmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   sends           MarketingCampaignSend[]
   events          MarketingEvent[]
@@ -1081,7 +1066,7 @@ model MarketingCampaignVariant {
 model MarketingContactPreference {
   id               String                 @id @default(uuid())
   workspaceId      String
-  leadId           String?
+  legacyLeadId     String?
   email            String
   messageKind      MarketingMessageKind   @default(MARKETING)
   consentStatus    MarketingConsentStatus @default(UNKNOWN)
@@ -1096,110 +1081,109 @@ model MarketingContactPreference {
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   workspace        Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead             Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@unique([workspaceId, email, messageKind])
-  @@unique([workspaceId, leadId, messageKind])
   @@index([workspaceId, consentStatus, updatedAt])
-  @@index([workspaceId, leadId])
+  @@index([workspaceId, legacyLeadId])
 }
 
 model MarketingConsentRecord {
-  id            String                 @id @default(uuid())
-  workspaceId   String
-  leadId        String?
-  email         String
-  messageKind   MarketingMessageKind   @default(MARKETING)
-  status        MarketingConsentStatus
-  source        String
-  reason        String?
-  legalBasis    String?
-  evidence      Json?
-  recordedAt    DateTime               @default(now())
-  actorUserId   String?
-  ipAddress     String?
-  userAgent     String?
-  createdAt     DateTime               @default(now())
-  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead          Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  id           String                 @id @default(uuid())
+  workspaceId  String
+  legacyLeadId String?
+  email        String
+  messageKind  MarketingMessageKind   @default(MARKETING)
+  status       MarketingConsentStatus
+  source       String
+  reason       String?
+  legalBasis   String?
+  evidence     Json?
+  recordedAt   DateTime               @default(now())
+  actorUserId  String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime               @default(now())
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, email, recordedAt])
-  @@index([workspaceId, leadId, recordedAt])
+  @@index([workspaceId, legacyLeadId, recordedAt])
 }
 
 model MarketingCampaignSend {
-  id              String               @id @default(uuid())
-  workspaceId     String
-  campaignId      String
-  variantId       String
-  leadId          String?
-  senderProfileId String?
-  contactEmail    String
-  status          MarketingSendStatus  @default(QUEUED)
-  idempotencyKey  String               @unique
-  providerKey     String?
+  id                String                   @id @default(uuid())
+  workspaceId       String
+  campaignId        String
+  variantId         String
+  workItemId        String?
+  legacyLeadId      String?
+  senderProfileId   String?
+  contactEmail      String
+  status            MarketingSendStatus      @default(QUEUED)
+  idempotencyKey    String                   @unique
+  providerKey       String?
   providerMessageId String?
-  scheduledAt     DateTime?
-  sentAt          DateTime?
-  deliveredAt     DateTime?
-  openedAt        DateTime?
-  clickedAt       DateTime?
-  bouncedAt       DateTime?
-  complainedAt    DateTime?
-  unsubscribedAt  DateTime?
-  failedAt        DateTime?
-  errorMessage    String?
-  metadata        Json?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaign        MarketingCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  variant         MarketingCampaignVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  lead            Lead?                @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  senderProfile   MarketingSenderProfile? @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
-  events          MarketingEvent[]
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+  clickedAt         DateTime?
+  bouncedAt         DateTime?
+  complainedAt      DateTime?
+  unsubscribedAt    DateTime?
+  failedAt          DateTime?
+  errorMessage      String?
+  metadata          Json?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  workspace         Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign          MarketingCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variant           MarketingCampaignVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  workItem          Item?                    @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  senderProfile     MarketingSenderProfile?  @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
+  events            MarketingEvent[]
 
   @@index([workspaceId, campaignId, status, createdAt])
-  @@index([workspaceId, leadId, createdAt])
+  @@index([workspaceId, workItemId, createdAt])
+  @@index([workspaceId, legacyLeadId, createdAt])
   @@index([workspaceId, providerMessageId])
 }
 
 model MarketingAutomationFlow {
-  id               String                    @id @default(uuid())
-  workspaceId      String
-  name             String
-  description      String?
-  status           MarketingAutomationStatus @default(DRAFT)
+  id                String                          @id @default(uuid())
+  workspaceId       String
+  name              String
+  description       String?
+  status            MarketingAutomationStatus       @default(DRAFT)
   triggerDefinition Json
-  entryCriteria    Json?
-  exitCriteria     Json?
-  createdByUserId  String?
-  updatedByUserId  String?
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
-  workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  steps            MarketingAutomationStep[]
-  enrollments      MarketingAutomationEnrollment[]
-  events           MarketingEvent[]
+  entryCriteria     Json?
+  exitCriteria      Json?
+  createdByUserId   String?
+  updatedByUserId   String?
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+  workspace         Workspace                       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  steps             MarketingAutomationStep[]
+  enrollments       MarketingAutomationEnrollment[]
+  events            MarketingEvent[]
 
   @@unique([workspaceId, name])
   @@index([workspaceId, status, updatedAt])
 }
 
 model MarketingAutomationStep {
-  id          String                    @id @default(uuid())
+  id          String                      @id @default(uuid())
   workspaceId String
   flowId      String
   key         String
   name        String
   kind        MarketingAutomationStepKind
-  position    Int                       @default(0)
+  position    Int                         @default(0)
   config      Json?
   nextStepId  String?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  workspace   Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  flow        MarketingAutomationFlow   @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+  workspace   Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  flow        MarketingAutomationFlow     @relation(fields: [flowId], references: [id], onDelete: Cascade)
 
   @@unique([flowId, key])
   @@index([workspaceId, flowId, position])
@@ -1209,7 +1193,8 @@ model MarketingAutomationEnrollment {
   id           String                              @id @default(uuid())
   workspaceId  String
   flowId       String
-  leadId       String?
+  workItemId   String?
+  legacyLeadId String?
   campaignId   String?
   status       MarketingAutomationEnrollmentStatus @default(ACTIVE)
   entryEventId String?
@@ -1222,113 +1207,119 @@ model MarketingAutomationEnrollment {
   updatedAt    DateTime                            @updatedAt
   workspace    Workspace                           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   flow         MarketingAutomationFlow             @relation(fields: [flowId], references: [id], onDelete: Cascade)
-  lead         Lead?                               @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  workItem     Item?                               @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   campaign     MarketingCampaign?                  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, flowId, status, startedAt])
-  @@index([workspaceId, leadId, startedAt])
+  @@index([workspaceId, workItemId, startedAt])
+  @@index([workspaceId, legacyLeadId, startedAt])
 }
 
 model MarketingEvent {
-  id               String              @id @default(uuid())
-  workspaceId      String
-  type             MarketingEventType
-  campaignId       String?
-  variantId        String?
-  segmentId        String?
-  leadId           String?
-  sendId           String?
-  automationFlowId String?
-  documentId       String?
-  itemId           String?
-  billingRef       String?
-  externalEventId  String?
-  headline         String?
-  description      String?
-  payload          Json?
-  occurredAt       DateTime            @default(now())
-  seenAt           DateTime?
-  dismissedAt      DateTime?
-  createdAt        DateTime            @default(now())
-  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaign         MarketingCampaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  variant          MarketingCampaignVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  segment          MarketingAudienceSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
-  lead             Lead?               @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  send             MarketingCampaignSend? @relation(fields: [sendId], references: [id], onDelete: SetNull)
-  automationFlow   MarketingAutomationFlow? @relation(fields: [automationFlowId], references: [id], onDelete: SetNull)
-  leadScoreEvents  MarketingLeadScoreEvent[]
+  id                  String                        @id @default(uuid())
+  workspaceId         String
+  type                MarketingEventType
+  campaignId          String?
+  variantId           String?
+  segmentId           String?
+  legacyLeadId        String?
+  sendId              String?
+  automationFlowId    String?
+  documentId          String?
+  itemId              String?
+  billingRef          String?
+  externalEventId     String?
+  headline            String?
+  description         String?
+  payload             Json?
+  occurredAt          DateTime                      @default(now())
+  seenAt              DateTime?
+  dismissedAt         DateTime?
+  createdAt           DateTime                      @default(now())
+  workspace           Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign            MarketingCampaign?            @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  variant             MarketingCampaignVariant?     @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  segment             MarketingAudienceSegment?     @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  send                MarketingCampaignSend?        @relation(fields: [sendId], references: [id], onDelete: SetNull)
+  automationFlow      MarketingAutomationFlow?      @relation(fields: [automationFlowId], references: [id], onDelete: SetNull)
+  workItemScoreEvents MarketingWorkItemScoreEvent[]
 
   @@unique([workspaceId, externalEventId])
   @@index([workspaceId, occurredAt])
-  @@index([workspaceId, leadId, occurredAt])
+  @@index([workspaceId, itemId, occurredAt])
+  @@index([workspaceId, legacyLeadId, occurredAt])
   @@index([workspaceId, campaignId, occurredAt])
   @@index([workspaceId, type, occurredAt])
 }
 
-model MarketingLeadScoreEvent {
-  id             String             @id @default(uuid())
-  workspaceId    String
-  leadId         String
-  campaignId     String?
-  eventId        String?
-  delta          Int
-  previousScore  Int?
-  nextScore      Int?
-  reason         String
-  isAutomated    Boolean            @default(true)
-  explanation    Json?
+model MarketingWorkItemScoreEvent {
+  id              String             @id @default(uuid())
+  workspaceId     String
+  workItemId      String?
+  legacyLeadId    String?
+  campaignId      String?
+  eventId         String?
+  delta           Int
+  previousScore   Int?
+  nextScore       Int?
+  reason          String
+  isAutomated     Boolean            @default(true)
+  explanation     Json?
   createdByUserId String?
-  createdAt      DateTime           @default(now())
-  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  lead           Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  campaign       MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  event          MarketingEvent?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt       DateTime           @default(now())
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workItem        Item?              @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  campaign        MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  event           MarketingEvent?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
-  @@index([workspaceId, leadId, createdAt])
+  @@index([workspaceId, workItemId, createdAt])
+  @@index([workspaceId, legacyLeadId, createdAt])
   @@index([workspaceId, campaignId, createdAt])
+  @@map("MarketingLeadScoreEvent")
 }
 
 model MarketingAttribution {
-  id               String                         @id @default(uuid())
-  workspaceId      String
-  campaignId       String
-  leadId           String?
-  attributionType  MarketingAttributionType
-  entityType       MarketingAttributionEntityType
-  entityRef        String
-  influenceScore   Decimal?                       @db.Decimal(6, 4)
-  revenueInfluenced Decimal?                      @db.Decimal(18, 2)
-  currency         String                         @default("BRL")
-  happenedAt       DateTime                       @default(now())
-  metadata         Json?
-  createdAt        DateTime                       @default(now())
-  workspace        Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaign         MarketingCampaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  lead             Lead?                          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  id                String                         @id @default(uuid())
+  workspaceId       String
+  campaignId        String
+  workItemId        String?
+  legacyLeadId      String?
+  attributionType   MarketingAttributionType
+  entityType        MarketingAttributionEntityType
+  entityRef         String
+  influenceScore    Decimal?                       @db.Decimal(6, 4)
+  revenueInfluenced Decimal?                       @db.Decimal(18, 2)
+  currency          String                         @default("BRL")
+  happenedAt        DateTime                       @default(now())
+  metadata          Json?
+  createdAt         DateTime                       @default(now())
+  workspace         Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign          MarketingCampaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  workItem          Item?                          @relation(fields: [workItemId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, entityType, entityRef])
   @@index([workspaceId, campaignId, happenedAt])
-  @@index([workspaceId, leadId, happenedAt])
+  @@index([workspaceId, workItemId, happenedAt])
+  @@index([workspaceId, legacyLeadId, happenedAt])
 }
 
 model MarketingContentAsset {
-  id             String                 @id @default(uuid())
-  workspaceId    String
-  campaignId     String?
-  templateId     String?
-  documentId     String?
-  title          String
-  assetType      String
-  content        String
-  metadata       Json?
+  id              String                  @id @default(uuid())
+  workspaceId     String
+  campaignId      String?
+  templateId      String?
+  documentId      String?
+  title           String
+  assetType       String
+  content         String
+  metadata        Json?
   createdByUserId String?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaign       MarketingCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  template       MarketingEmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  document       WorkspaceDocument?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  workspace       Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign        MarketingCampaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  template        MarketingEmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  document        WorkspaceDocument?      @relation(fields: [documentId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, campaignId, createdAt])
   @@index([workspaceId, templateId, createdAt])
@@ -1336,24 +1327,24 @@ model MarketingContentAsset {
 }
 
 model WorkspaceDocument {
-  id          String    @id @default(uuid())
-  workspaceId String
-  title       String
-  content     String
-  kind        String    @default("wiki")
+  id               String                  @id @default(uuid())
+  workspaceId      String
+  title            String
+  content          String
+  kind             String                  @default("wiki")
   linkedEntityType String?
   linkedEntityId   String?
-  tags        String[]  @default([])
-  metadata    Json?
-  position    Int       @default(0)
-  createdBy   String
-  updatedBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  itemLinks   WorkItemDocumentLink[]
-  assets      DocumentAsset[]
-  marketingAssets MarketingContentAsset[]
+  tags             String[]                @default([])
+  metadata         Json?
+  position         Int                     @default(0)
+  createdBy        String
+  updatedBy        String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  workspace        Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  itemLinks        WorkItemDocumentLink[]
+  assets           DocumentAsset[]
+  marketingAssets  MarketingContentAsset[]
 
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, position])
@@ -1362,18 +1353,18 @@ model WorkspaceDocument {
 }
 
 model DocumentAsset {
-  id          String    @id @default(uuid())
+  id          String            @id @default(uuid())
   workspaceId String
   documentId  String
   type        String
-  storageKey  String    @unique
+  storageKey  String            @unique
   filename    String
   contentType String
   size        Int
   checksum    String
   uploadedBy  String
-  createdAt   DateTime  @default(now())
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   document    WorkspaceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, documentId, type, createdAt])
@@ -1381,16 +1372,16 @@ model DocumentAsset {
 }
 
 model WorkspaceDocumentFolder {
-  id          String    @id @default(uuid())
+  id          String                    @id @default(uuid())
   workspaceId String
   name        String
   parentId    String?
-  position    Int       @default(0)
+  position    Int                       @default(0)
   createdBy   String
   updatedBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  workspace   Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   parent      WorkspaceDocumentFolder?  @relation("WorkspaceDocumentFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
   children    WorkspaceDocumentFolder[] @relation("WorkspaceDocumentFolderTree")
 
@@ -1398,36 +1389,36 @@ model WorkspaceDocumentFolder {
 }
 
 model ConnectPaymentOrder {
-  id                    String                    @id @default(uuid())
-  workspaceId           String
-  customerId            String?
-  createdByUserId       String
-  stripeConnectAccountId String
-  stripeCheckoutSessionId String?                 @unique
-  stripePaymentIntentId String?                   @unique
-  amount                Int
-  currency              String                    @default("brl")
-  description           String
-  customerName          String?
-  customerEmail         String?
-  customerDocument      String?
-  customerPhone         String?
-  customerAddress       Json?
-  applicationFeeAmount  Int
-  status                ConnectPaymentOrderStatus @default(DRAFT)
-  statusReason          String?
-  metadata              Json?
-  checkoutUrl           String?
-  lastWebhookEvent      String?
-  paidAt                DateTime?
-  failedAt              DateTime?
-  canceledAt            DateTime?
-  refundedAt            DateTime?
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  workspace             Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  customer              Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  portalTokens          BillingPortalToken[]
+  id                      String                    @id @default(uuid())
+  workspaceId             String
+  customerId              String?
+  createdByUserId         String
+  stripeConnectAccountId  String
+  stripeCheckoutSessionId String?                   @unique
+  stripePaymentIntentId   String?                   @unique
+  amount                  Int
+  currency                String                    @default("brl")
+  description             String
+  customerName            String?
+  customerEmail           String?
+  customerDocument        String?
+  customerPhone           String?
+  customerAddress         Json?
+  applicationFeeAmount    Int
+  status                  ConnectPaymentOrderStatus @default(DRAFT)
+  statusReason            String?
+  metadata                Json?
+  checkoutUrl             String?
+  lastWebhookEvent        String?
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  canceledAt              DateTime?
+  refundedAt              DateTime?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  workspace               Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  customer                Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  portalTokens            BillingPortalToken[]
 
   @@index([workspaceId, createdAt])
   @@index([workspaceId, customerId, createdAt])
@@ -1436,21 +1427,21 @@ model ConnectPaymentOrder {
 }
 
 model BillingPortalToken {
-  id              String   @id @default(uuid())
+  id              String              @id @default(uuid())
   workspaceId     String
   orderId         String
-  tokenId         String   @unique
-  tokenHash       String   @unique
+  tokenId         String              @unique
+  tokenHash       String              @unique
   customerEmail   String?
-  scopes          String[] @default([])
+  scopes          String[]            @default([])
   expiresAt       DateTime
   revokedAt       DateTime?
   revokedByUserId String?
   lastAccessedAt  DateTime?
   createdByUserId String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime            @default(now())
   metadata        Json?
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   order           ConnectPaymentOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, orderId, createdAt])
@@ -1459,79 +1450,79 @@ model BillingPortalToken {
 }
 
 model ConnectCatalogItem {
-  id          String                 @id @default(uuid())
-  workspaceId String
-  createdByUserId String
-  kind        ConnectCatalogItemKind @default(SERVICE)
-  billingType ConnectCatalogBillingType @default(ONE_TIME)
-  recurringInterval ConnectCatalogRecurringInterval?
+  id                     String                           @id @default(uuid())
+  workspaceId            String
+  createdByUserId        String
+  kind                   ConnectCatalogItemKind           @default(SERVICE)
+  billingType            ConnectCatalogBillingType        @default(ONE_TIME)
+  recurringInterval      ConnectCatalogRecurringInterval?
   recurringIntervalCount Int?
-  name        String
-  description String?
-  amount      Int
-  currency    String                 @default("brl")
+  name                   String
+  description            String?
+  amount                 Int
+  currency               String                           @default("brl")
   stripeConnectAccountId String?
-  stripeProductId String?            @unique
-  stripePriceId String?              @unique
-  isActive    Boolean                @default(true)
-  metadata    Json?
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  stripeProductId        String?                          @unique
+  stripePriceId          String?                          @unique
+  isActive               Boolean                          @default(true)
+  metadata               Json?
+  createdAt              DateTime                         @default(now())
+  updatedAt              DateTime                         @updatedAt
+  workspace              Workspace                        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, isActive, createdAt])
   @@index([workspaceId, stripeConnectAccountId, createdAt])
 }
 
 model FiscalCompanyConfig {
-  id                      String         @id @default(uuid())
-  workspaceId             String
-  workspaceBusinessId     String?
-  provider                FiscalProvider @default(FOCUS)
-  displayName             String
-  legalName               String
-  cnpj                    String
-  stateRegistration       String?
-  municipalRegistration   String?
-  taxRegime               String?
-  focusToken              String
-  focusEnvironment        String         @default("homologacao")
-  focusCompanyReference   String?
-  focusWebhookSecret      String?
-  emitAutomatically       Boolean        @default(false)
-  stripePolicy            String         @default("assisted_one_click")
-  defaultSerie            String?
-  defaultNatureOperation  String?
-  fallbackRules           Json?
-  syncConfig              Json?
-  metadata                Json?
-  createdByUserId         String?
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
-  workspace               Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  documents               FiscalDocument[]
-  drafts                  FiscalEmissionDraft[]
-  receivedDocuments       FiscalReceivedDocument[]
-  syncRuns                FiscalSyncRun[]
-  integrationLogs         FiscalIntegrationLog[]
+  id                     String                   @id @default(uuid())
+  workspaceId            String
+  workspaceBusinessId    String?
+  provider               FiscalProvider           @default(FOCUS)
+  displayName            String
+  legalName              String
+  cnpj                   String
+  stateRegistration      String?
+  municipalRegistration  String?
+  taxRegime              String?
+  focusToken             String
+  focusEnvironment       String                   @default("homologacao")
+  focusCompanyReference  String?
+  focusWebhookSecret     String?
+  emitAutomatically      Boolean                  @default(false)
+  stripePolicy           String                   @default("manual_review")
+  defaultSerie           String?
+  defaultNatureOperation String?
+  fallbackRules          Json?
+  syncConfig             Json?
+  metadata               Json?
+  createdByUserId        String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  workspace              Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents              FiscalDocument[]
+  drafts                 FiscalEmissionDraft[]
+  receivedDocuments      FiscalReceivedDocument[]
+  syncRuns               FiscalSyncRun[]
+  integrationLogs        FiscalIntegrationLog[]
 
   @@unique([workspaceId, cnpj])
   @@index([workspaceId, workspaceBusinessId, createdAt])
 }
 
 model FiscalDocument {
-  id                      String                @id @default(uuid())
+  id                      String                 @id @default(uuid())
   workspaceId             String
   workspaceBusinessId     String?
   companyConfigId         String?
   internalReference       String
-  provider                FiscalProvider        @default(FOCUS)
+  provider                FiscalProvider         @default(FOCUS)
   direction               FiscalDirection
   documentType            FiscalDocumentType
   origin                  FiscalDocumentOrigin
-  sourceSystem            FiscalSourceSystem    @default(INTERNAL)
-  status                  FiscalDocumentStatus  @default(DRAFT)
-  issueStatus             FiscalIssueStatus     @default(NOT_STARTED)
+  sourceSystem            FiscalSourceSystem     @default(INTERNAL)
+  status                  FiscalDocumentStatus   @default(DRAFT)
+  issueStatus             FiscalIssueStatus      @default(NOT_STARTED)
   focusStatus             String?
   operationStatus         String?
   customerId              String?
@@ -1545,10 +1536,10 @@ model FiscalDocument {
   focusDocumentId         String?
   number                  String?
   series                  String?
-  amountSubtotal          Decimal?              @db.Decimal(18, 4)
-  amountDiscount          Decimal?              @db.Decimal(18, 4)
-  amountTotal             Decimal?              @db.Decimal(18, 4)
-  currency                String                @default("BRL")
+  amountSubtotal          Decimal?               @db.Decimal(18, 4)
+  amountDiscount          Decimal?               @db.Decimal(18, 4)
+  amountTotal             Decimal?               @db.Decimal(18, 4)
+  currency                String                 @default("BRL")
   issuedAt                DateTime?
   authorizedAt            DateTime?
   cancelledAt             DateTime?
@@ -1564,10 +1555,10 @@ model FiscalDocument {
   lastError               String?
   createdByUserId         String?
   updatedByUserId         String?
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-  workspace               Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  companyConfig           FiscalCompanyConfig?  @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  workspace               Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig           FiscalCompanyConfig?   @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
   items                   FiscalDocumentItem[]
   parties                 FiscalParty[]
   integrationLogs         FiscalIntegrationLog[]
@@ -1580,7 +1571,7 @@ model FiscalDocument {
 }
 
 model FiscalDocumentItem {
-  id                    String         @id @default(uuid())
+  id                    String                @id @default(uuid())
   documentId            String
   itemType              FiscalCatalogItemType
   sourceType            String?
@@ -1589,62 +1580,62 @@ model FiscalDocumentItem {
   name                  String
   descriptionCommercial String?
   descriptionFiscal     String?
-  quantity              Decimal        @db.Decimal(18, 4)
+  quantity              Decimal               @db.Decimal(18, 4)
   unit                  String?
-  unitPrice             Decimal        @db.Decimal(18, 4)
-  discountAmount        Decimal?       @db.Decimal(18, 4)
-  totalAmount           Decimal        @db.Decimal(18, 4)
+  unitPrice             Decimal               @db.Decimal(18, 4)
+  discountAmount        Decimal?              @db.Decimal(18, 4)
+  totalAmount           Decimal               @db.Decimal(18, 4)
   taxConfigSnapshot     Json?
   metadata              Json?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  document              FiscalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  document              FiscalDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId, createdAt])
 }
 
 model FiscalParty {
-  id             String         @id @default(uuid())
-  documentId     String
-  role           FiscalPartyRole
-  name           String
-  legalName      String?
-  cnpjCpf        String
-  stateRegistration String?
+  id                    String          @id @default(uuid())
+  documentId            String
+  role                  FiscalPartyRole
+  name                  String
+  legalName             String?
+  cnpjCpf               String
+  stateRegistration     String?
   municipalRegistration String?
-  email          String?
-  phone          String?
-  address        Json?
-  metadata       Json?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  document       FiscalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  email                 String?
+  phone                 String?
+  address               Json?
+  metadata              Json?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  document              FiscalDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId, role])
   @@index([cnpjCpf])
 }
 
 model FiscalEmissionDraft {
-  id                  String                @id @default(uuid())
-  workspaceId         String
-  workspaceBusinessId String?
-  companyConfigId     String?
-  status              FiscalDraftStatus     @default(DRAFT)
-  documentType        FiscalDocumentType
-  origin              FiscalDocumentOrigin
-  saleId              String?
-  stripeSessionId     String?
+  id                    String               @id @default(uuid())
+  workspaceId           String
+  workspaceBusinessId   String?
+  companyConfigId       String?
+  status                FiscalDraftStatus    @default(DRAFT)
+  documentType          FiscalDocumentType
+  origin                FiscalDocumentOrigin
+  saleId                String?
+  stripeSessionId       String?
   stripePaymentIntentId String?
-  emitAfterPayment    Boolean               @default(false)
-  autoIssueEligible   Boolean               @default(false)
-  payload             Json
-  suggestion          Json?
-  createdByUserId     String?
-  issuedDocumentId    String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  companyConfig       FiscalCompanyConfig?  @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+  emitAfterPayment      Boolean              @default(false)
+  autoIssueEligible     Boolean              @default(false)
+  payload               Json
+  suggestion            Json?
+  createdByUserId       String?
+  issuedDocumentId      String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  workspace             Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig         FiscalCompanyConfig? @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, workspaceBusinessId, status, createdAt])
   @@index([workspaceId, saleId, stripeSessionId])
@@ -1690,70 +1681,70 @@ model FiscalReceivedDocument {
 }
 
 model FiscalSyncRun {
-  id                String            @id @default(uuid())
-  workspaceId       String
+  id                  String               @id @default(uuid())
+  workspaceId         String
   workspaceBusinessId String?
-  companyConfigId   String?
-  syncType          FiscalSyncType
-  trigger           FiscalSyncTrigger
-  status            FiscalSyncStatus  @default(RUNNING)
-  startedAt         DateTime          @default(now())
-  finishedAt        DateTime?
-  processedCount    Int               @default(0)
-  createdCount      Int               @default(0)
-  updatedCount      Int               @default(0)
-  failedCount       Int               @default(0)
-  requestSnapshot   Json?
-  responseSnapshot  Json?
-  lastError         String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  companyConfig     FiscalCompanyConfig? @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+  companyConfigId     String?
+  syncType            FiscalSyncType
+  trigger             FiscalSyncTrigger
+  status              FiscalSyncStatus     @default(RUNNING)
+  startedAt           DateTime             @default(now())
+  finishedAt          DateTime?
+  processedCount      Int                  @default(0)
+  createdCount        Int                  @default(0)
+  updatedCount        Int                  @default(0)
+  failedCount         Int                  @default(0)
+  requestSnapshot     Json?
+  responseSnapshot    Json?
+  lastError           String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig       FiscalCompanyConfig? @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, workspaceBusinessId, syncType, status, startedAt])
 }
 
 model FiscalWebhookEvent {
-  id                String              @id @default(uuid())
-  workspaceId       String?
-  source            FiscalWebhookSource
-  providerEventId   String?
-  eventType         String
-  idempotencyKey    String              @unique
-  status            FiscalWebhookStatus @default(RECEIVED)
-  headers           Json?
-  payload           Json
-  signature         String?
-  attempts          Int                 @default(0)
-  processedAt       DateTime?
-  lastError         String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  workspace         Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  id              String              @id @default(uuid())
+  workspaceId     String?
+  source          FiscalWebhookSource
+  providerEventId String?
+  eventType       String
+  idempotencyKey  String              @unique
+  status          FiscalWebhookStatus @default(RECEIVED)
+  headers         Json?
+  payload         Json
+  signature       String?
+  attempts        Int                 @default(0)
+  processedAt     DateTime?
+  lastError       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  workspace       Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([source, eventType, createdAt])
   @@index([workspaceId, status, createdAt])
 }
 
 model FiscalIntegrationLog {
-  id                String                    @id @default(uuid())
-  workspaceId       String
-  companyConfigId   String?
-  documentId        String?
-  system            FiscalWebhookSource
-  direction         FiscalIntegrationDirection
-  operation         String
-  status            FiscalIntegrationStatus
-  correlationId     String?
-  httpStatus        Int?
-  requestPayload    Json?
-  responsePayload   Json?
-  errorMessage      String?
-  createdAt         DateTime                  @default(now())
-  workspace         Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  companyConfig     FiscalCompanyConfig?      @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
-  document          FiscalDocument?           @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  id              String                     @id @default(uuid())
+  workspaceId     String
+  companyConfigId String?
+  documentId      String?
+  system          FiscalWebhookSource
+  direction       FiscalIntegrationDirection
+  operation       String
+  status          FiscalIntegrationStatus
+  correlationId   String?
+  httpStatus      Int?
+  requestPayload  Json?
+  responsePayload Json?
+  errorMessage    String?
+  createdAt       DateTime                   @default(now())
+  workspace       Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyConfig   FiscalCompanyConfig?       @relation(fields: [companyConfigId], references: [id], onDelete: SetNull)
+  document        FiscalDocument?            @relation(fields: [documentId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, system, status, createdAt])
   @@index([documentId, createdAt])
@@ -1789,7 +1780,7 @@ model FiscalCatalogProfile {
 }
 
 model FiscalOperationTemplate {
-  id                  String             @id @default(uuid())
+  id                  String                 @id @default(uuid())
   workspaceId         String
   workspaceBusinessId String?
   name                String
@@ -1800,12 +1791,12 @@ model FiscalOperationTemplate {
   cfop                String?
   taxDefaults         Json?
   notes               String?
-  isDefault           Boolean            @default(false)
-  isActive            Boolean            @default(true)
+  isDefault           Boolean                @default(false)
+  isActive            Boolean                @default(true)
   createdByUserId     String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, workspaceBusinessId, documentType, isActive, createdAt])
 }
@@ -1849,59 +1840,59 @@ model WorkspaceInvite {
 }
 
 model WorkspaceMembership {
-  id              String                    @id @default(uuid())
-  workspaceId     String
-  userId          String
-  role            MembershipRole            @default(MEMBER)
-  permissions     Json?
-  createdAt       DateTime                  @default(now())
-  workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String         @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        MembershipRole @default(MEMBER)
+  permissions Json?
+  createdAt   DateTime       @default(now())
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId])
 }
 
 model BoardTemplate {
-  id              String                    @id @default(uuid())
-  workspaceId     String
-  name            String
-  description     String?
-  schema          Json
-  rules           Json?
-  createdAt       DateTime                  @default(now())
-  workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  boards          Board[]
+  id          String    @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  schema      Json
+  rules       Json?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boards      Board[]
 }
 
 model Board {
-  id              String                    @id @default(uuid())
-  workspaceId     String
-  templateId      String?
-  name            String
-  description     String?
-  config          Json?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  template        BoardTemplate?            @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  columns         ColumnDefinition[]
-  items           Item[]
+  id          String             @id @default(uuid())
+  workspaceId String
+  templateId  String?
+  name        String
+  description String?
+  config      Json?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  template    BoardTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  columns     ColumnDefinition[]
+  items       Item[]
 }
 
 model ColumnDefinition {
-  id              String                    @id @default(uuid())
-  boardId         String
-  name            String
-  code            String
-  position        Int
-  settings        Json?
-  board           Board                     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid())
+  boardId  String
+  name     String
+  code     String
+  position Int
+  settings Json?
+  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@unique([boardId, code])
 }
 
 model WorkItemType {
-  id                  String              @id @default(uuid())
+  id                  String                       @id @default(uuid())
   workspaceId         String
   name                String
   slug                String
@@ -1909,17 +1900,17 @@ model WorkItemType {
   color               String
   icon                String?
   position            Int
-  isActive            Boolean             @default(true)
+  isActive            Boolean                      @default(true)
   usageRules          Json?
-  acceptsParent       Boolean             @default(true)
-  acceptsChecklist    Boolean             @default(true)
-  acceptsDueDate      Boolean             @default(true)
-  acceptsAssignee     Boolean             @default(true)
-  acceptsTags         Boolean             @default(true)
-  acceptsCustomFields Boolean             @default(true)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  workspace           Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  acceptsParent       Boolean                      @default(true)
+  acceptsChecklist    Boolean                      @default(true)
+  acceptsDueDate      Boolean                      @default(true)
+  acceptsAssignee     Boolean                      @default(true)
+  acceptsTags         Boolean                      @default(true)
+  acceptsCustomFields Boolean                      @default(true)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  workspace           Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   items               Item[]
   customFieldScopes   CustomFieldScope[]
   fieldBindings       WorkItemFieldBinding[]
@@ -1952,23 +1943,23 @@ model WorkflowState {
 }
 
 model WorkItemTypeTransformation {
-  id                     String   @id @default(uuid())
-  workspaceId            String
-  fromTypeId             String
-  toTypeId               String
-  name                   String
-  description            String?
-  enabled                Boolean  @default(true)
-  mode                   String   @default("same_work_item_type_change")
-  fieldCompatibilityMode String   @default("strict_superset")
+  id                        String       @id @default(uuid())
+  workspaceId               String
+  fromTypeId                String
+  toTypeId                  String
+  name                      String
+  description               String?
+  enabled                   Boolean      @default(true)
+  mode                      String       @default("same_work_item_type_change")
+  fieldCompatibilityMode    String       @default("strict_superset")
   defaultValuesForNewFields Json?
-  stateMapping           Json?
-  permission             String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  fromType               WorkItemType @relation("WorkItemTypeTransformationFrom", fields: [fromTypeId], references: [id], onDelete: Cascade)
-  toType                 WorkItemType @relation("WorkItemTypeTransformationTo", fields: [toTypeId], references: [id], onDelete: Cascade)
+  stateMapping              Json?
+  permission                String?
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+  workspace                 Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  fromType                  WorkItemType @relation("WorkItemTypeTransformationFrom", fields: [fromTypeId], references: [id], onDelete: Cascade)
+  toType                    WorkItemType @relation("WorkItemTypeTransformationTo", fields: [toTypeId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, fromTypeId, toTypeId, mode])
   @@index([workspaceId, enabled])
@@ -1995,15 +1986,15 @@ model BoardColumn {
 }
 
 model ColumnStateMapping {
-  id          String       @id @default(uuid())
+  id          String        @id @default(uuid())
   workspaceId String
   columnId    String
   stateId     String
-  position    Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  column      BoardColumn  @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  position    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  column      BoardColumn   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   state       WorkflowState @relation(fields: [stateId], references: [id], onDelete: Cascade)
 
   @@unique([columnId, stateId])
@@ -2012,16 +2003,16 @@ model ColumnStateMapping {
 }
 
 model TagDefinition {
-  id          String       @id @default(uuid())
+  id          String        @id @default(uuid())
   workspaceId String
   name        String
   slug        String
   color       String
   description String?
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   itemTags    WorkItemTag[]
 
   @@unique([workspaceId, slug])
@@ -2029,42 +2020,42 @@ model TagDefinition {
 }
 
 model WorkspacePreferences {
-  id                  String     @id @default(uuid())
-  workspaceId         String     @unique
-  defaultBoardMode    String     @default("dev")
-  dateFormat          String     @default("dd/mm/yyyy")
+  id                  String    @id @default(uuid())
+  workspaceId         String    @unique
+  defaultBoardMode    String    @default("dev")
+  dateFormat          String    @default("dd/mm/yyyy")
   visibleCardFieldIds Json?
   settings            Json?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
-  workspace           Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model CustomFieldDefinition {
-  id            String              @id @default(uuid())
-  workspaceId   String
-  name          String
-  slug          String
-  description   String?
-  variableKey   String?
-  variableLabel String?
+  id                  String                 @id @default(uuid())
+  workspaceId         String
+  name                String
+  slug                String
+  description         String?
+  variableKey         String?
+  variableLabel       String?
   variableDescription String?
-  type          CustomFieldType
-  isSystem      Boolean             @default(false)
-  required      Boolean             @default(false)
-  isEditable    Boolean             @default(true)
-  isRemovable   Boolean             @default(true)
-  position      Int
-  isActive      Boolean             @default(true)
-  settings      Json?
-  defaultValue  Json?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  workspace     Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  options       CustomFieldOption[]
-  values        CustomFieldValue[]
-  scopes        CustomFieldScope[]
-  bindings      WorkItemFieldBinding[]
+  type                CustomFieldType
+  isSystem            Boolean                @default(false)
+  required            Boolean                @default(false)
+  isEditable          Boolean                @default(true)
+  isRemovable         Boolean                @default(true)
+  position            Int
+  isActive            Boolean                @default(true)
+  settings            Json?
+  defaultValue        Json?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  options             CustomFieldOption[]
+  values              CustomFieldValue[]
+  scopes              CustomFieldScope[]
+  bindings            WorkItemFieldBinding[]
 
   @@unique([workspaceId, slug])
   @@unique([workspaceId, variableKey])
@@ -2095,16 +2086,16 @@ model WorkItemFieldBinding {
 }
 
 model CustomFieldOption {
-  id          String                 @id @default(uuid())
-  fieldId     String
-  label       String
-  value       String
-  color       String?
-  position    Int
-  isActive    Boolean                @default(true)
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  field       CustomFieldDefinition  @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  id        String                @id @default(uuid())
+  fieldId   String
+  label     String
+  value     String
+  color     String?
+  position  Int
+  isActive  Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  field     CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
 
   @@unique([fieldId, value])
   @@index([fieldId, position])
@@ -2122,50 +2113,54 @@ model CustomFieldScope {
 }
 
 model Item {
-  id                String              @id @default(uuid())
-  boardId           String
-  workspaceId       String
-  columnId          String?
-  boardColumnId     String?
-  type              String              @default("task")
-  typeId            String?
-  stateId           String?
-  title             String
-  description       String?
-  status            String              @default("backlog")
-  fields            Json?
-  metadata          Json?
-  checklist         Json?
-  assigneeId        String?
-  parentId          String?
-  dueDate           DateTime?
-  position          Int                 @default(0)
-  createdBy         String
-  updatedBy         String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  board             Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  boardColumn       BoardColumn?        @relation(fields: [boardColumnId], references: [id], onDelete: SetNull)
-  typeDefinition    WorkItemType?       @relation(fields: [typeId], references: [id], onDelete: SetNull)
-  workflowState     WorkflowState?      @relation(fields: [stateId], references: [id], onDelete: SetNull)
-  creator           User                @relation("ItemCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  assignee          User?               @relation("ItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  updater           User?               @relation("ItemUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
-  parent            Item?               @relation("ItemParent", fields: [parentId], references: [id], onDelete: SetNull)
-  children          Item[]              @relation("ItemParent")
-  comments          ItemComment[]
-  attachments       ItemAttachment[]
-  history           ItemHistory[]
-  searchDocuments   SearchDocument[]
-  documentLinks     WorkItemDocumentLink[]
-  customFieldValues CustomFieldValue[]
-  tags              WorkItemTag[]
-  viewPlacements    WorkItemViewPlacement[]
-  aiAgentRuns       AIAgentRun[]
-  automationApprovalRequests AutomationApprovalRequest[]
-  communicationConversations CommunicationConversation[]
-  communicationInteractions CommunicationInteraction[]
+  id                             String                          @id @default(uuid())
+  boardId                        String
+  workspaceId                    String
+  columnId                       String?
+  boardColumnId                  String?
+  type                           String                          @default("task")
+  typeId                         String?
+  stateId                        String?
+  title                          String
+  description                    String?
+  status                         String                          @default("backlog")
+  fields                         Json?
+  metadata                       Json?
+  checklist                      Json?
+  assigneeId                     String?
+  parentId                       String?
+  dueDate                        DateTime?
+  position                       Int                             @default(0)
+  createdBy                      String
+  updatedBy                      String?
+  createdAt                      DateTime                        @default(now())
+  updatedAt                      DateTime                        @updatedAt
+  board                          Board                           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  workspace                      Workspace                       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boardColumn                    BoardColumn?                    @relation(fields: [boardColumnId], references: [id], onDelete: SetNull)
+  typeDefinition                 WorkItemType?                   @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  workflowState                  WorkflowState?                  @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  creator                        User                            @relation("ItemCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  assignee                       User?                           @relation("ItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  updater                        User?                           @relation("ItemUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  parent                         Item?                           @relation("ItemParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children                       Item[]                          @relation("ItemParent")
+  comments                       ItemComment[]
+  attachments                    ItemAttachment[]
+  history                        ItemHistory[]
+  searchDocuments                SearchDocument[]
+  documentLinks                  WorkItemDocumentLink[]
+  customFieldValues              CustomFieldValue[]
+  tags                           WorkItemTag[]
+  viewPlacements                 WorkItemViewPlacement[]
+  aiAgentRuns                    AIAgentRun[]
+  automationApprovalRequests     AutomationApprovalRequest[]
+  communicationConversations     CommunicationConversation[]
+  communicationInteractions      CommunicationInteraction[]
+  marketingCampaignSends         MarketingCampaignSend[]
+  marketingAutomationEnrollments MarketingAutomationEnrollment[]
+  marketingWorkItemScoreEvents   MarketingWorkItemScoreEvent[]
+  marketingAttributions          MarketingAttribution[]
 
   @@index([workspaceId, typeId])
   @@index([workspaceId, stateId])
@@ -2203,33 +2198,33 @@ model WorkItemTag {
 }
 
 model ItemComment {
-  id              String                    @id @default(uuid())
-  itemId          String
-  authorId        String
-  content         String
-  metadata        Json?
-  createdAt       DateTime                  @default(now())
-  item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  author          User                      @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  id        String   @id @default(uuid())
+  itemId    String
+  authorId  String
+  content   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
 }
 
 model ItemAttachment {
-  id              String                    @id @default(uuid())
-  itemId          String
-  fileName        String
-  url             String
-  metadata        Json?
-  createdAt       DateTime                  @default(now())
-  item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  itemId    String
+  fileName  String
+  url       String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model ItemHistory {
-  id              String                    @id @default(uuid())
-  itemId          String
-  eventName       String
-  payload         Json
-  createdAt       DateTime                  @default(now())
-  item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  itemId    String
+  eventName String
+  payload   Json
+  createdAt DateTime @default(now())
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model AutomationWorkflow {
@@ -2252,22 +2247,22 @@ model AutomationWorkflow {
 }
 
 model AutomationWorkflowVersion {
-  id                    String               @id @default(uuid())
-  workflowId            String
-  workspaceId           String
-  version               Int
-  status                String               @default("draft")
-  definitionJson        Json
-  graphNodesJson        Json
-  graphEdgesJson        Json
-  publishedAt           DateTime?
-  publishedById         String?
-  createdAt             DateTime             @default(now())
-  workspace             Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workflow              AutomationWorkflow    @relation("AutomationWorkflowVersions", fields: [workflowId], references: [id], onDelete: Cascade)
-  currentForWorkflow    AutomationWorkflow?   @relation("AutomationWorkflowCurrentVersion")
-  publishedBy           User?                 @relation("AutomationWorkflowVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
-  runs                  AutomationRun[]
+  id                 String              @id @default(uuid())
+  workflowId         String
+  workspaceId        String
+  version            Int
+  status             String              @default("draft")
+  definitionJson     Json
+  graphNodesJson     Json
+  graphEdgesJson     Json
+  publishedAt        DateTime?
+  publishedById      String?
+  createdAt          DateTime            @default(now())
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflow           AutomationWorkflow  @relation("AutomationWorkflowVersions", fields: [workflowId], references: [id], onDelete: Cascade)
+  currentForWorkflow AutomationWorkflow? @relation("AutomationWorkflowCurrentVersion")
+  publishedBy        User?               @relation("AutomationWorkflowVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  runs               AutomationRun[]
 
   @@unique([workflowId, version])
   @@index([workspaceId, status, createdAt])
@@ -2276,29 +2271,29 @@ model AutomationWorkflowVersion {
 }
 
 model AutomationRun {
-  id                String                    @id @default(uuid())
-  workspaceId       String
-  workflowId        String
-  workflowVersionId String
-  triggerType       String
-  triggerRefId      String?
-  status            String                    @default("queued")
-  contextJson       Json?
-  startedAt         DateTime?
-  finishedAt        DateTime?
-  cancelledAt       DateTime?
-  cancelReason      String?
-  errorJson         Json?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  workspace         Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workflow          AutomationWorkflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  workflowVersion   AutomationWorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
-  stepRuns          AutomationStepRun[]
-  scheduledSteps    AutomationScheduledStep[]
-  events            AutomationRunEvent[]
-  sideEffects       AutomationSideEffect[]
-  approvalRequests  AutomationApprovalRequest[]
+  id                        String                      @id @default(uuid())
+  workspaceId               String
+  workflowId                String
+  workflowVersionId         String
+  triggerType               String
+  triggerRefId              String?
+  status                    String                      @default("queued")
+  contextJson               Json?
+  startedAt                 DateTime?
+  finishedAt                DateTime?
+  cancelledAt               DateTime?
+  cancelReason              String?
+  errorJson                 Json?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  workspace                 Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflow                  AutomationWorkflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowVersion           AutomationWorkflowVersion   @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  stepRuns                  AutomationStepRun[]
+  scheduledSteps            AutomationScheduledStep[]
+  events                    AutomationRunEvent[]
+  sideEffects               AutomationSideEffect[]
+  approvalRequests          AutomationApprovalRequest[]
   communicationInteractions CommunicationInteraction[]
 
   @@index([workspaceId, status, createdAt])
@@ -2308,27 +2303,27 @@ model AutomationRun {
 }
 
 model AutomationStepRun {
-  id              String                    @id @default(uuid())
-  workspaceId     String
-  runId           String
-  nodeId          String
-  nodeType        String
-  status          String                    @default("queued")
-  inputJson       Json?
-  outputJson      Json?
-  errorJson       Json?
-  attempt         Int                       @default(1)
-  idempotencyKey  String?
-  startedAt       DateTime?
-  finishedAt      DateTime?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  run             AutomationRun             @relation(fields: [runId], references: [id], onDelete: Cascade)
-  scheduledSteps  AutomationScheduledStep[]
-  events          AutomationRunEvent[]
-  sideEffects     AutomationSideEffect[]
-  approvalRequests AutomationApprovalRequest[]
+  id                        String                      @id @default(uuid())
+  workspaceId               String
+  runId                     String
+  nodeId                    String
+  nodeType                  String
+  status                    String                      @default("queued")
+  inputJson                 Json?
+  outputJson                Json?
+  errorJson                 Json?
+  attempt                   Int                         @default(1)
+  idempotencyKey            String?
+  startedAt                 DateTime?
+  finishedAt                DateTime?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  workspace                 Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run                       AutomationRun               @relation(fields: [runId], references: [id], onDelete: Cascade)
+  scheduledSteps            AutomationScheduledStep[]
+  events                    AutomationRunEvent[]
+  sideEffects               AutomationSideEffect[]
+  approvalRequests          AutomationApprovalRequest[]
   communicationInteractions CommunicationInteraction[]
 
   @@unique([runId, nodeId, attempt])
@@ -2339,25 +2334,25 @@ model AutomationStepRun {
 }
 
 model AutomationScheduledStep {
-  id            String            @id @default(uuid())
-  workspaceId   String
-  runId         String
-  stepRunId     String
-  nodeId        String
-  purpose       String            @default("resume")
-  executeAt     DateTime
-  status        String            @default("scheduled")
-  lockedAt      DateTime?
-  lockedBy      String?
-  cancelledAt   DateTime?
-  cancelReason  String?
-  attempts      Int               @default(0)
+  id             String            @id @default(uuid())
+  workspaceId    String
+  runId          String
+  stepRunId      String
+  nodeId         String
+  purpose        String            @default("resume")
+  executeAt      DateTime
+  status         String            @default("scheduled")
+  lockedAt       DateTime?
+  lockedBy       String?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  attempts       Int               @default(0)
   idempotencyKey String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  run           AutomationRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
-  stepRun       AutomationStepRun @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  workspace      Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run            AutomationRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun        AutomationStepRun @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, idempotencyKey])
   @@index([workspaceId, status, executeAt])
@@ -2388,43 +2383,43 @@ model AutomationRunEvent {
 }
 
 model AutomationSideEffect {
-  id             String             @id @default(uuid())
-  workspaceId    String
-  runId          String
-  stepRunId      String
-  sideEffectType String
-  channel        String?
-  provider       String?
-  status         String             @default("queued")
-  idempotencyKey String
-  payloadJson    Json
-  resultJson     Json?
-  errorJson      Json?
+  id                String                        @id @default(uuid())
+  workspaceId       String
+  runId             String
+  stepRunId         String
+  sideEffectType    String
+  channel           String?
+  provider          String?
+  status            String                        @default("queued")
+  idempotencyKey    String
+  payloadJson       Json
+  resultJson        Json?
+  errorJson         Json?
   templateVersionId String?
-  contactId      String?
-  contactChannelId String?
+  contactId         String?
+  contactChannelId  String?
   approvalRequestId String?
-  conversationId String?
-  attempts       Int                @default(0)
-  maxAttempts    Int                @default(3)
-  nextAttemptAt  DateTime           @default(now())
-  lockedAt       DateTime?
-  lockedBy       String?
-  cancelledAt    DateTime?
-  cancelReason   String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  processedAt    DateTime?
-  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  run            AutomationRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
-  stepRun        AutomationStepRun  @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
-  templateVersion CommunicationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
-  providerEvents CommunicationProviderEvent[]
-  contact        CommunicationContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  contactChannel CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
-  approvalRequest AutomationApprovalRequest? @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
-  conversation    CommunicationConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  interactions   CommunicationInteraction[]
+  conversationId    String?
+  attempts          Int                           @default(0)
+  maxAttempts       Int                           @default(3)
+  nextAttemptAt     DateTime                      @default(now())
+  lockedAt          DateTime?
+  lockedBy          String?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  processedAt       DateTime?
+  workspace         Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run               AutomationRun                 @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun           AutomationStepRun             @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  templateVersion   CommunicationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
+  providerEvents    CommunicationProviderEvent[]
+  contact           CommunicationContact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactChannel    CommunicationContactChannel?  @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  approvalRequest   AutomationApprovalRequest?    @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  conversation      CommunicationConversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  interactions      CommunicationInteraction[]
 
   @@unique([workspaceId, idempotencyKey])
   @@index([workspaceId, status, nextAttemptAt])
@@ -2439,34 +2434,34 @@ model AutomationSideEffect {
 }
 
 model AutomationApprovalRequest {
-  id            String             @id @default(uuid())
-  workspaceId   String
-  runId         String
-  stepRunId     String
-  contactId     String?
-  workItemId    String?
+  id             String                     @id @default(uuid())
+  workspaceId    String
+  runId          String
+  stepRunId      String
+  contactId      String?
+  workItemId     String?
   conversationId String?
-  type          String
-  status        String             @default("pending")
-  title         String
-  description   String?
-  payloadJson   Json?
-  decisionJson  Json?
-  requestedBy   String?
-  reviewedBy    String?
-  requestedAt   DateTime           @default(now())
-  reviewedAt    DateTime?
-  expiresAt     DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  run           AutomationRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
-  stepRun       AutomationStepRun  @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
-  contact       CommunicationContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  workItem      Item?              @relation(fields: [workItemId], references: [id], onDelete: SetNull)
-  conversation  CommunicationConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  sideEffects   AutomationSideEffect[]
-  interactions  CommunicationInteraction[]
+  type           String
+  status         String                     @default("pending")
+  title          String
+  description    String?
+  payloadJson    Json?
+  decisionJson   Json?
+  requestedBy    String?
+  reviewedBy     String?
+  requestedAt    DateTime                   @default(now())
+  reviewedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  workspace      Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run            AutomationRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepRun        AutomationStepRun          @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  contact        CommunicationContact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  workItem       Item?                      @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  conversation   CommunicationConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  sideEffects    AutomationSideEffect[]
+  interactions   CommunicationInteraction[]
 
   @@index([workspaceId, status, requestedAt])
   @@index([workspaceId, runId, status])
@@ -2477,30 +2472,30 @@ model AutomationApprovalRequest {
 }
 
 model CommunicationContact {
-  id               String                       @id @default(uuid())
-  workspaceId      String
-  displayName      String?
-  firstName        String?
-  lastName         String?
-  companyName      String?
-  sourceType       String                       @default("manual")
-  sourceId         String?
-  primaryEmail     String?
-  primaryPhone     String?
-  preferredChannel String?
-  status           String                       @default("active")
-  metadataJson     Json?
-  createdAt        DateTime                     @default(now())
-  updatedAt        DateTime                     @updatedAt
-  archivedAt       DateTime?
-  workspace        Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  channels         CommunicationContactChannel[]
-  sideEffects      AutomationSideEffect[]
-  interactions     CommunicationInteraction[]
-  conversations    CommunicationConversation[]
+  id                  String                            @id @default(uuid())
+  workspaceId         String
+  displayName         String?
+  firstName           String?
+  lastName            String?
+  companyName         String?
+  sourceType          String                            @default("manual")
+  sourceId            String?
+  primaryEmail        String?
+  primaryPhone        String?
+  preferredChannel    String?
+  status              String                            @default("active")
+  metadataJson        Json?
+  createdAt           DateTime                          @default(now())
+  updatedAt           DateTime                          @updatedAt
+  archivedAt          DateTime?
+  workspace           Workspace                         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channels            CommunicationContactChannel[]
+  sideEffects         AutomationSideEffect[]
+  interactions        CommunicationInteraction[]
+  conversations       CommunicationConversation[]
   conversationWindows CommunicationConversationWindow[]
-  providerEvents   CommunicationProviderEvent[]
-  approvalRequests AutomationApprovalRequest[]
+  providerEvents      CommunicationProviderEvent[]
+  approvalRequests    AutomationApprovalRequest[]
 
   @@index([workspaceId, status, updatedAt])
   @@index([workspaceId, sourceType, sourceId])
@@ -2509,27 +2504,27 @@ model CommunicationContact {
 }
 
 model CommunicationContactChannel {
-  id                String                     @id @default(uuid())
-  workspaceId       String
-  contactId         String
-  channel           String
-  address           String
-  normalizedAddress String
-  label             String?
-  isPrimary         Boolean                    @default(false)
-  status            String                     @default("active")
-  verifiedAt        DateTime?
-  lastUsedAt        DateTime?
-  metadataJson      Json?
-  createdAt         DateTime                   @default(now())
-  updatedAt         DateTime                   @updatedAt
-  workspace         Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contact           CommunicationContact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  sideEffects       AutomationSideEffect[]
-  interactions      CommunicationInteraction[]
-  conversations     CommunicationConversation[]
+  id                  String                            @id @default(uuid())
+  workspaceId         String
+  contactId           String
+  channel             String
+  address             String
+  normalizedAddress   String
+  label               String?
+  isPrimary           Boolean                           @default(false)
+  status              String                            @default("active")
+  verifiedAt          DateTime?
+  lastUsedAt          DateTime?
+  metadataJson        Json?
+  createdAt           DateTime                          @default(now())
+  updatedAt           DateTime                          @updatedAt
+  workspace           Workspace                         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact             CommunicationContact              @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sideEffects         AutomationSideEffect[]
+  interactions        CommunicationInteraction[]
+  conversations       CommunicationConversation[]
   conversationWindows CommunicationConversationWindow[]
-  providerEvents    CommunicationProviderEvent[]
+  providerEvents      CommunicationProviderEvent[]
 
   @@unique([workspaceId, channel, normalizedAddress])
   @@index([workspaceId, contactId, channel])
@@ -2599,12 +2594,12 @@ model CommunicationInteraction {
   conversation      CommunicationConversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   contact           CommunicationContact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactChannel    CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
-  sideEffect         AutomationSideEffect?        @relation(fields: [sideEffectId], references: [id], onDelete: SetNull)
-  providerEvent      CommunicationProviderEvent?  @relation(fields: [providerEventId], references: [id], onDelete: SetNull)
-  approvalRequest    AutomationApprovalRequest?   @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
-  run                AutomationRun?               @relation(fields: [runId], references: [id], onDelete: SetNull)
-  stepRun            AutomationStepRun?           @relation(fields: [stepRunId], references: [id], onDelete: SetNull)
-  workItem           Item?                        @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  sideEffect        AutomationSideEffect?        @relation(fields: [sideEffectId], references: [id], onDelete: SetNull)
+  providerEvent     CommunicationProviderEvent?  @relation(fields: [providerEventId], references: [id], onDelete: SetNull)
+  approvalRequest   AutomationApprovalRequest?   @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  run               AutomationRun?               @relation(fields: [runId], references: [id], onDelete: SetNull)
+  stepRun           AutomationStepRun?           @relation(fields: [stepRunId], references: [id], onDelete: SetNull)
+  workItem          Item?                        @relation(fields: [workItemId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, contactId, occurredAt])
   @@index([workspaceId, conversationId, occurredAt])
@@ -2616,25 +2611,25 @@ model CommunicationInteraction {
 }
 
 model CommunicationTemplate {
-  id          String                         @id @default(uuid())
-  workspaceId String
-  name        String
-  key         String
-  channel     String
-  category    String                        @default("follow_up")
-  status      String                        @default("draft")
-  description String?
+  id                   String                         @id @default(uuid())
+  workspaceId          String
+  name                 String
+  key                  String
+  channel              String
+  category             String                         @default("follow_up")
+  status               String                         @default("draft")
+  description          String?
   providerTemplateName String?
-  providerTemplateId String?
-  language    String?
-  approvalStatus String                     @default("draft")
-  createdById String?
-  createdAt   DateTime                      @default(now())
-  updatedAt   DateTime                      @updatedAt
-  archivedAt  DateTime?
-  workspace   Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy   User?                         @relation("CommunicationTemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  versions    CommunicationTemplateVersion[]
+  providerTemplateId   String?
+  language             String?
+  approvalStatus       String                         @default("draft")
+  createdById          String?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  archivedAt           DateTime?
+  workspace            Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy            User?                          @relation("CommunicationTemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  versions             CommunicationTemplateVersion[]
 
   @@unique([workspaceId, key])
   @@index([workspaceId, channel, status, updatedAt])
@@ -2642,29 +2637,29 @@ model CommunicationTemplate {
 }
 
 model CommunicationTemplateVersion {
-  id            String                     @id @default(uuid())
-  workspaceId   String
-  templateId    String
-  version       Int
-  status        String                     @default("draft")
-  approvalStatus String                    @default("draft")
+  id                   String                 @id @default(uuid())
+  workspaceId          String
+  templateId           String
+  version              Int
+  status               String                 @default("draft")
+  approvalStatus       String                 @default("draft")
   providerTemplateName String?
-  providerTemplateId String?
-  language      String?
-  componentsJson Json?
-  subject       String?
-  textBody      String?
-  htmlBody      String?
-  variablesJson Json?
-  metadataJson  Json?
-  publishedAt   DateTime?
-  publishedById String?
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
-  workspace     Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  template      CommunicationTemplate      @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  publishedBy   User?                      @relation("CommunicationTemplateVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
-  sideEffects   AutomationSideEffect[]
+  providerTemplateId   String?
+  language             String?
+  componentsJson       Json?
+  subject              String?
+  textBody             String?
+  htmlBody             String?
+  variablesJson        Json?
+  metadataJson         Json?
+  publishedAt          DateTime?
+  publishedById        String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  workspace            Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  template             CommunicationTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  publishedBy          User?                  @relation("CommunicationTemplateVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  sideEffects          AutomationSideEffect[]
 
   @@unique([templateId, version])
   @@index([workspaceId, status, createdAt])
@@ -2673,24 +2668,24 @@ model CommunicationTemplateVersion {
 }
 
 model CommunicationConversationWindow {
-  id          String    @id @default(uuid())
-  workspaceId String
-  contactId   String
+  id               String                       @id @default(uuid())
+  workspaceId      String
+  contactId        String
   contactChannelId String?
-  channel     String
-  provider    String?
-  openedAt    DateTime
-  expiresAt   DateTime
-  lastInboundAt DateTime?
-  lastOutboundAt DateTime?
-  source      String
-  status      String    @default("open")
-  metadataJson Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contact     CommunicationContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  contactChannel CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  channel          String
+  provider         String?
+  openedAt         DateTime
+  expiresAt        DateTime
+  lastInboundAt    DateTime?
+  lastOutboundAt   DateTime?
+  source           String
+  status           String                       @default("open")
+  metadataJson     Json?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+  workspace        Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact          CommunicationContact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactChannel   CommunicationContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, contactId, channel, status])
   @@index([workspaceId, contactChannelId, channel, status])
@@ -2719,16 +2714,16 @@ model ContactConsent {
 }
 
 model CommunicationSuppression {
-  id          String    @id @default(uuid())
-  workspaceId String
-  channel     String
-  address     String
-  reason      String
-  source      String?
-  createdAt   DateTime  @default(now())
-  expiresAt   DateTime?
+  id           String    @id @default(uuid())
+  workspaceId  String
+  channel      String
+  address      String
+  reason       String
+  source       String?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime?
   metadataJson Json?
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, channel, address])
   @@index([workspaceId, channel, createdAt])
@@ -2787,18 +2782,18 @@ model CommunicationProviderEvent {
 }
 
 model AutomationView {
-  id          String                 @id @default(uuid())
+  id          String                  @id @default(uuid())
   workspaceId String
   key         String
   name        String
   description String?
-  position    Int                    @default(0)
-  isSystem    Boolean                @default(false)
-  isActive    Boolean                @default(true)
+  position    Int                     @default(0)
+  isSystem    Boolean                 @default(false)
+  isActive    Boolean                 @default(true)
   settings    Json?
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  workspace   Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   columns     AutomationViewColumn[]
   placements  WorkItemViewPlacement[]
 
@@ -2807,21 +2802,21 @@ model AutomationView {
 }
 
 model AutomationViewColumn {
-  id          String               @id @default(uuid())
+  id          String                  @id @default(uuid())
   workspaceId String
   viewId      String
   key         String
   name        String
   description String?
   color       String
-  position    Int                  @default(0)
-  isActive    Boolean              @default(true)
-  isTerminal  Boolean              @default(false)
+  position    Int                     @default(0)
+  isActive    Boolean                 @default(true)
+  isTerminal  Boolean                 @default(false)
   settings    Json?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  view        AutomationView       @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  workspace   Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  view        AutomationView          @relation(fields: [viewId], references: [id], onDelete: Cascade)
   placements  WorkItemViewPlacement[]
 
   @@unique([viewId, key])
@@ -2829,86 +2824,86 @@ model AutomationViewColumn {
 }
 
 model WorkItemViewPlacement {
-  id          String                @id @default(uuid())
+  id          String               @id @default(uuid())
   workspaceId String
   itemId      String
   viewId      String
   columnId    String
-  position    Int                   @default(0)
+  position    Int                  @default(0)
   metadata    Json?
   updatedBy   String?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  workspace   Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  item        Item                  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  view        AutomationView        @relation(fields: [viewId], references: [id], onDelete: Cascade)
-  column      AutomationViewColumn  @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  updater     User?                 @relation("WorkItemViewPlacementUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  item        Item                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  view        AutomationView       @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  column      AutomationViewColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  updater     User?                @relation("WorkItemViewPlacementUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
 
   @@unique([itemId, viewId])
   @@index([workspaceId, viewId, columnId, position])
 }
 
 model SearchDocument {
-  id              String                    @id @default(uuid())
-  itemId          String
-  workspaceId     String
-  boardId         String
-  content         String
-  embedding       Float[]                  @default([])
-  metadata        Json?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  item            Item                      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  itemId      String
+  workspaceId String
+  boardId     String
+  content     String
+  embedding   Float[]  @default([])
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, boardId])
 }
 
 model AIAgent {
-  id            String       @id @default(uuid())
-  workspaceId   String
-  key           String
-  name          String
-  description   String?
-  model         String
-  temperature   Float        @default(0.2)
-  systemPrompt  String
-  config        Json?
-  isActive      Boolean      @default(true)
-  isDefault     Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  runs          AIAgentRun[]
+  id           String       @id @default(uuid())
+  workspaceId  String
+  key          String
+  name         String
+  description  String?
+  model        String
+  temperature  Float        @default(0.2)
+  systemPrompt String
+  config       Json?
+  isActive     Boolean      @default(true)
+  isDefault    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs         AIAgentRun[]
 
   @@unique([workspaceId, key])
   @@index([workspaceId, isActive, updatedAt])
 }
 
 model AIAgentRun {
-  id            String    @id @default(uuid())
-  workspaceId   String
-  agentId       String
-  itemId        String?
-  requestedBy   String
-  status        String
-  input         Json
-  output        Json?
-  error         String?
-  provider      String?
-  model         String?
-  latencyMs     Int?
-  inputTokens   Int?
-  outputTokens  Int?
-  totalTokens   Int?
+  id               String    @id @default(uuid())
+  workspaceId      String
+  agentId          String
+  itemId           String?
+  requestedBy      String
+  status           String
+  input            Json
+  output           Json?
+  error            String?
+  provider         String?
+  model            String?
+  latencyMs        Int?
+  inputTokens      Int?
+  outputTokens     Int?
+  totalTokens      Int?
   estimatedCostUsd Float?
-  startedAt     DateTime?
-  finishedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  agent         AIAgent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  item          Item?     @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agent            AIAgent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  item             Item?     @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, createdAt])
   @@index([agentId, createdAt])
@@ -2916,30 +2911,30 @@ model AIAgentRun {
 }
 
 model DomainOutbox {
-  id              String                    @id @default(uuid())
-  eventName       String
-  aggregateType   String
-  aggregateId     String
-  payload         Json
-  occurredAt      DateTime
-  processedAt     DateTime?
-  retries         Int                       @default(0)
-  nextAttemptAt   DateTime                  @default(now())
-  deadLetteredAt  DateTime?
-  lastError       String?
-  createdAt       DateTime                  @default(now())
+  id             String    @id @default(uuid())
+  eventName      String
+  aggregateType  String
+  aggregateId    String
+  payload        Json
+  occurredAt     DateTime
+  processedAt    DateTime?
+  retries        Int       @default(0)
+  nextAttemptAt  DateTime  @default(now())
+  deadLetteredAt DateTime?
+  lastError      String?
+  createdAt      DateTime  @default(now())
 
   @@index([processedAt, deadLetteredAt, nextAttemptAt])
 }
 
 model AuditEvent {
-  id              String                    @id @default(uuid())
-  eventName       String
-  severity        AuditSeverity             @default(INFO)
-  actorId         String?
-  workspaceId     String?
-  metadata        Json?
-  happenedAt      DateTime                  @default(now())
+  id          String        @id @default(uuid())
+  eventName   String
+  severity    AuditSeverity @default(INFO)
+  actorId     String?
+  workspaceId String?
+  metadata    Json?
+  happenedAt  DateTime      @default(now())
 }
 
 model TelemetryEvent {

@@ -266,6 +266,8 @@ export function useCancelPaymentOrderMutation(workspaceId: string | null | undef
     onSuccess: (_result, orderId) => {
       const resolvedWorkspaceId = requireWorkspace(workspaceId);
       markPaymentOrderCanceledInCache(queryClient, resolvedWorkspaceId, orderId);
+      void queryClient.invalidateQueries({ queryKey: billingQueryKeys.paymentOrder(resolvedWorkspaceId, orderId) });
+      void queryClient.invalidateQueries({ queryKey: [...billingQueryKeys.workspace(resolvedWorkspaceId), "payment-orders"] });
       toast.success("Cobranca cancelada.");
     },
     onError: handleMutationError("Nao foi possivel cancelar a cobranca.")

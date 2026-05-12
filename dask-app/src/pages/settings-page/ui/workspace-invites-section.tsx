@@ -1,30 +1,36 @@
-import type { Dispatch, SetStateAction } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import type { WorkspaceInvite } from "@/modules/workspace/model";
 import { formatDate } from "@/shared/lib/date";
-import { Button, FormField, Section, StatusBadge, TextInput } from "@/shared/ui";
-import type { WorkspaceRole } from "./members-settings.model";
-import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_TONES } from "./members-settings.model";
+import { AppForm, AppFormField, Button, Section, StatusBadge, TextInput } from "@/shared/ui";
+import {
+  ASSIGNABLE_ROLES,
+  ROLE_LABELS,
+  ROLE_TONES,
+  workspaceInviteFormSchema,
+  type WorkspaceInviteFormInput,
+  type WorkspaceInviteFormValues
+} from "./members-settings.model";
+
+const inviteFormDefaultValues: WorkspaceInviteFormInput = {
+  email: "",
+  role: "MEMBER"
+};
 
 interface WorkspaceInvitesSectionProps {
-  inviteEmail: string;
-  setInviteEmail: Dispatch<SetStateAction<string>>;
-  inviteRole: WorkspaceRole;
-  setInviteRole: Dispatch<SetStateAction<WorkspaceRole>>;
+  canInviteMembers: boolean;
   isSubmittingInvite: boolean;
   isLoadingInvites: boolean;
   pendingInvites: WorkspaceInvite[];
   isResendingInviteId: string | null;
   isRevokingInviteId: string | null;
-  onInvite: () => Promise<void>;
+  onInvite: (values: WorkspaceInviteFormValues) => Promise<boolean>;
   onResendInvite: (inviteId: string) => Promise<void>;
   onRevokeInvite: (inviteId: string) => Promise<void>;
 }
 
 export function WorkspaceInvitesSection({
-  inviteEmail,
-  setInviteEmail,
-  inviteRole,
-  setInviteRole,
+  canInviteMembers,
   isSubmittingInvite,
   isLoadingInvites,
   pendingInvites,
@@ -34,46 +40,71 @@ export function WorkspaceInvitesSection({
   onResendInvite,
   onRevokeInvite,
 }: WorkspaceInvitesSectionProps) {
+  const inviteForm = useForm<WorkspaceInviteFormInput, unknown, WorkspaceInviteFormValues>({
+    resolver: zodResolver(workspaceInviteFormSchema),
+    defaultValues: inviteFormDefaultValues,
+    mode: "onChange"
+  });
+
+  const handleInvite = async (values: WorkspaceInviteFormValues) => {
+    const didInvite = await onInvite(values);
+    if (didInvite) {
+      inviteForm.reset(inviteFormDefaultValues);
+    }
+  };
+
   return (
     <Section
       title="Convites"
       subtitle="Adicione novos membros e gerencie convites enviados."
       className="ms-section"
     >
-      <div className="ms-invite-form">
-        <FormField label="E-mail">
+      <AppForm
+        form={inviteForm}
+        onSubmit={handleInvite}
+        className="ms-invite-form"
+        disabled={!canInviteMembers}
+        loading={isSubmittingInvite}
+      >
+        <AppFormField label="E-mail" error={inviteForm.formState.errors.email?.message}>
           <TextInput
-            value={inviteEmail}
+            {...inviteForm.register("email")}
             placeholder="nome@empresa.com"
-            onChange={e => setInviteEmail(e.target.value)}
+            disabled={!canInviteMembers || isSubmittingInvite}
+            aria-invalid={inviteForm.formState.errors.email ? true : undefined}
           />
-        </FormField>
-        <FormField label="Role inicial">
-          <div className="ms-role-row">
-            {ASSIGNABLE_ROLES.map(r => (
-              <button
-                key={r.value}
-                type="button"
-                className={`ms-role-chip${inviteRole === r.value ? " ms-role-chip--active" : ""}`}
-                onClick={() => setInviteRole(r.value)}
-                disabled={isSubmittingInvite}
-                title={r.description}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </FormField>
+        </AppFormField>
+        <Controller
+          control={inviteForm.control}
+          name="role"
+          render={({ field }) => (
+            <AppFormField label="Role inicial" error={inviteForm.formState.errors.role?.message}>
+              <div className="ms-role-row">
+                {ASSIGNABLE_ROLES.map(r => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    className={`ms-role-chip${field.value === r.value ? " ms-role-chip--active" : ""}`}
+                    onClick={() => field.onChange(r.value)}
+                    disabled={!canInviteMembers || isSubmittingInvite}
+                    title={r.description}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </AppFormField>
+          )}
+        />
         <div className="ms-invite-form__action">
           <Button
-            type="button"
-            onClick={() => void onInvite()}
-            disabled={isSubmittingInvite}
+            type="submit"
+            disabled={!canInviteMembers || isSubmittingInvite}
           >
             {isSubmittingInvite ? "Enviando..." : "Enviar convite"}
           </Button>
         </div>
-      </div>
+      </AppForm>
 
       <div className="ms-invite-list">
         {isLoadingInvites ? (
@@ -105,7 +136,8 @@ export function WorkspaceInvitesSection({
                     onClick={() => void onResendInvite(invite.id)}
                     disabled={
                       isResendingInviteId === invite.id ||
-                      isRevokingInviteId === invite.id
+                      isRevokingInviteId === invite.id ||
+                      !canInviteMembers
                     }
                   >
                     {isResendingInviteId === invite.id ? "Reenviando..." : "Reenviar"}
@@ -117,7 +149,8 @@ export function WorkspaceInvitesSection({
                     onClick={() => void onRevokeInvite(invite.id)}
                     disabled={
                       isResendingInviteId === invite.id ||
-                      isRevokingInviteId === invite.id
+                      isRevokingInviteId === invite.id ||
+                      !canInviteMembers
                     }
                   >
                     {isRevokingInviteId === invite.id ? "Removendo..." : "Remover"}

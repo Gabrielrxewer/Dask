@@ -14,6 +14,7 @@ export interface BillingPaymentOrderFilters {
   status?: string;
   customerId?: string;
   email?: string;
+  search?: string;
   catalogItemId?: string;
   createdFrom?: string | null;
   createdTo?: string | null;
@@ -53,6 +54,7 @@ export function normalizeBillingPaymentOrderFilters(filters?: BillingPaymentOrde
     status: filters?.status,
     customerId: filters?.customerId,
     email: filters?.email?.trim(),
+    search: filters?.search?.trim(),
     catalogItemId: filters?.catalogItemId,
     createdFrom: filters?.createdFrom ?? undefined,
     createdTo: filters?.createdTo ?? undefined,

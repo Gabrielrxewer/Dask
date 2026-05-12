@@ -8,7 +8,7 @@
   color: var(--text-primary);
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   .app-shell,
   .workspace,
   .board-view,
@@ -86,11 +86,11 @@
   [class*="__metric"],
   [class*="__stat"]
 ) {
-  border-color: var(--border-default) !important;
+  border-color: var(--border-default);
   color: var(--text);
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   .shared-section__header,
   .shared-section__content,
   .shared-empty-state,
@@ -99,11 +99,11 @@
   .shared-modal,
   .shared-data-table
 ) {
-  background: var(--surface-raised) !important;
-  border-color: var(--border-default) !important;
+  background: var(--surface-raised);
+  border-color: var(--border-default);
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   input,
   select,
   textarea,
@@ -113,16 +113,16 @@
   .shared-select__menu,
   .shared-select__option
 ) {
-  background: var(--control-surface) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-primary) !important;
+  background: var(--control-surface);
+  border-color: var(--border-default);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] :where(input, textarea)::placeholder {
   color: var(--text-muted);
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   input:hover,
   select:hover,
   textarea:hover,
@@ -130,11 +130,11 @@
   .shared-textarea:hover,
   .shared-select__control:hover
 ) {
-  background: var(--control-surface-hover) !important;
-  border-color: var(--selected-border) !important;
+  background: var(--control-surface-hover);
+  border-color: var(--selected-border);
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   input:focus,
   input:focus-visible,
   select:focus,
@@ -147,29 +147,29 @@
   .shared-textarea:focus-visible,
   .shared-select__control:focus-within
 ) {
-  border-color: var(--selected-border) !important;
-  box-shadow: var(--focus) !important;
+  border-color: var(--selected-border);
+  box-shadow: var(--focus);
   outline: none;
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   .shared-button:not(.shared-button--primary):not(.shared-button--danger),
   .shared-button--outline,
   button:not([class*="primary"]):not([class*="danger"]):not([class*="destructive"])
 ) {
-  background: var(--button-neutral-bg) !important;
-  border-color: var(--button-neutral-border) !important;
-  color: var(--button-neutral-text) !important;
+  background: var(--button-neutral-bg);
+  border-color: var(--button-neutral-border);
+  color: var(--button-neutral-text);
   box-shadow: var(--shadow-soft);
 }
 
-.app-theme[data-theme="dark"] :where(
+.app-theme[data-theme="dark"] :is(
   .shared-button:not(.shared-button--primary):not(.shared-button--danger):hover,
   .shared-button--outline:hover,
   button:not([class*="primary"]):not([class*="danger"]):not([class*="destructive"]):hover
 ) {
-  background: var(--button-neutral-bg-hover) !important;
-  border-color: var(--selected-border) !important;
+  background: var(--button-neutral-bg-hover);
+  border-color: var(--selected-border);
 }
 
 .app-theme[data-theme="dark"] :where(

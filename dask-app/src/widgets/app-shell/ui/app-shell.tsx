@@ -9,14 +9,13 @@ import {
   buildWorkspaceDashboardPath,
   buildWorkspaceDocumentationPath,
   buildWorkspaceFiscalPath,
-  buildWorkspaceLeadFlowPath,
-  buildWorkspaceLeadsPath,
+  buildWorkspaceCommercialPath,
   buildWorkspaceMarketingPath,
   buildWorkspaceListPath,
   buildWorkspaceSettingsPath
 } from "@/app/router/route-paths";
 import { useGlobalChrome } from "@/app/layout";
-import { useWorkspace } from "@/modules/workspace";
+import { useWorkspacePermissions } from "@/modules/workspace";
 import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
@@ -25,9 +24,9 @@ import { cn } from "@/shared/lib/cn";
 import { AppIcon, PageHeader, type AppIconName } from "@/shared/ui";
 import "./app-shell.css";
 
-type SidebarIconName = "dashboard" | "board" | "list" | "agenda" | "lead-flow" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "leads" | "marketing";
+type SidebarIconName = "dashboard" | "board" | "list" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "commercial" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
-type AppModuleKey = "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+type AppModuleKey = "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "commercial" | "marketing";
 
 interface AppShellProps {
   metrics: BoardMetrics;
@@ -49,14 +48,13 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     board: "board",
     list: "list",
     agenda: "calendar-check",
-    "lead-flow": "trend-up",
     documentation: "documentation",
     ai: "bot",
     automation: "automation",
     settings: "settings",
     billing: "billing",
     fiscal: "receipt",
-    leads: "users",
+    commercial: "users",
     marketing: "marketing"
   };
 
@@ -77,11 +75,8 @@ export function AppShell({
   children
 }: AppShellProps) {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
-  const { snapshot } = useWorkspace();
-  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
-  const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
-  );
+  const permissions = useWorkspacePermissions();
+  const isClient = permissions.isClient;
   const navGroups = [
     {
       title: "Planejamento",
@@ -115,14 +110,6 @@ export function AppShell({
           icon: "agenda" as const,
           tone: "cyan" as const,
           module: "board" as AppModuleKey
-        },
-        {
-          to: buildWorkspaceLeadFlowPath(workspaceSlug),
-          label: "Fluxo Leads",
-          icon: "lead-flow" as const,
-          tone: "cyan" as const,
-          module: "board" as AppModuleKey,
-          hideForClient: true
         }
       ]
     },
@@ -151,11 +138,11 @@ export function AppShell({
           module: "automation" as AppModuleKey
         },
         {
-          to: buildWorkspaceLeadsPath(workspaceSlug),
-          label: "Leads",
-          icon: "leads" as const,
+          to: buildWorkspaceCommercialPath(workspaceSlug),
+          label: "Comercial",
+          icon: "commercial" as const,
           tone: "mint" as const,
-          module: "leads" as AppModuleKey
+          module: "commercial" as AppModuleKey
         },
         {
           to: buildWorkspaceMarketingPath(workspaceSlug),
@@ -188,7 +175,7 @@ export function AppShell({
   ]
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => allowedModules.has(item.module) && !(isClient && "hideForClient" in item && item.hideForClient))
+      items: group.items.filter((item) => permissions.canAccessModule(item.module) && !(isClient && "hideForClient" in item && item.hideForClient))
     }))
     .filter((group) => group.items.length > 0);
   const { isSidebarOpen, closeNavigation } = useGlobalChrome();
@@ -256,7 +243,7 @@ export function AppShell({
           ))}
         </nav>
 
-        {allowedModules.has("settings") ? (
+        {permissions.canAccessModule("settings") ? (
           <div className="sidebar__foot">
             <NavLink
               to={buildWorkspaceSettingsPath(workspaceSlug)}

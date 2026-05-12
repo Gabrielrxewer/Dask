@@ -523,7 +523,7 @@ const commercialItemTypes: DefaultTypeSeed[] = [
   {
     name: 'Prospect',
     slug: 'prospect',
-    description: 'Contato em prospeccao antes de virar lead comercial.',
+    description: 'Contato em prospeccao antes de virar WorkItem comercial.',
     color: '#2563eb',
     icon: 'radar',
     acceptsParent: true,
@@ -536,7 +536,7 @@ const commercialItemTypes: DefaultTypeSeed[] = [
   {
     name: 'Comercial',
     slug: 'commercial',
-    description: 'Lead, oportunidade, proposta, contrato, cobranca e pagamento no mesmo work item.',
+    description: 'Signal, oportunidade, proposta, contrato, cobranca e pagamento no mesmo work item.',
     color: '#0f766e',
     icon: 'briefcase-business',
     acceptsParent: true,
@@ -552,8 +552,8 @@ const commercialStates: DefaultStateSeed[] = [
   { name: 'Prospect', slug: 'prospect', category: 'prospeccao', color: '#2563eb' },
   { name: 'Contato iniciado', slug: 'contact_started', category: 'prospeccao', color: '#0891b2' },
   { name: 'Follow-up', slug: 'follow_up', category: 'prospeccao', color: '#f59e0b' },
-  { name: 'Novo lead', slug: 'lead_new', category: 'entrada', color: '#0d8df7' },
-  { name: 'Qualificacao', slug: 'lead_qualification', category: 'entrada', color: '#4f46e5' },
+  { name: 'Entrada comercial', slug: 'commercial_intake', category: 'entrada', color: '#0d8df7' },
+  { name: 'Qualificacao', slug: 'commercial_qualification', category: 'entrada', color: '#4f46e5' },
   { name: 'Oportunidade aberta', slug: 'opportunity_open', category: 'venda', color: '#0891b2' },
   { name: 'Proposta em preparacao', slug: 'proposal_preparing', category: 'venda', color: '#f59e0b' },
   { name: 'Proposta enviada', slug: 'proposal_sent', category: 'venda', color: '#d97706' },
@@ -576,7 +576,7 @@ const commercialColumns: DefaultColumnSeed[] = commercialStates.map((state) => (
 }));
 
 const commercialTypeSlugs = commercialItemTypes.map((itemType) => itemType.slug);
-const commercialLeadTypeSlugs = ['commercial'];
+const commercialWorkItemTypeSlugs = ['commercial'];
 const prospectTypeSlugs = ['prospect'];
 
 const commercialCustomFields: DefaultCustomFieldSeed[] = [
@@ -588,7 +588,7 @@ const commercialCustomFields: DefaultCustomFieldSeed[] = [
   { name: 'Empresa', slug: 'companyName', variableKey: 'companyName', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Nome do cliente', slug: 'clientName', variableKey: 'clientName', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
   { name: 'Logo do cliente', slug: 'clientLogoUrl', variableKey: 'clientLogoUrl', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
-  { name: 'Origem', slug: 'source', variableKey: 'leadSource', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
+  { name: 'Origem', slug: 'source', variableKey: 'commercialSource', type: 'TEXT', scopeTypeSlugs: commercialTypeSlugs },
   {
     name: 'Interesse / escopo',
     slug: 'interest',
@@ -612,9 +612,9 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
   {
     key: 'prospeccao',
     name: 'Prospecao',
-    caption: 'Contatos antes de virar lead',
+    caption: 'Contatos antes da entrada comercial',
     analyticsRole: 'prospecting',
-    visibleBoardColumnSlugs: ['prospect', 'contact_started', 'follow_up', 'lead_new'],
+    visibleBoardColumnSlugs: ['prospect', 'contact_started', 'follow_up', 'commercial_intake'],
     createTaskColumnSlugs: ['prospect'],
     allowedTaskTypes: prospectTypeSlugs,
     statusSource: { kind: 'workflow_state' },
@@ -622,7 +622,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
       { id: 'prospect', label: 'Prospect', dot: '#2563eb' },
       { id: 'contact_started', label: 'Contato iniciado', dot: '#0891b2' },
       { id: 'follow_up', label: 'Follow-up', dot: '#f59e0b' },
-      { id: 'lead_new', label: 'Novo lead', dot: '#0d8df7' }
+      { id: 'commercial_intake', label: 'Entrada comercial', dot: '#0d8df7' }
     ]
   },
   {
@@ -630,13 +630,13 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     name: 'Entrada',
     caption: 'Captura e qualificacao comercial',
     analyticsRole: 'funnel',
-    visibleBoardColumnSlugs: ['lead_new', 'lead_qualification'],
-    createTaskColumnSlugs: ['lead_new'],
-    allowedTaskTypes: commercialLeadTypeSlugs,
+    visibleBoardColumnSlugs: ['commercial_intake', 'commercial_qualification'],
+    createTaskColumnSlugs: ['commercial_intake'],
+    allowedTaskTypes: commercialWorkItemTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
-      { id: 'lead_new', label: 'Novo lead', dot: '#0d8df7' },
-      { id: 'lead_qualification', label: 'Qualificacao', dot: '#4f46e5' }
+      { id: 'commercial_intake', label: 'Entrada comercial', dot: '#0d8df7' },
+      { id: 'commercial_qualification', label: 'Qualificacao', dot: '#4f46e5' }
     ]
   },
   {
@@ -646,7 +646,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     analyticsRole: 'funnel',
     visibleBoardColumnSlugs: ['opportunity_open', 'proposal_preparing', 'proposal_sent', 'proposal_approved'],
     createTaskColumnSlugs: [],
-    allowedTaskTypes: commercialLeadTypeSlugs,
+    allowedTaskTypes: commercialWorkItemTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'opportunity_open', label: 'Oportunidade aberta', dot: '#0891b2' },
@@ -662,7 +662,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     analyticsRole: 'funnel',
     visibleBoardColumnSlugs: ['contract_preparing', 'contract_sent', 'contract_accepted'],
     createTaskColumnSlugs: [],
-    allowedTaskTypes: commercialLeadTypeSlugs,
+    allowedTaskTypes: commercialWorkItemTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'contract_preparing', label: 'Contrato em preparacao', dot: '#7c3aed' },
@@ -677,7 +677,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     analyticsRole: 'funnel',
     visibleBoardColumnSlugs: ['billing_created', 'payment_waiting', 'payment_overdue', 'paid_active'],
     createTaskColumnSlugs: [],
-    allowedTaskTypes: commercialLeadTypeSlugs,
+    allowedTaskTypes: commercialWorkItemTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'billing_created', label: 'Cobranca gerada', dot: '#0369a1' },
@@ -693,7 +693,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     analyticsRole: 'terminal',
     visibleBoardColumnSlugs: ['lost', 'closed'],
     createTaskColumnSlugs: [],
-    allowedTaskTypes: commercialLeadTypeSlugs,
+    allowedTaskTypes: commercialWorkItemTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'lost', label: 'Perdido', dot: '#dc2626' },
@@ -707,7 +707,7 @@ const commercialBoardViews: DefaultBoardViewSeed[] = [
     analyticsRole: 'client',
     visibleBoardColumnSlugs: ['contract_sent', 'contract_accepted', 'billing_created', 'payment_waiting', 'payment_overdue', 'paid_active'],
     createTaskColumnSlugs: [],
-    allowedTaskTypes: commercialLeadTypeSlugs,
+    allowedTaskTypes: commercialWorkItemTypeSlugs,
     statusSource: { kind: 'workflow_state' },
     statuses: [
       { id: 'contract_sent', label: 'Contrato enviado', dot: '#6d28d9' },
@@ -810,10 +810,9 @@ const legacyTypeMap: Record<string, string> = {
   hypothesis: 'hypothesis',
   experiment: 'experiment',
   insight: 'insight',
-  lead: 'commercial',
+  commercial: 'commercial',
   deal: 'commercial',
-  negocio: 'commercial',
-  commercial: 'commercial'
+  negocio: 'commercial'
 };
 
 const legacyStatusMap: Record<string, string> = {
@@ -833,8 +832,8 @@ const legacyStatusMap: Record<string, string> = {
   resolved: 'resolved',
   discovery: 'discovery',
   validated: 'validated',
-  lead_new: 'lead_new',
-  lead_qualification: 'lead_qualification',
+  commercial_intake: 'commercial_intake',
+  commercial_qualification: 'commercial_qualification',
   opportunity_open: 'opportunity_open',
   proposal_preparing: 'proposal_preparing',
   proposal_sent: 'proposal_sent',

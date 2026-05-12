@@ -142,7 +142,7 @@ export const marketingService = {
     skipped: number;
     skippedWithoutConsent: number;
     skippedWithoutEmail: number;
-    leadsEvaluated: number;
+    contactsEvaluated: number;
   }> {
     const query = options?.dryRun ? '?dryRun=true' : '';
     return apiClient.post<{
@@ -150,7 +150,7 @@ export const marketingService = {
       skipped: number;
       skippedWithoutConsent: number;
       skippedWithoutEmail: number;
-      leadsEvaluated: number;
+      contactsEvaluated: number;
     }>(`/marketing/workspaces/${workspaceId}/campaigns/${campaignId}/launch${query}`, undefined, {
       authMode: 'required',
       retryOnUnauthorized: true
@@ -411,7 +411,7 @@ export const marketingService = {
     return apiClient.post<MarketingFollowUpResult>(
       `/marketing/workspaces/${workspaceId}/signals/${input.signalId}/follow-up`,
       {
-        leadId: input.leadId,
+        workItemId: input.workItemId,
         title: input.title,
         description: input.description,
         dueAt: input.dueAt,

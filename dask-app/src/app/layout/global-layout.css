@@ -1445,7 +1445,7 @@ body.shared-modal-open .global-footer {
 }
 
 .global-layout:not([data-theme="dark"]) .global-header__user-name {
-  color: var(--neutral-white) !important;
+  color: var(--neutral-white);
   text-shadow: 0 1px 1px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
@@ -1762,8 +1762,8 @@ body.shared-modal-open .global-footer {
 .app-theme[data-theme="dark"] .global-header__billing-menu,
 .user-profile-modal--dark {
   border-color: var(--border-default);
-  background: var(--surface-overlay-strong) !important;
-  color: var(--text) !important;
+  background: var(--surface-overlay-strong);
+  color: var(--text);
 }
 
 .user-profile-modal--dark .user-profile-modal__header {
@@ -1774,7 +1774,7 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal--dark .user-profile-modal__body,
 .user-profile-modal--dark .user-profile-modal__footer {
-  background: var(--surface-raised) !important;
+  background: var(--surface-raised);
 }
 
 .user-profile-modal--dark .user-profile-modal__footer {
@@ -1786,8 +1786,8 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__summary-grid div,
 .user-profile-modal--dark .user-profile-modal__choice,
 .user-profile-modal--dark .user-profile-modal__toggle {
-  border-color: var(--border-default) !important;
-  background: var(--surface-elevated) !important;
+  border-color: var(--border-default);
+  background: var(--surface-elevated);
   box-shadow: var(--shadow-soft);
 }
 
@@ -1796,7 +1796,7 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__choice,
 .user-profile-modal--dark .user-profile-modal__toggle strong,
 .user-profile-modal--dark .shared-select__value {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .user-profile-modal--dark .user-profile-modal__body,
@@ -1807,14 +1807,14 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__body label,
 .user-profile-modal--dark .user-profile-modal__body button,
 .user-profile-modal--dark .user-profile-modal__footer button {
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .user-profile-modal--dark .user-profile-modal__eyebrow,
 .user-profile-modal--dark .user-profile-modal__section-label,
 .user-profile-modal--dark .user-profile-modal__field span,
 .user-profile-modal--dark .user-profile-modal__choice-copy span {
-  color: var(--text-secondary) !important;
+  color: var(--text-secondary);
 }
 
 .user-profile-modal--dark .user-profile-modal__header p,
@@ -1823,18 +1823,18 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__toggle small,
 .user-profile-modal--dark .user-profile-modal__summary-grid small,
 .app-theme[data-theme="dark"] .global-header__user-menu-head small {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 .user-profile-modal--dark .user-profile-modal__section-head p,
 .user-profile-modal--dark .user-profile-modal__choice-copy small,
 .user-profile-modal--dark .user-profile-modal__summary-grid small,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__value--muted {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 .user-profile-modal--dark .user-profile-modal__secondary {
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .user-profile-modal--dark .user-profile-modal__summary-grid div::before {
@@ -1883,30 +1883,30 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__field .shared-select__menu,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__option,
 .user-profile-modal--dark .user-profile-modal__field .shared-input {
-  border-color: var(--border-default) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-strong) !important;
+  border-color: var(--border-default);
+  background: var(--control-surface);
+  color: var(--text-strong);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__control:hover,
 .user-profile-modal--dark .user-profile-modal__field .shared-select__option:hover,
 .user-profile-modal--dark .user-profile-modal__field .shared-input:hover {
-  background: var(--control-surface-hover) !important;
+  background: var(--control-surface-hover);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input[readonly] {
-  background: var(--surface-2) !important;
-  color: var(--text-muted) !important;
+  background: var(--surface-2);
+  color: var(--text-muted);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__menu {
-  box-shadow: var(--shadow-3) !important;
+  box-shadow: var(--shadow-3);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-select__option--selected {
-  background: var(--selected-bg) !important;
-  border-color: var(--selected-border) !important;
-  color: var(--text-primary) !important;
+  background: var(--selected-bg);
+  border-color: var(--selected-border);
+  color: var(--text-primary);
 }
 
 .user-profile-modal--dark .user-profile-modal__summary-grid strong,
@@ -1934,26 +1934,26 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .shared-user-avatar__actions button {
   border-color: var(--border-default);
   background: var(--button-neutral-bg);
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .user-profile-modal--dark .shared-user-avatar__actions button:first-of-type {
-  border-color: var(--button-primary-border) !important;
-  background: var(--button-gradient-main) !important;
-  color: var(--button-primary-text) !important;
+  border-color: var(--button-primary-border);
+  background: var(--button-gradient-main);
+  color: var(--button-primary-text);
 }
 
 .user-profile-modal--dark .shared-user-avatar__actions button:hover:not(:disabled) {
-  border-color: var(--selected-border) !important;
-  background: var(--button-neutral-bg-hover) !important;
-  color: var(--text-primary) !important;
+  border-color: var(--selected-border);
+  background: var(--button-neutral-bg-hover);
+  color: var(--text-primary);
   transform: translateY(-1px);
 }
 
 .user-profile-modal--dark .shared-user-avatar__actions button:focus-visible {
   outline: none;
-  box-shadow: none !important;
-  border-color: var(--selected-border) !important;
+  box-shadow: none;
+  border-color: var(--selected-border);
 }
 
 .user-profile-modal {
@@ -2541,7 +2541,7 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__header h2,
 .user-profile-modal--dark .user-profile-modal__basic-card strong,
 .user-profile-modal--dark .user-profile-modal__choice-copy span {
-  color: var(--surface-tint) !important;
+  color: var(--surface-tint);
   text-shadow: none;
 }
 
@@ -2549,7 +2549,7 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__section-head p,
 .user-profile-modal--dark .user-profile-modal__basic-card small,
 .user-profile-modal--dark .user-profile-modal__choice-copy small {
-  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong)) !important;
+  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong));
 }
 
 .user-profile-modal--dark .user-profile-modal__avatar .shared-user-avatar__media {
@@ -2562,13 +2562,13 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__panel,
 .user-profile-modal--dark .user-profile-modal__basic-card,
 .user-profile-modal--dark .user-profile-modal__choice {
-  border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default)) !important;
+  border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default));
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 5%, transparent) 0%, transparent 22%),
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 98.5%, transparent) 100%) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 98.5%, transparent) 100%);
   box-shadow:
     0 18px 36px color-mix(in srgb, var(--neutral-black) 24%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset !important;
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 4%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__panel::after {
@@ -2642,31 +2642,31 @@ body.shared-modal-open .global-footer {
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input {
-  border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default)) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%) !important;
-  color: var(--surface-tint-strong) !important;
+  border-color: color-mix(in oklab, var(--selected-border) 52%, var(--border-default));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 94%, transparent) 0%, color-mix(in srgb, var(--primary) 92%, transparent) 100%);
+  color: var(--surface-tint-strong);
   box-shadow:
     0 12px 24px color-mix(in srgb, var(--neutral-black) 18%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset !important;
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input:hover {
-  border-color: color-mix(in oklab, var(--primary) 44%, var(--border-default)) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%) !important;
+  border-color: color-mix(in oklab, var(--primary) 44%, var(--border-default));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input:focus,
 .user-profile-modal--dark .user-profile-modal__field .shared-input:focus-visible {
-  border-color: var(--selected-border) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%) !important;
+  border-color: var(--selected-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 94%, transparent) 100%);
   box-shadow:
     0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent),
-    0 16px 30px color-mix(in srgb, var(--neutral-black) 22%, transparent) !important;
+    0 16px 30px color-mix(in srgb, var(--neutral-black) 22%, transparent);
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input[readonly] {
-  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong)) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%) !important;
+  color: color-mix(in oklab, var(--text-muted) 72%, var(--border-strong));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--primary) 98%, transparent) 100%);
 }
 
 .user-profile-modal--dark .user-profile-modal__basic-card::before {
@@ -2677,11 +2677,11 @@ body.shared-modal-open .global-footer {
   border-color: color-mix(in oklab, var(--primary) 44%, var(--border-default));
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--decorative-cyan) 8%, transparent) 0%, transparent 24%),
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 99%, transparent) 100%) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 98%, transparent) 0%, color-mix(in srgb, var(--primary) 99%, transparent) 100%);
   box-shadow:
     0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent),
     0 18px 32px color-mix(in srgb, var(--neutral-black) 24%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset !important;
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 5%, transparent) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__choice::after {
@@ -2791,7 +2791,7 @@ body.shared-modal-open .global-footer {
   border-color: var(--border-default);
   background:
     radial-gradient(circle at 12% 0%, rgba(47, 128, 237, 0.08) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(13, 22, 32, 0.98) 0%, rgba(9, 17, 27, 0.98) 100%) !important;
+    linear-gradient(180deg, rgba(13, 22, 32, 0.98) 0%, rgba(9, 17, 27, 0.98) 100%);
   box-shadow:
     0 34px 90px rgba(0, 0, 0, 0.4),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
@@ -2800,11 +2800,11 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__panel,
 .user-profile-modal--dark .user-profile-modal__basic-card,
 .user-profile-modal--dark .user-profile-modal__choice {
-  border-color: var(--border-default) !important;
-  background: linear-gradient(180deg, rgba(18, 30, 43, 0.98) 0%, rgba(13, 22, 32, 0.98) 100%) !important;
+  border-color: var(--border-default);
+  background: linear-gradient(180deg, rgba(18, 30, 43, 0.98) 0%, rgba(13, 22, 32, 0.98) 100%);
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .user-profile-modal--dark .user-profile-modal__section-icon,
@@ -2813,15 +2813,15 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__close,
 .user-profile-modal--dark .user-profile-modal__secondary,
 .user-profile-modal--dark .user-profile-modal__field .shared-input {
-  border-color: var(--border-default) !important;
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%) !important;
-  color: var(--text-primary) !important;
+  border-color: var(--border-default);
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%);
+  color: var(--text-primary);
 }
 
 .user-profile-modal--dark .user-profile-modal__header h2,
 .user-profile-modal--dark .user-profile-modal__basic-card strong,
 .user-profile-modal--dark .user-profile-modal__choice-copy span {
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .user-profile-modal--dark .user-profile-modal__header p,
@@ -2829,12 +2829,12 @@ body.shared-modal-open .global-footer {
 .user-profile-modal--dark .user-profile-modal__basic-card small,
 .user-profile-modal--dark .user-profile-modal__choice-copy small,
 .user-profile-modal--dark .user-profile-modal__field .shared-input[readonly] {
-  color: var(--text-secondary) !important;
+  color: var(--text-secondary);
 }
 
 .user-profile-modal--dark .user-profile-modal__choice--active {
-  border-color: color-mix(in srgb, var(--primary) 48%, var(--border-default)) !important;
-  background: linear-gradient(180deg, rgba(22, 38, 56, 0.98) 0%, rgba(15, 28, 42, 0.98) 100%) !important;
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--border-default));
+  background: linear-gradient(180deg, rgba(22, 38, 56, 0.98) 0%, rgba(15, 28, 42, 0.98) 100%);
 }
 
 .user-profile-modal--dark .user-profile-modal__primary {
@@ -2844,18 +2844,18 @@ body.shared-modal-open .global-footer {
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input[readonly],
 .user-profile-modal--dark .user-profile-modal__field .shared-input:disabled {
-  border-color: var(--border-default) !important;
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%) !important;
-  color: var(--text-secondary) !important;
-  -webkit-text-fill-color: var(--text-secondary) !important;
-  box-shadow: none !important;
-  opacity: 1 !important;
+  border-color: var(--border-default);
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%);
+  color: var(--text-secondary);
+  -webkit-text-fill-color: var(--text-secondary);
+  box-shadow: none;
+  opacity: 1;
 }
 
 .user-profile-modal--dark .user-profile-modal__field .shared-input[readonly]:hover,
 .user-profile-modal--dark .user-profile-modal__field .shared-input:disabled:hover {
-  border-color: var(--border-default) !important;
-  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%) !important;
+  border-color: var(--border-default);
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.96) 0%, rgba(14, 24, 36, 0.96) 100%);
 }
 
 .user-profile-modal__header h2 {

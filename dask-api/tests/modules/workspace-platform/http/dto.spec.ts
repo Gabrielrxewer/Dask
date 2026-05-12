@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bulkUpdateWorkItemsDto,
+  convertWorkItemToCustomerDto,
   workItemListConfigDto,
   workItemListQueryDto
 } from '@/modules/workspace-platform/http/dto';
@@ -22,7 +23,9 @@ describe('workspace-platform/http dto', () => {
         assignedToMe: '1',
         workflowStateIds: `${UUIDS.state},${UUIDS.itemA}`,
         customFieldFilters: JSON.stringify([{ fieldKey: 'customerId', value: UUIDS.itemB }]),
-        sortBy: 'dueDate',
+        plannedWindowFrom: '2026-05-04T00:00:00.000Z',
+        plannedWindowTo: '2026-05-11T00:00:00.000Z',
+        sortBy: 'plannedStartAt',
         sortDirection: 'asc'
       })
     ).toEqual({
@@ -32,7 +35,9 @@ describe('workspace-platform/http dto', () => {
       assignedToMe: true,
       workflowStateIds: [UUIDS.state, UUIDS.itemA],
       customFieldFilters: [{ fieldKey: 'customerId', value: UUIDS.itemB }],
-      sortBy: 'dueDate',
+      plannedWindowFrom: new Date('2026-05-04T00:00:00.000Z'),
+      plannedWindowTo: new Date('2026-05-11T00:00:00.000Z'),
+      sortBy: 'plannedStartAt',
       sortDirection: 'asc'
     });
   });
@@ -59,6 +64,15 @@ describe('workspace-platform/http dto', () => {
     });
 
     expect(() => bulkUpdateWorkItemsDto.parse({ itemIds: [UUIDS.itemA], patch: {} })).toThrowError();
+  });
+
+  it('allows converting a WorkItem to Customer from official WorkItem fields', () => {
+    expect(convertWorkItemToCustomerDto.parse({})).toEqual({});
+    expect(convertWorkItemToCustomerDto.parse({
+      fields: { convertedByFlow: true }
+    })).toEqual({
+      fields: { convertedByFlow: true }
+    });
   });
 
   it('validates persisted list config payloads', () => {

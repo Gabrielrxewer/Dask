@@ -67,14 +67,14 @@ export function buildNodeConfigZodSchema(
     }
 
     for (const field of descriptor.fields) {
-      if (field.type !== "json") continue;
+      if (field.type !== "json" && field.type !== "key-value-list") continue;
       const value = readNodeConfigPath(config, field.name);
       if (!hasNodeConfigValue(value)) continue;
-      if (typeof value === "string") {
+      if (!isRecord(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: field.name.split("."),
-          message: `${field.label} precisa conter JSON valido.`
+          message: `${field.label} precisa ser configurado pelos campos estruturados.`
         });
       }
     }

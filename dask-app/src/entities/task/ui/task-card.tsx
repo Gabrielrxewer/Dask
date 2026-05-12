@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type HTMLAttributes, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { MembersById } from "@/entities/member";
 import {
@@ -15,7 +15,6 @@ interface TaskCardProps {
   task: Task;
   boardConfig: BoardConfig;
   compact?: boolean;
-  draggable?: boolean;
   ignoreSlotLimits?: boolean;
   contextualDisplay?: {
     suppressStatus?: boolean;
@@ -45,8 +44,6 @@ interface TaskCardProps {
   assigneeName?: string;
   statusLabel?: string;
   assigneeSlot?: ReactNode;
-  onDragStart: (event: DragEvent<HTMLElement>, taskId: string) => void;
-  onDragEnd: () => void;
   isDragging?: boolean;
   onOpen?: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
@@ -59,7 +56,6 @@ export function TaskCard({
   task,
   boardConfig,
   compact = false,
-  draggable = true,
   ignoreSlotLimits = false,
   contextualDisplay,
   getFieldSlotProps,
@@ -67,8 +63,6 @@ export function TaskCard({
   membersById,
   displayStatuses,
   onDebugSnapshot,
-  onDragStart,
-  onDragEnd,
   isDragging = false,
   onOpen,
   onDelete,
@@ -330,9 +324,6 @@ export function TaskCard({
       )}
       data-board-card="true"
       data-task-id={task.id}
-      draggable={draggable}
-      onDragStart={event => onDragStart(event, task.id)}
-      onDragEnd={onDragEnd}
       onClick={() => onOpen?.(task.id)}
       onKeyDown={event => {
         if (!canOpen) {

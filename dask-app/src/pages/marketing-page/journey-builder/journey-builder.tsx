@@ -11,7 +11,6 @@ import {
 } from '@xyflow/react';
 import type {
   Connection,
-  Edge,
   OnConnect,
   ReactFlowInstance,
 } from '@xyflow/react';
@@ -23,7 +22,7 @@ import type {
   JourneyNodeKind,
 } from './types';
 import { PALETTE_ITEMS, validateNode } from './types';
-import { AppIcon, Button, EmptyState, FlowCanvas, StatusBadge, TextInput, toast, type FlowCanvasPaletteItem } from '@/shared/ui';
+import { AppIcon, Button, EmptyState, FlowCanvas, StatusBadge, TextInput, type FlowCanvasPaletteItem } from '@/shared/ui';
 import { TriggerNode } from './nodes/trigger-node';
 import { ActionNode } from './nodes/action-node';
 import { ConditionNode } from './nodes/condition-node';
@@ -38,6 +37,7 @@ const NODE_TYPES = {
   TRIGGER: TriggerNode,
   ACTION: ActionNode,
   CONDITION: ConditionNode,
+  BRANCH: ConditionNode,
   DELAY: DelayNode,
   EXIT: ExitNode,
 };
@@ -56,6 +56,7 @@ const KIND_COLORS: Record<JourneyNodeKind, string> = {
   TRIGGER: 'var(--accent)',
   ACTION: 'var(--success)',
   CONDITION: 'var(--warning)',
+  BRANCH: 'var(--warning)',
   DELAY: 'var(--decorative-purple)',
   EXIT: 'var(--danger)',
 };
@@ -122,17 +123,17 @@ interface InsertPickerState {
 interface JourneyBuilderInnerProps {
   flow: MarketingAutomationFlow | null;
   onSave: (name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
-  onActivate: (flowId: string) => Promise<void>;
+  onActivate: (flowId: string, name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
   onDeactivate: (flowId: string) => Promise<void>;
   isSaving: boolean;
 }
 
 function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving }: JourneyBuilderInnerProps) {
-  const [rfInstance, setRfInstance] = useState<ReactFlowInstance<JourneyNode, Edge> | null>(null);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance<JourneyNode, JourneyEdge> | null>(null);
 
   const [flowName, setFlowName] = useState(flow?.name ?? 'Novo fluxo');
   const [nodes, setNodes, onNodesChange] = useNodesState<JourneyNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<JourneyEdge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [insertPicker, setInsertPicker] = useState<InsertPickerState | null>(null);
 
@@ -149,16 +150,7 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
     } catch {
       // ignore
     }
-  }, [flow?.id]);
-
-  function showToast(message: string, kind: 'ok' | 'error' = 'ok') {
-    if (kind === 'error') {
-      toast.error(message);
-      return;
-    }
-
-    toast.success(message);
-  }
+  }, [flow?.id, flow?.updatedAt, setEdges, setNodes]);
 
   // Connections
   const onConnect: OnConnect = useCallback(
@@ -269,26 +261,15 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
   const selectedNode = (nodes.find((n) => n.id === selectedNodeId) ?? null) as JourneyNode | null;
 
   async function handleSave() {
-    try {
-      await onSave(flowName, nodes as JourneyNode[], edges as JourneyEdge[]);
-      showToast('Fluxo salvo com sucesso');
-    } catch {
-      showToast('Erro ao salvar', 'error');
-    }
+    await onSave(flowName, nodes, edges);
   }
 
   async function handleToggleActive() {
     if (!flow) return;
-    try {
-      if (flow.status === 'ACTIVE') {
-        await onDeactivate(flow.id);
-        showToast('Fluxo pausado');
-      } else {
-        await onActivate(flow.id);
-        showToast('Fluxo ativado');
-      }
-    } catch {
-      showToast('Erro ao alterar status', 'error');
+    if (flow.status === 'ACTIVE') {
+      await onDeactivate(flow.id);
+    } else {
+      await onActivate(flow.id, flowName, nodes, edges);
     }
   }
 
@@ -318,6 +299,7 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
             size="sm"
             variant={flow.status === 'ACTIVE' ? 'danger' : 'outline'}
             onClick={() => void handleToggleActive()}
+            disabled={isSaving}
           >
             {flow.status === 'ACTIVE' ? (
               <>
@@ -428,7 +410,7 @@ function JourneyBuilderInner({ flow, onSave, onActivate, onDeactivate, isSaving 
 export interface JourneyBuilderProps {
   flow: MarketingAutomationFlow | null;
   onSave: (name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
-  onActivate: (flowId: string) => Promise<void>;
+  onActivate: (flowId: string, name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
   onDeactivate: (flowId: string) => Promise<void>;
   isSaving?: boolean;
 }

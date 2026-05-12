@@ -1,15 +1,37 @@
 import type { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import { AppError } from '@/core/errors/app-error';
+import { isSensitiveRedactionKey, redactSensitiveValue } from '@/core/security/redaction';
 import type { WorkspaceWorkItemsService } from '@/modules/workspace-platform/application/workspace-work-items-service';
 
 interface CommercialIntakeServiceDeps {
   prisma: PrismaClient;
   workspaceWorkItemsService: WorkspaceWorkItemsService;
   webhookSecret?: string;
+  environment?: 'development' | 'test' | 'production';
+  allowInsecureWebhooks?: boolean;
 }
 
 type IntegrationSource = 'ZAPIER' | 'MAKE' | 'N8N' | 'HUBSPOT' | 'RD_STATION' | 'GENERIC_WEBHOOK';
+
+const SECRET_HEADER_NAMES = [
+  'x-commercial-intake-secret',
+  'x-commercial-webhook-secret',
+  'authorization',
+  'x-webhook-secret'
+] as const;
+
+const SIGNATURE_HEADER_NAMES = [
+  'x-commercial-intake-signature',
+  'x-commercial-webhook-signature',
+  'x-dask-signature'
+] as const;
+
+const INTAKE_RAW_PAYLOAD_KEY_PATTERN = /(raw[-_]?body|raw[-_]?payload|^payload$|^body$)/i;
+
+function isIntakeSensitiveKey(key: string): boolean {
+  return isSensitiveRedactionKey(key, INTAKE_RAW_PAYLOAD_KEY_PATTERN);
+}
 
 function normalizeText(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
@@ -61,13 +83,13 @@ function buildIdempotencyKey(input: {
   workspaceId: string;
   source: IntegrationSource;
   payload: Record<string, unknown>;
-  leadPayload: Record<string, unknown>;
+  commercialPayload: Record<string, unknown>;
 }): string {
   const explicitId =
     normalizeText(input.payload['eventId'] as string | undefined) ??
     normalizeText(input.payload['id'] as string | undefined) ??
-    normalizeText(input.leadPayload['externalId'] as string | undefined) ??
-    normalizeText(input.leadPayload['id'] as string | undefined);
+    normalizeText(input.commercialPayload['externalId'] as string | undefined) ??
+    normalizeText(input.commercialPayload['id'] as string | undefined);
 
   if (explicitId) {
     return `${input.workspaceId}:${input.source}:${explicitId}`;
@@ -85,15 +107,120 @@ function stripBearer(value: string | null | undefined): string | null {
   return normalized;
 }
 
+function getHeader(headers: Record<string, string | undefined>, names: readonly string[]): string | null {
+  for (const name of names) {
+    const value = headers[name];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function timingSafeEqualString(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, 'utf8');
+  const rightBuffer = Buffer.from(right, 'utf8');
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function normalizeSignature(value: string | null | undefined): string | null {
+  const normalized = stripBearer(value)?.replace(/^sha256=/i, '').trim().toLowerCase();
+  return normalized && /^[a-f0-9]+$/.test(normalized) ? normalized : null;
+}
+
+function verifyWebhookSignature(input: {
+  rawBody: Buffer | undefined;
+  secret: string;
+  signature: string | null;
+}): boolean {
+  const normalizedSignature = normalizeSignature(input.signature);
+  if (!input.rawBody || !normalizedSignature) {
+    return false;
+  }
+
+  const expected = crypto.createHmac('sha256', input.secret).update(input.rawBody).digest('hex');
+  return timingSafeEqualString(normalizedSignature, expected);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function safePayloadKeys(record: Record<string, unknown>): string[] {
+  return Object.keys(record)
+    .filter((key) => !isIntakeSensitiveKey(key))
+    .sort();
+}
+
+function safePayloadSummary(payload: Record<string, unknown>, commercialPayload: Record<string, unknown>): Record<string, unknown> {
+  const payloadKeys = safePayloadKeys(payload);
+  const commercialPayloadKeys = safePayloadKeys(commercialPayload);
+  return {
+    payloadKeys,
+    commercialPayloadKeys,
+    omittedSensitivePayloadKeyCount: Object.keys(payload).length - payloadKeys.length,
+    omittedSensitiveCommercialPayloadKeyCount: Object.keys(commercialPayload).length - commercialPayloadKeys.length,
+    hasEmail: typeof commercialPayload.email === 'string' && commercialPayload.email.trim().length > 0,
+    hasPhone: typeof commercialPayload.phone === 'string' && commercialPayload.phone.trim().length > 0,
+    hasMessage: typeof commercialPayload.message === 'string' && commercialPayload.message.trim().length > 0,
+    fieldCount: Object.keys(commercialPayload).length
+  };
+}
+
+function sanitizeMetadataRecord(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(record)
+      .filter(([key]) => !isIntakeSensitiveKey(key))
+      .map(([key, value]) => [
+        key,
+        redactSensitiveValue(value, {
+          maskPersonalData: true,
+          additionalSensitiveKeyPattern: INTAKE_RAW_PAYLOAD_KEY_PATTERN
+        })
+      ])
+  );
+}
+
+function sanitizeCommercialIntakeMetadata(metadata: unknown): Record<string, unknown> {
+  if (!isRecord(metadata)) {
+    return {};
+  }
+
+  const commercialIntake = isRecord(metadata.commercialIntake) ? metadata.commercialIntake : {};
+  const safeMetadata = sanitizeMetadataRecord(metadata);
+  return {
+    ...safeMetadata,
+    commercialIntake: sanitizeMetadataRecord(commercialIntake)
+  };
+}
+
+function compactRecord(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+}
+
+function parseEstimatedValue(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export class CommercialIntakeService {
   private readonly prisma: PrismaClient;
   private readonly workspaceWorkItemsService: WorkspaceWorkItemsService;
   private readonly webhookSecret: string | null;
+  private readonly environment: 'development' | 'test' | 'production';
+  private readonly allowInsecureWebhooks: boolean;
 
   public constructor(deps: CommercialIntakeServiceDeps) {
     this.prisma = deps.prisma;
     this.workspaceWorkItemsService = deps.workspaceWorkItemsService;
     this.webhookSecret = deps.webhookSecret?.trim() ? deps.webhookSecret.trim() : null;
+    this.environment = deps.environment ?? 'development';
+    this.allowInsecureWebhooks = deps.allowInsecureWebhooks ?? false;
   }
 
   public resolveSource(source: string): IntegrationSource {
@@ -104,16 +231,22 @@ export class CommercialIntakeService {
     source: IntegrationSource;
     headers: Record<string, string | undefined>;
     payload: Record<string, unknown>;
+    rawBody?: Buffer;
     workspaceId?: string;
   }): Promise<{ workItemId: string; duplicate: boolean; idempotencyKey: string }> {
-    this.assertWebhookAuthorization(input.headers);
+    this.assertWebhookAuthorization(input.headers, input.rawBody);
 
-    const leadPayload = (input.payload['lead'] && typeof input.payload['lead'] === 'object' && !Array.isArray(input.payload['lead']))
-      ? (input.payload['lead'] as Record<string, unknown>)
+    const nestedCommercialPayload =
+      (isRecord(input.payload['signal']) && input.payload['signal']) ||
+      (isRecord(input.payload['contact']) && input.payload['contact']) ||
+      (isRecord(input.payload['commercial']) && input.payload['commercial']) ||
+      (isRecord(input.payload['commercialWorkItem']) && input.payload['commercialWorkItem']);
+    const commercialPayload = nestedCommercialPayload
+      ? (nestedCommercialPayload as Record<string, unknown>)
       : input.payload;
 
     const workspaceId = normalizeText(
-      input.workspaceId ?? (input.payload['workspaceId'] as string | undefined) ?? (leadPayload['workspaceId'] as string | undefined)
+      input.workspaceId ?? (input.payload['workspaceId'] as string | undefined) ?? (commercialPayload['workspaceId'] as string | undefined)
     );
 
     if (!workspaceId) {
@@ -129,12 +262,48 @@ export class CommercialIntakeService {
       throw new AppError('Workspace not found or has no owner', 404);
     }
 
+    const contactName = resolveContactName(commercialPayload);
+    const contactEmail = normalizeText(commercialPayload['email'] as string | undefined);
+    const contactPhone = normalizeText((commercialPayload['phone'] as string | undefined));
+    const companyName = normalizeText((commercialPayload['companyName'] as string | undefined) ?? (commercialPayload['company'] as string | undefined));
+    const interest = normalizeText((commercialPayload['interest'] as string | undefined) ?? (commercialPayload['productInterest'] as string | undefined));
+    const estimatedValue = normalizeText(commercialPayload['estimatedValue'] as string | undefined);
+    const notes = normalizeText((commercialPayload['notes'] as string | undefined) ?? (commercialPayload['message'] as string | undefined));
+    const sourceLabel = normalizeText((commercialPayload['source'] as string | undefined) ?? (commercialPayload['origin'] as string | undefined)) ?? input.source;
+    const typeIntent = normalizeText((commercialPayload['workItemType'] as string | undefined) ?? (commercialPayload['type'] as string | undefined) ?? (commercialPayload['kind'] as string | undefined));
+    const isSignal = typeIntent ? ['signal', 'sinal', 'prospect', 'prospecting'].includes(typeIntent.toLowerCase()) : false;
+    const typeSlug = await this.resolveCommercialTypeSlug(workspaceId, isSignal ? ['signal', 'prospect'] : ['commercial']);
+    const stateSlug = await this.resolveCommercialStateSlug(workspaceId, isSignal ? ['prospect', 'commercial_intake'] : ['commercial_intake', 'prospect']);
+
     const idempotencyKey = buildIdempotencyKey({
       workspaceId,
       source: input.source,
       payload: input.payload,
-      leadPayload
+      commercialPayload
     });
+
+    const commercialFields = compactRecord({
+      contactName,
+      contactEmail: contactEmail ?? undefined,
+      contactPhone: contactPhone ?? undefined,
+      companyName: companyName ?? undefined,
+      clientName: companyName ?? contactName,
+      source: sourceLabel,
+      interest: interest ?? undefined,
+      estimatedValue: parseEstimatedValue(estimatedValue)
+    });
+    const customFieldValues = await this.buildCustomFieldValuesBySlug(workspaceId, commercialFields);
+    const receivedAt = new Date().toISOString();
+    const technicalMetadata = {
+      source: input.source,
+      inboundSource: 'webhook',
+      provider: input.source,
+      eventId: normalizeText((input.payload['eventId'] as string | undefined) ?? (input.payload['id'] as string | undefined)),
+      externalId: normalizeText((commercialPayload['externalId'] as string | undefined) ?? (commercialPayload['id'] as string | undefined)),
+      idempotencyKey,
+      normalizedFieldKeys: Object.keys(commercialFields).sort(),
+      payloadSummary: safePayloadSummary(input.payload, commercialPayload)
+    };
 
     const existing = await this.prisma.item.findFirst({
       where: {
@@ -144,39 +313,44 @@ export class CommercialIntakeService {
           equals: idempotencyKey
         }
       },
-      select: { id: true }
+      select: { id: true, fields: true, metadata: true }
     });
 
     if (existing) {
+      const currentFields = isRecord(existing.fields) ? existing.fields : {};
+      const currentMetadata = sanitizeCommercialIntakeMetadata(existing.metadata);
+      const currentIntakeMetadata = isRecord(currentMetadata.commercialIntake) ? currentMetadata.commercialIntake : {};
+
+      await this.workspaceWorkItemsService.updateWorkItem({
+        workspaceId,
+        itemId: existing.id,
+        userId: ownerMembership.userId,
+        payload: {
+          title: contactName,
+          typeSlug,
+          stateSlug,
+          description: notes ?? undefined,
+          fields: {
+            ...currentFields,
+            ...commercialFields
+          },
+          customFieldValues,
+          metadata: {
+            ...currentMetadata,
+            commercialIntake: {
+              ...currentIntakeMetadata,
+              ...technicalMetadata,
+              lastReceivedAt: receivedAt,
+              updateCount: Number(currentIntakeMetadata.updateCount ?? 0) + 1
+            }
+          }
+        }
+      });
+
       return { workItemId: existing.id, duplicate: true, idempotencyKey };
     }
 
-    const contactName = resolveContactName(leadPayload);
-    const contactEmail = normalizeText(leadPayload['email'] as string | undefined);
-    const contactPhone = normalizeText((leadPayload['phone'] as string | undefined));
-    const companyName = normalizeText((leadPayload['companyName'] as string | undefined) ?? (leadPayload['company'] as string | undefined));
-    const interest = normalizeText((leadPayload['interest'] as string | undefined) ?? (leadPayload['productInterest'] as string | undefined));
-    const estimatedValue = normalizeText(leadPayload['estimatedValue'] as string | undefined);
-    const notes = normalizeText((leadPayload['notes'] as string | undefined) ?? (leadPayload['message'] as string | undefined));
-    const sourceLabel = normalizeText((leadPayload['source'] as string | undefined) ?? (leadPayload['origin'] as string | undefined)) ?? input.source;
-    const typeIntent = normalizeText((leadPayload['workItemType'] as string | undefined) ?? (leadPayload['type'] as string | undefined) ?? (leadPayload['kind'] as string | undefined));
-    const isSignal = typeIntent ? ['signal', 'sinal', 'prospect', 'prospecting'].includes(typeIntent.toLowerCase()) : false;
-    const typeSlug = await this.resolveCommercialTypeSlug(workspaceId, isSignal ? ['signal', 'prospect'] : ['lead', 'commercial']);
-    const stateSlug = await this.resolveCommercialStateSlug(workspaceId, isSignal ? ['prospect', 'lead_new'] : ['lead_new', 'prospect']);
-
-    const commercialFields = {
-      contactName,
-      contactEmail: contactEmail ?? undefined,
-      contactPhone: contactPhone ?? undefined,
-      companyName: companyName ?? undefined,
-      clientName: companyName ?? contactName,
-      source: sourceLabel,
-      interest: interest ?? undefined,
-      estimatedValue: estimatedValue ? Number(estimatedValue.replace(',', '.')) : undefined
-    };
-    const customFieldValues = await this.buildCustomFieldValuesBySlug(workspaceId, commercialFields);
-
-    // Lead oficial no Dask = WorkItem comercial. Metadata abaixo e usada somente para origem tecnica/idempotencia.
+    // Entrada comercial oficial no Dask = WorkItem. Metadata abaixo guarda apenas origem tecnica/idempotencia.
     const workItem = await this.workspaceWorkItemsService.createWorkItem({
       workspaceId,
       userId: ownerMembership.userId,
@@ -189,14 +363,8 @@ export class CommercialIntakeService {
         customFieldValues,
         metadata: {
           commercialIntake: {
-            source: input.source,
-            inboundSource: 'webhook',
-            provider: input.source,
-            eventId: normalizeText((input.payload['eventId'] as string | undefined) ?? (input.payload['id'] as string | undefined)),
-            externalId: normalizeText((leadPayload['externalId'] as string | undefined) ?? (leadPayload['id'] as string | undefined)),
-            idempotencyKey,
-            receivedAt: new Date().toISOString(),
-            rawPayload: leadPayload
+            ...technicalMetadata,
+            receivedAt
           }
         }
       }
@@ -282,16 +450,28 @@ export class CommercialIntakeService {
     }, {});
   }
 
-  private assertWebhookAuthorization(headers: Record<string, string | undefined>): void {
-    if (!this.webhookSecret) return;
-
-    const provided =
-      stripBearer(headers['x-leads-webhook-secret']) ??
-      stripBearer(headers.authorization) ??
-      stripBearer(headers['x-webhook-secret']);
-
+  private assertWebhookAuthorization(headers: Record<string, string | undefined>, rawBody?: Buffer): void {
     const expected = stripBearer(this.webhookSecret);
-    if (!provided || !expected || provided !== expected) {
+
+    if (!expected) {
+      if (this.environment === 'production' || !this.allowInsecureWebhooks) {
+        throw new AppError('Commercial intake webhook secret is required', 401);
+      }
+
+      return;
+    }
+
+    const signature = getHeader(headers, SIGNATURE_HEADER_NAMES);
+    if (signature) {
+      if (!verifyWebhookSignature({ rawBody, secret: expected, signature })) {
+        throw new AppError('Webhook signature is not authorized', 401);
+      }
+
+      return;
+    }
+
+    const provided = stripBearer(getHeader(headers, SECRET_HEADER_NAMES));
+    if (!provided || !timingSafeEqualString(provided, expected)) {
       throw new AppError('Webhook is not authorized', 401);
     }
   }

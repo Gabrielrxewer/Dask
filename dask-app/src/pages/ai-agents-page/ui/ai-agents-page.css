@@ -230,7 +230,7 @@
 /* ── New agent placeholder item ───────────────────────────────────────────────── */
 
 .ab-agent-new-item {
-  border-style: dashed !important;
+  border-style: dashed;
 }
 
 /* ── Error banner ────────────────────────────────────────────────────────────── */

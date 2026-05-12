@@ -141,7 +141,17 @@ export const createApp = (): Express => {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-CSRF-Token',
+        'X-Commercial-Intake-Secret',
+        'X-Comercial-Webhook-Secret',
+        'X-Webhook-Secret',
+        'X-Commercial-Intake-Signature',
+        'X-Comercial-Webhook-Signature',
+        'X-Dask-Signature'
+      ],
       maxAge: 86400
     })
   );
@@ -285,7 +295,7 @@ export const createApp = (): Express => {
     buildPortalRoutes({
       prisma,
       workspaceDocumentsService,
-      billingPortalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET ?? env.JWT_SECRET
+      billingPortalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET ?? ''
     })
   );
   app.use(

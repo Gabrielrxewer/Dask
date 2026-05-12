@@ -42,4 +42,13 @@ describe('billing portal token', () => {
     expect(() => verifyBillingPortalToken(created.token, SECRET)).toThrow(/expired/i);
     expect(() => verifyBillingPortalToken(`${valid.token}tampered`, SECRET)).toThrow(/signature/i);
   });
+
+  it('rejects malformed tokens and weak token secrets', () => {
+    expect(() => verifyBillingPortalToken('not-a-signed-token', SECRET)).toThrow(/format/i);
+    expect(() => createBillingPortalToken({
+      workspaceId: 'workspace-1',
+      orderId: 'order-1',
+      secret: 'short'
+    })).toThrow(/at least 16/i);
+  });
 });

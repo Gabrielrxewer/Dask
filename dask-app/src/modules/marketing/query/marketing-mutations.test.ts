@@ -36,7 +36,7 @@ describe("marketing mutations", () => {
     };
     const input: CreateMarketingCampaignInput = {
       name: "Nurture",
-      objective: "LEAD_NURTURE",
+      objective: "COMMERCIAL_NURTURE",
       variants: [
         {
           name: "Controle",
@@ -57,7 +57,7 @@ describe("marketing mutations", () => {
   it("fails before calling the service when workspace is missing", async () => {
     const input: CreateMarketingCampaignInput = {
       name: "Nurture",
-      objective: "LEAD_NURTURE"
+      objective: "COMMERCIAL_NURTURE"
     };
 
     await expect(createMarketingCampaignMutationRequest("", input)).rejects.toThrow("Nenhum workspace selecionado.");

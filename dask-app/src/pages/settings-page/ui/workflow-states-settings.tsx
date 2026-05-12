@@ -1,36 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { useParams } from "react-router-dom";
-import { apiClient } from "@/shared/api/http-client";
-import { workspaceService } from "@/modules/workspace/api";
-import { Button, EmptyState, FormField, LoadingState, PanelMenu, PanelMenuGroup, PanelMenuItem, TextInput } from "@/shared/ui";
+import {
+  useCurrentWorkspace,
+  useSaveWorkflowStateMutation,
+  useWorkspaceSettingsPermissions,
+  useWorkflowStatesQuery
+} from "@/modules/workspace";
+import type { ApiWorkflowState } from "@/modules/workspace/model";
+import { AppForm, AppFormField, Button, EmptyState, LoadingState, PanelMenu, PanelMenuGroup, PanelMenuItem, TextInput } from "@/shared/ui";
 import { resolveCssColorForInput, withCssColorAlpha } from "@/shared/lib/color/css-color";
+import {
+  DEFAULT_WORKFLOW_STATE_COLOR,
+  toWorkflowStateSlug,
+  workflowStateFormSchema,
+  type WorkflowStateFormInput,
+  type WorkflowStateFormValues
+} from "./workflow-states-settings.model";
 import "./workflow-states-settings.css";
 
-interface ApiWorkflowState {
-  id: string;
-  name: string;
-  slug: string;
-  color: string;
-  order?: number;
-  category: string | null;
-  isTerminal: boolean;
-  isEditable: boolean;
-  isActive: boolean;
-}
-
-interface WorkflowStateDraft {
-  id?: string;
-  name: string;
-  slug: string;
-  color: string;
-  category: string;
-  order: string;
-  isTerminal: boolean;
-  isEditable: boolean;
-  isActive: boolean;
-}
-
-const DEFAULT_COLOR = "var(--text-secondary)";
+type WorkflowStateDraft = WorkflowStateFormInput;
 
 const STATE_PRESETS = [
   { key: "backlog", label: "Backlog", slug: "backlog", color: "var(--text-secondary)", category: "Planejamento", isTerminal: false },
@@ -39,16 +29,6 @@ const STATE_PRESETS = [
   { key: "done", label: "Concluido", slug: "concluido", color: "var(--success)", category: "Entrega", isTerminal: true },
   { key: "blocked", label: "Bloqueado", slug: "bloqueado", color: "var(--danger)", category: "Risco", isTerminal: false }
 ] as const;
-
-function toSlug(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function sortStates(states: ApiWorkflowState[]): ApiWorkflowState[] {
   return [...states].sort((a, b) => {
@@ -67,7 +47,7 @@ function createDraftFromState(state: ApiWorkflowState, fallbackOrder: number): W
     id: state.id,
     name: state.name,
     slug: state.slug,
-    color: state.color || DEFAULT_COLOR,
+    color: state.color || DEFAULT_WORKFLOW_STATE_COLOR,
     category: state.category ?? "",
     order: String(state.order ?? fallbackOrder),
     isTerminal: state.isTerminal,
@@ -80,7 +60,7 @@ function createEmptyDraft(order: number): WorkflowStateDraft {
   return {
     name: "",
     slug: "",
-    color: DEFAULT_COLOR,
+    color: DEFAULT_WORKFLOW_STATE_COLOR,
     category: "",
     order: String(order),
     isTerminal: false,
@@ -102,71 +82,49 @@ function createDraftFromPreset(index: number, preset: (typeof STATE_PRESETS)[num
   };
 }
 
-function areDraftsEqual(a: WorkflowStateDraft | null, b: WorkflowStateDraft | null): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 export function WorkflowStatesSettings() {
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  const { snapshot } = useCurrentWorkspace();
+  const permissions = useWorkspaceSettingsPermissions(workspaceSlug, snapshot);
+  const workflowStatesQuery = useWorkflowStatesQuery(workspaceSlug);
+  const saveWorkflowStateMutation = useSaveWorkflowStateMutation(workspaceSlug);
 
-  const [states, setStates] = useState<ApiWorkflowState[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const form = useForm<WorkflowStateFormInput, unknown, WorkflowStateFormValues>({
+    resolver: zodResolver(workflowStateFormSchema),
+    defaultValues: createEmptyDraft(0),
+    mode: "onChange"
+  });
   const [activeView, setActiveView] = useState<"board" | "detail" | "badge">("board");
   const [selectedStateId, setSelectedStateId] = useState<string | "new" | null>(null);
-  const [draft, setDraft] = useState<WorkflowStateDraft | null>(null);
-  const [persistedDraft, setPersistedDraft] = useState<WorkflowStateDraft | null>(null);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const resolveWorkspaceId = useCallback(async (): Promise<string | null> => {
-    if (!workspaceSlug) {
-      return null;
-    }
+  const draft = form.watch();
+  const states = useMemo(() => sortStates(workflowStatesQuery.data ?? []), [workflowStatesQuery.data]);
+  const loading = workflowStatesQuery.isLoading;
+  const saving = saveWorkflowStateMutation.isPending;
+  const canManageWorkflowStates = permissions.canManageWorkflowStates;
 
-    const workspaces = await workspaceService.listWorkspaces();
-    return workspaces.find(workspace => workspace.slug === workspaceSlug)?.id ?? null;
-  }, [workspaceSlug]);
-
-  const loadStates = useCallback(async () => {
-    if (!workspaceSlug) {
-      setStates([]);
-      setLoading(false);
+  useEffect(() => {
+    if (loading) {
       return;
     }
 
-    setLoading(true);
-    try {
-      const workspaceId = await resolveWorkspaceId();
-      if (!workspaceId) {
-        setStates([]);
-        return;
+    setSelectedStateId(current => {
+      if (current === "new") {
+        return current;
       }
-
-      const items = await apiClient.get<ApiWorkflowState[]>(
-        `/workspaces/${workspaceId}/workflow-states`,
-        { authMode: "required", retryOnUnauthorized: true }
-      );
-
-      const sorted = sortStates(items);
-      setStates(sorted);
-      setSelectedStateId(current => {
-        if (current === "new") {
-          return current;
-        }
-        if (current && sorted.some(state => state.id === current)) {
-          return current;
-        }
-        return sorted[0]?.id ?? "new";
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [resolveWorkspaceId, workspaceSlug]);
+      if (current && states.some(state => state.id === current)) {
+        return current;
+      }
+      return states[0]?.id ?? "new";
+    });
+  }, [loading, states]);
 
   useEffect(() => {
-    void loadStates();
-  }, [loadStates]);
+    if (workflowStatesQuery.isError) {
+      setError("Nao foi possivel carregar os estados do workflow.");
+    }
+  }, [workflowStatesQuery.isError]);
 
   const activeStates = useMemo(
     () => states.filter(state => state.isActive !== false),
@@ -196,8 +154,7 @@ export function WorkflowStatesSettings() {
   useEffect(() => {
     if (selectedStateId === "new") {
       const empty = createEmptyDraft(states.length);
-      setDraft(empty);
-      setPersistedDraft(empty);
+      form.reset(empty);
       return;
     }
 
@@ -206,138 +163,123 @@ export function WorkflowStatesSettings() {
     }
 
     const nextDraft = createDraftFromState(selectedState, states.length);
-    setDraft(nextDraft);
-    setPersistedDraft(nextDraft);
-  }, [selectedState, selectedStateId, states.length]);
+    form.reset(nextDraft);
+  }, [form, selectedState, selectedStateId, states.length]);
 
-  const hasUnsavedChanges = useMemo(
-    () => !areDraftsEqual(draft, persistedDraft),
-    [draft, persistedDraft]
-  );
+  const hasUnsavedChanges = form.formState.isDirty;
 
-  const previewName = draft?.name.trim() || "Novo estado";
-  const previewSlug = draft?.slug.trim() || toSlug(draft?.name ?? "") || "novo-estado";
-  const previewCategory = draft?.category.trim() || "Fluxo geral";
-  const previewColor = draft?.color || DEFAULT_COLOR;
-  const isExistingState = Boolean(draft?.id);
+  const previewName = draft.name.trim() || "Novo estado";
+  const previewSlug = draft.slug.trim() || toWorkflowStateSlug(draft.name) || "novo-estado";
+  const previewCategory = draft.category.trim() || "Fluxo geral";
+  const previewColor = draft.color || DEFAULT_WORKFLOW_STATE_COLOR;
+  const isExistingState = Boolean(draft.id);
 
   const stateTabs = useMemo(
     () => [...activeStates, ...archivedStates],
     [activeStates, archivedStates]
   );
 
-  const updateDraft = <K extends keyof WorkflowStateDraft>(key: K, value: WorkflowStateDraft[K]) => {
-    setDraft(current => (current ? { ...current, [key]: value } : current));
-    setMessage("");
-    setError("");
-  };
-
   const openNewDraft = useCallback((preset?: (typeof STATE_PRESETS)[number]) => {
+    if (!canManageWorkflowStates) {
+      return;
+    }
+
     const nextDraft = preset ? createDraftFromPreset(states.length, preset) : createEmptyDraft(states.length);
     setSelectedStateId("new");
-    setDraft(nextDraft);
-    setPersistedDraft(nextDraft);
-    setMessage("");
+    form.reset(nextDraft);
     setError("");
-  }, [states.length]);
+  }, [canManageWorkflowStates, form, states.length]);
 
   const resetDraft = () => {
-    setDraft(persistedDraft);
-    setMessage("");
+    form.reset();
     setError("");
   };
 
-  const handleSave = async () => {
-    if (!draft) {
+  const applySavedState = (savedState: ApiWorkflowState) => {
+    const nextDraft = createDraftFromState(savedState, states.length);
+    setSelectedStateId(savedState.id);
+    form.reset(nextDraft);
+  };
+
+  const handleSave = async (values: WorkflowStateFormValues) => {
+    if (!canManageWorkflowStates) {
+      setError("Apenas proprietarios e admins podem alterar estados.");
       return;
     }
 
-    const name = draft.name.trim();
-    if (name.length < 2) {
-      setError("Informe um nome com pelo menos 2 caracteres.");
-      return;
-    }
-
-    const slug = draft.slug.trim() || toSlug(name);
-    if (!slug) {
-      setError("Nao foi possivel gerar um slug valido para esse estado.");
-      return;
-    }
-
-    const orderValue = Number(draft.order);
+    const orderValue = Number(values.order);
     const payload = {
-      name,
-      slug,
-      color: previewColor,
-      category: draft.category.trim() || null,
+      name: values.name,
+      slug: values.slug,
+      color: values.color,
+      category: values.category || null,
       order: Number.isFinite(orderValue) && orderValue >= 0 ? orderValue : states.length,
-      isTerminal: draft.isTerminal,
-      isEditable: draft.isEditable,
-      isActive: draft.isActive
+      isTerminal: values.isTerminal,
+      isEditable: values.isEditable,
+      isActive: values.isActive
     };
 
-    setSaving(true);
-    setMessage("");
     setError("");
 
     try {
-      const workspaceId = await resolveWorkspaceId();
-      if (!workspaceId) {
-        setError("Workspace nao encontrado.");
+      const snapshot = await saveWorkflowStateMutation.mutateAsync(
+        values.id
+          ? { action: "update", stateId: values.id, input: payload, successMessage: "Estado atualizado." }
+          : { action: "create", input: payload, successMessage: "Estado criado." }
+      );
+      const savedState = sortStates(snapshot.workflowStates ?? []).find(state =>
+        values.id ? state.id === values.id : state.slug === values.slug
+      );
+
+      if (savedState) {
+        applySavedState(savedState);
         return;
       }
 
-      const savedState: ApiWorkflowState = draft.id
-        ? await apiClient.patch(
-            `/workspaces/${workspaceId}/workflow-states/${draft.id}`,
-            payload,
-            { authMode: "required", retryOnUnauthorized: true }
-          )
-        : await apiClient.post(
-            `/workspaces/${workspaceId}/workflow-states`,
-            payload,
-            { authMode: "required", retryOnUnauthorized: true }
-          );
-
-      setSelectedStateId(savedState.id);
-      setMessage(draft.id ? "Estado atualizado." : "Estado criado.");
-      await loadStates();
+      const refreshed = await workflowStatesQuery.refetch();
+      const refreshedState = sortStates(refreshed.data ?? []).find(state =>
+        values.id ? state.id === values.id : state.slug === values.slug
+      );
+      if (refreshedState) {
+        applySavedState(refreshedState);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Nao foi possivel salvar o estado.");
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleArchiveToggle = async () => {
-    if (!draft?.id) {
+    if (!draft.id) {
+      return;
+    }
+    if (!canManageWorkflowStates) {
+      setError("Apenas proprietarios e admins podem alterar estados.");
       return;
     }
 
-    setSaving(true);
-    setMessage("");
     setError("");
 
     try {
-      const workspaceId = await resolveWorkspaceId();
-      if (!workspaceId) {
-        setError("Workspace nao encontrado.");
+      const snapshot = await saveWorkflowStateMutation.mutateAsync({
+        action: "update",
+        stateId: draft.id,
+        input: { isActive: !draft.isActive },
+        successMessage: draft.isActive ? "Estado arquivado." : "Estado reativado."
+      });
+      const savedState = sortStates(snapshot.workflowStates ?? []).find(state => state.id === draft.id);
+
+      if (savedState) {
+        applySavedState(savedState);
         return;
       }
 
-      const savedState: ApiWorkflowState = await apiClient.patch(
-        `/workspaces/${workspaceId}/workflow-states/${draft.id}`,
-        { isActive: !draft.isActive },
-        { authMode: "required", retryOnUnauthorized: true }
-      );
-
-      setSelectedStateId(savedState.id);
-      setMessage(savedState.isActive ? "Estado reativado." : "Estado arquivado.");
-      await loadStates();
+      const refreshed = await workflowStatesQuery.refetch();
+      const refreshedState = sortStates(refreshed.data ?? []).find(state => state.id === draft.id);
+      if (refreshedState) {
+        applySavedState(refreshedState);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Nao foi possivel atualizar o estado.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -355,17 +297,21 @@ export function WorkflowStatesSettings() {
                 className="wse__tab-btn"
                 onClick={() => {
                   setSelectedStateId(state.id);
-                  setMessage("");
                   setError("");
                 }}
               >
-                <span className="wse__tab-dot" style={{ background: state.color || DEFAULT_COLOR }} />
+                <span className="wse__tab-dot" style={{ background: state.color || DEFAULT_WORKFLOW_STATE_COLOR }} />
                 <span>{state.name}</span>
               </button>
             </div>
           ))}
 
-          <button type="button" className="wse__add-tab" onClick={() => openNewDraft()}>
+          <button
+            type="button"
+            className="wse__add-tab"
+            onClick={() => openNewDraft()}
+            disabled={!canManageWorkflowStates || saving}
+          >
             Novo estado
           </button>
         </div>
@@ -396,7 +342,7 @@ export function WorkflowStatesSettings() {
                     variant="chip"
                     selected={selectedStateId === state.id}
                     onClick={() => setSelectedStateId(state.id)}
-                    leading={<i className="wse__state-dot" style={{ background: state.color || DEFAULT_COLOR }} />}
+                    leading={<i className="wse__state-dot" style={{ background: state.color || DEFAULT_WORKFLOW_STATE_COLOR }} />}
                     label={state.name}
                     meta={`/${state.slug}${!state.isActive ? " · arquivado" : ""}`}
                   />
@@ -410,6 +356,7 @@ export function WorkflowStatesSettings() {
                   key={preset.key}
                   variant="chip"
                   onClick={() => openNewDraft(preset)}
+                  disabled={!canManageWorkflowStates || saving}
                   leading={<i className="wse__state-dot" style={{ background: preset.color }} />}
                   label={preset.label}
                   meta={preset.category}
@@ -512,11 +459,11 @@ export function WorkflowStatesSettings() {
                   </div>
                   <div className="wse__detail-field">
                     <span>Comportamento</span>
-                    <strong>{draft?.isTerminal ? "Finaliza o fluxo" : "Segue no fluxo"}</strong>
+                    <strong>{draft.isTerminal ? "Finaliza o fluxo" : "Segue no fluxo"}</strong>
                   </div>
                   <div className="wse__detail-field">
                     <span>Edicao</span>
-                    <strong>{draft?.isEditable ? "Permitida" : "Bloqueada"}</strong>
+                    <strong>{draft.isEditable ? "Permitida" : "Bloqueada"}</strong>
                   </div>
                 </div>
               </div>
@@ -536,9 +483,9 @@ export function WorkflowStatesSettings() {
                   {previewName}
                 </span>
                 <div className="wse__badge-meta">
-                  <span>{draft?.isActive ? "Ativo no workspace" : "Arquivado"}</span>
-                  <span>{draft?.isTerminal ? "Estado terminal" : "Estado intermediario"}</span>
-                  <span>{draft?.isEditable ? "Pode ser editado" : "Bloqueado para edicao"}</span>
+                  <span>{draft.isActive ? "Ativo no workspace" : "Arquivado"}</span>
+                  <span>{draft.isTerminal ? "Estado terminal" : "Estado intermediario"}</span>
+                  <span>{draft.isEditable ? "Pode ser editado" : "Bloqueado para edicao"}</span>
                 </div>
               </div>
             ) : null}
@@ -550,120 +497,192 @@ export function WorkflowStatesSettings() {
             <span className="wse__eyebrow">Inspector</span>
             <strong>{isExistingState ? "Editar estado" : "Criar estado"}</strong>
             <p>Mesmo fluxo de builder: selecione, ajuste e salve.</p>
+            {!canManageWorkflowStates && permissions.readOnlyReason ? (
+              <p className="wse__error">{permissions.readOnlyReason}</p>
+            ) : null}
           </div>
 
           <div className="wse__panel-scroll">
             {draft ? (
-              <div className="wse__form">
-                <FormField label="Nome">
+              <AppForm
+                form={form}
+                onSubmit={handleSave}
+                className="wse__form"
+                disabled={!canManageWorkflowStates}
+                loading={saving}
+              >
+                <Controller
+                  control={form.control}
+                  name="name"
+                  render={({ field, fieldState }) => (
+                    <AppFormField label="Nome" error={fieldState.error?.message}>
+                      <TextInput
+                        ref={field.ref}
+                        name={field.name}
+                        value={field.value}
+                        placeholder="Ex: Em validacao"
+                        disabled={!canManageWorkflowStates || saving}
+                        aria-invalid={fieldState.invalid || undefined}
+                        onBlur={field.onBlur}
+                        onChange={event => {
+                          const nextName = event.target.value;
+                          const previousAutoSlug = toWorkflowStateSlug(form.getValues("name"));
+                          const currentSlug = form.getValues("slug");
+                          field.onChange(nextName);
+                          if (!currentSlug.trim() || currentSlug.trim() === previousAutoSlug) {
+                            form.setValue("slug", toWorkflowStateSlug(nextName), { shouldDirty: true, shouldValidate: true });
+                          }
+                          setError("");
+                        }}
+                      />
+                    </AppFormField>
+                  )}
+                />
+
+                <AppFormField label="Slug" error={form.formState.errors.slug?.message}>
                   <TextInput
-                    value={draft.name}
-                    placeholder="Ex: Em validacao"
-                    onChange={event => {
-                      const nextName = event.target.value;
-                      const previousAutoSlug = toSlug(draft.name);
-                      updateDraft("name", nextName);
-                      if (!draft.slug.trim() || draft.slug.trim() === previousAutoSlug) {
-                        setDraft(current => (current ? { ...current, slug: toSlug(nextName) } : current));
+                    {...form.register("slug", {
+                      onChange: event => {
+                        event.target.value = toWorkflowStateSlug(event.target.value);
+                        setError("");
                       }
-                    }}
-                  />
-                </FormField>
-
-                <FormField label="Slug">
-                  <TextInput
-                    value={draft.slug}
+                    })}
                     placeholder="em-validacao"
-                    onChange={event => updateDraft("slug", toSlug(event.target.value))}
+                    disabled={!canManageWorkflowStates || saving}
+                    aria-invalid={form.formState.errors.slug ? true : undefined}
                   />
-                </FormField>
+                </AppFormField>
 
-                <FormField label="Categoria">
+                <AppFormField label="Categoria" error={form.formState.errors.category?.message}>
                   <TextInput
-                    value={draft.category}
+                    {...form.register("category", { onChange: () => setError("") })}
                     placeholder="Execucao, Revisao, Risco..."
-                    onChange={event => updateDraft("category", event.target.value)}
+                    disabled={!canManageWorkflowStates || saving}
                   />
-                </FormField>
+                </AppFormField>
 
-                <FormField label="Ordem">
+                <AppFormField label="Ordem" error={form.formState.errors.order?.message}>
                   <TextInput
-                    value={draft.order}
+                    {...form.register("order", {
+                      onChange: event => {
+                        event.target.value = event.target.value.replace(/[^\d]/g, "");
+                        setError("");
+                      }
+                    })}
                     inputMode="numeric"
                     placeholder="0"
-                    onChange={event => updateDraft("order", event.target.value.replace(/[^\d]/g, ""))}
+                    disabled={!canManageWorkflowStates || saving}
+                    aria-invalid={form.formState.errors.order ? true : undefined}
                   />
-                </FormField>
+                </AppFormField>
 
-                <FormField label="Cor">
-                  <div className="wse__color-row">
-                    <input
-                      type="color"
-                      className="wse__color-picker"
-                      value={resolveCssColorForInput(draft.color)}
-                      onChange={event => updateDraft("color", event.target.value)}
-                    />
-                    <TextInput
-                      value={draft.color}
-                      placeholder="var(--text-secondary)"
-                      onChange={event => updateDraft("color", event.target.value)}
-                    />
-                  </div>
-                </FormField>
+                <Controller
+                  control={form.control}
+                  name="color"
+                  render={({ field, fieldState }) => (
+                    <AppFormField label="Cor" error={fieldState.error?.message}>
+                      <div className="wse__color-row">
+                        <input
+                          type="color"
+                          className="wse__color-picker"
+                          value={resolveCssColorForInput(field.value)}
+                          disabled={!canManageWorkflowStates || saving}
+                          onChange={event => {
+                            field.onChange(event.target.value);
+                            setError("");
+                          }}
+                        />
+                        <TextInput
+                          ref={field.ref}
+                          name={field.name}
+                          value={field.value}
+                          placeholder="var(--text-secondary)"
+                          disabled={!canManageWorkflowStates || saving}
+                          aria-invalid={fieldState.invalid || undefined}
+                          onBlur={field.onBlur}
+                          onChange={event => {
+                            field.onChange(event.target.value);
+                            setError("");
+                          }}
+                        />
+                      </div>
+                    </AppFormField>
+                  )}
+                />
 
-                <label className="wse__toggle">
-                  <input
-                    type="checkbox"
-                    checked={draft.isTerminal}
-                    onChange={event => updateDraft("isTerminal", event.target.checked)}
-                  />
-                  <span>
-                    <strong>Estado terminal</strong>
-                    <small>Esse estado representa o fim do fluxo.</small>
-                  </span>
-                </label>
+                <Controller
+                  control={form.control}
+                  name="isTerminal"
+                  render={({ field }) => (
+                    <label className="wse__toggle">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        disabled={!canManageWorkflowStates || saving}
+                        onChange={event => field.onChange(event.target.checked)}
+                      />
+                      <span>
+                        <strong>Estado terminal</strong>
+                        <small>Esse estado representa o fim do fluxo.</small>
+                      </span>
+                    </label>
+                  )}
+                />
 
-                <label className="wse__toggle">
-                  <input
-                    type="checkbox"
-                    checked={draft.isEditable}
-                    onChange={event => updateDraft("isEditable", event.target.checked)}
-                  />
-                  <span>
-                    <strong>Permitir edicao</strong>
-                    <small>Define se o estado continua ajustavel depois.</small>
-                  </span>
-                </label>
+                <Controller
+                  control={form.control}
+                  name="isEditable"
+                  render={({ field }) => (
+                    <label className="wse__toggle">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        disabled={!canManageWorkflowStates || saving}
+                        onChange={event => field.onChange(event.target.checked)}
+                      />
+                      <span>
+                        <strong>Permitir edicao</strong>
+                        <small>Define se o estado continua ajustavel depois.</small>
+                      </span>
+                    </label>
+                  )}
+                />
 
-                <label className="wse__toggle">
-                  <input
-                    type="checkbox"
-                    checked={draft.isActive}
-                    onChange={event => updateDraft("isActive", event.target.checked)}
-                  />
-                  <span>
-                    <strong>Estado ativo</strong>
-                    <small>Estados inativos saem do fluxo e ficam arquivados.</small>
-                  </span>
-                </label>
+                <Controller
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <label className="wse__toggle">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        disabled={!canManageWorkflowStates || saving}
+                        onChange={event => field.onChange(event.target.checked)}
+                      />
+                      <span>
+                        <strong>Estado ativo</strong>
+                        <small>Estados inativos saem do fluxo e ficam arquivados.</small>
+                      </span>
+                    </label>
+                  )}
+                />
 
-                {message ? <p className="wse__message">{message}</p> : null}
                 {error ? <p className="wse__error">{error}</p> : null}
 
                 <div className="wse__actions">
-                  <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
+                  <Button type="submit" size="sm" disabled={!canManageWorkflowStates || saving}>
                     {saving ? "Salvando..." : isExistingState ? "Salvar alteracoes" : "Criar estado"}
                   </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={resetDraft} disabled={saving || !hasUnsavedChanges}>
+                  <Button type="button" size="sm" variant="outline" onClick={resetDraft} disabled={!canManageWorkflowStates || saving || !hasUnsavedChanges}>
                     Descartar
                   </Button>
                   {isExistingState ? (
-                    <Button type="button" size="sm" variant="outline" onClick={() => void handleArchiveToggle()} disabled={saving}>
+                    <Button type="button" size="sm" variant="outline" onClick={() => void handleArchiveToggle()} disabled={!canManageWorkflowStates || saving}>
                       {draft.isActive ? "Arquivar" : "Reativar"}
                     </Button>
                   ) : null}
                 </div>
-              </div>
+              </AppForm>
             ) : (
               <EmptyState className="wse__empty" size="compact">Selecione um estado para editar.</EmptyState>
             )}

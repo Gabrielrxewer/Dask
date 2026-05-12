@@ -22,7 +22,16 @@ import {
   type WorkItemListConfig,
   type WorkItemListParams
 } from "@/modules/work-item-list";
-import { useWorkspaceTaskPage, type AiAgentSummary, type CreateTaskInput, type UpdateTaskInput } from "@/modules/workspace";
+import { useAiWorkItemActions } from "@/modules/ai";
+import { useWorkspaceDocumentActions } from "@/modules/documentation";
+import {
+  useWorkspaceCustomerLookupAction,
+  useWorkspaceTaskPage,
+  useWorkspaceWorkItemActions,
+  type AiAgentSummary,
+  type CreateTaskInput,
+  type UpdateTaskInput
+} from "@/modules/workspace";
 import { AppSelect, LoadingState, ResourceListPageTemplate } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { TaskDetailsModal } from "@/widgets/task-details";
@@ -42,6 +51,11 @@ export function ListPage() {
   const {
     snapshot,
     isLoading,
+    boardConfig,
+    activeMembers,
+    metrics
+  } = useWorkspaceTaskPage({ currentUser: user });
+  const {
     createTask,
     moveTask,
     updateTaskPriority,
@@ -49,19 +63,20 @@ export function ListPage() {
     updateTaskDescription,
     updateTaskCustomField,
     updateTaskSchedule,
-    updateTask,
+    updateTask
+  } = useWorkspaceWorkItemActions(workspaceSlug || null);
+  const {
     listAiAgents,
     runAiAgentOnItem,
-    runAiRiskAnalysis,
+    runAiRiskAnalysis
+  } = useAiWorkItemActions(workspaceSlug || null);
+  const {
     listWorkspaceDocuments,
     listWorkItemLinkedDocuments,
     linkDocumentToWorkItem,
-    unlinkDocumentFromWorkItem,
-    listCustomers,
-    boardConfig,
-    activeMembers,
-    metrics
-  } = useWorkspaceTaskPage({ currentUser: user });
+    unlinkDocumentFromWorkItem
+  } = useWorkspaceDocumentActions(workspaceSlug || null);
+  const listCustomers = useWorkspaceCustomerLookupAction(workspaceSlug || null);
 
   const [agents, setAgents] = useState<AiAgentSummary[]>([]);
   const [query, setQuery] = useState("");

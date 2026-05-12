@@ -12,16 +12,22 @@ import type {
 import { AppError } from '@/core/errors/app-error';
 import type { JobQueue } from '@/core/jobs/job-queue';
 import { logger } from '@/core/logging/logger';
+import { redactErrorMessage } from '@/core/security/redaction';
 import {
   mapFocusStatusToInternal,
   sanitizeDocumentReference,
   type CreateFiscalDocumentInput,
+  type FiscalFocusEnvironment,
   type FiscalDocumentOrigin,
   type FiscalDocumentType,
-  type FiscalReceivedType
+  type FiscalReceivedType,
+  type FiscalStripePolicy
 } from '@/modules/fiscal/domain/types';
 import type { FiscalProvider } from '@/modules/fiscal/providers/fiscal-provider';
 import type { FiscalRepository } from '@/modules/fiscal/repositories/fiscal-repository';
+import { redactFiscalCredentials } from '@/modules/fiscal/domain/redaction';
+
+const DEFAULT_FISCAL_STRIPE_POLICY: FiscalStripePolicy = 'manual_review';
 
 export interface FiscalDocumentDetails {
   document: FiscalDocument & { items: FiscalDocumentItem[]; parties: FiscalParty[] };
@@ -73,6 +79,7 @@ interface FiscalServiceDeps {
   stripe?: InstanceType<typeof Stripe> | null;
   stripeWebhookSecret?: string;
   focusWebhookSecret?: string;
+  environment?: 'development' | 'test' | 'production';
 }
 
 const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -129,6 +136,7 @@ export class FiscalService {
   private readonly stripe: InstanceType<typeof Stripe> | null;
   private readonly stripeWebhookSecret: string;
   private readonly focusWebhookSecret: string | null;
+  private readonly environment: 'development' | 'test' | 'production';
 
   public constructor(deps: FiscalServiceDeps) {
     this.repo = deps.repo;
@@ -137,6 +145,7 @@ export class FiscalService {
     this.stripe = deps.stripe ?? null;
     this.stripeWebhookSecret = deps.stripeWebhookSecret ?? '';
     this.focusWebhookSecret = deps.focusWebhookSecret ?? null;
+    this.environment = deps.environment ?? 'development';
   }
 
   public async getDashboard(workspaceId: string, customerIds?: string[]) {
@@ -254,7 +263,14 @@ export class FiscalService {
       return existing;
     }
 
-    return this.repo.createDocument({ ...input, internalReference: normalizedReference });
+    return this.repo.createDocument({
+      ...input,
+      internalReference: normalizedReference,
+      requestPayloadSnapshot: redactFiscalCredentials(input.requestPayloadSnapshot),
+      responsePayloadSnapshot: redactFiscalCredentials(input.responsePayloadSnapshot),
+      providerPayloadRaw: redactFiscalCredentials(input.providerPayloadRaw),
+      metadata: redactFiscalCredentials(input.metadata)
+    });
   }
 
   public async issueDocument(input: { workspaceId: string; documentId: string; requestedByUserId: string }) {
@@ -307,7 +323,7 @@ export class FiscalService {
         status: 'SUCCESS',
         correlationId: reference,
         httpStatus: null,
-        requestPayload: asJsonValue(requestPayload),
+        requestPayload: asJsonValue(redactFiscalCredentials(requestPayload)),
         responsePayload: asJsonValue(response.raw),
         errorMessage: null
       });
@@ -322,7 +338,7 @@ export class FiscalService {
 
       return updated;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown fiscal issue error';
+      const message = redactErrorMessage(error, 2000) || 'Unknown fiscal issue error';
       await this.repo.updateDocumentStatus({
         workspaceId: input.workspaceId,
         id: document.id,
@@ -644,7 +660,7 @@ export class FiscalService {
 
       return { syncRunId: syncRun.id, processed, createdOrUpdated: touched, failed };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown sync error';
+      const message = redactErrorMessage(error, 2000) || 'Unknown sync error';
       await this.repo.finishSyncRun(syncRun.id, {
         status: 'FAILED',
         processedCount: processed,
@@ -676,11 +692,11 @@ export class FiscalService {
     municipalRegistration?: string | null;
     taxRegime?: string | null;
     focusToken: string;
-    focusEnvironment?: string;
+    focusEnvironment: FiscalFocusEnvironment;
     focusCompanyReference?: string | null;
     focusWebhookSecret?: string | null;
     emitAutomatically?: boolean;
-    stripePolicy?: string;
+    stripePolicy?: FiscalStripePolicy;
     defaultSerie?: string | null;
     defaultNatureOperation?: string | null;
     fallbackRules?: Record<string, unknown> | null;
@@ -699,25 +715,32 @@ export class FiscalService {
       municipalRegistration: input.municipalRegistration ?? null,
       taxRegime: input.taxRegime ?? null,
       focusToken: input.focusToken,
-      focusEnvironment: input.focusEnvironment ?? 'homologacao',
+      focusEnvironment: input.focusEnvironment,
       focusCompanyReference: input.focusCompanyReference ?? null,
       focusWebhookSecret: input.focusWebhookSecret ?? null,
       emitAutomatically: input.emitAutomatically ?? false,
-      stripePolicy: input.stripePolicy ?? 'assisted_one_click',
+      stripePolicy: input.stripePolicy ?? DEFAULT_FISCAL_STRIPE_POLICY,
       defaultSerie: input.defaultSerie ?? null,
       defaultNatureOperation: input.defaultNatureOperation ?? null,
       fallbackRules: asJsonValue(input.fallbackRules),
       syncConfig: asJsonValue(input.syncConfig),
-      metadata: asJsonValue(input.metadata),
+      metadata: asJsonValue(redactFiscalCredentials(input.metadata)),
       createdByUserId: input.createdByUserId ?? null
     });
   }
 
   public async updateCompanyConfig(input: { workspaceId: string; companyConfigId: string; patch: Record<string, unknown> }) {
+    const patch =
+      input.patch.metadata !== undefined
+        ? {
+            ...input.patch,
+            metadata: redactFiscalCredentials(input.patch.metadata)
+          }
+        : input.patch;
     const updated = await this.repo.updateCompanyConfig(
       input.workspaceId,
       input.companyConfigId,
-      input.patch as Partial<Omit<FiscalCompanyConfig, 'id' | 'workspaceId' | 'createdAt' | 'updatedAt'>>
+      patch as Partial<Omit<FiscalCompanyConfig, 'id' | 'workspaceId' | 'createdAt' | 'updatedAt'>>
     );
     if (!updated) {
       throw new AppError('Fiscal company config not found', 404);
@@ -776,9 +799,9 @@ export class FiscalService {
       eventType: parsed.eventType,
       idempotencyKey,
       status: 'RECEIVED',
-      headers: asJsonValue(input.headers),
-      payload: asJsonValue(input.payload),
-      signature: input.headers['x-focus-signature'] ?? null,
+      headers: asJsonValue(redactFiscalCredentials(input.headers)),
+      payload: asJsonValue(redactFiscalCredentials(input.payload)),
+      signature: input.headers['x-focus-signature'] ? '[REDACTED]' : null,
       attempts: 1,
       processedAt: null,
       lastError: null
@@ -813,7 +836,7 @@ export class FiscalService {
 
       return { eventId: event.id, duplicate: false };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown focus webhook error';
+      const message = redactErrorMessage(error, 2000) || 'Unknown focus webhook error';
       await this.repo.updateWebhookEvent(event.id, { status: 'FAILED', lastError: message, attempts: event.attempts + 1 });
       throw error;
     }
@@ -831,7 +854,7 @@ export class FiscalService {
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, this.stripeWebhookSecret) as StripeWebhookEvent;
     } catch (error) {
-      throw new AppError('Invalid Stripe webhook signature', 400, { details: { error: error instanceof Error ? error.message : 'Unknown signature error' } });
+      throw new AppError('Invalid Stripe webhook signature', 400, { details: { error: redactErrorMessage(error) || 'Unknown signature error' } });
     }
 
     const idempotencyKey = `stripe:${event.id}`;
@@ -847,9 +870,9 @@ export class FiscalService {
       eventType: event.type,
       idempotencyKey,
       status: 'RECEIVED',
-      headers: asJsonValue({ 'stripe-signature': signature }),
-      payload: asJsonValue(asRecord(event as unknown as Record<string, unknown>)),
-      signature,
+      headers: asJsonValue(redactFiscalCredentials({ 'stripe-signature': signature })),
+      payload: asJsonValue(redactFiscalCredentials(asRecord(event as unknown as Record<string, unknown>))),
+      signature: '[REDACTED]',
       attempts: 1,
       processedAt: null,
       lastError: null
@@ -869,7 +892,7 @@ export class FiscalService {
 
       return { eventId: eventRow.id, duplicate: false };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Stripe webhook error';
+      const message = redactErrorMessage(error, 2000) || 'Unknown Stripe webhook error';
       await this.repo.updateWebhookEvent(eventRow.id, { status: 'FAILED', attempts: eventRow.attempts + 1, lastError: message });
       throw error;
     }
@@ -937,7 +960,7 @@ export class FiscalService {
     const internalReference = sanitizeDocumentReference(metadata.internal_sale_id ?? metadata.order_id ?? `stripe-${session.id}`);
     const lineItems = await this.fetchStripeCheckoutLineItems(session.id, stripeAccountId);
 
-    const payloadSnapshot: Record<string, unknown> = {
+    const payloadSnapshot: Record<string, unknown> = redactFiscalCredentials({
       source: 'stripe_checkout',
       sessionId: session.id,
       mode: session.mode,
@@ -955,7 +978,7 @@ export class FiscalService {
       },
       stripeAccountId: stripeAccountId ?? null,
       lineItems
-    };
+    });
 
     const draft = await this.repo.createEmissionDraft({
       workspaceId,
@@ -1251,7 +1274,14 @@ export class FiscalService {
   }
 
   private assertFocusWebhookAuthorization(headers: Record<string, string | undefined>): void {
-    if (!this.focusWebhookSecret || !this.focusWebhookSecret.trim()) return;
+    if (!this.focusWebhookSecret || !this.focusWebhookSecret.trim()) {
+      if (this.environment === 'production') {
+        throw new AppError('Focus webhook secret is required', 503, {
+          missingEnv: ['FOCUS_WEBHOOK_SECRET']
+        });
+      }
+      return;
+    }
     const provided =
       stripBearerPrefix(headers.authorization) ??
       stripBearerPrefix(headers['authorization_header']) ??

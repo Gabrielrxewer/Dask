@@ -19,14 +19,14 @@ export const routePaths = {
   workspaceBase: "/w/:workspaceSlug",
   dashboard: "/w/:workspaceSlug/dashboard",
   board: "/w/:workspaceSlug/board",
-  leadFlow: "/w/:workspaceSlug/lead-flow",
   list: "/w/:workspaceSlug/list",
   agenda: "/w/:workspaceSlug/agenda",
   documentation: "/w/:workspaceSlug/documentation",
   aiAgents: "/w/:workspaceSlug/ai",
   automations: "/w/:workspaceSlug/automations",
   fiscal: "/w/:workspaceSlug/fiscal",
-  leads: "/w/:workspaceSlug/leads",
+  commercialLeadsAlias: "/w/:workspaceSlug/leads",
+  commercial: "/w/:workspaceSlug/commercial",
   marketing: "/w/:workspaceSlug/marketing",
   billing: "/w/:workspaceSlug/billing",
   settings: "/w/:workspaceSlug/settings",
@@ -54,16 +54,6 @@ export function buildWorkspaceBoardPath(workspaceSlug: string): string {
 
 export function buildWorkspaceDashboardPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/dashboard");
-}
-
-export function buildWorkspaceLeadFlowPath(workspaceSlug: string, leadId?: string): string {
-  const path = buildWorkspacePath(workspaceSlug, "/lead-flow");
-  if (!leadId) {
-    return path;
-  }
-
-  const params = new URLSearchParams({ leadId });
-  return `${path}?${params.toString()}`;
 }
 
 export function buildWorkspaceSelectorPath(): string {
@@ -117,7 +107,11 @@ export function buildWorkspaceFiscalPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/fiscal");
 }
 
-export function buildWorkspaceLeadsPath(workspaceSlug: string): string {
+export function buildWorkspaceCommercialPath(workspaceSlug: string): string {
+  return buildWorkspacePath(workspaceSlug, "/commercial");
+}
+
+export function buildWorkspaceCommercialLeadsAliasPath(workspaceSlug: string): string {
   return buildWorkspacePath(workspaceSlug, "/leads");
 }
 

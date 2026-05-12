@@ -5,7 +5,7 @@
 Marketing is not an isolated sender.  
 Inside Dask, marketing is a native operational layer where the same context crosses:
 
-- lead capture and qualification
+- commercial signal capture and qualification
 - nurturing and campaign engagement
 - commercial follow-up
 - onboarding and retention
@@ -14,7 +14,7 @@ Inside Dask, marketing is a native operational layer where the same context cros
 
 This module follows the product thesis:
 
-> Do lead ao faturamento, do escopo a execucao, do conhecimento a operacao - tudo no mesmo contexto.
+> Do signal ao faturamento, do escopo a execucao, do conhecimento a operacao - tudo no mesmo contexto.
 
 ## Architecture
 
@@ -63,7 +63,7 @@ Primary tables:
 - `MarketingAutomationStep`
 - `MarketingAutomationEnrollment`
 - `MarketingEvent`
-- `MarketingLeadScoreEvent`
+- `MarketingLeadScoreEvent` (historical/compatibility table; active score signals use `MarketingEvent.itemId`)
 - `MarketingAttribution`
 - `MarketingConsentRecord`
 - `MarketingContentAsset`
@@ -72,12 +72,13 @@ Primary tables:
 
 Marketing entities are workspace-scoped and connected to existing context:
 
-- `Lead` (score, engagement, consent, nurture history, activity timeline)
+- `Item` / WorkItem (commercial contact context, score, engagement, follow-ups, activity timeline)
+- `Customer` (customer registry and customer-level continuity)
 - `WorkspaceDocument` (context for AI generation)
 - billing user/subscription status (segment evaluation enrichment)
 - workspace governance (module entitlements and permissions)
 
-No parallel contact model is created; the lead context is reused.
+No parallel contact model is created. Marketing derives contact context from commercial WorkItems and links customer context through `Customer`.
 
 ## Operational flows
 
@@ -95,7 +96,7 @@ No parallel contact model is created; the lead context is reused.
 1. Audience resolution from dynamic segment filters
 2. Consent/preference validation (`OPT_OUT`, `UNSUBSCRIBED` respected)
 3. Variant selection (weighted A/B)
-4. Personalized rendering (`{{lead.*}}`)
+4. Personalized rendering (`{{contact.*}}` tokens render the commercial WorkItem contact)
 5. Idempotent send creation + queue job
 6. Worker provider dispatch
 7. Provider webhooks -> event normalization
@@ -110,10 +111,10 @@ No parallel contact model is created; the lead context is reused.
 
 ## Integrations
 
-### Leads / CRM
+### Commercial CRM
 
-- Campaign events create lead activity
-- Scoring is explainable via `MarketingLeadScoreEvent`
+- Campaign events create WorkItem history
+- Scoring is explainable via `MarketingEvent.itemId` and WorkItem field updates
 - Engagement signals can guide next stage decisions
 
 ### Billing
@@ -128,12 +129,12 @@ No parallel contact model is created; the lead context is reused.
 ### Timeline / history
 
 - Relevant actions emit `MarketingEvent`
-- Campaign + lead context retains traceability across lifecycle
+- Campaign + WorkItem/customer context retains traceability across lifecycle
 
 ### Automation engine
 
 - Marketing flows (`MarketingAutomationFlow`, steps, enrollments) are available
-- Campaign launch and lead score events are published to domain events
+- Campaign launch and commercial score events are published to domain events
 
 ## Security, governance and compliance
 
@@ -163,7 +164,7 @@ Implemented permission keys:
 - Contact preferences and consent records
 - Distinction of message kind and consent state
 - Unsubscribe and opt-out respected during audience evaluation
-- Webhook secret support (`MARKETING_WEBHOOK_SECRET`)
+- Webhook secret support (`MARKETING_WEBHOOK_SECRET`), required in production for provider event intake
 
 ## API surface (phase foundation)
 
@@ -208,7 +209,7 @@ Integration routes:
 - Audience and dynamic segments
 - Templates library foundation
 - AI generation and AI content improvement
-- Lead score explainability/events
+- Commercial WorkItem score explainability/events
 - Timeline/event persistence
 - Marketing dashboard and initial analytics
 

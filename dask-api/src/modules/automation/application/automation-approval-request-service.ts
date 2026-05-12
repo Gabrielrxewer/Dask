@@ -1,5 +1,6 @@
 import type { AutomationApprovalRequest, Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { maskEmail, maskPhone } from '@/core/security/redaction';
 import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
 import { CommunicationConversationService } from '@/modules/automation/communication/communication-conversation-service';
 import { normalizeAutomationLimit } from '@/modules/automation/application/workflow-execution-types';
@@ -63,23 +64,6 @@ function publicApproval(approval: AutomationApprovalRequest): AutomationApproval
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function maskEmail(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-  const [local, domain] = normalized.split('@');
-  return local && domain ? `${local.slice(0, 1)}***@${domain}` : '***';
-}
-
-function maskPhone(value: string | null | undefined): string | null {
-  const digits = value?.replace(/\D/g, '') ?? '';
-  if (!digits) {
-    return null;
-  }
-  return `${digits.startsWith('55') ? '+55' : '+'}******${digits.slice(-4)}`;
 }
 
 function readString(source: unknown, keys: string[]): string | null {

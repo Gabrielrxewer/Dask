@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import type { Dispatch, DragEvent, MouseEvent, SetStateAction } from "react";
+import { useCallback, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { TaskFieldCardArea } from "@/entities/task";
-import type { ApiItemType, CustomFieldType } from "@/modules/workspace/model";
+import type { ApiItemType } from "@/modules/workspace/model";
 import {
   applyFieldDrop,
   isEditorDropTargetEqual,
   type DetailZone,
   type EditorDropTarget,
-  type LayoutDraft,
-  type LayoutScope
+  type LayoutDraft
 } from "@/pages/settings-page/model/work-item-layout-editor";
 import { DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS } from "./work-item-editor-settings.model";
 import type { DragPayload, FieldDraft, PendingFieldSetup, TypeDraft } from "./work-item-editor-settings.model";
@@ -51,33 +50,17 @@ export function useWorkItemEditorDragDrop({
     setDropTarget((current) => (isEditorDropTargetEqual(current, nextTarget) ? current : nextTarget));
   }, []);
 
-  const handleDragStartField = useCallback(
-    (event: DragEvent<HTMLElement>, fieldId: string, origin: "library" | "card" | "detail") => {
-      setDragPayload({ kind: "field", fieldId, origin });
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", fieldId);
-    },
-    []
-  );
+  const beginDrag = useCallback((payload: DragPayload) => {
+    setDragPayload(payload);
+    updateDropTarget(null);
 
-  const beginDetailMouseDrag = useCallback(
-    (event: MouseEvent<HTMLElement>, fieldId: string) => {
-      if (event.button !== 0) return;
-      event.stopPropagation();
-      setSelectedFieldId(fieldId);
+    if (payload.kind === "field") {
+      setSelectedFieldId(payload.fieldId);
       setFieldDraft(null);
       setPendingFieldSetup(null);
       setTypeComposer(null);
-      setDragPayload({ kind: "field", fieldId, origin: "detail" });
-    },
-    [setFieldDraft, setPendingFieldSetup, setSelectedFieldId, setTypeComposer]
-  );
-
-  const handleDragStartType = useCallback((event: DragEvent<HTMLElement>, type: CustomFieldType) => {
-    setDragPayload({ kind: "type", type });
-    event.dataTransfer.effectAllowed = "copy";
-    event.dataTransfer.setData("text/plain", `type:${type}`);
-  }, []);
+    }
+  }, [setFieldDraft, setPendingFieldSetup, setSelectedFieldId, setTypeComposer, updateDropTarget]);
 
   const handleDragEnd = useCallback(() => {
     setDragPayload(null);
@@ -154,70 +137,16 @@ export function useWorkItemEditorDragDrop({
     ]
   );
 
-  const handleDropOnTarget = useCallback(
-    (event: DragEvent<HTMLElement>, target: EditorDropTarget) => {
-      event.preventDefault();
-      event.stopPropagation();
-      applyResolvedDropTarget(target);
-    },
-    [applyResolvedDropTarget]
-  );
-
-  const handlePreviewSurfaceDragOver = useCallback(
-    (event: DragEvent<HTMLElement>) => {
-      event.preventDefault();
-      if (!dragPayload) return;
-      event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
-    },
-    [dragPayload]
-  );
-
-  const handleDetailZoneDragOver = useCallback(
-    (event: DragEvent<HTMLElement>, zone: DetailZone, index: number) => {
-      event.preventDefault();
-      if (!dragPayload) return;
-      event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
-      if (event.target === event.currentTarget) {
-        updateDropTarget({ surface: "detail", kind: "insert", zone, index });
+  const completeDrop = useCallback(
+    (target: EditorDropTarget | null) => {
+      if (target) {
+        applyResolvedDropTarget(target);
+        return;
       }
+
+      handleDragEnd();
     },
-    [dragPayload, updateDropTarget]
-  );
-
-  const handleDetailZoneMouseMove = useCallback(
-    (event: MouseEvent<HTMLElement>, zone: DetailZone, index: number) => {
-      if (!dragPayload) return;
-      event.preventDefault();
-      if (event.target === event.currentTarget) {
-        updateDropTarget({ surface: "detail", kind: "insert", zone, index });
-      }
-    },
-    [dragPayload, updateDropTarget]
-  );
-
-  useEffect(() => {
-    if (!dragPayload || dragPayload.kind !== "field" || dragPayload.origin !== "detail") return;
-
-    const handleMouseUp = () => {
-      if (dropTarget?.surface === "detail") {
-        applyResolvedDropTarget(dropTarget);
-      } else {
-        updateDropTarget(null);
-        setDragPayload(null);
-      }
-    };
-
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => window.removeEventListener("mouseup", handleMouseUp);
-  }, [applyResolvedDropTarget, dragPayload, dropTarget, updateDropTarget]);
-
-  const makeSurfaceDragLeaveHandler = useCallback(
-    (surface: LayoutScope) => (event: DragEvent<HTMLElement>) => {
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null) && dropTarget?.surface === surface) {
-        updateDropTarget(null);
-      }
-    },
-    [dropTarget, updateDropTarget]
+    [applyResolvedDropTarget, handleDragEnd]
   );
 
   return {
@@ -226,15 +155,9 @@ export function useWorkItemEditorDragDrop({
     isDragging: dragPayload !== null,
     isDraggingType: dragPayload?.kind === "type",
     updateDropTarget,
-    handleDragStartField,
-    beginDetailMouseDrag,
-    handleDragStartType,
+    beginDrag,
     handleDragEnd,
     applyResolvedDropTarget,
-    handleDropOnTarget,
-    handlePreviewSurfaceDragOver,
-    handleDetailZoneDragOver,
-    handleDetailZoneMouseMove,
-    makeSurfaceDragLeaveHandler
+    completeDrop
   };
 }

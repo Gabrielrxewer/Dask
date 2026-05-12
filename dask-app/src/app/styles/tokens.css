@@ -100,7 +100,7 @@
   --status-warning-foreground: var(--neutral-white);
   --status-danger-foreground: var(--neutral-white);
   --module-board-accent: var(--primary);
-  --module-leads-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
+  --module-commercial-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
   --module-marketing-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
   --module-automation-accent: var(--decorative-purple);
   --module-billing-accent: var(--info);

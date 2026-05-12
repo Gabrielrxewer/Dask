@@ -42,6 +42,14 @@ export type FiscalSourceSystem = 'INTERNAL' | 'STRIPE' | 'FOCUS' | 'MDE' | 'NFSE
 
 export type FiscalReceivedType = 'NFE_MDE' | 'NFSE_NFSER';
 
+export const fiscalStripePolicies = ['manual_review', 'automatic_after_payment'] as const;
+
+export type FiscalStripePolicy = (typeof fiscalStripePolicies)[number];
+
+export const fiscalFocusEnvironments = ['homologacao', 'producao'] as const;
+
+export type FiscalFocusEnvironment = (typeof fiscalFocusEnvironments)[number];
+
 export interface FiscalPartySnapshot {
   role: 'EMITTER' | 'RECIPIENT' | 'TAKER' | 'SUPPLIER';
   name: string;

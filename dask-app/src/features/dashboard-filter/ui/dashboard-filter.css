@@ -39,31 +39,31 @@
   white-space: nowrap;
 }
 
-.dashboard-filter__mine-button {
-  min-height: 34px !important;
+.dashboard-filter__mine-button.shared-button {
+  min-height: 34px;
   height: 34px;
   padding: 0 14px;
   border-radius: 12px;
-  border-color: color-mix(in srgb, var(--info-border) 96%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 92%, transparent) 100%) !important;
-  color: var(--text-primary) !important;
+  border-color: color-mix(in srgb, var(--info-border) 96%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 96%, transparent) 0%, color-mix(in srgb, var(--neutral-white) 92%, transparent) 100%);
+  color: var(--text-primary);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
-.dashboard-filter__mine-button,
-.dashboard-filter__mine-button:hover,
-.dashboard-filter__mine-button:focus-visible {
-  color: var(--text-primary) !important;
+.dashboard-filter__mine-button.shared-button,
+.dashboard-filter__mine-button.shared-button:hover,
+.dashboard-filter__mine-button.shared-button:focus-visible {
+  color: var(--text-primary);
 }
 
-.dashboard-filter__mine-button.active,
-.dashboard-filter__mine-button[aria-pressed="true"] {
-  border-color: transparent !important;
-  background: linear-gradient(180deg, var(--primary) 0%, var(--primary) 100%) !important;
-  color: var(--neutral-white) !important;
-  box-shadow: none !important;
+.dashboard-filter__mine-button.shared-button.active,
+.dashboard-filter__mine-button.shared-button[aria-pressed="true"] {
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary) 100%);
+  color: var(--neutral-white);
+  box-shadow: none;
 }
 
 @media (max-width: 760px) {

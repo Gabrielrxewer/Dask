@@ -4,6 +4,7 @@ import type {
   CreateMarketingCampaignInput,
   CreateMarketingFollowUpInput,
   MarketingAutomationFlow,
+  MarketingJourneyDefinition,
   MarketingCampaignDetails,
   MarketingSegment,
   MarketingSegmentPreview,
@@ -408,7 +409,7 @@ export function useSaveJourneyMutation(workspaceId: string | null | undefined) {
       name: string;
       description?: string;
       status?: MarketingAutomationFlow["status"];
-      triggerDefinition: Record<string, unknown>;
+      triggerDefinition: MarketingJourneyDefinition;
       steps?: Array<Record<string, unknown>>;
     }) => {
       const resolvedWorkspaceId = requireWorkspace(workspaceId);

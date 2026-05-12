@@ -1,4 +1,10 @@
 export { AuthProvider, useAuth } from "@/features/auth/model/auth-provider";
+export {
+  useConfirmPasswordResetMutation,
+  useRequestPasswordResetMutation,
+  useResendVerificationEmailMutation,
+  verifyEmailOnce
+} from "@/features/auth/model/auth-account-mutations";
 export { createAuthStore, AuthStore } from "@/features/auth/model/auth-store";
 export { useAuthBootstrap } from "@/features/auth/model/use-auth-bootstrap";
 export { useProtectedRouteGuard, usePublicRouteGuard } from "@/features/auth/model/use-auth-route-guard";

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-export const marketingJourneyNodeKindSchema = z.enum(["TRIGGER", "CONDITION", "DELAY", "ACTION", "EXIT"]);
+export const marketingJourneyNodeKindSchema = z.enum(["TRIGGER", "CONDITION", "DELAY", "ACTION", "BRANCH", "EXIT"]);
 
 export const marketingJourneyTriggerSchema = z.object({
   event: z.enum([
-    "lead.created",
-    "lead.status_changed",
-    "lead.score_updated",
+    "commercial_work_item.created",
+    "commercial_work_item.status_changed",
+    "commercial_work_item.score_updated",
     "invoice.overdue",
     "campaign.opened",
     "campaign.clicked",
@@ -20,15 +20,22 @@ export const marketingJourneyTriggerSchema = z.object({
 export const marketingJourneyActionSchema = z.object({
   type: z.enum([
     "send_campaign",
+    "human_approval",
+    "approval",
     "update_score",
-    "move_lead",
+    "move_work_item",
     "create_task",
     "notify_user",
     "start_flow",
-    "tag_lead",
+    "tag_work_item",
     "webhook"
   ]),
-  campaignId: z.string().uuid().optional(),
+  campaignId: z.string().trim().min(1).optional(),
+  approvalType: z.string().trim().optional(),
+  title: z.string().trim().optional(),
+  description: z.string().trim().optional(),
+  requestedBy: z.string().trim().optional(),
+  requestedByPath: z.string().trim().optional(),
   scoreChange: z.coerce.number().optional(),
   targetStatus: z.string().trim().optional(),
   taskTitle: z.string().trim().optional(),

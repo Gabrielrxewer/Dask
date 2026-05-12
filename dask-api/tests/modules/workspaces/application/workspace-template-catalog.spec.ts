@@ -8,7 +8,7 @@ describe('workspace-template-catalog', () => {
 
     expect(recipeIds).toEqual(
       expect.arrayContaining([
-        'lead-captured-to-new-lead',
+        'commercial-work-item-created-to-intake',
         'proposal-preparing-create-proposal',
         'proposal-approved-create-contract',
         'contract-accepted-create-billing',

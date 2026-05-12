@@ -21,6 +21,7 @@ interface BillingAccountPanelProps {
   completedItems: BillingChecklistItem[];
   connectError: string | null;
   isOpeningOnboarding: boolean;
+  canManageSensitiveConnectSettings: boolean;
   requestingCapability: PaymentCapability | null;
   onOpenOnboarding: () => void | Promise<void>;
   onRequestPaymentCapability: (capability: PaymentCapability) => void | Promise<void>;
@@ -36,10 +37,13 @@ export function BillingAccountPanel({
   completedItems,
   connectError,
   isOpeningOnboarding,
+  canManageSensitiveConnectSettings,
   requestingCapability,
   onOpenOnboarding,
   onRequestPaymentCapability
 }: BillingAccountPanelProps) {
+  const sensitivePermissionMessage = "Apenas o proprietario do workspace pode alterar a configuracao sensivel do Stripe Connect.";
+
   return (
     <div className="billing-view__panel billing-view__panel--account" role="tabpanel">
       <div className="billing-view__kpi-row">
@@ -79,7 +83,8 @@ export function BillingAccountPanel({
                 variant="primary"
                 className="billing-view__onboarding-cta"
                 onClick={() => void onOpenOnboarding()}
-                disabled={isOpeningOnboarding}
+                disabled={isOpeningOnboarding || !canManageSensitiveConnectSettings}
+                title={!canManageSensitiveConnectSettings ? sensitivePermissionMessage : undefined}
               >
                 {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
               </Button>
@@ -151,6 +156,11 @@ export function BillingAccountPanel({
             Dashboard: {connectStatus.dashboardType ?? "nao informado"} - KYC: {connectStatus.requirementCollection ?? "nao informado"}
           </p>
         ) : null}
+        {!canManageSensitiveConnectSettings ? (
+          <InlineAlert tone="warning">
+            Apenas o proprietario do workspace pode alterar onboarding e formas de pagamento do Stripe Connect.
+          </InlineAlert>
+        ) : null}
         <div className="billing-view__capability-grid">
           <div className="billing-view__capability-row">
             <div className="billing-view__capability-copy billing-view__capability-copy--name">
@@ -168,9 +178,11 @@ export function BillingAccountPanel({
               onClick={() => void onRequestPaymentCapability("boleto_payments")}
               disabled={
                 !connectStatus ||
+                !canManageSensitiveConnectSettings ||
                 isLocalPaymentMethodEnabled(connectStatus.boletoPaymentsStatus) ||
                 requestingCapability !== null
               }
+              title={!canManageSensitiveConnectSettings ? sensitivePermissionMessage : undefined}
             >
               {requestingCapability === "boleto_payments" ? "Solicitando..." : "Habilitar boleto"}
             </Button>

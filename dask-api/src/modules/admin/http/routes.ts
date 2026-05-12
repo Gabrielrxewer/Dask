@@ -78,13 +78,15 @@ export const buildAdminRoutes = (deps: { prisma: PrismaClient }): Router => {
           WHERE "isPlatformAdmin" = true
         `,
         deps.prisma.workspace.count(),
-        deps.prisma.aIAgentRun.count({
+        deps.prisma.automationRun.count({
           where: {
+            triggerType: { in: ['ai.agent.run', 'ai.agent.item.run', 'ai.agent.risk_analysis', 'ai.documentation.run'] },
             createdAt: { gte: dayStart }
           }
         }),
-        deps.prisma.aIAgentRun.count({
+        deps.prisma.automationRun.count({
           where: {
+            triggerType: { in: ['ai.agent.run', 'ai.agent.item.run', 'ai.agent.risk_analysis', 'ai.documentation.run'] },
             status: 'failed',
             createdAt: { gte: dayStart }
           }

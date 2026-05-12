@@ -331,8 +331,8 @@
 }
 
 .app-theme[data-theme="dark"] .list-view__table {
-  border-color: transparent !important;
-  background: var(--surface-raised) !important;
+  border-color: transparent;
+  background: var(--surface-raised);
   box-shadow: none;
 }
 
@@ -378,30 +378,30 @@
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button {
-  min-height: 34px !important;
+  min-height: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: var(--text-secondary) !important;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent) !important;
-  color: var(--text-secondary) !important;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  color: var(--text-secondary);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
+  color: var(--text-primary);
   font-weight: 860;
 }
 
@@ -414,30 +414,30 @@
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__header {
-  border-bottom-color: color-mix(in oklab, var(--line) 44%, transparent) !important;
-  background: transparent !important;
-  color: var(--text-soft) !important;
+  border-bottom-color: color-mix(in oklab, var(--line) 44%, transparent);
+  background: transparent;
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row {
-  border-bottom-color: color-mix(in oklab, var(--line) 28%, transparent) !important;
-  background: transparent !important;
-  color: var(--text) !important;
+  border-bottom-color: color-mix(in oklab, var(--line) 28%, transparent);
+  background: transparent;
+  color: var(--text);
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 6%, transparent) !important;
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .shared-data-table__cell,
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__title,
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__owner,
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__checklist {
-  background: transparent !important;
+  background: transparent;
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__status .shared-select__control {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel));
 }
 
 .app-theme[data-theme="dark"] .list-top-nav {
@@ -467,7 +467,7 @@
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter .shared-input {
   min-height: 34px;
   border: none;
-  background: transparent !important;
+  background: transparent;
   color: var(--text-primary);
   box-shadow: none;
   font-size: 0.76rem;
@@ -475,81 +475,81 @@
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button {
-  min-height: 34px !important;
+  min-height: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: var(--text-muted) !important;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--primary) 16%, transparent) !important;
-  border-color: color-mix(in srgb, var(--primary) 92%, transparent) !important;
-  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 92%, transparent);
+  color: var(--text-primary);
   font-weight: 860;
 }
 
 .app-theme[data-theme="dark"] .list-view__title,
 .app-theme[data-theme="dark"] .list-view__title:hover,
 .app-theme[data-theme="dark"] .list-view__title:focus {
-  border-color: transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .list-view__actions.workspace-view__actions .dashboard-filter .shared-input,
 .app-theme[data-theme="dark"] .list-view__actions.workspace-view__actions .dashboard-filter .shared-button,
 .app-theme[data-theme="dark"] .list-view__status .shared-select__control {
-  border-color: var(--line) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-strong) !important;
+  border-color: var(--line);
+  background: var(--control-surface);
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .list-view__type {
-  border-color: color-mix(in oklab, var(--list-type-text, var(--accent)) 42%, var(--line)) !important;
-  background: color-mix(in oklab, var(--list-type-text, var(--accent)) 20%, var(--panel)) !important;
-  color: color-mix(in oklab, var(--list-type-background, var(--accent-soft)) 30%, var(--text-strong)) !important;
+  border-color: color-mix(in oklab, var(--list-type-text, var(--accent)) 42%, var(--line));
+  background: color-mix(in oklab, var(--list-type-text, var(--accent)) 20%, var(--panel));
+  color: color-mix(in oklab, var(--list-type-background, var(--accent-soft)) 30%, var(--text-strong));
 }
 
 .app-theme[data-theme="dark"] .list-view__progress-label--done {
-  color: var(--success) !important;
+  color: var(--success);
 }
 
 .app-theme[data-theme="dark"] .list-view__progress-fill {
-  background: var(--accent) !important;
+  background: var(--accent);
 }
 
 .app-theme[data-theme="dark"] .list-view__due--today {
-  color: var(--warning-border) !important;
+  color: var(--warning-border);
 }
 
 .app-theme[data-theme="dark"] .list-view__due--overdue {
-  color: var(--danger) !important;
+  color: var(--danger);
 }
 
 .app-theme[data-theme="dark"] .list-view__action-btn {
-  border-color: color-mix(in oklab, var(--line) 60%, transparent) !important;
-  background: var(--control-surface) !important;
-  color: var(--text-soft) !important;
+  border-color: color-mix(in oklab, var(--line) 60%, transparent);
+  background: var(--control-surface);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .list-view__action-btn:hover {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel)) !important;
-  border-color: color-mix(in oklab, var(--accent) 40%, transparent) !important;
-  color: var(--text-strong) !important;
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  color: var(--text-strong);
 }
 
 

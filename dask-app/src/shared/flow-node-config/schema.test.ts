@@ -58,12 +58,12 @@ describe("buildNodeConfigZodSchema", () => {
     expect(schema.safeParse({ model: "gpt-4.1-mini", temperature: 0.2 }).success).toBe(true);
   });
 
-  it("rejects invalid JSON values kept as textarea text", () => {
+  it("validates structured key-value records without accepting raw JSON text", () => {
     const descriptor: NodeConfigDescriptor = {
       type: "activity",
       label: "Activity",
       fields: [
-        { name: "payload", label: "Payload", type: "json" }
+        { name: "payload", label: "Payload", type: "key-value-list" }
       ]
     };
     const schema = buildNodeConfigZodSchema(descriptor);

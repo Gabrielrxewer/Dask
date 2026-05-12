@@ -11,6 +11,10 @@ import {
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
 import type { FiscalService } from '@/modules/fiscal/application/fiscal-service';
 import {
+  maskFiscalSecret,
+  redactFiscalCredentials
+} from '@/modules/fiscal/domain/redaction';
+import {
   cancelFiscalDocumentDto,
   createFiscalCompanyConfigDto,
   createFiscalDocumentDto,
@@ -41,17 +45,38 @@ const asJsonValue = (value: unknown): Prisma.JsonValue => {
   }
 };
 
-const maskFocusToken = (token: string | null | undefined): string | null => {
-  if (!token) {
-    return null;
-  }
-
-  return `${token.slice(0, 4)}***`;
-};
-
-const sanitizeCompanyConfig = <T extends { focusToken: string | null }>(item: T): T => ({
+const sanitizeCompanyConfig = <T extends {
+  focusToken: string | null;
+  focusWebhookSecret?: string | null;
+  metadata?: unknown;
+}>(item: T): T => ({
   ...item,
-  focusToken: maskFocusToken(item.focusToken)
+  focusToken: maskFiscalSecret(item.focusToken),
+  focusWebhookSecret: maskFiscalSecret(item.focusWebhookSecret),
+  metadata: redactFiscalCredentials(item.metadata)
+});
+
+const sanitizeFiscalDocumentResponse = <T extends {
+  requestPayloadSnapshot?: unknown;
+  responsePayloadSnapshot?: unknown;
+  providerPayloadRaw?: unknown;
+  metadata?: unknown;
+  items?: Array<Record<string, unknown>>;
+  parties?: Array<Record<string, unknown>>;
+}>(document: T): T => ({
+  ...document,
+  requestPayloadSnapshot: redactFiscalCredentials(document.requestPayloadSnapshot),
+  responsePayloadSnapshot: redactFiscalCredentials(document.responsePayloadSnapshot),
+  providerPayloadRaw: redactFiscalCredentials(document.providerPayloadRaw),
+  metadata: redactFiscalCredentials(document.metadata),
+  items: document.items?.map((item) => ({
+    ...item,
+    metadata: redactFiscalCredentials(item.metadata)
+  })),
+  parties: document.parties?.map((party) => ({
+    ...party,
+    metadata: redactFiscalCredentials(party.metadata)
+  }))
 });
 
 function resolvePageSize(input: { pageSize?: number; limit?: number }, fallback = 50): number {
@@ -147,7 +172,7 @@ export const buildFiscalRoutes = (deps: {
         draftId,
         requestedByUserId: req.auth!.userId
       });
-      res.status(200).json(document);
+      res.status(200).json(sanitizeFiscalDocumentResponse(document));
     })
   );
 
@@ -174,7 +199,7 @@ export const buildFiscalRoutes = (deps: {
         cursor: query.cursor
       });
 
-      res.status(200).json(toCursorPage(documents, pageSize));
+      res.status(200).json(toCursorPage(documents.map(sanitizeFiscalDocumentResponse), pageSize));
     })
   );
 
@@ -214,7 +239,7 @@ export const buildFiscalRoutes = (deps: {
         parties: payload.parties
       });
 
-      res.status(201).json(created);
+      res.status(201).json(sanitizeFiscalDocumentResponse(created));
     })
   );
 
@@ -224,7 +249,10 @@ export const buildFiscalRoutes = (deps: {
       const { workspaceId, documentId } = fiscalDocumentParamsDto.parse(req.params);
       const customerIds = await resolveClientCustomerIds(req, workspaceId);
       const details = await deps.fiscalService.getDocumentDetails(workspaceId, documentId, customerIds);
-      res.status(200).json(details);
+      res.status(200).json({
+        ...details,
+        document: sanitizeFiscalDocumentResponse(details.document)
+      });
     })
   );
 
@@ -239,7 +267,7 @@ export const buildFiscalRoutes = (deps: {
         requestedByUserId: req.auth!.userId
       });
 
-      res.status(200).json(issued);
+      res.status(200).json(sanitizeFiscalDocumentResponse(issued));
     })
   );
 
@@ -255,7 +283,7 @@ export const buildFiscalRoutes = (deps: {
         justification: body.justification
       });
 
-      res.status(200).json(cancelled);
+      res.status(200).json(sanitizeFiscalDocumentResponse(cancelled));
     })
   );
 
@@ -270,7 +298,7 @@ export const buildFiscalRoutes = (deps: {
         requestedByUserId: req.auth!.userId
       });
 
-      res.status(200).json(retried);
+      res.status(200).json(sanitizeFiscalDocumentResponse(retried));
     })
   );
 

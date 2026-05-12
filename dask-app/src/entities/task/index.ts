@@ -57,7 +57,7 @@ export {
 } from "@/entities/task/ui/field-presentation";
 export type {
   BoardConfig,
-  BoardLeadOperationalMetadata,
+  BoardCommercialOperationalMetadata,
   BoardMetrics,
   BoardOperationalFunnelStage,
   BoardOperationalMetadata,

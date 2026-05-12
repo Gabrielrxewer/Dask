@@ -7,6 +7,7 @@ const folderFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome da pasta.").max(120, "Use ate 120 caracteres.")
 });
 
+type FolderFormInputValues = z.input<typeof folderFormSchema>;
 type FolderFormValues = z.infer<typeof folderFormSchema>;
 
 interface DocumentationFolderDialogProps {
@@ -24,13 +25,13 @@ export function DocumentationFolderDialog({
   onClose,
   onSubmit
 }: DocumentationFolderDialogProps) {
-  const form = useForm<FolderFormValues>({
+  const form = useForm<FolderFormInputValues, unknown, FolderFormValues>({
     resolver: zodResolver(folderFormSchema),
     defaultValues: { name: initialName }
   });
 
   async function submit(values: FolderFormValues) {
-    await onSubmit(values.name.trim());
+    await onSubmit(values.name);
   }
 
   return (
@@ -43,13 +44,13 @@ export function DocumentationFolderDialog({
       description="Organize documentos sem sair do fluxo de edicao."
       className="documentation-folder-dialog app-dialog--form"
     >
-      <AppForm<FolderFormValues, FolderFormValues>
+      <AppForm<FolderFormInputValues, FolderFormValues>
         form={form}
         disabled={isSubmitting}
         className="documentation-folder-dialog__form"
         onSubmit={submit}
       >
-        <AppTextField name="name" label="Nome" autoFocus />
+        <AppTextField<FolderFormInputValues> name="name" label="Nome" autoFocus />
         <AppFormActions className="documentation-send-modal__footer">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancelar

@@ -25,6 +25,7 @@ describe("fiscalQueryKeys", () => {
     const receivedKey = fiscalQueryKeys.receivedDocuments("workspace-1", { pageSize: 25, cursor: "received-2" });
     const draftsKey = fiscalQueryKeys.drafts("workspace-1", { pageSize: 25, cursor: "draft-2" });
     const syncRunsKey = fiscalQueryKeys.syncRuns("workspace-1", { pageSize: 25, cursor: "sync-2" });
+    const companiesKey = fiscalQueryKeys.companies("workspace-1", { pageSize: 200, cursor: "company-2", search: "  matriz  " });
 
     expect(receivedKey[receivedKey.length - 1]).toEqual({
       pageSize: 25,
@@ -37,6 +38,11 @@ describe("fiscalQueryKeys", () => {
     expect(syncRunsKey[syncRunsKey.length - 1]).toEqual({
       pageSize: 25,
       cursor: "sync-2"
+    });
+    expect(companiesKey[companiesKey.length - 1]).toEqual({
+      pageSize: 200,
+      cursor: "company-2",
+      search: "matriz"
     });
   });
 });

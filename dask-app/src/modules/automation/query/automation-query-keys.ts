@@ -11,6 +11,10 @@ export interface AutomationRunsFilters {
 }
 
 export type AutomationApprovalsFilters = ListAutomationApprovalsOptions;
+export interface AutomationConsentsFilters {
+  status?: string;
+  limit?: number;
+}
 
 function cleanRecord<TValue>(record: Record<string, TValue | undefined | null | ""> | undefined): Record<string, TValue> {
   return Object.fromEntries(
@@ -39,6 +43,10 @@ export const automationsQueryKeys = {
     [...automationsQueryKeys.workspace(workspaceId), "approvals", normalizeAutomationFilters(filters)] as const,
   inbox: (workspaceId: string, filters?: Record<string, unknown>) =>
     [...automationsQueryKeys.workspace(workspaceId), "inbox", normalizeAutomationFilters(filters)] as const,
+  conversation: (workspaceId: string, conversationId: string) =>
+    [...automationsQueryKeys.workspace(workspaceId), "inbox", "conversation", conversationId] as const,
   templates: (workspaceId: string, filters?: Record<string, unknown>) =>
-    [...automationsQueryKeys.workspace(workspaceId), "templates", normalizeAutomationFilters(filters)] as const
+    [...automationsQueryKeys.workspace(workspaceId), "templates", normalizeAutomationFilters(filters)] as const,
+  consents: (workspaceId: string, filters?: AutomationConsentsFilters) =>
+    [...automationsQueryKeys.workspace(workspaceId), "consents", normalizeAutomationFilters(filters)] as const
 };

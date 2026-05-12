@@ -1,5 +1,5 @@
-import type { Lead, LeadActivity, LeadNurtureTouch, Prisma } from '@prisma/client';
-import type { SegmentFilter } from '@/modules/marketing/domain/types';
+import type { Prisma } from '@prisma/client';
+import type { MarketingCommercialContact, SegmentFilter } from '@/modules/marketing/domain/types';
 
 export type MarketingDashboard = {
   activeCampaigns: number;
@@ -7,7 +7,7 @@ export type MarketingDashboard = {
   openRate: number;
   clickRate: number;
   conversionRate: number;
-  influencedLeads: number;
+  influencedWorkItems: number;
   influencedCustomers: number;
   influencedRevenue: number;
   automationsRunning: number;
@@ -72,12 +72,12 @@ export interface MarketingRepository {
     status?: string;
     consentStatus?: string;
     limit: number;
-  }): Promise<Array<{ lead: Lead; preference: Record<string, unknown> | null; lastEventAt: Date | null }>>;
-  listLeadsForSegment(input: {
+  }): Promise<Array<{ contact: MarketingCommercialContact; preference: Record<string, unknown> | null; lastEventAt: Date | null }>>;
+  listContactsForSegment(input: {
     workspaceId: string;
     filter: SegmentFilter;
     limit: number;
-  }): Promise<Lead[]>;
+  }): Promise<MarketingCommercialContact[]>;
   upsertContactPreference(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   createCampaignSend(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
   listCampaignSends(campaignId: string): Promise<Record<string, unknown>[]>;
@@ -90,17 +90,24 @@ export interface MarketingRepository {
     byType: Array<{ type: string; total: number }>;
     byStatus: Array<{ status: string; total: number }>;
   }>;
-  createLeadActivity(data: Prisma.LeadActivityUncheckedCreateInput): Promise<LeadActivity>;
-  updateLeadFollowUp(input: {
+  createWorkItemActivity(input: {
     workspaceId: string;
-    leadId: string;
+    workItemId: string;
+    actorUserId?: string | null;
+    type: string;
+    title: string;
+    description?: string | null;
+    payload?: Record<string, unknown> | null;
+    occurredAt?: Date;
+  }): Promise<{ id: string; title: string; description: string | null; occurredAt: Date }>;
+  updateWorkItemFollowUp(input: {
+    workspaceId: string;
+    workItemId: string;
     nextFollowUpAt?: Date | null;
     note?: string | null;
     actorUserId?: string | null;
-  }): Promise<Lead | null>;
-  createLeadNurtureTouch(data: Prisma.LeadNurtureTouchUncheckedCreateInput): Promise<LeadNurtureTouch>;
-  updateLeadScore(workspaceId: string, leadId: string, nextScore: number): Promise<Lead>;
-  createLeadScoreEvent(data: Prisma.InputJsonValue): Promise<Record<string, unknown>>;
+  }): Promise<{ id: string; lastContactAt: Date | null; nextFollowUpAt: Date | null; status: string } | null>;
+  updateWorkItemScore(workspaceId: string, workItemId: string, nextScore: number): Promise<MarketingCommercialContact>;
   listWorkspaceDocuments(workspaceId: string, limit: number): Promise<Array<{ id: string; title: string; content: string }>>;
   listAutomationFlows(workspaceId: string): Promise<Record<string, unknown>[]>;
   findAutomationFlowById(workspaceId: string, flowId: string): Promise<Record<string, unknown> | null>;
@@ -111,7 +118,7 @@ export interface MarketingRepository {
   listSignalsInbox(input: {
     workspaceId: string;
     types?: string[];
-    onlyWithLead?: boolean;
+    onlyWithWorkItem?: boolean;
     includeDismissed?: boolean;
     limit: number;
   }): Promise<SignalInboxItem[]>;
@@ -127,13 +134,15 @@ export type SignalInboxItem = {
   occurredAt: Date;
   seenAt: Date | null;
   dismissedAt: Date | null;
-  leadId: string | null;
+  workItemId: string | null;
   campaignId: string | null;
-  lead: {
+  workItem: {
     id: string;
-    fullName: string | null;
+    title: string | null;
+    contactName: string | null;
     email: string | null;
     companyName: string | null;
+    customerId: string | null;
     score: number;
     status: string;
   } | null;

@@ -110,6 +110,8 @@ export interface ListWorkItemsInput {
   dueDateTo?: string;
   plannedStartFrom?: string;
   plannedStartTo?: string;
+  plannedWindowFrom?: string;
+  plannedWindowTo?: string;
   createdAtFrom?: string;
   createdAtTo?: string;
   updatedAtFrom?: string;
@@ -542,13 +544,13 @@ export type WorkspacePermissionKey =
   | "fiscal.read"
   | "fiscal.issue"
   | "fiscal.config"
-  | "lead.read"
-  | "lead.capture"
-  | "lead.qualify"
-  | "lead.distribute"
-  | "lead.nurture"
-  | "lead.convert"
-  | "lead.integration"
+  | "commercial.read"
+  | "commercial.capture"
+  | "commercial.qualify"
+  | "commercial.distribute"
+  | "commercial.nurture"
+  | "commercial.convert"
+  | "commercial.integration"
   | "marketing.view"
   | "marketing.campaign.create"
   | "marketing.campaign.approve"
@@ -567,7 +569,7 @@ export type WorkspacePermissionKey =
   | "board.write"
   | "item.write";
 
-export type WorkspaceModuleKey = "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+export type WorkspaceModuleKey = "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "commercial" | "marketing";
 
 export interface WorkspaceAccessGroup {
   id: string;
@@ -857,7 +859,7 @@ export interface AutomationRecipeCapability {
   id: string;
   name: string;
   description: string;
-  category: "lead" | "proposal" | "contract" | "billing" | "customer" | "followup";
+  category: "workItem" | "proposal" | "contract" | "billing" | "customer" | "followup";
   graph: AutomationWorkflowGraph;
 }
 

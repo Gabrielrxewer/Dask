@@ -4,7 +4,7 @@ import { routePaths, buildWorkspaceBillingPath } from "@/app/router";
 import { useAuth } from "@/features/auth";
 import { Button, LoadingState } from "@/shared/ui";
 import { isApiError } from "@/shared/api/http-client";
-import { portalService } from "../api/portal-service";
+import { useBillingPortalOnboardMutation } from "../model/use-billing-portal-onboard-mutation";
 import "./billing-public-page.css";
 
 type PortalState = "checking-auth" | "linking" | "ready" | "invalid" | "forbidden" | "error";
@@ -23,6 +23,7 @@ export function BillingPublicPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [state, setState] = useState<PortalState>("checking-auth");
+  const { mutateAsync: onboardBillingToken } = useBillingPortalOnboardMutation();
 
   useEffect(() => {
     if (!token) {
@@ -51,8 +52,7 @@ export function BillingPublicPage() {
 
     let active = true;
     setState("linking");
-    portalService
-      .onboardBillingToken(token)
+    onboardBillingToken(token)
       .then((response) => {
         if (!active) return;
         const params = new URLSearchParams({
@@ -87,6 +87,7 @@ export function BillingPublicPage() {
     location.pathname,
     location.search,
     navigate,
+    onboardBillingToken,
     token
   ]);
 

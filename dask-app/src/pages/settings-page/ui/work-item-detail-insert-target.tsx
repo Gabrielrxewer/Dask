@@ -1,4 +1,4 @@
-import type { DragEvent, MouseEvent } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import type { DetailZone, EditorDropTarget } from "@/pages/settings-page/model/work-item-layout-editor";
 import type { DragPayload } from "./work-item-editor-settings.model";
 
@@ -8,7 +8,6 @@ interface WorkItemDetailInsertTargetProps {
   dropTarget: EditorDropTarget | null;
   dragPayload: DragPayload | null;
   onUpdateDropTarget: (target: EditorDropTarget | null) => void;
-  onDropOnTarget: (event: DragEvent<HTMLElement>, target: EditorDropTarget) => void;
 }
 
 export function WorkItemDetailInsertTarget({
@@ -16,8 +15,7 @@ export function WorkItemDetailInsertTarget({
   index,
   dropTarget,
   dragPayload,
-  onUpdateDropTarget,
-  onDropOnTarget
+  onUpdateDropTarget
 }: WorkItemDetailInsertTargetProps) {
   const target: EditorDropTarget = {
     surface: "detail",
@@ -30,27 +28,23 @@ export function WorkItemDetailInsertTarget({
     dropTarget.kind === "insert" &&
     dropTarget.zone === zone &&
     dropTarget.index === index;
-
-  const handleMove = (event: DragEvent<HTMLElement> | MouseEvent<HTMLElement>) => {
-    if (!dragPayload) return;
-    event.preventDefault();
-    event.stopPropagation();
-    onUpdateDropTarget(target);
-  };
+  const { setNodeRef, isOver } = useDroppable({
+    id: `work-item-detail-insert:${zone}:${index}`,
+    disabled: !dragPayload,
+    data: { target }
+  });
 
   return (
     <div
+      ref={setNodeRef}
       key={`detail-insert-${zone}-${index}`}
-      className={`wie__detail-insert-target${zone === "side" ? " is-side" : ""}${isTarget ? " is-target" : ""}`}
+      className={`wie__detail-insert-target${zone === "side" ? " is-side" : ""}${isTarget || isOver ? " is-target" : ""}`}
       data-detail-zone={zone}
-      data-drop-intent={isTarget ? "vacancy" : undefined}
-      onDragOver={(event) => {
+      data-drop-intent={isTarget || isOver ? "vacancy" : undefined}
+      onPointerEnter={() => {
         if (!dragPayload) return;
-        event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
-        handleMove(event);
+        onUpdateDropTarget(target);
       }}
-      onMouseMove={handleMove}
-      onDrop={(event) => onDropOnTarget(event, target)}
     >
       <span>Solte aqui</span>
     </div>

@@ -10,6 +10,37 @@ import {
   publicWorkspaceDocumentTokenParamsDto
 } from '@/modules/workspace-platform/http/dto';
 
+export const publicDocumentAccessMatrix = {
+  preview: {
+    method: 'GET',
+    path: '/documents/public/:token',
+    token: 'required, valid, non-expired, non-revoked, sent commercial document',
+    session: 'optional for requireLogin=false; required recipient session for requireLogin=true',
+    result: 'full public preview or authenticated recipient view; never returns the raw token'
+  },
+  assetPreview: {
+    method: 'GET',
+    path: '/documents/public/:token/assets/:assetId/content',
+    token: 'required and scoped to the same document',
+    session: 'same rule as preview',
+    result: 'serves only assets attached to the token document'
+  },
+  resolve: {
+    method: 'GET',
+    path: '/documents/public/:token/resolve',
+    token: 'required, valid, non-expired, non-revoked, sent commercial document',
+    session: 'not required',
+    result: 'workspace/document routing hints only; never returns the raw token'
+  },
+  decision: {
+    method: 'POST',
+    path: '/documents/public/:token/decision',
+    token: 'required, valid, non-expired, non-revoked, sent commercial document',
+    session: 'required recipient session',
+    result: 'accept/reject only when allowAcceptReject is enabled and decision is valid for document kind'
+  }
+} as const;
+
 export const buildPublicDocumentRoutes = (deps: {
   authService: AuthService;
   workspaceDocumentsService: WorkspaceDocumentsService;

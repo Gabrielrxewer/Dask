@@ -20,7 +20,7 @@ import {
   type AiAgentMetaFormInput,
   type AiAgentMetaFormValues
 } from '@/modules/ai';
-import { useWorkspace } from '@/modules/workspace';
+import { useCurrentWorkspace } from '@/modules/workspace';
 import type {
   AiAgentConfig,
   AiCapabilities,
@@ -294,7 +294,7 @@ function sourceLabel(source: string): string {
 
 export function AiAgentsPage() {
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
-  const { snapshot } = useWorkspace();
+  const { snapshot } = useCurrentWorkspace();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
   const agentsQuery = useAiAgentsQuery(workspaceSlug);
   const capabilitiesQuery = useAiCapabilitiesQuery(workspaceSlug);

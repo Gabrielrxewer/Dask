@@ -1,5 +1,6 @@
 import type { AutomationSideEffect, PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { redactErrorMessage, redactSensitiveValue } from '@/core/security/redaction';
 import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
 import { AutomationSideEffectService } from '@/modules/automation/application/automation-side-effect-service';
 import { maskCommunicationAddress, normalizeCommunicationAddress } from '@/modules/automation/communication/communication-address';
@@ -41,30 +42,30 @@ function toRecord(value: unknown): Record<string, unknown> {
 function normalizeProviderError(error: unknown): Record<string, unknown> {
   if (error instanceof CommunicationProviderError) {
     return {
-      message: error.message,
+      message: redactErrorMessage(error),
       code: error.code,
       retryable: error.retryable,
-      details: error.details
+      details: redactSensitiveValue(error.details)
     };
   }
 
   if (error instanceof AppError) {
     return {
-      message: error.message,
+      message: redactErrorMessage(error),
       code: 'APP_ERROR',
       retryable: error.statusCode >= 500,
       statusCode: error.statusCode,
-      details: error.details
+      details: redactSensitiveValue(error.details)
     };
   }
 
   if (isRecord(error)) {
-    return error;
+    return redactSensitiveValue(error) as Record<string, unknown>;
   }
 
   if (error instanceof Error) {
     return {
-      message: error.message,
+      message: redactErrorMessage(error),
       code: 'UNEXPECTED_PROVIDER_ERROR',
       retryable: false,
       name: error.name
@@ -72,7 +73,7 @@ function normalizeProviderError(error: unknown): Record<string, unknown> {
   }
 
   return {
-    message: String(error),
+    message: redactErrorMessage(error),
     code: 'UNKNOWN_PROVIDER_ERROR',
     retryable: false
   };

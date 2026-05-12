@@ -34,6 +34,7 @@ export function buildMetaWhatsAppWebhookRoutes(input: {
   verifyToken?: string;
   appSecret?: string;
   maxPayloadBytes?: number;
+  environment?: 'development' | 'test' | 'production';
 }): Router {
   const router = Router();
   const providerEventService = input.providerEventService ?? new CommunicationProviderEventService(input.prisma);
@@ -50,6 +51,13 @@ export function buildMetaWhatsAppWebhookRoutes(input: {
       const token = typeof req.query['hub.verify_token'] === 'string' ? req.query['hub.verify_token'] : undefined;
       const challenge = typeof req.query['hub.challenge'] === 'string' ? req.query['hub.challenge'] : undefined;
       const verifyToken = input.verifyToken ?? env.META_WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+      const environment = input.environment ?? env.NODE_ENV;
+      if (!verifyToken && environment === 'production') {
+        throw new AppError('Meta WhatsApp webhook verify token is required.', 503, {
+          code: 'META_WHATSAPP_WEBHOOK_VERIFY_TOKEN_MISSING',
+          missingEnv: ['META_WHATSAPP_WEBHOOK_VERIFY_TOKEN']
+        });
+      }
 
       if (mode === 'subscribe' && verifyToken && token === verifyToken && challenge) {
         res.status(200).type('text/plain').send(challenge);
@@ -74,6 +82,14 @@ export function buildMetaWhatsAppWebhookRoutes(input: {
       }
 
       const appSecret = input.appSecret ?? env.META_WHATSAPP_WEBHOOK_APP_SECRET;
+      const environment = input.environment ?? env.NODE_ENV;
+      if (!appSecret && environment === 'production') {
+        throw new AppError('Meta WhatsApp webhook app secret is required.', 503, {
+          code: 'META_WHATSAPP_WEBHOOK_APP_SECRET_MISSING',
+          missingEnv: ['META_WHATSAPP_WEBHOOK_APP_SECRET']
+        });
+      }
+
       if (appSecret) {
         const valid = verifyMetaSignature({
           rawBody,

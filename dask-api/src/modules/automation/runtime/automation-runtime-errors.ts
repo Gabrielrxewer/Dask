@@ -1,4 +1,5 @@
 import { AppError } from '@/core/errors/app-error';
+import { redactErrorMessage, redactSensitiveValue } from '@/core/security/redaction';
 
 export type AutomationSanitizedError = {
   message: string;
@@ -29,61 +30,20 @@ export class AutomationRuntimeError extends Error {
   }
 }
 
-const sensitiveKeyPattern = /(authorization|cookie|password|secret|token|api[_-]?key|session)/i;
-const maxStringLength = 2000;
-const maxArrayLength = 50;
-const maxObjectKeys = 50;
-const maxDepth = 6;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function sanitizeString(value: string): string {
-  return value.length > maxStringLength ? `${value.slice(0, maxStringLength)}...` : value;
-}
-
-export function sanitizeAutomationPayload(value: unknown, depth = 0): unknown {
-  if (depth > maxDepth) {
-    return '[MaxDepth]';
-  }
-
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value.toISOString();
-  }
-
-  if (typeof value === 'string') {
-    return sanitizeString(value);
-  }
-
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.slice(0, maxArrayLength).map((entry) => sanitizeAutomationPayload(entry, depth + 1));
-  }
-
-  if (!isRecord(value)) {
-    return String(value);
-  }
-
-  const output: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value).slice(0, maxObjectKeys)) {
-    if (key === 'stack') {
-      continue;
-    }
-
-    output[key] = sensitiveKeyPattern.test(key)
-      ? '[REDACTED]'
-      : sanitizeAutomationPayload(entry, depth + 1);
-  }
-
-  return output;
+export function sanitizeAutomationPayload(value: unknown, _depth = 0): unknown {
+  return redactSensitiveValue(value, {
+    maskPersonalData: false,
+    maxStringLength: 2000,
+    maxArrayLength: 50,
+    maxObjectKeys: 50,
+    maxDepth: 6,
+    omitKeys: ['stack'],
+    additionalSensitiveKeyPattern: /(system[-_]?prompt|user[-_]?prompt|developer[-_]?prompt|prompt|messages|raw[-_]?payload|payload[-_]?json|request[-_]?payload|response[-_]?payload|request[-_]?body|response[-_]?body)/i
+  });
 }
 
 function normalizeRecordError(error: Record<string, unknown>): AutomationSanitizedError {
@@ -107,7 +67,7 @@ function normalizeRecordError(error: Record<string, unknown>): AutomationSanitiz
 export function normalizeAutomationError(error: unknown): AutomationSanitizedError {
   if (error instanceof AutomationRuntimeError) {
     return {
-      message: error.message,
+      message: redactErrorMessage(error),
       code: error.code,
       retryable: error.retryable,
       details: sanitizeAutomationPayload(error.details)
@@ -116,7 +76,7 @@ export function normalizeAutomationError(error: unknown): AutomationSanitizedErr
 
   if (error instanceof AppError) {
     return {
-      message: error.message,
+      message: redactErrorMessage(error),
       code: 'APP_ERROR',
       retryable: error.statusCode >= 500,
       statusCode: error.statusCode,
@@ -126,7 +86,7 @@ export function normalizeAutomationError(error: unknown): AutomationSanitizedErr
 
   if (error instanceof Error) {
     return {
-      message: error.message || 'Automation runtime error.',
+      message: redactErrorMessage(error) || 'Automation runtime error.',
       code: 'UNEXPECTED_ERROR',
       retryable: false,
       name: error.name
@@ -138,7 +98,7 @@ export function normalizeAutomationError(error: unknown): AutomationSanitizedErr
   }
 
   return {
-    message: String(error),
+    message: redactErrorMessage(error),
     code: 'UNKNOWN_THROWABLE',
     retryable: false
   };

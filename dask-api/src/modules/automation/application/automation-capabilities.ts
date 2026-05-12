@@ -69,7 +69,7 @@ export interface AutomationRecipeCapability {
   id: string;
   name: string;
   description: string;
-  category: 'lead' | 'proposal' | 'contract' | 'billing' | 'customer' | 'followup';
+  category: 'signal' | 'proposal' | 'contract' | 'billing' | 'customer' | 'followup';
   graph: AutomationWorkflowGraphCapability;
 }
 
@@ -151,62 +151,62 @@ function recipeGraph(input: {
 
 export const automationRecipeCatalog: AutomationRecipeCapability[] = [
   {
-    id: 'lead-captured-to-new-lead',
-    name: 'Entrada automatica de lead',
-    description: 'Registra lead capturado, move o card para Novo lead e cria historico.',
-    category: 'lead',
+    id: 'commercial-work-item-created-to-intake',
+    name: 'Entrada automatica comercial',
+    description: 'Registra WorkItem comercial criado, move o card para Entrada comercial e cria historico.',
+    category: 'signal',
     graph: recipeGraph({
-      metadata: { trigger: 'lead.captured' },
+      metadata: { trigger: 'commercial_work_item.created' },
       nodes: [
-        { id: 'trigger-lead-captured', type: 'trigger', label: 'Lead capturado', config: { triggerType: 'lead_captured' }, position: { x: 80, y: 120 } },
-        { id: 'activity-lead-captured', type: 'register_card_activity', label: 'Registrar entrada', config: { itemIdPath: 'event.payload.itemId', eventName: 'lead.captured', message: 'Lead capturado e recebido no funil comercial.', payload: { source: '{{event.name}}' } }, position: { x: 340, y: 120 } },
-        { id: 'move-lead-new', type: 'move_work_item', label: 'Mover para Novo lead', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'lead_new', stateSlug: 'lead_new' }, position: { x: 610, y: 120 } },
+        { id: 'trigger-commercial-created', type: 'trigger', label: 'WorkItem comercial criado', config: { triggerType: 'commercial_work_item_created' }, position: { x: 80, y: 120 } },
+        { id: 'activity-commercial-created', type: 'register_card_activity', label: 'Registrar entrada', config: { itemIdPath: 'event.payload.itemId', eventName: 'commercial_work_item.created', message: 'WorkItem comercial criado e recebido no funil comercial.', payload: { source: '{{event.name}}' } }, position: { x: 340, y: 120 } },
+        { id: 'move-commercial-intake', type: 'move_work_item', label: 'Mover para Entrada comercial', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'commercial_intake', stateSlug: 'commercial_intake' }, position: { x: 610, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 860, y: 120 } }
       ],
       edges: [
-        { id: 'edge-lead-1', source: 'trigger-lead-captured', target: 'activity-lead-captured' },
-        { id: 'edge-lead-2', source: 'activity-lead-captured', target: 'move-lead-new' },
-        { id: 'edge-lead-3', source: 'move-lead-new', target: 'end' }
+        { id: 'edge-commercial-created-1', source: 'trigger-commercial-created', target: 'activity-commercial-created' },
+        { id: 'edge-commercial-created-2', source: 'activity-commercial-created', target: 'move-commercial-intake' },
+        { id: 'edge-commercial-created-3', source: 'move-commercial-intake', target: 'end' }
       ]
     })
   },
   {
-    id: 'hot-lead-followup',
-    name: 'Lead quente',
-    description: 'Cria alerta e follow-up para lead sinalizado como quente.',
-    category: 'lead',
+    id: 'hot-opportunity-followup',
+    name: 'Oportunidade quente',
+    description: 'Cria alerta e follow-up para WorkItem sinalizado como quente.',
+    category: 'signal',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-hot-lead', type: 'trigger', label: 'Card atualizado', config: { triggerType: 'work_item_updated', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
-        { id: 'ai-next-action', type: 'ai_recommend_next_action', label: 'Sugerir abordagem', config: { prompt: 'Sugira a melhor abordagem para este lead quente.' }, position: { x: 340, y: 120 } },
-        { id: 'activity-hot-lead', type: 'register_card_activity', label: 'Registrar alerta', config: { itemIdPath: 'event.payload.itemId', eventName: 'lead.hot', message: 'Lead quente detectado. Priorizar contato comercial.', payload: { severity: 'high' } }, position: { x: 610, y: 120 } },
-        { id: 'followup-hot-lead', type: 'create_followup_task', label: 'Criar follow-up', config: { itemIdPath: 'event.payload.itemId', title: 'Contato prioritario: {{item.title}}', description: 'Lead quente exige abordagem comercial em ate 1 dia.', dueInDays: 1, assigneeIdPath: 'event.payload.requestedBy', columnSlug: 'lead_qualification' }, position: { x: 880, y: 120 } },
+        { id: 'trigger-hot-opportunity', type: 'trigger', label: 'Card atualizado', config: { triggerType: 'work_item_updated', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
+        { id: 'ai-next-action', type: 'ai_recommend_next_action', label: 'Sugerir abordagem', config: { prompt: 'Sugira a melhor abordagem para esta oportunidade quente.' }, position: { x: 340, y: 120 } },
+        { id: 'activity-hot-opportunity', type: 'register_card_activity', label: 'Registrar alerta', config: { itemIdPath: 'event.payload.itemId', eventName: 'commercial_work_item.hot', message: 'Oportunidade quente detectada. Priorizar contato comercial.', payload: { severity: 'high' } }, position: { x: 610, y: 120 } },
+        { id: 'followup-hot-opportunity', type: 'create_followup_task', label: 'Criar follow-up', config: { itemIdPath: 'event.payload.itemId', title: 'Contato prioritario: {{item.title}}', description: 'Oportunidade quente exige abordagem comercial em ate 1 dia.', dueInDays: 1, assigneeIdPath: 'event.payload.requestedBy', columnSlug: 'commercial_qualification' }, position: { x: 880, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1140, y: 120 } }
       ],
       edges: [
-        { id: 'edge-hot-1', source: 'trigger-hot-lead', target: 'ai-next-action' },
-        { id: 'edge-hot-2', source: 'ai-next-action', target: 'activity-hot-lead' },
-        { id: 'edge-hot-3', source: 'activity-hot-lead', target: 'followup-hot-lead' },
-        { id: 'edge-hot-4', source: 'followup-hot-lead', target: 'end' }
+        { id: 'edge-hot-1', source: 'trigger-hot-opportunity', target: 'ai-next-action' },
+        { id: 'edge-hot-2', source: 'ai-next-action', target: 'activity-hot-opportunity' },
+        { id: 'edge-hot-3', source: 'activity-hot-opportunity', target: 'followup-hot-opportunity' },
+        { id: 'edge-hot-4', source: 'followup-hot-opportunity', target: 'end' }
       ]
     })
   },
   {
-    id: 'first-contact-on-new-lead',
+    id: 'first-contact-on-commercial-intake',
     name: 'Primeiro contato',
-    description: 'Gera mensagem, solicita aprovacao e envia primeiro contato quando card entra em Novo lead.',
-    category: 'lead',
+    description: 'Gera mensagem, solicita aprovacao e envia primeiro contato quando card entra em Entrada comercial.',
+    category: 'signal',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-new-lead', type: 'trigger', label: 'Entrou em Novo lead', config: { triggerType: 'work_item_moved_to_column', column: 'lead_new' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-commercial-intake', type: 'trigger', label: 'Entrou em Entrada comercial', config: { triggerType: 'work_item_moved_to_column', column: 'commercial_intake' }, position: { x: 80, y: 120 } },
         { id: 'ai-draft-message', type: 'ai_generate_message_draft', label: 'Gerar mensagem', config: { prompt: 'Crie uma mensagem curta de primeiro contato B2B.' }, position: { x: 330, y: 120 } },
-        { id: 'approval-first-contact', type: 'human_approval', label: 'Aprovar contato', config: { type: 'send_message', title: 'Aprovar primeiro contato', description: 'Revise a mensagem antes do envio ao lead.', requestedBy: '{{event.payload.requestedBy}}', expiresInDays: 2 }, position: { x: 590, y: 120 } },
+        { id: 'approval-first-contact', type: 'human_approval', label: 'Aprovar contato', config: { type: 'send_message', title: 'Aprovar primeiro contato', description: 'Revise a mensagem antes do envio ao contato.', requestedBy: '{{event.payload.requestedBy}}', expiresInDays: 2 }, position: { x: 590, y: 120 } },
         { id: 'send-first-contact', type: 'communication_send', label: 'Enviar contato', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Ola, recebemos seu interesse e vamos seguir com o primeiro contato.' }, position: { x: 850, y: 120 } },
-        { id: 'activity-first-contact', type: 'register_card_activity', label: 'Registrar contato', config: { itemIdPath: 'event.payload.itemId', eventName: 'lead.first_contact.sent', message: 'Primeiro contato enviado ou aprovado para envio.', payload: { channel: 'email' } }, position: { x: 1110, y: 120 } },
+        { id: 'activity-first-contact', type: 'register_card_activity', label: 'Registrar contato', config: { itemIdPath: 'event.payload.itemId', eventName: 'commercial_work_item.first_contact.sent', message: 'Primeiro contato enviado ou aprovado para envio.', payload: { channel: 'email' } }, position: { x: 1110, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1370, y: 120 } }
       ],
       edges: [
-        { id: 'edge-first-1', source: 'trigger-new-lead', target: 'ai-draft-message' },
+        { id: 'edge-first-1', source: 'trigger-commercial-intake', target: 'ai-draft-message' },
         { id: 'edge-first-2', source: 'ai-draft-message', target: 'approval-first-contact' },
         { id: 'edge-first-3', source: 'approval-first-contact', target: 'send-first-contact' },
         { id: 'edge-first-4', source: 'send-first-contact', target: 'activity-first-contact' },

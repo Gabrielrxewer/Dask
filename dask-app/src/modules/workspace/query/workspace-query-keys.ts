@@ -65,12 +65,20 @@ export const workspaceQueryKeys = {
   workspaceList: () => [...workspaceQueryKeys.all, "directory"] as const,
   workspaceTemplates: () => [...workspaceQueryKeys.all, "template-catalog"] as const,
   workspace: (workspaceId: string) => [...workspaceQueryKeys.all, workspaceId] as const,
+  workspaceSummary: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "summary"] as const,
+  workspaceProfile: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "profile"] as const,
   workspaceSnapshot: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "snapshot"] as const,
   workspaceBoards: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "boards"] as const,
+  workspaceBoardTemplates: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "board-templates"] as const,
   workspaceWorkItems: (workspaceId: string, filters?: WorkspaceWorkItemsFilters) =>
     [...workspaceQueryKeys.workspace(workspaceId), "work-items", normalizeWorkspaceWorkItemsFilters(filters)] as const,
   workspaceWorkflowStates: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "workflow-states"] as const,
+  workspaceItemTypes: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "item-types"] as const,
   workspaceFieldSchemas: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "field-schemas"] as const,
+  workspaceCustomers: (workspaceId: string, input?: { search?: string; status?: string }) =>
+    [...workspaceQueryKeys.workspace(workspaceId), "customers", cleanRecord(input)] as const,
+  workspaceAccessControl: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "access-control"] as const,
+  workspaceInvites: (workspaceId: string) => [...workspaceQueryKeys.workspace(workspaceId), "invites"] as const,
   workspaceAuditLog: (workspaceId: string, filters?: WorkspaceAuditLogFilters) =>
     [...workspaceQueryKeys.workspace(workspaceId), "audit-log", normalizeWorkspaceAuditLogFilters(filters)] as const
 };

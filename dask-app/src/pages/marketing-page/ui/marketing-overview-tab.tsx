@@ -1,4 +1,4 @@
-import { Button, EmptyState, StatusBadge } from "@/shared/ui";
+import { Button, EmptyState, ResourceTable, StatusBadge } from "@/shared/ui";
 import type {
   MarketingAudienceContact,
   MarketingAutomationFlow,
@@ -190,7 +190,7 @@ export function MarketingOverviewTab({
                         <button key={signal.id} type="button" className="mkt-priority-row" onClick={() => setTab("inbox")}>
                           <span className="mkt-priority-row__main">
                             <strong>{SIGNAL_TYPE_LABELS[signal.type] ?? signal.type}</strong>
-                            <span>{signal.lead?.fullName ?? signal.lead?.email ?? "Lead desconhecido"} · {timeAgo(signal.occurredAt)}</span>
+                            <span>{signal.workItem?.contactName ?? signal.workItem?.email ?? "Contato desconhecido"} · {timeAgo(signal.occurredAt)}</span>
                           </span>
                           <span className={`mkt-badge mkt-badge--${signalPriority(signal)}`}>{signalPriorityLabel(signalPriority(signal))}</span>
                         </button>
@@ -214,40 +214,83 @@ export function MarketingOverviewTab({
                       <p className="marketing-page__hint">Clique em qualquer linha para operar detalhes, testes e agenda.</p>
                     </div>
                   </div>
-                  <div className="mkt-perf-table">
-                    <div className="mkt-perf-table__head">
-                      <span>Campanha</span>
-                      <span>Status</span>
-                      <span>Agenda</span>
-                      <span>Canal</span>
-                      <span>Segmento</span>
-                      <span>Ação</span>
-                    </div>
-                    {campaigns.slice(0, 8).map((campaign) => (
-                      <button
-                        key={campaign.id}
-                        type="button"
-                        className="mkt-perf-table__row"
-                        onClick={() => {
-                          void loadCampaignDetails(campaign.id);
-                          setTab("campaigns");
-                        }}
-                      >
-                        <span className="mkt-perf-table__name">
+                  <ResourceTable
+                    data={campaigns.slice(0, 8)}
+                    rowKey="id"
+                    className="mkt-resource-table"
+                    responsiveMinWidth="900px"
+                    emptyState={<EmptyState size="compact">Nenhuma campanha criada.</EmptyState>}
+                    columns={[
+                      {
+                        id: "campaign",
+                        header: "Campanha",
+                        width: "minmax(240px, 1.5fr)",
+                        render: (campaign) => (
+                          <span className="mkt-perf-table__name">
+                            <strong>{campaign.name}</strong>
+                            <span>{campaignObjectiveLabel(campaign.objective)}</span>
+                          </span>
+                        )
+                      },
+                      {
+                        id: "status",
+                        header: "Status",
+                        width: "0.85fr",
+                        render: (campaign) => (
+                          <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
+                        )
+                      },
+                      {
+                        id: "scheduled",
+                        header: "Agenda",
+                        width: "0.95fr",
+                        render: (campaign) => toLocalDate(campaign.scheduledAt)
+                      },
+                      { id: "channel", header: "Canal", width: "0.75fr", accessor: "channel" },
+                      {
+                        id: "segment",
+                        header: "Segmento",
+                        width: "0.75fr",
+                        render: (campaign) => (campaign.segmentId ? "Segmentada" : "Livre")
+                      }
+                    ]}
+                    actions={{
+                      header: "Acao",
+                      width: "0.65fr",
+                      render: (campaign) => (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            void loadCampaignDetails(campaign.id);
+                            setTab("campaigns");
+                          }}
+                        >
+                          Abrir
+                        </Button>
+                      )
+                    }}
+                    mobileCard={{
+                      render: (campaign) => (
+                        <>
                           <strong>{campaign.name}</strong>
                           <span>{campaignObjectiveLabel(campaign.objective)}</span>
-                        </span>
-                        <span><span className={`mkt-badge mkt-badge--${statusTone(campaign.status)}`}>{campaignStatusLabel(campaign.status)}</span></span>
-                        <span className="mkt-perf-table__num">{toLocalDate(campaign.scheduledAt)}</span>
-                        <span className="mkt-perf-table__num">{campaign.channel}</span>
-                        <span className="mkt-perf-table__num">{campaign.segmentId ?"Segmentada" : "Livre"}</span>
-                        <span className="mkt-perf-table__impact"><span className="mkt-badge mkt-badge--default">Abrir</span></span>
-                      </button>
-                    ))}
-                    {campaigns.length === 0 ?(
-                      <EmptyState className="mkt-perf-table__empty" size="compact">Nenhuma campanha criada.</EmptyState>
-                    ) : null}
-                  </div>
+                          <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
+                          <span>{toLocalDate(campaign.scheduledAt)} - {campaign.channel}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              void loadCampaignDetails(campaign.id);
+                              setTab("campaigns");
+                            }}
+                          >
+                            Abrir
+                          </Button>
+                        </>
+                      )
+                    }}
+                  />
                 </article>
               </div>
   );

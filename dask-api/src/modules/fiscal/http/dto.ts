@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import {
+  fiscalFocusEnvironments,
+  fiscalStripePolicies
+} from '@/modules/fiscal/domain/types';
+
+const fiscalStripePolicyDto = z.enum(fiscalStripePolicies);
+const focusEnvironmentDto = z.enum(fiscalFocusEnvironments);
 
 export const workspaceParamsDto = z.object({
   workspaceId: z.string().uuid()
@@ -142,11 +149,11 @@ export const createFiscalCompanyConfigDto = z.object({
   municipalRegistration: z.string().optional().nullable(),
   taxRegime: z.string().optional().nullable(),
   focusToken: z.string().min(10),
-  focusEnvironment: z.string().default('homologacao'),
+  focusEnvironment: focusEnvironmentDto,
   focusCompanyReference: z.string().optional().nullable(),
   focusWebhookSecret: z.string().optional().nullable(),
   emitAutomatically: z.boolean().optional(),
-  stripePolicy: z.string().optional(),
+  stripePolicy: fiscalStripePolicyDto.default('manual_review'),
   defaultSerie: z.string().optional().nullable(),
   defaultNatureOperation: z.string().optional().nullable(),
   fallbackRules: z.record(z.unknown()).optional().nullable(),

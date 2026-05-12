@@ -55,7 +55,7 @@ export const createCampaignDto = z.object({
   name: z.string().trim().min(2).max(160),
   description: z.string().trim().max(4000).optional(),
   objective: z.enum([
-    'LEAD_NURTURE',
+    'COMMERCIAL_NURTURE',
     'ONBOARDING',
     'REACTIVATION',
     'BILLING_REMINDER',
@@ -85,7 +85,7 @@ export const updateCampaignDto = z
     description: z.string().trim().max(4000).optional(),
     objective: z
       .enum([
-        'LEAD_NURTURE',
+        'COMMERCIAL_NURTURE',
         'ONBOARDING',
         'REACTIVATION',
         'BILLING_REMINDER',
@@ -243,17 +243,18 @@ export const markSignalDto = z.object({
   action: z.enum(['seen', 'dismissed'])
 });
 
-export const createSignalFollowUpDto = z.object({
-  leadId: z.string().uuid(),
-  title: z.string().trim().min(2).max(160),
-  description: z.string().trim().max(2000).optional(),
-  dueAt: z.coerce.date().nullable().optional(),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-  createWorkItem: z.boolean().default(false),
-  boardId: z.string().uuid().optional(),
-  workflowStateId: z.string().uuid().optional(),
-  assigneeId: z.string().uuid().nullable().optional()
-});
+export const createSignalFollowUpDto = z
+  .object({
+    workItemId: z.string().uuid(),
+    title: z.string().trim().min(2).max(160),
+    description: z.string().trim().max(2000).optional(),
+    dueAt: z.coerce.date().nullable().optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+    createWorkItem: z.boolean().default(false),
+    boardId: z.string().uuid().optional(),
+    workflowStateId: z.string().uuid().optional(),
+    assigneeId: z.string().uuid().nullable().optional()
+  });
 
 export const providerWebhookParamsDto = z.object({
   provider: z.string().trim().min(1).max(40)

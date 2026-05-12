@@ -19,6 +19,7 @@ describe("authenticated smoke helpers", () => {
 
     expect(config.apiUrl).toBe("http://localhost:3333/api/v1");
     expect(config.baseUrl).toBe("http://localhost:5173");
+    expect(config.releaseSmoke).toBe(false);
     expect(config.runExternals).toBe(false);
     expect(getMissingRequiredSmokeConfig(config)).toEqual([
       "DASK_SMOKE_EMAIL",
@@ -26,6 +27,19 @@ describe("authenticated smoke helpers", () => {
       "DASK_SMOKE_WORKSPACE_ID or DASK_SMOKE_WORKSPACE_SLUG"
     ]);
     expect(formatSmokeConfigHelp(["DASK_SMOKE_EMAIL"])).toContain("DASK_SMOKE_EMAIL");
+  });
+
+  it("requires explicit URLs, credentials and workspace in release smoke mode", () => {
+    const config = readSmokeConfig({ DASK_RELEASE_SMOKE: "1" });
+
+    expect(config.releaseSmoke).toBe(true);
+    expect(getMissingRequiredSmokeConfig(config)).toEqual([
+      "DASK_SMOKE_BASE_URL",
+      "DASK_SMOKE_API_URL",
+      "DASK_SMOKE_EMAIL",
+      "DASK_SMOKE_PASSWORD",
+      "DASK_SMOKE_WORKSPACE_ID or DASK_SMOKE_WORKSPACE_SLUG"
+    ]);
   });
 
   it("normalizes workspace slugs like the workspace service", () => {

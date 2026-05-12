@@ -13,7 +13,7 @@ export type LoadingAnimation =
   | "automation"
   | "billing"
   | "fiscal"
-  | "leads"
+  | "commercial"
   | "marketing"
   | "settings";
 
@@ -36,7 +36,7 @@ const animationGlyphs: Record<LoadingAnimation, string[]> = {
   automation: ["if", "then", "ok"],
   billing: ["R$", "$", "EUR"],
   fiscal: ["NFe", "RPS", "DAS"],
-  leads: ["MQL", "SQL", "won"],
+  commercial: ["MQL", "SQL", "won"],
   marketing: ["ads", "mail", "utm"],
   settings: ["cfg", "ui", "api"]
 };

@@ -1,5 +1,3 @@
-import type { Lead } from '@prisma/client';
-
 export type SegmentRuleOperator =
   | 'eq'
   | 'neq'
@@ -21,6 +19,38 @@ export type SegmentRule = {
 export type SegmentFilter = {
   logic?: 'AND' | 'OR';
   rules: SegmentRule[];
+};
+
+export type MarketingCommercialContact = {
+  id: string;
+  workspaceId: string;
+  workItemId: string;
+  customerId: string | null;
+  captureSource: string | null;
+  status: string;
+  score: number;
+  temperature: string | null;
+  firstName: string | null;
+  fullName: string | null;
+  email: string | null;
+  phone: string | null;
+  companyName: string | null;
+  jobTitle: string | null;
+  website: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  interest: string | null;
+  notes: string | null;
+  tags: string[];
+  ownerUserId: string | null;
+  lastContactAt: Date | null;
+  nextFollowUpAt: Date | null;
+  metadata: Record<string, unknown>;
+  createdByUserId: string;
+  updatedByUserId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export function normalizeText(value: string | null | undefined): string | null {
@@ -84,18 +114,18 @@ export function chooseWeightedVariant<T extends { weight: number; isControl?: bo
   return safeVariants.find((variant) => variant.isControl) ?? safeVariants[0];
 }
 
-export function renderLeadVariables(content: string, lead: Lead | null): string {
-  if (!lead) {
+export function renderCommercialContactVariables(content: string, contact: MarketingCommercialContact | null): string {
+  if (!contact) {
     return content;
   }
 
   const replacements: Record<string, string> = {
-    '{{lead.fullName}}': lead.fullName ?? 'cliente',
-    '{{lead.firstName}}': lead.firstName ?? lead.fullName?.split(' ')[0] ?? 'cliente',
-    '{{lead.email}}': lead.email ?? '',
-    '{{lead.companyName}}': lead.companyName ?? '',
-    '{{lead.interest}}': lead.interest ?? '',
-    '{{lead.score}}': String(lead.score)
+    '{{contact.fullName}}': contact.fullName ?? 'cliente',
+    '{{contact.firstName}}': contact.firstName ?? contact.fullName?.split(' ')[0] ?? 'cliente',
+    '{{contact.email}}': contact.email ?? '',
+    '{{contact.companyName}}': contact.companyName ?? '',
+    '{{contact.interest}}': contact.interest ?? '',
+    '{{contact.score}}': String(contact.score)
   };
 
   return Object.entries(replacements).reduce((acc, [token, value]) => acc.split(token).join(value), content);

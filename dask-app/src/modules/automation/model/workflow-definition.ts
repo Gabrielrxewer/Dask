@@ -17,6 +17,7 @@ export type AutomationDefinitionSourceKind =
 
 export interface AutomationDefinitionSource {
   kind: AutomationDefinitionSourceKind;
+  flowId?: string | null;
   refId?: string | null;
   key?: string | null;
   name?: string | null;

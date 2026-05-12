@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '@/core/http/async-handler';
+import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
 import type { MarketingService } from '@/modules/marketing/application/marketing-service';
 import { providerWebhookBodyDto, providerWebhookParamsDto } from '@/modules/marketing/http/dto';
@@ -18,13 +19,27 @@ function normalizeHeader(value: string | string[] | undefined): string | null {
   return null;
 }
 
-export const buildMarketingIntegrationRoutes = (deps: { marketingService: MarketingService }): Router => {
+type MarketingWebhookEnvironment = 'development' | 'test' | 'production';
+
+export const buildMarketingIntegrationRoutes = (deps: {
+  marketingService: MarketingService;
+  webhookSecret?: string;
+  environment?: MarketingWebhookEnvironment;
+}): Router => {
   const router = Router();
 
   router.post(
     '/integrations/marketing/email-events/:provider',
     asyncHandler(async (req, res) => {
-      const webhookSecret = env.MARKETING_WEBHOOK_SECRET?.trim();
+      const webhookSecret = (deps.webhookSecret ?? env.MARKETING_WEBHOOK_SECRET)?.trim();
+      const environment = deps.environment ?? env.NODE_ENV;
+      if (!webhookSecret && environment === 'production') {
+        throw new AppError('Marketing webhook secret is required.', 503, {
+          code: 'MARKETING_WEBHOOK_SECRET_MISSING',
+          missingEnv: ['MARKETING_WEBHOOK_SECRET']
+        });
+      }
+
       if (webhookSecret) {
         const provided =
           normalizeHeader(req.headers['x-marketing-webhook-secret']) ??

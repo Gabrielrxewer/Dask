@@ -55,7 +55,7 @@
   overflow-x: auto;
   border: 0;
   border-radius: 0;
-  background: transparent !important;
+  background: transparent;
   box-shadow: none;
   scrollbar-width: thin;
 }
@@ -67,7 +67,7 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  box-shadow: none !important;
+  box-shadow: none;
   transform: none;
   color: var(--text-secondary);
   font-size: 0.69rem;
@@ -93,7 +93,7 @@
   background: transparent;
   color: var(--text-primary);
   font-weight: 860;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .settings-top-nav__tab.shared-tabs__item--active::before {
@@ -144,20 +144,20 @@
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item {
-  background: transparent !important;
-  border-color: transparent !important;
+  background: transparent;
+  border-color: transparent;
   color: var(--text-muted);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item:hover {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent) !important;
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--text-primary);
 }
 
 .app-theme[data-theme="dark"] .settings-top-nav__tab.shared-tabs__item--active {
-  border-color: transparent !important;
-  background: transparent !important;
+  border-color: transparent;
+  background: transparent;
   color: var(--text-primary);
 }
 

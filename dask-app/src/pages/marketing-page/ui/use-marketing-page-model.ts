@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { buildBoardMetrics } from "@/entities/task";
 import { marketingQueryKeys, useMarketingDashboardQuery } from "@/modules/marketing/query";
-import { useWorkspace } from "@/modules/workspace";
+import { useCurrentWorkspace } from "@/modules/workspace";
 import type { MarketingTab } from "./marketing-page.model";
 import {
   useMarketingAnalyticsModel,
@@ -30,7 +30,7 @@ function firstError(...errors: unknown[]): string {
 }
 
 export function useMarketingPageModel() {
-  const { snapshot } = useWorkspace();
+  const { snapshot } = useCurrentWorkspace();
   const workspaceId = snapshot?.id ?? "";
   const queryClient = useQueryClient();
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
@@ -113,10 +113,10 @@ export function useMarketingPageModel() {
       isCreatingFollowUp: signalsModel.isCreatingFollowUp,
       signalTypeFilter: signalsModel.signalTypeFilter,
       signalShowDismissed: signalsModel.signalShowDismissed,
-      signalGroupByLead: signalsModel.signalGroupByLead,
+      signalGroupByWorkItem: signalsModel.signalGroupByWorkItem,
       setSignalTypeFilter: signalsModel.setSignalTypeFilter,
       setSignalShowDismissed: signalsModel.setSignalShowDismissed,
-      setSignalGroupByLead: signalsModel.setSignalGroupByLead,
+      setSignalGroupByWorkItem: signalsModel.setSignalGroupByWorkItem,
       setMessage,
       setTab,
       loadSignals: signalsModel.loadSignals,
@@ -130,6 +130,7 @@ export function useMarketingPageModel() {
       analyticsInsights: analyticsModel.analyticsInsights,
       analyticsObjectiveFilter: analyticsModel.analyticsObjectiveFilter,
       isLoadingAnalytics: analyticsModel.isLoadingAnalytics,
+      analyticsError: analyticsModel.error,
       hasEnoughAnalyticsData: analyticsModel.hasEnoughAnalyticsData,
       setAnalyticsObjectiveFilter: analyticsModel.setAnalyticsObjectiveFilter,
       setTab,
@@ -176,6 +177,8 @@ export function useMarketingPageModel() {
       setScheduleAt: campaignsModel.setScheduleAt,
       selectedVariantId: campaignsModel.selectedVariantId,
       setSelectedVariantId: campaignsModel.setSelectedVariantId,
+      isLoading: campaignsModel.isLoading,
+      error: campaignsModel.error,
       isSubmitting,
       createCampaign: campaignsModel.createCampaign,
       loadCampaignDetails: campaignsModel.loadCampaignDetails,
@@ -198,6 +201,7 @@ export function useMarketingPageModel() {
       segmentFilterRule: audienceModel.segmentFilterRule,
       updateSegmentFilterRule: audienceModel.updateSegmentFilterRule,
       isLoading: audienceModel.isLoading,
+      error: audienceModel.error,
       isSubmitting,
       loadData: audienceModel.loadData,
       createSegment: audienceModel.createSegment,

@@ -1,3 +1,5 @@
+import { redactErrorMessage } from '@/core/security/redaction';
+
 export type InfraDependencyName = 'database' | 'redis';
 
 export type InfraDependencyState = {
@@ -33,11 +35,7 @@ function nowIso(): string {
 }
 
 function asErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim().slice(0, 500);
-  }
-
-  return String(error).slice(0, 500);
+  return redactErrorMessage(error, 500);
 }
 
 function getStateOrThrow(name: InfraDependencyName): InfraDependencyState {

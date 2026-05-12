@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MarketingTemplate, MarketingTemplateFormValues, SendMarketingTemplateTestEmailValues } from "@/modules/marketing";
-import { AppDialog, Button, EmptyState, ModuleTabs } from "@/shared/ui";
+import { AppDialog, AppDropdownMenu, AppIcon, Button, EmptyState, ModuleTabs } from "@/shared/ui";
 import {
   TEMPLATE_GOAL_FILTERS,
   fmtNum
@@ -102,25 +102,54 @@ export function MarketingTemplatesTab({
                           <span className="mkt-template-card__meta">{template.category ?? "geral"} - {template.funnelStage ?? "sem estagio"}</span>
                           <strong>{template.name}</strong>
                           <p>{template.subject}</p>
-                          <span className="mkt-template-card__actions">
-                            <Button size="sm" variant="outline" onClick={() => setPreviewTemplate(template)}>
-                              Visualizar
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingTemplate(template)}>
-                              Editar
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setTestingTemplate(template)}>
-                              Enviar teste
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => void duplicateTemplate(template)} disabled={isSubmitting}>
-                              Duplicar
-                            </Button>
-                            {!template.isArchived ? (
-                              <Button size="sm" variant="ghost" onClick={() => void archiveTemplate(template.id)} disabled={isSubmitting}>
-                                Arquivar
-                              </Button>
-                            ) : null}
-                          </span>
+                          <div className="mkt-template-card__actions">
+                            <AppDropdownMenu
+                              className="mkt-template-card__actions-menu"
+                              trigger={(
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  aria-label={`Acoes do template ${template.name}`}
+                                >
+                                  Acoes
+                                  <AppIcon name="chevron-down" size={14} />
+                                </Button>
+                              )}
+                              items={[
+                                {
+                                  id: "preview",
+                                  label: "Visualizar",
+                                  onSelect: () => setPreviewTemplate(template)
+                                },
+                                {
+                                  id: "edit",
+                                  label: "Editar",
+                                  onSelect: () => setEditingTemplate(template)
+                                },
+                                {
+                                  id: "test",
+                                  label: "Enviar teste",
+                                  onSelect: () => setTestingTemplate(template)
+                                },
+                                {
+                                  id: "duplicate",
+                                  label: "Duplicar",
+                                  disabled: isSubmitting,
+                                  separatorBefore: true,
+                                  onSelect: () => void duplicateTemplate(template)
+                                },
+                                ...(!template.isArchived ? [
+                                  {
+                                    id: "archive",
+                                    label: "Arquivar",
+                                    disabled: isSubmitting,
+                                    onSelect: () => void archiveTemplate(template.id)
+                                  }
+                                ] : [])
+                              ]}
+                            />
+                          </div>
                         </article>
                       ))}
                     </div>

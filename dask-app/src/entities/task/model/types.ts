@@ -223,7 +223,7 @@ export interface BoardOperationalFunnelStage {
   color: string;
 }
 
-export interface BoardLeadOperationalMetadata {
+export interface BoardCommercialOperationalMetadata {
   schemaVersion: 1;
   itemTypeIds: string[];
   defaultItemTypeId: string;
@@ -243,7 +243,7 @@ export interface BoardLeadOperationalMetadata {
 
 export interface BoardOperationalMetadata {
   schemaVersion: 1;
-  leads?: BoardLeadOperationalMetadata;
+  commercial?: BoardCommercialOperationalMetadata;
 }
 
 export interface BoardConfig {

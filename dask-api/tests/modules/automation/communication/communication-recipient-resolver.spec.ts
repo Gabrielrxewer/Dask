@@ -81,14 +81,14 @@ describe('CommunicationRecipientResolver', () => {
     await resolver.resolveRecipient({
       workspaceId: 'ws-1',
       channel: 'email',
-      recipient: { sourceType: 'lead', sourceId: 'lead-1' },
+      recipient: { sourceType: 'work_item', sourceId: 'work-item-1' },
       context: { contact: { email: 'Person@Example.com' } }
     });
 
     expect(contactService.findBySource).toHaveBeenCalledWith({
       workspaceId: 'ws-1',
-      sourceType: 'lead',
-      sourceId: 'lead-1'
+      sourceType: 'work_item',
+      sourceId: 'work-item-1'
     });
   });
 

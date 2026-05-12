@@ -40,6 +40,7 @@ interface MarketingAudienceTabProps {
   segmentFilterRule: SegmentFilterRule;
   updateSegmentFilterRule: (updates: Partial<SegmentFilterRule>) => void;
   isLoading: boolean;
+  error: unknown;
   isSubmitting: boolean;
   loadData: () => Promise<void>;
   createSegment: () => Promise<void>;
@@ -57,6 +58,7 @@ export function MarketingAudienceTab({
   segmentFilterRule,
   updateSegmentFilterRule,
   isLoading,
+  error,
   isSubmitting,
   loadData,
   createSegment,
@@ -89,7 +91,7 @@ export function MarketingAudienceTab({
                     </div>
 
                     <div className="mkt-audience-note">
-                      Audiências são grupos de contatos usados em campanhas e jornadas. Leads continuam sendo gerenciados no CRM.
+                      Audiências são grupos de contatos usados em campanhas e jornadas. Comercial continuam sendo gerenciados no CRM.
                     </div>
 
                     <FormField label="Buscar">
@@ -102,13 +104,16 @@ export function MarketingAudienceTab({
 
                     <ResourceTable
                       data={audience}
-                      rowKey={(entry) => entry.lead.id}
+                      rowKey={(entry) => entry.contact.id}
                       responsiveMinWidth="920px"
+                      loading={isLoading}
+                      loadingState="Carregando audiencia..."
+                      error={error}
                       emptyState={
                         <EmptyState
                           className="mkt-table-empty"
                           title="Nenhum contato encontrado"
-                          description="Conecte leads/clientes ao workspace ou ajuste a busca para criar segmentos de marketing."
+                          description="Conecte commercial/clientes ao workspace ou ajuste a busca para criar segmentos de marketing."
                           size="compact"
                         />
                       }
@@ -119,8 +124,8 @@ export function MarketingAudienceTab({
                           width: "1.15fr",
                           render: (entry) => (
                             <div className="marketing-page__stacked">
-                              <strong>{entry.lead.fullName ?? "Sem nome"}</strong>
-                              <span>{entry.lead.email ?? "-"}</span>
+                              <strong>{entry.contact.fullName ?? "Sem nome"}</strong>
+                              <span>{entry.contact.email ?? "-"}</span>
                             </div>
                           )
                         },
@@ -128,13 +133,13 @@ export function MarketingAudienceTab({
                           id: "company",
                           header: "Empresa",
                           width: "1fr",
-                          render: (entry) => entry.lead.companyName ?? "-"
+                          render: (entry) => entry.contact.companyName ?? "-"
                         },
                         {
                           id: "score",
                           header: "Score",
                           width: "0.5fr",
-                          render: (entry) => entry.lead.score
+                          render: (entry) => entry.contact.score
                         },
                         {
                           id: "consent",
@@ -149,6 +154,17 @@ export function MarketingAudienceTab({
                           render: (entry) => toLocalDate(entry.lastEventAt)
                         }
                       ]}
+                      mobileCard={{
+                        render: (entry) => (
+                          <>
+                            <strong>{entry.contact.fullName ?? "Sem nome"}</strong>
+                            <span>{entry.contact.email ?? "-"}</span>
+                            <span>{entry.contact.companyName ?? "-"}</span>
+                            <span>Score {entry.contact.score}</span>
+                            <span>{entry.preference?.consentStatus ?? "Nao informado"}</span>
+                          </>
+                        )
+                      }}
                     />
                   </article>
 
@@ -204,10 +220,10 @@ export function MarketingAudienceTab({
                         <h3>{segmentPreview.segmentName}</h3>
                         <p>{segmentPreview.estimatedContacts} contatos estimados</p>
                         <ul>
-                          {segmentPreview.sample.slice(0, 8).map((lead) => (
-                            <li key={lead.id}>
-                              <strong>{lead.fullName ?? "Sem nome"}</strong>
-                              <span>{lead.email ?? "-"} · {lead.companyName ?? "-"}</span>
+                          {segmentPreview.sample.slice(0, 8).map((contact) => (
+                            <li key={contact.id}>
+                              <strong>{contact.fullName ?? "Sem nome"}</strong>
+                              <span>{contact.email ?? "-"} · {contact.companyName ?? "-"}</span>
                             </li>
                           ))}
                         </ul>
@@ -218,3 +234,4 @@ export function MarketingAudienceTab({
               </div>
   );
 }
+

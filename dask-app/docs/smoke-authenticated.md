@@ -2,7 +2,7 @@
 
 This smoke validates the authenticated HTTP contracts used by Billing, Fiscal and AI Agents without storing real credentials in the repository.
 
-## Command
+## Commands
 
 Run from `dask-app`:
 
@@ -10,7 +10,17 @@ Run from `dask-app`:
 npm run smoke:authenticated
 ```
 
-The command reuses Vitest. When credentials are missing it prints setup guidance and exits without calling external systems.
+The local command reuses Vitest. When credentials are missing it prints setup guidance and exits without calling external systems.
+
+Release/staging gates must use the strict command:
+
+```bash
+npm run smoke:authenticated:release
+```
+
+The release command sets `DASK_RELEASE_SMOKE=1`. In this mode missing required env fails the test, and any smoke step reported as `skipped` or `environment_gap` fails the gate instead of producing a false positive. `npm run check:release` runs `typecheck`, unit tests and the release smoke gate.
+
+The authenticated release smoke validates login, workspace resolution, Dashboard, List, Agenda, Board, Marketing, Marketing Journey flows, Automation, Documentation, Billing, Fiscal and AI contract surfaces.
 
 ## Required Environment
 
@@ -23,6 +33,8 @@ DASK_SMOKE_WORKSPACE_SLUG=my-workspace
 # or
 DASK_SMOKE_WORKSPACE_ID=00000000-0000-0000-0000-000000000000
 ```
+
+`DASK_SMOKE_BASE_URL` and `DASK_SMOKE_API_URL` have localhost defaults only for local mode. They are mandatory in release mode so the gate cannot accidentally validate the wrong target.
 
 Do not commit real `.env` files, tokens or captured sessions. The smoke logs only high-level step status and does not print prompts, provider outputs or secrets.
 
@@ -40,6 +52,27 @@ DASK_SMOKE_FISCAL_COMPANY_ID=00000000-0000-0000-0000-000000000000
 ```
 
 `DASK_SMOKE_RUN_EXTERNALS=true` enables calls that may reach Stripe Connect, Focus or AI runtime/provider paths. Keep it false for routine local contract checks unless the external test accounts are configured.
+
+For release/staging, keep skip flags false and provide an environment that can complete all required smoke steps. The gate fails if a skip flag or missing required setup causes a `skipped` result. Optional destructive or external-provider paths remain opt-in and are reported as non-destructive release policy notes unless their env flags enable them.
+
+## Release Evidence
+
+The smoke logs one line per step with only flow, step name, outcome and HTTP status/message. It never logs `DASK_SMOKE_PASSWORD`, bearer tokens, refresh tokens, portal tokens or provider secrets.
+
+Core read-only release coverage:
+
+- `auth`: login and `/auth/me`;
+- `workspace`: list, resolve and profile load;
+- `dashboard`: overview and widgets;
+- `board`: workspace snapshot;
+- `list`: paged work items;
+- `agenda`: planned work item window;
+- `marketing`: dashboard, campaigns and automation flows;
+- `automation`: capabilities, workflows and runs;
+- `documentation`: documents and folders;
+- `billing`: status, plans, Connect catalog/account and safe `SMOKE_` catalog lifecycle when Connect allows it;
+- `fiscal`: dashboard, companies, documents, received documents, drafts and sync runs;
+- `ai`: capabilities, agent lifecycle with `SMOKE_` marker and archive cleanup.
 
 ## Local Auth Model
 
@@ -142,8 +175,8 @@ Low-risk Billing calls migrated to query/mutation hooks in this phase:
 - `settings/general-settings`;
 - `use-workspace-task-page`.
 
-Remaining direct Billing calls:
+Route aliases:
 
-- `leads-page`: billing catalog and charge creation remain inside a large lead/customer/document workflow. Migrating it safely should happen with focused Leads coverage so the commercial flow is not refactored incidentally in this smoke phase.
+- `/w/:workspaceSlug/leads` is kept only as a product/URL alias redirecting to `/w/:workspaceSlug/commercial`. The active frontend domain is `modules/commercial` over WorkItem/Customer/Signal, not `modules/leads`.
 
 No direct Fiscal or AI service calls were found outside their query modules and service layers in the scoped files.

@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { redactErrorMessage } from '@/core/security/redaction';
 import type { AIAgentData } from '@/modules/ai/repositories/ai-agent-repository';
 import {
   validateAutomationWorkflowGraph
@@ -273,8 +274,7 @@ function validateAgentFlow(graph: AutomationWorkflowGraph): string[] {
   try {
     validateAutomationWorkflowGraph(graph);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    issues.push(message);
+    issues.push(redactErrorMessage(error));
   }
 
   return Array.from(new Set(issues));

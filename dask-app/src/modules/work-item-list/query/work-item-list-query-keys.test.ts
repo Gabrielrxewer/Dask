@@ -43,4 +43,27 @@ describe("workItemListQueryKeys", () => {
       }
     ]);
   });
+
+  it("mantem paginas amplas de List isoladas por janela planejada e cursor", () => {
+    const base = {
+      page: 3,
+      pageSize: 200,
+      plannedStartFrom: "2026-05-04T00:00:00.000Z",
+      plannedStartTo: "2026-05-11T00:00:00.000Z",
+      sortBy: "plannedStartAt" as const,
+      sortDirection: "asc" as const
+    };
+
+    expect(normalizeWorkItemListParams(base)).toEqual({
+      ...base,
+      workflowStateIds: [],
+      customFieldFilters: []
+    });
+    expect(workItemListQueryKeys.list("workspace-a", base))
+      .not.toEqual(workItemListQueryKeys.list("workspace-a", {
+        ...base,
+        plannedStartFrom: "2026-05-11T00:00:00.000Z",
+        plannedStartTo: "2026-05-18T00:00:00.000Z"
+      }));
+  });
 });

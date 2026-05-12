@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, AuthStore } from "@/features/auth";
 import { LoginForm } from "@/features/auth/ui/login-form";
 import type { AuthServiceContract } from "@/features/auth/api/types";
@@ -39,20 +40,32 @@ function createAuthServiceMock(): AuthServiceContract {
   };
 }
 
-describe("LoginForm accessibility and UX", () => {
-  it("keeps browser autofill and password-manager attributes enabled", () => {
-    const store = new AuthStore({
-      authService: createAuthServiceMock(),
-      transport: new MemoryTransport()
-    });
+function renderLoginForm(path = "/") {
+  const store = new AuthStore({
+    authService: createAuthServiceMock(),
+    transport: new MemoryTransport()
+  });
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false }
+    }
+  });
 
-    const html = renderToStaticMarkup(
-      <MemoryRouter>
+  return renderToStaticMarkup(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
         <AuthProvider store={store}>
           <LoginForm />
         </AuthProvider>
       </MemoryRouter>
-    );
+    </QueryClientProvider>
+  );
+}
+
+describe("LoginForm accessibility and UX", () => {
+  it("keeps browser autofill and password-manager attributes enabled", () => {
+    const html = renderLoginForm();
 
     const normalizedHtml = html.toLowerCase();
     expect(normalizedHtml).toContain('autocomplete="username"');
@@ -64,18 +77,7 @@ describe("LoginForm accessibility and UX", () => {
   });
 
   it("renders register step with name and new-password autocomplete", () => {
-    const store = new AuthStore({
-      authService: createAuthServiceMock(),
-      transport: new MemoryTransport()
-    });
-
-    const html = renderToStaticMarkup(
-      <MemoryRouter initialEntries={["/?step=register"]}>
-        <AuthProvider store={store}>
-          <LoginForm />
-        </AuthProvider>
-      </MemoryRouter>
-    );
+    const html = renderLoginForm("/?step=register");
 
     const normalizedHtml = html.toLowerCase();
     expect(normalizedHtml).toContain('name="name"');

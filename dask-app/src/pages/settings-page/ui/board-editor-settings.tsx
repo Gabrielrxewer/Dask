@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useWorkspace } from "@/modules/workspace";
+import { useCurrentWorkspace, useWorkspaceBoardConfigActions } from "@/modules/workspace";
 import type { ApiBoardColumn, ApiWorkflowState, BoardTemplateSummary } from "@/modules/workspace/model";
 import { BoardColumnsSection } from "./board-columns-section";
 import { BoardEditorHeader } from "./board-editor-header";
@@ -16,8 +16,9 @@ import { BoardTemplateToolbar } from "./board-template-toolbar";
 import "./board-editor-settings.css";
 
 export function BoardEditorSettings() {
+  const currentWorkspace = useCurrentWorkspace();
+  const boardConfigActions = useWorkspaceBoardConfigActions(currentWorkspace.workspaceSlug);
   const {
-    snapshot,
     fetchBoardColumns,
     fetchWorkflowStates,
     createBoardColumn,
@@ -26,8 +27,9 @@ export function BoardEditorSettings() {
     updatePreferences,
     listBoardTemplates,
     createBoardTemplate
-  } = useWorkspace();
+  } = boardConfigActions;
 
+  const snapshot = currentWorkspace.snapshot;
   const boardConfig = snapshot?.boardConfig;
   const baseStatuses = boardConfig?.statuses ?? [];
 

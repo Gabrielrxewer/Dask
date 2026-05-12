@@ -431,7 +431,7 @@ export const buildMarketingRoutes = (deps: {
       const result = await deps.marketingService.createSignalFollowUp({
         workspaceId,
         eventId,
-        leadId: payload.leadId,
+        workItemId: payload.workItemId,
         title: payload.title,
         description: payload.description,
         dueAt: payload.dueAt ?? null,

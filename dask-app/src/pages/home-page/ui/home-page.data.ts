@@ -8,7 +8,7 @@ import type {
 } from "./home-page.types";
 
 export const heroBadges: HomeBadge[] = [
-  { label: "Do lead ao faturamento" },
+  { label: "Do workItem ao faturamento" },
   { label: "IA contextual", tone: "success" },
   { label: "Estrutura configuravel", tone: "warning" }
 ];
@@ -17,7 +17,7 @@ export const heroSignals: HomeSignal[] = [
   {
     label: "Continuidade operacional",
     value: "O mesmo contexto atravessa toda a jornada",
-    description: "Lead, escopo, documentacao, execucao, agenda e cobranca deixam de viver em ferramentas separadas."
+    description: "Signal, escopo, documentacao, execucao, agenda e cobranca deixam de viver em ferramentas separadas."
   },
   {
     label: "Menos retrabalho",
@@ -52,7 +52,7 @@ export const valuePillars: HomeValuePillar[] = [
 export const processStages: HomeProcessStage[] = [
   {
     step: "01",
-    title: "Lead e oportunidade",
+    title: "Signal e oportunidade",
     description: "Centralize origem, necessidade, escopo inicial e sinais comerciais em vez de espalhar informacao em CRM, chat e anotacoes."
   },
   {
@@ -80,7 +80,7 @@ export const processStages: HomeProcessStage[] = [
 export const useCases: HomeUseCase[] = [
   {
     title: "Software houses",
-    focus: "Lead, proposta, backlog, entrega e faturamento no mesmo fluxo."
+    focus: "Signal, proposta, backlog, entrega e faturamento no mesmo fluxo."
   },
   {
     title: "Fabricas de software",

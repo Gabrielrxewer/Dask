@@ -104,6 +104,7 @@ export function useBillingPaymentOrdersQuery(
           status: filters?.status,
           customerId: filters?.customerId,
           email: filters?.email,
+          search: filters?.search,
           pageSize: filters?.pageSize ?? 50,
           cursor: filters?.cursor
         }

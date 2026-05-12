@@ -32,6 +32,7 @@ export function buildResendWebhookRoutes(input: {
   providerEventService?: CommunicationProviderEventService;
   enabled?: boolean;
   secret?: string;
+  environment?: 'development' | 'test' | 'production';
 }): Router {
   const router = Router();
   const providerEventService = input.providerEventService ?? new CommunicationProviderEventService(input.prisma);
@@ -45,6 +46,14 @@ export function buildResendWebhookRoutes(input: {
       }
 
       const secret = input.secret ?? env.RESEND_WEBHOOK_SECRET;
+      const environment = input.environment ?? env.NODE_ENV;
+      if (!secret && environment === 'production') {
+        throw new AppError('Resend webhook secret is required.', 503, {
+          code: 'RESEND_WEBHOOK_SECRET_MISSING',
+          missingEnv: ['RESEND_WEBHOOK_SECRET']
+        });
+      }
+
       if (secret) {
         const signature = req.header('x-dask-signature') ?? req.header('x-resend-signature');
         const valid = verifySignature({

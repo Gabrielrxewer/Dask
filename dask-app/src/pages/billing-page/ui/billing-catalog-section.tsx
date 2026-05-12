@@ -7,10 +7,11 @@ import {
   EmptyState,
   PageToolbar,
   RegistrationList,
+  ResourceTable,
+  type ResourceTableColumn,
   StatusBadge,
   TextInput
 } from "@/shared/ui";
-import { BillingDataTable as ResourceTable, type BillingDataTableColumn as ResourceTableColumn } from "./billing-data-table";
 import { BillingCatalogForm, type BillingCatalogFormProps } from "./billing-catalog-form";
 import {
   CATALOG_BILLING_LABEL,
@@ -19,8 +20,7 @@ import {
   isRecurringCatalogBillingType,
   type CatalogBillingFilter,
   type CatalogKindFilter,
-  type CatalogLoadState,
-  type CatalogSort
+  type CatalogLoadState
 } from "./billing-page.model";
 
 interface BillingCatalogSectionProps {
@@ -29,7 +29,6 @@ interface BillingCatalogSectionProps {
   catalogSearch: string;
   catalogKindFilter: CatalogKindFilter;
   catalogBillingFilter: CatalogBillingFilter;
-  catalogSort: CatalogSort;
   catalogPage: number;
   catalogHasPrevious: boolean;
   catalogHasNext: boolean;
@@ -40,7 +39,6 @@ interface BillingCatalogSectionProps {
   onCatalogSearchChange: (value: string) => void;
   onCatalogKindFilterChange: (value: CatalogKindFilter) => void;
   onCatalogBillingFilterChange: (value: CatalogBillingFilter) => void;
-  onCatalogSortChange: (value: CatalogSort) => void;
   onCatalogPrevious: () => void;
   onCatalogNext: () => void;
   onOpenCatalogForm: () => void;
@@ -83,11 +81,6 @@ function formatTerms(item: ConnectCatalogItem): string {
   return [deliveryTerms, contractTerm].filter(Boolean).join(" · ") || "-";
 }
 
-function formatUpdatedAt(item: ConnectCatalogItem): number {
-  const date = new Date(item.updatedAt || item.createdAt);
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-}
-
 function CatalogSummaryItem({ label, value, detail }: { label: string; value: ReactNode; detail: string }) {
   return (
     <div className="billing-catalog__summary-item">
@@ -104,7 +97,6 @@ export function BillingCatalogSection({
   catalogSearch,
   catalogKindFilter,
   catalogBillingFilter,
-  catalogSort,
   catalogPage,
   catalogHasPrevious,
   catalogHasNext,
@@ -115,7 +107,6 @@ export function BillingCatalogSection({
   onCatalogSearchChange,
   onCatalogKindFilterChange,
   onCatalogBillingFilterChange,
-  onCatalogSortChange,
   onCatalogPrevious,
   onCatalogNext,
   onOpenCatalogForm,
@@ -135,22 +126,12 @@ export function BillingCatalogSection({
     return Math.round(activeItems.reduce((sum, item) => sum + item.amount, 0) / activeItems.length);
   }, [activeItems]);
 
-  const sortedItems = useMemo(() => {
-    return [...catalogItems].sort((a, b) => {
-      if (catalogSort === "amount-desc") return b.amount - a.amount;
-      if (catalogSort === "amount-asc") return a.amount - b.amount;
-      if (catalogSort === "name") return a.name.localeCompare(b.name, "pt-BR");
-      return formatUpdatedAt(b) - formatUpdatedAt(a);
-    });
-  }, [catalogItems, catalogSort]);
-
   const hasCatalogItems = catalogItems.length > 0;
   const hasFilters = Boolean(catalogSearch.trim()) || catalogKindFilter !== "ALL" || catalogBillingFilter !== "ALL";
   const resetFilters = () => {
     onCatalogSearchChange("");
     onCatalogKindFilterChange("ALL");
     onCatalogBillingFilterChange("ALL");
-    onCatalogSortChange("recent");
   };
 
   const columns = useMemo<Array<ResourceTableColumn<ConnectCatalogItem>>>(
@@ -308,18 +289,6 @@ export function BillingCatalogSection({
                     { value: "ASSINATURA", label: "Assinatura" }
                   ]}
                 />
-                <AppSelect
-                  value={catalogSort}
-                  onValueChange={(value) => onCatalogSortChange(value as CatalogSort)}
-                  aria-label="Ordenar catálogo"
-                  className="billing-catalog__filter"
-                  items={[
-                    { value: "recent", label: "Mais recentes" },
-                    { value: "name", label: "Nome" },
-                    { value: "amount-desc", label: "Maior preço" },
-                    { value: "amount-asc", label: "Menor preço" }
-                  ]}
-                />
               </>
             }
             end={
@@ -328,14 +297,14 @@ export function BillingCatalogSection({
                   Limpar
                 </Button>
               ) : (
-                <StatusBadge tone="muted" size="sm">{`${sortedItems.length} item${sortedItems.length === 1 ? "" : "s"}`}</StatusBadge>
+                <StatusBadge tone="muted" size="sm">{`${catalogItems.length} item${catalogItems.length === 1 ? "" : "s"}`}</StatusBadge>
               )
             }
           />
         }
       >
         <ResourceTable
-          data={sortedItems}
+          data={catalogItems}
           columns={columns}
           rowKey="id"
           className="billing-view__table billing-catalog__table"
@@ -344,6 +313,37 @@ export function BillingCatalogSection({
           emptyState={emptyState}
           responsiveMinWidth="1120px"
           responsiveMinWidthMobile="980px"
+          pagination={
+            hasCatalogItems || catalogHasPrevious || catalogHasNext
+              ? {
+                  page: catalogPage,
+                  pageSize: 25,
+                  hasPrevious: catalogHasPrevious,
+                  hasNext: catalogHasNext,
+                  isLoading: catalogIsFetching,
+                  label: "Paginacao do catalogo",
+                  onPrevious: onCatalogPrevious,
+                  onNext: onCatalogNext
+                }
+              : undefined
+          }
+          mobileCard={{
+            render: (item) => (
+              <>
+                <div className="billing-catalog__item-cell">
+                  <strong>{item.name}</strong>
+                  <span>{item.description || "Sem descricao"}</span>
+                </div>
+                <div className="billing-catalog__stack-cell">
+                  <strong>{formatAmount(item.amount, item.currency)}</strong>
+                  <span>{CATALOG_BILLING_LABEL[item.billingType]} - {formatRecurrence(item)}</span>
+                </div>
+                <StatusBadge tone={item.isActive ? "success" : "muted"} size="sm" dot>
+                  {item.isActive ? "Ativo" : "Inativo"}
+                </StatusBadge>
+              </>
+            )
+          }}
           actions={{
             header: "",
             width: "minmax(190px, 0.9fr)",
@@ -390,31 +390,6 @@ export function BillingCatalogSection({
             )
           }}
         />
-        {hasCatalogItems || catalogHasPrevious || catalogHasNext ? (
-          <div className="billing-view__pagination">
-            <span className="billing-view__pagination-label">Página {catalogPage}</span>
-            <div className="billing-view__pagination-actions">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onCatalogPrevious}
-                disabled={!catalogHasPrevious || catalogIsFetching}
-              >
-                Anterior
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onCatalogNext}
-                disabled={!catalogHasNext || catalogIsFetching}
-              >
-                Próxima
-              </Button>
-            </div>
-          </div>
-        ) : null}
       </RegistrationList>
 
       {isCatalogFormOpen ? <BillingCatalogForm {...formProps} onCancel={onCloseCatalogForm} /> : null}

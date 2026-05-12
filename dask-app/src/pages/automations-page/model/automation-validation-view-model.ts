@@ -1,8 +1,9 @@
 import type { Connection, Edge } from "@xyflow/react";
 import type { FlowStudioValidationIssue } from "@/shared/ui";
-import { readNodeConfigPath, hasNodeConfigValue } from "@/shared/flow-node-config";
+import { buildNodeConfigZodSchema, readNodeConfigPath, hasNodeConfigValue } from "@/shared/flow-node-config";
+import { createAutomationNodeConfigDescriptor } from "./automation-node-registry";
 import { summarizeConfig } from "./automation-page-view-model";
-import type { AutomationCanvasNode, AutomationNodeMetaMap } from "./automation-page.types";
+import type { AutomationCanvasNode, AutomationNodeMetaMap, FieldOption } from "./automation-page.types";
 
 export function buildWorkflowPreview(
   nodes: AutomationCanvasNode[],
@@ -96,6 +97,44 @@ export function buildAutomationValidationIssues(
         message: "Conexao aponta para um no inexistente."
       });
     }
+  }
+
+  return issues;
+}
+
+export function buildNodeConfigValidationIssues(input: {
+  nodes: AutomationCanvasNode[];
+  nodeMeta: AutomationNodeMetaMap;
+  boardColumns: FieldOption[];
+  workflowStates: FieldOption[];
+  customFields: FieldOption[];
+  itemTypes: FieldOption[];
+}): FlowStudioValidationIssue[] {
+  const issues: FlowStudioValidationIssue[] = [];
+
+  for (const node of input.nodes) {
+    const meta = input.nodeMeta.get(node.data.nodeType);
+    const descriptor = createAutomationNodeConfigDescriptor({
+      nodeType: node.data.nodeType,
+      nodeLabel: meta?.label ?? node.data.label,
+      configSchema: meta?.configSchema,
+      boardColumns: input.boardColumns,
+      workflowStates: input.workflowStates,
+      customFields: input.customFields,
+      itemTypes: input.itemTypes
+    });
+    const result = buildNodeConfigZodSchema(descriptor).safeParse(node.data.config);
+    if (result.success) continue;
+
+    result.error.issues.forEach((issue, index) => {
+      issues.push({
+        id: `node-config-${node.id}-${index}`,
+        severity: "error",
+        nodeId: node.id,
+        path: issue.path.join("."),
+        message: `${node.data.label}: ${issue.message}`
+      });
+    });
   }
 
   return issues;

@@ -265,7 +265,7 @@ describe('WorkspaceDocumentsService commercial lifecycle', () => {
       content: '# Proposta\nValor resolvido',
       metadata: {}
     });
-    const { service, prisma, emailService } = makeService({
+    const { service, prisma, emailService, eventPublisher } = makeService({
       membershipRole: MembershipRole.ADMIN,
       prisma: {
         workspaceDocument: {
@@ -342,6 +342,53 @@ describe('WorkspaceDocumentsService commercial lifecycle', () => {
         })
       })
     );
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: DomainEventNames.ProposalSent,
+        payload: expect.not.objectContaining({
+          publicToken: expect.any(String)
+        })
+      })
+    );
+  });
+
+  it('sets a default public token expiration when no expiration is provided', async () => {
+    const currentDocument = makeDocument({
+      kind: 'proposal',
+      title: 'Proposta',
+      content: '# Proposta',
+      metadata: {}
+    });
+    const { service, prisma } = makeService({
+      membershipRole: MembershipRole.ADMIN,
+      prisma: {
+        workspaceDocument: {
+          findFirst: vi.fn().mockResolvedValue({
+            ...currentDocument,
+            workspace: { name: 'Dask' }
+          }),
+          update: vi.fn(async ({ data }) => makeDocument({
+            ...currentDocument,
+            metadata: data.metadata,
+            updatedBy: data.updatedBy
+          }))
+        }
+      }
+    });
+
+    await service.sendCommercialDocument({
+      workspaceId: 'workspace-1',
+      documentId: 'document-1',
+      userId: 'user-internal',
+      payload: {
+        emails: ['client@example.com']
+      }
+    });
+
+    const lastUpdate = prisma.workspaceDocument.update.mock.calls.at(-1)?.[0];
+    const expiresAt = new Date(lastUpdate.data.metadata.publicTokenExpiresAt);
+    expect(Number.isNaN(expiresAt.getTime())).toBe(false);
+    expect(expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('records internal decisions with identity, source, version and content hash', async () => {
@@ -557,65 +604,147 @@ describe('WorkspaceDocumentsService client isolation', () => {
   });
 });
 
-function makePublicDocumentService() {
+function makePublicDocumentService(input: {
+  metadata?: Record<string, unknown>;
+  kind?: 'proposal' | 'contract';
+  content?: string;
+  user?: { id: string; email: string } | null;
+} = {}) {
   const publicToken = 'public-token-12345678901234567890123456789012';
+  const recipientEmail = 'client@example.com';
+  const metadata = {
+    publicToken,
+    status: 'sent',
+    sentToEmail: recipientEmail,
+    sentToEmails: [recipientEmail],
+    contactEmail: recipientEmail,
+    clientUserId: 'recipient-user',
+    dealValue: 'R$ 234,00',
+    requireLogin: true,
+    allowAcceptReject: true,
+    publicTokenExpiresAt: '2099-06-01T00:00:00.000Z',
+    ...input.metadata
+  };
   const document = {
     id: 'document-1',
     workspaceId: 'workspace-1',
     title: 'Proposta Comercial - Dask',
-    content: '# Proposta\nCliente: Dask\nContato: {{contactEmail}}',
-    kind: 'proposal',
-    metadata: {
-      publicToken,
-      status: 'sent',
-      sentToEmail: 'client@example.com',
-      sentToEmails: ['client@example.com'],
-      contactEmail: 'client@example.com',
-      clientUserId: 'recipient-user',
-      dealValue: 'R$ 234,00'
-    },
+    content: input.content ?? '# Proposta\nCliente: Dask\nContato: {{contactEmail}}',
+    kind: input.kind ?? 'proposal',
+    linkedEntityType: null,
+    linkedEntityId: null,
+    tags: [],
+    position: 0,
+    createdBy: 'user-internal',
+    updatedBy: null,
+    createdAt: now,
+    updatedAt: now,
+    metadata,
     workspace: {
       name: 'Dask'
     }
   };
+  const user = input.user === undefined ? { id: 'recipient-user', email: recipientEmail } : input.user;
   const prisma = {
     workspaceDocument: {
-      findFirst: vi.fn().mockResolvedValue(document)
+      findFirst: vi.fn().mockResolvedValue(document),
+      update: vi.fn(async ({ data }) => ({
+        ...document,
+        metadata: data.metadata,
+        updatedBy: data.updatedBy
+      }))
     },
     user: {
-      findFirst: vi.fn().mockResolvedValue({ id: 'recipient-user' })
+      findFirst: vi.fn().mockResolvedValue(user ? { id: user.id } : null),
+      findUnique: vi.fn().mockResolvedValue(user)
+    },
+    workspace: {
+      findUnique: vi.fn().mockResolvedValue({ id: 'workspace-1', key: 'dask', name: 'Dask' })
     }
   };
   const configService = {
     ensureReadableWorkspace: vi.fn().mockResolvedValue(undefined)
   };
+  const eventPublisher = {
+    publish: vi.fn().mockResolvedValue(undefined)
+  };
 
   const service = new WorkspaceDocumentsService(
     prisma as never,
     configService as never,
-    { publish: vi.fn() } as never,
+    eventPublisher as never,
     { sendCommercialDocumentEmail: vi.fn() } as never
   );
 
-  return { service, prisma, publicToken };
+  return { service, prisma, eventPublisher, publicToken };
 }
 
 describe('WorkspaceDocumentsService public document access', () => {
-  it('does not expose content or metadata without an authenticated recipient', async () => {
-    const { service, prisma, publicToken } = makePublicDocumentService();
+  it('reveals public preview with a valid token when login is not required', async () => {
+    const { service, publicToken } = makePublicDocumentService({
+      metadata: {
+        requireLogin: false,
+        internalNote: 'operational',
+        publicToken: 'public-token-12345678901234567890123456789012'
+      }
+    });
 
     const result = await service.getPublicCommercialDocument({ token: publicToken });
 
-    expect(result.masked).toBe(true);
-    expect(result.content).toBe('');
-    expect(result.metadata).toEqual({});
+    expect(result.masked).toBe(false);
+    expect(result.access).toBe('public_token');
+    expect(result.requiresLogin).toBe(false);
+    expect(result.canDecide).toBe(false);
+    expect(result.content).toContain('Cliente: Dask');
+    expect(result.metadata).toMatchObject({
+      contactEmail: 'client@example.com',
+      dealValue: 'R$ 234,00',
+      status: 'sent'
+    });
+    expect(result.metadata).not.toHaveProperty('publicToken');
+    expect(JSON.stringify(result)).not.toContain(publicToken);
     expect(result.recipientEmail).toBe('');
     expect(result.recipientEmails).toEqual([]);
-    expect(result.recipientUserExists).toBe(false);
-    expect(prisma.user.findFirst).not.toHaveBeenCalled();
   });
 
-  it('exposes content and metadata to the authenticated recipient', async () => {
+  it('rejects expired public tokens', async () => {
+    const { service, publicToken } = makePublicDocumentService({
+      metadata: {
+        publicTokenExpiresAt: '2000-01-01T00:00:00.000Z'
+      }
+    });
+
+    await expect(service.getPublicCommercialDocument({ token: publicToken })).rejects.toMatchObject({
+      statusCode: 410,
+      details: expect.objectContaining({ code: 'TOKEN_EXPIRED' })
+    });
+  });
+
+  it('requires a valid recipient session when requireLogin is true', async () => {
+    const { service, publicToken } = makePublicDocumentService();
+
+    await expect(service.getPublicCommercialDocument({ token: publicToken })).rejects.toMatchObject({
+      statusCode: 401,
+      details: expect.objectContaining({ code: 'DOCUMENT_AUTH_REQUIRED' })
+    });
+  });
+
+  it('resolves public token routing hints without exposing recipient emails by default', async () => {
+    const { service, publicToken } = makePublicDocumentService();
+
+    const result = await service.resolvePublicDocumentToken({ token: publicToken });
+
+    expect(result).toEqual(expect.objectContaining({
+      workspaceId: 'workspace-1',
+      workspaceSlug: 'dask',
+      documentId: 'document-1',
+      documentKind: 'proposal',
+      recipientEmail: '',
+      recipientEmails: []
+    }));
+  });
+
+  it('exposes content and sanitized metadata to the authenticated recipient', async () => {
     const { service, prisma, publicToken } = makePublicDocumentService();
 
     const result = await service.getPublicCommercialDocument({
@@ -625,12 +754,18 @@ describe('WorkspaceDocumentsService public document access', () => {
     });
 
     expect(result.masked).toBe(false);
+    expect(result.access).toBe('authenticated_recipient');
+    expect(result.requiresLogin).toBe(true);
+    expect(result.allowAcceptReject).toBe(true);
+    expect(result.canDecide).toBe(true);
     expect(result.content).toContain('Cliente: Dask');
     expect(result.metadata).toMatchObject({
       contactEmail: 'client@example.com',
       dealValue: 'R$ 234,00',
       status: 'sent'
     });
+    expect(result.metadata).not.toHaveProperty('publicToken');
+    expect(JSON.stringify(result)).not.toContain(publicToken);
     expect(result.recipientEmail).toBe('client@example.com');
     expect(result.recipientEmails).toEqual(['client@example.com']);
     expect(result.recipientUserExists).toBe(true);
@@ -652,5 +787,118 @@ describe('WorkspaceDocumentsService public document access', () => {
     expect(result.masked).toBe(false);
     expect(result.content).toContain('Cliente: Dask');
     expect(result.recipientEmail).toBe('client@example.com');
+  });
+
+  it('records authorized public accept decisions with audit metadata', async () => {
+    const { service, prisma, eventPublisher, publicToken } = makePublicDocumentService();
+
+    const result = await service.decidePublicCommercialDocument({
+      token: publicToken,
+      userId: 'recipient-user',
+      decision: 'approve',
+      requestContext: {
+        ip: '127.0.0.1',
+        userAgent: 'vitest'
+      }
+    });
+
+    expect(result.metadata).toMatchObject({
+      status: 'approved',
+      approvedAt: expect.any(String),
+      acceptedByEmail: 'client@example.com',
+      acceptedByUserId: 'recipient-user',
+      acceptedIp: '127.0.0.1',
+      acceptedUserAgent: 'vitest',
+      decisionSource: 'public',
+      decisionContentHash: createHash('sha256').update('# Proposta\nCliente: Dask\nContato: {{contactEmail}}').digest('hex'),
+      decisionVersion: now.toISOString()
+    });
+    expect(prisma.workspaceDocument.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          updatedBy: 'recipient-user',
+          metadata: expect.objectContaining({ status: 'approved' })
+        })
+      })
+    );
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: DomainEventNames.DocumentDecisionRecorded,
+        payload: expect.objectContaining({
+          decision: 'approve',
+          source: 'public',
+          status: 'approved',
+          ip: '127.0.0.1',
+          userAgent: 'vitest'
+        })
+      })
+    );
+  });
+
+  it('records authorized public reject decisions with audit metadata', async () => {
+    const { service, eventPublisher, publicToken } = makePublicDocumentService();
+
+    const result = await service.decidePublicCommercialDocument({
+      token: publicToken,
+      userId: 'recipient-user',
+      decision: 'reject',
+      requestContext: {
+        ip: '127.0.0.1',
+        userAgent: 'vitest'
+      }
+    });
+
+    expect(result.metadata).toMatchObject({
+      status: 'rejected',
+      rejectedAt: expect.any(String),
+      rejectedByEmail: 'client@example.com',
+      rejectedByUserId: 'recipient-user',
+      rejectedIp: '127.0.0.1',
+      rejectedUserAgent: 'vitest',
+      decisionSource: 'public'
+    });
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: DomainEventNames.DocumentDecisionRecorded,
+        payload: expect.objectContaining({
+          decision: 'reject',
+          source: 'public',
+          status: 'rejected'
+        })
+      })
+    );
+  });
+
+  it('denies public decisions without recipient permission or with disabled decisions', async () => {
+    const wrongUser = makePublicDocumentService({
+      user: { id: 'other-user', email: 'other@example.com' }
+    });
+
+    await expect(wrongUser.service.decidePublicCommercialDocument({
+      token: wrongUser.publicToken,
+      userId: 'other-user',
+      decision: 'approve'
+    })).rejects.toMatchObject({
+      statusCode: 403,
+      details: expect.objectContaining({ code: 'RECIPIENT_EMAIL_MISMATCH' })
+    });
+
+    const disabled = makePublicDocumentService({
+      metadata: {
+        allowAcceptReject: false
+      }
+    });
+
+    await expect(disabled.service.decidePublicCommercialDocument({
+      token: disabled.publicToken,
+      userId: 'recipient-user',
+      decision: 'reject'
+    })).rejects.toMatchObject({
+      statusCode: 403,
+      details: expect.objectContaining({ code: 'DOCUMENT_DECISION_DISABLED' })
+    });
+
+    expect(wrongUser.prisma.workspaceDocument.update).not.toHaveBeenCalled();
+    expect(disabled.prisma.workspaceDocument.update).not.toHaveBeenCalled();
   });
 });

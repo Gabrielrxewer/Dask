@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Resolver } from "react-hook-form";
+import { useParams } from "react-router-dom";
 import { buildBoardMetrics } from "@/entities/task";
 import {
   fiscalQueryKeys,
@@ -14,7 +15,6 @@ import {
   useCreateFiscalDraftMutation,
   useEmitFiscalDraftMutation,
   useFiscalCompaniesQuery,
-  useFiscalCustomersQuery,
   useFiscalCustomerDocumentsQuery,
   useFiscalDashboardQuery,
   useFiscalDocumentQuery,
@@ -39,7 +39,13 @@ import type {
   FiscalWizardFormValues,
   FiscalSyncRun
 } from "@/modules/fiscal";
-import { formatCustomerOptionDetail, getCustomerDisplayName, useWorkspace, type Customer } from "@/modules/workspace";
+import {
+  formatCustomerOptionDetail,
+  getCustomerDisplayName,
+  useWorkspace,
+  useWorkspaceCustomersQuery,
+  type Customer
+} from "@/modules/workspace";
 import { formatDateTime as formatDate } from "@/shared/lib/date";
 import { formatMoney } from "@/shared/lib/money";
 import {
@@ -59,6 +65,8 @@ import {
   MetricCard,
   ModuleTabs,
   PageToolbar,
+  ResourceTable,
+  type ResourceTableColumn,
   SectionCard,
   StatusBadge,
   TextInput,
@@ -68,7 +76,6 @@ import {
   toast
 } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
-import { FiscalDataTable as ResourceTable, type FiscalDataTableColumn as ResourceTableColumn } from "./fiscal-data-table";
 import "./fiscal-page.css";
 
 type FiscalTab = "dashboard" | "issued" | "received" | "stripe" | "sync" | "wizard" | "settings" | "portal";
@@ -159,40 +166,6 @@ function mapCompanyFormToPayload(values: FiscalCompanyFormValues): FiscalCompany
   };
 }
 
-interface FiscalPaginationControlsProps {
-  label: string;
-  page: number;
-  hasPrevious: boolean;
-  hasNext: boolean;
-  isLoading: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}
-
-function FiscalPaginationControls({
-  label,
-  page,
-  hasPrevious,
-  hasNext,
-  isLoading,
-  onPrevious,
-  onNext
-}: FiscalPaginationControlsProps) {
-  if (!hasPrevious && !hasNext) return null;
-
-  return (
-    <div className="fiscal-view__pagination" aria-label={label}>
-      <Button type="button" size="sm" variant="outline" onClick={onPrevious} disabled={!hasPrevious || isLoading}>
-        Anterior
-      </Button>
-      <span className="fiscal-view__pagination-label">Pagina {page}</span>
-      <Button type="button" size="sm" variant="outline" onClick={onNext} disabled={!hasNext || isLoading}>
-        Proxima
-      </Button>
-    </div>
-  );
-}
-
 function initialWizardState(): FiscalWizardFormValues {
   return {
     documentType: "NFE",
@@ -218,7 +191,8 @@ function initialSyncState(): FiscalReceivedSyncValues {
 }
 
 export function FiscalPage() {
-  const { snapshot, listCustomers } = useWorkspace();
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  const { snapshot } = useWorkspace();
   const queryClient = useQueryClient();
   const workspaceId = snapshot?.id ?? "";
   const metrics = useMemo(() => buildBoardMetrics(snapshot?.tasks ?? []), [snapshot?.tasks]);
@@ -234,10 +208,12 @@ export function FiscalPage() {
 
   const [issuedSearch, setIssuedSearch] = useState("");
   const [receivedSearch, setReceivedSearch] = useState("");
+  const [companySearch, setCompanySearch] = useState("");
   const [issuedCursorStack, setIssuedCursorStack] = useState<string[]>([]);
   const [receivedCursorStack, setReceivedCursorStack] = useState<string[]>([]);
   const [draftsCursorStack, setDraftsCursorStack] = useState<string[]>([]);
   const [syncRunsCursorStack, setSyncRunsCursorStack] = useState<string[]>([]);
+  const [companiesCursorStack, setCompaniesCursorStack] = useState<string[]>([]);
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
 
   const wizardForm = useForm<FiscalWizardFormValues>({
@@ -271,6 +247,7 @@ export function FiscalPage() {
   const receivedCursor = getCurrentCursor(receivedCursorStack);
   const draftsCursor = getCurrentCursor(draftsCursorStack);
   const syncRunsCursor = getCurrentCursor(syncRunsCursorStack);
+  const companiesCursor = getCurrentCursor(companiesCursorStack);
   const issuedDocumentsQuery = useFiscalDocumentsQuery(isClient ? null : workspaceId, {
     direction: "OUTBOUND",
     search: issuedSearch || undefined,
@@ -294,8 +271,12 @@ export function FiscalPage() {
     pageSize: FISCAL_SYNC_PAGE_SIZE,
     cursor: syncRunsCursor
   });
-  const customersQuery = useFiscalCustomersQuery(workspaceId, listCustomers, !isClient);
-  const companiesQuery = useFiscalCompaniesQuery(!isClient && isFiscalOwner ? workspaceId : null);
+  const customersQuery = useWorkspaceCustomersQuery(workspaceSlug || null, undefined, { enabled: !isClient });
+  const companiesQuery = useFiscalCompaniesQuery(!isClient && isFiscalOwner ? workspaceId : null, {
+    search: companySearch || undefined,
+    pageSize: FISCAL_LIST_PAGE_SIZE,
+    cursor: companiesCursor
+  });
   const detailQuery = useFiscalDocumentQuery(workspaceId, detailDocumentId);
 
   const createFiscalCompanyMutation = useCreateFiscalCompanyMutation(workspaceId);
@@ -321,6 +302,7 @@ export function FiscalPage() {
   const receivedNextCursor = receivedDocumentsQuery.data?.nextCursor ?? null;
   const draftsNextCursor = draftsQuery.data?.nextCursor ?? null;
   const syncRunsNextCursor = syncRunsQuery.data?.nextCursor ?? null;
+  const companiesNextCursor = companiesQuery.data?.nextCursor ?? null;
   const details = detailQuery.data ?? null;
   const detailLoading = Boolean(detailDocumentId) && (detailQuery.isLoading || detailQuery.isFetching);
 
@@ -418,6 +400,11 @@ export function FiscalPage() {
   function handleReceivedSearchChange(value: string) {
     setReceivedSearch(value);
     setReceivedCursorStack([]);
+  }
+
+  function handleCompanySearchChange(value: string) {
+    setCompanySearch(value);
+    setCompaniesCursorStack([]);
   }
 
   function handleEditCompany(company: FiscalCompanyConfig) {
@@ -791,7 +778,7 @@ export function FiscalPage() {
                   </div>
                 ) : null}
 
-                {documents.length === 0 && !isLoading ? (
+                {documents.length === 0 && !clientDocumentsQuery.isLoading && !clientDocumentsQuery.isError ? (
                   <EmptyState
                     title="Nenhum documento fiscal emitido para o seu cadastro ainda."
                     description="Os documentos aparecerao aqui assim que forem emitidos."
@@ -804,7 +791,7 @@ export function FiscalPage() {
                   />
                 ) : null}
 
-                {documents.length > 0 ? (
+                {documents.length > 0 || clientDocumentsQuery.isLoading || clientDocumentsQuery.isError ? (
                   <ResourceTable
                     className="fiscal-view__table"
                     data={documents}
@@ -812,6 +799,9 @@ export function FiscalPage() {
                     columns={portalColumns}
                     responsiveMinWidth="100%"
                     responsiveMinWidthMobile="100%"
+                    loading={clientDocumentsQuery.isLoading}
+                    loadingState="Carregando documentos fiscais..."
+                    error={clientDocumentsQuery.isError ? clientDocumentsQuery.error : undefined}
                     emptyState={
                       <EmptyState
                         variant="table"
@@ -846,6 +836,37 @@ export function FiscalPage() {
                         </div>
                       )
                     }}
+                    mobileCard={{
+                      render: (document) => (
+                        <>
+                          <strong>{document.documentType}</strong>
+                          <StatusBadge tone={mapTone(document.status)}>{STATUS_LABELS[document.status] ?? document.status}</StatusBadge>
+                          <span>{formatMoney(document.amountTotal)}</span>
+                          <span>{formatDate(document.issuedAt ?? document.createdAt)}</span>
+                          <div className="fiscal-page__row-actions">
+                            {document.pdfUrl ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(document.pdfUrl ?? "", "_blank", "noopener,noreferrer")}
+                              >
+                                PDF
+                              </Button>
+                            ) : null}
+                            {document.xmlUrl ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(document.xmlUrl ?? "", "_blank", "noopener,noreferrer")}
+                              >
+                                XML
+                              </Button>
+                            ) : null}
+                            {!document.pdfUrl && !document.xmlUrl ? <span className="fiscal-view__portal-no-file">Aguardando</span> : null}
+                          </div>
+                        </>
+                      )
+                    }}
                   />
                 ) : null}
               </div>
@@ -872,6 +893,9 @@ export function FiscalPage() {
                   columns={issuedColumns}
                   rowKey="id"
                   responsiveMinWidth="960px"
+                  loading={issuedDocumentsQuery.isLoading}
+                  loadingState="Carregando documentos emitidos..."
+                  error={issuedDocumentsQuery.isError ? issuedDocumentsQuery.error : undefined}
                   emptyState={
                     <EmptyState
                       variant="table"
@@ -901,16 +925,47 @@ export function FiscalPage() {
                       </div>
                     )
                   }}
-                />
-                <FiscalPaginationControls
-                  label="Paginacao de documentos emitidos"
-                  page={issuedCursorStack.length + 1}
-                  hasPrevious={issuedCursorStack.length > 0}
-                  hasNext={Boolean(issuedNextCursor)}
-                  isLoading={issuedDocumentsQuery.isFetching}
-                  onPrevious={() => setIssuedCursorStack((current) => current.slice(0, -1))}
-                  onNext={() => {
-                    if (issuedNextCursor) setIssuedCursorStack((current) => [...current, issuedNextCursor]);
+                  pagination={
+                    issuedCursorStack.length > 0 || issuedNextCursor
+                      ? {
+                          page: issuedCursorStack.length + 1,
+                          pageSize: FISCAL_LIST_PAGE_SIZE,
+                          hasPrevious: issuedCursorStack.length > 0,
+                          hasNext: Boolean(issuedNextCursor),
+                          isLoading: issuedDocumentsQuery.isFetching,
+                          label: "Paginacao de documentos emitidos",
+                          onPrevious: () => setIssuedCursorStack((current) => current.slice(0, -1)),
+                          onNext: () => {
+                            if (issuedNextCursor) setIssuedCursorStack((current) => [...current, issuedNextCursor]);
+                          }
+                        }
+                      : undefined
+                  }
+                  mobileCard={{
+                    render: (document) => (
+                      <>
+                        <strong>{document.internalReference}</strong>
+                        <StatusBadge tone={mapTone(document.status)}>{STATUS_LABELS[document.status] ?? document.status}</StatusBadge>
+                        <span>{formatMoney(document.amountTotal)}</span>
+                        <span>{formatDate(document.createdAt)}</span>
+                        <div className="fiscal-page__row-actions">
+                          <Button size="sm" variant="outline" onClick={() => void openDetails(document.id)}>Detalhe</Button>
+                          <Button size="sm" onClick={() => void runAction(() => issueFiscalDocumentMutation.mutateAsync(document.id))} disabled={isSubmitting}>Emitir</Button>
+                          <Button size="sm" variant="outline" onClick={() => void runAction(() => retryFiscalDocumentMutation.mutateAsync(document.id))} disabled={isSubmitting}>Retry</Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void runAction(() => cancelFiscalDocumentMutation.mutateAsync({
+                              documentId: document.id,
+                              justification: "Cancelamento solicitado pelo painel fiscal."
+                            }))}
+                            disabled={isSubmitting || !canCancelFiscalDocument(document)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </>
+                    )
                   }}
                 />
               </>
@@ -961,6 +1016,9 @@ export function FiscalPage() {
                   columns={receivedColumns}
                   rowKey="id"
                   responsiveMinWidth="920px"
+                  loading={receivedDocumentsQuery.isLoading}
+                  loadingState="Carregando notas recebidas..."
+                  error={receivedDocumentsQuery.isError ? receivedDocumentsQuery.error : undefined}
                   emptyState={
                     <EmptyState
                       variant="table"
@@ -968,16 +1026,35 @@ export function FiscalPage() {
                       description="Sincronize documentos recebidos por empresa para acompanhar entradas fiscais."
                     />
                   }
-                />
-                <FiscalPaginationControls
-                  label="Paginacao de documentos recebidos"
-                  page={receivedCursorStack.length + 1}
-                  hasPrevious={receivedCursorStack.length > 0}
-                  hasNext={Boolean(receivedNextCursor)}
-                  isLoading={receivedDocumentsQuery.isFetching}
-                  onPrevious={() => setReceivedCursorStack((current) => current.slice(0, -1))}
-                  onNext={() => {
-                    if (receivedNextCursor) setReceivedCursorStack((current) => [...current, receivedNextCursor]);
+                  pagination={
+                    receivedCursorStack.length > 0 || receivedNextCursor
+                      ? {
+                          page: receivedCursorStack.length + 1,
+                          pageSize: FISCAL_LIST_PAGE_SIZE,
+                          hasPrevious: receivedCursorStack.length > 0,
+                          hasNext: Boolean(receivedNextCursor),
+                          isLoading: receivedDocumentsQuery.isFetching,
+                          label: "Paginacao de documentos recebidos",
+                          onPrevious: () => setReceivedCursorStack((current) => current.slice(0, -1)),
+                          onNext: () => {
+                            if (receivedNextCursor) setReceivedCursorStack((current) => [...current, receivedNextCursor]);
+                          }
+                        }
+                      : undefined
+                  }
+                  mobileCard={{
+                    render: (item) => (
+                      <>
+                        <strong>{item.issuerName ?? "-"}</strong>
+                        <StatusBadge tone={mapTone(item.status)}>{STATUS_LABELS[item.status] ?? item.status}</StatusBadge>
+                        <span>{formatMoney(item.amountTotal)}</span>
+                        <span>{formatDate(item.issuedAt)}</span>
+                        <div className="fiscal-page__row-actions">
+                          {item.xmlUrl ? <a href={item.xmlUrl} target="_blank" rel="noreferrer">XML</a> : <span>-</span>}
+                          {item.pdfUrl ? <a href={item.pdfUrl} target="_blank" rel="noreferrer">PDF</a> : <span>-</span>}
+                        </div>
+                      </>
+                    )
                   }}
                 />
               </>
@@ -991,6 +1068,9 @@ export function FiscalPage() {
                   columns={stripeDraftColumns}
                   rowKey="id"
                   responsiveMinWidth="900px"
+                  loading={draftsQuery.isLoading}
+                  loadingState="Carregando drafts Stripe..."
+                  error={draftsQuery.isError ? draftsQuery.error : undefined}
                   emptyState={
                     <EmptyState
                       variant="table"
@@ -1007,16 +1087,33 @@ export function FiscalPage() {
                       </Button>
                     )
                   }}
-                />
-                <FiscalPaginationControls
-                  label="Paginacao de drafts fiscais"
-                  page={draftsCursorStack.length + 1}
-                  hasPrevious={draftsCursorStack.length > 0}
-                  hasNext={Boolean(draftsNextCursor)}
-                  isLoading={draftsQuery.isFetching}
-                  onPrevious={() => setDraftsCursorStack((current) => current.slice(0, -1))}
-                  onNext={() => {
-                    if (draftsNextCursor) setDraftsCursorStack((current) => [...current, draftsNextCursor]);
+                  pagination={
+                    draftsCursorStack.length > 0 || draftsNextCursor
+                      ? {
+                          page: draftsCursorStack.length + 1,
+                          pageSize: FISCAL_LIST_PAGE_SIZE,
+                          hasPrevious: draftsCursorStack.length > 0,
+                          hasNext: Boolean(draftsNextCursor),
+                          isLoading: draftsQuery.isFetching,
+                          label: "Paginacao de drafts fiscais",
+                          onPrevious: () => setDraftsCursorStack((current) => current.slice(0, -1)),
+                          onNext: () => {
+                            if (draftsNextCursor) setDraftsCursorStack((current) => [...current, draftsNextCursor]);
+                          }
+                        }
+                      : undefined
+                  }
+                  mobileCard={{
+                    render: (draft) => (
+                      <>
+                        <strong>{draft.stripeSessionId ?? "-"}</strong>
+                        <StatusBadge tone={mapTone(draft.status)}>{STATUS_LABELS[draft.status] ?? draft.status}</StatusBadge>
+                        <span>{draft.documentType}</span>
+                        <Button size="sm" onClick={() => void runAction(() => emitFiscalDraftMutation.mutateAsync(draft.id))} disabled={isSubmitting}>
+                          Emitir
+                        </Button>
+                      </>
+                    )
                   }}
                 />
               </>
@@ -1030,6 +1127,9 @@ export function FiscalPage() {
                   columns={syncRunColumns}
                   rowKey="id"
                   responsiveMinWidth="920px"
+                  loading={syncRunsQuery.isLoading}
+                  loadingState="Carregando sincronizacoes..."
+                  error={syncRunsQuery.isError ? syncRunsQuery.error : undefined}
                   emptyState={
                     <EmptyState
                       variant="table"
@@ -1037,16 +1137,31 @@ export function FiscalPage() {
                       description="As execucoes de sincronizacao de notas recebidas aparecerao aqui."
                     />
                   }
-                />
-                <FiscalPaginationControls
-                  label="Paginacao de sincronizacoes fiscais"
-                  page={syncRunsCursorStack.length + 1}
-                  hasPrevious={syncRunsCursorStack.length > 0}
-                  hasNext={Boolean(syncRunsNextCursor)}
-                  isLoading={syncRunsQuery.isFetching}
-                  onPrevious={() => setSyncRunsCursorStack((current) => current.slice(0, -1))}
-                  onNext={() => {
-                    if (syncRunsNextCursor) setSyncRunsCursorStack((current) => [...current, syncRunsNextCursor]);
+                  pagination={
+                    syncRunsCursorStack.length > 0 || syncRunsNextCursor
+                      ? {
+                          page: syncRunsCursorStack.length + 1,
+                          pageSize: FISCAL_SYNC_PAGE_SIZE,
+                          hasPrevious: syncRunsCursorStack.length > 0,
+                          hasNext: Boolean(syncRunsNextCursor),
+                          isLoading: syncRunsQuery.isFetching,
+                          label: "Paginacao de sincronizacoes fiscais",
+                          onPrevious: () => setSyncRunsCursorStack((current) => current.slice(0, -1)),
+                          onNext: () => {
+                            if (syncRunsNextCursor) setSyncRunsCursorStack((current) => [...current, syncRunsNextCursor]);
+                          }
+                        }
+                      : undefined
+                  }
+                  mobileCard={{
+                    render: (run) => (
+                      <>
+                        <strong>{run.syncType}</strong>
+                        <StatusBadge tone={mapTone(run.status)}>{STATUS_LABELS[run.status] ?? run.status}</StatusBadge>
+                        <span>{`${run.processedCount} / ${run.createdCount + run.updatedCount} salvas`}</span>
+                        <span>{formatDate(run.startedAt)}</span>
+                      </>
+                    )
                   }}
                 />
               </>
@@ -1186,12 +1301,18 @@ export function FiscalPage() {
                     </Button>
                   </AppFormActions>
                 </AppForm>
+                <FormField label="Buscar empresas" className="fiscal-view__field">
+                  <TextInput value={companySearch} onChange={(event) => handleCompanySearchChange(event.target.value)} placeholder="Nome, razao social ou CNPJ" />
+                </FormField>
                 <ResourceTable
                   className="fiscal-view__table"
                   data={companies}
                   columns={companyColumns}
                   rowKey="id"
                   responsiveMinWidth="880px"
+                  loading={companiesQuery.isLoading}
+                  loadingState="Carregando empresas fiscais..."
+                  error={companiesQuery.isError ? companiesQuery.error : undefined}
                   emptyState={
                     <EmptyState
                       variant="table"
@@ -1211,6 +1332,39 @@ export function FiscalPage() {
                           Validar
                         </Button>
                       </div>
+                    )
+                  }}
+                  pagination={
+                    companiesCursorStack.length > 0 || companiesNextCursor
+                      ? {
+                          page: companiesCursorStack.length + 1,
+                          pageSize: FISCAL_LIST_PAGE_SIZE,
+                          hasPrevious: companiesCursorStack.length > 0,
+                          hasNext: Boolean(companiesNextCursor),
+                          isLoading: companiesQuery.isFetching,
+                          label: "Paginacao de empresas fiscais",
+                          onPrevious: () => setCompaniesCursorStack((current) => current.slice(0, -1)),
+                          onNext: () => {
+                            if (companiesNextCursor) setCompaniesCursorStack((current) => [...current, companiesNextCursor]);
+                          }
+                        }
+                      : undefined
+                  }
+                  mobileCard={{
+                    render: (company) => (
+                      <>
+                        <strong>{company.displayName}</strong>
+                        <span>{company.cnpj}</span>
+                        <span>{company.focusEnvironment}</span>
+                        <div className="fiscal-page__row-actions">
+                          <Button size="sm" variant="outline" onClick={() => handleEditCompany(company)} disabled={isSubmitting}>
+                            Editar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => void runAction(() => validateFiscalCompanyMutation.mutateAsync(company.id))} disabled={isSubmitting}>
+                            Validar
+                          </Button>
+                        </div>
+                      </>
                     )
                   }}
                 />

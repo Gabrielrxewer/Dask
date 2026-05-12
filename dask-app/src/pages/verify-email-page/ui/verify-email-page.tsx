@@ -1,32 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, LoadingState } from "@/shared/ui";
-import { authService } from "@/features/auth/api/auth-service";
+import { useResendVerificationEmailMutation, verifyEmailOnce } from "@/features/auth";
 import { routePaths } from "@/app/router";
 import "./verify-email-page.css";
 
 type VerifyStatus = "idle" | "verifying" | "success" | "error";
 type ResendStatus = "idle" | "loading" | "sent" | "error";
 
-const verificationRequests = new Map<string, Promise<void>>();
-
-function verifyEmailOnce(token: string): Promise<void> {
-  const existingRequest = verificationRequests.get(token);
-  if (existingRequest) {
-    return existingRequest;
-  }
-
-  const request = authService.verifyEmail(token).catch((error) => {
-    verificationRequests.delete(token);
-    throw error;
-  });
-  verificationRequests.set(token, request);
-  return request;
-}
-
 export function VerifyEmailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const resendVerificationEmailMutation = useResendVerificationEmailMutation();
   const token = searchParams.get("token") ?? "";
   const email = searchParams.get("email") ?? "";
   const returnTo = searchParams.get("returnTo") ?? "";
@@ -65,7 +50,7 @@ export function VerifyEmailPage() {
 
     setResendStatus("loading");
     try {
-      await authService.resendVerificationEmail({ email });
+      await resendVerificationEmailMutation.mutateAsync({ email });
       setResendStatus("sent");
     } catch {
       setResendStatus("error");

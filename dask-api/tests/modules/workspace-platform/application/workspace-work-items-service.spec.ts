@@ -19,6 +19,8 @@ function makeService() {
     },
     item: {
       findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+      groupBy: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue({
         id: 'item-1',
         fields: {
@@ -98,6 +100,44 @@ describe('WorkspaceWorkItemsService client isolation', () => {
         })
       })
     );
+  });
+});
+
+describe('WorkspaceWorkItemsService listWorkItemsPage', () => {
+  it('uses cursor pagination and planned schedule window filters', async () => {
+    const { service, prisma } = makeService();
+
+    await service.listWorkItemsPage({
+      workspaceId: 'workspace-1',
+      userId: 'user-admin',
+      filters: {
+        pageSize: 2,
+        cursor: 'cursor-1',
+        assigneeId: 'member-1',
+        search: 'deploy',
+        plannedWindowFrom: new Date('2026-05-04T00:00:00.000Z'),
+        plannedWindowTo: new Date('2026-05-11T00:00:00.000Z'),
+        sortBy: 'plannedStartAt',
+        sortDirection: 'asc'
+      }
+    });
+
+    const findManyInput = prisma.item.findMany.mock.calls[0]?.[0];
+    const encodedWhere = JSON.stringify(findManyInput.where);
+
+    expect(findManyInput).toMatchObject({
+      take: 3,
+      cursor: { id: 'cursor-1' },
+      skip: 1,
+      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }]
+    });
+    expect(encodedWhere).toContain('plannedStartAt');
+    expect(encodedWhere).toContain('plannedEndAt');
+    expect(encodedWhere).toContain('2026-05-04T00:00:00.000Z');
+    expect(encodedWhere).toContain('2026-05-11T00:00:00.000Z');
+    expect(encodedWhere).toContain('member-1');
+    expect(encodedWhere).toContain('deploy');
+    expect(prisma.item.count).toHaveBeenCalledWith({ where: findManyInput.where });
   });
 });
 

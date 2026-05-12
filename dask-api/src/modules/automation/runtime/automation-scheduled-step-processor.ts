@@ -1,5 +1,6 @@
 import type { AutomationScheduledStep, PrismaClient } from '@prisma/client';
 import { AppError } from '@/core/errors/app-error';
+import { redactErrorMessage } from '@/core/security/redaction';
 import { AutomationRunEventService } from '@/modules/automation/application/automation-run-event-service';
 import { AutomationScheduledStepService } from '@/modules/automation/application/automation-scheduled-step-service';
 import { AutomationStepRunService } from '@/modules/automation/application/automation-step-run-service';
@@ -51,7 +52,7 @@ function emptyResult(): AutomationScheduledStepProcessorResult {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return redactErrorMessage(error);
 }
 
 export class AutomationScheduledStepProcessor {

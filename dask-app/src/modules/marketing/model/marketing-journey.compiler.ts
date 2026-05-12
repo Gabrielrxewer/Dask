@@ -51,9 +51,9 @@ export interface CompileMarketingJourneyOptions {
 }
 
 export interface CompileMarketingJourneyResult {
-  definition: MarketingJourneyDefinition;
-  automationDefinition: AutomationWorkflowDefinition;
-  runtimeGraph: MarketingJourneyRuntimeGraph;
+  definition: MarketingJourneyDefinition | null;
+  automationDefinition: AutomationWorkflowDefinition | null;
+  runtimeGraph: MarketingJourneyRuntimeGraph | null;
   errors: MarketingJourneyCompileIssue[];
   warnings: MarketingJourneyCompileIssue[];
 }
@@ -78,21 +78,23 @@ function issue(input: Omit<MarketingJourneyCompileIssue, "severity"> & { severit
 }
 
 function triggerRuntimeConfig(event: string, config: Record<string, unknown>): Record<string, unknown> {
+  const filters = isRecord(config.filters) ? config.filters : {};
+
   switch (event) {
-    case "lead.created":
-      return { triggerType: "lead_captured", segmentId: config.segmentId, filters: config.filters };
-    case "lead.score_updated":
-      return { domainEvent: "marketing.lead.score.changed", segmentId: config.segmentId, filters: config.filters };
+    case "commercial_work_item.created":
+      return { domainEvent: "commercial_work_item.created", segmentId: config.segmentId, filters };
+    case "commercial_work_item.score_updated":
+      return { domainEvent: "marketing.commercial_work_item.score.changed", filters };
     case "invoice.overdue":
-      return { triggerType: "billing_overdue", status: "overdue" };
+      return { triggerType: "billing_overdue", status: "overdue", filters };
     case "campaign.opened":
-      return { domainEvent: "marketing.email.opened", segmentId: config.segmentId, filters: config.filters };
+      return { domainEvent: "marketing.email.opened", campaignId: config.campaignId, filters };
     case "campaign.clicked":
-      return { domainEvent: "marketing.email.clicked", segmentId: config.segmentId, filters: config.filters };
+      return { domainEvent: "marketing.email.clicked", campaignId: config.campaignId, filters };
     case "manual":
       return { triggerType: "manual" };
     default:
-      return { domainEvent: event, segmentId: config.segmentId, filters: config.filters };
+      return { domainEvent: event, filters };
   }
 }
 
@@ -100,7 +102,18 @@ function delayToRuntime(config: Record<string, unknown>) {
   return {
     delayFor: {
       amount: Number(config.duration),
-      unit: readText(config.unit) || "days"
+      unit: readText(config.unit) || "minutes"
+    }
+  };
+}
+
+function conditionToRuntime(config: Record<string, unknown>): Record<string, unknown> {
+  return {
+    logic: readText(config.logic) || "all",
+    rules: Array.isArray(config.rules) ? config.rules : undefined,
+    expression: readText(config.expression) || undefined,
+    metadata: {
+      source: "marketing_journey"
     }
   };
 }
@@ -123,7 +136,7 @@ function actionToRuntime(nodeId: string, config: Record<string, unknown>, issues
       config: {
         channel: "email",
         provider: "mock",
-        to: "{{lead.email}}",
+        to: "{{contact.email}}",
         templateKey: campaignId || undefined,
         metadata: {
           source: "marketing_journey",
@@ -133,30 +146,37 @@ function actionToRuntime(nodeId: string, config: Record<string, unknown>, issues
     };
   }
 
-  if (type === "webhook") {
-    const webhookUrl = readText(config.webhookUrl);
-    if (!webhookUrl) {
+  if (type === "human_approval" || type === "approval") {
+    const requestedBy = readText(config.requestedBy);
+    const requestedByPath = readText(config.requestedByPath);
+    if (!requestedBy && !requestedByPath) {
       issues.push(issue({
-        code: "webhook_requires_url",
-        message: "Acao de webhook precisa de URL.",
+        code: "approval_requires_requester",
+        message: "Aprovacao humana precisa de solicitante ou caminho do solicitante.",
         nodeId
       }));
     }
 
-    issues.push(issue({
-      code: "webhook_runtime_pending",
-      message: "Webhook ainda nao possui executor no automation runtime atual.",
-      nodeId,
-      severity: "warning"
-    }));
-    return { type: "noop", config: { reason: "webhook_runtime_pending", webhookUrl } };
+    return {
+      type: "human_approval",
+      config: {
+        type: readText(config.approvalType) || readText(config.intent) || "marketing_journey_action",
+        title: readText(config.title) || "Aprovacao da jornada",
+        description: readText(config.description) || "Revise e aprove esta etapa da jornada.",
+        requestedBy: requestedBy || undefined,
+        requestedByPath: requestedByPath || undefined,
+        metadata: {
+          source: "marketing_journey",
+          actionType: type
+        }
+      }
+    };
   }
 
   issues.push(issue({
-    code: "action_runtime_pending",
-    message: `Acao ${type || "sem tipo"} ainda nao esta conectada ao automation runtime.`,
-    nodeId,
-    severity: "warning"
+    code: "action_not_supported",
+    message: `Acao ${type || "sem tipo"} ainda nao e suportada pelo Automation Runtime.`,
+    nodeId
   }));
 
   return { type: "noop", config: { reason: "marketing_action_runtime_pending", marketingAction: config } };
@@ -232,6 +252,123 @@ function assertAcyclic(nodes: JourneyNodeLike[], edges: JourneyEdgeLike[], issue
   }
 }
 
+function validateNodeConfiguration(node: JourneyNodeLike, issues: MarketingJourneyCompileIssue[]) {
+  const data = readRecord(node.data);
+  const kind = readText(data.kind);
+  const label = readText(data.label);
+  const config = readRecord(data.config);
+
+  if (!label) {
+    issues.push(issue({
+      code: "node_label_required",
+      message: "Todo bloco da jornada precisa de um nome.",
+      nodeId: node.id
+    }));
+  }
+
+  if (kind === "TRIGGER") {
+    if (!readText(config.event)) {
+      issues.push(issue({
+        code: "trigger_event_required",
+        message: "Gatilho precisa de um evento configurado.",
+        nodeId: node.id
+      }));
+    }
+    return;
+  }
+
+  if (kind === "DELAY") {
+    const amount = Number(config.duration);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      issues.push(issue({
+        code: "delay_duration_required",
+        message: "Espera precisa de uma duracao positiva.",
+        nodeId: node.id
+      }));
+    }
+    if (!readText(config.unit)) {
+      issues.push(issue({
+        code: "delay_unit_required",
+        message: "Espera precisa de uma unidade de tempo.",
+        nodeId: node.id
+      }));
+    }
+    return;
+  }
+
+  if (kind === "CONDITION" || kind === "BRANCH") {
+    const hasRules = Array.isArray(config.rules) && config.rules.length > 0;
+    const hasExpression = Boolean(readText(config.expression));
+    if (!hasRules && !hasExpression) {
+      issues.push(issue({
+        code: "condition_rules_required",
+        message: "Condicao precisa de pelo menos uma regra ou expressao.",
+        nodeId: node.id
+      }));
+    }
+    return;
+  }
+
+  if (kind === "ACTION") {
+    const actionType = readText(config.type);
+    if (!actionType) {
+      issues.push(issue({
+        code: "action_type_required",
+        message: "Acao precisa de um tipo configurado.",
+        nodeId: node.id
+      }));
+      return;
+    }
+    actionToRuntime(node.id, config, issues);
+    return;
+  }
+
+  if (kind !== "EXIT") {
+    issues.push(issue({
+      code: "node_kind_not_supported",
+      message: "Jornada possui um bloco com tipo nao suportado.",
+      nodeId: node.id
+    }));
+  }
+}
+
+function assertConditionBranchesHaveDestinations(
+  nodes: JourneyNodeLike[],
+  edges: JourneyEdgeLike[],
+  issues: MarketingJourneyCompileIssue[]
+) {
+  const outgoingBySource = new Map<string, JourneyEdgeLike[]>();
+  for (const edge of edges) {
+    outgoingBySource.set(edge.source, [...(outgoingBySource.get(edge.source) ?? []), edge]);
+  }
+
+  for (const node of nodes) {
+    const kind = readText(readRecord(node.data).kind);
+    if (kind !== "CONDITION" && kind !== "BRANCH") {
+      continue;
+    }
+
+    const branchTypes = new Set((outgoingBySource.get(node.id) ?? [])
+      .map((edge) => readText(readRecord(edge.data).branchType) || readText(edge.sourceHandle))
+      .filter(Boolean));
+
+    if (!branchTypes.has("yes")) {
+      issues.push(issue({
+        code: "branch_yes_target_required",
+        message: "Condicao precisa de um destino para o caminho Sim.",
+        nodeId: node.id
+      }));
+    }
+    if (!branchTypes.has("no")) {
+      issues.push(issue({
+        code: "branch_no_target_required",
+        message: "Condicao precisa de um destino para o caminho Nao.",
+        nodeId: node.id
+      }));
+    }
+  }
+}
+
 export function compileJourneyGraphToAutomationDefinition(
   nodes: JourneyNodeLike[],
   edges: JourneyEdgeLike[],
@@ -258,6 +395,10 @@ export function compileJourneyGraphToAutomationDefinition(
     issues.push(issue({ code: "single_trigger", message: "A jornada deve ter um unico gatilho principal." }));
   }
 
+  for (const node of nodes) {
+    validateNodeConfiguration(node, issues);
+  }
+
   for (const edge of edges) {
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
       issues.push(issue({
@@ -268,9 +409,23 @@ export function compileJourneyGraphToAutomationDefinition(
     }
   }
 
+  assertConditionBranchesHaveDestinations(nodes, edges, issues);
+
   if (triggerNodes.length > 0 && nodes.length > 0) {
     assertReachable(nodes, edges, issues);
     assertAcyclic(nodes, edges, issues);
+  }
+
+  const errors = issues.filter((entry) => entry.severity === "error");
+  const warnings = issues.filter((entry) => entry.severity === "warning");
+  if (errors.length > 0) {
+    return {
+      definition: null,
+      automationDefinition: null,
+      runtimeGraph: null,
+      errors,
+      warnings
+    };
   }
 
   const steps: MarketingJourneyStep[] = nodes.map((node, index) => {
@@ -280,7 +435,17 @@ export function compileJourneyGraphToAutomationDefinition(
     return {
       key: node.id,
       name: readText(data.label) || `Step ${index + 1}`,
-      kind: kind === "DELAY" ? "DELAY" : kind === "ACTION" ? "ACTION" : kind === "CONDITION" ? "CONDITION" : kind === "TRIGGER" ? "TRIGGER" : "EXIT",
+      kind: kind === "DELAY"
+        ? "DELAY"
+        : kind === "ACTION"
+        ? "ACTION"
+        : kind === "CONDITION"
+        ? "CONDITION"
+        : kind === "BRANCH"
+        ? "BRANCH"
+        : kind === "TRIGGER"
+        ? "TRIGGER"
+        : "EXIT",
       position: index,
       config
     };
@@ -312,12 +477,12 @@ export function compileJourneyGraphToAutomationDefinition(
       };
     }
 
-    if (kind === "CONDITION") {
+    if (kind === "CONDITION" || kind === "BRANCH") {
       return {
         id: node.id,
         type: "condition",
         label,
-        config,
+        config: conditionToRuntime(config),
         position: node.position
       };
     }
@@ -358,11 +523,13 @@ export function compileJourneyGraphToAutomationDefinition(
       flowId: options.flowId ?? null
     }
   };
+  const runtimeEdges = runtimeGraph.edges;
   const triggerConfig = readRecord(readRecord(triggerNode?.data).config);
   const automationDefinition = automationGraphToWorkflowDefinition({
     graph: runtimeGraph,
     source: {
       kind: "marketing_journey",
+      flowId: options.flowId ?? null,
       refId: options.flowId ?? null,
       name: options.name
     },
@@ -376,7 +543,7 @@ export function compileJourneyGraphToAutomationDefinition(
     }
   });
 
-  const definition = marketingJourneyDefinitionSchema.parse({
+  const definitionInput = {
     version: 1,
     id: options.flowId ?? undefined,
     workspaceId: options.workspaceId,
@@ -389,32 +556,45 @@ export function compileJourneyGraphToAutomationDefinition(
       filters: isRecord(triggerConfig.filters) ? triggerConfig.filters : undefined
     },
     nodes,
-    edges,
+    edges: runtimeEdges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      data: edge.condition ? { branchType: readText(edge.condition.branchType) || undefined } : undefined
+    })),
     steps,
     metadata: {
       runtimeGraph,
       automationDefinition,
       compiledAt: options.now ?? new Date().toISOString()
     }
-  });
+  };
 
-  const blockingIssues = options.allowDraft ? issues.filter((entry) => entry.code === "invalid_edge") : issues;
-  if (blockingIssues.length > 0 && !options.allowDraft) {
+  const parsedDefinition = marketingJourneyDefinitionSchema.safeParse(definitionInput);
+  if (!parsedDefinition.success) {
     return {
-      definition,
-      automationDefinition,
-      runtimeGraph,
-      errors: issues.filter((entry) => entry.severity === "error"),
-      warnings: issues.filter((entry) => entry.severity === "warning")
+      definition: null,
+      automationDefinition: null,
+      runtimeGraph: null,
+      errors: [
+        ...errors,
+        issue({
+          code: "runtime_definition_invalid",
+          message: parsedDefinition.error.issues[0]?.message ?? "RuntimeGraph nao pode ser gerado para esta jornada."
+        })
+      ],
+      warnings
     };
   }
 
   return {
-    definition,
+    definition: parsedDefinition.data,
     automationDefinition,
     runtimeGraph,
-    errors: issues.filter((entry) => entry.severity === "error"),
-    warnings: issues.filter((entry) => entry.severity === "warning")
+    errors,
+    warnings
   };
 }
 

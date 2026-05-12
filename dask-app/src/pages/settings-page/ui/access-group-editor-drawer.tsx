@@ -1,12 +1,15 @@
 ﻿import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import type { WorkspaceAccessGroup, WorkspacePermissionKey } from "@/modules/workspace/model";
-import { Button, DrawerShell, FormField, TextInput } from "@/shared/ui";
+import { AppForm, AppFormField, Button, DrawerShell, Tabs, TextInput } from "@/shared/ui";
 import { ModulePicker } from "./module-picker";
 import { PermissionPicker } from "./permission-picker";
 import type { GroupDraft } from "./members-settings.model";
-import { MODULE_META } from "./members-settings.model";
+import { accessGroupFormSchema, MODULE_META } from "./members-settings.model";
 
 type GroupEditorSection = "info" | "allow" | "deny" | "modules";
+const ACCESS_GROUP_FORM_ID = "access-group-editor-form";
 
 export function AccessGroupEditorDrawer({
   catalog,
@@ -19,31 +22,31 @@ export function AccessGroupEditorDrawer({
   onSave: (draft: GroupDraft) => Promise<void>;
   onClose: () => void;
 }) {
-  const [draft, setDraft] = useState<GroupDraft>({
-    name: group?.name ?? "",
-    description: group?.description ?? "",
-    allow: group?.allow ?? [],
-    deny: group?.deny ?? [],
-    allowedModules: group?.allowedModules ?? [],
-    boardViewKeys: (group?.allowedBoardViewKeys ?? []).join(", "),
-    ownCardsOnly: group?.ownCardsOnly === true,
+  const form = useForm<GroupDraft, unknown, GroupDraft>({
+    resolver: zodResolver(accessGroupFormSchema),
+    defaultValues: {
+      name: group?.name ?? "",
+      description: group?.description ?? "",
+      allow: group?.allow ?? [],
+      deny: group?.deny ?? [],
+      allowedModules: group?.allowedModules ?? [],
+      boardViewKeys: (group?.allowedBoardViewKeys ?? []).join(", "),
+      ownCardsOnly: group?.ownCardsOnly === true,
+    },
+    mode: "onChange"
   });
   const [section, setSection] = useState<GroupEditorSection>("info");
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSave = async () => {
-    if (!draft.name.trim()) {
-      setError("Informe um nome para o grupo.");
-      return;
-    }
-    setIsSaving(true);
+  const draft = form.watch();
+  const isSaving = form.formState.isSubmitting;
+
+  const handleSave = async (values: GroupDraft) => {
     setError("");
     try {
-      await onSave(draft);
+      await onSave(values);
     } catch {
-      setError("Não foi possível salvar o grupo.");
-      setIsSaving(false);
+      setError("Nao foi possivel salvar o grupo.");
     }
   };
 
@@ -55,27 +58,26 @@ export function AccessGroupEditorDrawer({
   ];
 
   const drawerNav = (
-    <>
-      {SECTIONS.map(s => (
-        <button
-          key={s.id}
-          type="button"
-          className={`ms-drawer__nav-btn${section === s.id ? " ms-drawer__nav-btn--active" : ""}`}
-          onClick={() => setSection(s.id)}
-        >
-          {s.label}
-          {s.id === "allow" && draft.allow.length > 0 && (
+    <Tabs<GroupEditorSection>
+      value={section}
+      onChange={setSection}
+      ariaLabel="Secoes do grupo de acesso"
+      className="ms-drawer__nav-tabs"
+      itemClassName="ms-drawer__nav-btn"
+      activeItemClassName="ms-drawer__nav-btn--active"
+      items={SECTIONS.map((s) => ({
+        id: s.id,
+        label: s.label,
+        badge:
+          s.id === "allow" && draft.allow.length > 0 ? (
             <span className="ms-badge ms-badge--green">{draft.allow.length}</span>
-          )}
-          {s.id === "deny" && draft.deny.length > 0 && (
+          ) : s.id === "deny" && draft.deny.length > 0 ? (
             <span className="ms-badge ms-badge--red">{draft.deny.length}</span>
-          )}
-          {s.id === "modules" && draft.allowedModules.length > 0 && (
+          ) : s.id === "modules" && draft.allowedModules.length > 0 ? (
             <span className="ms-badge ms-badge--blue">{draft.allowedModules.length}</span>
-          )}
-        </button>
-      ))}
-    </>
+          ) : null
+      }))}
+    />
   );
 
   const drawerFooter = (
@@ -83,7 +85,7 @@ export function AccessGroupEditorDrawer({
       <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
         Cancelar
       </Button>
-      <Button type="button" onClick={() => void handleSave()} disabled={isSaving}>
+      <Button type="submit" form={ACCESS_GROUP_FORM_ID} disabled={isSaving}>
         {isSaving ? "Salvando..." : group ? "Salvar alterações" : "Criar grupo"}
       </Button>
     </>
@@ -107,24 +109,29 @@ export function AccessGroupEditorDrawer({
       footer={drawerFooter}
       footerClassName="ms-drawer__footer"
     >
+      <AppForm
+        id={ACCESS_GROUP_FORM_ID}
+        form={form}
+        onSubmit={handleSave}
+        className="ms-drawer__form"
+        loading={isSaving}
+      >
         {section === "info" && (
           <div className="ms-drawer__section">
-            <FormField label="Nome do grupo">
+            <AppFormField label="Nome do grupo" error={form.formState.errors.name?.message}>
               <TextInput
-                value={draft.name}
+                {...form.register("name")}
                 placeholder="Ex: Time de Vendas"
-                onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
                 disabled={isSaving}
               />
-            </FormField>
-            <FormField label="Descrição (opcional)">
+            </AppFormField>
+            <AppFormField label="Descricao (opcional)" error={form.formState.errors.description?.message}>
               <TextInput
-                value={draft.description}
+                {...form.register("description")}
                 placeholder="Descreva o propósito deste grupo..."
-                onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
                 disabled={isSaving}
               />
-            </FormField>
+            </AppFormField>
 
             {(draft.allow.length > 0 || draft.deny.length > 0 || draft.allowedModules.length > 0) && (
               <div className="ms-group-preview">
@@ -172,7 +179,7 @@ export function AccessGroupEditorDrawer({
             <PermissionPicker
               catalog={catalog}
               selected={draft.allow}
-              onChange={keys => setDraft(d => ({ ...d, allow: keys }))}
+              onChange={keys => form.setValue("allow", keys, { shouldDirty: true, shouldValidate: true })}
               disabled={isSaving}
             />
           </div>
@@ -186,7 +193,7 @@ export function AccessGroupEditorDrawer({
             <PermissionPicker
               catalog={catalog}
               selected={draft.deny}
-              onChange={keys => setDraft(d => ({ ...d, deny: keys }))}
+              onChange={keys => form.setValue("deny", keys, { shouldDirty: true, shouldValidate: true })}
               disabled={isSaving}
             />
           </div>
@@ -194,32 +201,38 @@ export function AccessGroupEditorDrawer({
 
         {section === "modules" && (
           <div className="ms-drawer__section">
-            <FormField label="Módulos habilitados para este grupo">
+            <AppFormField label="Modulos habilitados para este grupo" error={form.formState.errors.allowedModules?.message}>
               <ModulePicker
                 selected={draft.allowedModules}
-                onChange={keys => setDraft(d => ({ ...d, allowedModules: keys }))}
+                onChange={keys => form.setValue("allowedModules", keys, { shouldDirty: true, shouldValidate: true })}
                 disabled={isSaving}
               />
-            </FormField>
-            <FormField label="Views do board permitidas (separadas por vírgula)">
+            </AppFormField>
+            <AppFormField label="Views do board permitidas (separadas por virgula)" error={form.formState.errors.boardViewKeys?.message}>
               <TextInput
-                value={draft.boardViewKeys}
+                {...form.register("boardViewKeys")}
                 placeholder="kanban, list, agenda..."
-                onChange={e => setDraft(d => ({ ...d, boardViewKeys: e.target.value }))}
                 disabled={isSaving}
               />
-            </FormField>
-            <label className="ms-toggle-label">
-              <input
-                type="checkbox"
-                checked={draft.ownCardsOnly}
-                onChange={e => setDraft(d => ({ ...d, ownCardsOnly: e.target.checked }))}
-                disabled={isSaving}
-              />
-              <span>Mostrar somente cards próprios</span>
-            </label>
+            </AppFormField>
+            <Controller
+              control={form.control}
+              name="ownCardsOnly"
+              render={({ field }) => (
+                <label className="ms-toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={event => field.onChange(event.target.checked)}
+                    disabled={isSaving}
+                  />
+                  <span>Mostrar somente cards proprios</span>
+                </label>
+              )}
+            />
           </div>
         )}
+      </AppForm>
     </DrawerShell>
   );
 }

@@ -1,4 +1,4 @@
-import type { DragEvent } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import type { TaskCardSlotArea } from "@/entities/task";
 import type { EditorDropTarget } from "@/pages/settings-page/model/work-item-layout-editor";
 import type { DragPayload } from "./work-item-editor-settings.model";
@@ -11,7 +11,6 @@ interface WorkItemCardEmptySlotProps {
   dropTarget: EditorDropTarget | null;
   dragPayload: DragPayload | null;
   onUpdateDropTarget: (target: EditorDropTarget | null) => void;
-  onDropOnTarget: (event: DragEvent<HTMLElement>, target: EditorDropTarget) => void;
 }
 
 export function WorkItemCardEmptySlot({
@@ -21,8 +20,7 @@ export function WorkItemCardEmptySlot({
   slotLimit,
   dropTarget,
   dragPayload,
-  onUpdateDropTarget,
-  onDropOnTarget
+  onUpdateDropTarget
 }: WorkItemCardEmptySlotProps) {
   const target: EditorDropTarget = {
     surface: "card",
@@ -35,21 +33,23 @@ export function WorkItemCardEmptySlot({
     dropTarget.kind === "empty-slot" &&
     dropTarget.area === area &&
     dropTarget.index === index;
+  const { setNodeRef, isOver } = useDroppable({
+    id: `work-item-card-empty:${area}:${index}`,
+    disabled: !dragPayload,
+    data: { target }
+  });
   const SlotTag = area === "badge" || area === "summary" || area === "meta" ? "span" : "div";
 
   return (
     <SlotTag
-      className={`wie__card-empty-slot wie__card-empty-slot--${area}${isTarget ? " is-target" : ""}`}
+      ref={setNodeRef}
+      className={`wie__card-empty-slot wie__card-empty-slot--${area}${isTarget || isOver ? " is-target" : ""}`}
       data-slot-area={area}
-      data-drop-intent={isTarget ? "vacancy" : undefined}
-      onDragOver={(event) => {
+      data-drop-intent={isTarget || isOver ? "vacancy" : undefined}
+      onPointerEnter={() => {
         if (!dragPayload) return;
-        event.preventDefault();
-        event.stopPropagation();
-        event.dataTransfer.dropEffect = dragPayload.kind === "type" ? "copy" : "move";
         onUpdateDropTarget(target);
       }}
-      onDrop={(event) => onDropOnTarget(event, target)}
     >
       <span className="wie__card-empty-slot-label">+ campo</span>
       <span className="wie__card-empty-slot-count">{`${occupiedCount}/${slotLimit}`}</span>

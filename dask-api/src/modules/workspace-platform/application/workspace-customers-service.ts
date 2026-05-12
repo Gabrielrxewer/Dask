@@ -60,6 +60,57 @@ function normalizeStatus(status: CustomerStatus | undefined): CustomerStatus | u
   return customerStatuses.has(status) ? status : 'prospect';
 }
 
+function textField(fields: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = fields[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function buildCustomerPayloadFromWorkItem(item: {
+  id: string;
+  title: string;
+  description: string | null;
+  fields: unknown;
+}): CustomerPayload {
+  const fields = isRecord(item.fields) ? item.fields : {};
+  const name =
+    textField(fields, 'clientName', 'companyName', 'contactName', 'fullName', 'name') ??
+    item.title.trim();
+
+  return {
+    name,
+    tradeName: textField(fields, 'tradeName', 'companyName', 'clientName'),
+    legalName: textField(fields, 'legalName', 'clientLegalName'),
+    document: textField(fields, 'document', 'clientDocument'),
+    stateRegistration: textField(fields, 'stateRegistration'),
+    municipalRegistration: textField(fields, 'municipalRegistration'),
+    taxRegime: textField(fields, 'taxRegime'),
+    email: textField(fields, 'contactEmail', 'email'),
+    phone: textField(fields, 'contactPhone', 'phone'),
+    website: textField(fields, 'website'),
+    status: 'prospect',
+    notes: item.description,
+    sourceWorkItemId: item.id
+  };
+}
+
+function mergeCustomerPayload(base: CustomerPayload, override?: CustomerPayload): CustomerPayload {
+  if (!override) {
+    return base;
+  }
+
+  return {
+    ...base,
+    ...override,
+    sourceWorkItemId: base.sourceWorkItemId
+  };
+}
+
 function normalizeAddress(value: CustomerAddress | null | undefined): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined {
   if (value === undefined) {
     return undefined;
@@ -285,6 +336,7 @@ export class WorkspaceCustomersService {
         select: {
           id: true,
           title: true,
+          description: true,
           fields: true,
           metadata: true,
           createdBy: true,
@@ -300,29 +352,13 @@ export class WorkspaceCustomersService {
         ? await tx.customer.findFirst({
             where: { id: input.payload.customerId, workspaceId: input.workspaceId }
           })
-        : input.payload.customer
-          ? await tx.customer.create({
-              data: {
-                workspaceId: input.workspaceId,
-                name: input.payload.customer.name.trim(),
-                tradeName: normalizeNullableText(input.payload.customer.tradeName),
-                legalName: normalizeNullableText(input.payload.customer.legalName),
-                document: normalizeNullableText(input.payload.customer.document),
-                stateRegistration: normalizeNullableText(input.payload.customer.stateRegistration),
-                municipalRegistration: normalizeNullableText(input.payload.customer.municipalRegistration),
-                taxRegime: normalizeNullableText(input.payload.customer.taxRegime),
-                email: normalizeNullableText(input.payload.customer.email)?.toLowerCase(),
-                phone: normalizeNullableText(input.payload.customer.phone),
-                website: normalizeNullableText(input.payload.customer.website),
-                logoUrl: normalizeNullableText(input.payload.customer.logoUrl),
-                address: normalizeAddress(input.payload.customer.address),
-                status: normalizeStatus(input.payload.customer.status) ?? 'prospect',
-                notes: normalizeNullableText(input.payload.customer.notes),
-                createdBy: input.userId,
-                updatedBy: input.userId
-              }
+        : await tx.customer.create({
+            data: this.buildCustomerCreateData({
+              workspaceId: input.workspaceId,
+              userId: input.userId,
+              payload: mergeCustomerPayload(buildCustomerPayloadFromWorkItem(item), input.payload.customer)
             })
-          : null;
+          });
 
       if (!customer) {
         throw new AppError('Customer not found for conversion', 404);
@@ -417,6 +453,37 @@ export class WorkspaceCustomersService {
     });
 
     return this.serializeCustomer(converted);
+  }
+
+  private buildCustomerCreateData(input: {
+    workspaceId: string;
+    userId: string;
+    payload: CustomerPayload;
+  }): Prisma.CustomerUncheckedCreateInput {
+    const name = input.payload.name.trim();
+    if (name.length < 2) {
+      throw new AppError('Customer name must have at least 2 characters', 422);
+    }
+
+    return {
+      workspaceId: input.workspaceId,
+      name,
+      tradeName: normalizeNullableText(input.payload.tradeName),
+      legalName: normalizeNullableText(input.payload.legalName),
+      document: normalizeNullableText(input.payload.document),
+      stateRegistration: normalizeNullableText(input.payload.stateRegistration),
+      municipalRegistration: normalizeNullableText(input.payload.municipalRegistration),
+      taxRegime: normalizeNullableText(input.payload.taxRegime),
+      email: normalizeNullableText(input.payload.email)?.toLowerCase(),
+      phone: normalizeNullableText(input.payload.phone),
+      website: normalizeNullableText(input.payload.website),
+      logoUrl: normalizeNullableText(input.payload.logoUrl),
+      address: normalizeAddress(input.payload.address),
+      status: normalizeStatus(input.payload.status) ?? 'prospect',
+      notes: normalizeNullableText(input.payload.notes),
+      createdBy: input.userId,
+      updatedBy: input.userId
+    };
   }
 
   private serializeCustomer(customer: {

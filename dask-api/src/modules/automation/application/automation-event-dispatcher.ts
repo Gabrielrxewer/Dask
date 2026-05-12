@@ -260,8 +260,8 @@ export class AutomationEventDispatcher {
         hasFilterValue(config.status, payload.status);
     }
 
-    if (triggerType === 'lead_captured') {
-      return event.name === DomainEventNames.LeadCaptured;
+    if (triggerType === 'commercial_work_item_created') {
+      return event.name === DomainEventNames.CommercialWorkItemCreated;
     }
 
     return false;

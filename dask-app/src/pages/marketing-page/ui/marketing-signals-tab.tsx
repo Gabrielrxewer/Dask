@@ -34,10 +34,10 @@ interface MarketingSignalsTabProps {
   signalsError: string;
   signalTypeFilter: string;
   signalShowDismissed: boolean;
-  signalGroupByLead: boolean;
+  signalGroupByWorkItem: boolean;
   setSignalTypeFilter: (type: string) => void;
   setSignalShowDismissed: (showDismissed: boolean) => void;
-  setSignalGroupByLead: (groupByLead: boolean) => void;
+  setSignalGroupByWorkItem: (groupByWorkItem: boolean) => void;
   setTab: (tab: MarketingTab) => void;
   loadSignals: () => Promise<void>;
   handleSignalAction: (signal: MarketingSignal, action: "seen" | "dismissed") => Promise<void>;
@@ -52,10 +52,10 @@ export function MarketingSignalsTab({
   signalsError,
   signalTypeFilter,
   signalShowDismissed,
-  signalGroupByLead,
+  signalGroupByWorkItem,
   setSignalTypeFilter,
   setSignalShowDismissed,
-  setSignalGroupByLead,
+  setSignalGroupByWorkItem,
   setTab,
   loadSignals,
   handleSignalAction,
@@ -84,7 +84,7 @@ export function MarketingSignalsTab({
         <div className="mkt-screen-hero__stats">
           <div><strong>{fmtNum(signalUnreadCount)}</strong><span>nao lidos</span></div>
           <div><strong>{fmtNum(signals.length)}</strong><span>sinais no radar</span></div>
-          <div><strong>{signalGroupByLead ? "por lead" : "evento"}</strong><span>visualizacao</span></div>
+          <div><strong>{signalGroupByWorkItem ? "por workItem" : "evento"}</strong><span>visualizacao</span></div>
         </div>
       </section>
 
@@ -101,10 +101,10 @@ export function MarketingSignalsTab({
           <label className="mkt-inbox__toggle">
             <input
               type="checkbox"
-              checked={signalGroupByLead}
-              onChange={(event) => setSignalGroupByLead(event.target.checked)}
+              checked={signalGroupByWorkItem}
+              onChange={(event) => setSignalGroupByWorkItem(event.target.checked)}
             />
-            Agrupar por lead
+            Agrupar por workItem
           </label>
           <label className="mkt-inbox__toggle">
             <input
@@ -164,21 +164,21 @@ export function MarketingSignalsTab({
         />
       ) : null}
 
-      {filtered.length > 0 && signalGroupByLead ? (
+      {filtered.length > 0 && signalGroupByWorkItem ? (
         <GroupedSignalsFeed
           signals={filtered}
           isCreatingFollowUp={isCreatingFollowUp}
-          onOpenLead={() => setTab("audience")}
+          onOpenWorkItem={() => setTab("audience")}
           onCreateFollowUp={setFollowUpSignal}
           onSignalAction={handleSignalAction}
         />
       ) : null}
 
-      {filtered.length > 0 && !signalGroupByLead ? (
+      {filtered.length > 0 && !signalGroupByWorkItem ? (
         <SignalsFeed
           signals={filtered}
           isCreatingFollowUp={isCreatingFollowUp}
-          onOpenLead={(signal) => {
+          onOpenWorkItem={(signal) => {
             void handleSignalAction(signal, "seen");
             setTab("audience");
           }}
@@ -196,27 +196,27 @@ export function MarketingSignalsTab({
 function GroupedSignalsFeed({
   signals,
   isCreatingFollowUp,
-  onOpenLead,
+  onOpenWorkItem,
   onCreateFollowUp,
   onSignalAction
 }: {
   signals: MarketingSignal[];
   isCreatingFollowUp: boolean;
-  onOpenLead: () => void;
+  onOpenWorkItem: () => void;
   onCreateFollowUp: (signal: MarketingSignal) => void;
   onSignalAction: (signal: MarketingSignal, action: "seen" | "dismissed") => Promise<void>;
 }) {
-  const byLead = new Map<string, MarketingSignal[]>();
+  const byWorkItem = new Map<string, MarketingSignal[]>();
   for (const signal of signals) {
-    const key = signal.leadId ?? "__no_lead__";
-    byLead.set(key, [...(byLead.get(key) ?? []), signal]);
+    const key = signal.workItemId ?? "__no_work_item__";
+    byWorkItem.set(key, [...(byWorkItem.get(key) ?? []), signal]);
   }
 
   return (
     <div className="mkt-inbox__feed">
-      {Array.from(byLead.entries()).map(([leadKey, group]) => {
+      {Array.from(byWorkItem.entries()).map(([workItemKey, group]) => {
         const topSignal = group[0]!;
-        const lead = topSignal.lead;
+        const workItem = topSignal.workItem;
         const topPriority = group.reduce<MarketingSignalPriority>((best, signal) => {
           const priority = signalPriority(signal);
           const rank: Record<MarketingSignalPriority, number> = { urgent: 3, high: 2, medium: 1, low: 0 };
@@ -224,18 +224,18 @@ function GroupedSignalsFeed({
         }, "low");
 
         return (
-          <div key={leadKey} className={`mkt-inbox__group mkt-inbox__group--${topPriority}`}>
+          <div key={workItemKey} className={`mkt-inbox__group mkt-inbox__group--${topPriority}`}>
             <div className="mkt-inbox__group-head">
-              <div className="mkt-inbox__lead-info">
-                <span className="mkt-inbox__lead-avatar">{(lead?.fullName ?? "?")[0]?.toUpperCase()}</span>
+              <div className="mkt-inbox__workItem-info">
+                <span className="mkt-inbox__workItem-avatar">{(workItem?.contactName ?? "?")[0]?.toUpperCase()}</span>
                 <div>
-                  <strong className="mkt-inbox__lead-name">{lead?.fullName ?? lead?.email ?? "Lead desconhecido"}</strong>
-                  {lead?.companyName ? <span className="mkt-inbox__lead-company">{lead.companyName}</span> : null}
+                  <strong className="mkt-inbox__workItem-name">{workItem?.contactName ?? workItem?.email ?? "Contato desconhecido"}</strong>
+                  {workItem?.companyName ? <span className="mkt-inbox__workItem-company">{workItem.companyName}</span> : null}
                 </div>
               </div>
               <div className="mkt-inbox__group-meta">
                 <StatusBadge tone={priorityBadgeTone(topPriority)} size="sm">{signalPriorityLabel(topPriority)}</StatusBadge>
-                <StatusBadge tone="info" size="sm">Score {lead?.score ?? "-"}</StatusBadge>
+                <StatusBadge tone="info" size="sm">Score {workItem?.score ?? "-"}</StatusBadge>
                 <StatusBadge tone="muted" size="sm">{group.length} sinal{group.length > 1 ? "is" : ""}</StatusBadge>
               </div>
             </div>
@@ -265,14 +265,14 @@ function GroupedSignalsFeed({
               <span>{signalSuggestion(topSignal)}</span>
             </div>
             <div className="mkt-inbox__card-actions">
-              <Button size="sm" variant="outline" onClick={onOpenLead}>
-                Abrir lead
+              <Button size="sm" variant="outline" onClick={onOpenWorkItem}>
+                Abrir item
               </Button>
               <Button
                 size="sm"
                 variant="primary"
                 onClick={() => onCreateFollowUp(topSignal)}
-                disabled={!topSignal.leadId || isCreatingFollowUp}
+                disabled={!topSignal.workItemId || isCreatingFollowUp}
               >
                 Criar tarefa de follow-up
               </Button>
@@ -287,13 +287,13 @@ function GroupedSignalsFeed({
 function SignalsFeed({
   signals,
   isCreatingFollowUp,
-  onOpenLead,
+  onOpenWorkItem,
   onCreateFollowUp,
   onSignalAction
 }: {
   signals: MarketingSignal[];
   isCreatingFollowUp: boolean;
-  onOpenLead: (signal: MarketingSignal) => void;
+  onOpenWorkItem: (signal: MarketingSignal) => void;
   onCreateFollowUp: (signal: MarketingSignal) => void;
   onSignalAction: (signal: MarketingSignal, action: "seen" | "dismissed") => Promise<void>;
 }) {
@@ -305,10 +305,10 @@ function SignalsFeed({
           <article key={signal.id} className={`mkt-inbox__card mkt-inbox__card--${priority}${signal.seenAt ? " mkt-inbox__card--seen" : ""}${signal.dismissedAt ? " mkt-inbox__card--dismissed" : ""}`}>
             <div className="mkt-inbox__card-head">
               <div className="mkt-inbox__card-who">
-                <span className="mkt-inbox__lead-avatar">{(signal.lead?.fullName ?? signal.lead?.email ?? "?")[0]?.toUpperCase()}</span>
+                <span className="mkt-inbox__workItem-avatar">{(signal.workItem?.contactName ?? signal.workItem?.email ?? "?")[0]?.toUpperCase()}</span>
                 <div className="mkt-inbox__card-identity">
-                  <strong className="mkt-inbox__lead-name">{signal.lead?.fullName ?? signal.lead?.email ?? "Lead desconhecido"}</strong>
-                  {signal.lead?.companyName ? <span className="mkt-inbox__lead-company">{signal.lead.companyName}</span> : null}
+                  <strong className="mkt-inbox__workItem-name">{signal.workItem?.contactName ?? signal.workItem?.email ?? "Contato desconhecido"}</strong>
+                  {signal.workItem?.companyName ? <span className="mkt-inbox__workItem-company">{signal.workItem.companyName}</span> : null}
                 </div>
               </div>
               <div className="mkt-inbox__card-meta">
@@ -323,7 +323,7 @@ function SignalsFeed({
                 {signal.campaign ? <span className="mkt-inbox__event-context">via {signal.campaign.name}</span> : null}
               </div>
               {signal.headline ? <p className="mkt-inbox__headline">{signal.headline}</p> : null}
-              {signal.type === "LEAD_SCORE_CHANGED" && signal.payload ? (
+              {signal.type === "COMMERCIAL_SCORE_CHANGED" && signal.payload ? (
                 <div className="mkt-inbox__score-delta">
                   <span className="mkt-inbox__score-prev">{String(signal.payload.previousScore ?? "?")} pts</span>
                   <span className="mkt-inbox__score-arrow" aria-hidden="true">?</span>
@@ -356,12 +356,12 @@ function SignalsFeed({
                   size="sm"
                   variant="primary"
                   onClick={() => onCreateFollowUp(signal)}
-                  disabled={!signal.leadId || isCreatingFollowUp}
+                  disabled={!signal.workItemId || isCreatingFollowUp}
                 >
                   Criar follow-up
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => onOpenLead(signal)}>
-                  Abrir lead
+                <Button size="sm" variant="outline" onClick={() => onOpenWorkItem(signal)}>
+                  Abrir item
                 </Button>
               </div>
             </div>

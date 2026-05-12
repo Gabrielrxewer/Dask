@@ -6,9 +6,11 @@ import {
   useWorkspaceWorkItemActions,
   type AiAgentSummary
 } from "@/modules/workspace";
+import { useAiWorkItemActions } from "@/modules/ai";
+import { useWorkspaceDocumentActions } from "@/modules/documentation";
 import { useAgendaWorkItemsQuery, useCalendarFeedQuery } from "@/modules/agenda";
-import { useCustomerLookupAction } from "@/modules/leads";
-import { AppIcon, EmptyState, InlineAlert, LoadingState, Section, StatusBadge, WorkspaceFrame } from "@/shared/ui";
+import { useCustomerLookupAction } from "@/modules/commercial";
+import { AppIcon, Button, EmptyState, InlineAlert, LoadingState, Section, StatusBadge, WorkspaceFrame } from "@/shared/ui";
 import { AppShell } from "@/widgets/app-shell";
 import { TaskDetailsModal } from "@/widgets/task-details";
 import { buildAgendaWeekRange, useAgendaViewModel } from "@/pages/agenda-page/model/agenda-view-model";
@@ -37,26 +39,29 @@ export function AgendaPage() {
   const {
     snapshot,
     isLoading,
-    listAiAgents,
-    runAiAgentOnItem,
-    runAiRiskAnalysis,
-    listWorkspaceDocuments,
-    listWorkItemLinkedDocuments,
-    linkDocumentToWorkItem,
-    unlinkDocumentFromWorkItem,
     filter,
     setFilterQuery,
     toggleMineFilter,
     boardConfig,
     activeMembers,
     activeUser,
-    filteredTasks,
     metrics,
     selectedTask,
     selectedStatus,
     selectTask,
     clearSelectedTask
   } = useWorkspaceTaskPage();
+  const {
+    listAiAgents,
+    runAiAgentOnItem,
+    runAiRiskAnalysis
+  } = useAiWorkItemActions(workspaceSlug || null);
+  const {
+    listWorkspaceDocuments,
+    listWorkItemLinkedDocuments,
+    linkDocumentToWorkItem,
+    unlinkDocumentFromWorkItem
+  } = useWorkspaceDocumentActions(workspaceSlug || null);
   const {
     moveTask,
     updateTaskPriority,
@@ -78,12 +83,17 @@ export function AgendaPage() {
   const typeMap = useMemo(() => buildTaskTypeMetaMap(boardConfig.taskTypes), [boardConfig.taskTypes]);
   const canRescheduleWorkItems =
     !snapshot?.access?.role || !["VIEWER", "CLIENT"].includes(snapshot.access.role);
+  const feedWeekRange = useMemo(() => buildAgendaWeekRange(weekAnchor), [weekAnchor]);
   const agendaWorkItemsQuery = useAgendaWorkItemsQuery(workspaceSlug, {
     search: filter.query,
-    assigneeId: filter.mineOnly ? activeUser : undefined
+    assigneeId: filter.mineOnly ? activeUser : undefined,
+    plannedWindowFrom: new Date(feedWeekRange.weekStart).toISOString(),
+    plannedWindowTo: new Date(feedWeekRange.weekEnd).toISOString(),
+    pageSize: 80,
+    sortBy: "plannedStartAt",
+    sortDirection: "asc"
   });
-  const agendaTasks = agendaWorkItemsQuery.data ?? filteredTasks;
-  const feedWeekRange = useMemo(() => buildAgendaWeekRange(weekAnchor), [weekAnchor]);
+  const agendaTasks = agendaWorkItemsQuery.data;
   const calendarFeedQuery = useCalendarFeedQuery(workspaceSlug, {
     startAt: new Date(feedWeekRange.weekStart).toISOString(),
     endAt: new Date(feedWeekRange.weekEnd).toISOString()
@@ -174,10 +184,7 @@ export function AgendaPage() {
             <InlineAlert tone="warning">{calendarFeedQuery.error.message}</InlineAlert>
           ) : null}
 
-          {agendaTasks.length === 0 ? (
-            <EmptyState>Nao ha atividades para exibir com os filtros atuais.</EmptyState>
-          ) : (
-            <div className="agenda-view__surface">
+          <div className="agenda-view__surface">
               <AgendaToolbar
                 weekStart={weekStart}
                 weekViewDirection={weekViewDirection}
@@ -284,8 +291,22 @@ export function AgendaPage() {
                 </div>
               )}
 
+              {agendaWorkItemsQuery.hasNextPage ? (
+                <div className="agenda-view__pagination">
+                  <span className="agenda-view__pagination-status">
+                    {`${agendaWorkItemsQuery.loadedCount} de ${agendaWorkItemsQuery.total} atividades carregadas`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void agendaWorkItemsQuery.fetchNextPage()}
+                    disabled={agendaWorkItemsQuery.isFetchingNextPage}
+                  >
+                    {agendaWorkItemsQuery.isFetchingNextPage ? "Carregando..." : "Carregar mais"}
+                  </Button>
+                </div>
+              ) : null}
             </div>
-          )}
         </Section>
       </WorkspaceFrame>
 

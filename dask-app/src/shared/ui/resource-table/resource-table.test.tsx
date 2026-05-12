@@ -78,4 +78,48 @@ describe("ResourceTable", () => {
 
     expect(html).toContain("shared-data-table__row invoice-row");
   });
+
+  it("renderiza ordenacao manual e paginacao server-side", () => {
+    const html = renderToStaticMarkup(
+      <ResourceTable
+        data={[{ id: "invoice-1", reference: "NF-001", amount: 49.9 }]}
+        columns={[{ ...columns[0], sortable: true, sortKey: "reference" }, columns[1]]}
+        rowKey="id"
+        sortBy="reference"
+        sortDirection="desc"
+        onSortChange={() => undefined}
+        pagination={{
+          page: 2,
+          pageSize: 25,
+          pageSizeOptions: [10, 25, 50],
+          hasPrevious: true,
+          hasNext: true,
+          onPrevious: () => undefined,
+          onNext: () => undefined,
+          onPageSizeChange: () => undefined
+        }}
+      />
+    );
+
+    expect(html).toContain("aria-sort=\"descending\"");
+    expect(html).toContain("Pagina 2");
+    expect(html).toContain("25 / pagina");
+    expect(html).toContain("shared-resource-table__pagination");
+  });
+
+  it("renderiza erro e cards mobile quando configurados", () => {
+    const html = renderToStaticMarkup(
+      <ResourceTable
+        data={[{ id: "invoice-1", reference: "NF-001", amount: 49.9 }]}
+        columns={columns}
+        rowKey="id"
+        mobileCard={{ render: (row) => <strong>{row.reference}</strong> }}
+        error="Falha ao carregar notas."
+      />
+    );
+
+    expect(html).toContain("Falha ao carregar notas.");
+    expect(html).toContain("shared-empty-state--error");
+    expect(html).toContain("shared-resource-table__mobile-state");
+  });
 });

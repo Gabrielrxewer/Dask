@@ -1,6 +1,7 @@
 import { env } from '@/core/config/env';
 import { AppError } from '@/core/errors/app-error';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
+import { redactSensitiveText } from '@/core/security/redaction';
 import type { AIProvider, AINativeTool } from '@/modules/ai/domain/providers';
 
 type ResponsesApiTool =
@@ -116,15 +117,16 @@ export class OpenAIAIProvider implements AIProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
+      const safeErrorText = redactSensitiveText(errorText, { maskPersonalData: true });
       this.aiLogger.error(
         {
           model: selectedModel,
           status: response.status,
-          errorText: errorText.slice(0, 800)
+          errorText: safeErrorText.slice(0, 800)
         },
         'OpenAI responses request failed'
       );
-      throw new AppError(`OpenAI responses failed: ${errorText.slice(0, 400)}`, 502);
+      throw new AppError(`OpenAI responses failed: ${safeErrorText.slice(0, 400)}`, 502);
     }
 
     const payload = (await response.json()) as ResponsesApiResponse;

@@ -10,7 +10,7 @@ interface MarketingJourneysTabProps {
   activeFlowId: string | null;
   setActiveFlowId: Dispatch<SetStateAction<string | null>>;
   handleJourneySave: (name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
-  handleJourneyActivate: (flowId: string) => Promise<void>;
+  handleJourneyActivate: (flowId: string, name: string, nodes: JourneyNode[], edges: JourneyEdge[]) => Promise<void>;
   handleJourneyDeactivate: (flowId: string) => Promise<void>;
   isSavingFlow: boolean;
 }

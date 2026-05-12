@@ -518,23 +518,24 @@
   cursor: not-allowed;
 }
 
-.app-toast {
-  border: 1px solid var(--line) !important;
-  border-radius: var(--radius-md) !important;
-  background: var(--surface-overlay-strong) !important;
-  color: var(--text-strong) !important;
-  box-shadow: var(--shadow-3) !important;
-  font-family: var(--font-family-body) !important;
+[data-sonner-toast].app-toast,
+[data-sonner-toast].app-toast[data-rich-colors="true"][data-type] {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay-strong);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-3);
+  font-family: var(--font-family-body);
 }
 
-.app-toast__title {
-  color: var(--text-strong) !important;
-  font-weight: 900 !important;
+[data-sonner-toast].app-toast [data-title].app-toast__title {
+  color: var(--text-strong);
+  font-weight: 900;
 }
 
-.app-toast__description {
-  color: var(--text-soft) !important;
-  font-weight: 600 !important;
+[data-sonner-toast].app-toast [data-description].app-toast__description {
+  color: var(--text-soft);
+  font-weight: 600;
 }
 
 .app-skeleton-card {

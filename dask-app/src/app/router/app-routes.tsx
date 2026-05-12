@@ -1,48 +1,87 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { GlobalLayout } from "@/app/layout";
 import { ProtectedRoute, PublicRoute, SubscribedRoute } from "@/features/auth";
 import { BillingProvider } from "@/app/providers/billing-provider";
-import { WorkspaceProvider, useWorkspace, workspaceService } from "@/modules/workspace";
+import { useCurrentWorkspace, useWorkspaceListQuery, useWorkspacePermissions, WorkspaceProvider } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
-import { LoadingState } from "@/shared/ui";
-import {
-  AiAgentsPage,
-  AutomationsPage,
-  AgendaPage,
-  BillingPage,
-  BillingPublicPage,
-  BillingCancelPage,
-  BillingSuccessPage,
-  BoardPage,
-  BoardEditorSettingsPage,
-  ChoosePlanPage,
-  DashboardPage,
-  DocumentationPage,
-  GeneralSettingsPage,
-  HomePage,
-  LeadFlowPage,
-  LeadsPage,
-  MarketingPage,
-  ListPage,
-  LoginPage,
-  FiscalPage,
-  MembersSettingsPage,
-  NoWorkspacePage,
-  PlatformAdminPage,
-  ProposalPublicPage,
-  ResetPasswordPage,
-  SettingsShellPage,
-  WorkItemEditorSettingsPage,
-  SubscriptionBlockedPage,
-  TermsOfUsePage,
-  WorkspaceSelectorPage,
-  WorkspaceAuditSettingsPage,
-  VerifyEmailPage,
-  PrivacyPolicyPage,
-  WorkflowStatesSettingsPage
-} from "@/pages";
-import { buildWorkspaceBoardPath, buildWorkspaceSettingsPath, routePaths } from "@/app/router";
+import { LoadingState, type LoadingAnimation } from "@/shared/ui/loading-state";
+import { buildWorkspaceBoardPath, buildWorkspaceCommercialPath, buildWorkspaceSettingsPath, routePaths } from "@/app/router";
+
+type LazyPageModule = Record<string, unknown>;
+
+function lazyPage(loader: () => Promise<LazyPageModule>, exportName: string) {
+  return lazy(async () => {
+    const module = await loader();
+    return { default: module[exportName] as ComponentType };
+  });
+}
+
+function routeSuspense(children: ReactNode, animation: LoadingAnimation = "workspace") {
+  return (
+    <Suspense fallback={<LoadingState text="Carregando modulo..." animation={animation} />}>
+      {children}
+    </Suspense>
+  );
+}
+
+const AiAgentsPage = lazyPage(() => import("@/pages/ai-agents-page"), "AiAgentsPage");
+const AgendaPage = lazyPage(() => import("@/pages/agenda-page"), "AgendaPage");
+const AutomationsPage = lazyPage(() => import("@/pages/automations-page"), "AutomationsPage");
+const BillingCancelPage = lazyPage(() => import("@/pages/billing-cancel-page"), "BillingCancelPage");
+const BillingPage = lazyPage(() => import("@/pages/billing-page"), "BillingPage");
+const BillingPublicPage = lazyPage(() => import("@/pages/billing-public-page"), "BillingPublicPage");
+const BillingSuccessPage = lazyPage(() => import("@/pages/billing-success-page"), "BillingSuccessPage");
+const BoardEditorSettingsPage = lazyPage(
+  () => import("@/pages/settings-page/ui/board-editor-settings"),
+  "BoardEditorSettings"
+);
+const BoardPage = lazyPage(() => import("@/pages/board-page"), "BoardPage");
+const ChoosePlanPage = lazyPage(() => import("@/pages/choose-plan-page"), "ChoosePlanPage");
+const DashboardPage = lazyPage(() => import("@/pages/dashboard-page"), "DashboardPage");
+const DocumentationPage = lazyPage(() => import("@/pages/documentation-page"), "DocumentationPage");
+const FiscalPage = lazyPage(() => import("@/pages/fiscal-page"), "FiscalPage");
+const GeneralSettingsPage = lazyPage(
+  () => import("@/pages/settings-page/ui/general-settings"),
+  "GeneralSettings"
+);
+const HomePage = lazyPage(() => import("@/pages/home-page"), "HomePage");
+const CommercialPage = lazyPage(() => import("@/pages/commercial-page"), "CommercialPage");
+const ListPage = lazyPage(() => import("@/pages/list-page"), "ListPage");
+const LoginPage = lazyPage(() => import("@/pages/login-page"), "LoginPage");
+const MarketingPage = lazyPage(() => import("@/pages/marketing-page"), "MarketingPage");
+const MembersSettingsPage = lazyPage(
+  () => import("@/pages/settings-page/ui/members-settings"),
+  "MembersSettings"
+);
+const NoWorkspacePage = lazyPage(() => import("@/pages/no-workspace-page"), "NoWorkspacePage");
+const PlatformAdminPage = lazyPage(() => import("@/pages/platform-admin-page"), "PlatformAdminPage");
+const PrivacyPolicyPage = lazyPage(() => import("@/pages/privacy-policy-page"), "PrivacyPolicyPage");
+const ProposalPublicPage = lazyPage(() => import("@/pages/proposal-public-page"), "ProposalPublicPage");
+const ResetPasswordPage = lazyPage(() => import("@/pages/reset-password-page"), "ResetPasswordPage");
+const SettingsShellPage = lazyPage(
+  () => import("@/pages/settings-page/ui/settings-shell"),
+  "SettingsShell"
+);
+const SubscriptionBlockedPage = lazyPage(
+  () => import("@/pages/subscription-blocked-page"),
+  "SubscriptionBlockedPage"
+);
+const TermsOfUsePage = lazyPage(() => import("@/pages/terms-of-use-page"), "TermsOfUsePage");
+const VerifyEmailPage = lazyPage(() => import("@/pages/verify-email-page"), "VerifyEmailPage");
+const WorkItemEditorSettingsPage = lazyPage(
+  () => import("@/pages/settings-page/ui/work-item-editor-settings"),
+  "WorkItemEditorSettings"
+);
+const WorkflowStatesSettingsPage = lazyPage(
+  () => import("@/pages/settings-page/ui/workflow-states-settings"),
+  "WorkflowStatesSettings"
+);
+const WorkspaceAuditSettingsPage = lazyPage(
+  () => import("@/pages/settings-page/ui/workspace-audit-settings"),
+  "WorkspaceAuditSettings"
+);
+const WorkspaceSelectorPage = lazyPage(() => import("@/pages/workspace-selector-page"), "WorkspaceSelectorPage");
 
 function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -107,21 +146,19 @@ function ModuleRoute({
   module,
   children
 }: {
-  module: "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "leads" | "marketing";
+  module: "dashboard" | "board" | "automation" | "documentation" | "billing" | "ai" | "settings" | "fiscal" | "commercial" | "marketing";
   children: JSX.Element;
 }) {
-  const { snapshot } = useWorkspace();
+  const { snapshot } = useCurrentWorkspace();
+  const permissions = useWorkspacePermissions();
   const location = useLocation();
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
-  const allowedModules = new Set(
-    snapshot?.access?.allowedModules ?? ["dashboard", "board", "automation", "documentation", "billing", "ai", "settings", "fiscal", "leads", "marketing"]
-  );
-  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
+  const isClient = permissions.isClient;
   const isCorporateWorkspace = snapshot?.workspace?.kind === "CORPORATE";
   const needsCompanyProfile = !isClient && isCorporateWorkspace && !hasRequiredCompanyProfile(snapshot?.preferences.settings);
   const isSettingsRoute = workspaceSlug.length > 0 && location.pathname.startsWith(buildWorkspaceSettingsPath(workspaceSlug));
 
-  if (!allowedModules.has(module)) {
+  if (!permissions.canAccessModule(module)) {
     return <Navigate replace to={routePaths.board} />;
   }
 
@@ -133,11 +170,10 @@ function ModuleRoute({
 }
 
 function NonClientRoute({ children }: { children: JSX.Element }) {
-  const { snapshot } = useWorkspace();
+  const permissions = useWorkspacePermissions();
   const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
-  const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
 
-  if (isClient) {
+  if (permissions.isClient) {
     return <Navigate replace to={buildWorkspaceBoardPath(workspaceSlug)} />;
   }
 
@@ -146,52 +182,46 @@ function NonClientRoute({ children }: { children: JSX.Element }) {
 
 function WorkspaceEntryRedirect() {
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  const workspacesQuery = useWorkspaceListQuery();
 
   useEffect(() => {
-    let active = true;
+    if (!workspacesQuery.data) {
+      return;
+    }
 
-    workspaceService
-      .listWorkspaces()
-      .then((workspaces) => {
-        if (!active) {
-          return;
-        }
+    const fallbackWorkspace = workspacesQuery.data[0];
+    if (!fallbackWorkspace) {
+      setRedirectTo(routePaths.noWorkspace);
+      return;
+    }
 
-        const fallbackWorkspace = workspaces[0];
-        if (!fallbackWorkspace) {
-          setRedirectTo(routePaths.noWorkspace);
-          return;
-        }
+    if (workspacesQuery.data.length > 1) {
+      setRedirectTo(routePaths.workspaceSelector);
+      return;
+    }
 
-        if (workspaces.length > 1) {
-          setRedirectTo(routePaths.workspaceSelector);
-          return;
-        }
+    setRedirectTo(buildWorkspaceBoardPath(fallbackWorkspace.slug));
+  }, [workspacesQuery.data]);
 
-        setRedirectTo(buildWorkspaceBoardPath(fallbackWorkspace.slug));
-      })
-        .catch((error) => {
-          if (active) {
-            if (isApiError(error)) {
-              if (error.status === 401) {
-                setRedirectTo(routePaths.login);
-                return;
-              }
-              if (error.status === 403) {
-                // Authenticated user without active subscription should go to plan selection.
-                setRedirectTo(routePaths.choosePlan);
-                return;
-              }
-            }
+  useEffect(() => {
+    if (!workspacesQuery.error) {
+      return;
+    }
 
-            setRedirectTo(routePaths.noWorkspace);
-          }
-        });
+    if (isApiError(workspacesQuery.error)) {
+      if (workspacesQuery.error.status === 401) {
+        setRedirectTo(routePaths.login);
+        return;
+      }
+      if (workspacesQuery.error.status === 403) {
+        // Authenticated user without active subscription should go to plan selection.
+        setRedirectTo(routePaths.choosePlan);
+        return;
+      }
+    }
 
-    return () => {
-      active = false;
-    };
-  }, []);
+    setRedirectTo(routePaths.noWorkspace);
+  }, [workspacesQuery.error]);
 
   if (!redirectTo) {
     return <LoadingState text="Carregando workspaces..." animation="workspace" />;
@@ -200,20 +230,25 @@ function WorkspaceEntryRedirect() {
   return <Navigate replace to={redirectTo} />;
 }
 
+function CommercialLeadsAliasRedirect() {
+  const { workspaceSlug = "" } = useParams<{ workspaceSlug: string }>();
+  return <Navigate replace to={buildWorkspaceCommercialPath(workspaceSlug)} />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<GlobalLayout />}>
         <Route
           path={routePaths.home}
-          element={<HomePage />}
+          element={routeSuspense(<HomePage />)}
         />
 
         <Route
           path={routePaths.login}
           element={
             <PublicRoute>
-              <LoginPage />
+              {routeSuspense(<LoginPage />)}
             </PublicRoute>
           }
         />
@@ -222,22 +257,25 @@ export function AppRoutes() {
           Rota pública sem guard de sessão.
           O usuário chega aqui via link de e-mail — sem cookie de refresh válido.
         */}
-        <Route path={routePaths.resetPassword} element={<ResetPasswordPage />} />
-        <Route path={routePaths.verifyEmail} element={<VerifyEmailPage />} />
-        <Route path={routePaths.commercialDocumentPublic} element={<ProposalPublicPage />} />
-        <Route path={routePaths.proposalPublic} element={<ProposalPublicPage />} />
-        <Route path={routePaths.billingPublic} element={<BillingPublicPage />} />
-        <Route path={routePaths.termsOfUse} element={<TermsOfUsePage />} />
-        <Route path={routePaths.privacyPolicy} element={<PrivacyPolicyPage />} />
+        <Route path={routePaths.resetPassword} element={routeSuspense(<ResetPasswordPage />)} />
+        <Route path={routePaths.verifyEmail} element={routeSuspense(<VerifyEmailPage />)} />
+        <Route
+          path={routePaths.commercialDocumentPublic}
+          element={routeSuspense(<ProposalPublicPage />, "documentation")}
+        />
+        <Route path={routePaths.proposalPublic} element={routeSuspense(<ProposalPublicPage />, "documentation")} />
+        <Route path={routePaths.billingPublic} element={routeSuspense(<BillingPublicPage />, "billing")} />
+        <Route path={routePaths.termsOfUse} element={routeSuspense(<TermsOfUsePage />)} />
+        <Route path={routePaths.privacyPolicy} element={routeSuspense(<PrivacyPolicyPage />)} />
 
         {/* Billing routes — authenticated but subscription not required */}
         <Route element={<ProtectedRoute />}>
-          <Route path={routePaths.admin} element={<PlatformAdminPage />} />
+          <Route path={routePaths.admin} element={routeSuspense(<PlatformAdminPage />)} />
           <Route element={<BillingProvider />}>
-            <Route path={routePaths.choosePlan} element={<ChoosePlanPage />} />
-            <Route path={routePaths.billingSuccess} element={<BillingSuccessPage />} />
-            <Route path={routePaths.billingCancel} element={<BillingCancelPage />} />
-            <Route path={routePaths.subscriptionBlocked} element={<SubscriptionBlockedPage />} />
+            <Route path={routePaths.choosePlan} element={routeSuspense(<ChoosePlanPage />, "billing")} />
+            <Route path={routePaths.billingSuccess} element={routeSuspense(<BillingSuccessPage />, "billing")} />
+            <Route path={routePaths.billingCancel} element={routeSuspense(<BillingCancelPage />, "billing")} />
+            <Route path={routePaths.subscriptionBlocked} element={routeSuspense(<SubscriptionBlockedPage />, "billing")} />
           </Route>
         </Route>
 
@@ -245,14 +283,14 @@ export function AppRoutes() {
         <Route element={<SubscribedRoute />}>
           <Route element={<WorkspaceBoundary />}>
             <Route path={routePaths.workspaceEntry} element={<WorkspaceEntryRedirect />} />
-            <Route path={routePaths.workspaceSelector} element={<WorkspaceSelectorPage />} />
-            <Route path={routePaths.noWorkspace} element={<NoWorkspacePage />} />
+            <Route path={routePaths.workspaceSelector} element={routeSuspense(<WorkspaceSelectorPage />)} />
+            <Route path={routePaths.noWorkspace} element={routeSuspense(<NoWorkspacePage />)} />
             <Route
               path={routePaths.dashboard}
               element={
                 <ModuleRoute module="dashboard">
                   <NonClientRoute>
-                    <DashboardPage />
+                    {routeSuspense(<DashboardPage />, "dashboard")}
                   </NonClientRoute>
                 </ModuleRoute>
               }
@@ -261,17 +299,7 @@ export function AppRoutes() {
               path={routePaths.board}
               element={
                 <ModuleRoute module="board">
-                  <BoardPage />
-                </ModuleRoute>
-              }
-            />
-            <Route
-              path={routePaths.leadFlow}
-              element={
-                <ModuleRoute module="board">
-                  <NonClientRoute>
-                    <LeadFlowPage />
-                  </NonClientRoute>
+                  {routeSuspense(<BoardPage />, "board")}
                 </ModuleRoute>
               }
             />
@@ -280,7 +308,7 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="board">
                   <NonClientRoute>
-                    <ListPage />
+                    {routeSuspense(<ListPage />, "list")}
                   </NonClientRoute>
                 </ModuleRoute>
               }
@@ -289,7 +317,7 @@ export function AppRoutes() {
               path={routePaths.agenda}
               element={
                 <ModuleRoute module="board">
-                  <AgendaPage />
+                  {routeSuspense(<AgendaPage />, "agenda")}
                 </ModuleRoute>
               }
             />
@@ -297,7 +325,7 @@ export function AppRoutes() {
               path={routePaths.documentation}
               element={
                 <ModuleRoute module="documentation">
-                  <DocumentationPage />
+                  {routeSuspense(<DocumentationPage />, "documentation")}
                 </ModuleRoute>
               }
             />
@@ -305,7 +333,7 @@ export function AppRoutes() {
               path={routePaths.aiAgents}
               element={
                 <ModuleRoute module="ai">
-                  <AiAgentsPage />
+                  {routeSuspense(<AiAgentsPage />, "ai")}
                 </ModuleRoute>
               }
             />
@@ -313,7 +341,7 @@ export function AppRoutes() {
               path={routePaths.automations}
               element={
                 <ModuleRoute module="automation">
-                  <AutomationsPage />
+                  {routeSuspense(<AutomationsPage />, "automation")}
                 </ModuleRoute>
               }
             />
@@ -321,7 +349,7 @@ export function AppRoutes() {
               path={routePaths.billing}
               element={
                 <ModuleRoute module="billing">
-                  <BillingPage />
+                  {routeSuspense(<BillingPage />, "billing")}
                 </ModuleRoute>
               }
             />
@@ -329,15 +357,19 @@ export function AppRoutes() {
               path={routePaths.fiscal}
               element={
                 <ModuleRoute module="fiscal">
-                  <FiscalPage />
+                  {routeSuspense(<FiscalPage />, "fiscal")}
                 </ModuleRoute>
               }
             />
             <Route
-              path={routePaths.leads}
+              path={routePaths.commercialLeadsAlias}
+              element={<CommercialLeadsAliasRedirect />}
+            />
+            <Route
+              path={routePaths.commercial}
               element={
-                <ModuleRoute module="leads">
-                  <LeadsPage />
+                <ModuleRoute module="commercial">
+                  {routeSuspense(<CommercialPage />, "commercial")}
                 </ModuleRoute>
               }
             />
@@ -345,7 +377,7 @@ export function AppRoutes() {
               path={routePaths.marketing}
               element={
                 <ModuleRoute module="marketing">
-                  <MarketingPage />
+                  {routeSuspense(<MarketingPage />, "marketing")}
                 </ModuleRoute>
               }
             />
@@ -355,21 +387,21 @@ export function AppRoutes() {
               path={routePaths.settings}
               element={
                 <ModuleRoute module="settings">
-                  <SettingsShellPage />
+                  {routeSuspense(<SettingsShellPage />, "settings")}
                 </ModuleRoute>
               }
             >
-              <Route index element={<GeneralSettingsPage />} />
-              <Route path="workflow-states" element={<WorkflowStatesSettingsPage />} />
-              <Route path="item-types" element={<WorkItemEditorSettingsPage />} />
-              <Route path="audit" element={<WorkspaceAuditSettingsPage />} />
+              <Route index element={routeSuspense(<GeneralSettingsPage />, "settings")} />
+              <Route path="workflow-states" element={routeSuspense(<WorkflowStatesSettingsPage />, "settings")} />
+              <Route path="item-types" element={routeSuspense(<WorkItemEditorSettingsPage />, "settings")} />
+              <Route path="audit" element={routeSuspense(<WorkspaceAuditSettingsPage />, "settings")} />
               <Route path="custom-fields" element={<Navigate replace to="../item-types" />} />
               {/* Editor de board: substitui Perspectivas + Colunas */}
-              <Route path="perspectives" element={<BoardEditorSettingsPage />} />
+              <Route path="perspectives" element={routeSuspense(<BoardEditorSettingsPage />, "settings")} />
               <Route path="columns" element={<Navigate replace to="perspectives" />} />
               {/* Aliases de rotas pre-existentes */}
-              <Route path="members" element={<MembersSettingsPage />} />
-              <Route path="workflow" element={<WorkflowStatesSettingsPage />} />
+              <Route path="members" element={routeSuspense(<MembersSettingsPage />, "settings")} />
+              <Route path="workflow" element={routeSuspense(<WorkflowStatesSettingsPage />, "settings")} />
             </Route>
 
             <Route path="*" element={<Navigate replace to={routePaths.workspaceEntry} />} />

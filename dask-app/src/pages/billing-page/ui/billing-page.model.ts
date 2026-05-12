@@ -17,7 +17,6 @@ export type HistoryAction = "copy" | "resend" | "cancel";
 export type PaymentCapability = "boleto_payments";
 export type CatalogKindFilter = "ALL" | ConnectCatalogItemKind;
 export type CatalogBillingFilter = "ALL" | ConnectCatalogBillingType;
-export type CatalogSort = "recent" | "name" | "amount-desc" | "amount-asc";
 export type BillingOnboardingStage = "Cadastro" | "Cobrança" | "Repasse" | "Concluído";
 
 export interface BillingStatusCard {

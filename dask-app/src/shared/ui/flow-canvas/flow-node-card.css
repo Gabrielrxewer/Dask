@@ -1,15 +1,30 @@
-.react-flow__node-output,
-.react-flow__node-input,
-.react-flow__node-default {
-  padding: 0 !important;
-  border-radius: 0 !important;
-  width: auto !important;
-  border: none !important;
-  background-color: transparent !important;
-  color: inherit !important;
-  text-align: inherit !important;
-  font-size: inherit !important;
-  box-shadow: none !important;
+.react-flow .react-flow__node.react-flow__node-output,
+.react-flow .react-flow__node.react-flow__node-input,
+.react-flow .react-flow__node.react-flow__node-default {
+  padding: 0;
+  border-radius: 0;
+  width: auto;
+  border: none;
+  background-color: transparent;
+  color: inherit;
+  text-align: inherit;
+  font-size: inherit;
+  box-shadow: none;
+}
+
+.react-flow .react-flow__node.react-flow__node-output.selectable:hover,
+.react-flow .react-flow__node.react-flow__node-input.selectable:hover,
+.react-flow .react-flow__node.react-flow__node-default.selectable:hover,
+.react-flow .react-flow__node.react-flow__node-output.selectable.selected,
+.react-flow .react-flow__node.react-flow__node-input.selectable.selected,
+.react-flow .react-flow__node.react-flow__node-default.selectable.selected,
+.react-flow .react-flow__node.react-flow__node-output.selectable:focus,
+.react-flow .react-flow__node.react-flow__node-input.selectable:focus,
+.react-flow .react-flow__node.react-flow__node-default.selectable:focus,
+.react-flow .react-flow__node.react-flow__node-output.selectable:focus-visible,
+.react-flow .react-flow__node.react-flow__node-input.selectable:focus-visible,
+.react-flow .react-flow__node.react-flow__node-default.selectable:focus-visible {
+  box-shadow: none;
 }
 
 .flow-node-card {
@@ -39,10 +54,10 @@
 }
 
 .flow-node-card--selected {
-  border-color: var(--node-color) !important;
+  border-color: var(--node-color);
   box-shadow:
     0 6px 20px color-mix(in srgb, var(--neutral-black) 10%, transparent),
-    0 0 0 3px var(--node-color-ring) !important;
+    0 0 0 3px var(--node-color-ring);
 }
 
 .flow-node-card--trigger { --node-color: var(--decorative-cyan); }
@@ -196,74 +211,74 @@
   border-color: var(--info-border);
 }
 
-.flow-node-card__handle.react-flow__handle {
-  width: 12px !important;
-  height: 12px !important;
-  border-radius: 50% !important;
-  border: 2.5px solid var(--neutral-white) !important;
-  background: var(--node-color) !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+.react-flow .flow-node-card__handle.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2.5px solid var(--neutral-white);
+  background: var(--node-color);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   z-index: 10;
 }
 
-.flow-node-card__handle.react-flow__handle:hover {
-  transform: scale(1.35) !important;
-  box-shadow: 0 0 0 4px var(--node-color-ring) !important;
+.react-flow .flow-node-card__handle.react-flow__handle:hover {
+  transform: scale(1.35);
+  box-shadow: 0 0 0 4px var(--node-color-ring);
 }
 
-.flow-node-card__handle--source.react-flow__handle {
-  bottom: -7px !important;
-  left: 50% !important;
-  top: auto !important;
-  transform: translateX(-50%) !important;
+.react-flow .flow-node-card__handle--source.react-flow__handle {
+  bottom: -7px;
+  left: 50%;
+  top: auto;
+  transform: translateX(-50%);
 }
 
-.flow-node-card__handle--source.react-flow__handle:hover {
-  transform: translateX(-50%) scale(1.35) !important;
+.react-flow .flow-node-card__handle--source.react-flow__handle:hover {
+  transform: translateX(-50%) scale(1.35);
 }
 
-.flow-node-card__handle--target.react-flow__handle {
-  top: -7px !important;
-  left: 50% !important;
-  bottom: auto !important;
-  transform: translateX(-50%) !important;
+.react-flow .flow-node-card__handle--target.react-flow__handle {
+  top: -7px;
+  left: 50%;
+  bottom: auto;
+  transform: translateX(-50%);
 }
 
-.flow-node-card__handle--target.react-flow__handle:hover {
-  transform: translateX(-50%) scale(1.35) !important;
+.react-flow .flow-node-card__handle--target.react-flow__handle:hover {
+  transform: translateX(-50%) scale(1.35);
 }
 
-.flow-node-card__handle--branch-0.react-flow__handle {
-  left: 33% !important;
-  bottom: -7px !important;
-  top: auto !important;
-  transform: translateX(-50%) !important;
+.react-flow .flow-node-card__handle--branch-0.react-flow__handle {
+  left: 33%;
+  bottom: -7px;
+  top: auto;
+  transform: translateX(-50%);
 }
 
-.flow-node-card__handle--branch-0.react-flow__handle:hover {
-  transform: translateX(-50%) scale(1.35) !important;
+.react-flow .flow-node-card__handle--branch-0.react-flow__handle:hover {
+  transform: translateX(-50%) scale(1.35);
 }
 
-.flow-node-card__handle--branch-1.react-flow__handle {
-  left: 67% !important;
-  bottom: -7px !important;
-  top: auto !important;
-  transform: translateX(-50%) !important;
+.react-flow .flow-node-card__handle--branch-1.react-flow__handle {
+  left: 67%;
+  bottom: -7px;
+  top: auto;
+  transform: translateX(-50%);
 }
 
-.flow-node-card__handle--branch-1.react-flow__handle:hover {
-  transform: translateX(-50%) scale(1.35) !important;
+.react-flow .flow-node-card__handle--branch-1.react-flow__handle:hover {
+  transform: translateX(-50%) scale(1.35);
 }
 
-.flow-node-card--trigger .flow-node-card__handle.react-flow__handle { background: var(--decorative-cyan) !important; }
-.flow-node-card--llm .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple) !important; }
-.flow-node-card--rag .flow-node-card__handle.react-flow__handle { background: var(--primary) !important; }
-.flow-node-card--tool .flow-node-card__handle.react-flow__handle { background: var(--warning) !important; }
-.flow-node-card--condition .flow-node-card__handle.react-flow__handle { background: var(--danger) !important; }
-.flow-node-card--output .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple) !important; }
-.flow-node-card--action .flow-node-card__handle.react-flow__handle { background: var(--brand-cyan) !important; }
-.flow-node-card--delay .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple) !important; }
-.flow-node-card--exit .flow-node-card__handle.react-flow__handle { background: var(--danger) !important; }
+.react-flow .flow-node-card--trigger .flow-node-card__handle.react-flow__handle { background: var(--decorative-cyan); }
+.react-flow .flow-node-card--llm .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple); }
+.react-flow .flow-node-card--rag .flow-node-card__handle.react-flow__handle { background: var(--primary); }
+.react-flow .flow-node-card--tool .flow-node-card__handle.react-flow__handle { background: var(--warning); }
+.react-flow .flow-node-card--condition .flow-node-card__handle.react-flow__handle { background: var(--danger); }
+.react-flow .flow-node-card--output .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple); }
+.react-flow .flow-node-card--action .flow-node-card__handle.react-flow__handle { background: var(--brand-cyan); }
+.react-flow .flow-node-card--delay .flow-node-card__handle.react-flow__handle { background: var(--decorative-purple); }
+.react-flow .flow-node-card--exit .flow-node-card__handle.react-flow__handle { background: var(--danger); }
 
 .app-theme[data-theme="dark"] .flow-node-card {
   --node-surface: color-mix(in oklab, var(--surface-raised, var(--text-primary)) 97%, var(--node-color));
@@ -282,7 +297,7 @@
 .app-theme[data-theme="dark"] .flow-node-card--selected {
   box-shadow:
     0 6px 24px color-mix(in srgb, var(--neutral-black) 40%, transparent),
-    0 0 0 3px var(--node-color-ring) !important;
+    0 0 0 3px var(--node-color-ring);
 }
 
 .app-theme[data-theme="dark"] .flow-node-card__label {

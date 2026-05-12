@@ -26,47 +26,20 @@ export const updateMarketingTemplateSchema = marketingTemplateFormSchema.partial
 });
 
 const templateTestVariablesSchema = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value, context): Record<string, string | number | boolean | null> | undefined => {
-    if (!value) {
-      return undefined;
-    }
+  .array(z.object({
+    key: z.string().trim().min(1).max(80),
+    value: z.string().max(5000).optional()
+  }))
+  .max(80)
+  .default([])
+  .transform((entries): Record<string, string | number | boolean | null> | undefined => {
+    const variables = Object.fromEntries(
+      entries
+        .map(({ key, value }) => [key.trim(), value?.trim() ?? ""] as const)
+        .filter(([, value]) => value.length > 0)
+    );
 
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Informe um objeto JSON de variaveis."
-        });
-        return undefined;
-      }
-
-      const entries = Object.entries(parsed as Record<string, unknown>);
-      const invalidEntry = entries.find(([, entry]) => (
-        entry !== null &&
-        typeof entry !== "string" &&
-        typeof entry !== "number" &&
-        typeof entry !== "boolean"
-      ));
-      if (invalidEntry) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Variaveis aceitam apenas texto, numero, booleano ou nulo."
-        });
-        return undefined;
-      }
-
-      return parsed as Record<string, string | number | boolean | null>;
-    } catch {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "JSON de variaveis invalido."
-      });
-      return undefined;
-    }
+    return Object.keys(variables).length > 0 ? variables : undefined;
   });
 
 export const sendMarketingTemplateTestEmailSchema = z.object({

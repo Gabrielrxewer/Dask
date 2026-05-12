@@ -1,6 +1,11 @@
 import { AppError } from '@/core/errors/app-error';
 import { env } from '@/core/config/env';
 import { logger } from '@/core/logging/logger';
+import { redactErrorMessage } from '@/core/security/redaction';
+import {
+  redactFiscalCredentials,
+  redactFiscalLogData
+} from '@/modules/fiscal/domain/redaction';
 import type {
   FiscalCancelResponse,
   FiscalDocumentStatusResponse,
@@ -14,11 +19,30 @@ import type {
   FiscalWebhookParseResult
 } from '@/modules/fiscal/providers/fiscal-provider';
 
+type FocusEnvironment = 'development' | 'test' | 'production';
+type FocusApiEnvironment = 'homologacao' | 'producao';
+
+type FocusFiscalProviderOptions = {
+  baseUrl?: string | null;
+  environment?: FocusEnvironment;
+  providerEnvironment?: FocusApiEnvironment;
+  isBaseUrlExplicit?: boolean;
+  requireExplicitBaseUrl?: boolean;
+  timeoutMs?: number;
+  retryAttempts?: number;
+  retryBackoffMs?: number;
+};
+
 interface FocusClientResponse {
   statusCode: number;
   headers: Headers;
   body: Record<string, unknown>;
 }
+
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_RETRY_ATTEMPTS = 2;
+const DEFAULT_RETRY_BACKOFF_MS = 250;
+const FOCUS_ENVIRONMENTS = new Set(['homologacao', 'producao']);
 
 function parseResponsePayload(raw: string): Record<string, unknown> {
   if (!raw || raw.trim().length === 0) {
@@ -101,11 +125,67 @@ function toRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
-export class FocusFiscalProvider implements FiscalProvider {
-  private readonly baseUrl: string;
+function wait(ms: number): Promise<void> {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
 
-  public constructor(baseUrl = env.FOCUS_API_BASE_URL) {
-    this.baseUrl = baseUrl.replace(/\/+$/, '');
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getResponseRequestId(headers: Headers): string | null {
+  return (
+    headers.get('x-request-id') ??
+    headers.get('x-correlation-id') ??
+    headers.get('request-id') ??
+    headers.get('x-amzn-requestid')
+  );
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function isRetryableMethod(method: 'GET' | 'POST'): boolean {
+  return method === 'GET';
+}
+
+function buildSafeProviderDetails(input: {
+  statusCode?: number;
+  requestId?: string | null;
+  failure?: string;
+}): Record<string, unknown> {
+  return {
+    provider: 'FOCUS',
+    ...(input.statusCode ? { statusCode: input.statusCode } : {}),
+    ...(input.requestId ? { requestId: input.requestId } : {}),
+    ...(input.failure ? { failure: input.failure } : {})
+  };
+}
+
+export class FocusFiscalProvider implements FiscalProvider {
+  private readonly baseUrl: string | null;
+  private readonly environment: FocusEnvironment;
+  private readonly providerEnvironment: FocusApiEnvironment;
+  private readonly isBaseUrlExplicit: boolean;
+  private readonly requireExplicitBaseUrl: boolean;
+  private readonly timeoutMs: number;
+  private readonly retryAttempts: number;
+  private readonly retryBackoffMs: number;
+
+  public constructor(input: string | FocusFiscalProviderOptions = {}) {
+    const options = typeof input === 'string' ? { baseUrl: input, isBaseUrlExplicit: true } : input;
+    const rawBaseUrl = options.baseUrl ?? env.FOCUS_API_BASE_URL;
+
+    this.baseUrl = rawBaseUrl?.trim() ? rawBaseUrl.trim().replace(/\/+$/, '') : null;
+    this.environment = options.environment ?? env.NODE_ENV;
+    this.providerEnvironment = options.providerEnvironment ?? env.FOCUS_API_ENVIRONMENT;
+    this.isBaseUrlExplicit =
+      options.isBaseUrlExplicit ?? Boolean(options.baseUrl?.trim() || process.env.FOCUS_API_BASE_URL?.trim());
+    this.requireExplicitBaseUrl = options.requireExplicitBaseUrl ?? this.environment === 'production';
+    this.timeoutMs = Math.max(1000, options.timeoutMs ?? env.FOCUS_API_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
+    this.retryAttempts = Math.max(0, options.retryAttempts ?? env.FOCUS_API_RETRY_ATTEMPTS ?? DEFAULT_RETRY_ATTEMPTS);
+    this.retryBackoffMs = Math.max(0, options.retryBackoffMs ?? env.FOCUS_API_RETRY_BACKOFF_MS ?? DEFAULT_RETRY_BACKOFF_MS);
   }
 
   public async issueNfe(input: FiscalIssueRequest): Promise<FiscalIssueResponse> {
@@ -295,7 +375,7 @@ export class FocusFiscalProvider implements FiscalProvider {
       companyReference,
       documentReference,
       documentType: eventType.toLowerCase().includes('nfse') ? 'NFSE' : 'NFE',
-      raw: payload
+      raw: redactFiscalCredentials(payload)
     };
   }
 
@@ -327,16 +407,18 @@ export class FocusFiscalProvider implements FiscalProvider {
 
       return {
         ok: response.statusCode >= 200 && response.statusCode < 300,
-        details: {
+        details: buildSafeProviderDetails({
           statusCode: response.statusCode,
-          body: response.body
-        }
+          requestId: getResponseRequestId(response.headers)
+        })
       };
     } catch (error) {
+      const details = error instanceof AppError && toRecord(error.details);
       return {
         ok: false,
         details: {
-          error: error instanceof Error ? error.message : 'Unknown Focus API error'
+          error: redactErrorMessage(error) || 'Unknown Focus API error',
+          ...(details || { provider: 'FOCUS' })
         }
       };
     }
@@ -351,6 +433,8 @@ export class FocusFiscalProvider implements FiscalProvider {
       body?: Record<string, unknown>;
     }
   ): Promise<FocusClientResponse> {
+    this.assertRuntimeReady(company);
+
     const url = new URL(`${this.baseUrl}${input.path}`);
 
     if (input.query) {
@@ -373,41 +457,122 @@ export class FocusFiscalProvider implements FiscalProvider {
       'Content-Type': 'application/json'
     };
 
-    const response = await fetch(url, {
-      method: input.method,
-      headers,
-      body: input.method === 'GET' ? undefined : JSON.stringify(input.body ?? {})
-    });
+    const maxAttempts = isRetryableMethod(input.method) ? this.retryAttempts + 1 : 1;
+    let lastNetworkError: unknown = null;
 
-    const rawText = await response.text();
-    const parsed = parseResponsePayload(rawText);
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
-    if (!response.ok) {
-      logger.warn(
-        {
-          event: 'fiscal.focus.request_failed',
+      try {
+        const response = await fetch(url, {
           method: input.method,
-          path: input.path,
-          statusCode: response.status,
-          body: parsed
-        },
-        'Focus API request failed'
-      );
+          headers,
+          body: input.method === 'GET' ? undefined : JSON.stringify(input.body ?? {}),
+          signal: controller.signal
+        });
 
-      throw new AppError(
-        `Focus API request failed (${response.status})`,
-        response.status >= 500 ? 502 : response.status,
-        {
-          details: parsed
+        const rawText = await response.text();
+        const parsed = parseResponsePayload(rawText);
+
+        if (response.ok) {
+          return {
+            statusCode: response.status,
+            headers: response.headers,
+            body: redactFiscalCredentials(parsed)
+          };
         }
-      );
+
+        if (attempt < maxAttempts && isRetryableStatus(response.status)) {
+          await wait(this.retryBackoffMs * attempt);
+          continue;
+        }
+
+        const requestId = getResponseRequestId(response.headers);
+        logger.warn(
+          {
+            event: 'fiscal.focus.request_failed',
+            method: input.method,
+            path: input.path,
+            statusCode: response.status,
+            requestId,
+            attempt,
+            body: redactFiscalLogData(parsed)
+          },
+          'Focus API request failed'
+        );
+
+        throw new AppError(
+          'Fiscal provider request failed',
+          response.status >= 500 || response.status === 429 ? 502 : 422,
+          buildSafeProviderDetails({
+            statusCode: response.status,
+            requestId
+          })
+        );
+      } catch (error) {
+        if (error instanceof AppError) {
+          throw error;
+        }
+
+        lastNetworkError = error;
+        if (attempt < maxAttempts) {
+          await wait(this.retryBackoffMs * attempt);
+          continue;
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
     }
 
-    return {
-      statusCode: response.status,
-      headers: response.headers,
-      body: parsed
-    };
+    const failure = lastNetworkError instanceof Error && lastNetworkError.name === 'AbortError'
+      ? 'timeout'
+      : 'network_error';
+    logger.warn(
+      {
+        event: 'fiscal.focus.request_unavailable',
+        method: input.method,
+        path: input.path,
+        failure
+      },
+      'Focus API request unavailable'
+    );
+    throw new AppError(
+      'Fiscal provider request failed',
+      502,
+      buildSafeProviderDetails({ failure })
+    );
+  }
+
+  private assertRuntimeReady(company: FiscalProviderCompanyConfig): void {
+    if (!this.baseUrl) {
+      throw new AppError('Focus fiscal provider is not configured', 503, {
+        provider: 'FOCUS',
+        missingEnv: ['FOCUS_API_BASE_URL']
+      });
+    }
+
+    if (this.requireExplicitBaseUrl && !this.isBaseUrlExplicit) {
+      throw new AppError('Focus fiscal provider is not configured', 503, {
+        provider: 'FOCUS',
+        missingEnv: ['FOCUS_API_BASE_URL']
+      });
+    }
+
+    if (!FOCUS_ENVIRONMENTS.has(company.environment)) {
+      throw new AppError('Invalid fiscal provider environment', 422, {
+        provider: 'FOCUS',
+        allowed: Array.from(FOCUS_ENVIRONMENTS)
+      });
+    }
+
+    if (this.environment === 'production' && company.environment !== this.providerEnvironment) {
+      throw new AppError('Fiscal company environment does not match configured Focus API environment', 409, {
+        provider: 'FOCUS',
+        configuredEnvironment: this.providerEnvironment,
+        companyEnvironment: company.environment
+      });
+    }
   }
 
   private mapReceivedItem(item: Record<string, unknown>): FiscalReceivedDocumentPayload {

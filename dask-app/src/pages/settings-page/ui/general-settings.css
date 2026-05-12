@@ -674,15 +674,15 @@
 }
 
 .general-settings__billing-warning {
-  border-color: var(--warning-border) !important;
-  background: var(--warning-bg) !important;
-  color: var(--warning) !important;
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .general-settings__billing-success {
-  border-color: var(--success-border) !important;
-  background: var(--surface-tint) !important;
-  color: var(--success) !important;
+  border-color: var(--success-border);
+  background: var(--surface-tint);
+  color: var(--success);
 }
 
 .general-settings__billing-grid {
@@ -1068,16 +1068,16 @@
 .app-theme[data-theme="dark"] .general-settings__billing-grid span,
 .app-theme[data-theme="dark"] .general-settings__billing-checklist li,
 .app-theme[data-theme="dark"] .general-settings__template-card {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
 }
 
 .app-theme[data-theme="dark"] .general-settings__step-card:hover,
 .app-theme[data-theme="dark"] .general-settings__step-card.is-active,
 .app-theme[data-theme="dark"] .general-settings__active-panel header a,
 .app-theme[data-theme="dark"] .general-settings__template-card.is-selected {
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line)) !important;
-  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised)) !important;
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised));
 }
 
 .app-theme[data-theme="dark"] .general-settings__preview-column,
@@ -1085,55 +1085,55 @@
 .app-theme[data-theme="dark"] .general-settings__template-preview span,
 .app-theme[data-theme="dark"] .general-settings__modal-preview span,
 .app-theme[data-theme="dark"] .general-settings__required-company-alert {
-  border-color: var(--line) !important;
-  background: var(--surface-muted) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-muted);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .general-settings__form-divider::before,
 .app-theme[data-theme="dark"] .general-settings__form-divider::after {
-  background: var(--line) !important;
+  background: var(--line);
 }
 
 .app-theme[data-theme="dark"] .general-settings__track-arrow {
-  border-color: var(--line) !important;
-  background: var(--surface-raised) !important;
-  color: var(--text-soft) !important;
+  border-color: var(--line);
+  background: var(--surface-raised);
+  color: var(--text-soft);
 }
 
 .app-theme[data-theme="dark"] .general-settings__track-arrow:hover {
-  border-color: var(--accent) !important;
-  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised)) !important;
-  color: var(--accent) !important;
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised));
+  color: var(--accent);
 }
 
 .app-theme[data-theme="dark"] .general-settings__inline-action {
-  border-color: var(--line) !important;
-  background: var(--surface-section-content) !important;
+  border-color: var(--line);
+  background: var(--surface-section-content);
 }
 
 .app-theme[data-theme="dark"] .general-settings__progress > span {
-  background: color-mix(in oklab, var(--line) 78%, var(--panel)) !important;
+  background: color-mix(in oklab, var(--line) 78%, var(--panel));
 }
 
 .app-theme[data-theme="dark"] .general-settings__step-status--done,
 .app-theme[data-theme="dark"] .general-settings__billing-success,
 .app-theme[data-theme="dark"] .general-settings__billing-checklist li.is-done {
-  border-color: color-mix(in oklab, var(--success) 30%, var(--line)) !important;
-  background: color-mix(in oklab, var(--success-soft) 22%, var(--panel)) !important;
-  color: var(--success) !important;
+  border-color: color-mix(in oklab, var(--success) 30%, var(--line));
+  background: color-mix(in oklab, var(--success-soft) 22%, var(--panel));
+  color: var(--success);
 }
 
 .app-theme[data-theme="dark"] .general-settings__step-status--partial,
 .app-theme[data-theme="dark"] .general-settings__billing-warning {
-  border-color: color-mix(in oklab, var(--warn) 30%, var(--line)) !important;
-  background: color-mix(in oklab, var(--warn-soft) 22%, var(--panel)) !important;
-  color: var(--warn) !important;
+  border-color: color-mix(in oklab, var(--warn) 30%, var(--line));
+  background: color-mix(in oklab, var(--warn-soft) 22%, var(--panel));
+  color: var(--warn);
 }
 
 .app-theme[data-theme="dark"] .general-settings__step-status--empty {
-  background: color-mix(in oklab, var(--selected-bg) 74%, var(--surface-muted)) !important;
-  color: var(--accent) !important;
+  background: color-mix(in oklab, var(--selected-bg) 74%, var(--surface-muted));
+  color: var(--accent);
 }
 
 .app-theme[data-theme="dark"] .general-settings__builder-copy > span,
@@ -1141,7 +1141,7 @@
 .app-theme[data-theme="dark"] .general-settings__active-panel header span,
 .app-theme[data-theme="dark"] .general-settings__workspace-profile header span,
 .app-theme[data-theme="dark"] .general-settings__modal-copy span {
-  color: var(--accent) !important;
+  color: var(--accent);
 }
 
 .app-theme[data-theme="dark"] .general-settings__builder-copy h1,
@@ -1158,7 +1158,7 @@
 .app-theme[data-theme="dark"] .general-settings__summary-grid strong,
 .app-theme[data-theme="dark"] .general-settings__billing-grid strong,
 .app-theme[data-theme="dark"] .general-settings__modal-copy h2 {
-  color: var(--text-strong) !important;
+  color: var(--text-strong);
 }
 
 .app-theme[data-theme="dark"] .general-settings__builder-copy p,
@@ -1179,5 +1179,5 @@
 .app-theme[data-theme="dark"] .general-settings__workspace-profile-actions small,
 .app-theme[data-theme="dark"] .general-settings__template-card p,
 .app-theme[data-theme="dark"] .general-settings__modal-copy p {
-  color: var(--text-soft) !important;
+  color: var(--text-soft);
 }

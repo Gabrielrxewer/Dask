@@ -621,19 +621,19 @@
 .shared-loading-state__visual--fiscal span:nth-child(4) { top: 106px; width: 96px; }
 .shared-loading-state__visual--fiscal span:nth-child(n+5) { display: none; }
 
-.shared-loading-state__visual--leads span {
+.shared-loading-state__visual--commercial span {
   left: 50%;
   height: 24px;
   border-radius: 999px;
   transform: translateX(-50%);
-  animation: loading-leads-funnel 1.8s ease-in-out infinite;
+  animation: loading-commercial-funnel 1.8s ease-in-out infinite;
 }
 
-.shared-loading-state__visual--leads span:nth-child(1) { top: 30px; width: 190px; }
-.shared-loading-state__visual--leads span:nth-child(2) { top: 66px; width: 150px; animation-delay: 0.12s; }
-.shared-loading-state__visual--leads span:nth-child(3) { top: 102px; width: 108px; animation-delay: 0.24s; }
-.shared-loading-state__visual--leads span:nth-child(4) { top: 138px; width: 60px; animation-delay: 0.36s; }
-.shared-loading-state__visual--leads span:nth-child(n+5) { display: none; }
+.shared-loading-state__visual--commercial span:nth-child(1) { top: 30px; width: 190px; }
+.shared-loading-state__visual--commercial span:nth-child(2) { top: 66px; width: 150px; animation-delay: 0.12s; }
+.shared-loading-state__visual--commercial span:nth-child(3) { top: 102px; width: 108px; animation-delay: 0.24s; }
+.shared-loading-state__visual--commercial span:nth-child(4) { top: 138px; width: 60px; animation-delay: 0.36s; }
+.shared-loading-state__visual--commercial span:nth-child(n+5) { display: none; }
 
 .shared-loading-state__visual--marketing span:nth-child(1) {
   left: 62px;
@@ -784,7 +784,7 @@
   --loading-glow: color-mix(in srgb, var(--success) 30%, transparent);
 }
 
-.shared-loading-state--leads {
+.shared-loading-state--commercial {
   --loading-accent: var(--danger);
   --loading-accent-strong: var(--danger);
   --loading-card-start: var(--danger);
@@ -888,7 +888,7 @@
   50% { transform: rotate(2deg) translateY(-5px); }
 }
 
-@keyframes loading-leads-funnel {
+@keyframes loading-commercial-funnel {
   0%, 100% { opacity: 0.46; transform: translateX(-50%) scaleX(0.92); }
   50% { opacity: 1; transform: translateX(-50%) scaleX(1.04); }
 }

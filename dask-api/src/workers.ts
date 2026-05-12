@@ -3,6 +3,7 @@ import { startOutboxRelayWorker, type RelayWorkerHandle } from '@/bootstrap/outb
 import { env } from '@/core/config/env';
 import { EventPublisher } from '@/core/events/event-publisher';
 import { createDebugLogger, getLogger } from '@/core/logging/logger';
+import { redactMetadata, redactSensitiveText } from '@/core/security/redaction';
 import { PrismaOutboxRepository } from '@/infra/db/prisma-outbox-repository';
 import { prisma } from '@/infra/db/prisma';
 import { queueConnection } from '@/infra/queue/bullmq-job-queue';
@@ -53,7 +54,16 @@ export const startWorkers = (): WorkerHandle[] => {
   const outboxRepository = new PrismaOutboxRepository(prisma);
   const workerEventPublisher = new EventPublisher(outboxRepository, prisma);
   const fiscalRepository = new PrismaFiscalRepository(prisma);
-  const fiscalProvider = new FocusFiscalProvider();
+  const fiscalProvider = new FocusFiscalProvider({
+    baseUrl: env.FOCUS_API_BASE_URL,
+    environment: env.NODE_ENV,
+    providerEnvironment: env.FOCUS_API_ENVIRONMENT,
+    isBaseUrlExplicit: Boolean(process.env.FOCUS_API_BASE_URL?.trim()),
+    requireExplicitBaseUrl: env.NODE_ENV === 'production',
+    timeoutMs: env.FOCUS_API_TIMEOUT_MS,
+    retryAttempts: env.FOCUS_API_RETRY_ATTEMPTS,
+    retryBackoffMs: env.FOCUS_API_RETRY_BACKOFF_MS
+  });
   const sharedJobQueue = new BullMqJobQueue();
   const fiscalService = new FiscalService({
     repo: fiscalRepository,
@@ -61,7 +71,8 @@ export const startWorkers = (): WorkerHandle[] => {
     jobQueue: sharedJobQueue,
     stripe: null,
     stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
-    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET
+    focusWebhookSecret: env.FOCUS_WEBHOOK_SECRET,
+    environment: env.NODE_ENV
   });
   const marketingRepository = new PrismaMarketingRepository(prisma);
   const marketingEmailProvider = env.RESEND_API_KEY
@@ -143,16 +154,16 @@ export const startWorkers = (): WorkerHandle[] => {
           return;
         }
 
-        const fullContent = [
+        const fullContent = redactSensitiveText([
           `Title: ${item.title}`,
           `Description: ${item.description ?? ''}`,
           `Status: ${item.status}`,
           `Type: ${item.type}`,
-          `Metadata: ${JSON.stringify(item.metadata ?? {})}`,
-          `Fields: ${JSON.stringify(item.fields ?? {})}`,
+          `Metadata: ${JSON.stringify(redactMetadata(item.metadata ?? {}))}`,
+          `Fields: ${JSON.stringify(redactMetadata(item.fields ?? {}))}`,
           'History:',
           ...item.history.map((entry) => `${entry.createdAt.toISOString()} ${entry.eventName}`)
-        ].join('\n');
+        ].join('\n'));
 
         const chunks = chunkText(
           fullContent,

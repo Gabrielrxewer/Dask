@@ -1,11 +1,11 @@
 import type { Edge, Node } from '@xyflow/react';
 
-export type JourneyNodeKind = 'TRIGGER' | 'CONDITION' | 'DELAY' | 'ACTION' | 'EXIT';
+export type JourneyNodeKind = 'TRIGGER' | 'CONDITION' | 'DELAY' | 'ACTION' | 'BRANCH' | 'EXIT';
 
 export type TriggerEvent =
-  | 'lead.created'
-  | 'lead.status_changed'
-  | 'lead.score_updated'
+  | 'commercial_work_item.created'
+  | 'commercial_work_item.status_changed'
+  | 'commercial_work_item.score_updated'
   | 'invoice.overdue'
   | 'campaign.opened'
   | 'campaign.clicked'
@@ -14,12 +14,14 @@ export type TriggerEvent =
 
 export type ActionType =
   | 'send_campaign'
+  | 'human_approval'
+  | 'approval'
   | 'update_score'
-  | 'move_lead'
+  | 'move_work_item'
   | 'create_task'
   | 'notify_user'
   | 'start_flow'
-  | 'tag_lead'
+  | 'tag_work_item'
   | 'webhook';
 
 export type DelayUnit = 'minutes' | 'hours' | 'days' | 'weeks';
@@ -33,6 +35,11 @@ export interface TriggerConfig {
 export interface ActionConfig {
   type: ActionType;
   campaignId?: string;
+  approvalType?: string;
+  title?: string;
+  description?: string;
+  requestedBy?: string;
+  requestedByPath?: string;
   scoreChange?: number;
   targetStatus?: string;
   taskTitle?: string;
@@ -84,9 +91,9 @@ export type JourneyNode = Node<JourneyNodeData, JourneyNodeKind>;
 export type JourneyEdge = Edge<{ label?: string; branchType?: 'yes' | 'no' | 'default' }>;
 
 export const TRIGGER_EVENT_LABELS: Record<TriggerEvent, string> = {
-  'lead.created': 'Lead criado',
-  'lead.status_changed': 'Status mudou',
-  'lead.score_updated': 'Score atualizado',
+  'commercial_work_item.created': 'WorkItem comercial criado',
+  'commercial_work_item.status_changed': 'Status mudou',
+  'commercial_work_item.score_updated': 'Score atualizado',
   'invoice.overdue': 'Invoice vencida',
   'campaign.opened': 'Campanha aberta',
   'campaign.clicked': 'Campanha clicada',
@@ -96,12 +103,14 @@ export const TRIGGER_EVENT_LABELS: Record<TriggerEvent, string> = {
 
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   send_campaign: 'Enviar campanha',
+  human_approval: 'Aprovacao humana',
+  approval: 'Aprovacao humana',
   update_score: 'Atualizar score',
-  move_lead: 'Mover lead',
+  move_work_item: 'Mover WorkItem',
   create_task: 'Criar tarefa',
   notify_user: 'Notificar usuário',
   start_flow: 'Iniciar outro fluxo',
-  tag_lead: 'Adicionar tag',
+  tag_work_item: 'Adicionar tag',
   webhook: 'Disparar webhook',
 };
 
@@ -119,7 +128,7 @@ export const PALETTE_ITEMS: PaletteItem[] = [
     label: 'Gatilho',
     description: 'Ponto de entrada do fluxo',
     icon: 'trigger',
-    defaultConfig: { event: 'lead.created' } as TriggerConfig,
+    defaultConfig: { event: 'commercial_work_item.created' } as TriggerConfig,
   },
   {
     kind: 'ACTION',
@@ -163,9 +172,16 @@ export function validateNode(data: JourneyNodeData): JourneyNodeValidation {
   }
   if (kind === 'ACTION') {
     const c = config as ActionConfig;
-    return c.type ? 'valid' : 'incomplete';
+    if (!c.type) return 'incomplete';
+    if (c.type === 'send_campaign') {
+      return c.campaignId?.trim() ? 'valid' : 'incomplete';
+    }
+    if (c.type === 'human_approval' || c.type === 'approval') {
+      return c.requestedBy?.trim() || c.requestedByPath?.trim() ? 'valid' : 'incomplete';
+    }
+    return 'error';
   }
-  if (kind === 'CONDITION') {
+  if (kind === 'CONDITION' || kind === 'BRANCH') {
     const c = config as ConditionConfig;
     return c.rules && c.rules.length > 0 ? 'valid' : 'incomplete';
   }

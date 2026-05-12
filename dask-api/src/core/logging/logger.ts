@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import pino, { type Logger, type LoggerOptions } from 'pino';
 import { env } from '@/core/config/env';
+import { REDACTED, redactError, redactLogData } from '@/core/security/redaction';
 
 const LOGGER_NAME = 'dask-api';
 const PRETTY_DATE_FORMAT = 'yyyy-mm-dd HH:MM:ss.l';
@@ -23,11 +24,41 @@ const baseLoggerOptions: LoggerOptions = {
     service: LOGGER_NAME
   },
   timestamp: pino.stdTimeFunctions.isoTime,
+  redact: {
+    paths: [
+      'req.headers.authorization',
+      'req.headers.cookie',
+      'req.headers["x-api-key"]',
+      'req.headers["x-webhook-secret"]',
+      'req.headers["x-commercial-intake-secret"]',
+      'req.headers["x-commercial-webhook-secret"]',
+      'req.headers["x-dask-signature"]',
+      'req.headers["stripe-signature"]',
+      'headers.authorization',
+      'headers.cookie',
+      'headers["x-api-key"]',
+      'headers["x-webhook-secret"]',
+      'headers["x-commercial-intake-secret"]',
+      'headers["x-commercial-webhook-secret"]',
+      'headers["x-dask-signature"]',
+      'headers["stripe-signature"]'
+    ],
+    censor: REDACTED
+  },
   formatters: {
     level: (label) => ({ level: label.toUpperCase() })
   },
   serializers: {
-    err: pino.stdSerializers.err
+    err: (error) => redactError(error),
+    error: (error) => redactLogData(error)
+  },
+  hooks: {
+    logMethod(args, method) {
+      if (args.length > 0 && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0])) {
+        args[0] = redactLogData(args[0]);
+      }
+      return method.apply(this, args);
+    }
   }
 };
 
@@ -90,6 +121,10 @@ export type DebugLogger = {
   log(payload: Record<string, unknown>, message: string): void;
 };
 
+export function sanitizeLogPayload<T extends Record<string, unknown>>(payload: T): T {
+  return redactLogData(payload);
+}
+
 export function createDebugLogger(channel: string, bindings?: Record<string, unknown>): DebugLogger {
   const normalizedChannel = channel.trim().toLowerCase();
   const channelLogger = getLogger('debug').child({ debugChannel: normalizedChannel, ...bindings });
@@ -104,7 +139,7 @@ export function createDebugLogger(channel: string, bindings?: Record<string, unk
       if (!isEnabled()) {
         return;
       }
-      channelLogger.debug(payload, message);
+      channelLogger.debug(sanitizeLogPayload(payload), message);
     }
   };
 }

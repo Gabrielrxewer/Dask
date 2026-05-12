@@ -26,6 +26,8 @@ import {
   createBillingPortalToken,
   type BillingPortalTokenScope
 } from '../domain/portal-token';
+import { redactBillingMetadata, redactBillingSecretValue } from '../domain/redaction';
+import type { BillingRuntimeEnvironment } from './billing-runtime-env';
 import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
 
 // Stripe v22 exports as `export = StripeConstructor` — use InstanceType to get the instance type
@@ -38,6 +40,7 @@ type StripePaymentMethodConfigurationUpdateParams = Record<string, {
 
 const BRL_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card', 'boleto'];
 const CARD_ONLY_PAYMENT_METHODS: StripeCheckoutPaymentMethodType[] = ['card'];
+const DEFAULT_CONNECT_REQUIRED_CAPABILITIES = ['charges_enabled', 'transfers', 'card_payments'] as const;
 
 function asRecordOrNull(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -175,12 +178,22 @@ interface StripePaymentMethodConfigurationObject {
   };
 }
 
+interface StripeConnectAccountCapabilitySnapshot {
+  id: string;
+  charges_enabled?: boolean;
+  capabilities?: Record<string, string | null>;
+}
+
 interface BillingServiceDeps {
   repo: BillingRepository;
   stripe: StripeInstance;
   appPublicUrl: string;
   webhookSecret: string;
   portalTokenSecret?: string;
+  environment?: BillingRuntimeEnvironment;
+  stripeSecretConfigured?: boolean;
+  webhookSecretConfigured?: boolean;
+  portalTokenSecretConfigured?: boolean;
   emailService?: EmailService;
   eventPublisher?: {
     publish(event: {
@@ -194,6 +207,7 @@ interface BillingServiceDeps {
   };
   priceIds?: Partial<Record<SubscriptionPlan, string>>;
   connectApplicationFeeBps?: number;
+  connectRequiredCapabilities?: string[];
 }
 
 export interface ConnectAccountStatus {
@@ -367,17 +381,63 @@ export class BillingService {
   private readonly priceIds: Partial<Record<SubscriptionPlan, string>>;
   private readonly connectApplicationFeeBps: number;
   private readonly portalTokenSecret: string;
+  private readonly environment: BillingRuntimeEnvironment;
+  private readonly stripeSecretConfigured: boolean;
+  private readonly webhookSecretConfigured: boolean;
+  private readonly portalTokenSecretConfigured: boolean;
+  private readonly connectRequiredCapabilities: string[];
 
   constructor(deps: BillingServiceDeps) {
     this.repo = deps.repo;
     this.stripe = deps.stripe;
     this.appPublicUrl = deps.appPublicUrl;
-    this.webhookSecret = deps.webhookSecret;
-    this.portalTokenSecret = deps.portalTokenSecret ?? (deps.webhookSecret ? `${deps.webhookSecret}:billing-portal-token` : '');
+    this.webhookSecret = deps.webhookSecret.trim();
+    this.portalTokenSecret = deps.portalTokenSecret?.trim() ?? '';
+    this.environment = deps.environment ?? 'test';
+    this.stripeSecretConfigured = deps.stripeSecretConfigured ?? true;
+    this.webhookSecretConfigured = deps.webhookSecretConfigured ?? this.webhookSecret.length > 0;
+    this.portalTokenSecretConfigured = deps.portalTokenSecretConfigured ?? Boolean(deps.portalTokenSecret?.trim());
     this.emailService = deps.emailService;
     this.eventPublisher = deps.eventPublisher;
     this.priceIds = deps.priceIds ?? PLAN_PRICE_IDS;
     this.connectApplicationFeeBps = deps.connectApplicationFeeBps ?? 500;
+    this.connectRequiredCapabilities = deps.connectRequiredCapabilities?.length
+      ? Array.from(new Set(deps.connectRequiredCapabilities))
+      : [...DEFAULT_CONNECT_REQUIRED_CAPABILITIES];
+  }
+
+  private assertStripeRuntimeConfigured(scope: 'platform' | 'connect' | 'webhook'): void {
+    if (this.environment !== 'production' || this.stripeSecretConfigured) {
+      return;
+    }
+
+    throw new AppError('Stripe billing is not configured for production', 503, {
+      code: 'STRIPE_BILLING_ENV_MISSING',
+      scope,
+      missingEnv: ['STRIPE_SECRET_KEY']
+    });
+  }
+
+  private assertStripeWebhookConfigured(): void {
+    if (this.webhookSecretConfigured && this.webhookSecret.length > 0) {
+      return;
+    }
+
+    throw new AppError('Stripe webhook secret is not configured', 503, {
+      code: 'STRIPE_WEBHOOK_SECRET_MISSING',
+      missingEnv: ['STRIPE_WEBHOOK_SECRET']
+    });
+  }
+
+  private assertBillingPortalTokenSecretConfigured(): void {
+    if (this.portalTokenSecret.trim().length >= 16 && (this.environment !== 'production' || this.portalTokenSecretConfigured)) {
+      return;
+    }
+
+    throw new AppError('Billing portal token secret is not configured', 503, {
+      code: 'BILLING_PORTAL_TOKEN_SECRET_MISSING',
+      missingEnv: ['BILLING_PORTAL_TOKEN_SECRET']
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -385,6 +445,7 @@ export class BillingService {
   // ---------------------------------------------------------------------------
 
   async listBillingPlans(): Promise<BillingPlanCatalogItem[]> {
+    this.assertStripeRuntimeConfigured('platform');
     return Promise.all(SUBSCRIPTION_PLANS.map((planCode) => this.buildBillingPlanCatalogItem(planCode)));
   }
 
@@ -467,6 +528,7 @@ export class BillingService {
     userId: string,
     planCode: SubscriptionPlan
   ): Promise<{ url: string }> {
+    this.assertStripeRuntimeConfigured('platform');
     const priceId = this.getConfiguredPlanPriceId(planCode);
 
     const user = await this.repo.findUserById(userId);
@@ -555,6 +617,7 @@ export class BillingService {
   }
 
   async createBillingPortalSession(userId: string): Promise<{ url: string }> {
+    this.assertStripeRuntimeConfigured('platform');
     const user = await this.repo.findUserById(userId);
     if (!user) {
       throw new AppError('User not found', 404);
@@ -586,7 +649,8 @@ export class BillingService {
     userId: string,
     input: { refreshUrl?: string; returnUrl?: string } = {}
   ): Promise<{ url: string; accountId: string }> {
-    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+    this.assertStripeRuntimeConfigured('connect');
+    const workspace = await this.assertWorkspaceBillingOwner(workspaceId, userId);
     let accountId = workspace.connectAccountId;
 
     if (!accountId) {
@@ -626,6 +690,7 @@ export class BillingService {
   }
 
   async getConnectAccountStatus(workspaceId: string, userId: string): Promise<ConnectAccountStatus> {
+    this.assertStripeRuntimeConfigured('connect');
     const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
     if (!workspace.connectAccountId) {
       throw new AppError('Workspace has no Stripe Connect account yet', 404);
@@ -683,7 +748,8 @@ export class BillingService {
     userId: string,
     paymentMethod: ConnectLocalPaymentMethod
   ): Promise<ConnectAccountStatus> {
-    const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
+    this.assertStripeRuntimeConfigured('connect');
+    const workspace = await this.assertWorkspaceBillingOwner(workspaceId, userId);
     if (!workspace.connectAccountId) {
       throw new AppError('Workspace has no Stripe Connect account configured', 409);
     }
@@ -700,7 +766,7 @@ export class BillingService {
         { stripeAccount: workspace.connectAccountId }
       );
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = redactBillingSecretValue(err);
       logger.warn({
         event: 'billing.connect.payment_method_preference_failed',
         workspaceId,
@@ -738,6 +804,7 @@ export class BillingService {
     userId: string,
     input: CreateConnectCheckoutSessionInput
   ): Promise<{ url: string; sessionId: string; orderId: string }> {
+    this.assertStripeRuntimeConfigured('connect');
     const workspace = await this.assertWorkspaceBillingManager(workspaceId, userId);
     const accountId = workspace.connectAccountId;
     if (!accountId) {
@@ -770,6 +837,7 @@ export class BillingService {
       normalizedMetadataValue(input.sourceWorkItemId) ||
       normalizedMetadataValue(input.metadata?.sourceWorkItemId);
     const justification = normalizedMetadataValue(input.justification ?? input.metadata?.justification);
+    const safeInputMetadata = redactBillingMetadata(input.metadata ?? {}) as Record<string, string>;
     const hasFormalCommercialDocument = sourceWorkItemId
       ? input.hasProposalOrContract === true ||
         await this.repo.hasWorkItemProposalOrContract(workspaceId, sourceWorkItemId)
@@ -777,7 +845,7 @@ export class BillingService {
 
     if (sourceWorkItemId && !hasFormalCommercialDocument && justification.length < 12) {
       throw new AppError(
-        'Formal justification is required to create billing for a lead without proposal or contract',
+        'Formal justification is required to create billing for a commercial WorkItem without proposal or contract',
         422,
         {
           code: 'LEAD_BILLING_JUSTIFICATION_REQUIRED',
@@ -824,6 +892,12 @@ export class BillingService {
     const checkoutMode = this.isRecurringCatalogBillingType(catalogItem?.billingType)
       ? 'subscription'
       : 'payment';
+    const paymentMethodTypes = this.resolveConnectPaymentMethodTypes(catalogItem?.billingType ?? 'ONE_TIME', currency);
+    await this.assertConnectCheckoutCapabilities({
+      workspaceId,
+      accountId,
+      paymentMethodTypes
+    });
     const order = await this.repo.createConnectPaymentOrder({
       workspaceId,
       createdByUserId: userId,
@@ -839,11 +913,11 @@ export class BillingService {
       customerAddress,
       applicationFeeAmount,
       metadata: {
-        ...(input.metadata ?? {}),
+        ...safeInputMetadata,
         ...(sourceWorkItemId ? { sourceWorkItemId } : {}),
         ...(sourceWorkItemId
           ? {
-              billingLinkedToLead: 'true',
+              billingLinkedToWorkItem: 'true',
               billingHasProposalOrContract: hasFormalCommercialDocument ? 'true' : 'false'
             }
           : {}),
@@ -885,7 +959,7 @@ export class BillingService {
     await this.repo.updateConnectPaymentOrder(order.id, {
       metadata: {
         ...(order.metadata ?? {}),
-        clientPortalUrl,
+        clientPortalTokenHash: portalToken.tokenHash,
         clientPortalTokenId: portalToken.tokenId,
         clientPortalTokenExpiresAt: portalToken.expiresAt.toISOString(),
         clientPortalTokenScopes: portalToken.scopes.join(','),
@@ -899,16 +973,15 @@ export class BillingService {
       catalogItem,
       customer,
       metadata: {
-        ...(input.metadata ?? {}),
+        ...safeInputMetadata,
         ...(sourceWorkItemId ? { sourceWorkItemId } : {}),
-        ...(sourceWorkItemId && !hasFormalCommercialDocument ? { billingJustification: justification } : {}),
-        clientPortalUrl
+        ...(sourceWorkItemId && !hasFormalCommercialDocument ? { billingJustification: justification } : {})
       }
     });
 
     const sessionPayload: Record<string, unknown> = {
       mode: checkoutMode,
-      payment_method_types: this.resolveConnectPaymentMethodTypes(catalogItem?.billingType ?? 'ONE_TIME', currency),
+      payment_method_types: paymentMethodTypes,
       client_reference_id: order.id,
       line_items: [
         {
@@ -978,7 +1051,7 @@ export class BillingService {
     try {
       session = await this.stripe.checkout.sessions.create(sessionPayload);
     } catch (error) {
-      const statusReason = error instanceof Error ? error.message.slice(0, 500) : 'Stripe checkout creation failed';
+      const statusReason = redactBillingSecretValue(error).slice(0, 500) || 'Stripe checkout creation failed';
 
       await this.updateConnectPaymentOrderAndSync(order.id, {
         status: 'FAILED',
@@ -994,7 +1067,7 @@ export class BillingService {
         orderId: order.id,
         currency,
         checkoutMode,
-        error: String(error)
+        error: statusReason
       });
 
       throw new AppError('Failed to create connected checkout session', 500, { reason: statusReason });
@@ -1040,7 +1113,7 @@ export class BillingService {
           checkoutUrl: clientPortalUrl
         })
         .catch((err: unknown) => {
-          logger.error({ event: 'billing.connect.checkout.email_failed', orderId: order.id, error: err });
+          logger.error({ event: 'billing.connect.checkout.email_failed', orderId: order.id, error: redactBillingSecretValue(err) });
         });
     }
 
@@ -1095,6 +1168,7 @@ export class BillingService {
     userId: string,
     orderId: string
   ): Promise<void> {
+    this.assertStripeRuntimeConfigured('connect');
     await this.assertWorkspaceBillingManager(workspaceId, userId);
 
     const order = await this.repo.findConnectPaymentOrderById(orderId);
@@ -1115,7 +1189,7 @@ export class BillingService {
             { stripeAccount: workspace.connectAccountId }
           );
         } catch (err) {
-          logger.warn({ event: 'billing.connect.cancel.expire_failed', orderId, error: String(err) });
+          logger.warn({ event: 'billing.connect.cancel.expire_failed', orderId, error: redactBillingSecretValue(err) });
         }
       }
     }
@@ -1135,6 +1209,7 @@ export class BillingService {
     orderId: string,
     input: CreateBillingPortalTokenInput = {}
   ): Promise<{ url: string; expiresAt: string; scopes: BillingPortalTokenScope[] }> {
+    this.assertBillingPortalTokenSecretConfigured();
     await this.assertWorkspaceBillingManager(workspaceId, userId);
 
     const order = await this.repo.findConnectPaymentOrderById(orderId);
@@ -1170,7 +1245,7 @@ export class BillingService {
     await this.repo.updateConnectPaymentOrder(order.id, {
       metadata: {
         ...(order.metadata ?? {}),
-        clientPortalUrl: url,
+        clientPortalTokenHash: portalToken.tokenHash,
         clientPortalTokenId: portalToken.tokenId,
         clientPortalTokenExpiresAt: portalToken.expiresAt.toISOString(),
         clientPortalTokenScopes: portalToken.scopes.join(','),
@@ -1237,6 +1312,7 @@ export class BillingService {
     userId: string,
     sessionId: string
   ): Promise<ConnectPaymentOrderListItem> {
+    this.assertStripeRuntimeConfigured('connect');
     await this.assertWorkspaceBillingManager(workspaceId, userId);
 
     const order = await this.repo.findConnectPaymentOrderByCheckoutSessionId(sessionId);
@@ -1303,6 +1379,7 @@ export class BillingService {
     userId: string,
     input: CreateConnectCatalogItemInput
   ): Promise<ConnectCatalogItemListItem> {
+    this.assertStripeRuntimeConfigured('connect');
     await this.assertWorkspaceBillingManager(workspaceId, userId);
     const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
     const accountId = workspace?.connectAccountId;
@@ -1360,7 +1437,7 @@ export class BillingService {
       stripeConnectAccountId: accountId,
       stripeProductId: product.id,
       stripePriceId: price.id,
-      metadata: input.metadata
+      metadata: redactBillingMetadata(input.metadata ?? {}) as Record<string, string>
     });
 
     return this.mapConnectCatalogItem(item);
@@ -1372,6 +1449,7 @@ export class BillingService {
     itemId: string,
     input: UpdateConnectCatalogItemInput
   ): Promise<ConnectCatalogItemListItem> {
+    this.assertStripeRuntimeConfigured('connect');
     await this.assertWorkspaceBillingManager(workspaceId, userId);
     const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
     const accountId = workspace?.connectAccountId;
@@ -1474,7 +1552,7 @@ export class BillingService {
             workspaceId,
             itemId,
             stripePriceId: current.stripePriceId,
-            error: err instanceof Error ? err.message : String(err)
+            error: redactBillingSecretValue(err)
           });
         }
       }
@@ -1491,7 +1569,7 @@ export class BillingService {
       currency,
       stripeProductId,
       stripePriceId,
-      metadata: input.metadata ?? {}
+      metadata: redactBillingMetadata(input.metadata ?? {}) as Record<string, string>
     });
 
     return this.mapConnectCatalogItem(updated);
@@ -1584,6 +1662,54 @@ export class BillingService {
     return BRL_PAYMENT_METHODS;
   }
 
+  private async assertConnectCheckoutCapabilities(input: {
+    workspaceId: string;
+    accountId: string;
+    paymentMethodTypes: StripeCheckoutPaymentMethodType[];
+  }): Promise<void> {
+    const account = await this.stripe.accounts.retrieve(input.accountId) as StripeConnectAccountCapabilitySnapshot;
+    const capabilities = account.capabilities ?? {};
+    const missingCapabilities: string[] = [];
+
+    if (this.connectRequiredCapabilities.includes('charges_enabled') && account.charges_enabled !== true) {
+      missingCapabilities.push('charges_enabled');
+    }
+    if (this.connectRequiredCapabilities.includes('transfers') && capabilities.transfers !== 'active') {
+      missingCapabilities.push('transfers');
+    }
+    if (
+      (this.connectRequiredCapabilities.includes('card_payments') || input.paymentMethodTypes.includes('card')) &&
+      capabilities.card_payments !== 'active'
+    ) {
+      missingCapabilities.push('card_payments');
+    }
+    if (
+      (this.connectRequiredCapabilities.includes('boleto_payments') || input.paymentMethodTypes.includes('boleto')) &&
+      capabilities.boleto_payments !== 'active'
+    ) {
+      missingCapabilities.push('boleto_payments');
+    }
+    if (this.connectRequiredCapabilities.includes('pix_payments') && capabilities.pix_payments !== 'active') {
+      missingCapabilities.push('pix_payments');
+    }
+
+    if (missingCapabilities.length === 0) {
+      return;
+    }
+
+    logger.warn({
+      event: 'billing.connect.checkout.capabilities_missing',
+      workspaceId: input.workspaceId,
+      accountId: input.accountId,
+      missingCapabilities: Array.from(new Set(missingCapabilities))
+    });
+
+    throw new AppError('Connected account is missing required payment capabilities', 409, {
+      code: 'STRIPE_CONNECT_CAPABILITY_MISSING',
+      missingCapabilities: Array.from(new Set(missingCapabilities))
+    });
+  }
+
   private isRecurringCatalogBillingType(
     billingType: ConnectCatalogBillingType | null | undefined
   ): boolean {
@@ -1605,7 +1731,7 @@ export class BillingService {
         event: 'billing.connect.payment_method_configuration_read_failed',
         workspaceId,
         accountId,
-        error: String(err)
+        error: redactBillingSecretValue(err)
       });
       return null;
     }
@@ -1651,12 +1777,14 @@ export class BillingService {
   // ---------------------------------------------------------------------------
 
   async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
+    this.assertStripeRuntimeConfigured('webhook');
+    this.assertStripeWebhookConfigured();
     let event: StripeWebhookEvent;
 
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret) as StripeWebhookEvent;
     } catch (err) {
-      logger.warn({ event: 'billing.webhook.invalid_signature', error: String(err) });
+      logger.warn({ event: 'billing.webhook.invalid_signature', error: redactBillingSecretValue(err) });
       throw new AppError('Invalid webhook signature', 400);
     }
 
@@ -1702,7 +1830,7 @@ export class BillingService {
           logger.info({ event: 'billing.webhook.unhandled', type: event.type });
       }
     } catch (err) {
-      logger.error({ event: 'billing.webhook.processing_error', type: event.type, error: String(err) });
+      logger.error({ event: 'billing.webhook.processing_error', type: event.type, error: redactBillingSecretValue(err) });
       // Re-throw so Stripe retries the webhook
       throw err;
     }
@@ -2159,6 +2287,24 @@ export class BillingService {
     return workspace;
   }
 
+  private async assertWorkspaceBillingOwner(workspaceId: string, userId: string) {
+    const membership = await this.repo.findWorkspaceMembership(workspaceId, userId);
+    if (!membership) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    if (membership.role !== 'OWNER') {
+      throw new AppError('Only workspace OWNER can manage sensitive billing connect settings', 403);
+    }
+
+    const workspace = await this.repo.findWorkspaceBillingConnectInfo(workspaceId);
+    if (!workspace) {
+      throw new AppError('Workspace not found', 404);
+    }
+
+    return workspace;
+  }
+
   private async assertWorkspaceBillingReader(
     workspaceId: string,
     userId: string
@@ -2281,6 +2427,7 @@ export class BillingService {
     scopes?: BillingPortalTokenScope[];
     expiresInSeconds?: number;
   }) {
+    this.assertBillingPortalTokenSecretConfigured();
     return createBillingPortalToken({
       workspaceId: input.workspaceId,
       orderId: input.orderId,
@@ -2296,14 +2443,7 @@ export class BillingService {
     if (!metadata || typeof metadata !== 'object') {
       return null;
     }
-    const explicitUrl = metadata.clientPortalUrl;
-    if (typeof explicitUrl === 'string' && explicitUrl.trim().length > 0) {
-      return explicitUrl;
-    }
-    const token = metadata.clientAccessToken;
-    return typeof token === 'string' && token.trim().length > 0
-      ? this.buildCustomerPaymentPortalUrl(token)
-      : null;
+    return null;
   }
 
   private assertCheckoutCustomerFiscalData(input: {

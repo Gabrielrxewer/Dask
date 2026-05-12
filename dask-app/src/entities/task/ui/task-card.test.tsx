@@ -210,9 +210,6 @@ describe("TaskCard", () => {
             color: "var(--text-muted)"
           }
         }}
-        draggable={false}
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
       />
     );
 
@@ -236,18 +233,14 @@ describe("TaskCard", () => {
             color: "var(--text-muted)"
           }
         }}
-        draggable={false}
         getFieldSlotProps={({ fieldId }) =>
           fieldId === "sys:assignee"
             ? {
                 className: "preview-slot-marker",
-                draggable: true,
                 "data-preview-field": fieldId
               }
             : {}
         }
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
       />
     );
 
@@ -271,12 +264,9 @@ describe("TaskCard", () => {
             color: "var(--text-muted)"
           }
         }}
-        draggable={false}
         renderEmptySlot={({ area, occupiedCount, slotLimit }) => (
           <span className={`slot-placeholder slot-placeholder--${area}`}>{`${occupiedCount}/${slotLimit}`}</span>
         )}
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
       />
     );
 
@@ -294,9 +284,6 @@ describe("TaskCard", () => {
         task={projectedTask}
         boardConfig={projectedStatusBoardConfig}
         displayStatuses={[{ id: "column-backlog", label: "Backlog", dot: "var(--text-muted)" }]}
-        draggable={false}
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
       />
     );
     const { debugSnapshot } = buildTaskCardRenderModel({
@@ -327,9 +314,6 @@ describe("TaskCard", () => {
             color: "var(--text-muted)"
           }
         }}
-        draggable={false}
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
       />
     );
 
@@ -362,9 +346,6 @@ describe("TaskCard", () => {
           suppressStatus: true,
           suppressCreatedByWhenAssigneeVisible: true
         }}
-        draggable={false}
-        onDragStart={() => undefined}
-        onDragEnd={() => undefined}
       />
     );
 

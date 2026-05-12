@@ -22,28 +22,35 @@ function normalizeHeaders(headers: Request['headers']): Record<string, string | 
   }, {});
 }
 
+function readRawBody(req: Request): Buffer | undefined {
+  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+  return Buffer.isBuffer(rawBody) ? rawBody : undefined;
+}
+
 export const buildCommercialIntakeRoutes = (deps: { commercialIntakeService: CommercialIntakeService }): Router => {
   const router = Router();
+  const handleWebhook = asyncHandler(async (req, res) => {
+    const { source } = webhookParamsDto.parse(req.params);
+    const payload = webhookBodyDto.parse(req.body ?? {});
+    const workspaceIdFromQuery =
+      typeof req.query.workspaceId === 'string' && req.query.workspaceId.trim().length > 0
+        ? req.query.workspaceId.trim()
+        : undefined;
+
+    const result = await deps.commercialIntakeService.handleInboundWebhook({
+      source: deps.commercialIntakeService.resolveSource(source),
+      headers: normalizeHeaders(req.headers),
+      payload,
+      rawBody: readRawBody(req),
+      workspaceId: workspaceIdFromQuery
+    });
+
+    res.status(200).json({ received: true, ...result });
+  });
 
   router.post(
-    '/integrations/leads/webhook/:source',
-    asyncHandler(async (req, res) => {
-      const { source } = webhookParamsDto.parse(req.params);
-      const payload = webhookBodyDto.parse(req.body ?? {});
-      const workspaceIdFromQuery =
-        typeof req.query.workspaceId === 'string' && req.query.workspaceId.trim().length > 0
-          ? req.query.workspaceId.trim()
-          : undefined;
-
-      const result = await deps.commercialIntakeService.handleInboundWebhook({
-        source: deps.commercialIntakeService.resolveSource(source),
-        headers: normalizeHeaders(req.headers),
-        payload,
-        workspaceId: workspaceIdFromQuery
-      });
-
-      res.status(200).json({ received: true, ...result });
-    })
+    '/integrations/commercial-intake/webhook/:source',
+    handleWebhook
   );
 
   return router;

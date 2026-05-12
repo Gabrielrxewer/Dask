@@ -7,7 +7,7 @@ interface AgendaEventCardProps {
   dayStart: number;
   agendaStartOffset: number;
   onSelectTask: (taskId: string) => void;
-  draggable?: boolean;
+  canDrag?: boolean;
   isOverlay?: boolean;
 }
 
@@ -16,7 +16,7 @@ export function AgendaEventCard({
   dayStart,
   agendaStartOffset,
   onSelectTask,
-  draggable = false,
+  canDrag = false,
   isOverlay = false
 }: AgendaEventCardProps) {
   const { top, height, width, left } = getAgendaSegmentLayout({
@@ -27,9 +27,9 @@ export function AgendaEventCard({
   const drag = useDraggable({
     id: `agenda-event:${segment.id}`,
     data: { agendaEvent: segment },
-    disabled: !draggable || !segment.taskId
+    disabled: !canDrag || !segment.taskId
   });
-  const dragProps = draggable && segment.taskId && !isOverlay
+  const dragProps = canDrag && segment.taskId && !isOverlay
     ? { ...drag.attributes, ...drag.listeners }
     : {};
 
@@ -37,7 +37,7 @@ export function AgendaEventCard({
     <button
       ref={isOverlay ? undefined : drag.setNodeRef}
       type="button"
-      className={`agenda-view__event${drag.isDragging ? " agenda-view__event--dragging" : ""}${draggable ? " agenda-view__event--draggable" : ""}${isOverlay ? " agenda-view__event--overlay" : ""}`}
+      className={`agenda-view__event${drag.isDragging ? " agenda-view__event--dragging" : ""}${canDrag ? " agenda-view__event--draggable" : ""}${isOverlay ? " agenda-view__event--overlay" : ""}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,

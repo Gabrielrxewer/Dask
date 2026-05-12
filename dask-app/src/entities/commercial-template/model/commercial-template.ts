@@ -1,4 +1,4 @@
-export type CommercialTemplateKey = "signal" | "lead" | "customer" | "opportunity";
+export type CommercialTemplateKey = "signal" | "workItem" | "customer" | "opportunity";
 
 export type CommercialFieldKey =
   | "customerId"
@@ -74,9 +74,9 @@ export const commercialTemplates: Record<CommercialTemplateKey, CommercialTempla
       }
     ]
   },
-  lead: {
-    key: "lead",
-    name: "Commercial Lead",
+  workItem: {
+    key: "workItem",
+    name: "Commercial WorkItem",
     currentVersion: 1,
     versions: [
       {
@@ -140,7 +140,7 @@ export const commercialTemplates: Record<CommercialTemplateKey, CommercialTempla
 export const commercialTemplateMigrations: CommercialTemplateMigration[] = [
   {
     fromTemplate: "signal",
-    toTemplate: "lead",
+    toTemplate: "workItem",
     fromVersion: 1,
     toVersion: 1,
     fieldMap: {

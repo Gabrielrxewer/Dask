@@ -4,7 +4,7 @@ export const marketingFollowUpPrioritySchema = z.enum(["low", "medium", "high", 
 
 export const createMarketingFollowUpSchema = z.object({
   signalId: z.string().uuid(),
-  leadId: z.string().uuid(),
+  workItemId: z.string().uuid(),
   title: z.string().trim().min(2, "Informe um titulo.").max(160),
   description: z.string().trim().max(2000).optional(),
   dueAt: z.string().trim().nullable().optional().refine((value) => {

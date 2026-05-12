@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { workspaceService } from "@/modules/workspace/api";
 import type { AiAgentSummary, CreateAiAgentInput, RunAiAgentRuntimeInput } from "@/modules/workspace/model";
@@ -184,4 +185,103 @@ export function useArchiveAiAgentMutation(workspaceId: string | null | undefined
       description: error instanceof Error ? error.message : "Tente novamente."
     })
   });
+}
+
+export function useRunAiAgentOnItemMutation(workspaceId: string | null | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      itemId: string;
+      agentId: string;
+      instruction: string;
+      includeSemanticContext?: boolean;
+      topKContextDocs?: number;
+    }) =>
+      workspaceService.runAiAgentOnItem(requireWorkspace(workspaceId), input.itemId, input.agentId, {
+        instruction: input.instruction,
+        includeSemanticContext: input.includeSemanticContext,
+        topKContextDocs: input.topKContextDocs
+      }),
+    onSuccess: (_result, input) => {
+      const workspace = requireWorkspace(workspaceId);
+      invalidateAiAgentQueries(queryClient, workspace, input.agentId);
+    },
+    onError: (error) => toast.error("Nao foi possivel executar o agente neste item.", {
+      description: error instanceof Error ? error.message : "Tente novamente."
+    })
+  });
+}
+
+export function useRunAiRiskAnalysisMutation(workspaceId: string | null | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      itemId: string;
+      includeSemanticContext?: boolean;
+      topKContextDocs?: number;
+    }) =>
+      workspaceService.runAiRiskAnalysis(requireWorkspace(workspaceId), input.itemId, {
+        includeSemanticContext: input.includeSemanticContext,
+        topKContextDocs: input.topKContextDocs
+      }),
+    onSuccess: () => {
+      const workspace = requireWorkspace(workspaceId);
+      void queryClient.invalidateQueries({ queryKey: aiAgentsQueryKeys.runs(workspace) });
+      void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.workspace(workspace) });
+    },
+    onError: (error) => toast.error("Nao foi possivel executar a analise de risco.", {
+      description: error instanceof Error ? error.message : "Tente novamente."
+    })
+  });
+}
+
+export interface AiWorkItemActions {
+  listAiAgents: () => Promise<AiAgentSummary[]>;
+  runAiAgentOnItem: (
+    itemId: string,
+    agentId: string,
+    input: { instruction: string; includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+  runAiRiskAnalysis: (
+    itemId: string,
+    input?: { includeSemanticContext?: boolean; topKContextDocs?: number }
+  ) => Promise<{ runId: string; content: string }>;
+}
+
+export function useAiWorkItemActions(workspaceId: string | null | undefined): AiWorkItemActions {
+  const queryClient = useQueryClient();
+  const { mutateAsync: runAgentOnItem } = useRunAiAgentOnItemMutation(workspaceId);
+  const { mutateAsync: runRiskAnalysis } = useRunAiRiskAnalysisMutation(workspaceId);
+
+  return useMemo(
+    () => ({
+      listAiAgents: () => {
+        if (!workspaceId?.trim()) {
+          return Promise.resolve([]);
+        }
+
+        return queryClient.fetchQuery({
+          queryKey: aiAgentsQueryKeys.agents(workspaceId),
+          queryFn: () => workspaceService.listAiAgents(workspaceId)
+        });
+      },
+      runAiAgentOnItem: (itemId, agentId, input) =>
+        runAgentOnItem({
+          itemId,
+          agentId,
+          instruction: input.instruction,
+          includeSemanticContext: input.includeSemanticContext,
+          topKContextDocs: input.topKContextDocs
+        }),
+      runAiRiskAnalysis: (itemId, input) =>
+        runRiskAnalysis({
+          itemId,
+          includeSemanticContext: input?.includeSemanticContext,
+          topKContextDocs: input?.topKContextDocs
+        })
+    }),
+    [queryClient, runAgentOnItem, runRiskAnalysis, workspaceId]
+  );
 }

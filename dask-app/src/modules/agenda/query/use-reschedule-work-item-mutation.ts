@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import type { Task } from "@/entities/task";
 import { workspaceService } from "@/modules/workspace/api";
-import type { WorkspaceSnapshot } from "@/modules/workspace/model";
+import type { WorkItemsPage, WorkspaceSnapshot } from "@/modules/workspace/model";
 import {
   invalidateWorkspaceQueries,
   setWorkspaceSnapshotQueryData,
@@ -23,8 +23,10 @@ export type RescheduleWorkItemMutationInput = {
 type AgendaMutationContext = {
   workspaceId: string;
   previousSnapshot?: WorkspaceSnapshot;
-  previousAgendaQueries: Array<[readonly unknown[], Task[] | undefined]>;
+  previousAgendaQueries: Array<[readonly unknown[], AgendaWorkItemsCache | undefined]>;
 };
+
+type AgendaWorkItemsCache = Task[] | InfiniteData<WorkItemsPage>;
 
 function hasWorkspace(workspaceId: string | null | undefined): workspaceId is string {
   return Boolean(workspaceId?.trim());
@@ -64,6 +66,35 @@ function applyScheduleToSnapshot(
   };
 }
 
+function isInfiniteWorkItemsCache(cache: AgendaWorkItemsCache): cache is InfiniteData<WorkItemsPage> {
+  return !Array.isArray(cache) && Array.isArray(cache.pages);
+}
+
+export function applyScheduleToAgendaCache(
+  cache: AgendaWorkItemsCache | undefined,
+  input: RescheduleWorkItemMutationInput
+): AgendaWorkItemsCache | undefined {
+  if (!cache) {
+    return cache;
+  }
+
+  if (Array.isArray(cache)) {
+    return cache.map(task => applyScheduleToTask(task, input));
+  }
+
+  if (!isInfiniteWorkItemsCache(cache)) {
+    return cache;
+  }
+
+  return {
+    ...cache,
+    pages: cache.pages.map((page) => ({
+      ...page,
+      items: page.items.map(task => applyScheduleToTask(task, input))
+    }))
+  };
+}
+
 export function useRescheduleWorkItemMutation(workspaceId: string | null | undefined) {
   const queryClient = useQueryClient();
 
@@ -87,14 +118,14 @@ export function useRescheduleWorkItemMutation(workspaceId: string | null | undef
       ]);
 
       const previousSnapshot = queryClient.getQueryData<WorkspaceSnapshot>(snapshotKey);
-      const previousAgendaQueries = queryClient.getQueriesData<Task[]>({ queryKey: agendaWorkItemsKey });
+      const previousAgendaQueries = queryClient.getQueriesData<AgendaWorkItemsCache>({ queryKey: agendaWorkItemsKey });
 
       if (previousSnapshot) {
         queryClient.setQueryData(snapshotKey, applyScheduleToSnapshot(previousSnapshot, input));
       }
 
-      queryClient.setQueriesData<Task[]>({ queryKey: agendaWorkItemsKey }, (current) =>
-        current?.map(task => applyScheduleToTask(task, input))
+      queryClient.setQueriesData<AgendaWorkItemsCache>({ queryKey: agendaWorkItemsKey }, (current) =>
+        applyScheduleToAgendaCache(current, input)
       );
 
       return {

@@ -30,7 +30,6 @@ export function AgendaTopNavigation({
       className="agenda-top-nav"
       tabsClassName="agenda-top-nav__tabs"
       itemClassName="agenda-top-nav__tab"
-      activeItemClassName="agenda-top-nav__tab--active"
       actionsClassName="agenda-top-nav__filter shared-actions-row"
       actions={
         <DashboardFilter

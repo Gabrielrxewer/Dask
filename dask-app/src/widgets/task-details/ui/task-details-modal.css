@@ -2719,7 +2719,7 @@
 }
 
 .work-item-form-field__error {
-  color: var(--color-danger, #dc2626);
+  color: var(--danger);
   font-size: var(--font-size-xs);
   font-weight: 700;
 }

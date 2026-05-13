@@ -8,11 +8,12 @@ import {
   AppTextField,
   AppTextareaField,
   Button,
+  DataTable,
   EmptyState,
   FormField,
-  ResourceTable,
   StatusBadge,
-  TextInput
+  TextInput,
+  type DataTableColumn
 } from "@/shared/ui";
 import type {
   MarketingAudienceContact,
@@ -80,6 +81,36 @@ interface MarketingCampaignsTabProps {
   improveVariantWithAI: () => Promise<void>;
   launchCampaign: (dryRun?: boolean) => Promise<void>;
 }
+
+const pipelineCampaignColumns: Array<DataTableColumn<MarketingCampaignListItem>> = [
+  {
+    id: "campaign",
+    header: "Campanha",
+    width: "minmax(240px, 1.6fr)",
+    render: (campaign) => (
+      <span className="mkt-perf-table__name">
+        <strong>{campaign.name}</strong>
+        <span>{campaignObjectiveLabel(campaign.objective)} - {toLocalDate(campaign.updatedAt)}</span>
+      </span>
+    )
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "0.85fr",
+    render: (campaign) => (
+      <StatusBadge tone={statusTone(campaign.status)}>
+        {campaignStatusLabel(campaign.status)}
+      </StatusBadge>
+    )
+  },
+  {
+    id: "scheduled",
+    header: "Agenda",
+    width: "0.95fr",
+    render: (campaign) => toLocalDate(campaign.scheduledAt)
+  }
+];
 
 export function MarketingCampaignsTab({
   dashboard,
@@ -208,7 +239,7 @@ export function MarketingCampaignsTab({
                   </section>
                 ) : null}
 
-                <section className="mkt-split">
+                <section className="mkt-campaign-composer-grid">
                   <article className="mkt-analytics__section mkt-composer">
                     <div className="marketing-page__section-head">
                       <div>
@@ -261,6 +292,9 @@ export function MarketingCampaignsTab({
                     </div>
                   </article>
 
+                </section>
+
+                <section className="mkt-table-section mkt-table-section--pipeline">
                   <article className="mkt-analytics__section">
                     <div className="marketing-page__section-head">
                       <div>
@@ -290,9 +324,9 @@ export function MarketingCampaignsTab({
                       </FormField>
                     </div>
 
-                    <ResourceTable
+                    <DataTable<MarketingCampaignListItem>
                       data={campaigns}
-                      rowKey="id"
+                      getRowId={(campaign) => campaign.id}
                       className="mkt-resource-table"
                       responsiveMinWidth="760px"
                       loading={isLoading}
@@ -300,56 +334,14 @@ export function MarketingCampaignsTab({
                       error={error}
                       rowClassName={(campaign) => (selectedCampaignId === campaign.id ? "mkt-perf-table__row--active" : undefined)}
                       emptyState={<EmptyState size="compact">Nenhuma campanha no workspace.</EmptyState>}
-                      columns={[
-                        {
-                          id: "campaign",
-                          header: "Campanha",
-                          width: "minmax(240px, 1.6fr)",
-                          render: (campaign) => (
-                            <span className="mkt-perf-table__name">
-                              <strong>{campaign.name}</strong>
-                              <span>{campaignObjectiveLabel(campaign.objective)} - {toLocalDate(campaign.updatedAt)}</span>
-                            </span>
-                          )
-                        },
-                        {
-                          id: "status",
-                          header: "Status",
-                          width: "0.85fr",
-                          render: (campaign) => (
-                            <StatusBadge tone={statusTone(campaign.status)}>
-                              {campaignStatusLabel(campaign.status)}
-                            </StatusBadge>
-                          )
-                        },
-                        {
-                          id: "scheduled",
-                          header: "Agenda",
-                          width: "0.95fr",
-                          render: (campaign) => toLocalDate(campaign.scheduledAt)
-                        }
-                      ]}
-                      actions={{
+                      columns={pipelineCampaignColumns}
+                      rowActions={{
                         header: "Acoes",
                         width: "0.7fr",
                         render: (campaign) => (
                           <Button size="sm" variant="outline" onClick={() => void loadCampaignDetails(campaign.id)}>
                             Abrir
                           </Button>
-                        )
-                      }}
-                      mobileCard={{
-                        render: (campaign) => (
-                          <>
-                            <strong>{campaign.name}</strong>
-                            <span>{campaignObjectiveLabel(campaign.objective)} - {toLocalDate(campaign.updatedAt)}</span>
-                            <StatusBadge tone={statusTone(campaign.status)}>
-                              {campaignStatusLabel(campaign.status)}
-                            </StatusBadge>
-                            <Button size="sm" variant="outline" onClick={() => void loadCampaignDetails(campaign.id)}>
-                              Abrir
-                            </Button>
-                          </>
                         )
                       }}
                     />

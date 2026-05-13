@@ -51,6 +51,12 @@ function makeInput(config: Record<string, unknown>) {
       contact: {
         email: 'person@example.com',
         name: 'Maria'
+      },
+      event: {
+        payload: {
+          itemId: 'item-1',
+          workItemId: 'item-1'
+        }
       }
     },
     input: {},
@@ -134,6 +140,43 @@ describe('CommunicationSendNodeExecutor', () => {
     expect(sideEffectService.createSideEffect).toHaveBeenCalledWith(
       expect.objectContaining({
         idempotencyKey: 'custom-person@example.com'
+      })
+    );
+  });
+
+  it('renders WorkItem metadata for operational CRM communications', async () => {
+    const sideEffectService = {
+      createSideEffect: vi.fn(async () => ({
+        id: 'side-effect-1',
+        status: 'queued',
+        sideEffectType: 'communication.email',
+        channel: 'email',
+        provider: 'mock',
+        idempotencyKey: 'run-1:step-1:send-1:communication.email'
+      }))
+    };
+    const executor = new CommunicationSendNodeExecutor(sideEffectService as any);
+
+    await executor.execute(makeInput({
+      channel: 'email',
+      to: '{{contact.email}}',
+      body: 'Oi',
+      metadata: {
+        itemId: '{{event.payload.itemId}}',
+        workItemId: '{{event.payload.workItemId}}',
+        nativeDomain: 'commercial'
+      }
+    }) as any);
+
+    expect(sideEffectService.createSideEffect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          metadata: expect.objectContaining({
+            itemId: 'item-1',
+            workItemId: 'item-1',
+            nativeDomain: 'commercial'
+          })
+        })
       })
     );
   });

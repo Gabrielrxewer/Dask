@@ -78,7 +78,7 @@
 }
 
 .app-form-error {
-  color: var(--color-danger, var(--danger, #dc2626));
+  color: var(--danger);
   font-size: var(--font-size-xs);
   font-weight: 700;
   line-height: 1.35;
@@ -111,7 +111,7 @@
 .app-form-field--invalid .shared-textarea,
 .app-form-field--invalid .app-select__trigger,
 .app-form-field--invalid .app-date-picker__trigger {
-  border-color: var(--danger, #dc2626);
+  border-color: var(--danger);
 }
 
 .app-form-actions {

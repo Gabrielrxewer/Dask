@@ -1,11 +1,11 @@
 .shared-select__control,
 .shared-textarea {
   width: 100%;
-  border: var(--control-border);
-  background: var(--control-surface);
-  border-radius: 14px;
+  border: 1px solid var(--workspace-control-border, var(--border-default));
+  background: var(--workspace-control-surface, var(--control-surface));
+  border-radius: var(--radius-xs);
   color: var(--text-strong);
-  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent) inset;
+  box-shadow: none;
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -29,7 +29,7 @@
 
 .shared-select__control {
   position: relative;
-  min-height: 46px;
+  min-height: var(--control-height-md);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -79,8 +79,8 @@
   max-height: min(280px, 42vh);
   overflow: auto;
   padding: 8px;
-  border: 1px solid var(--border-default);
-  border-radius: 18px;
+  border: 1px solid var(--workspace-border, var(--border-default));
+  border-radius: var(--radius-xs);
   background: var(--surface-overlay-strong);
   box-shadow: var(--shadow-3), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 62%, transparent) inset;
   backdrop-filter: blur(16px) saturate(124%);
@@ -97,7 +97,7 @@
   display: flex;
   align-items: center;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-xs);
   padding: 0 11px;
   background: transparent;
   color: var(--text-soft);
@@ -145,16 +145,16 @@
 
 .shared-select__control:focus,
 .shared-textarea:focus {
-  border-color: var(--control-border-strong);
+  border-color: var(--workspace-selected-border, var(--control-border-strong));
   background: var(--control-surface-active);
-  box-shadow: var(--focus-strong);
+  box-shadow: var(--focus);
 }
 
 .shared-select__control:hover,
 .shared-textarea:hover {
-  border-color: var(--selected-border);
-  background: var(--control-surface-hover);
-  box-shadow: var(--shadow-soft);
+  border-color: var(--workspace-selected-border, var(--selected-border));
+  background: var(--workspace-control-surface-hover, var(--control-surface-hover));
+  box-shadow: none;
 }
 
 .shared-textarea::placeholder {

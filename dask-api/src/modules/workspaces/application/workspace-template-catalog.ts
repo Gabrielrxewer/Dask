@@ -52,6 +52,7 @@ export type WorkspaceTemplateSchema = {
   fieldDefinitions?: WorkspaceTemplateFieldDefinition[];
   fieldBindings?: WorkspaceTemplateFieldBinding[];
   automations?: Array<Record<string, unknown>>;
+  automationNativeWorkflowKeys?: string[];
   automationRecipeIds?: string[];
   documentBindings?: Array<Record<string, unknown>>;
 };
@@ -885,16 +886,16 @@ export const workspaceTemplateCatalog: WorkspaceTemplateDefinition[] = [
       ],
       fieldDefinitions: commercialFieldDefinitions,
       fieldBindings: commercialFieldBindings,
-      automationRecipeIds: [
-        'commercial-work-item-created-to-intake',
-        'hot-opportunity-followup',
-        'first-contact-on-commercial-intake',
-        'no-response-followup',
-        'proposal-preparing-create-proposal',
-        'proposal-approved-create-contract',
-        'contract-accepted-create-billing',
-        'payment-confirmed-active-customer',
-        'billing-overdue-finance-alert'
+      automationNativeWorkflowKeys: [
+        'commercial.intake',
+        'commercial.hot_opportunity',
+        'commercial.first_contact',
+        'commercial.no_response_followup',
+        'commercial.proposal_drafting',
+        'commercial.proposal_approved_to_contract',
+        'commercial.contract_accepted_to_billing',
+        'commercial.payment_confirmed_to_active_customer',
+        'commercial.overdue_charge'
       ],
       documentBindings: [
         { id: 'commercial_proposal', kind: 'proposal', linkedEntityType: 'work_item' },

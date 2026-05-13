@@ -24,10 +24,25 @@ function buildEvent(overrides: Partial<DomainEvent> = {}): DomainEvent {
 function buildPrisma(input?: {
   existingRunIds?: Array<string | null>;
   workflows?: unknown[];
+  item?: unknown;
 }): PrismaClient {
   const existingRunIds = [...(input?.existingRunIds ?? [])];
+  const item = input?.item ?? {
+    id: 'item-1',
+    type: 'task',
+    typeId: 'type-1',
+    typeDefinition: { slug: 'commercial' },
+    stateId: 'state-1',
+    status: 'commercial_intake',
+    workflowState: { slug: 'commercial_intake' },
+    boardColumnId: 'column-1',
+    boardColumn: { slug: 'commercial_intake' }
+  };
 
   return {
+    item: {
+      findFirst: vi.fn(async () => item)
+    },
     automationWorkflow: {
       findMany: vi.fn(async () => input?.workflows ?? [
         {
@@ -140,6 +155,129 @@ describe('AutomationEventDispatcher', () => {
     expect(prisma.automationWorkflow.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ workspaceId: 'workspace-1' })
     }));
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
+  it('normalizes linked work item document events before matching commercial triggers', async () => {
+    const prisma = buildPrisma({
+      workflows: [
+        {
+          id: 'workflow-1',
+          workspaceId: 'workspace-1',
+          currentVersion: {
+            id: 'version-1',
+            definitionJson: {},
+            graphNodesJson: [
+              {
+                id: 'trigger-proposal-approved',
+                type: 'trigger',
+                config: { triggerType: 'proposal_status_changed', status: 'approved', itemTypeSlugs: ['commercial'] }
+              }
+            ],
+            graphEdgesJson: []
+          }
+        }
+      ]
+    });
+    const startRun = vi.fn(async () => ({
+      run: { id: 'run' },
+      executionResult: { status: 'completed', executedNodeIds: [] }
+    }));
+    const dispatcher = new AutomationEventDispatcher(
+      prisma,
+      { startRun } as unknown as ConstructorParameters<typeof AutomationEventDispatcher>[1]
+    );
+
+    await dispatcher.dispatch(buildEvent({
+      payload: {
+        workspaceId: 'workspace-1',
+        status: 'approved',
+        linkedEntityType: 'work_item',
+        linkedEntityId: 'item-1',
+        idempotencyKey: 'proposal.approved:proposal-1:item-1:approved',
+        requestedBy: 'user-1'
+      }
+    }));
+
+    expect(startRun).toHaveBeenCalledWith(expect.objectContaining({
+      triggerRefId: 'proposal.approved:proposal-1:item-1:approved:trigger-proposal-approved',
+      context: expect.objectContaining({
+        itemId: 'item-1',
+        workItemId: 'item-1',
+        itemTypeSlug: 'commercial',
+        event: expect.objectContaining({
+          payload: expect.objectContaining({
+            itemId: 'item-1',
+            workItemId: 'item-1',
+            itemTypeSlug: 'commercial'
+          })
+        })
+      })
+    }));
+  });
+
+  it('does not match commercial triggers for non-commercial work items', async () => {
+    const prisma = buildPrisma({
+      item: {
+        id: 'item-1',
+        type: 'task',
+        typeId: 'type-1',
+        typeDefinition: { slug: 'support' },
+        stateId: 'state-1',
+        status: 'open',
+        workflowState: { slug: 'open' },
+        boardColumnId: 'column-1',
+        boardColumn: { slug: 'support_queue' }
+      },
+      workflows: [
+        {
+          id: 'workflow-1',
+          workspaceId: 'workspace-1',
+          currentVersion: {
+            id: 'version-1',
+            definitionJson: {},
+            graphNodesJson: [
+              {
+                id: 'trigger-proposal-approved',
+                type: 'trigger',
+                config: { triggerType: 'proposal_status_changed', status: 'approved', itemTypeSlugs: ['commercial'] }
+              },
+              {
+                id: 'trigger-commercial-created',
+                type: 'trigger',
+                config: { triggerType: 'commercial_work_item_created' }
+              }
+            ],
+            graphEdgesJson: []
+          }
+        }
+      ]
+    });
+    const startRun = vi.fn();
+    const dispatcher = new AutomationEventDispatcher(
+      prisma,
+      { startRun } as unknown as ConstructorParameters<typeof AutomationEventDispatcher>[1]
+    );
+
+    await dispatcher.dispatch(buildEvent({
+      name: DomainEventNames.CommercialWorkItemCreated,
+      payload: {
+        workspaceId: 'workspace-1',
+        itemId: 'item-1',
+        requestedBy: 'user-1'
+      }
+    }));
+
+    await dispatcher.dispatch(buildEvent({
+      payload: {
+        workspaceId: 'workspace-1',
+        status: 'approved',
+        linkedEntityType: 'work_item',
+        linkedEntityId: 'item-1',
+        requestedBy: 'user-1'
+      }
+    }));
+
     expect(startRun).not.toHaveBeenCalled();
   });
 });

@@ -263,6 +263,8 @@ describe('WorkspaceDocumentsService commercial lifecycle', () => {
       kind: 'proposal',
       title: 'Proposta',
       content: '# Proposta\nValor resolvido',
+      linkedEntityType: 'work_item',
+      linkedEntityId: 'item-1',
       metadata: {}
     });
     const { service, prisma, emailService, eventPublisher } = makeService({
@@ -345,6 +347,17 @@ describe('WorkspaceDocumentsService commercial lifecycle', () => {
     expect(eventPublisher.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         name: DomainEventNames.ProposalSent,
+        payload: expect.objectContaining({
+          itemId: 'item-1',
+          workItemId: 'item-1',
+          linkedEntityType: 'work_item',
+          linkedEntityId: 'item-1',
+          idempotencyKey: 'proposal.sent:document-1:item-1:sent'
+        })
+      })
+    );
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
         payload: expect.not.objectContaining({
           publicToken: expect.any(String)
         })

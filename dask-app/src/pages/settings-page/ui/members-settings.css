@@ -152,27 +152,7 @@
 
 .ms-tabs .shared-tabs__item:hover {
   transform: none;
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
-  background: color-mix(in srgb, var(--primary) 6%, transparent);
-  color: var(--text-secondary);
   box-shadow: none;
-}
-
-.ms-tabs .shared-tabs__item--active {
-  position: relative;
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-primary);
-  font-weight: 860;
-}
-
-.ms-tabs .shared-tabs__item--active::before {
-  content: "";
-  position: absolute;
-  inset: auto 8px 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 90%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 72%, transparent) 100%);
 }
 
 @media (max-width: 780px) {
@@ -1317,19 +1297,7 @@
 }
 
 .app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item:hover {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-  color: var(--text-primary);
-}
-
-.app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item--active {
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-primary);
-}
-
-.app-theme[data-theme="dark"] .ms-tabs .shared-tabs__item--active::before {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 96%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 76%, transparent) 100%);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .members-settings__feedback {
@@ -1377,4 +1345,136 @@
 .app-theme[data-theme="dark"] .members-settings__permissions-row span,
 .app-theme[data-theme="dark"] .members-settings__permissions-row + .members-settings__permissions-row {
   border-color: color-mix(in oklab, var(--line) 86%, transparent);
+}
+
+/* Modern people/access surface aligned with List */
+
+.ms {
+  --ms-text: var(--workspace-text-primary, var(--text-strong));
+  --ms-text-soft: var(--workspace-text-secondary, var(--text-soft));
+  --ms-text-muted: var(--workspace-text-muted, var(--text-muted));
+  --ms-line: color-mix(in oklab, var(--workspace-border, var(--line)) 72%, transparent);
+  --ms-line-strong: color-mix(in oklab, var(--workspace-border-strong, var(--line-contrast)) 76%, transparent);
+  --ms-surface: var(--workspace-surface, var(--surface-overlay));
+  --ms-surface-soft: var(--workspace-surface-soft, var(--surface-section-content));
+  gap: 12px;
+  color: var(--ms-text);
+}
+
+.ms-summary,
+.ms-section.shared-section {
+  border-color: var(--ms-line);
+  border-radius: 10px;
+  background: var(--ms-surface);
+  box-shadow: none;
+}
+
+.ms-summary {
+  padding: 16px;
+}
+
+.ms-summary__copy span {
+  color: var(--ms-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.ms-summary__copy h2 {
+  color: var(--ms-text);
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.ms-summary__copy p {
+  color: var(--ms-text-soft);
+  font-weight: 500;
+}
+
+.ms-summary__grid span,
+.ms-invite-row,
+.ms-member-row,
+.ms-module-card,
+.ms-group-card,
+.ms-invite-form {
+  border-color: var(--ms-line);
+  border-radius: 8px;
+  background: var(--ms-surface-soft);
+  box-shadow: none;
+}
+
+.ms-summary__grid span {
+  min-height: 66px;
+}
+
+.ms-summary__grid strong {
+  color: var(--ms-text);
+}
+
+.ms-section .shared-section__header {
+  border-bottom-color: var(--ms-line);
+  background: transparent;
+}
+
+.ms-section .shared-section__content {
+  background: transparent;
+}
+
+.ms-member-row,
+.ms-invite-row {
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.ms-member-row:hover,
+.ms-invite-row:hover {
+  border-color: var(--ms-line-strong);
+  background: color-mix(in oklab, var(--ms-surface-soft) 78%, var(--ms-surface));
+}
+
+.ms-section-top-action {
+  margin-bottom: 12px;
+}
+
+.ms-invite-form {
+  margin-bottom: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ms-invite-dialog {
+  width: min(520px, calc(100vw - 24px));
+}
+
+.ms-invite-dialog__body {
+  display: grid;
+  gap: 14px;
+}
+
+.ms-tabs.shared-tabs {
+  border-bottom-color: var(--ms-line);
+}
+
+.app-theme[data-theme="dark"] .ms {
+  --ms-line: color-mix(in oklab, var(--line) 76%, transparent);
+  --ms-line-strong: color-mix(in oklab, var(--line-contrast) 82%, transparent);
+  --ms-surface: var(--surface-raised);
+  --ms-surface-soft: var(--surface-muted);
+}
+
+.app-theme[data-theme="dark"] .ms-summary,
+.app-theme[data-theme="dark"] .ms-section.shared-section,
+.app-theme[data-theme="dark"] .ms-summary__grid span,
+.app-theme[data-theme="dark"] .ms-invite-row,
+.app-theme[data-theme="dark"] .ms-member-row,
+.app-theme[data-theme="dark"] .ms-module-card,
+.app-theme[data-theme="dark"] .ms-group-card {
+  border-color: var(--ms-line);
+  background: var(--ms-surface);
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .ms-summary__grid span,
+.app-theme[data-theme="dark"] .ms-invite-row,
+.app-theme[data-theme="dark"] .ms-member-row {
+  background: var(--ms-surface-soft);
 }

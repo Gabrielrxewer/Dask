@@ -48,6 +48,8 @@ describe('BusinessActionNodeExecutor', () => {
     expect(businessActionNodeTypes).toEqual([
       'move_work_item',
       'update_work_item_fields',
+      'replicate_work_item_type_fields',
+      'transform_work_item_type',
       'create_proposal',
       'create_contract',
       'send_document',
@@ -79,6 +81,25 @@ describe('BusinessActionNodeExecutor', () => {
         customFieldValues: { probability: '80' }
       },
       expect.objectContaining({ title: 'Conta ACME atualizado', customFieldValues: { probability: '80' } })
+    ],
+    [
+      'replicate_work_item_type_fields',
+      'replicateWorkItemTypeFields',
+      {
+        itemIdPath: 'event.payload.itemId',
+        toTypeSlug: 'commercial'
+      },
+      expect.objectContaining({ itemId: 'item-1', toTypeSlug: 'commercial' })
+    ],
+    [
+      'transform_work_item_type',
+      'transformWorkItemType',
+      {
+        itemIdPath: 'event.payload.itemId',
+        toTypeSlug: 'commercial',
+        stateSlug: 'commercial_intake'
+      },
+      expect.objectContaining({ itemId: 'item-1', toTypeSlug: 'commercial', stateSlug: 'commercial_intake' })
     ],
     [
       'create_proposal',
@@ -176,6 +197,8 @@ describe('BusinessActionNodeExecutor', () => {
     const service = {
       moveWorkItem: vi.fn(async () => ({ resourceType: 'work_item', resourceId: 'resource-1' })),
       updateWorkItemFields: vi.fn(async () => ({ resourceType: 'work_item', resourceId: 'resource-1' })),
+      replicateWorkItemTypeFields: vi.fn(async () => ({ resourceType: 'work_item', resourceId: 'resource-1' })),
+      transformWorkItemType: vi.fn(async () => ({ resourceType: 'work_item', resourceId: 'resource-1' })),
       createProposal: vi.fn(async () => ({ resourceType: 'document', resourceId: 'proposal-1' })),
       createContract: vi.fn(async () => ({ resourceType: 'document', resourceId: 'contract-1' })),
       sendDocument: vi.fn(async () => ({ resourceType: 'document', resourceId: 'proposal-1' })),

@@ -24,6 +24,10 @@ export interface LoadingStateProps extends HTMLAttributes<HTMLDivElement> {
   visible?: boolean;
 }
 
+export interface PageLoadingStateProps extends Omit<LoadingStateProps, "variant"> {
+  contentClassName?: string;
+}
+
 const animationGlyphs: Record<LoadingAnimation, string[]> = {
   default: ["01", "02", "03"],
   workspace: ["D", "A", "S", "K"],
@@ -156,6 +160,24 @@ export function LoadingState({
         {text}
         <span className="shared-loading-state__dots" />
       </p>
+    </div>
+  );
+}
+
+export function PageLoadingState({
+  contentClassName,
+  className,
+  visible = true,
+  ...props
+}: PageLoadingStateProps) {
+  return (
+    <div className={cn("shared-page-loading-state", className)} aria-hidden={!visible}>
+      <LoadingState
+        {...props}
+        className={contentClassName}
+        variant="inline"
+        visible={visible}
+      />
     </div>
   );
 }

@@ -173,6 +173,8 @@ type TransformationFieldSummary = {
   id: string;
   slug: string;
   name: string;
+  type?: string;
+  variableKey?: string | null;
   required: boolean;
   defaultValue: unknown;
 };
@@ -218,10 +220,35 @@ type TransformationValidationResult = {
   transformation: TransformationConfig;
   fromType: TransformationTypeSummary;
   toType: TransformationTypeSummary;
+  replicationPlan: WorkItemTypeReplicationPlan;
   preservedFields: TransformationFieldSummary[];
   missingFields: TransformationFieldSummary[];
   newRequiredFields: TransformationFieldSummary[];
   defaultValuesForNewFields: Record<string, unknown>;
+};
+
+type WorkItemTypeReplicationPlan = {
+  copied: Array<{
+    sourceFieldId: string;
+    sourceSlug: string;
+    targetFieldId: string;
+    targetSlug: string;
+    strategy: 'same_id' | 'slug' | 'variable_key' | 'normalized_name';
+  }>;
+  skipped: Array<{
+    sourceFieldId: string;
+    sourceSlug: string;
+    reason: string;
+  }>;
+  incompatible: Array<{
+    sourceFieldId: string;
+    sourceSlug: string;
+    targetFieldId: string;
+    targetSlug: string;
+    reason: string;
+  }>;
+  valuesByTargetFieldId: Record<string, unknown>;
+  unmappedSourceValues: Record<string, unknown>;
 };
 
 export class WorkspaceWorkItemsService {
@@ -1244,6 +1271,7 @@ export class WorkspaceWorkItemsService {
     }
 
     const customFieldValues = {
+      ...(validation.replicationPlan.valuesByTargetFieldId ?? {}),
       ...(validation.defaultValuesForNewFields ?? {}),
       ...(input.payload.customFieldValues ?? {})
     };
@@ -1287,7 +1315,7 @@ export class WorkspaceWorkItemsService {
         toTypeId: validation.toType.id,
         toTypeSlug: validation.toType.slug,
         requestedBy: input.userId
-      });
+      }, validation.replicationPlan);
 
       await tx.item.update({
         where: { id: current.id },
@@ -1331,11 +1359,40 @@ export class WorkspaceWorkItemsService {
             toTypeId: validation.toType.id,
             toTypeSlug: validation.toType.slug,
             preservedFields: validation.preservedFields.map((field) => field.slug),
+            replication: {
+              copied: validation.replicationPlan.copied,
+              skipped: validation.replicationPlan.skipped,
+              incompatible: validation.replicationPlan.incompatible
+            },
             requestedBy: input.userId
           }
         },
         tx
       );
+
+      await tx.itemHistory.create({
+        data: {
+          itemId: current.id,
+          eventName: 'work_item_type.transformed_by_native_automation',
+          payload: toJsonValue({
+            automation: 'native:prospect-to-lead',
+            nodes: [
+              'manual_trigger',
+              'validate_prospect',
+              'transform_type_to_lead',
+              'replicate_work_item_type_fields',
+              'register_audit_event'
+            ],
+            transformationId: validation.transformation.id,
+            fromTypeSlug: validation.fromType.slug,
+            toTypeSlug: validation.toType.slug,
+            copiedFields: validation.replicationPlan.copied,
+            skippedFields: validation.replicationPlan.skipped,
+            incompatibleFields: validation.replicationPlan.incompatible,
+            requestedBy: input.userId
+          })
+        }
+      });
 
       return serialized;
     });
@@ -2229,13 +2286,13 @@ export class WorkspaceWorkItemsService {
       where: {
         workspaceId,
         isActive: true,
-        slug: { in: ['signal', 'prospect', 'commercial'] }
+        slug: { in: ['signal', 'prospect', 'lead', 'commercial'] }
       },
       orderBy: { position: 'asc' },
       select: { id: true, slug: true, name: true, color: true }
     });
-    const source = types.find((type) => ['signal', 'prospect'].includes(type.slug));
-    const target = types.find((type) => type.slug === 'commercial');
+    const source = types.find((type) => type.slug === 'prospect') ?? types.find((type) => type.slug === 'signal');
+    const target = types.find((type) => type.slug === 'lead') ?? types.find((type) => type.slug === 'commercial');
 
     if (!source || !target || source.id === target.id) {
       return [];
@@ -2247,16 +2304,23 @@ export class WorkspaceWorkItemsService {
         workspaceId,
         fromTypeId: source.id,
         toTypeId: target.id,
-        name: `Transformar ${source.name} em ${target.name}`,
-        description: 'Transformacao padrao de Signal/Prospect para WorkItem comercial mantendo o mesmo WorkItem.',
+        name: `Transformar ${source.name} em Lead`,
+        description: 'Automacao nativa Prospect para Lead mantendo o mesmo WorkItem, replicando campos compativeis e preservando campos sem equivalente em metadados.',
         enabled: true,
         mode: 'same_work_item_type_change',
-        fieldCompatibilityMode: 'strict_superset',
+        fieldCompatibilityMode: 'replicate_compatible_preserve_unmapped',
         defaultValuesForNewFields: {},
-        stateMapping: {},
+        stateMapping: {
+          prospect: 'commercial_intake',
+          contact_started: 'commercial_intake',
+          follow_up: 'commercial_intake'
+        },
         permission: 'commercial.transform',
         fromType: source,
-        toType: target
+        toType: {
+          ...target,
+          name: target.slug === 'commercial' ? 'Lead' : target.name
+        }
       }
     ];
   }
@@ -2267,7 +2331,7 @@ export class WorkspaceWorkItemsService {
       ...transformation,
       fromType: transformation.fromType ?? compatibility.fromType,
       toType: transformation.toType ?? compatibility.toType,
-      valid: compatibility.missingFields.length === 0,
+      valid: transformation.fieldCompatibilityMode === 'replicate_compatible_preserve_unmapped' || compatibility.missingFields.length === 0,
       missingFields: compatibility.missingFields,
       preservedFields: compatibility.preservedFields,
       newRequiredFields: compatibility.newRequiredFields
@@ -2292,6 +2356,8 @@ export class WorkspaceWorkItemsService {
                 id: true,
                 slug: true,
                 name: true,
+                type: true,
+                variableKey: true,
                 required: true,
                 defaultValue: true
               }
@@ -2308,7 +2374,6 @@ export class WorkspaceWorkItemsService {
     const transformation = await this.resolveTypeTransformationConfig(workspaceId, item.typeId, payload);
     const compatibility = await this.validateTypeFieldCompatibility(workspaceId, transformation.fromTypeId, transformation.toTypeId);
     const currentValueFieldIds = new Set(item.customFieldValues.map((entry) => entry.fieldId));
-    const toFieldById = new Map(compatibility.toFields.map((field) => [field.id, field]));
     const normalizedPayloadValues = this.normalizeValuesForFields(payload.customFieldValues, compatibility.toFields);
     const defaultValuesForNewFields = {
       ...this.normalizeValuesForFields(
@@ -2327,29 +2392,54 @@ export class WorkspaceWorkItemsService {
         id: entry.field.id,
         slug: entry.field.slug,
         name: entry.field.name,
+        type: entry.field.type,
+        variableKey: entry.field.variableKey,
         required: entry.field.required,
         defaultValue: entry.field.defaultValue
       }))
       .filter((field) => !compatibility.fromFields.some((entry) => entry.id === field.id));
     const sourceFields = [...compatibility.fromFields, ...sourceFieldsFromValues];
-    const missingFields = sourceFields.filter((field) => !toFieldById.has(field.id));
-    const preservedFields = sourceFields.filter((field) => toFieldById.has(field.id));
+    const missingFields = sourceFields.filter((field) => !this.findCompatibleTargetField(field, compatibility.toFields));
+    const preservedFields = sourceFields.filter((field) => Boolean(this.findCompatibleTargetField(field, compatibility.toFields)));
     const newRequiredFields = compatibility.toFields.filter((field) => {
       if (!field.required || currentValueFieldIds.has(field.id)) {
         return false;
       }
       return this.isBlankCustomFieldValue(valuesForRequiredCheck[field.id]);
     });
+    const replicationPlan = this.buildWorkItemTypeReplicationPlan({
+      sourceValues: item.customFieldValues.map((entry) => ({
+        fieldId: entry.fieldId,
+        value: entry.value,
+        field: {
+          id: entry.field.id,
+          slug: entry.field.slug,
+          name: entry.field.name,
+          type: entry.field.type,
+          variableKey: entry.field.variableKey,
+          required: entry.field.required,
+          defaultValue: entry.field.defaultValue
+        }
+      })),
+      targetValues: item.customFieldValues,
+      targetFields: compatibility.toFields,
+      payloadValues: {
+        ...defaultValuesForNewFields,
+        ...normalizedPayloadValues
+      }
+    });
+    const allowsPreservedUnmapped = transformation.fieldCompatibilityMode === 'replicate_compatible_preserve_unmapped';
 
     return {
-      valid: missingFields.length === 0,
+      valid: allowsPreservedUnmapped || missingFields.length === 0,
       reason:
-        missingFields.length > 0
+        missingFields.length > 0 && !allowsPreservedUnmapped
           ? 'O tipo destino nao contem todos os campos necessarios para preservar os dados.'
           : null,
       transformation,
-      fromType: compatibility.fromType,
-      toType: compatibility.toType,
+      fromType: transformation.fromType ?? compatibility.fromType,
+      toType: transformation.toType ?? compatibility.toType,
+      replicationPlan,
       preservedFields,
       missingFields,
       newRequiredFields,
@@ -2414,11 +2504,14 @@ export class WorkspaceWorkItemsService {
       this.loadFieldsForType(workspaceId, fromTypeId),
       this.loadFieldsForType(workspaceId, toTypeId)
     ]);
-    const toFieldIds = new Set(toFields.map((field) => field.id));
-    const missingFields = fromFields.filter((field) => !toFieldIds.has(field.id));
-    const preservedFields = fromFields.filter((field) => toFieldIds.has(field.id));
-    const fromFieldIds = new Set(fromFields.map((field) => field.id));
-    const newRequiredFields = toFields.filter((field) => field.required && !fromFieldIds.has(field.id));
+    const missingFields = fromFields.filter((field) => !this.findCompatibleTargetField(field, toFields));
+    const preservedFields = fromFields.filter((field) => Boolean(this.findCompatibleTargetField(field, toFields)));
+    const newRequiredFields = toFields.filter((field) =>
+      field.required && !fromFields.some((source) => {
+        const match = this.findCompatibleTargetField(source, [field]);
+        return Boolean(match);
+      })
+    );
 
     return {
       fromType: { id: fromType.id, slug: fromType.slug, name: fromType.name, color: fromType.color },
@@ -2463,6 +2556,8 @@ export class WorkspaceWorkItemsService {
           id: field.id,
           slug: field.slug,
           name: field.name,
+          type: field.type,
+          variableKey: field.variableKey,
           required: override ?? field.required,
           defaultValue: field.defaultValue
         };
@@ -2485,6 +2580,135 @@ export class WorkspaceWorkItemsService {
       }
       return acc;
     }, {});
+  }
+
+  private normalizeFieldMatchValue(value: string | null | undefined): string {
+    return toSlug(value ?? '').replace(/-/g, '');
+  }
+
+  private areTransformationFieldTypesCompatible(
+    source: TransformationFieldSummary,
+    target: TransformationFieldSummary
+  ): boolean {
+    if (!source.type || !target.type) {
+      return true;
+    }
+    return source.type === target.type;
+  }
+
+  private findCompatibleTargetField(
+    source: TransformationFieldSummary,
+    targets: TransformationFieldSummary[]
+  ): {
+    field: TransformationFieldSummary;
+    strategy: WorkItemTypeReplicationPlan['copied'][number]['strategy'];
+  } | null {
+    const candidates: Array<{
+      field: TransformationFieldSummary | undefined;
+      strategy: WorkItemTypeReplicationPlan['copied'][number]['strategy'];
+    }> = [
+      { field: targets.find((field) => field.id === source.id), strategy: 'same_id' },
+      { field: targets.find((field) => field.slug === source.slug), strategy: 'slug' },
+      {
+        field: source.variableKey
+          ? targets.find((field) => field.variableKey && field.variableKey === source.variableKey)
+          : undefined,
+        strategy: 'variable_key'
+      },
+      {
+        field: targets.find((field) =>
+          this.normalizeFieldMatchValue(field.name) === this.normalizeFieldMatchValue(source.name)
+        ),
+        strategy: 'normalized_name'
+      }
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate.field && this.areTransformationFieldTypesCompatible(source, candidate.field)) {
+        return {
+          field: candidate.field,
+          strategy: candidate.strategy
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private buildWorkItemTypeReplicationPlan(input: {
+    sourceValues: Array<{
+      fieldId: string;
+      value: unknown;
+      field: TransformationFieldSummary;
+    }>;
+    targetValues: Array<{
+      fieldId: string;
+    }>;
+    targetFields: TransformationFieldSummary[];
+    payloadValues: Record<string, unknown>;
+    overwriteExisting?: boolean;
+  }): WorkItemTypeReplicationPlan {
+    const existingTargetFieldIds = new Set(input.targetValues.map((entry) => entry.fieldId));
+    const explicitPayloadFieldIds = new Set(Object.keys(input.payloadValues));
+    const plan: WorkItemTypeReplicationPlan = {
+      copied: [],
+      skipped: [],
+      incompatible: [],
+      valuesByTargetFieldId: {},
+      unmappedSourceValues: {}
+    };
+
+    for (const sourceValue of input.sourceValues) {
+      const match = this.findCompatibleTargetField(sourceValue.field, input.targetFields);
+      if (!match) {
+        plan.skipped.push({
+          sourceFieldId: sourceValue.fieldId,
+          sourceSlug: sourceValue.field.slug,
+          reason: 'target_field_not_found'
+        });
+        plan.unmappedSourceValues[sourceValue.field.slug || sourceValue.fieldId] = sourceValue.value;
+        continue;
+      }
+
+      if (!this.areTransformationFieldTypesCompatible(sourceValue.field, match.field)) {
+        plan.incompatible.push({
+          sourceFieldId: sourceValue.fieldId,
+          sourceSlug: sourceValue.field.slug,
+          targetFieldId: match.field.id,
+          targetSlug: match.field.slug,
+          reason: 'field_type_mismatch'
+        });
+        plan.unmappedSourceValues[sourceValue.field.slug || sourceValue.fieldId] = sourceValue.value;
+        continue;
+      }
+
+      if (
+        !input.overwriteExisting &&
+        match.field.id !== sourceValue.fieldId &&
+        (existingTargetFieldIds.has(match.field.id) || explicitPayloadFieldIds.has(match.field.id))
+      ) {
+        plan.skipped.push({
+          sourceFieldId: sourceValue.fieldId,
+          sourceSlug: sourceValue.field.slug,
+          reason: 'target_field_already_filled'
+        });
+        continue;
+      }
+
+      if (match.field.id !== sourceValue.fieldId) {
+        plan.valuesByTargetFieldId[match.field.id] = sourceValue.value;
+      }
+
+      plan.copied.push({
+        sourceFieldId: sourceValue.fieldId,
+        sourceSlug: sourceValue.field.slug,
+        targetFieldId: match.field.id,
+        targetSlug: match.field.slug,
+        strategy: match.strategy
+      });
+    }
+
+    return plan;
   }
 
   private isBlankCustomFieldValue(value: unknown): boolean {
@@ -2535,7 +2759,8 @@ export class WorkspaceWorkItemsService {
 
   private mergeTransformationMetadata(
     currentMetadata: unknown,
-    entry: Record<string, unknown>
+    entry: Record<string, unknown>,
+    replicationPlan?: WorkItemTypeReplicationPlan
   ): Record<string, unknown> {
     const current = isRecord(currentMetadata) ? { ...currentMetadata } : {};
     const history = Array.isArray(current.typeTransformations)
@@ -2544,14 +2769,42 @@ export class WorkspaceWorkItemsService {
 
     return {
       ...current,
+      preservedUnmappedFields: {
+        ...(isRecord(current.preservedUnmappedFields) ? current.preservedUnmappedFields : {}),
+        ...(replicationPlan?.unmappedSourceValues ?? {})
+      },
       lastTypeTransformation: {
         ...entry,
+        nativeAutomation: {
+          id: 'native:prospect-to-lead',
+          trigger: 'manual_action',
+          nodes: [
+            'validate_prospect',
+            'transform_type_to_lead',
+            'replicate_work_item_type_fields',
+            'register_audit_event'
+          ]
+        },
+        replication: replicationPlan
+          ? {
+              copied: replicationPlan.copied,
+              skipped: replicationPlan.skipped,
+              incompatible: replicationPlan.incompatible
+            }
+          : undefined,
         transformedAt: new Date().toISOString()
       },
       typeTransformations: [
         ...history,
         {
           ...entry,
+          replication: replicationPlan
+            ? {
+                copied: replicationPlan.copied,
+                skipped: replicationPlan.skipped,
+                incompatible: replicationPlan.incompatible
+              }
+            : undefined,
           transformedAt: new Date().toISOString()
         }
       ].slice(-20)
@@ -3117,6 +3370,7 @@ export class WorkspaceWorkItemsService {
 
     return {
       itemId: item.id,
+      workItemId: item.id,
       workspaceId,
       boardId: item.boardId,
       itemTypeId: item.type.id,

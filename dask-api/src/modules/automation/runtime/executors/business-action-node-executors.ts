@@ -10,6 +10,8 @@ import type {
 type BusinessNodeType =
   | 'move_work_item'
   | 'update_work_item_fields'
+  | 'replicate_work_item_type_fields'
+  | 'transform_work_item_type'
   | 'create_proposal'
   | 'create_contract'
   | 'send_document'
@@ -180,6 +182,7 @@ export class BusinessActionNodeExecutor implements AutomationNodeExecutor {
     const config = isRecord(input.node.config) ? input.node.config : {};
     const context = this.buildContext(input);
     const itemId = readRenderedString(config, context, 'itemId', 'event.payload.itemId')
+      ?? readRenderedString(config, context, 'workItemId', 'event.payload.workItemId')
       ?? readRenderedString(config, context, 'workItemId', 'event.payload.linkedEntityId');
     const userId = await this.resolveActorUserId(input, config, context);
 
@@ -213,6 +216,37 @@ export class BusinessActionNodeExecutor implements AutomationNodeExecutor {
               : undefined,
           metadata: isRecord(config.metadata)
             ? renderValue(config.metadata, context) as Record<string, unknown>
+            : undefined
+        }));
+
+      case 'replicate_work_item_type_fields':
+        return this.completed(await this.businessActions.replicateWorkItemTypeFields({
+          workspaceId: input.run.workspaceId,
+          userId,
+          itemId: this.requireItemId(itemId),
+          transformationId: readRenderedString(config, context, 'transformationId'),
+          toTypeId: readRenderedString(config, context, 'toTypeId'),
+          toTypeSlug: readRenderedString(config, context, 'toTypeSlug'),
+          defaultValuesForNewFields: isRecord(config.defaultValuesForNewFields)
+            ? renderValue(config.defaultValuesForNewFields, context) as Record<string, unknown>
+            : undefined
+        }));
+
+      case 'transform_work_item_type':
+        return this.completed(await this.businessActions.transformWorkItemType({
+          workspaceId: input.run.workspaceId,
+          userId,
+          itemId: this.requireItemId(itemId),
+          transformationId: readRenderedString(config, context, 'transformationId'),
+          toTypeId: readRenderedString(config, context, 'toTypeId'),
+          toTypeSlug: readRenderedString(config, context, 'toTypeSlug'),
+          stateId: readRenderedString(config, context, 'stateId'),
+          stateSlug: readRenderedString(config, context, 'stateSlug'),
+          customFieldValues: isRecord(config.customFieldValues)
+            ? renderValue(config.customFieldValues, context) as Record<string, unknown>
+            : undefined,
+          defaultValuesForNewFields: isRecord(config.defaultValuesForNewFields)
+            ? renderValue(config.defaultValuesForNewFields, context) as Record<string, unknown>
             : undefined
         }));
 
@@ -412,6 +446,8 @@ export class BusinessActionNodeExecutor implements AutomationNodeExecutor {
 export const businessActionNodeTypes: BusinessNodeType[] = [
   'move_work_item',
   'update_work_item_fields',
+  'replicate_work_item_type_fields',
+  'transform_work_item_type',
   'create_proposal',
   'create_contract',
   'send_document',

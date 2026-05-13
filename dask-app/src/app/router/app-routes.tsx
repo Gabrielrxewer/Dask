@@ -3,9 +3,12 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from "r
 import { GlobalLayout } from "@/app/layout";
 import { ProtectedRoute, PublicRoute, SubscribedRoute } from "@/features/auth";
 import { BillingProvider } from "@/app/providers/billing-provider";
+import { buildBoardMetrics } from "@/entities/task";
 import { useCurrentWorkspace, useWorkspaceListQuery, useWorkspacePermissions, WorkspaceProvider } from "@/modules/workspace";
 import { isApiError } from "@/shared/api/http-client";
-import { LoadingState, type LoadingAnimation } from "@/shared/ui/loading-state";
+import { LoadingState, WorkspaceFrame } from "@/shared/ui";
+import { PageLoadingState, type LoadingAnimation } from "@/shared/ui/loading-state";
+import { AppShell } from "@/widgets/app-shell";
 import { buildWorkspaceBoardPath, buildWorkspaceCommercialPath, buildWorkspaceSettingsPath, routePaths } from "@/app/router";
 
 type LazyPageModule = Record<string, unknown>;
@@ -19,7 +22,27 @@ function lazyPage(loader: () => Promise<LazyPageModule>, exportName: string) {
 
 function routeSuspense(children: ReactNode, animation: LoadingAnimation = "workspace") {
   return (
-    <Suspense fallback={<LoadingState text="Carregando modulo..." animation={animation} />}>
+    <Suspense fallback={<PageLoadingState text="Carregando modulo..." animation={animation} />}>
+      {children}
+    </Suspense>
+  );
+}
+
+const emptyMetrics = buildBoardMetrics([]);
+
+function WorkspaceRouteLoadingFallback({ animation }: { animation: LoadingAnimation }) {
+  return (
+    <AppShell metrics={emptyMetrics} noPageScroll hidePageHeader hideSidebarBrandMark>
+      <WorkspaceFrame className="workspace-route-loading" variant="dashboard" scroll="none">
+        <LoadingState text="Carregando modulo..." animation={animation} variant="frame" visible />
+      </WorkspaceFrame>
+    </AppShell>
+  );
+}
+
+function workspaceRouteSuspense(children: ReactNode, animation: LoadingAnimation = "workspace") {
+  return (
+    <Suspense fallback={<WorkspaceRouteLoadingFallback animation={animation} />}>
       {children}
     </Suspense>
   );
@@ -224,7 +247,7 @@ function WorkspaceEntryRedirect() {
   }, [workspacesQuery.error]);
 
   if (!redirectTo) {
-    return <LoadingState text="Carregando workspaces..." animation="workspace" />;
+    return <PageLoadingState text="Carregando workspaces..." animation="workspace" />;
   }
 
   return <Navigate replace to={redirectTo} />;
@@ -290,7 +313,7 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="dashboard">
                   <NonClientRoute>
-                    {routeSuspense(<DashboardPage />, "dashboard")}
+                    {workspaceRouteSuspense(<DashboardPage />, "dashboard")}
                   </NonClientRoute>
                 </ModuleRoute>
               }
@@ -299,7 +322,7 @@ export function AppRoutes() {
               path={routePaths.board}
               element={
                 <ModuleRoute module="board">
-                  {routeSuspense(<BoardPage />, "board")}
+                  {workspaceRouteSuspense(<BoardPage />, "board")}
                 </ModuleRoute>
               }
             />
@@ -308,7 +331,7 @@ export function AppRoutes() {
               element={
                 <ModuleRoute module="board">
                   <NonClientRoute>
-                    {routeSuspense(<ListPage />, "list")}
+                    {workspaceRouteSuspense(<ListPage />, "list")}
                   </NonClientRoute>
                 </ModuleRoute>
               }
@@ -317,7 +340,7 @@ export function AppRoutes() {
               path={routePaths.agenda}
               element={
                 <ModuleRoute module="board">
-                  {routeSuspense(<AgendaPage />, "agenda")}
+                  {workspaceRouteSuspense(<AgendaPage />, "agenda")}
                 </ModuleRoute>
               }
             />
@@ -325,7 +348,7 @@ export function AppRoutes() {
               path={routePaths.documentation}
               element={
                 <ModuleRoute module="documentation">
-                  {routeSuspense(<DocumentationPage />, "documentation")}
+                  {workspaceRouteSuspense(<DocumentationPage />, "documentation")}
                 </ModuleRoute>
               }
             />
@@ -333,7 +356,7 @@ export function AppRoutes() {
               path={routePaths.aiAgents}
               element={
                 <ModuleRoute module="ai">
-                  {routeSuspense(<AiAgentsPage />, "ai")}
+                  {workspaceRouteSuspense(<AiAgentsPage />, "ai")}
                 </ModuleRoute>
               }
             />
@@ -341,7 +364,7 @@ export function AppRoutes() {
               path={routePaths.automations}
               element={
                 <ModuleRoute module="automation">
-                  {routeSuspense(<AutomationsPage />, "automation")}
+                  {workspaceRouteSuspense(<AutomationsPage />, "automation")}
                 </ModuleRoute>
               }
             />
@@ -349,7 +372,7 @@ export function AppRoutes() {
               path={routePaths.billing}
               element={
                 <ModuleRoute module="billing">
-                  {routeSuspense(<BillingPage />, "billing")}
+                  {workspaceRouteSuspense(<BillingPage />, "billing")}
                 </ModuleRoute>
               }
             />
@@ -357,7 +380,7 @@ export function AppRoutes() {
               path={routePaths.fiscal}
               element={
                 <ModuleRoute module="fiscal">
-                  {routeSuspense(<FiscalPage />, "fiscal")}
+                  {workspaceRouteSuspense(<FiscalPage />, "fiscal")}
                 </ModuleRoute>
               }
             />
@@ -369,7 +392,7 @@ export function AppRoutes() {
               path={routePaths.commercial}
               element={
                 <ModuleRoute module="commercial">
-                  {routeSuspense(<CommercialPage />, "commercial")}
+                  {workspaceRouteSuspense(<CommercialPage />, "commercial")}
                 </ModuleRoute>
               }
             />
@@ -377,7 +400,7 @@ export function AppRoutes() {
               path={routePaths.marketing}
               element={
                 <ModuleRoute module="marketing">
-                  {routeSuspense(<MarketingPage />, "marketing")}
+                  {workspaceRouteSuspense(<MarketingPage />, "marketing")}
                 </ModuleRoute>
               }
             />
@@ -387,7 +410,7 @@ export function AppRoutes() {
               path={routePaths.settings}
               element={
                 <ModuleRoute module="settings">
-                  {routeSuspense(<SettingsShellPage />, "settings")}
+                  {workspaceRouteSuspense(<SettingsShellPage />, "settings")}
                 </ModuleRoute>
               }
             >

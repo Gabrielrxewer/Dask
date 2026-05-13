@@ -14,6 +14,7 @@ export function AutomationNodeInspector({
   workflowStates,
   customFields,
   itemTypes,
+  disabled = false,
   onConfigChange,
   onLabelChange
 }: {
@@ -23,6 +24,7 @@ export function AutomationNodeInspector({
   workflowStates: FieldOption[];
   customFields: FieldOption[];
   itemTypes: FieldOption[];
+  disabled?: boolean;
   onConfigChange: (config: Record<string, unknown>) => void;
   onLabelChange: (label: string) => void;
 }) {
@@ -41,13 +43,18 @@ export function AutomationNodeInspector({
     <div className="ast__inspector">
       <label className="ast__inspector-label">
         <span>Rotulo</span>
-        <TextInput value={node.data.label} onChange={(event) => onLabelChange(event.target.value)} />
+        <TextInput
+          value={node.data.label}
+          onChange={(event) => onLabelChange(event.target.value)}
+          disabled={disabled}
+        />
       </label>
 
       <NodeConfigForm
         descriptor={descriptor}
         value={node.data.config}
         onChange={onConfigChange}
+        disabled={disabled}
         submitLabel="Validar config"
       />
     </div>

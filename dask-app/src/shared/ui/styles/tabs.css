@@ -1,4 +1,14 @@
 .shared-tabs {
+  --shared-tabs-bg: var(--surface-overlay);
+  --shared-tabs-border: var(--border-default);
+  --shared-tabs-text: var(--workspace-text-muted, var(--text-soft));
+  --shared-tabs-hover-bg: var(--workspace-hover, var(--surface-overlay-strong));
+  --shared-tabs-hover-border: var(--workspace-selected-border, var(--selected-border));
+  --shared-tabs-hover-text: var(--workspace-text-secondary, var(--text-strong));
+  --shared-tabs-active-bg: var(--workspace-selected, var(--selected-bg));
+  --shared-tabs-active-border: var(--workspace-selected-border, var(--selected-border));
+  --shared-tabs-active-text: var(--workspace-text-primary, var(--text-primary));
+  --shared-tabs-active-line: linear-gradient(90deg, var(--primary) 0%, var(--decorative-cyan) 100%);
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
@@ -19,9 +29,10 @@
 }
 
 .shared-tabs__item {
-  border: 1px solid var(--border-default);
-  background: var(--surface-overlay);
-  color: var(--text-soft);
+  position: relative;
+  border: 1px solid var(--shared-tabs-border);
+  background: var(--shared-tabs-bg);
+  color: var(--shared-tabs-text);
   border-radius: 18px;
   min-height: 38px;
   padding: 0 14px;
@@ -34,17 +45,26 @@
 
 .shared-tabs__item:hover {
   transform: translateY(-1px);
-  border-color: var(--selected-border);
-  background: var(--surface-overlay-strong);
-  color: var(--text-strong);
+  border-color: var(--shared-tabs-hover-border);
+  background: var(--shared-tabs-hover-bg);
+  color: var(--shared-tabs-hover-text);
   box-shadow: var(--shadow-card);
 }
 
 .shared-tabs__item--active {
-  border-color: var(--selected-border);
-  background: var(--selected-bg);
-  color: var(--text-primary);
+  border-color: var(--shared-tabs-active-border);
+  background: var(--shared-tabs-active-bg);
+  color: var(--shared-tabs-active-text);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 8%, transparent) inset, var(--shadow-soft);
+}
+
+.shared-tabs__item--active::before {
+  content: "";
+  position: absolute;
+  inset: auto 8px 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--shared-tabs-active-line);
 }
 
 .shared-tabs__item--disabled {
@@ -66,6 +86,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.shared-tabs__item--active .shared-tabs__badge {
+  background: color-mix(in oklab, var(--primary) 88%, var(--decorative-cyan));
+  color: var(--neutral-white);
 }
 
 /* ── Shared top navigation border — applies when inside workspace top nav bar ── */

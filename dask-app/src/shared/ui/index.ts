@@ -115,8 +115,8 @@ export { ModuleTabs } from "@/shared/ui/module-tabs";
 export type { ModuleTabsItem, ModuleTabsProps, ModuleTabsVariant } from "@/shared/ui/module-tabs";
 export { PageToolbar } from "@/shared/ui/page-toolbar";
 export type { PageToolbarProps } from "@/shared/ui/page-toolbar";
-export { LoadingState } from "@/shared/ui/loading-state";
-export type { LoadingAnimation, LoadingStateProps } from "@/shared/ui/loading-state";
+export { LoadingState, PageLoadingState } from "@/shared/ui/loading-state";
+export type { LoadingAnimation, LoadingStateProps, PageLoadingStateProps } from "@/shared/ui/loading-state";
 export { InlineAlert } from "@/shared/ui/inline-alert";
 export type { InlineAlertProps, InlineAlertTone } from "@/shared/ui/inline-alert";
 export { SkeletonBlock, SkeletonColumns, SkeletonLayout } from "@/shared/ui/skeleton";
@@ -188,8 +188,6 @@ export type {
   FlowStudioRunStepStatus,
   FlowStudioValidationIssue
 } from "@/shared/ui/flow-studio";
-export { ResourceTable } from "@/shared/ui/resource-table";
-export type { ResourceTableActions, ResourceTableColumn, ResourceTableProps } from "@/shared/ui/resource-table";
 export { RegistrationList } from "@/shared/ui/registration-list";
 export type { RegistrationListProps } from "@/shared/ui/registration-list";
 export {
@@ -197,6 +195,22 @@ export {
   DataTableHeader,
   DataTableBody,
   DataTableRow,
-  DataTableCell
+  DataTableCell,
+  DataTablePagination,
+  DataTableToolbarSlot,
+  DataTableActionsSlot,
+  DataTableStateRow,
+  DataTableEmptyState,
+  DataTableLoadingState,
+  DataTableErrorState
 } from "@/shared/ui/data-table";
-export type { DataTableProps, DataTableRowLikeProps } from "@/shared/ui/data-table";
+export type {
+  DataTableColumn,
+  DataTableColumnVisibility,
+  DataTableConfiguredProps,
+  DataTablePaginationProps,
+  DataTableProps,
+  DataTableRowActions,
+  DataTableRowLikeProps,
+  DataTableSelection
+} from "@/shared/ui/data-table";

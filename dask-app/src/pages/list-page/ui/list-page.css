@@ -6,13 +6,20 @@
   height: 100%;
   min-height: 0;
   width: 100%;
-  --list-text: var(--text-strong);
-  --list-text-soft: var(--text-soft);
-  --list-text-muted: var(--text-muted);
-  --list-line: var(--line);
-  --list-line-strong: var(--line-contrast);
-  --list-surface: var(--surface-overlay);
-  --list-surface-soft: var(--surface-section-content);
+  --list-text: var(--workspace-text-primary);
+  --list-text-soft: var(--workspace-text-secondary);
+  --list-text-muted: var(--workspace-text-muted);
+  --list-line: var(--workspace-border);
+  --list-line-strong: var(--workspace-border-strong);
+  --list-surface: var(--workspace-surface);
+  --list-surface-soft: var(--workspace-surface-soft);
+  --list-header-surface: var(--workspace-table-header);
+  --list-row-hover-surface: var(--workspace-table-row-hover);
+  --list-row-selected-surface: var(--workspace-selected);
+  --list-control-surface: var(--workspace-control-surface);
+  --list-control-hover-surface: var(--workspace-control-surface-hover);
+  --list-control-border: var(--workspace-control-border);
+  --list-focus-ring: var(--workspace-focus-ring);
   --list-accent: var(--accent);
   --list-accent-strong: var(--accent-strong);
   --workspace-view-text: var(--list-text);
@@ -24,7 +31,7 @@
   --workspace-view-surface-soft: var(--list-surface-soft);
   --workspace-view-accent: var(--list-accent);
   --workspace-view-accent-strong: var(--list-accent-strong);
-  --workspace-view-filter-action-text: color-mix(in oklab, var(--accent-strong) 70%, var(--text-strong));
+  --workspace-view-filter-action-text: color-mix(in oklab, var(--list-accent-strong) 70%, var(--list-text));
 }
 
 .list-top-nav {
@@ -40,7 +47,7 @@
   display: flex;
   align-items: center;
   padding: 0 10px;
-  color: var(--text-primary);
+  color: var(--list-text);
   font-family: var(--font-family-heading);
   font-size: 0.86rem;
   font-weight: 860;
@@ -93,7 +100,7 @@
 .list-view__section .shared-section__header {
   align-items: center;
   padding: 10px 12px;
-  border-bottom: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--list-line) 72%, transparent);
   background: transparent;
 }
 
@@ -138,7 +145,7 @@
 }
 
 .list-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--list-accent) 5%, transparent);
+  background: var(--list-row-hover-surface);
 }
 
 .list-view__table .shared-data-table__row:hover .shared-data-table__cell {
@@ -184,7 +191,7 @@
   border-radius: 5px;
   border-color: var(--list-type-border, transparent);
   background: var(--list-type-background, var(--info-bg));
-  color: var(--list-type-text, var(--text-primary));
+  color: var(--list-type-text, var(--list-text));
   font-size: 0.63rem;
   font-weight: 700;
   width: fit-content;
@@ -332,17 +339,17 @@
 
 .app-theme[data-theme="dark"] .list-view__table {
   border-color: transparent;
-  background: var(--surface-raised);
+  background: var(--list-surface);
   box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--list-line) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav > strong {
-  color: var(--text-primary);
+  color: var(--list-text);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter {
@@ -357,21 +364,21 @@
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__search:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  background: var(--list-row-hover-surface);
+  border-color: color-mix(in srgb, var(--list-line) 72%, transparent);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__search:focus-within {
-  background: color-mix(in srgb, var(--neutral-white) 82%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
+  background: var(--list-control-surface);
+  border-color: var(--list-control-border);
+  box-shadow: 0 0 0 3px var(--list-focus-ring);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter .shared-input {
   min-height: 34px;
   border: none;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--list-text);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -383,7 +390,7 @@
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--list-text-soft);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -392,21 +399,21 @@
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
-  color: var(--text-secondary);
+  background: var(--list-row-hover-surface);
+  border-color: color-mix(in srgb, var(--list-line) 72%, transparent);
+  color: var(--list-text-soft);
 }
 
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme:not([data-theme="dark"]) .list-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
-  color: var(--text-primary);
+  background: var(--list-row-selected-surface);
+  border-color: var(--workspace-selected-border);
+  color: var(--list-text);
   font-weight: 860;
 }
 
 .app-theme:not([data-theme="dark"]) .list-view__section .shared-section__header {
-  background: color-mix(in srgb, var(--surface-tint) 94%, transparent);
+  background: var(--list-header-surface);
 }
 
 .app-theme:not([data-theme="dark"]) .list-view__table .shared-data-table {
@@ -414,19 +421,19 @@
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__header {
-  border-bottom-color: color-mix(in oklab, var(--line) 44%, transparent);
-  background: transparent;
-  color: var(--text-soft);
+  border-bottom-color: color-mix(in oklab, var(--list-line) 44%, transparent);
+  background: var(--list-header-surface);
+  color: var(--list-text-muted);
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row {
-  border-bottom-color: color-mix(in oklab, var(--line) 28%, transparent);
-  background: transparent;
-  color: var(--text);
+  border-bottom-color: color-mix(in oklab, var(--list-line) 28%, transparent);
+  background: var(--list-surface);
+  color: var(--list-text);
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 6%, transparent);
+  background: var(--list-row-hover-surface);
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .shared-data-table__cell,
@@ -437,16 +444,16 @@
 }
 
 .app-theme[data-theme="dark"] .list-view__table .shared-data-table__row:hover .list-view__status .shared-select__control {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+  background: var(--list-control-hover-surface);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--list-line-strong) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav > strong {
-  color: var(--text-primary);
+  color: var(--list-text);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter {
@@ -460,15 +467,15 @@
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__search:hover {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: var(--list-row-hover-surface);
+  border-color: color-mix(in srgb, var(--list-line-strong) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter .shared-input {
   min-height: 34px;
   border: none;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--list-text);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -480,7 +487,7 @@
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--list-text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -489,16 +496,16 @@
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  color: var(--text-primary);
+  background: var(--list-row-hover-surface);
+  border-color: color-mix(in srgb, var(--list-line-strong) 72%, transparent);
+  color: var(--list-text);
 }
 
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .list-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--primary) 16%, transparent);
-  border-color: color-mix(in srgb, var(--primary) 92%, transparent);
-  color: var(--text-primary);
+  background: var(--list-row-selected-surface);
+  border-color: var(--workspace-selected-border);
+  color: var(--list-text);
   font-weight: 860;
 }
 
@@ -513,15 +520,15 @@
 .app-theme[data-theme="dark"] .list-view__actions.workspace-view__actions .dashboard-filter .shared-input,
 .app-theme[data-theme="dark"] .list-view__actions.workspace-view__actions .dashboard-filter .shared-button,
 .app-theme[data-theme="dark"] .list-view__status .shared-select__control {
-  border-color: var(--line);
-  background: var(--control-surface);
-  color: var(--text-strong);
+  border-color: var(--list-line);
+  background: var(--list-control-surface);
+  color: var(--list-text);
 }
 
 .app-theme[data-theme="dark"] .list-view__type {
-  border-color: color-mix(in oklab, var(--list-type-text, var(--accent)) 42%, var(--line));
-  background: color-mix(in oklab, var(--list-type-text, var(--accent)) 20%, var(--panel));
-  color: color-mix(in oklab, var(--list-type-background, var(--accent-soft)) 30%, var(--text-strong));
+  border-color: color-mix(in oklab, var(--list-type-text, var(--list-accent)) 42%, var(--list-line));
+  background: color-mix(in oklab, var(--list-type-text, var(--list-accent)) 20%, var(--list-surface));
+  color: color-mix(in oklab, var(--list-type-background, var(--accent-soft)) 30%, var(--list-text));
 }
 
 .app-theme[data-theme="dark"] .list-view__progress-label--done {
@@ -541,15 +548,15 @@
 }
 
 .app-theme[data-theme="dark"] .list-view__action-btn {
-  border-color: color-mix(in oklab, var(--line) 60%, transparent);
-  background: var(--control-surface);
-  color: var(--text-soft);
+  border-color: color-mix(in oklab, var(--list-line) 60%, transparent);
+  background: var(--list-control-surface);
+  color: var(--list-text-soft);
 }
 
 .app-theme[data-theme="dark"] .list-view__action-btn:hover {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+  background: var(--list-control-hover-surface);
   border-color: color-mix(in oklab, var(--accent) 40%, transparent);
-  color: var(--text-strong);
+  color: var(--list-text);
 }
 
 
@@ -758,7 +765,7 @@
 }
 
 .work-item-data-grid__row.is-selected {
-  background: color-mix(in oklab, var(--list-accent) 9%, transparent);
+  background: var(--list-row-selected-surface);
 }
 
 .work-item-data-grid__pagination {
@@ -896,7 +903,7 @@
   border-radius: 5px;
   border-color: var(--list-type-border, transparent);
   background: var(--list-type-background, var(--info-bg));
-  color: var(--list-type-text, var(--text-primary));
+  color: var(--list-type-text, var(--list-text));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1104,18 +1111,21 @@
 /* List data grid layout polish */
 .list-view {
   padding: 12px;
-  background: color-mix(in srgb, var(--surface-tint) 76%, var(--surface-1));
-  --list-surface: var(--surface-1);
-  --list-surface-soft: color-mix(in srgb, var(--surface-tint) 86%, var(--surface-1));
-  --list-line: color-mix(in srgb, var(--border-default) 82%, var(--info-border));
-  --list-line-strong: color-mix(in srgb, var(--border-strong) 74%, var(--info-border));
-  --list-text: var(--text-primary);
-  --list-text-soft: var(--text-secondary);
-  --list-text-muted: var(--text-muted);
-  --list-header-surface: var(--surface-table-header);
-  --list-row-hover-surface: var(--surface-table-row-hover);
-  --list-row-selected-surface: var(--selected-bg);
-  --list-control-surface: var(--control-surface);
+  background: var(--workspace-page-bg);
+  --list-surface: var(--workspace-surface);
+  --list-surface-soft: var(--workspace-surface-soft);
+  --list-line: var(--workspace-border);
+  --list-line-strong: var(--workspace-border-strong);
+  --list-text: var(--workspace-text-primary);
+  --list-text-soft: var(--workspace-text-secondary);
+  --list-text-muted: var(--workspace-text-muted);
+  --list-header-surface: var(--workspace-table-header);
+  --list-row-hover-surface: var(--workspace-table-row-hover);
+  --list-row-selected-surface: var(--workspace-selected);
+  --list-control-surface: var(--workspace-control-surface);
+  --list-control-hover-surface: var(--workspace-control-surface-hover);
+  --list-control-border: var(--workspace-control-border);
+  --list-focus-ring: var(--workspace-focus-ring);
 }
 
 .list-view__section.shared-section {
@@ -1601,16 +1611,19 @@
 }
 
 .app-theme[data-theme="dark"] .list-view {
-  background: var(--surface-1);
-  --list-surface: var(--surface-1);
-  --list-surface-soft: var(--surface-2);
-  --list-line: color-mix(in oklab, var(--line) 86%, transparent);
-  --list-line-strong: var(--line-strong);
-  --list-text: var(--text-primary);
-  --list-text-soft: var(--text-secondary);
-  --list-text-muted: var(--text-muted);
-  --list-header-surface: var(--surface-table-header);
-  --list-row-hover-surface: var(--surface-table-row-hover);
-  --list-row-selected-surface: var(--selected-bg);
-  --list-control-surface: var(--control-surface);
+  background: var(--workspace-page-bg);
+  --list-surface: var(--workspace-surface);
+  --list-surface-soft: var(--workspace-surface-soft);
+  --list-line: var(--workspace-border);
+  --list-line-strong: var(--workspace-border-strong);
+  --list-text: var(--workspace-text-primary);
+  --list-text-soft: var(--workspace-text-secondary);
+  --list-text-muted: var(--workspace-text-muted);
+  --list-header-surface: var(--workspace-table-header);
+  --list-row-hover-surface: var(--workspace-table-row-hover);
+  --list-row-selected-surface: var(--workspace-selected);
+  --list-control-surface: var(--workspace-control-surface);
+  --list-control-hover-surface: var(--workspace-control-surface-hover);
+  --list-control-border: var(--workspace-control-border);
+  --list-focus-ring: var(--workspace-focus-ring);
 }

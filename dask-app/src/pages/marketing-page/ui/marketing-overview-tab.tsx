@@ -1,4 +1,4 @@
-import { Button, EmptyState, ResourceTable, StatusBadge } from "@/shared/ui";
+import { Button, DataTable, EmptyState, StatusBadge, type DataTableColumn } from "@/shared/ui";
 import type {
   MarketingAudienceContact,
   MarketingAutomationFlow,
@@ -34,6 +34,46 @@ interface MarketingOverviewTabProps {
   setTab: (tab: MarketingTab) => void;
   loadCampaignDetails: (campaignIdValue: string) => Promise<void>;
 }
+
+const movingCampaignColumns: Array<DataTableColumn<MarketingCampaignListItem>> = [
+  {
+    id: "campaign",
+    header: "Campanha",
+    width: "minmax(240px, 1.5fr)",
+    render: (campaign) => (
+      <span className="mkt-perf-table__name">
+        <strong>{campaign.name}</strong>
+        <span>{campaignObjectiveLabel(campaign.objective)}</span>
+      </span>
+    )
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "0.85fr",
+    render: (campaign) => (
+      <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
+    )
+  },
+  {
+    id: "scheduled",
+    header: "Agenda",
+    width: "0.95fr",
+    render: (campaign) => toLocalDate(campaign.scheduledAt)
+  },
+  {
+    id: "channel",
+    header: "Canal",
+    width: "0.75fr",
+    render: (campaign) => campaign.channel
+  },
+  {
+    id: "segment",
+    header: "Segmento",
+    width: "0.75fr",
+    render: (campaign) => (campaign.segmentId ? "Segmentada" : "Livre")
+  }
+];
 
 export function MarketingOverviewTab({
   dashboard,
@@ -214,47 +254,14 @@ export function MarketingOverviewTab({
                       <p className="marketing-page__hint">Clique em qualquer linha para operar detalhes, testes e agenda.</p>
                     </div>
                   </div>
-                  <ResourceTable
+                  <DataTable<MarketingCampaignListItem>
                     data={campaigns.slice(0, 8)}
-                    rowKey="id"
+                    getRowId={(campaign) => campaign.id}
                     className="mkt-resource-table"
                     responsiveMinWidth="900px"
                     emptyState={<EmptyState size="compact">Nenhuma campanha criada.</EmptyState>}
-                    columns={[
-                      {
-                        id: "campaign",
-                        header: "Campanha",
-                        width: "minmax(240px, 1.5fr)",
-                        render: (campaign) => (
-                          <span className="mkt-perf-table__name">
-                            <strong>{campaign.name}</strong>
-                            <span>{campaignObjectiveLabel(campaign.objective)}</span>
-                          </span>
-                        )
-                      },
-                      {
-                        id: "status",
-                        header: "Status",
-                        width: "0.85fr",
-                        render: (campaign) => (
-                          <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
-                        )
-                      },
-                      {
-                        id: "scheduled",
-                        header: "Agenda",
-                        width: "0.95fr",
-                        render: (campaign) => toLocalDate(campaign.scheduledAt)
-                      },
-                      { id: "channel", header: "Canal", width: "0.75fr", accessor: "channel" },
-                      {
-                        id: "segment",
-                        header: "Segmento",
-                        width: "0.75fr",
-                        render: (campaign) => (campaign.segmentId ? "Segmentada" : "Livre")
-                      }
-                    ]}
-                    actions={{
+                    columns={movingCampaignColumns}
+                    rowActions={{
                       header: "Acao",
                       width: "0.65fr",
                       render: (campaign) => (
@@ -268,26 +275,6 @@ export function MarketingOverviewTab({
                         >
                           Abrir
                         </Button>
-                      )
-                    }}
-                    mobileCard={{
-                      render: (campaign) => (
-                        <>
-                          <strong>{campaign.name}</strong>
-                          <span>{campaignObjectiveLabel(campaign.objective)}</span>
-                          <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
-                          <span>{toLocalDate(campaign.scheduledAt)} - {campaign.channel}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              void loadCampaignDetails(campaign.id);
-                              setTab("campaigns");
-                            }}
-                          >
-                            Abrir
-                          </Button>
-                        </>
                       )
                     }}
                   />

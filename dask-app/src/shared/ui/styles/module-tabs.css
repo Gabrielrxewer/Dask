@@ -1,4 +1,14 @@
 .module-tabs {
+  --module-tabs-bg: transparent;
+  --module-tabs-border: transparent;
+  --module-tabs-text: var(--workspace-text-muted, var(--text-muted));
+  --module-tabs-text-hover: var(--workspace-text-secondary, var(--text-secondary));
+  --module-tabs-text-active: var(--workspace-text-primary, var(--text-primary));
+  --module-tabs-hover-bg: var(--workspace-hover, color-mix(in oklab, var(--primary) 6%, transparent));
+  --module-tabs-hover-border: var(--workspace-border-subtle, var(--border-subtle));
+  --module-tabs-active-bg: var(--workspace-selected, var(--selected-bg));
+  --module-tabs-active-border: var(--workspace-selected-border, var(--selected-border));
+  --module-tabs-active-line: linear-gradient(90deg, var(--primary) 0%, var(--decorative-cyan) 100%);
   min-width: 0;
   min-height: var(--layout-tab-height);
   flex-wrap: nowrap;
@@ -30,9 +40,9 @@
   flex: 0 0 auto;
   border-color: transparent;
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--module-tabs-bg);
   box-shadow: none;
-  color: var(--text-secondary);
+  color: var(--module-tabs-text);
   font-size: var(--font-size-2xs);
   font-weight: 760;
   letter-spacing: 0.05em;
@@ -41,18 +51,18 @@
 }
 
 .module-tabs--underline .module-tabs__item:hover {
-  border-color: color-mix(in oklab, var(--border-default) 72%, transparent);
-  background: color-mix(in oklab, var(--primary) 6%, transparent);
+  border-color: var(--module-tabs-hover-border);
+  background: var(--module-tabs-hover-bg);
   box-shadow: none;
-  color: var(--text-secondary);
+  color: var(--module-tabs-text-hover);
   transform: none;
 }
 
 .module-tabs--underline .module-tabs__item--active {
-  border-color: transparent;
-  background: transparent;
+  border-color: var(--module-tabs-active-border);
+  background: var(--module-tabs-active-bg);
   box-shadow: none;
-  color: var(--text-primary);
+  color: var(--module-tabs-text-active);
   font-weight: 860;
 }
 
@@ -62,7 +72,7 @@
   inset: auto 8px 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--decorative-cyan) 100%);
+  background: var(--module-tabs-active-line);
 }
 
 .module-tabs--pill .module-tabs__item {

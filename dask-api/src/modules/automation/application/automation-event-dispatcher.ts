@@ -92,6 +92,32 @@ function hasFilterValue(filter: unknown, actual: unknown): boolean {
   return typeof actual === 'string' && filters.includes(actual);
 }
 
+function normalizeWorkItemEventPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const itemId = readString(payload, 'itemId');
+  const workItemId = readString(payload, 'workItemId');
+  const linkedWorkItemId = readString(payload, 'linkedEntityType') === 'work_item'
+    ? readString(payload, 'linkedEntityId')
+    : null;
+  const resolvedWorkItemId = itemId ?? workItemId ?? linkedWorkItemId;
+
+  return {
+    ...payload,
+    itemId: resolvedWorkItemId ?? payload.itemId,
+    workItemId: resolvedWorkItemId ?? payload.workItemId
+  };
+}
+
+function isCommercialWorkItemPayload(payload: Record<string, unknown>): boolean {
+  return readString(payload, 'itemTypeSlug') === 'commercial' ||
+    readString(payload, 'itemType') === 'commercial' ||
+    readString(payload, 'nativeDomain') === 'commercial' ||
+    readString(payload, 'domain') === 'commercial';
+}
+
+function readEventIdempotencyKey(event: DomainEvent, payload: Record<string, unknown>): string {
+  return readString(payload, 'idempotencyKey') ?? event.id;
+}
+
 export class AutomationEventDispatcher {
   public constructor(
     private readonly prisma: PrismaClient,
@@ -99,11 +125,13 @@ export class AutomationEventDispatcher {
   ) {}
 
   public async dispatch(event: DomainEvent): Promise<void> {
-    const payload = isRecord(event.payload) ? event.payload : {};
+    const rawPayload = isRecord(event.payload) ? event.payload : {};
+    let payload = normalizeWorkItemEventPayload(rawPayload);
     const workspaceId = readString(payload, 'workspaceId');
     if (!workspaceId) {
       return;
     }
+    payload = await this.enrichWorkItemPayload(workspaceId, payload);
 
     const workflows = await this.prisma.automationWorkflow.findMany({
       where: {
@@ -133,7 +161,7 @@ export class AutomationEventDispatcher {
       }
 
       for (const matchedTrigger of matchedTriggers) {
-        const triggerRefId = `${event.id}:${matchedTrigger.id}`;
+        const triggerRefId = `${readEventIdempotencyKey(event, payload)}:${matchedTrigger.id}`;
         const existingRun = await this.prisma.automationRun.findFirst({
           where: {
             workspaceId,
@@ -223,45 +251,54 @@ export class AutomationEventDispatcher {
     }
 
     if (triggerType === 'proposal_created') {
-      return event.name === DomainEventNames.ProposalCreated;
+      return event.name === DomainEventNames.ProposalCreated &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'proposal_status_changed') {
       return new Set<string>([DomainEventNames.ProposalSent, DomainEventNames.ProposalApproved, DomainEventNames.ProposalRejected]).has(event.name) &&
-        hasFilterValue(config.status, payload.status);
+        hasFilterValue(config.status, payload.status) &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'contract_created') {
-      return event.name === DomainEventNames.ContractCreated;
+      return event.name === DomainEventNames.ContractCreated &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'contract_status_changed') {
       return new Set<string>([DomainEventNames.ContractSent, DomainEventNames.ContractAccepted, DomainEventNames.ContractRejected]).has(event.name) &&
-        hasFilterValue(config.status, payload.status);
+        hasFilterValue(config.status, payload.status) &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'billing_payment_confirmed') {
       return event.name === DomainEventNames.BillingPaymentConfirmed &&
-        hasFilterValue(config.status, payload.status);
+        hasFilterValue(config.status, payload.status) &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'billing_requested') {
       return event.name === DomainEventNames.BillingRequested &&
-        hasFilterValue(config.status, payload.status);
+        hasFilterValue(config.status, payload.status) &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'billing_payment_failed') {
       return event.name === DomainEventNames.BillingPaymentFailed &&
-        hasFilterValue(config.status, payload.status);
+        hasFilterValue(config.status, payload.status) &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'billing_overdue') {
       return event.name === DomainEventNames.BillingOverdue &&
-        hasFilterValue(config.status, payload.status);
+        hasFilterValue(config.status, payload.status) &&
+        this.filtersMatch(config, payload);
     }
 
     if (triggerType === 'commercial_work_item_created') {
-      return event.name === DomainEventNames.CommercialWorkItemCreated;
+      return event.name === DomainEventNames.CommercialWorkItemCreated &&
+        isCommercialWorkItemPayload(payload);
     }
 
     return false;
@@ -272,5 +309,85 @@ export class AutomationEventDispatcher {
       hasFilterValue(config.column ?? config.columnSlug ?? config.toColumnKey, payload.toColumnKey) &&
       hasFilterValue(config.status ?? config.stateSlug, payload.status) &&
       hasFilterValue(config.customerId, payload.customerId);
+  }
+
+  private async enrichWorkItemPayload(workspaceId: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const itemId = readString(payload, 'itemId') ?? readString(payload, 'workItemId');
+    if (!itemId) {
+      return payload;
+    }
+
+    if (
+      readString(payload, 'itemTypeSlug') &&
+      readString(payload, 'status') &&
+      readString(payload, 'toColumnKey')
+    ) {
+      return payload;
+    }
+
+    const itemDelegate = (this.prisma as PrismaClient & {
+      item?: {
+        findFirst(input: unknown): Promise<{
+          id: string;
+          type: string;
+          typeId: string | null;
+          stateId: string | null;
+          status: string;
+          boardColumnId: string | null;
+          typeDefinition: { slug: string } | null;
+          workflowState: { slug: string } | null;
+          boardColumn: { slug: string } | null;
+        } | null>;
+      };
+    }).item;
+    if (!itemDelegate?.findFirst) {
+      return payload;
+    }
+
+    const item = await itemDelegate.findFirst({
+      where: {
+        id: itemId,
+        workspaceId
+      },
+      select: {
+        id: true,
+        type: true,
+        typeId: true,
+        stateId: true,
+        status: true,
+        boardColumnId: true,
+        typeDefinition: {
+          select: {
+            slug: true
+          }
+        },
+        workflowState: {
+          select: {
+            slug: true
+          }
+        },
+        boardColumn: {
+          select: {
+            slug: true
+          }
+        }
+      }
+    });
+
+    if (!item) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      itemId: item.id,
+      workItemId: item.id,
+      itemTypeId: readString(payload, 'itemTypeId') ?? item.typeId ?? undefined,
+      itemTypeSlug: readString(payload, 'itemTypeSlug') ?? item.typeDefinition?.slug ?? item.type,
+      status: readString(payload, 'status') ?? item.workflowState?.slug ?? item.status,
+      stateId: readString(payload, 'stateId') ?? item.stateId ?? undefined,
+      toColumnId: readString(payload, 'toColumnId') ?? item.boardColumnId ?? undefined,
+      toColumnKey: readString(payload, 'toColumnKey') ?? item.boardColumn?.slug ?? undefined
+    };
   }
 }

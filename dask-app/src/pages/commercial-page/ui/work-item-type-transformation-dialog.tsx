@@ -64,8 +64,8 @@ export function WorkItemTypeTransformationDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title="Transformar Signal em WorkItem"
-      description="Preencha os campos obrigatorios do tipo destino antes de promover o WorkItem."
+      title="Transformar Prospect em Lead"
+      description="Preencha os campos obrigatorios do Lead antes de promover o Prospect."
       className="commercial-page__modal"
       contentClassName="commercial-page__modal-content"
       footer={(
@@ -74,7 +74,7 @@ export function WorkItemTypeTransformationDialog({
             Cancelar
           </Button>
           <Button type="submit" form="work-item-type-transformation-form" variant="primary" loading={isSubmitting}>
-            Transformar em WorkItem
+            Transformar em Lead
           </Button>
         </AppFormActions>
       )}

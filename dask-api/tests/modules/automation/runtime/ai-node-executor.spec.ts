@@ -44,7 +44,14 @@ function makeInput(type: string, config: Record<string, unknown>, previousOutput
     graph: { version: 1 as const, nodes: [], edges: [] },
     incomingEdges: [],
     outgoingEdges: [],
-    context: {},
+    context: {
+      event: {
+        payload: {
+          itemId: 'item-1',
+          requestedBy: 'user-1'
+        }
+      }
+    },
     input: { previousOutput },
     now: baseDate
   };
@@ -158,6 +165,8 @@ describe('AI automation node executors', () => {
     const result = await executor.execute(makeInput('human_approval', {
       type: 'send_message',
       title: 'Aprovar resposta',
+      requestedBy: '{{event.payload.requestedBy}}',
+      workItemId: '{{event.payload.itemId}}',
       payloadFromNode: 'ai_generate_message_draft'
     }, {
       draftText: 'Ola',
@@ -177,7 +186,9 @@ describe('AI automation node executors', () => {
         workspaceId: 'ws-1',
         runId: 'run-1',
         stepRunId: 'step-1',
-        type: 'send_message'
+        type: 'send_message',
+        requestedBy: 'user-1',
+        workItemId: 'item-1'
       })
     );
   });

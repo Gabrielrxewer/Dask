@@ -101,11 +101,11 @@
 }
 
 .flow-studio-panel__item--error {
-  color: var(--danger, #dc2626);
+  color: var(--danger);
 }
 
 .flow-studio-panel__item--warning {
-  color: var(--warning, #d97706);
+  color: var(--warning);
 }
 
 .flow-studio-debug-panel__step {
@@ -120,23 +120,23 @@
   height: 9px;
   margin-top: 4px;
   border-radius: 999px;
-  background: var(--text-muted, #64748b);
+  background: var(--text-muted);
 }
 
 .flow-studio-debug-panel__step--running .flow-studio-debug-panel__dot {
-  background: var(--warning, #d97706);
+  background: var(--warning);
 }
 
 .flow-studio-debug-panel__step--success .flow-studio-debug-panel__dot {
-  background: var(--success, #16a34a);
+  background: var(--success);
 }
 
 .flow-studio-debug-panel__step--failed .flow-studio-debug-panel__dot {
-  background: var(--danger, #dc2626);
+  background: var(--danger);
 }
 
 .flow-studio-debug-panel__step--requires_approval .flow-studio-debug-panel__dot {
-  background: var(--primary, #2563eb);
+  background: var(--primary);
 }
 
 .flow-studio-debug-panel__step strong {

@@ -4,6 +4,15 @@
   gap: 12px;
   min-height: 0;
   width: 100%;
+  --workspace-view-text: var(--workspace-text-primary);
+  --workspace-view-text-soft: var(--workspace-text-secondary);
+  --workspace-view-text-muted: var(--workspace-text-muted);
+  --workspace-view-line: var(--workspace-border);
+  --workspace-view-line-strong: var(--workspace-border-strong);
+  --workspace-view-surface: var(--workspace-surface);
+  --workspace-view-surface-soft: var(--workspace-page-bg);
+  --workspace-view-accent: var(--accent);
+  --workspace-view-accent-strong: var(--accent-strong);
   color: var(--workspace-view-text);
 }
 
@@ -74,7 +83,7 @@
 .workspace:has(.workspace-view) {
   background:
     radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 7%, transparent) 0%, transparent 34%),
-    var(--workspace-view-surface-soft);
+    var(--workspace-view-surface-soft, var(--workspace-page-bg));
   border-color: var(--workspace-view-frame-border, var(--line));
   border-radius: var(--radius-xs);
   box-shadow: var(--shadow-card);
@@ -125,10 +134,10 @@
 .workspace-view__section.shared-section,
 .workspace-view__panel.shared-section {
   min-height: 0;
-  border-color: var(--workspace-view-panel-border, var(--line));
+  border-color: var(--workspace-view-panel-border, var(--workspace-border));
   border-radius: var(--radius-xs);
-  background: var(--workspace-view-surface);
-  box-shadow: var(--shadow-card);
+  background: var(--workspace-view-surface, var(--workspace-section-surface));
+  box-shadow: none;
   backdrop-filter: none;
 }
 
@@ -140,8 +149,8 @@
 .workspace-view__section .shared-section__header,
 .workspace-view__panel .shared-section__header {
   padding: 12px 14px;
-  border-bottom-color: var(--workspace-view-line);
-  background: var(--surface-section-header);
+  border-bottom-color: var(--workspace-view-line, var(--workspace-border));
+  background: var(--workspace-section-header-surface);
 }
 
 .workspace-view__section .shared-section__title,
@@ -168,7 +177,7 @@
 .workspace-view__panel .shared-section__content {
   padding: 10px;
   min-height: 0;
-  background: var(--surface-section-content);
+  background: var(--workspace-section-surface);
 }
 
 .workspace-view__actions {
@@ -186,7 +195,7 @@
 .workspace-view__actions .dashboard-filter .shared-input,
 .workspace-view__actions .dashboard-filter .shared-button:not(.shared-button--primary) {
   border-color: var(--workspace-view-accent-line, color-mix(in oklab, var(--workspace-view-accent, var(--accent)) 20%, var(--line)));
-  background: var(--surface-overlay);
+  background: var(--workspace-control-surface);
   box-shadow: none;
 }
 
@@ -209,20 +218,20 @@
 .app-theme[data-theme="dark"] .workspace-view__section.shared-section,
 .app-theme[data-theme="dark"] .workspace-view__panel.shared-section,
 .app-theme[data-theme="dark"] .workspace-view__metrics .shared-metric-card {
-  border-color: var(--line);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-1);
+  border-color: var(--workspace-border);
+  background: var(--workspace-section-surface);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .workspace-view__section .shared-section__header,
 .app-theme[data-theme="dark"] .workspace-view__panel .shared-section__header {
-  border-bottom-color: var(--line);
-  background: var(--surface-raised);
+  border-bottom-color: var(--workspace-border);
+  background: var(--workspace-section-header-surface);
 }
 
 .app-theme[data-theme="dark"] .workspace-view__section .shared-section__content,
 .app-theme[data-theme="dark"] .workspace-view__panel .shared-section__content {
-  background: color-mix(in oklab, var(--panel-soft) 90%, transparent);
+  background: var(--workspace-section-surface);
 }
 
 .app-theme[data-theme="dark"] .workspace-view__actions .dashboard-filter .shared-input,

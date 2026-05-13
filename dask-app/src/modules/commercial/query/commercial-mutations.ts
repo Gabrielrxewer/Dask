@@ -28,6 +28,14 @@ function invalidateWorkItemCollections(queryClient: QueryClient, workspaceId: st
   void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.workspace(workspaceId) });
 }
 
+export function invalidateTransformWorkItemTypeQueries(queryClient: QueryClient, workspaceId: string, workItemId: string) {
+  invalidateWorkItemCollections(queryClient, workspaceId);
+  void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.signals(workspaceId) });
+  void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.commercial(workspaceId) });
+  void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.workItem(workspaceId, workItemId) });
+  void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.transformations(workspaceId) });
+}
+
 interface WorkItemMutationOptions {
   silent?: boolean;
 }
@@ -232,12 +240,9 @@ export function useTransformWorkItemTypeMutation(workspaceId: string | null | un
       }),
     onSuccess: (_item, input) => {
       const resolvedWorkspaceId = requireWorkspace(workspaceId);
-      invalidateWorkItemCollections(queryClient, resolvedWorkspaceId);
-      void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.signals(resolvedWorkspaceId) });
-      void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.workItem(resolvedWorkspaceId, input.workItemId) });
-      void queryClient.invalidateQueries({ queryKey: commercialQueryKeys.transformations(resolvedWorkspaceId) });
-      notifyMutationSuccess("Signal transformado em WorkItem comercial sem perder dados.", options);
+      invalidateTransformWorkItemTypeQueries(queryClient, resolvedWorkspaceId, input.workItemId);
+      notifyMutationSuccess("Prospect transformado em Lead", options);
     },
-    onError: handleMutationError("Nao foi possivel transformar o WorkItem.", options)
+    onError: handleMutationError("Nao foi possivel transformar Prospect em Lead.", options)
   });
 }

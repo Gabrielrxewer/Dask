@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { commercialService } from "@/modules/commercial/api";
 import type { CreateCommercialWorkItemInput } from "@/modules/commercial/model";
+import { commercialQueryKeys } from "@/modules/commercial/query/commercial-query-keys";
+import { workspaceQueryKeys } from "@/modules/workspace/query";
 import {
   createCommercialWorkItemMutationRequest,
+  invalidateTransformWorkItemTypeQueries,
   moveCommercialWorkItemInFlowMutationRequest
 } from "@/modules/commercial/query/commercial-mutations";
 
@@ -60,5 +63,22 @@ describe("workItem mutations", () => {
       workItemId: "workItem-1",
       stateSlug: "proposal"
     });
+  });
+});
+
+describe("commercial transformation mutation helpers", () => {
+  it("invalidates commercial, prospect, work item details, transformations, and workspace caches", () => {
+    const queryClient = {
+      invalidateQueries: vi.fn()
+    };
+
+    invalidateTransformWorkItemTypeQueries(queryClient as never, "workspace-1", "item-1");
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: commercialQueryKeys.workspace("workspace-1") });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: workspaceQueryKeys.workspace("workspace-1") });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: commercialQueryKeys.signals("workspace-1") });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: commercialQueryKeys.commercial("workspace-1") });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: commercialQueryKeys.workItem("workspace-1", "item-1") });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: commercialQueryKeys.transformations("workspace-1") });
   });
 });

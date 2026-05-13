@@ -21,18 +21,18 @@
   width: var(--board-column-width);
   min-width: var(--board-column-width);
   max-width: var(--board-column-width);
-  background: var(--surface-1);
-  border: 1px solid var(--border-default);
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-border);
   border-radius: var(--radius-xs);
   min-height: max(62vh, 100%);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 }
 
 .board-column--drop-target {
-  border-color: var(--selected-border);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 12%, transparent) inset;
+  border-color: var(--workspace-selected-border);
+  box-shadow: 0 0 0 2px var(--workspace-focus-ring) inset;
 }
 
 .board-column__head {
@@ -41,8 +41,8 @@
   align-items: center;
   min-height: 44px;
   padding: 9px 10px;
-  border-bottom: 1px solid var(--border-default);
-  background: var(--surface-1);
+  border-bottom: 1px solid var(--workspace-border-subtle);
+  background: var(--workspace-table-header);
 }
 
 .board-column__title {
@@ -76,8 +76,8 @@
   min-height: 24px;
   display: inline-grid;
   place-items: center;
-  background: var(--selected-bg);
-  color: var(--text-primary);
+  background: var(--workspace-selected);
+  color: var(--workspace-text-primary);
   font-size: 0.78rem;
   font-weight: 900;
   border-radius: var(--radius-xs);
@@ -91,12 +91,12 @@
   display: grid;
   gap: 8px;
   align-content: start;
-  background: var(--surface-2);
+  background: var(--workspace-surface-soft);
   overflow: hidden;
 }
 
 .board-column__list--over {
-  background: color-mix(in oklab, var(--selected-bg) 48%, var(--surface-2));
+  background: color-mix(in oklab, var(--workspace-selected) 52%, var(--workspace-surface-soft));
 }
 
 .board-column__item {
@@ -156,10 +156,10 @@
   display: grid;
   gap: 0;
   padding: 30px 28px 24px;
-  border: 1px solid var(--border-default);
-  border-radius: 18px;
-  background: var(--surface-overlay-strong);
-  box-shadow: var(--shadow-3);
+  border: 1px solid var(--workspace-border);
+  border-radius: var(--radius-sm);
+  background: var(--workspace-surface);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ink-shadow) 12%, transparent);
   backdrop-filter: none;
   animation: board-delete-dialog-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -219,23 +219,23 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-columns {
-  --board-column-line: color-mix(in oklab, var(--line) 72%, transparent);
-  --board-column-canvas-surface: color-mix(in srgb, var(--surface-tint) 76%, var(--surface-1));
-  --board-column-header-surface: var(--surface-table-header);
-  --board-column-body-surface: var(--surface-1);
-  --board-column-body-surface-over: color-mix(in srgb, var(--selected-bg) 54%, var(--board-column-body-surface));
-  gap: 0;
+  --board-column-line: var(--workspace-border);
+  --board-column-canvas-surface: var(--workspace-page-bg);
+  --board-column-header-surface: var(--workspace-table-header);
+  --board-column-body-surface: var(--workspace-surface);
+  --board-column-list-surface: var(--workspace-surface-soft);
+  --board-column-body-surface-over: color-mix(in srgb, var(--workspace-selected) 64%, var(--board-column-list-surface));
+  gap: 10px;
   padding: 0;
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background: var(--board-column-canvas-surface);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column {
   position: relative;
   overflow: hidden;
-  border-radius: 0;
-  border-color: transparent;
-  border-right-color: var(--board-column-line);
+  border-radius: var(--radius-xs);
+  border-color: var(--board-column-line);
   background: var(--board-column-body-surface);
   box-shadow: none;
 }
@@ -249,17 +249,17 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-column:first-child {
-  border-radius: 0;
+  border-radius: var(--radius-xs);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column:last-child {
-  border-radius: 0;
+  border-radius: var(--radius-xs);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column--drop-target {
-  border-color: transparent;
-  background: var(--board-column-body-surface-over);
-  box-shadow: inset 0 0 0 1px var(--selected-border);
+  border-color: var(--workspace-selected-border);
+  background: var(--board-column-body-surface);
+  box-shadow: inset 0 0 0 2px var(--workspace-focus-ring);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__head {
@@ -274,7 +274,7 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__title h2 {
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
   font-family: var(--font-family-sans);
   font-size: 0.69rem;
   font-weight: 800;
@@ -288,8 +288,8 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--border-default) 28%, transparent);
-  color: var(--text-muted);
+  background: var(--workspace-surface-soft);
+  color: var(--workspace-text-muted);
   box-shadow: none;
   font-size: 0.72rem;
 }
@@ -303,7 +303,7 @@
   z-index: 1;
   gap: 8px;
   padding: 10px;
-  background: var(--board-column-body-surface);
+  background: var(--board-column-list-surface);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__list--over {
@@ -316,22 +316,20 @@
 
 .app-theme:not([data-theme="dark"]) .board-column__drop-indicator {
   height: 6px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 92%, transparent), color-mix(in srgb, var(--decorative-cyan) 84%, transparent));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent),
-    0 6px 12px color-mix(in srgb, var(--primary) 12%, transparent);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--workspace-focus-ring);
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__create-task {
   min-height: 38px;
-  border-radius: 14px;
+  border-radius: var(--radius-xs);
   box-shadow: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-column__empty {
-  --shared-empty-panel-bg: color-mix(in srgb, var(--neutral-white) 84%, transparent);
-  --shared-empty-panel-border: 1px solid var(--border-default);
-  --shared-empty-panel-radius: 14px;
+  --shared-empty-panel-bg: var(--workspace-empty-surface);
+  --shared-empty-panel-border: 1px solid var(--workspace-border-subtle);
+  --shared-empty-panel-radius: var(--radius-xs);
   --shared-empty-panel-padding: 11px 12px;
 }
 
@@ -341,23 +339,23 @@
 }
 
 .app-theme[data-theme="dark"] .board-columns {
-  --board-column-line: color-mix(in oklab, var(--line) 86%, transparent);
-  --board-column-canvas-surface: var(--surface-1);
-  --board-column-header-surface: var(--surface-table-header);
-  --board-column-body-surface: color-mix(in oklab, var(--surface-1) 94%, var(--surface-2));
-  --board-column-body-surface-over: color-mix(in oklab, var(--selected-bg) 62%, var(--board-column-body-surface));
-  gap: 0;
+  --board-column-line: var(--workspace-border);
+  --board-column-canvas-surface: var(--workspace-page-bg);
+  --board-column-header-surface: var(--workspace-table-header);
+  --board-column-body-surface: var(--workspace-surface);
+  --board-column-list-surface: var(--workspace-surface-soft);
+  --board-column-body-surface-over: color-mix(in oklab, var(--workspace-selected) 62%, var(--board-column-list-surface));
+  gap: 10px;
   padding: 0;
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background: var(--board-column-canvas-surface);
 }
 
 .app-theme[data-theme="dark"] .board-column {
   position: relative;
   overflow: hidden;
-  border-radius: 0;
-  border-color: transparent;
-  border-right-color: var(--board-column-line);
+  border-radius: var(--radius-xs);
+  border-color: var(--board-column-line);
   background: var(--board-column-body-surface);
   box-shadow: none;
 }
@@ -371,17 +369,17 @@
 }
 
 .app-theme[data-theme="dark"] .board-column:first-child {
-  border-radius: 0;
+  border-radius: var(--radius-xs);
 }
 
 .app-theme[data-theme="dark"] .board-column:last-child {
-  border-radius: 0;
+  border-radius: var(--radius-xs);
 }
 
 .app-theme[data-theme="dark"] .board-column--drop-target {
-  border-color: transparent;
-  background: var(--board-column-body-surface-over);
-  box-shadow: inset 0 0 0 1px var(--selected-border);
+  border-color: var(--workspace-selected-border);
+  background: var(--board-column-body-surface);
+  box-shadow: inset 0 0 0 2px var(--workspace-focus-ring);
 }
 
 .app-theme[data-theme="dark"] .board-column__head {
@@ -396,7 +394,7 @@
 }
 
 .app-theme[data-theme="dark"] .board-column__title h2 {
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
   font-family: var(--font-family-sans);
   font-size: 0.69rem;
   font-weight: 800;
@@ -410,8 +408,8 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--border-default) 38%, transparent);
-  color: var(--text-muted);
+  background: var(--workspace-surface-soft);
+  color: var(--workspace-text-muted);
   box-shadow: none;
   font-size: 0.72rem;
 }
@@ -425,7 +423,7 @@
   z-index: 1;
   gap: 8px;
   padding: 10px;
-  background: var(--board-column-body-surface);
+  background: var(--board-column-list-surface);
 }
 
 .app-theme[data-theme="dark"] .board-column__list--over {
@@ -438,29 +436,27 @@
 
 .app-theme[data-theme="dark"] .board-column__drop-indicator {
   height: 6px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 94%, transparent), color-mix(in srgb, var(--decorative-cyan) 82%, transparent));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent),
-    0 6px 12px color-mix(in srgb, var(--primary) 22%, transparent);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--workspace-focus-ring);
 }
 
 .app-theme[data-theme="dark"] .board-column__create-task {
   min-height: 38px;
-  border-radius: 14px;
+  border-radius: var(--radius-xs);
   box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .board-column__empty {
-  --shared-empty-panel-bg: var(--surface-1);
-  --shared-empty-panel-border: 1px solid color-mix(in srgb, var(--primary) 58%, transparent);
-  --shared-empty-panel-radius: 14px;
+  --shared-empty-panel-bg: var(--workspace-empty-surface);
+  --shared-empty-panel-border: 1px solid var(--workspace-border-subtle);
+  --shared-empty-panel-radius: var(--radius-xs);
   --shared-empty-panel-padding: 11px 12px;
 }
 
 .app-theme[data-theme="dark"] .board-delete-dialog {
-  border-color: var(--border-default);
-  background: var(--surface-overlay-strong);
-  box-shadow: var(--shadow-3);
+  border-color: var(--workspace-border);
+  background: var(--workspace-surface);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--neutral-black) 26%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-delete-dialog__icon {

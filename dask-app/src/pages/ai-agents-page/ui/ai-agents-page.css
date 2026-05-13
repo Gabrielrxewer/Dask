@@ -1,28 +1,39 @@
-/* ── Page shell ─────────────────────────────────────────────────────────────── */
-
 .ab-page {
-  --ab-text: color-mix(in oklab, var(--text-strong) 96%, var(--primary));
-  --ab-text-soft: color-mix(in oklab, var(--text-soft) 84%, var(--primary));
-  --ab-text-muted: color-mix(in oklab, var(--text-muted) 88%, var(--primary));
-  --ab-line: color-mix(in oklab, var(--line) 88%, var(--primary));
-  --ab-surface: color-mix(in oklab, var(--surface-overlay) 84%, var(--surface-tint));
-  --ab-surface-soft: color-mix(in oklab, var(--surface-section-content) 70%, var(--surface-tint));
-  --ab-accent: color-mix(in oklab, var(--accent) 80%, var(--primary));
-  --ab-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, var(--primary));
-  --ab-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 7%, transparent);
-  --ab-shadow-strong: 0 12px 32px color-mix(in srgb, var(--primary) 10%, transparent);
+  --ab-text: var(--workspace-text-primary);
+  --ab-text-soft: var(--workspace-text-secondary);
+  --ab-text-muted: var(--workspace-text-muted);
+  --ab-line: var(--workspace-border);
+  --ab-line-subtle: var(--workspace-border-subtle);
+  --ab-line-strong: var(--workspace-border-strong);
+  --ab-surface: var(--workspace-surface);
+  --ab-surface-soft: var(--workspace-surface-soft);
+  --ab-surface-muted: var(--workspace-table-header);
+  --ab-hover: var(--workspace-table-row-hover);
+  --ab-selected: var(--workspace-selected);
+  --ab-selected-border: var(--workspace-selected-border);
+  --ab-control: var(--workspace-control-surface);
+  --ab-control-hover: var(--workspace-control-surface-hover);
+  --ab-control-border: var(--workspace-control-border);
+  --ab-focus-ring: var(--workspace-focus-ring);
+  --ab-accent: var(--accent);
+  --ab-accent-strong: var(--accent-strong);
+  --ab-shadow: none;
+  --ab-shadow-strong: none;
 
-  /* Forward to workspace-view tokens used by shared components */
   --workspace-view-text: var(--ab-text);
   --workspace-view-text-soft: var(--ab-text-soft);
   --workspace-view-text-muted: var(--ab-text-muted);
   --workspace-view-line: var(--ab-line);
+  --workspace-view-line-strong: var(--ab-line-strong);
   --workspace-view-surface: var(--ab-surface);
   --workspace-view-surface-soft: var(--ab-surface-soft);
   --workspace-view-accent: var(--ab-accent);
   --workspace-view-accent-strong: var(--ab-accent-strong);
 
-  /* Forward to ReactFlow canvas helpers */
+  --studio-line: var(--ab-line);
+  --studio-panel: var(--ab-surface);
+  --studio-panel-muted: var(--ab-surface-muted);
+
   --agents-accent: var(--ab-accent);
   --agents-accent-strong: var(--ab-accent-strong);
 
@@ -32,34 +43,95 @@
   min-height: 0;
   overflow: hidden;
   color: var(--ab-text);
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--ab-accent) 10%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--ab-surface-soft) 72%, var(--neutral-white)) 0%, color-mix(in oklab, var(--ab-surface-soft) 94%, var(--ab-surface)) 100%);
+  background: var(--workspace-page-bg);
   border-radius: var(--radius-xs, 8px);
-  padding: 2px;
+  padding: 0;
 }
-
-/* ── StudioLayout integration ────────────────────────────────────────────────── */
 
 .ab-page .studio-layout {
   border-radius: var(--radius-xs, 8px);
   overflow: hidden;
 }
 
-.ab-page .studio-layout__sidebar {
-  border-color: var(--ab-line);
-  background: var(--ab-surface);
-}
-
+.ab-page .studio-layout__sidebar,
 .ab-page .studio-layout__inspector {
   border-color: var(--ab-line);
   background: var(--ab-surface);
-  box-shadow: var(--ab-shadow-strong);
+  box-shadow: none;
 }
 
-/* ── Toolbar entity fields & actions ─────────────────────────────────────────── */
+.ab-page .studio-layout__canvas {
+  position: relative;
+  background: var(--workspace-page-bg);
+}
 
-.ab-entity-fields {
+.ab-page .studio-layout__canvas .flow-canvas-ui {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  border-radius: 0;
+  background: var(--workspace-page-bg);
+}
+
+.ab-page .flow-canvas-ui__sidebar,
+.ab-page .flow-canvas-ui__ctrl,
+.ab-page .flow-canvas-ui__minimap,
+.ab-page .flow-canvas-ui__drag-overlay {
+  border-color: var(--ab-line);
+  background: var(--ab-surface);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink-shadow) 8%, transparent);
+}
+
+.ab-page .flow-canvas-ui__sidebar-head,
+.ab-page .flow-canvas-ui__sidebar-foot {
+  border-color: var(--ab-line-subtle);
+  background: var(--ab-surface-muted);
+}
+
+.ab-page .flow-canvas-ui__sidebar-close,
+.ab-page .flow-canvas-ui__rail-toggle,
+.ab-page .flow-canvas-ui__ctrl-btn,
+.ab-page .flow-canvas-ui__sidebar-action {
+  border-color: var(--ab-control-border);
+  background: var(--ab-control);
+  color: var(--ab-text-soft);
+}
+
+.ab-page .flow-canvas-ui__sidebar-close:hover,
+.ab-page .flow-canvas-ui__rail-toggle:hover,
+.ab-page .flow-canvas-ui__ctrl-btn:hover,
+.ab-page .flow-canvas-ui__sidebar-action:hover,
+.ab-page .flow-canvas-ui__sidebar-action:focus-visible,
+.ab-page .flow-canvas-ui__sidebar-item:hover,
+.ab-page .flow-canvas-ui__sidebar-item:focus-visible {
+  border-color: var(--ab-selected-border);
+  background: var(--ab-hover);
+  color: var(--ab-text);
+}
+
+.ab-page .flow-canvas-ui__sidebar-title span,
+.ab-page .flow-canvas-ui__sidebar-foot-label,
+.ab-page .flow-canvas-ui__sidebar-section-title,
+.ab-page .flow-canvas-ui__sidebar-desc {
+  color: var(--ab-text-muted);
+}
+
+.ab-page .flow-canvas-ui__sidebar-title strong,
+.ab-page .flow-canvas-ui__sidebar-label,
+.ab-page .flow-canvas-ui__sidebar-action {
+  color: var(--ab-text);
+}
+
+.ab-page .flow-canvas-ui__ctrl-sep {
+  background: var(--ab-line-subtle);
+}
+
+.ab-page .react-flow__background {
+  opacity: 0.36;
+}
+
+.ab-entity-fields,
+.ab-entity-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -67,35 +139,31 @@
 }
 
 .ab-entity-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   flex-shrink: 0;
 }
 
-/* ── Nav header input ────────────────────────────────────────────────────────── */
-
 .ab-name-input {
-  font-size: var(--font-size-sm);
-  font-weight: 800;
-  color: var(--ab-text);
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: 4px 8px;
-  border-radius: 8px;
   max-width: 280px;
   min-width: 120px;
-  transition: background 0.14s;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ab-text);
+  padding: 4px 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  outline: none;
+  transition: background 0.14s, border-color 0.14s, box-shadow 0.14s;
 }
 
 .ab-name-input:hover {
-  background: color-mix(in oklab, var(--ab-accent) 6%, transparent);
+  background: var(--ab-hover);
 }
 
 .ab-name-input:focus {
-  background: color-mix(in oklab, var(--ab-accent) 8%, var(--neutral-white));
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ab-accent) 24%, transparent);
+  border-color: var(--ab-selected-border);
+  background: var(--ab-control);
+  box-shadow: 0 0 0 3px var(--ab-focus-ring);
 }
 
 .ab-name-input::placeholder {
@@ -103,32 +171,28 @@
   font-weight: 600;
 }
 
-/* ── Key badge ───────────────────────────────────────────────────────────────── */
-
 .ab-key-badge {
+  border: 1px solid var(--ab-line-subtle);
+  border-radius: 6px;
+  background: var(--ab-control);
+  color: var(--ab-text-muted);
+  padding: 2px 7px;
+  font-family: ui-monospace, monospace;
   font-size: var(--font-size-xs);
   font-weight: 800;
-  font-family: ui-monospace, monospace;
-  color: var(--ab-text-muted);
-  background: color-mix(in oklab, var(--ab-line) 20%, transparent);
-  border: 1px solid color-mix(in oklab, var(--ab-line) 60%, transparent);
-  padding: 2px 7px;
-  border-radius: 6px;
-  white-space: nowrap;
   text-transform: lowercase;
+  white-space: nowrap;
 }
-
-/* ── Status button ───────────────────────────────────────────────────────────── */
 
 .ab-status-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  border: 1px solid color-mix(in oklab, var(--warning-border) 70%, var(--ab-line));
   border-radius: 20px;
-  border: 1.5px solid color-mix(in oklab, var(--warning-border) 80%, transparent);
-  background: var(--surface-warning-muted);
+  background: color-mix(in oklab, var(--warning) 10%, var(--ab-surface));
   color: var(--warning);
+  padding: 5px 12px;
   font-size: var(--font-size-xs);
   font-weight: 800;
   cursor: pointer;
@@ -140,86 +204,62 @@
 }
 
 .ab-status-btn--active {
-  border-color: color-mix(in oklab, var(--success-border) 80%, transparent);
-  background: var(--surface-success-muted);
+  border-color: color-mix(in oklab, var(--success-border) 70%, var(--ab-line));
+  background: color-mix(in oklab, var(--success) 10%, var(--ab-surface));
   color: var(--success);
 }
 
 .ab-status-dot {
   width: 7px;
   height: 7px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: currentColor;
-  flex-shrink: 0;
 }
 
-/* ── Spinner animation ───────────────────────────────────────────────────────── */
-
 @keyframes ab-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ab-nav__spin {
   animation: ab-spin 0.8s linear infinite;
 }
 
-/* ── PanelMenu theming for AI Agents ─────────────────────────────────────────── */
-
 .ab-page .panel-menu {
   --pm-accent: var(--ab-accent);
   --pm-line: var(--ab-line);
   --pm-surface: var(--ab-surface);
-  --pm-surface-muted: color-mix(in oklab, var(--ab-surface-soft) 80%, var(--ab-surface));
+  --pm-surface-muted: var(--ab-surface-muted);
   --pm-text: var(--ab-text);
   --pm-text-secondary: var(--ab-text-soft);
   --pm-text-muted: var(--ab-text-muted);
-  --pm-hover-bg: color-mix(in oklab, var(--ab-accent) 6%, var(--ab-surface));
-  --pm-selected-bg: color-mix(in oklab, var(--ab-accent) 10%, var(--ab-surface));
-  --pm-selected-border: color-mix(in oklab, var(--ab-accent) 32%, var(--ab-line));
+  --pm-hover-bg: var(--ab-hover);
+  --pm-selected-bg: var(--ab-selected);
+  --pm-selected-border: var(--ab-selected-border);
 }
 
-/* ── New agent create button ──────────────────────────────────────────────────── */
-
-.ab-create-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in oklab, var(--ab-line) 80%, transparent);
-  background: color-mix(in oklab, var(--ab-surface-soft) 60%, transparent);
-  color: var(--ab-text-muted);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-
-.ab-create-btn:hover {
-  background: color-mix(in oklab, var(--ab-accent) 8%, var(--ab-surface));
-  border-color: color-mix(in oklab, var(--ab-accent) 30%, var(--ab-line));
-  color: var(--ab-accent);
-}
-
-/* ── Agent edit action button ─────────────────────────────────────────────────── */
-
+.ab-create-btn,
 .ab-agent-edit-btn {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 26px;
   height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ab-line-subtle);
   border-radius: 6px;
-  border: 1px solid color-mix(in oklab, var(--ab-line) 80%, transparent);
-  background: color-mix(in oklab, var(--ab-surface) 88%, transparent);
+  background: var(--ab-control);
   color: var(--ab-text-muted);
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
+.ab-create-btn:hover,
 .ab-agent-edit-btn:hover {
-  color: var(--ab-accent-strong);
-  border-color: color-mix(in oklab, var(--ab-accent) 28%, var(--ab-line));
-  background: color-mix(in oklab, var(--ab-accent) 8%, var(--ab-surface));
+  border-color: var(--ab-selected-border);
+  background: var(--ab-hover);
+  color: var(--ab-text);
 }
 
 .ab-agent-edit-btn svg {
@@ -227,45 +267,27 @@
   height: 13px;
 }
 
-/* ── New agent placeholder item ───────────────────────────────────────────────── */
-
 .ab-agent-new-item {
   border-style: dashed;
 }
 
-/* ── Error banner ────────────────────────────────────────────────────────────── */
-
 .ab-error {
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--danger-bg);
-  border: 1px solid var(--danger);
-  color: var(--danger);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
   flex-shrink: 0;
   margin: 8px;
+  border: 1px solid color-mix(in oklab, var(--danger) 28%, var(--ab-line));
+  border-radius: 8px;
+  background: var(--workspace-error-surface);
+  color: var(--danger);
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
 }
 
 .ab-error--runtime {
-  background: color-mix(in oklab, var(--success) 10%, var(--panel));
-  border-color: color-mix(in oklab, var(--success) 42%, var(--line));
+  border-color: color-mix(in oklab, var(--success) 42%, var(--ab-line));
+  background: color-mix(in oklab, var(--success) 10%, var(--ab-surface));
   color: var(--success);
 }
-
-/* ── Canvas area ─────────────────────────────────────────────────────────────── */
-
-.ab-page .studio-layout__canvas {
-  position: relative;
-}
-
-.ab-page .studio-layout__canvas .flow-canvas-ui {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-/* ── Config panel inside inspector ─────────────────────────────────────────── */
 
 .ab-page .studio-layout__inspector {
   padding: 0;
@@ -273,64 +295,35 @@
 }
 
 .ab-page .studio-layout__inspector .acp {
-  border-radius: 0;
-  border: 0;
   height: 100%;
   overflow: auto;
+  border: 0;
+  border-radius: 0;
 }
-
-/* ── Dark mode ──────────────────────────────────────────────────────────────── */
 
 .app-theme[data-theme="dark"] .ab-page {
-  --ab-text: var(--text-primary);
-  --ab-text-soft: var(--text-soft);
-  --ab-text-muted: var(--text-muted);
-  --ab-line: var(--border-default);
-  --ab-surface: var(--surface-raised);
-  --ab-surface-soft: color-mix(in oklab, var(--panel-soft) 86%, var(--panel));
-  --ab-shadow: var(--shadow-1);
-  --ab-shadow-strong: 0 18px 34px color-mix(in oklab, var(--neutral-black) 32%, transparent);
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 14%, transparent) 0%, transparent 34%),
-    linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, var(--neutral-black)) 0%, color-mix(in oklab, var(--panel-soft) 82%, var(--neutral-black)) 100%);
-}
-
-.app-theme[data-theme="dark"] .ab-name-input {
-  color: var(--text-primary);
+  --ab-text: var(--workspace-text-primary);
+  --ab-text-soft: var(--workspace-text-secondary);
+  --ab-text-muted: var(--workspace-text-muted);
+  --ab-line: var(--workspace-border);
+  --ab-line-subtle: var(--workspace-border-subtle);
+  --ab-line-strong: var(--workspace-border-strong);
+  --ab-surface: var(--workspace-surface);
+  --ab-surface-soft: var(--workspace-surface-soft);
+  --ab-surface-muted: var(--workspace-table-header);
+  --ab-hover: var(--workspace-table-row-hover);
+  --ab-selected: var(--workspace-selected);
+  --ab-selected-border: var(--workspace-selected-border);
+  --ab-control: var(--workspace-control-surface);
+  --ab-control-hover: var(--workspace-control-surface-hover);
+  --ab-control-border: var(--workspace-control-border);
+  --ab-focus-ring: var(--workspace-focus-ring);
+  background: var(--workspace-page-bg);
 }
 
 .app-theme[data-theme="dark"] .ab-name-input:focus {
-  background: color-mix(in oklab, var(--accent) 10%, var(--surface-elevated));
+  background: var(--ab-control);
 }
-
-.app-theme[data-theme="dark"] .ab-status-btn {
-  background: color-mix(in oklab, var(--warning) 14%, var(--panel));
-  border-color: color-mix(in oklab, var(--warning) 30%, var(--line));
-  color: var(--warning-border);
-}
-
-.app-theme[data-theme="dark"] .ab-status-btn--active {
-  background: color-mix(in oklab, var(--success) 14%, var(--panel));
-  border-color: color-mix(in oklab, var(--success) 30%, var(--line));
-  color: var(--success);
-}
-
-.app-theme[data-theme="dark"] .ab-page .panel-menu {
-  --pm-surface: var(--surface-raised);
-  --pm-surface-muted: color-mix(in oklab, var(--panel-soft) 80%, var(--panel));
-  --pm-line: var(--line);
-  --pm-hover-bg: color-mix(in oklab, var(--accent) 8%, var(--surface-raised));
-  --pm-selected-bg: color-mix(in oklab, var(--accent) 12%, var(--panel));
-  --pm-selected-border: color-mix(in oklab, var(--accent) 34%, var(--line));
-}
-
-.app-theme[data-theme="dark"] .ab-error {
-  background: color-mix(in oklab, var(--danger) 14%, var(--panel));
-  border-color: color-mix(in oklab, var(--danger) 30%, var(--line));
-  color: var(--danger);
-}
-
-/* ── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
   .ab-page .studio-layout__inspector {

@@ -94,7 +94,9 @@ export class CommunicationSendNodeExecutor implements AutomationNodeExecutor {
       ?? renderLiteral(config.humanApprovalRequestId, templateContext);
     const recipient = isRecord(config.recipient) ? renderValue(config.recipient, templateContext) : undefined;
     const variables = isRecord(config.variables) ? renderValue(config.variables, templateContext) : undefined;
-    const metadata = isRecord(config.metadata) ? config.metadata : undefined;
+    const metadata = isRecord(config.metadata)
+      ? renderValue(config.metadata, templateContext) as Record<string, unknown>
+      : undefined;
     const aiGenerated = config.aiGenerated === true || metadata?.aiGenerated === true;
 
     if (!to && !recipient) {

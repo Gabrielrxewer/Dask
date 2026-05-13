@@ -249,6 +249,21 @@
     color-mix(in oklab, var(--surface-section-content) 86%, transparent);
 }
 
+.shared-page-loading-state {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-height: calc(100dvh - var(--global-header-height, 0px) - (var(--global-content-gap, 0px) * 2));
+  align-items: center;
+  justify-content: center;
+  padding: var(--layout-page-padding, 16px);
+}
+
+.shared-page-loading-state > .shared-loading-state {
+  max-width: min(100%, 560px);
+  min-height: min(420px, 100%);
+}
+
 .shared-loading-state--out {
   opacity: 0;
   pointer-events: none;

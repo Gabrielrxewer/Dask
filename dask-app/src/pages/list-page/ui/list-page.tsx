@@ -337,6 +337,7 @@ export function ListPage() {
   );
 
   const loading = (isLoading && items.length === 0) || configQuery.isLoading || listQuery.isLoading;
+  const isInitialLoading = loading && items.length === 0;
   const error = listQuery.error ?? configQuery.error;
   const config = configQuery.data;
 
@@ -357,11 +358,11 @@ export function ListPage() {
             text="Carregando lista..."
             animation="list"
             variant="frame"
-            visible={loading && items.length === 0}
+            visible={isInitialLoading}
           />
         }
       >
-        {config ? (
+        {isInitialLoading ? null : config ? (
           <>
             <WorkItemListFilterBar
               value={advancedFilters}

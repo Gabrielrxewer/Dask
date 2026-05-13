@@ -313,7 +313,7 @@ export function AiAgentsPage() {
   // Agent list
   const agents = agentsQuery.data ?? [];
   const capabilities = capabilitiesQuery.data ?? null;
-  const isLoadingAgents = agentsQuery.isLoading || capabilitiesQuery.isLoading || agentsQuery.isFetching || capabilitiesQuery.isFetching;
+  const isLoadingAgents = agentsQuery.isLoading || capabilitiesQuery.isLoading || !capabilities;
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
   const [hasInitializedAgent, setHasInitializedAgent] = useState(false);

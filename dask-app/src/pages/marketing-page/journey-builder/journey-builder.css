@@ -1,4 +1,18 @@
 .jb {
+  --jb-page-bg: var(--workspace-page-bg);
+  --jb-surface: var(--workspace-surface);
+  --jb-surface-soft: var(--workspace-surface-soft);
+  --jb-border: var(--workspace-border);
+  --jb-border-subtle: var(--workspace-border-subtle);
+  --jb-text: var(--workspace-text-primary);
+  --jb-text-soft: var(--workspace-text-secondary);
+  --jb-text-muted: var(--workspace-text-muted);
+  --jb-control: var(--workspace-control-surface);
+  --jb-control-hover: var(--workspace-control-surface-hover);
+  --jb-control-border: var(--workspace-control-border);
+  --jb-focus-ring: var(--workspace-focus-ring);
+  --jb-accent: var(--module-marketing-accent);
+
   position: relative;
   display: flex;
   flex-direction: column;
@@ -6,7 +20,7 @@
   min-height: 0;
   width: 100%;
   overflow: hidden;
-  background: var(--surface-1);
+  background: var(--jb-page-bg);
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────── */
@@ -17,8 +31,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-overlay);
+  border-bottom: 1px solid var(--workspace-border);
+  background: var(--workspace-surface);
   flex-shrink: 0;
 }
 
@@ -31,7 +45,7 @@
 .jb-toolbar__sep {
   width: 1px;
   height: 20px;
-  background: var(--line);
+  background: var(--workspace-border);
   flex-shrink: 0;
 }
 
@@ -62,29 +76,29 @@
 
 /* ReactFlow base overrides */
 .jb__canvas .react-flow__background {
-  background: var(--surface-1);
+  background: var(--workspace-surface);
 }
 
 .jb__canvas .react-flow__minimap {
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--workspace-border);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 14px color-mix(in oklab, var(--text-strong) 8%, transparent);
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--workspace-text-primary) 8%, transparent);
 }
 
 .jb__canvas .react-flow__controls {
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--workspace-border);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 14px color-mix(in oklab, var(--text-strong) 8%, transparent);
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--workspace-text-primary) 8%, transparent);
   gap: 0;
 }
 
 .jb__canvas .react-flow__controls-button {
   border: none;
-  border-top: 1px solid var(--line);
-  background: var(--surface-overlay);
-  color: var(--text-soft);
+  border-top: 1px solid var(--workspace-border);
+  background: var(--workspace-surface);
+  color: var(--workspace-text-secondary);
   width: 28px;
   height: 28px;
   transition: background 0.13s ease, color 0.13s ease;
@@ -95,8 +109,8 @@
 }
 
 .jb__canvas .react-flow__controls-button:hover {
-  background: color-mix(in oklab, var(--accent) 8%, var(--surface-overlay));
-  color: var(--accent);
+  background: color-mix(in oklab, var(--module-marketing-accent) 8%, var(--workspace-surface));
+  color: var(--module-marketing-accent);
 }
 
 .jb__canvas .react-flow__controls-button svg {
@@ -107,7 +121,7 @@
 
 /* Edge arrow marker color */
 .jb__canvas .react-flow__edge-path {
-  stroke: var(--line-contrast);
+  stroke: var(--workspace-border-strong);
 }
 
 /* ── Empty state ─────────────────────────────────────────────── */
@@ -127,12 +141,12 @@
   width: 48px;
   height: 48px;
   border-radius: 16px;
-  background: color-mix(in oklab, var(--accent) 10%, transparent);
-  border: 1.5px dashed color-mix(in oklab, var(--accent) 30%, var(--line));
+  background: color-mix(in oklab, var(--module-marketing-accent) 10%, transparent);
+  border: 1.5px dashed color-mix(in oklab, var(--module-marketing-accent) 30%, var(--workspace-border));
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
+  color: var(--module-marketing-accent);
 }
 
 .jb__empty-icon svg {
@@ -145,10 +159,10 @@
 .jb-insert-picker {
   position: fixed;
   z-index: 100;
-  background: var(--surface-overlay);
-  border: 1.5px solid var(--line);
+  background: var(--workspace-surface);
+  border: 1.5px solid var(--workspace-border);
   border-radius: 10px;
-  box-shadow: 0 8px 28px color-mix(in oklab, var(--text-strong) 14%, transparent);
+  box-shadow: 0 8px 28px color-mix(in oklab, var(--workspace-text-primary) 14%, transparent);
   padding: 5px;
   display: grid;
   gap: 2px;
@@ -163,7 +177,7 @@
   border-radius: 7px;
   border: none;
   background: transparent;
-  color: var(--text-strong);
+  color: var(--workspace-text-primary);
   font-size: var(--font-size-xs);
   font-weight: 760;
   font-family: inherit;
@@ -174,7 +188,7 @@
 }
 
 .jb-insert-picker__item:hover {
-  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  background: color-mix(in oklab, var(--module-marketing-accent) 8%, transparent);
 }
 
 .jb-insert-picker__dot {
@@ -201,14 +215,14 @@
 
 .jb {
   --jb-surface:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, var(--neutral-white)) 0%, color-mix(in oklab, var(--surface-2) 82%, var(--surface-1)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--workspace-surface) 98%, color-mix(in oklab, var(--workspace-surface) 70%, transparent)) 0%, color-mix(in oklab, var(--workspace-surface-soft) 82%, var(--workspace-surface)) 100%);
   --jb-panel:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-1) 98%, var(--neutral-white)) 0%, color-mix(in oklab, var(--surface-2) 76%, var(--surface-1)) 100%);
+    linear-gradient(180deg, color-mix(in oklab, var(--workspace-surface) 98%, color-mix(in oklab, var(--workspace-surface) 70%, transparent)) 0%, color-mix(in oklab, var(--workspace-surface-soft) 76%, var(--workspace-surface)) 100%);
   --jb-shadow:
-    0 16px 36px color-mix(in oklab, var(--text-strong) 8%, transparent),
-    0 1px 0 color-mix(in oklab, var(--neutral-white) 72%, transparent) inset;
+    0 16px 36px color-mix(in oklab, var(--workspace-text-primary) 8%, transparent),
+    0 1px 0 color-mix(in oklab, color-mix(in oklab, var(--workspace-surface) 70%, transparent) 72%, transparent) inset;
   background:
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 28%, transparent) 0%, transparent 44%),
+    linear-gradient(135deg, color-mix(in oklab, color-mix(in oklab, var(--module-marketing-accent) 10%, var(--workspace-surface)) 28%, transparent) 0%, transparent 44%),
     var(--jb-surface);
 }
 
@@ -216,9 +230,9 @@
   gap: 10px;
   min-height: 54px;
   padding: 9px 14px;
-  border-bottom-color: color-mix(in oklab, var(--line) 78%, transparent);
-  background: color-mix(in oklab, var(--surface-1) 86%, transparent);
-  box-shadow: 0 10px 26px color-mix(in oklab, var(--text-strong) 5%, transparent);
+  border-bottom-color: color-mix(in oklab, var(--workspace-border) 78%, transparent);
+  background: color-mix(in oklab, var(--workspace-surface) 86%, transparent);
+  box-shadow: 0 10px 26px color-mix(in oklab, var(--workspace-text-primary) 5%, transparent);
 }
 
 .jb-toolbar__name.shared-input {
@@ -228,8 +242,8 @@
 
 .jb__canvas {
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 44%, transparent), transparent 40%),
-    var(--surface-1);
+    linear-gradient(180deg, color-mix(in oklab, var(--workspace-surface-soft) 44%, transparent), transparent 40%),
+    var(--workspace-surface);
 }
 
 .jb__canvas .react-flow__background {
@@ -237,7 +251,7 @@
 }
 
 .jb__canvas .react-flow__edge-path {
-  stroke: color-mix(in oklab, var(--line-contrast) 78%, var(--accent));
+  stroke: color-mix(in oklab, var(--workspace-border-strong) 78%, var(--module-marketing-accent));
   stroke-width: 1.7;
 }
 
@@ -245,7 +259,7 @@
 .jb__canvas .react-flow__minimap,
 .jb-insert-picker {
   border-width: 1px;
-  border-color: color-mix(in oklab, var(--line) 82%, transparent);
+  border-color: color-mix(in oklab, var(--workspace-border) 82%, transparent);
   background: var(--jb-panel);
   box-shadow: var(--jb-shadow);
 }
@@ -260,8 +274,8 @@
 
 .jb__empty-icon {
   border-style: solid;
-  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, var(--surface-1)), color-mix(in oklab, var(--decorative-cyan) 8%, var(--surface-2)));
-  box-shadow: 0 12px 24px color-mix(in oklab, var(--accent) 12%, transparent);
+  background: linear-gradient(135deg, color-mix(in oklab, var(--module-marketing-accent) 14%, var(--workspace-surface)), color-mix(in oklab, var(--module-marketing-accent) 8%, var(--workspace-surface-soft)));
+  box-shadow: 0 12px 24px color-mix(in oklab, var(--module-marketing-accent) 12%, transparent);
 }
 
 
@@ -269,49 +283,63 @@
   min-height: 34px;
 }
 
-.app-theme[data-theme="dark"] .jb {
-  --jb-surface: var(--surface-card);
-  --jb-panel: var(--surface-card);
-  --jb-shadow:
-    0 18px 38px color-mix(in oklab, var(--neutral-black) 30%, transparent),
-    0 1px 0 color-mix(in oklab, var(--neutral-white) 4%, transparent) inset;
-}
-
-.app-theme[data-theme="dark"] .jb-toolbar {
-  background: color-mix(in oklab, var(--surface-1) 86%, transparent);
-}
-
 @keyframes jb-toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* Dark theme adjustments */
-.app-theme[data-theme="dark"] .jb {
-  background: var(--panel);
+/* List-aligned journey builder chrome. Behavior and graph runtime stay unchanged. */
+.jb {
+  --jb-surface: var(--workspace-surface);
+  --jb-panel: var(--workspace-surface);
+  --jb-shadow: none;
+  background: var(--workspace-page-bg);
 }
 
-.app-theme[data-theme="dark"] .jb-toolbar {
-  background: var(--surface-raised);
-  border-color: var(--line);
+.jb-toolbar,
+.jb-insert-picker,
+.jb__canvas .react-flow__controls,
+.jb__canvas .react-flow__minimap {
+  border-color: var(--workspace-border-subtle);
+  background: var(--workspace-surface);
+  box-shadow: none;
 }
 
-.app-theme[data-theme="dark"] .jb-insert-picker {
-  background: var(--surface-raised);
-  border-color: var(--line);
+.jb-toolbar {
+  border-bottom-color: var(--workspace-border-subtle);
 }
 
-/* Final dark theme polish overrides */
-
-.app-theme[data-theme="dark"] .jb {
-  background:
-    linear-gradient(135deg, color-mix(in oklab, var(--accent) 4%, transparent) 0%, transparent 44%),
-    var(--jb-surface);
+.jb__canvas {
+  background: var(--workspace-page-bg-soft);
 }
 
-.app-theme[data-theme="dark"] .jb-toolbar,
-.app-theme[data-theme="dark"] .jb-insert-picker {
-  background: var(--jb-panel);
-  border-color: var(--line);
-  box-shadow: var(--jb-shadow);
+.jb__canvas .react-flow__background {
+  background: transparent;
+}
+
+.jb__canvas .react-flow__controls-button {
+  border-color: var(--workspace-border-subtle);
+  background: var(--workspace-control-surface);
+  color: var(--workspace-text-secondary);
+}
+
+.jb__canvas .react-flow__controls-button:hover,
+.jb-insert-picker__item:hover {
+  background: var(--workspace-table-row-hover);
+  color: var(--module-marketing-accent);
+}
+
+.jb__canvas .react-flow__edge-path {
+  stroke: var(--workspace-border-strong);
+}
+
+.jb__empty-icon {
+  border-color: color-mix(in oklab, var(--module-marketing-accent) 28%, var(--workspace-border));
+  background: color-mix(in oklab, var(--module-marketing-accent) 10%, var(--workspace-surface));
+  color: var(--module-marketing-accent);
+  box-shadow: none;
+}
+
+.jb-insert-picker__item {
+  color: var(--workspace-text-primary);
 }

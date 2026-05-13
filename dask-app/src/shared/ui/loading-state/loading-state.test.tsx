@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LoadingState } from "@/shared/ui/loading-state";
+import { LoadingState, PageLoadingState } from "@/shared/ui/loading-state";
 
 describe("LoadingState", () => {
   it("renderiza estado generico acessivel", () => {
@@ -27,5 +27,17 @@ describe("LoadingState", () => {
     expect(html).toContain("shared-loading-state--out");
     expect(html).toContain('aria-hidden="true"');
     expect(html).toContain('data-testid="loading"');
+  });
+
+  it("centraliza loading inicial de pagina sem usar overlay de frame", () => {
+    const html = renderToStaticMarkup(
+      <PageLoadingState animation="automation" text="Carregando modulo" contentClassName="route-loading" />
+    );
+
+    expect(html).toContain("shared-page-loading-state");
+    expect(html).toContain("shared-loading-state--inline");
+    expect(html).not.toContain("shared-loading-state--frame");
+    expect(html).toContain("route-loading");
+    expect(html).toContain("Carregando modulo");
   });
 });

@@ -22,7 +22,6 @@ export type AutomationCanvasEdge = Edge;
 export type FieldOption = { id?: string; slug?: string; name?: string; label?: string; key?: string; type?: string };
 export type AutomationNodeMeta = AutomationCapabilities["nodeCatalog"][number];
 export type AutomationNodeMetaMap = Map<string, AutomationNodeMeta>;
-export type AutomationRecipe = AutomationCapabilities["recipeCatalog"][number];
 
 export type {
   AutomationWorkflowGraph,

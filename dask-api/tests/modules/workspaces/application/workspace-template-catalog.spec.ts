@@ -4,18 +4,23 @@ import { getWorkspaceTemplateByKey } from '@/modules/workspaces/application/work
 describe('workspace-template-catalog', () => {
   it('includes document lifecycle automations for the commercial template', () => {
     const template = getWorkspaceTemplateByKey('commercial_crm');
-    const recipeIds = template?.schema.automationRecipeIds ?? [];
+    const nativeWorkflowKeys = template?.schema.automationNativeWorkflowKeys ?? [];
 
-    expect(recipeIds).toEqual(
+    expect(nativeWorkflowKeys).toEqual(
       expect.arrayContaining([
-        'commercial-work-item-created-to-intake',
-        'proposal-preparing-create-proposal',
-        'proposal-approved-create-contract',
-        'contract-accepted-create-billing',
-        'payment-confirmed-active-customer',
-        'billing-overdue-finance-alert'
+        'commercial.intake',
+        'commercial.hot_opportunity',
+        'commercial.first_contact',
+        'commercial.no_response_followup',
+        'commercial.proposal_drafting',
+        'commercial.proposal_approved_to_contract',
+        'commercial.contract_accepted_to_billing',
+        'commercial.payment_confirmed_to_active_customer',
+        'commercial.overdue_charge'
       ])
     );
+    expect(nativeWorkflowKeys).toHaveLength(9);
+    expect(template?.schema.automationRecipeIds).toBeUndefined();
     expect(template?.schema.automations).toBeUndefined();
   });
 

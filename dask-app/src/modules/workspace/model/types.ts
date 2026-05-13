@@ -161,8 +161,34 @@ export interface WorkItemTypeTransformationField {
   id: string;
   slug: string;
   name: string;
+  type?: string;
+  variableKey?: string | null;
   required: boolean;
   defaultValue?: unknown;
+}
+
+export interface WorkItemTypeReplicationPlan {
+  copied: Array<{
+    sourceFieldId: string;
+    sourceSlug: string;
+    targetFieldId: string;
+    targetSlug: string;
+    strategy: string;
+  }>;
+  skipped: Array<{
+    sourceFieldId: string;
+    sourceSlug: string;
+    reason: string;
+  }>;
+  incompatible: Array<{
+    sourceFieldId: string;
+    sourceSlug: string;
+    targetFieldId: string;
+    targetSlug: string;
+    reason: string;
+  }>;
+  valuesByTargetFieldId: Record<string, unknown>;
+  unmappedSourceValues: Record<string, unknown>;
 }
 
 export interface WorkItemTypeTransformationSummary {
@@ -182,6 +208,7 @@ export interface WorkItemTypeTransformationSummary {
   missingFields: WorkItemTypeTransformationField[];
   preservedFields: WorkItemTypeTransformationField[];
   newRequiredFields: WorkItemTypeTransformationField[];
+  replicationPlan?: WorkItemTypeReplicationPlan;
 }
 
 export type WorkItemTypeTransformationConfig = Omit<
@@ -213,6 +240,7 @@ export interface WorkItemTypeTransformationValidation {
   preservedFields: WorkItemTypeTransformationField[];
   missingFields: WorkItemTypeTransformationField[];
   newRequiredFields: WorkItemTypeTransformationField[];
+  replicationPlan?: WorkItemTypeReplicationPlan;
   defaultValuesForNewFields: Record<string, unknown>;
 }
 
@@ -866,7 +894,7 @@ export interface AutomationRecipeCapability {
 export interface AutomationCapabilities {
   schemaVersion: 1;
   nodeCatalog: AutomationNodeCapability[];
-  recipeCatalog: AutomationRecipeCapability[];
+  recipeCatalog?: AutomationRecipeCapability[];
   defaultGraph: AutomationWorkflowGraph;
 }
 
@@ -1447,6 +1475,25 @@ export interface AutomationWorkflow {
   createdAt: string;
   updatedAt: string;
   currentVersion?: AutomationWorkflowVersion | null;
+  origin?: "user" | "native" | "system";
+  domain?: string | null;
+  nativeDomain?: string | null;
+  isProtected?: boolean;
+  isEditable?: boolean;
+  editableMode?: "full" | "config_only" | "readonly";
+  isSystemManaged?: boolean;
+  nativeKey?: string | null;
+  metadata?: {
+    origin?: "user" | "native" | "system";
+    domain?: string | null;
+    nativeDomain?: string | null;
+    isProtected?: boolean;
+    isEditable?: boolean;
+    editableMode?: "full" | "config_only" | "readonly";
+    isSystemManaged?: boolean;
+    nativeKey?: string | null;
+    [key: string]: unknown;
+  } | null;
 }
 
 export interface CreateAutomationWorkflowInput {

@@ -1,5 +1,9 @@
 import type { AutomationWorkflow, AutomationWorkflowVersion } from "@/modules/workspace/model";
 import { AppIcon, WorkspaceActionButton } from "@/shared/ui";
+import {
+  isAutomationWorkflowEditable,
+  isAutomationWorkflowProtected
+} from "@/pages/automations-page/model/automation-workflow-metadata";
 
 export function AutomationPublishControls({
   workflow,
@@ -22,6 +26,9 @@ export function AutomationPublishControls({
   onSaveWorkflow: () => Promise<boolean>;
   onPublish: () => Promise<void>;
 }) {
+  const isEditable = isAutomationWorkflowEditable(workflow);
+  const isProtected = isAutomationWorkflowProtected(workflow);
+
   return (
     <>
       <WorkspaceActionButton
@@ -41,13 +48,13 @@ export function AutomationPublishControls({
         label="Arquivar"
         icon={<AppIcon name="archive" />}
         onClick={() => void onStatusChange("archived")}
-        disabled={busy}
+        disabled={busy || isProtected}
       />
       <WorkspaceActionButton
         label="Clonar versao"
         icon={<AppIcon name="copy" />}
         onClick={() => void onCloneVersion()}
-        disabled={busy || !selectedVersion}
+        disabled={busy || !isEditable || !selectedVersion}
       />
       <WorkspaceActionButton
         label="Executar teste"
@@ -57,16 +64,16 @@ export function AutomationPublishControls({
       />
       <WorkspaceActionButton
         label="Salvar draft"
-        icon={<AppIcon name="check" />}
+        icon={<AppIcon name="save" />}
         onClick={() => void onSaveWorkflow()}
-        disabled={busy || selectedVersion?.status !== "draft"}
+        disabled={busy || !isEditable || selectedVersion?.status !== "draft"}
       />
       <WorkspaceActionButton
         tone="accent"
         label="Publicar"
         icon={<AppIcon name="send" />}
         onClick={() => void onPublish()}
-        disabled={busy || selectedVersion?.status !== "draft"}
+        disabled={busy || !isEditable || selectedVersion?.status !== "draft"}
       />
     </>
   );

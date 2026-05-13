@@ -1181,3 +1181,312 @@
 .app-theme[data-theme="dark"] .general-settings__modal-copy p {
   color: var(--text-soft);
 }
+
+/* Modern settings surface aligned with List */
+
+.general-settings {
+  --builder-text: var(--workspace-text-primary, var(--text-strong));
+  --builder-text-soft: var(--workspace-text-secondary, var(--text-soft));
+  --builder-text-muted: var(--workspace-text-muted, var(--text-muted));
+  --builder-line: color-mix(in oklab, var(--workspace-border, var(--line)) 72%, transparent);
+  --builder-line-strong: color-mix(in oklab, var(--workspace-border-strong, var(--line-contrast)) 76%, transparent);
+  --builder-surface: var(--workspace-surface, var(--surface-overlay));
+  --builder-surface-soft: var(--workspace-surface-soft, var(--surface-section-content));
+  --builder-accent: var(--workspace-view-accent, var(--accent));
+  --builder-accent-strong: var(--workspace-view-accent-strong, var(--accent-strong));
+  gap: 12px;
+}
+
+.general-settings__builder-hero,
+.general-settings__templates,
+.general-settings__preference-card,
+.general-settings__summary-card,
+.general-settings__workspace-profile,
+.general-settings__billing-connect {
+  border-color: var(--builder-line);
+  border-radius: 10px;
+  background: var(--builder-surface);
+  box-shadow: none;
+}
+
+.general-settings__builder-hero {
+  padding: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--builder-surface-soft) 72%, transparent), transparent 72%),
+    var(--builder-surface);
+}
+
+.general-settings__builder-copy > span,
+.general-settings__templates header span,
+.general-settings__section-heading > span,
+.general-settings__workspace-profile header span,
+.general-settings__modal-copy span {
+  color: var(--builder-text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.general-settings__builder-copy h1,
+.general-settings__templates h2,
+.general-settings__section-heading h2,
+.general-settings__workspace-profile h2,
+.general-settings__billing-connect h2,
+.general-settings__preference-card h2,
+.general-settings__summary-card h2 {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.general-settings__section-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.general-settings__section-heading p {
+  margin: 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.general-settings__preview-column {
+  flex-basis: 148px;
+  border-color: transparent;
+  background: var(--builder-surface-soft);
+}
+
+.general-settings__preview-card {
+  border-color: color-mix(in oklab, var(--builder-line) 70%, transparent);
+  background: var(--builder-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink-shadow) 7%, transparent);
+}
+
+.general-settings__track-arrow {
+  border-color: var(--builder-line);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.general-settings__template-card,
+.general-settings__summary-grid span,
+.general-settings__members-cta,
+.general-settings__billing-grid span,
+.general-settings__billing-checklist li {
+  border-color: var(--builder-line);
+  border-radius: 8px;
+  background: var(--builder-surface-soft);
+}
+
+.general-settings__template-card {
+  flex-basis: 260px;
+  min-height: 148px;
+}
+
+.general-settings__template-card:hover,
+.general-settings__template-card.is-selected {
+  border-color: var(--builder-line-strong);
+  background: color-mix(in oklab, var(--builder-surface-soft) 78%, var(--builder-surface));
+}
+
+.general-settings__preferences-row {
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+}
+
+.general-settings__summary-list {
+  display: grid;
+  gap: 8px;
+  margin-block: 14px;
+}
+
+.general-settings__summary-list span {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--builder-line);
+}
+
+.general-settings__summary-list span:last-child {
+  border-bottom: 0;
+}
+
+.general-settings__summary-list small,
+.general-settings__profile-card dt {
+  color: var(--builder-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.general-settings__summary-list strong,
+.general-settings__profile-card dd {
+  margin: 0;
+  color: var(--builder-text);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.general-settings__profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.general-settings__profile-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--builder-line);
+  border-radius: 10px;
+  background: var(--builder-surface-soft);
+}
+
+.general-settings__profile-card > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.general-settings__profile-card span {
+  color: var(--builder-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.general-settings__profile-card h3 {
+  margin: 0;
+  color: var(--builder-text);
+  font-size: var(--font-size-title-sm);
+  font-weight: 900;
+}
+
+.general-settings__profile-card p {
+  margin: 0;
+  color: var(--builder-text-soft);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.general-settings__profile-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.general-settings__profile-card dl div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.general-settings__profile-card dd {
+  overflow-wrap: anywhere;
+}
+
+.general-settings__profile-card .shared-button {
+  justify-self: start;
+}
+
+.general-settings__billing-status--compact .general-settings__billing-next-step {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.general-settings__settings-dialog {
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(760px, calc(100vh - 32px));
+}
+
+.general-settings__settings-dialog--wide {
+  width: min(820px, calc(100vw - 24px));
+}
+
+.general-settings__settings-dialog-body {
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.general-settings__settings-dialog .app-dialog__footer {
+  border-top: 1px solid var(--builder-line);
+}
+
+.general-settings__form-grid--dialog {
+  margin-top: 0;
+}
+
+.app-theme[data-theme="dark"] .general-settings {
+  --builder-line: color-mix(in oklab, var(--line) 76%, transparent);
+  --builder-line-strong: color-mix(in oklab, var(--line-contrast) 82%, transparent);
+  --builder-surface: var(--surface-raised);
+  --builder-surface-soft: var(--surface-muted);
+}
+
+.app-theme[data-theme="dark"] .general-settings__builder-hero,
+.app-theme[data-theme="dark"] .general-settings__templates,
+.app-theme[data-theme="dark"] .general-settings__preference-card,
+.app-theme[data-theme="dark"] .general-settings__summary-card,
+.app-theme[data-theme="dark"] .general-settings__workspace-profile,
+.app-theme[data-theme="dark"] .general-settings__billing-connect,
+.app-theme[data-theme="dark"] .general-settings__profile-card {
+  border-color: var(--builder-line);
+  background: var(--builder-surface);
+}
+
+/* Billing/Connect settings use the same List/workspace surface tokens as Cobrança. */
+.general-settings__billing-connect {
+  --settings-billing-surface: var(--workspace-surface);
+  --settings-billing-surface-soft: var(--workspace-surface-soft);
+  --settings-billing-border: var(--workspace-border-subtle);
+  --settings-billing-text: var(--workspace-text-primary);
+  --settings-billing-text-soft: var(--workspace-text-secondary);
+  --settings-billing-text-muted: var(--workspace-text-muted);
+  border-color: var(--settings-billing-border);
+  background: var(--settings-billing-surface);
+  color: var(--settings-billing-text);
+  box-shadow: none;
+}
+
+.general-settings__billing-status,
+.general-settings__billing-grid > *,
+.general-settings__billing-checklist li {
+  border-color: var(--settings-billing-border);
+  background: var(--settings-billing-surface-soft);
+  color: var(--settings-billing-text);
+  box-shadow: none;
+}
+
+.general-settings__billing-connect h2,
+.general-settings__billing-grid strong,
+.general-settings__billing-checklist li strong {
+  color: var(--settings-billing-text);
+}
+
+.general-settings__billing-connect header p,
+.general-settings__billing-status p,
+.general-settings__billing-grid span,
+.general-settings__billing-requirements,
+.general-settings__billing-next-step,
+.general-settings__billing-checklist li p,
+.general-settings__billing-checklist li small {
+  color: var(--settings-billing-text-soft);
+}
+
+.app-theme[data-theme="dark"] .general-settings__billing-connect,
+.app-theme[data-theme="dark"] .general-settings__billing-status,
+.app-theme[data-theme="dark"] .general-settings__billing-grid > *,
+.app-theme[data-theme="dark"] .general-settings__billing-checklist li {
+  border-color: var(--workspace-border-subtle);
+  background: var(--workspace-surface);
+  color: var(--workspace-text-primary);
+  box-shadow: none;
+}
+
+@media (max-width: 900px) {
+  .general-settings__preferences-row,
+  .general-settings__profile-grid {
+    grid-template-columns: 1fr;
+  }
+}

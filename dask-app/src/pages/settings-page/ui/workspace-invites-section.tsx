@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import type { WorkspaceInvite } from "@/modules/workspace/model";
 import { formatDate } from "@/shared/lib/date";
-import { AppForm, AppFormField, Button, Section, StatusBadge, TextInput } from "@/shared/ui";
+import { AppDialog, AppForm, AppFormField, Button, Section, StatusBadge, TextInput } from "@/shared/ui";
 import {
   ASSIGNABLE_ROLES,
   ROLE_LABELS,
@@ -40,6 +41,7 @@ export function WorkspaceInvitesSection({
   onResendInvite,
   onRevokeInvite,
 }: WorkspaceInvitesSectionProps) {
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const inviteForm = useForm<WorkspaceInviteFormInput, unknown, WorkspaceInviteFormValues>({
     resolver: zodResolver(workspaceInviteFormSchema),
     defaultValues: inviteFormDefaultValues,
@@ -50,6 +52,7 @@ export function WorkspaceInvitesSection({
     const didInvite = await onInvite(values);
     if (didInvite) {
       inviteForm.reset(inviteFormDefaultValues);
+      setIsInviteDialogOpen(false);
     }
   };
 
@@ -59,52 +62,15 @@ export function WorkspaceInvitesSection({
       subtitle="Adicione novos membros e gerencie convites enviados."
       className="ms-section"
     >
-      <AppForm
-        form={inviteForm}
-        onSubmit={handleInvite}
-        className="ms-invite-form"
-        disabled={!canInviteMembers}
-        loading={isSubmittingInvite}
-      >
-        <AppFormField label="E-mail" error={inviteForm.formState.errors.email?.message}>
-          <TextInput
-            {...inviteForm.register("email")}
-            placeholder="nome@empresa.com"
-            disabled={!canInviteMembers || isSubmittingInvite}
-            aria-invalid={inviteForm.formState.errors.email ? true : undefined}
-          />
-        </AppFormField>
-        <Controller
-          control={inviteForm.control}
-          name="role"
-          render={({ field }) => (
-            <AppFormField label="Role inicial" error={inviteForm.formState.errors.role?.message}>
-              <div className="ms-role-row">
-                {ASSIGNABLE_ROLES.map(r => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    className={`ms-role-chip${field.value === r.value ? " ms-role-chip--active" : ""}`}
-                    onClick={() => field.onChange(r.value)}
-                    disabled={!canInviteMembers || isSubmittingInvite}
-                    title={r.description}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </AppFormField>
-          )}
-        />
-        <div className="ms-invite-form__action">
-          <Button
-            type="submit"
-            disabled={!canInviteMembers || isSubmittingInvite}
-          >
-            {isSubmittingInvite ? "Enviando..." : "Enviar convite"}
-          </Button>
-        </div>
-      </AppForm>
+      <div className="ms-section-top-action">
+        <Button
+          type="button"
+          onClick={() => setIsInviteDialogOpen(true)}
+          disabled={!canInviteMembers}
+        >
+          Convidar membro
+        </Button>
+      </div>
 
       <div className="ms-invite-list">
         {isLoadingInvites ? (
@@ -161,6 +127,76 @@ export function WorkspaceInvitesSection({
           </>
         )}
       </div>
+
+      {isInviteDialogOpen ? (
+        <AppDialog
+          open
+          onOpenChange={setIsInviteDialogOpen}
+          title="Convidar membro"
+          description="Envie um convite com a role inicial adequada para este workspace."
+          className="ms-invite-dialog"
+          bodyClassName="ms-invite-dialog__body"
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsInviteDialogOpen(false)}
+                disabled={isSubmittingInvite}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="workspace-invite-form"
+                disabled={!canInviteMembers || isSubmittingInvite}
+              >
+                {isSubmittingInvite ? "Enviando..." : "Enviar convite"}
+              </Button>
+            </>
+          }
+        >
+          <AppForm
+            id="workspace-invite-form"
+            form={inviteForm}
+            onSubmit={handleInvite}
+            className="ms-invite-form"
+            disabled={!canInviteMembers}
+            loading={isSubmittingInvite}
+          >
+            <AppFormField label="E-mail" error={inviteForm.formState.errors.email?.message}>
+              <TextInput
+                {...inviteForm.register("email")}
+                placeholder="nome@empresa.com"
+                disabled={!canInviteMembers || isSubmittingInvite}
+                aria-invalid={inviteForm.formState.errors.email ? true : undefined}
+              />
+            </AppFormField>
+            <Controller
+              control={inviteForm.control}
+              name="role"
+              render={({ field }) => (
+                <AppFormField label="Role inicial" error={inviteForm.formState.errors.role?.message}>
+                  <div className="ms-role-row">
+                    {ASSIGNABLE_ROLES.map(r => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        className={`ms-role-chip${field.value === r.value ? " ms-role-chip--active" : ""}`}
+                        onClick={() => field.onChange(r.value)}
+                        disabled={!canInviteMembers || isSubmittingInvite}
+                        title={r.description}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </AppFormField>
+              )}
+            />
+          </AppForm>
+        </AppDialog>
+      ) : null}
     </Section>
   );
 }

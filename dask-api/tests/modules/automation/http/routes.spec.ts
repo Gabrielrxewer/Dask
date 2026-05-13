@@ -150,6 +150,27 @@ function makeDeps() {
     })
   };
 
+  const automationNativeWorkflowService = {
+    installNativeCommercialWorkflows: vi.fn().mockResolvedValue({
+      items: [
+        {
+          id: 'workflow-native',
+          nativeKey: 'commercial.intake',
+          origin: 'native',
+          status: 'paused'
+        }
+      ]
+    }),
+    installNativeWorkflows: vi.fn().mockResolvedValue({
+      items: [{
+        id: UUIDS.workflowId,
+        nativeKey: 'commercial.proposal_approved_to_contract',
+        origin: 'native',
+        status: 'active'
+      }]
+    })
+  };
+
   const automationRunService = {
     cancelRun: vi.fn().mockResolvedValue({ id: UUIDS.runId })
   };
@@ -182,7 +203,8 @@ function makeDeps() {
     automationWorkflowRunnerService: automationWorkflowRunnerService as any,
     automationRunService: automationRunService as any,
     automationRunObservabilityService: automationRunObservabilityService as any,
-    automationViewService: automationViewService as any
+    automationViewService: automationViewService as any,
+    automationNativeWorkflowService: automationNativeWorkflowService as any
   });
 
   return {
@@ -190,6 +212,7 @@ function makeDeps() {
     prisma,
     automationWorkflowService,
     automationWorkflowVersionService,
+    automationNativeWorkflowService,
     automationWorkflowRunnerService,
     automationRunService,
     automationRunObservabilityService,
@@ -243,13 +266,73 @@ async function invokeRoute(
 }
 
 describe('automation/http routes', () => {
+  it('returns node-first automation capabilities without visible recipes', async () => {
+    const { router } = makeDeps();
+
+    const { res } = await invokeRoute(router, 'get', '/automation/workspaces/:workspaceId/capabilities', {
+      params: { workspaceId: UUIDS.workspaceId }
+    });
+
+    const payload = res.json.mock.calls[0]?.[0];
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(payload).toEqual(expect.objectContaining({
+      schemaVersion: 1,
+      runtime: expect.objectContaining({
+        creationSource: 'nodes',
+        supportsEmptyWorkflow: true
+      }),
+      nodeCatalog: expect.any(Array),
+      nativeWorkflowCatalog: expect.any(Array),
+      recipeCatalog: [],
+      defaultGraph: expect.objectContaining({
+        version: 1
+      })
+    }));
+    expect(payload.nodeCatalog.length).toBeGreaterThan(0);
+    expect(payload.nativeWorkflowCatalog[0]).not.toHaveProperty('graph');
+  });
+
+  it('installs native workflows as real automation workflows', async () => {
+    const { router, automationNativeWorkflowService } = makeDeps();
+
+    const { res } = await invokeRoute(router, 'post', '/automation/workspaces/:workspaceId/native-workflows/install', {
+      params: { workspaceId: UUIDS.workspaceId },
+      body: {
+        nativeKeys: ['commercial.proposal_approved_to_contract'],
+        activate: true
+      }
+    });
+
+    expect(automationNativeWorkflowService.installNativeWorkflows).toHaveBeenCalledWith({
+      workspaceId: UUIDS.workspaceId,
+      nativeKeys: ['commercial.proposal_approved_to_contract'],
+      activate: true,
+      installedById: 'user-1'
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      items: [
+        expect.objectContaining({
+          nativeKey: 'commercial.proposal_approved_to_contract',
+          origin: 'native',
+          status: 'active'
+        })
+      ]
+    });
+  });
+
   it('handles workflow CRUD/status endpoints', async () => {
-    const { router, automationWorkflowService } = makeDeps();
+    const { router, automationWorkflowService, automationNativeWorkflowService } = makeDeps();
 
     {
       const { res } = await invokeRoute(router, 'get', '/workspaces/:workspaceId/automation-workflows', {
         params: { workspaceId: UUIDS.workspaceId },
         query: { status: 'active', limit: '20' }
+      });
+      expect(automationNativeWorkflowService.installNativeCommercialWorkflows).toHaveBeenCalledWith({
+        workspaceId: UUIDS.workspaceId,
+        activate: false,
+        installedById: null
       });
       expect(automationWorkflowService.listWorkflows).toHaveBeenCalledWith({
         workspaceId: UUIDS.workspaceId,

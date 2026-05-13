@@ -21,6 +21,7 @@ import {
   isSubscriptionActive,
   type BillingStatus
 } from '../domain/types';
+import { buildStripeConnectPrefillPayload } from '../domain/workspace-legal-profile';
 import {
   DEFAULT_BILLING_PORTAL_SCOPES,
   createBillingPortalToken,
@@ -657,23 +658,33 @@ export class BillingService {
       // Current production path keeps legacy Express account creation for existing
       // Dask workspaces. New Connect configurations should move through an adapter
       // to controller properties / Accounts v2 before changing account creation.
+      const prefill = buildStripeConnectPrefillPayload({
+        workspaceId,
+        workspaceName: workspace.name,
+        profile: workspace.legalProfile,
+        includeCompanyFields: true
+      });
       const account = await this.stripe.accounts.create({
         type: 'express',
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true }
         },
+        ...prefill,
         metadata: {
-          workspaceId,
+          ...prefill.metadata,
           createdByUserId: userId
-        },
-        business_profile: {
-          name: workspace.name,
-          product_description: `Pagamentos recebidos por ${workspace.name} via Dask`
         }
       });
       accountId = account.id;
       await this.repo.upsertWorkspaceConnectAccountId(workspaceId, accountId);
+    } else {
+      await this.syncConnectAccountWorkspacePrefill({
+        accountId,
+        workspaceId,
+        workspaceName: workspace.name,
+        profile: workspace.legalProfile
+      });
     }
     const accountLink = await this.stripe.accountLinks.create({
       account: accountId,
@@ -687,6 +698,38 @@ export class BillingService {
       url: accountLink.url,
       accountId
     };
+  }
+
+  private async syncConnectAccountWorkspacePrefill(input: {
+    accountId: string;
+    workspaceId: string;
+    workspaceName: string;
+    profile: Parameters<typeof buildStripeConnectPrefillPayload>[0]['profile'];
+  }): Promise<void> {
+    try {
+      const account = await this.stripe.accounts.retrieve(input.accountId);
+      const includeCompanyFields = !account.details_submitted;
+      const prefill = buildStripeConnectPrefillPayload({
+        workspaceId: input.workspaceId,
+        workspaceName: input.workspaceName,
+        profile: input.profile,
+        includeCompanyFields
+      });
+      const safePrefill = includeCompanyFields
+        ? prefill
+        : {
+            business_profile: prefill.business_profile,
+            metadata: prefill.metadata
+          };
+      await this.stripe.accounts.update(input.accountId, safePrefill);
+    } catch (err) {
+      logger.warn({
+        event: 'billing.connect.prefill_sync_failed',
+        workspaceId: input.workspaceId,
+        accountId: input.accountId,
+        error: redactBillingSecretValue(err)
+      });
+    }
   }
 
   async getConnectAccountStatus(workspaceId: string, userId: string): Promise<ConnectAccountStatus> {
@@ -2256,6 +2299,7 @@ export class BillingService {
       payload: {
         workspaceId: order.workspaceId,
         itemId: sourceWorkItemId,
+        workItemId: sourceWorkItemId,
         linkedEntityType: 'work_item',
         linkedEntityId: sourceWorkItemId,
         billingOrderId: order.id,
@@ -2264,6 +2308,7 @@ export class BillingService {
         customerId: order.customerId,
         justification: hasFormalJustification ? metadata.billingJustification : undefined,
         hasProposalOrContract: metadata.billingHasProposalOrContract === 'true',
+        idempotencyKey: `${eventName}:${order.id}:${sourceWorkItemId}:${order.status}`,
         requestedBy: order.createdByUserId
       }
     });

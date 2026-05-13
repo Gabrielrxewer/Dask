@@ -156,8 +156,8 @@ function buildOpportunityStages(row: OpportunityRow): OpportunityStage[] {
 function resolvePrimaryAction(row: OpportunityRow, handlers: OpportunityActionHandlers, signalTypeIds: string[]): OpportunityAction {
   if (isSignalTask(row.task, signalTypeIds)) {
     return {
-      label: "Transformar em WorkItem",
-      description: "Promove o Signal preservando os campos comerciais.",
+      label: "Transformar em Lead",
+      description: "Promove o Prospect preservando os campos comerciais.",
       icon: "trend-up",
       onClick: () => handlers.onTransformSignal(row.task)
     };
@@ -461,8 +461,8 @@ export function CommercialListSection({
             const primaryAction = resolvePrimaryAction(row, handlers, resolvedSignalTypeIds);
             const stages = buildOpportunityStages(row);
             const secondaryActions = [
-              isSignalTask(row.task, resolvedSignalTypeIds) && primaryAction.label !== "Transformar em WorkItem"
-                ? { label: "Transformar em WorkItem", icon: "trend-up" as AppIconName, onClick: () => onTransformSignal(row.task) }
+              isSignalTask(row.task, resolvedSignalTypeIds) && primaryAction.label !== "Transformar em Lead"
+                ? { label: "Transformar em Lead", icon: "trend-up" as AppIconName, onClick: () => onTransformSignal(row.task) }
                 : null,
               row.customer
                 ? { label: "Abrir cliente", icon: "user" as AppIconName, onClick: () => onOpenCustomerDetails(row.customer!.id) }

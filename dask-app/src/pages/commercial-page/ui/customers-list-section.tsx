@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Task } from "@/entities/task";
 import { getCustomerDisplayName, type Customer } from "@/modules/workspace";
 import { formatDate } from "@/shared/lib/date";
-import { Button, FormField, ResourceSection, ResourceTable, TextInput } from "@/shared/ui";
+import { Button, DataTable, FormField, ResourceSection, TextInput, type DataTableColumn } from "@/shared/ui";
 import { CUSTOMER_STATUS_LABELS, getTextField, type PipelineMetrics } from "./commercial-page.model";
 
 interface CustomerTableRow {
@@ -48,6 +48,77 @@ export function CustomersListSection({
       }),
     [commercialTasks, filteredCustomers]
   );
+  const columns = useMemo<Array<DataTableColumn<CustomerTableRow>>>(
+    () => [
+      {
+        id: "customer",
+        header: "Cliente",
+        width: "1.3fr",
+        render: ({ customer }) => (
+          <div className="commercial-page__customer-cell">
+            <div className="commercial-customer-avatar">
+              {customer.logoUrl ? (
+                <img src={customer.logoUrl} alt="" />
+              ) : (
+                <span>{getCustomerDisplayName(customer).slice(0, 2).toUpperCase()}</span>
+              )}
+            </div>
+            <div className="commercial-page__workItem-main">
+              <strong>{getCustomerDisplayName(customer)}</strong>
+              <span>{customer.legalName ?? customer.website ?? "Cadastro mestre"}</span>
+            </div>
+          </div>
+        )
+      },
+      {
+        id: "document",
+        header: "Documento",
+        width: "0.8fr",
+        render: ({ customer }) => <span className="commercial-muted">{customer.document ?? "-"}</span>
+      },
+      {
+        id: "email",
+        header: "E-mail",
+        width: "1.1fr",
+        render: ({ customer }) => customer.email ?? <span className="commercial-muted">-</span>
+      },
+      {
+        id: "phone",
+        header: "Telefone",
+        width: "0.8fr",
+        render: ({ customer }) => customer.phone ?? <span className="commercial-muted">-</span>
+      },
+      {
+        id: "status",
+        header: "Status",
+        width: "0.65fr",
+        render: ({ customer }) => (
+          <span className={`commercial-customer-status commercial-customer-status--${customer.status}`}>
+            {CUSTOMER_STATUS_LABELS[customer.status]}
+          </span>
+        )
+      },
+      {
+        id: "deals",
+        header: "Deals",
+        width: "0.65fr",
+        render: ({ linkedTasks }) => <strong>{linkedTasks.length}</strong>
+      },
+      {
+        id: "proposals",
+        header: "Propostas",
+        width: "0.65fr",
+        render: ({ proposalCount }) => <strong>{proposalCount}</strong>
+      },
+      {
+        id: "updated",
+        header: "Ultima atividade",
+        width: "0.8fr",
+        render: ({ customer }) => <span className="commercial-muted">{formatDate(customer.updatedAt)}</span>
+      }
+    ],
+    []
+  );
 
   return (
     <ResourceSection variant="plain">
@@ -69,81 +140,14 @@ export function CustomersListSection({
         </div>
       </div>
 
-      <ResourceTable
+      <DataTable<CustomerTableRow>
         data={rows}
-        rowKey={(row) => row.customer.id}
+        getRowId={(row) => row.customer.id}
         responsiveMinWidth="1080px"
         className="commercial-page__table"
         emptyState="Nenhum cliente cadastrado."
-        columns={[
-          {
-            id: "customer",
-            header: "Cliente",
-            width: "1.3fr",
-            render: ({ customer }) => (
-              <div className="commercial-page__customer-cell">
-                <div className="commercial-customer-avatar">
-                  {customer.logoUrl ? (
-                    <img src={customer.logoUrl} alt="" />
-                  ) : (
-                    <span>{getCustomerDisplayName(customer).slice(0, 2).toUpperCase()}</span>
-                  )}
-                </div>
-                <div className="commercial-page__workItem-main">
-                  <strong>{getCustomerDisplayName(customer)}</strong>
-                  <span>{customer.legalName ?? customer.website ?? "Cadastro mestre"}</span>
-                </div>
-              </div>
-            )
-          },
-          {
-            id: "document",
-            header: "Documento",
-            width: "0.8fr",
-            render: ({ customer }) => <span className="commercial-muted">{customer.document ?? "-"}</span>
-          },
-          {
-            id: "email",
-            header: "E-mail",
-            width: "1.1fr",
-            render: ({ customer }) => customer.email ?? <span className="commercial-muted">-</span>
-          },
-          {
-            id: "phone",
-            header: "Telefone",
-            width: "0.8fr",
-            render: ({ customer }) => customer.phone ?? <span className="commercial-muted">-</span>
-          },
-          {
-            id: "status",
-            header: "Status",
-            width: "0.65fr",
-            render: ({ customer }) => (
-              <span className={`commercial-customer-status commercial-customer-status--${customer.status}`}>
-                {CUSTOMER_STATUS_LABELS[customer.status]}
-              </span>
-            )
-          },
-          {
-            id: "deals",
-            header: "Deals",
-            width: "0.65fr",
-            render: ({ linkedTasks }) => <strong>{linkedTasks.length}</strong>
-          },
-          {
-            id: "proposals",
-            header: "Propostas",
-            width: "0.65fr",
-            render: ({ proposalCount }) => <strong>{proposalCount}</strong>
-          },
-          {
-            id: "updated",
-            header: "Ultima atividade",
-            width: "0.8fr",
-            render: ({ customer }) => <span className="commercial-muted">{formatDate(customer.updatedAt)}</span>
-          }
-        ]}
-        actions={{
+        columns={columns}
+        rowActions={{
           header: "Acoes",
           width: "1.1fr",
           render: ({ customer }) => (

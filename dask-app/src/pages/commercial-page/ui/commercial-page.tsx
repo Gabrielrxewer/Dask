@@ -429,10 +429,10 @@ export function CommercialPage() {
     const transformation = resolveTransformationForTask(task);
     if (!transformation || !transformation.valid) {
       const missing = transformation?.missingFields.map((field) => field.name || field.slug).join(", ");
-      toast.error("Nao foi possivel converter signal.", {
+      toast.error("Nao foi possivel transformar Prospect em Lead.", {
         description: missing
           ? `O tipo destino nao contem todos os campos necessarios para preservar os dados: ${missing}.`
-          : "Nenhuma transformacao valida de Signal para WorkItem comercial foi encontrada."
+          : "Nenhuma transformacao valida de Prospect para Lead foi encontrada."
       });
       return;
     }
@@ -445,8 +445,11 @@ export function CommercialPage() {
     }
 
     void runAction(
-      async () => { await executeTypeTransformation(task, transformation); },
-      "Signal transformado em WorkItem comercial."
+      async () => {
+        await executeTypeTransformation(task, transformation);
+        setTab("commercial");
+      },
+      "Prospect transformado em Lead"
     );
   };
 
@@ -692,7 +695,8 @@ export function CommercialPage() {
               values.defaultValuesForNewFields ?? {}
             );
             setModalMode(null);
-          }, "Signal transformado em WorkItem comercial.")}
+            setTab("commercial");
+          }, "Prospect transformado em Lead")}
         />
       ) : null}
     </AppShell>

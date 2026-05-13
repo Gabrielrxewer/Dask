@@ -435,6 +435,7 @@ export interface NodeConfigFormProps {
   descriptor: NodeConfigDescriptor;
   value: Record<string, unknown>;
   onChange: (value: Record<string, unknown>) => void;
+  disabled?: boolean;
   componentRegistry?: NodeConfigComponentRegistry;
   className?: string;
   showJsonPreview?: boolean;
@@ -445,6 +446,7 @@ export function NodeConfigForm({
   descriptor,
   value,
   onChange,
+  disabled = false,
   componentRegistry,
   className,
   showJsonPreview = false,
@@ -486,7 +488,7 @@ export function NodeConfigForm({
           {(fieldsBySection.get(section.id) ?? []).map((field) => (
             <NodeConfigField
               key={field.name}
-              field={field}
+              field={disabled ? { ...field, disabled: true } : field}
               componentRegistry={componentRegistry}
               context={context}
             />
@@ -497,7 +499,7 @@ export function NodeConfigForm({
       {showJsonPreview ? <NodeConfigJsonPreview value={methods.getValues()} /> : null}
 
       <AppFormActions align="start">
-        <Button className="node-config-form__submit" size="sm" variant="outline" type="submit">
+        <Button className="node-config-form__submit" size="sm" variant="outline" type="submit" disabled={disabled}>
           {submitLabel}
         </Button>
       </AppFormActions>

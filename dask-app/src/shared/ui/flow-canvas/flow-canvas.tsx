@@ -207,14 +207,14 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
           className: `${edge.className ?? ''} flow-canvas-ui__edge--invalid`.trim(),
           style: {
             ...edge.style,
-            stroke: 'var(--danger, #dc2626)',
+            stroke: "var(--danger)",
             strokeWidth: 2.5,
             strokeDasharray: '8 6'
           },
           label: edge.label ?? 'Invalida',
           labelStyle: {
             ...edge.labelStyle,
-            fill: 'var(--danger, #dc2626)',
+            fill: "var(--danger)",
             fontWeight: 800
           }
         }
@@ -474,7 +474,7 @@ function FlowCanvasInner<TData extends Record<string, unknown>, TKind extends st
               pannable
               zoomable
               className="flow-canvas-ui__minimap"
-              maskColor="color-mix(in oklab, var(--surface-muted, #f8fafc) 72%, transparent)"
+              maskColor="color-mix(in oklab, var(--surface-muted) 72%, transparent)"
               nodeStrokeWidth={3}
             />
           ) : null}

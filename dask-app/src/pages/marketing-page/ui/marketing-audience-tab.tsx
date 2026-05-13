@@ -10,8 +10,9 @@ import {
   EmptyState,
   FormField,
   AppSelect,
-  ResourceTable,
-  TextInput
+  DataTable,
+  TextInput,
+  type DataTableColumn
 } from "@/shared/ui";
 import type { MarketingAudienceContact, MarketingSegment } from "@/modules/marketing";
 import {
@@ -27,6 +28,44 @@ import {
 const SEGMENT_KIND_ITEMS: Array<{ value: SegmentFormState["kind"]; label: string }> = [
   { value: "DYNAMIC", label: "Dinamico" },
   { value: "STATIC", label: "Estatico" }
+];
+
+const audienceColumns: Array<DataTableColumn<MarketingAudienceContact>> = [
+  {
+    id: "contact",
+    header: "Contato",
+    width: "1.15fr",
+    render: (entry) => (
+      <div className="marketing-page__stacked">
+        <strong>{entry.contact.fullName ?? "Sem nome"}</strong>
+        <span>{entry.contact.email ?? "-"}</span>
+      </div>
+    )
+  },
+  {
+    id: "company",
+    header: "Empresa",
+    width: "1fr",
+    render: (entry) => entry.contact.companyName ?? "-"
+  },
+  {
+    id: "score",
+    header: "Score",
+    width: "0.5fr",
+    render: (entry) => entry.contact.score
+  },
+  {
+    id: "consent",
+    header: "Consentimento",
+    width: "0.75fr",
+    render: (entry) => entry.preference?.consentStatus ?? "Não informado"
+  },
+  {
+    id: "lastEvent",
+    header: "Último evento",
+    width: "0.9fr",
+    render: (entry) => toLocalDate(entry.lastEventAt)
+  }
 ];
 
 interface MarketingAudienceTabProps {
@@ -78,7 +117,7 @@ export function MarketingAudienceTab({
                   </div>
                 </section>
 
-                <section className="mkt-audience-grid">
+                <section className="mkt-table-section mkt-table-section--audience">
                   <article className="mkt-analytics__section">
                     <div className="marketing-page__section-head">
                       <div>
@@ -102,9 +141,10 @@ export function MarketingAudienceTab({
                       />
                     </FormField>
 
-                    <ResourceTable
+                    <DataTable<MarketingAudienceContact>
                       data={audience}
-                      rowKey={(entry) => entry.contact.id}
+                      getRowId={(entry) => entry.contact.id}
+                      className="mkt-resource-table"
                       responsiveMinWidth="920px"
                       loading={isLoading}
                       loadingState="Carregando audiencia..."
@@ -117,57 +157,12 @@ export function MarketingAudienceTab({
                           size="compact"
                         />
                       }
-                      columns={[
-                        {
-                          id: "contact",
-                          header: "Contato",
-                          width: "1.15fr",
-                          render: (entry) => (
-                            <div className="marketing-page__stacked">
-                              <strong>{entry.contact.fullName ?? "Sem nome"}</strong>
-                              <span>{entry.contact.email ?? "-"}</span>
-                            </div>
-                          )
-                        },
-                        {
-                          id: "company",
-                          header: "Empresa",
-                          width: "1fr",
-                          render: (entry) => entry.contact.companyName ?? "-"
-                        },
-                        {
-                          id: "score",
-                          header: "Score",
-                          width: "0.5fr",
-                          render: (entry) => entry.contact.score
-                        },
-                        {
-                          id: "consent",
-                          header: "Consentimento",
-                          width: "0.75fr",
-                          render: (entry) => entry.preference?.consentStatus ?? "Não informado"
-                        },
-                        {
-                          id: "lastEvent",
-                          header: "Último evento",
-                          width: "0.9fr",
-                          render: (entry) => toLocalDate(entry.lastEventAt)
-                        }
-                      ]}
-                      mobileCard={{
-                        render: (entry) => (
-                          <>
-                            <strong>{entry.contact.fullName ?? "Sem nome"}</strong>
-                            <span>{entry.contact.email ?? "-"}</span>
-                            <span>{entry.contact.companyName ?? "-"}</span>
-                            <span>Score {entry.contact.score}</span>
-                            <span>{entry.preference?.consentStatus ?? "Nao informado"}</span>
-                          </>
-                        )
-                      }}
+                      columns={audienceColumns}
                     />
                   </article>
+                </section>
 
+                <section className="mkt-audience-builder-section">
                   <aside className="mkt-analytics__section mkt-segment-builder">
                     <div className="marketing-page__section-head">
                       <div>

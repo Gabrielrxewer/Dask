@@ -257,6 +257,87 @@ export class AutomationBusinessActionService {
     };
   }
 
+  public async replicateWorkItemTypeFields(input: {
+    workspaceId: string;
+    userId: string;
+    itemId: string;
+    transformationId?: string | null;
+    toTypeId?: string | null;
+    toTypeSlug?: string | null;
+    defaultValuesForNewFields?: Record<string, unknown>;
+  }): Promise<AutomationBusinessActionResult> {
+    await this.assertPermission({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      itemId: input.itemId,
+      permission: 'item.update'
+    });
+
+    const validation = await this.services.workItemsService.validateWorkItemTypeTransformation({
+      workspaceId: input.workspaceId,
+      itemId: input.itemId,
+      userId: input.userId,
+      payload: {
+        transformationId: input.transformationId ?? undefined,
+        toTypeId: input.toTypeId ?? undefined,
+        toTypeSlug: input.toTypeSlug ?? undefined,
+        defaultValuesForNewFields: input.defaultValuesForNewFields
+      }
+    });
+
+    return {
+      itemId: input.itemId,
+      fromTypeSlug: validation.fromType.slug,
+      toTypeSlug: validation.toType.slug,
+      copiedFields: validation.replicationPlan?.copied ?? validation.preservedFields,
+      skippedFields: validation.replicationPlan?.skipped ?? validation.missingFields,
+      incompatibleFields: validation.replicationPlan?.incompatible ?? [],
+      valid: validation.valid
+    };
+  }
+
+  public async transformWorkItemType(input: {
+    workspaceId: string;
+    userId: string;
+    itemId: string;
+    transformationId?: string | null;
+    toTypeId?: string | null;
+    toTypeSlug?: string | null;
+    stateId?: string | null;
+    stateSlug?: string | null;
+    customFieldValues?: Record<string, unknown>;
+    defaultValuesForNewFields?: Record<string, unknown>;
+  }): Promise<AutomationBusinessActionResult> {
+    await this.assertPermission({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      itemId: input.itemId,
+      permission: 'item.transition'
+    });
+
+    const item = await this.services.workItemsService.transformWorkItemType({
+      workspaceId: input.workspaceId,
+      itemId: input.itemId,
+      userId: input.userId,
+      payload: {
+        transformationId: input.transformationId ?? undefined,
+        toTypeId: input.toTypeId ?? undefined,
+        toTypeSlug: input.toTypeSlug ?? undefined,
+        stateId: input.stateId ?? undefined,
+        stateSlug: input.stateSlug ?? undefined,
+        customFieldValues: input.customFieldValues,
+        defaultValuesForNewFields: input.defaultValuesForNewFields
+      }
+    });
+
+    return {
+      itemId: item.id,
+      type: item.type,
+      stateId: item.state.id,
+      stateSlug: item.state.slug
+    };
+  }
+
   public async createProposal(input: {
     workspaceId: string;
     userId: string;

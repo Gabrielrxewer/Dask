@@ -2,14 +2,13 @@ import type { ChangeEvent, Ref } from "react";
 import type { Task } from "@/entities/task";
 import { DocumentDecisionBlock, DocumentPreview, type DocumentVariableDiagnostic } from "@/modules/documentation";
 import type { DocumentKind, WorkspaceDocument, WorkspaceDocumentMetadata } from "@/modules/workspace";
-import { AppDropdownMenu, AppIcon, AppTooltip, Button, EmptyState, StatusBadge, TextInput, Textarea } from "@/shared/ui";
+import { AppDropdownMenu, AppIcon, AppTooltip, Button, EmptyState, StatusBadge, TextInput } from "@/shared/ui";
+import { EditableMarkdownPreview, type MarkdownEditorHandle } from "./editable-markdown-preview";
 import {
   DOCUMENT_KIND_DESCRIPTIONS,
   DOCUMENT_KIND_LABELS,
-  EDITOR_VIEW_LABELS,
   formatRelativeDate,
-  getCommercialDocumentStatus,
-  type EditorViewMode
+  getCommercialDocumentStatus
 } from "./documentation-page.local";
 
 function commercialStatusKind(status: ReturnType<typeof getCommercialDocumentStatus>) {
@@ -23,7 +22,7 @@ interface DocumentationEditorPanelProps {
   activeDoc: WorkspaceDocument | null;
   activeDocKind: DocumentKind;
   linkedWorkItem?: Task | null;
-  editorTextareaRef: Ref<HTMLTextAreaElement>;
+  editorRef: Ref<MarkdownEditorHandle>;
   logoFileInputRef: Ref<HTMLInputElement>;
   selectedSnippet: string;
   wordCount: number;
@@ -33,7 +32,6 @@ interface DocumentationEditorPanelProps {
   autosaveStatus?: "saved" | "dirty" | "saving" | "error" | "conflict";
   saveError?: string | null;
   uploadProgress?: number | null;
-  editorViewMode: EditorViewMode;
   readOnly?: boolean;
   clientDecision?: {
     positiveLabel: string;
@@ -54,15 +52,14 @@ interface DocumentationEditorPanelProps {
   onClientLogoFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onMarkdownToolbarAction: (action: string) => void;
   onInsertVariable: (variableKey: string) => void;
-  onEditorViewModeChange: (mode: EditorViewMode) => void;
-  onEditorSelection: (textarea: HTMLTextAreaElement) => void;
+  onEditorSelection: (selectedText: string) => void;
 }
 
 export function DocumentationEditorPanel({
   activeDoc,
   activeDocKind,
   linkedWorkItem,
-  editorTextareaRef,
+  editorRef,
   logoFileInputRef,
   selectedSnippet,
   wordCount,
@@ -72,7 +69,6 @@ export function DocumentationEditorPanel({
   autosaveStatus = "saved",
   saveError,
   uploadProgress,
-  editorViewMode,
   readOnly = false,
   clientDecision,
   onUpdateDocDraft,
@@ -82,7 +78,6 @@ export function DocumentationEditorPanel({
   onClientLogoFileChange,
   onMarkdownToolbarAction,
   onInsertVariable,
-  onEditorViewModeChange,
   onEditorSelection
 }: DocumentationEditorPanelProps) {
   return (
@@ -90,47 +85,49 @@ export function DocumentationEditorPanel({
       {activeDoc ? (
         <>
           <header className="documentation-page__editor-header">
-            <div className="documentation-page__editor-kind-row">
-              <StatusBadge size="sm" kind="tag" className={`documentation-page__kind-badge documentation-page__kind-badge--${activeDocKind}`}>
-                {DOCUMENT_KIND_LABELS[activeDocKind]}
-              </StatusBadge>
-              {activeDocKind !== "wiki" ? (
+            <div className="documentation-page__editor-header-top">
+              <div className="documentation-page__editor-kind-row">
+                <StatusBadge size="sm" kind="tag" className={`documentation-page__kind-badge documentation-page__kind-badge--${activeDocKind}`}>
+                  {DOCUMENT_KIND_LABELS[activeDocKind]}
+                </StatusBadge>
+                {activeDocKind !== "wiki" ? (
+                  <StatusBadge
+                    size="sm"
+                    kind={commercialStatusKind(getCommercialDocumentStatus(activeDoc))}
+                    className={`documentation-page__commercial-status documentation-page__commercial-status--${getCommercialDocumentStatus(activeDoc)}`}
+                  >
+                    {getCommercialDocumentStatus(activeDoc)}
+                  </StatusBadge>
+                ) : null}
+                <p>{DOCUMENT_KIND_DESCRIPTIONS[activeDocKind]}</p>
+              </div>
+              <div className="documentation-page__document-context-row">
                 <StatusBadge
                   size="sm"
-                  kind={commercialStatusKind(getCommercialDocumentStatus(activeDoc))}
-                  className={`documentation-page__commercial-status documentation-page__commercial-status--${getCommercialDocumentStatus(activeDoc)}`}
+                  kind={autosaveStatus === "error" || autosaveStatus === "conflict" ? "error" : autosaveStatus === "saved" ? "approved" : "sent"}
                 >
-                  {getCommercialDocumentStatus(activeDoc)}
+                  {autosaveStatus === "saved"
+                    ? "Salvo"
+                    : autosaveStatus === "saving"
+                      ? "Salvando"
+                      : autosaveStatus === "dirty"
+                        ? "Alteracoes pendentes"
+                        : autosaveStatus === "conflict"
+                          ? "Conflito"
+                          : "Erro ao salvar"}
                 </StatusBadge>
-              ) : null}
-              <p>{DOCUMENT_KIND_DESCRIPTIONS[activeDocKind]}</p>
-            </div>
-            <div className="documentation-page__document-context-row">
-              <StatusBadge
-                size="sm"
-                kind={autosaveStatus === "error" || autosaveStatus === "conflict" ? "error" : autosaveStatus === "saved" ? "approved" : "sent"}
-              >
-                {autosaveStatus === "saved"
-                  ? "Salvo"
-                  : autosaveStatus === "saving"
-                    ? "Salvando"
-                    : autosaveStatus === "dirty"
-                      ? "Alteracoes pendentes"
-                      : autosaveStatus === "conflict"
-                        ? "Conflito"
-                        : "Erro ao salvar"}
-              </StatusBadge>
-              <span className="documentation-page__linked-work-item">
-                <AppIcon name="board" size={15} />
-                {linkedWorkItem ? (
-                  <>
-                    <strong>{linkedWorkItem.title}</strong>
-                    <span>{linkedWorkItem.status}</span>
-                  </>
-                ) : (
-                  <span>Nenhum card vinculado</span>
-                )}
-              </span>
+                <span className="documentation-page__linked-work-item">
+                  <AppIcon name="board" size={15} />
+                  {linkedWorkItem ? (
+                    <>
+                      <strong>{linkedWorkItem.title}</strong>
+                      <span>{linkedWorkItem.status}</span>
+                    </>
+                  ) : (
+                    <span>Nenhum card vinculado</span>
+                  )}
+                </span>
+              </div>
             </div>
             {saveError ? <p className="documentation-page__inline-error">{saveError}</p> : null}
             {readOnly ? (
@@ -294,35 +291,36 @@ export function DocumentationEditorPanel({
               </AppTooltip>
             </div>
 
-            <div className="documentation-page__editor-view-switch">
-              {(Object.keys(EDITOR_VIEW_LABELS) as EditorViewMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  className={editorViewMode === mode ? "is-active" : ""}
-                  onClick={() => onEditorViewModeChange(mode)}
-                >
-                  {EDITOR_VIEW_LABELS[mode]}
-                </button>
-              ))}
-            </div>
           </div>
           ) : null}
 
-          <div className={`documentation-page__editor-body documentation-page__editor-body--${editorViewMode}`}>
-            {!readOnly && editorViewMode !== "preview" ? (
-              <Textarea
-                ref={editorTextareaRef}
+          {!readOnly && variableDiagnostics.length > 0 ? (
+            <div className="documentation-page__editor-diagnostics">
+              <div className="documentation-page__variable-alert" role="status">
+                <strong>Variaveis com atencao</strong>
+                <ul>
+                  {variableDiagnostics.slice(0, 4).map((diagnostic) => (
+                    <li key={`${diagnostic.key}-${diagnostic.message}`}>{diagnostic.message}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="documentation-page__editor-body documentation-page__editor-body--visual">
+            {!readOnly ? (
+              <EditableMarkdownPreview
+                ref={editorRef}
                 value={activeDoc.content}
-                onChange={(event) => onUpdateDocDraft(activeDoc.id, { content: event.target.value })}
-                onMouseUp={(event) => onEditorSelection(event.currentTarget)}
-                onKeyUp={(event) => onEditorSelection(event.currentTarget)}
-                placeholder="Escreva em Markdown. A visualizacao aparece ao lado."
-                className="documentation-page__editor-textarea"
+                renderedMarkdown={renderedMarkdown}
+                onChange={(content) => onUpdateDocDraft(activeDoc.id, { content })}
+                onSelectionChange={onEditorSelection}
+                placeholder="Comece pelo titulo, uma lista ou um paragrafo."
+                className={`documentation-page__editor-preview documentation-page__editor-preview--${activeDocKind}`}
               />
             ) : null}
 
-            {editorViewMode !== "write" ? (
+            {readOnly ? (
               <article className={`documentation-page__editor-preview markdown-body documentation-page__editor-preview--${activeDocKind}`}>
                 <DocumentPreview markdown={renderedMarkdown} diagnostics={variableDiagnostics} />
               </article>

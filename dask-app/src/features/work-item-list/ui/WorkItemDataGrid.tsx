@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   flexRender,
   functionalUpdate,
@@ -17,12 +17,12 @@ import {
   AppCheckbox,
   DataTable,
   DataTableBody,
-  DataTableCell,
-  EmptyState,
-  LoadingState
+  DataTableEmptyState,
+  DataTableErrorState,
+  DataTableLoadingState,
+  DataTablePagination
 } from "@/shared/ui";
 import { WorkItemDataGridHeader } from "@/features/work-item-list/ui/WorkItemDataGridHeader";
-import { WorkItemDataGridPagination } from "@/features/work-item-list/ui/WorkItemDataGridPagination";
 import { WorkItemDataGridRow } from "@/features/work-item-list/ui/WorkItemDataGridRow";
 import { WorkItemDataGridCell } from "@/features/work-item-list/ui/WorkItemDataGridCell";
 import { WorkItemDataGridToolbar } from "@/features/work-item-list/ui/WorkItemDataGridToolbar";
@@ -48,10 +48,6 @@ const SORT_BY_BY_COLUMN_ID: Partial<Record<string, SortBy>> = {
   status: "status",
   assignee: "assignee",
   dueDate: "dueDate"
-};
-
-const FALLBACK_ROW_STYLE: CSSProperties = {
-  gridTemplateColumns: "minmax(0, 1fr)"
 };
 
 export interface WorkItemDataGridProps {
@@ -308,40 +304,24 @@ export function WorkItemDataGrid({
 
   const renderFallback = () => {
     if (loading && items.length === 0) {
-      return (
-        <div className="shared-data-table__row shared-data-table__row--empty" style={FALLBACK_ROW_STYLE}>
-          <DataTableCell className="shared-data-table__cell--full">
-            <LoadingState text="Carregando lista..." animation="list" variant="frame" visible />
-          </DataTableCell>
-        </div>
-      );
+      return <DataTableLoadingState text="Carregando lista..." />;
     }
 
     if (error) {
       return (
-        <div className="shared-data-table__row shared-data-table__row--empty" style={FALLBACK_ROW_STYLE}>
-          <DataTableCell className="shared-data-table__cell--full">
-            <EmptyState
-              variant="table"
-              title="Nao foi possivel carregar a lista."
-              description="Confira os filtros atuais e tente novamente."
-            />
-          </DataTableCell>
-        </div>
+        <DataTableErrorState
+          title="Nao foi possivel carregar a lista."
+          description="Confira os filtros atuais e tente novamente."
+        />
       );
     }
 
     if (items.length === 0) {
       return (
-        <div className="shared-data-table__row shared-data-table__row--empty" style={FALLBACK_ROW_STYLE}>
-          <DataTableCell className="shared-data-table__cell--full">
-            <EmptyState
-              variant="table"
-              title="Nenhum item encontrado."
-              description="Ajuste o filtro atual ou crie um novo item para alimentar esta lista."
-            />
-          </DataTableCell>
-        </div>
+        <DataTableEmptyState
+          title="Nenhum item encontrado."
+          description="Ajuste o filtro atual ou crie um novo item para alimentar esta lista."
+        />
       );
     }
 
@@ -413,13 +393,18 @@ export function WorkItemDataGrid({
           )}
         </DataTableBody>
       </DataTable>
-      <WorkItemDataGridPagination
+      <DataTablePagination
         pageIndex={pageIndex}
         pageSize={pageSize}
         totalCount={totalCount}
         pageCount={pageCount}
         canPreviousPage={pageIndex > 0}
         canNextPage={pageIndex + 1 < pageCount}
+        className="work-item-data-grid__pagination"
+        infoClassName="work-item-data-grid__pagination-info"
+        controlsClassName="work-item-data-grid__pagination-controls"
+        pageSizeClassName="work-item-data-grid__page-size"
+        actionsClassName="work-item-data-grid__pagination-actions"
         onPageChange={(nextPageIndex) => onPaginationChange({ pageIndex: nextPageIndex, pageSize })}
         onPageSizeChange={(nextPageSize) => onPaginationChange({ pageIndex: 0, pageSize: nextPageSize })}
       />

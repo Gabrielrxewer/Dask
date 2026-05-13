@@ -14,7 +14,6 @@ export interface AssistantMessage {
   createdAt: string;
 }
 
-export type EditorViewMode = "write" | "split" | "preview";
 export type DocumentKindFilter = DocumentKind | "all";
 
 export const DEFAULT_INSTRUCTIONS: Record<DocumentationAssistantMode, string> = {
@@ -27,12 +26,6 @@ export const MODE_LABELS: Record<DocumentationAssistantMode, string> = {
   chat: "Chat",
   write: "Escrita",
   maintain: "Manutencao"
-};
-
-export const EDITOR_VIEW_LABELS: Record<EditorViewMode, string> = {
-  write: "Editar",
-  split: "Dividido",
-  preview: "Preview"
 };
 
 export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {

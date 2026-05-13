@@ -14,7 +14,8 @@
     "smoke:visual": "playwright test",
     "smoke:authenticated": "vitest run src/test/smoke/authenticated-smoke.test.ts --reporter=verbose",
     "smoke:authenticated:release": "node scripts/run-authenticated-smoke-release.mjs",
-    "check": "npm run typecheck && npm run test",
+    "check:module-colors": "node scripts/check-module-colors.mjs",
+    "check": "npm run check:module-colors && npm run typecheck && npm run test",
     "check:release": "npm run check && npm run smoke:authenticated:release"
   },
   "dependencies": {

@@ -102,6 +102,11 @@ export const runAutomationWorkflowDto = z.object({
   context: z.record(z.unknown()).default({})
 });
 
+export const installNativeAutomationWorkflowsDto = z.object({
+  nativeKeys: z.array(z.string().trim().min(1)).min(1).optional(),
+  activate: z.boolean().optional()
+});
+
 export const listAutomationRunArtifactsQueryDto = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional()
 });

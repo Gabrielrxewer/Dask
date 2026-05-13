@@ -1,5 +1,4 @@
-import { FlowStudioAutoLayoutButton, FlowStudioToolbar, StatusBadge } from "@/shared/ui";
-import type { FlowStudioValidationIssue } from "@/shared/ui";
+import { AppIcon, WorkspaceActionButton } from "@/shared/ui";
 
 export function AutomationToolbar({
   issueCount,
@@ -12,19 +11,50 @@ export function AutomationToolbar({
   onAutoLayout: () => void;
   disabled?: boolean;
 }) {
+  const status = getValidationStatus(issueCount, warningCount);
+
   return (
-    <FlowStudioToolbar>
-      <FlowStudioAutoLayoutButton onClick={onAutoLayout} disabled={disabled} />
-      <StatusBadge size="sm" tone={issueCount > 0 ? "danger" : warningCount > 0 ? "warning" : "success"}>
-        {issueCount > 0 ? `${issueCount} erros` : warningCount > 0 ? `${warningCount} avisos` : "Valido"}
-      </StatusBadge>
-    </FlowStudioToolbar>
+    <>
+      <WorkspaceActionButton
+        label="Auto-layout"
+        icon={<AppIcon name="layers" />}
+        onClick={onAutoLayout}
+        disabled={disabled}
+      />
+      <span
+        className={`workspace-action-button ast__validation-action ast__validation-action--${status.tone}`}
+        role="status"
+        aria-label={status.label}
+        title={status.label}
+      >
+        <span className="workspace-action-button__icon" aria-hidden="true">
+          <AppIcon name={status.icon} />
+        </span>
+      </span>
+    </>
   );
 }
 
-export function countValidationIssues(issues: FlowStudioValidationIssue[]) {
+function getValidationStatus(issueCount: number, warningCount: number) {
+  if (issueCount > 0) {
+    return {
+      tone: "danger",
+      icon: "alert-circle" as const,
+      label: issueCount === 1 ? "1 erro" : `${issueCount} erros`
+    };
+  }
+
+  if (warningCount > 0) {
+    return {
+      tone: "warning",
+      icon: "info" as const,
+      label: warningCount === 1 ? "1 aviso" : `${warningCount} avisos`
+    };
+  }
+
   return {
-    errors: issues.filter((issue) => issue.severity === "error").length,
-    warnings: issues.filter((issue) => issue.severity === "warning").length
+    tone: "success",
+    icon: "check" as const,
+    label: "Valido"
   };
 }

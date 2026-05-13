@@ -1,13 +1,20 @@
 .board-view {
-  --builder-text: var(--text-strong);
-  --builder-text-soft: var(--text-soft);
-  --builder-text-muted: var(--text-muted);
-  --builder-line: var(--line);
-  --builder-line-strong: var(--line-contrast);
-  --builder-surface: var(--surface-overlay);
-  --builder-surface-soft: var(--surface-section-content);
+  --builder-text: var(--workspace-text-primary);
+  --builder-text-soft: var(--workspace-text-secondary);
+  --builder-text-muted: var(--workspace-text-muted);
+  --builder-line: var(--workspace-border);
+  --builder-line-strong: var(--workspace-border-strong);
+  --builder-surface: var(--workspace-surface);
+  --builder-surface-soft: var(--workspace-surface-soft);
   --builder-accent: var(--accent);
   --builder-accent-strong: var(--accent-strong);
+  --board-page-bg: var(--workspace-page-bg);
+  --board-header-line: var(--workspace-border-subtle);
+  --board-hover-surface: var(--workspace-hover);
+  --board-selected-surface: var(--workspace-selected);
+  --board-selected-border: var(--workspace-selected-border);
+  --board-control-surface: var(--workspace-control-surface);
+  --board-control-hover: var(--workspace-control-surface-hover);
   --workspace-view-text: var(--builder-text);
   --workspace-view-text-soft: var(--builder-text-soft);
   --workspace-view-text-muted: var(--builder-text-muted);
@@ -20,6 +27,7 @@
   --workspace-view-filter-action-text: color-mix(in oklab, var(--accent-strong) 70%, var(--text-strong));
   width: 100%;
   margin-inline: 0;
+  background: var(--board-page-bg);
 }
 
 .board-top-nav {
@@ -64,10 +72,7 @@
   flex: 1;
   min-height: 34px;
   padding: 0 10px;
-  border: 1px solid transparent;
   border-radius: 10px;
-  background: transparent;
-  box-shadow: none;
   transform: none;
   font-size: 0.69rem;
   font-weight: 760;
@@ -82,30 +87,16 @@
 
 
 .app-theme:not([data-theme="dark"]) .board-view {
-  --builder-line: color-mix(in oklab, var(--line) 92%, color-mix(in srgb, var(--info-border) 74%, transparent));
-  --builder-line-strong: color-mix(in oklab, var(--line-strong) 76%, color-mix(in srgb, var(--decorative-cyan) 24%, transparent));
-  --builder-surface:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--neutral-white) 98.5%, transparent) 0%,
-      color-mix(in srgb, var(--surface-tint) 94%, transparent) 48%,
-      color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%
-    );
-  --builder-surface-soft:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--danger) 3.5%, transparent) 0%,
-      color-mix(in srgb, var(--decorative-purple) 1.8%, transparent) 28%,
-      color-mix(in srgb, var(--brand-indigo) 2%, transparent) 58%,
-      color-mix(in srgb, var(--primary) 3%, transparent) 100%
-    ),
-    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 92%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 82%, transparent) 100%);
+  --builder-line: var(--workspace-border);
+  --builder-line-strong: var(--workspace-border-strong);
+  --builder-surface: var(--workspace-surface);
+  --builder-surface-soft: var(--workspace-surface-soft);
   --builder-accent: color-mix(in oklab, var(--accent) 84%, var(--primary));
   --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 78%, var(--primary));
-  --workspace-view-frame-border: transparent;
-  --workspace-view-panel-border: transparent;
-  --workspace-view-card-border: transparent;
-  --workspace-view-accent-line: color-mix(in srgb, var(--info-border) 94%, transparent);
+  --workspace-view-frame-border: var(--workspace-border);
+  --workspace-view-panel-border: var(--workspace-border);
+  --workspace-view-card-border: var(--workspace-border);
+  --workspace-view-accent-line: var(--workspace-selected-border);
   position: relative;
   isolation: isolate;
   gap: 10px;
@@ -113,26 +104,7 @@
 
 .app-theme:not([data-theme="dark"]) .board-view::before,
 .app-theme:not([data-theme="dark"]) .board-view::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  border-radius: 999px;
-  filter: blur(20px);
-  z-index: 0;
-}
-
-.app-theme:not([data-theme="dark"]) .board-view::before {
-  inset: 30px auto auto -42px;
-  width: 132px;
-  height: 132px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 16%, transparent) 0%, color-mix(in srgb, var(--primary) 3%, transparent) 58%, transparent 76%);
-}
-
-.app-theme:not([data-theme="dark"]) .board-view::after {
-  inset: auto -40px 8% auto;
-  width: 154px;
-  height: 154px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 14%, transparent) 0%, color-mix(in srgb, var(--brand-indigo) 3%, transparent) 56%, transparent 76%);
+  content: none;
 }
 
 .app-theme:not([data-theme="dark"]) .board-view > * {
@@ -151,7 +123,7 @@
 
 .app-theme:not([data-theme="dark"]) .board-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  border-bottom: 1px solid var(--board-header-line);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__tabs.shared-tabs {
@@ -175,39 +147,15 @@
   overflow: hidden;
   margin-bottom: 0;
   border-radius: 10px;
-  background: transparent;
-  color: var(--text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  box-shadow: none;
-  border: 1px solid transparent;
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__tabs .shared-tabs__item:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent);
-  color: var(--text-secondary);
   box-shadow: none;
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
-}
-
-.app-theme:not([data-theme="dark"]) .board-top-nav__tabs .shared-tabs__item--active {
-  font-weight: 860;
-  background: transparent;
-  color: var(--text-primary);
-  border-color: transparent;
-  box-shadow: none;
-}
-
-.app-theme:not([data-theme="dark"]) .board-top-nav__tabs .shared-tabs__item--active::before {
-  content: "";
-  position: absolute;
-  inset: auto 8px 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 90%, transparent) 0%, color-mix(in srgb, var(--decorative-cyan) 72%, transparent) 100%);
 }
 
 
@@ -226,23 +174,24 @@
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search {
   border-radius: 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--workspace-border-subtle);
+  background: var(--board-control-surface);
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
+  background: var(--board-control-hover);
+  border-color: var(--workspace-border);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search:focus-within {
-  background: color-mix(in srgb, var(--neutral-white) 82%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
+  background: var(--board-control-surface);
+  border-color: var(--board-selected-border);
+  box-shadow: 0 0 0 3px var(--workspace-focus-ring);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__search-icon {
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
   left: calc(50% - 122px);
   transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -259,7 +208,7 @@
   padding-right: 10px;
   border: none;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--workspace-text-primary);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -276,7 +225,7 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter .shared-input::placeholder {
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button {
@@ -285,9 +234,9 @@
   min-width: auto;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--workspace-border-subtle);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--workspace-text-secondary);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -296,42 +245,30 @@
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: color-mix(in srgb, var(--primary) 6%, transparent);
-  border-color: color-mix(in srgb, var(--border-default) 72%, transparent);
-  color: var(--text-secondary);
+  background: var(--board-hover-surface);
+  border-color: var(--workspace-border);
+  color: var(--workspace-text-secondary);
 }
 
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme:not([data-theme="dark"]) .board-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--primary) 10%, transparent) 0%,
-    color-mix(in srgb, var(--decorative-cyan) 6%, transparent) 100%
-  ),
-  linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 99%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 96%, transparent) 100%);
-  border-color: color-mix(in srgb, var(--border-default) 90%, transparent);
-  color: var(--text-primary);
+  background: var(--board-selected-surface);
+  border-color: var(--board-selected-border);
+  color: var(--workspace-text-primary);
   font-weight: 860;
 }
 
 .app-theme[data-theme="dark"] .board-view {
-  --builder-line: color-mix(in oklab, var(--line) 88%, var(--surface-1));
-  --builder-line-strong: color-mix(in oklab, var(--line-strong) 72%, color-mix(in srgb, var(--decorative-cyan) 24%, transparent));
-  --builder-surface: var(--surface-section-content);
-  --builder-surface-soft:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--primary) 5%, transparent) 0%,
-      transparent 38%,
-      color-mix(in srgb, var(--decorative-cyan) 3%, transparent) 100%
-    ),
-    linear-gradient(180deg, var(--surface-1) 0%, var(--bg-app) 100%);
+  --builder-line: var(--workspace-border);
+  --builder-line-strong: var(--workspace-border-strong);
+  --builder-surface: var(--workspace-surface);
+  --builder-surface-soft: var(--workspace-surface-soft);
   --builder-accent: color-mix(in oklab, var(--accent) 88%, var(--primary));
   --builder-accent-strong: color-mix(in oklab, var(--accent-strong) 72%, var(--info-bg));
-  --workspace-view-frame-border: transparent;
-  --workspace-view-panel-border: transparent;
-  --workspace-view-card-border: transparent;
-  --workspace-view-accent-line: color-mix(in srgb, var(--primary) 34%, var(--border-default));
+  --workspace-view-frame-border: var(--workspace-border);
+  --workspace-view-panel-border: var(--workspace-border);
+  --workspace-view-card-border: var(--workspace-border);
+  --workspace-view-accent-line: var(--workspace-selected-border);
   position: relative;
   isolation: isolate;
   gap: 10px;
@@ -339,26 +276,7 @@
 
 .app-theme[data-theme="dark"] .board-view::before,
 .app-theme[data-theme="dark"] .board-view::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  border-radius: 999px;
-  filter: blur(20px);
-  z-index: 0;
-}
-
-.app-theme[data-theme="dark"] .board-view::before {
-  inset: 30px auto auto -42px;
-  width: 132px;
-  height: 132px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 18%, transparent) 0%, color-mix(in srgb, var(--primary) 4%, transparent) 58%, transparent 76%);
-}
-
-.app-theme[data-theme="dark"] .board-view::after {
-  inset: auto -40px 8% auto;
-  width: 154px;
-  height: 154px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--decorative-cyan) 14%, transparent) 0%, color-mix(in srgb, var(--primary) 5%, transparent) 56%, transparent 76%);
+  content: none;
 }
 
 .app-theme[data-theme="dark"] .board-view > * {
@@ -368,7 +286,7 @@
 
 .app-theme[data-theme="dark"] .board-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
+  border-bottom: 1px solid var(--board-header-line);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs.shared-tabs {
@@ -392,39 +310,16 @@
   overflow: hidden;
   margin-bottom: 0;
   border-radius: 10px;
-  background: transparent;
-  color: var(--text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  box-shadow: none;
-  border: 1px solid transparent;
   transform: none;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item:hover {
-  background: var(--selected-bg);
-  color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-}
-
-.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active {
-  font-weight: 860;
-  background: transparent;
-  color: var(--text-primary);
-  border-color: transparent;
   box-shadow: none;
-}
-
-.app-theme[data-theme="dark"] .board-top-nav__tabs .shared-tabs__item--active::before {
-  content: "";
-  position: absolute;
-  inset: auto 8px 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: var(--text-primary);
 }
 
 
@@ -443,23 +338,24 @@
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search {
   border-radius: 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--workspace-border-subtle);
+  background: var(--board-control-surface);
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search:hover {
-  background: var(--selected-bg);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: var(--board-control-hover);
+  border-color: var(--workspace-border);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search:focus-within {
-  background: transparent;
-  border-color: var(--selected-border);
-  box-shadow: none;
+  background: var(--board-control-surface);
+  border-color: var(--board-selected-border);
+  box-shadow: 0 0 0 3px var(--workspace-focus-ring);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search-icon {
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
   left: calc(50% - 122px);
   transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -476,7 +372,7 @@
   padding-right: 10px;
   border: none;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--workspace-text-primary);
   box-shadow: none;
   font-size: 0.76rem;
   font-weight: 700;
@@ -493,7 +389,7 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter .shared-input::placeholder {
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button {
@@ -504,7 +400,7 @@
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--workspace-text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -513,16 +409,16 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: var(--selected-bg);
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  color: var(--text-primary);
+  background: var(--board-hover-surface);
+  border-color: var(--workspace-border);
+  color: var(--workspace-text-primary);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button.active,
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button[aria-pressed="true"] {
-  background: var(--selected-bg);
-  border-color: var(--selected-border);
-  color: var(--text-primary);
+  background: var(--board-selected-surface);
+  border-color: var(--board-selected-border);
+  color: var(--workspace-text-primary);
   font-weight: 860;
 }
 

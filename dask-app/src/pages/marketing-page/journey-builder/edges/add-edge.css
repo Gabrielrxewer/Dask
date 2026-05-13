@@ -10,16 +10,16 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 1.5px solid var(--line-contrast);
-  background: var(--surface-overlay);
-  color: var(--text-muted);
+  border: 1.5px solid var(--workspace-border-strong);
+  background: var(--workspace-surface);
+  color: var(--workspace-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.16s ease, background 0.14s ease, border-color 0.14s ease, transform 0.14s ease, color 0.14s ease;
-  box-shadow: 0 2px 8px color-mix(in oklab, var(--text-strong) 10%, transparent);
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--workspace-text-primary) 10%, transparent);
 }
 
 .add-edge__btn svg {
@@ -34,9 +34,9 @@
 }
 
 .add-edge__btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--neutral-white);
+  background: var(--module-marketing-accent);
+  border-color: var(--module-marketing-accent);
+  color: color-mix(in oklab, var(--workspace-surface) 70%, transparent);
   transform: scale(1.15);
 }
 
@@ -54,10 +54,10 @@
 
 .add-edge__branch-label--yes {
   background: color-mix(in oklab, var(--success) 14%, transparent);
-  color: color-mix(in oklab, var(--success) 80%, var(--text-strong));
+  color: color-mix(in oklab, var(--success) 80%, var(--workspace-text-primary));
 }
 
 .add-edge__branch-label--no {
   background: color-mix(in oklab, var(--danger) 14%, transparent);
-  color: color-mix(in oklab, var(--danger) 80%, var(--text-strong));
+  color: color-mix(in oklab, var(--danger) 80%, var(--workspace-text-primary));
 }

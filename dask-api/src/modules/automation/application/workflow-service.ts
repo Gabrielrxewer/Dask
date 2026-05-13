@@ -15,6 +15,13 @@ function normalizeOptionalText(value: string | null | undefined): string | null 
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function isSystemWorkflow(workflow: {
+  origin?: string | null;
+  isSystemManaged?: boolean | null;
+}): boolean {
+  return workflow.origin === 'native' || workflow.isSystemManaged === true;
+}
+
 export class AutomationWorkflowService {
   public constructor(private readonly prisma: PrismaClient) {}
 
@@ -106,6 +113,18 @@ export class AutomationWorkflowService {
       throw new AppError('Invalid automation workflow status.', 422);
     }
 
+    if (input.status === 'archived' && current.isProtected) {
+      throw new AppError('Protected native automation workflows cannot be archived.', 422);
+    }
+
+    if (isSystemWorkflow(current) && current.editableMode !== 'full' && (input.name !== undefined || input.description !== undefined)) {
+      throw new AppError('This native automation workflow does not allow editing name or description.', 422);
+    }
+
+    if (input.status === 'active') {
+      await this.ensurePublishedCurrentVersion(current);
+    }
+
     const data: Prisma.AutomationWorkflowUpdateInput = {};
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -145,6 +164,28 @@ export class AutomationWorkflowService {
       workflowId: input.workflowId,
       status: 'archived'
     });
+  }
+
+  private async ensurePublishedCurrentVersion(workflow: {
+    id: string;
+    currentVersionId: string | null;
+  }): Promise<void> {
+    if (!workflow.currentVersionId) {
+      throw new AppError('Automation workflow must have a published current version before activation.', 422);
+    }
+
+    const version = await this.prisma.automationWorkflowVersion.findFirst({
+      where: {
+        id: workflow.currentVersionId,
+        workflowId: workflow.id,
+        status: 'published'
+      },
+      select: { id: true }
+    });
+
+    if (!version) {
+      throw new AppError('Automation workflow must have a published current version before activation.', 422);
+    }
   }
 
   private async requireWorkflow(workspaceId: string, workflowId: string) {

@@ -36,6 +36,53 @@ function buildDefinition(
   };
 }
 
+function isSystemWorkflow(workflow: {
+  origin?: string | null;
+  isSystemManaged?: boolean | null;
+}): boolean {
+  return workflow.origin === 'native' || workflow.isSystemManaged === true;
+}
+
+function assertVersionMutationAllowed(
+  workflow: {
+    origin?: string | null;
+    isSystemManaged?: boolean | null;
+    editableMode?: string | null;
+  },
+  action: 'create' | 'clone' | 'update' | 'publish'
+): void {
+  if (!isSystemWorkflow(workflow) || workflow.editableMode === 'full') {
+    return;
+  }
+
+  if (workflow.editableMode === 'readonly') {
+    throw new AppError('This native automation workflow is read-only.', 422);
+  }
+
+  if (workflow.editableMode === 'config_only' && action === 'create') {
+    throw new AppError('Native automation workflows can only be configured from a cloned draft.', 422);
+  }
+}
+
+function graphShapeSignature(graph: AutomationWorkflowGraph): string {
+  return JSON.stringify({
+    nodes: graph.nodes.map((node) => ({ id: node.id, type: node.type })),
+    edges: graph.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null
+    }))
+  });
+}
+
+function assertConfigOnlyGraphShape(currentGraph: AutomationWorkflowGraph, nextGraph: AutomationWorkflowGraph): void {
+  if (graphShapeSignature(currentGraph) !== graphShapeSignature(nextGraph)) {
+    throw new AppError('This native automation workflow only allows configuration changes.', 422);
+  }
+}
+
 export class AutomationWorkflowVersionService {
   public constructor(private readonly prisma: PrismaClient) {}
 
@@ -53,12 +100,19 @@ export class AutomationWorkflowVersionService {
           id: input.workflowId,
           workspaceId: input.workspaceId
         },
-        select: { id: true }
+        select: {
+          id: true,
+          origin: true,
+          isSystemManaged: true,
+          editableMode: true
+        }
       });
 
       if (!workflow) {
         throw new AppError('Automation workflow not found.', 404);
       }
+
+      assertVersionMutationAllowed(workflow, 'create');
 
       const aggregate = await db.automationWorkflowVersion.aggregate({
         where: {
@@ -118,7 +172,31 @@ export class AutomationWorkflowVersionService {
         throw new AppError('Published or archived workflow versions are immutable.', 422);
       }
 
+      const workflow = await db.automationWorkflow.findFirst({
+        where: {
+          id: input.workflowId,
+          workspaceId: input.workspaceId
+        },
+        select: {
+          id: true,
+          origin: true,
+          isSystemManaged: true,
+          editableMode: true
+        }
+      });
+
+      if (!workflow) {
+        throw new AppError('Automation workflow not found.', 404);
+      }
+
+      assertVersionMutationAllowed(workflow, 'update');
+
       const currentDefinition = normalizeDefinition(version.definitionJson as AutomationWorkflowDefinition);
+      const currentGraph = buildCanonicalAutomationWorkflowGraph({
+        definition: currentDefinition,
+        graphNodes: version.graphNodesJson as AutomationGraphNode[],
+        graphEdges: version.graphEdgesJson as AutomationGraphEdge[]
+      });
       const graph = buildCanonicalAutomationWorkflowGraph({
         definition: input.definition ?? currentDefinition,
         graph: input.graph,
@@ -126,6 +204,9 @@ export class AutomationWorkflowVersionService {
         graphEdges: input.graphEdges ?? (version.graphEdgesJson as AutomationGraphEdge[])
       });
       validateAutomationWorkflowGraph(graph);
+      if (isSystemWorkflow(workflow) && workflow.editableMode === 'config_only') {
+        assertConfigOnlyGraphShape(currentGraph, graph);
+      }
       const definition = buildDefinition(input.definition ?? currentDefinition, graph);
 
       return db.automationWorkflowVersion.update({
@@ -156,6 +237,25 @@ export class AutomationWorkflowVersionService {
       if (!source) {
         throw new AppError('Automation workflow version not found.', 404);
       }
+
+      const workflow = await db.automationWorkflow.findFirst({
+        where: {
+          id: input.workflowId,
+          workspaceId: input.workspaceId
+        },
+        select: {
+          id: true,
+          origin: true,
+          isSystemManaged: true,
+          editableMode: true
+        }
+      });
+
+      if (!workflow) {
+        throw new AppError('Automation workflow not found.', 404);
+      }
+
+      assertVersionMutationAllowed(workflow, 'clone');
 
       const graph = buildCanonicalAutomationWorkflowGraph({
         definition: source.definitionJson as AutomationWorkflowDefinition,
@@ -209,6 +309,25 @@ export class AutomationWorkflowVersionService {
       if (version.status === 'archived') {
         throw new AppError('Archived workflow versions cannot be published.', 422);
       }
+
+      const workflow = await db.automationWorkflow.findFirst({
+        where: {
+          id: input.workflowId,
+          workspaceId: input.workspaceId
+        },
+        select: {
+          id: true,
+          origin: true,
+          isSystemManaged: true,
+          editableMode: true
+        }
+      });
+
+      if (!workflow) {
+        throw new AppError('Automation workflow not found.', 404);
+      }
+
+      assertVersionMutationAllowed(workflow, 'publish');
 
       const graph = buildCanonicalAutomationWorkflowGraph({
         definition: version.definitionJson as AutomationWorkflowDefinition,

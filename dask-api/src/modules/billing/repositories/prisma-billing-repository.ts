@@ -28,6 +28,7 @@ import type {
   WorkspaceMembership
 } from './billing-repository';
 import { isSubscriptionActive } from '../domain/types';
+import { buildWorkspaceLegalProfile } from '../domain/workspace-legal-profile';
 
 function resolveLimit(input?: number, fallback = 100, max = 200): number {
   if (typeof input !== 'number' || Number.isNaN(input)) {
@@ -128,17 +129,50 @@ export class PrismaBillingRepository implements BillingRepository {
       select: {
         id: true,
         name: true,
-        config: true
+        kind: true,
+        config: true,
+        preferences: {
+          select: {
+            settings: true
+          }
+        }
       }
     });
     if (!workspace) {
       return null;
     }
 
+    const config =
+      workspace.config && typeof workspace.config === 'object' && !Array.isArray(workspace.config)
+        ? (workspace.config as Record<string, unknown>)
+        : {};
+    const info =
+      config.info && typeof config.info === 'object' && !Array.isArray(config.info)
+        ? (config.info as Record<string, unknown>)
+        : {};
+    const settings =
+      workspace.preferences?.settings &&
+      typeof workspace.preferences.settings === 'object' &&
+      !Array.isArray(workspace.preferences.settings)
+        ? (workspace.preferences.settings as Record<string, unknown>)
+        : {};
+    const companyProfile =
+      settings.companyProfile && typeof settings.companyProfile === 'object' && !Array.isArray(settings.companyProfile)
+        ? (settings.companyProfile as Record<string, unknown>)
+        : {};
+
     return {
       id: workspace.id,
       name: workspace.name,
-      connectAccountId: this.extractConnectAccountId(workspace.config)
+      kind: workspace.kind,
+      connectAccountId: this.extractConnectAccountId(workspace.config),
+      legalProfile: buildWorkspaceLegalProfile({
+        id: workspace.id,
+        name: workspace.name,
+        kind: workspace.kind,
+        info,
+        companyProfile
+      })
     };
   }
 

@@ -1,5 +1,15 @@
 import type { ConnectPaymentOrder, ConnectPaymentOrderStatus } from "@/modules/billing";
-import { AppSelect, Button, EmptyState, PageToolbar, ResourceTable, SectionHeader, StatusBadge, TextInput } from "@/shared/ui";
+import {
+  AppSelect,
+  Button,
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  PageToolbar,
+  SectionHeader,
+  StatusBadge,
+  TextInput
+} from "@/shared/ui";
 import type { HistoryAction, PaymentOrdersLoadState } from "./billing-page.model";
 import {
   BADGE_TONE_BY_STATUS,
@@ -52,6 +62,8 @@ const HISTORY_STATUS_ITEMS = [
     label
   }))
 ];
+
+const HISTORY_PAGE_SIZE = 5;
 
 export function BillingHistoryPanel({
   customerMode,
@@ -141,6 +153,48 @@ export function BillingHistoryPanel({
       }
     />
   );
+  const columns: Array<DataTableColumn<ConnectPaymentOrder>> = [
+    {
+      id: "status",
+      header: "Status",
+      width: "0.8fr",
+      render: (order) => (
+        <StatusBadge tone={BADGE_TONE_BY_STATUS[mapOrderStatusTone(order.status)]}>
+          {ORDER_STATUS_LABEL[order.status]}
+        </StatusBadge>
+      )
+    },
+    {
+      id: "amount",
+      header: "Valor",
+      width: "0.9fr",
+      render: (order) => formatAmount(order.amount, order.currency)
+    },
+    {
+      id: "description",
+      header: "Descricao",
+      width: "1.1fr",
+      render: (order) => order.description
+    },
+    {
+      id: "customer",
+      header: "Cliente",
+      width: "1fr",
+      render: formatOrderCustomerLabel
+    },
+    {
+      id: "created",
+      header: "Criada em",
+      width: "0.95fr",
+      render: (order) => formatOrderDate(order.createdAt)
+    },
+    {
+      id: "due",
+      header: "Vencimento",
+      width: "0.9fr",
+      render: (order) => (order.paidAt ? "Pago" : order.canceledAt ? "Cancelado" : "Em aberto")
+    }
+  ];
 
   return (
     <div className="billing-view__panel" role="tabpanel">
@@ -178,53 +232,18 @@ export function BillingHistoryPanel({
         }
       />
 
-      <ResourceTable
+      <DataTable<ConnectPaymentOrder>
         className="billing-view__table"
+        containerClassName="billing-view__table-container"
         data={paginatedPaymentOrders}
-        rowKey="id"
+        getRowId={(order) => order.id}
         rowClassName={(order) => (order.id === focusedOrderId ? "billing-view__table-row--focused" : undefined)}
         loading={paymentOrdersLoadState === "loading" || paymentOrdersLoadState === "idle"}
         loadingState="Carregando cobrancas..."
         error={paymentOrdersLoadState === "error" ? paymentOrdersError ?? true : undefined}
         emptyState={emptyState}
-        columns={[
-          {
-            id: "status",
-            header: "Status",
-            width: "0.8fr",
-            render: (order) => (
-              <StatusBadge tone={BADGE_TONE_BY_STATUS[mapOrderStatusTone(order.status)]}>
-                {ORDER_STATUS_LABEL[order.status]}
-              </StatusBadge>
-            )
-          },
-          {
-            id: "amount",
-            header: "Valor",
-            width: "0.9fr",
-            render: (order) => formatAmount(order.amount, order.currency)
-          },
-          { id: "description", header: "Descricao", width: "1.1fr", accessor: "description" },
-          {
-            id: "customer",
-            header: "Cliente",
-            width: "1fr",
-            render: formatOrderCustomerLabel
-          },
-          {
-            id: "created",
-            header: "Criada em",
-            width: "0.95fr",
-            render: (order) => formatOrderDate(order.createdAt)
-          },
-          {
-            id: "due",
-            header: "Vencimento",
-            width: "0.9fr",
-            render: (order) => (order.paidAt ? "Pago" : order.canceledAt ? "Cancelado" : "Em aberto")
-          }
-        ]}
-        actions={{
+        columns={columns}
+        rowActions={{
           header: "Acoes",
           width: customerMode ? "1fr" : "1.35fr",
           render: renderActions
@@ -232,37 +251,30 @@ export function BillingHistoryPanel({
         pagination={
           hasHistoryPage
             ? {
-                page: historyPage,
-                pageSize: 5,
-                hasPrevious: historyHasPrevious,
-                hasNext: historyHasNext,
-                isLoading: historyIsFetching,
-                label: "Paginacao do historico",
-                onPrevious: onHistoryPrevious,
-                onNext: onHistoryNext
+                pageIndex: Math.max(historyPage - 1, 0),
+                pageSize: HISTORY_PAGE_SIZE,
+                totalCount: ((historyPage - 1) * HISTORY_PAGE_SIZE) + paginatedPaymentOrders.length + (historyHasNext ? HISTORY_PAGE_SIZE : 0),
+                pageCount: historyPage + (historyHasNext ? 1 : 0),
+                canPreviousPage: historyHasPrevious && !historyIsFetching,
+                canNextPage: historyHasNext && !historyIsFetching,
+                "aria-label": "Paginacao do historico",
+                className: "billing-view__data-table-pagination",
+                infoClassName: "billing-view__data-table-pagination-info",
+                controlsClassName: "billing-view__data-table-pagination-controls",
+                actionsClassName: "billing-view__data-table-pagination-actions",
+                onPageChange: (pageIndex) => {
+                  const currentPageIndex = Math.max(historyPage - 1, 0);
+                  if (pageIndex < currentPageIndex) {
+                    onHistoryPrevious();
+                    return;
+                  }
+                  if (pageIndex > currentPageIndex) {
+                    onHistoryNext();
+                  }
+                }
               }
             : undefined
         }
-        mobileCard={{
-          render: (order) => (
-            <>
-              <div className="marketing-page__section-head">
-                <div>
-                  <strong>{order.description}</strong>
-                  <p>{formatOrderCustomerLabel(order)}</p>
-                </div>
-                <StatusBadge tone={BADGE_TONE_BY_STATUS[mapOrderStatusTone(order.status)]}>
-                  {ORDER_STATUS_LABEL[order.status]}
-                </StatusBadge>
-              </div>
-              <div className="billing-catalog__stack-cell">
-                <strong>{formatAmount(order.amount, order.currency)}</strong>
-                <span>{formatOrderDate(order.createdAt)}</span>
-              </div>
-              {renderActions(order)}
-            </>
-          )
-        }}
         responsiveMinWidth="100%"
         responsiveMinWidthMobile="100%"
       />

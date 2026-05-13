@@ -108,6 +108,7 @@ export type {
   WorkItemTypeTransformationConfig,
   WorkItemTypeTransformationField,
   WorkItemTypeTransformationPayload,
+  WorkItemTypeReplicationPlan,
   WorkItemTypeTransformationSummary,
   WorkItemTypeTransformationValidation,
   WorkItemsPage,

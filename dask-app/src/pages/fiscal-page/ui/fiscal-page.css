@@ -7,22 +7,33 @@
   width: 100%;
   overflow: hidden;
   gap: 0;
-  --fiscal-text: var(--text-strong);
-  --fiscal-text-soft: var(--text-soft);
-  --fiscal-text-muted: var(--text-muted);
-  --fiscal-line: color-mix(in oklab, var(--line) 90%, var(--accent));
-  --fiscal-line-strong: color-mix(in oklab, var(--line-contrast) 76%, var(--accent));
-  --fiscal-surface: var(--surface-overlay);
-  --fiscal-surface-soft: var(--surface-section-content);
-  --fiscal-field: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--surface-elevated) 92%, var(--neutral-white)) 0%,
-    color-mix(in oklab, var(--surface-section-content) 96%, var(--surface-1)) 100%
-  );
-  --fiscal-accent: color-mix(in oklab, var(--accent) 84%, var(--decorative-cyan));
-  --fiscal-accent-strong: color-mix(in oklab, var(--accent-strong) 82%, var(--text-strong));
-  --fiscal-shadow: 0 12px 28px color-mix(in oklab, var(--text-strong) 6%, transparent);
-  --fiscal-shadow-hover: 0 16px 34px color-mix(in oklab, var(--text-strong) 9%, transparent);
+  /*
+   * Fiscal uses the List/workspace visual language. Focus NFe integration,
+   * fiscal policy, emission and sync behavior stay in TS/model/API code.
+   */
+  --fiscal-page-bg: var(--workspace-page-bg);
+  --fiscal-text: var(--workspace-text-primary);
+  --fiscal-text-soft: var(--workspace-text-secondary);
+  --fiscal-text-muted: var(--workspace-text-muted);
+  --fiscal-line: var(--workspace-border);
+  --fiscal-line-subtle: var(--workspace-border-subtle);
+  --fiscal-line-strong: var(--workspace-border-strong);
+  --fiscal-surface: var(--workspace-surface);
+  --fiscal-surface-soft: var(--workspace-surface-soft);
+  --fiscal-section: var(--workspace-section-surface);
+  --fiscal-table-header: var(--workspace-table-header);
+  --fiscal-table-row: var(--workspace-table-row);
+  --fiscal-hover: var(--workspace-table-row-hover);
+  --fiscal-selected: var(--workspace-selected);
+  --fiscal-selected-border: var(--workspace-selected-border);
+  --fiscal-field: var(--workspace-control-surface);
+  --fiscal-field-hover: var(--workspace-control-surface-hover);
+  --fiscal-field-border: var(--workspace-control-border);
+  --fiscal-focus-ring: var(--workspace-focus-ring);
+  --fiscal-accent: var(--module-fiscal-accent);
+  --fiscal-accent-strong: color-mix(in oklab, var(--fiscal-accent) 72%, var(--fiscal-text));
+  --fiscal-shadow: none;
+  --fiscal-shadow-hover: none;
   --workspace-view-text: var(--fiscal-text);
   --workspace-view-text-soft: var(--fiscal-text-soft);
   --workspace-view-text-muted: var(--fiscal-text-muted);
@@ -32,9 +43,10 @@
   --workspace-view-surface-soft: var(--fiscal-surface-soft);
   --workspace-view-accent: var(--fiscal-accent);
   --workspace-view-accent-strong: var(--fiscal-accent-strong);
-  --workspace-view-frame-border: transparent;
-  --workspace-view-panel-border: transparent;
-  --workspace-view-card-border: transparent;
+  --workspace-view-frame-border: var(--fiscal-line-subtle);
+  --workspace-view-panel-border: var(--fiscal-line-subtle);
+  --workspace-view-card-border: var(--fiscal-line-subtle);
+  background: var(--fiscal-page-bg);
   color: var(--fiscal-text);
 }
 
@@ -83,12 +95,12 @@
 
 .app-theme:not([data-theme="dark"]) .fiscal-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  border-bottom: 1px solid var(--fiscal-line-subtle);
 }
 
 .app-theme[data-theme="dark"] .fiscal-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
+  border-bottom: 1px solid var(--fiscal-line-subtle);
 }
 
 .fiscal-view__tabs.shared-tabs {
@@ -108,11 +120,7 @@
 .fiscal-view__tabs .shared-tabs__item {
   flex: 1 0 max-content;
   min-height: 34px;
-  border: 1px solid transparent;
   border-radius: 10px;
-  background: transparent;
-  box-shadow: none;
-  color: var(--fiscal-text-muted);
   font-size: 0.69rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -122,28 +130,8 @@
 }
 
 .fiscal-view__tabs .shared-tabs__item:hover {
-  border-color: color-mix(in oklab, var(--fiscal-line) 72%, transparent);
-  background: color-mix(in oklab, var(--accent) 6%, transparent);
-  color: var(--fiscal-text-soft);
   box-shadow: none;
   transform: none;
-}
-
-.fiscal-view__tabs .shared-tabs__item--active {
-  border-color: transparent;
-  background: transparent;
-  color: var(--fiscal-text);
-  box-shadow: none;
-  font-weight: 860;
-}
-
-.fiscal-view__tabs .shared-tabs__item--active::before {
-  content: "";
-  position: absolute;
-  inset: auto 8px 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--decorative-cyan) 100%);
 }
 
 .fiscal-view__summary-grid,
@@ -154,7 +142,8 @@
 }
 
 .fiscal-view__summary-grid .shared-metric-card {
-  border-color: color-mix(in oklab, var(--fiscal-line) 78%, transparent);
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
   box-shadow: var(--fiscal-shadow);
 }
 
@@ -186,17 +175,17 @@
 .fiscal-view__field .shared-input,
 .fiscal-view__field .shared-select,
 .fiscal-view__field .shared-textarea {
-  border-color: color-mix(in oklab, var(--fiscal-line) 82%, transparent);
+  border-color: var(--fiscal-field-border);
   background: var(--fiscal-field);
   color: var(--fiscal-text);
-  box-shadow: 0 8px 18px color-mix(in oklab, var(--text-strong) 5%, transparent);
+  box-shadow: none;
 }
 
 .fiscal-view__field .shared-input:focus,
 .fiscal-view__field .shared-select:focus,
 .fiscal-view__field .shared-textarea:focus {
-  border-color: color-mix(in oklab, var(--accent) 38%, var(--fiscal-line));
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
+  border-color: var(--fiscal-selected-border);
+  box-shadow: 0 0 0 3px var(--fiscal-focus-ring);
 }
 
 .fiscal-view__field .shared-textarea {
@@ -227,7 +216,7 @@
 }
 
 .fiscal-view__table {
-  border: 1px solid color-mix(in oklab, var(--fiscal-line) 86%, transparent);
+  border: 1px solid var(--fiscal-line);
   border-radius: var(--radius-xs);
   background: var(--fiscal-surface);
   box-shadow: var(--fiscal-shadow);
@@ -241,8 +230,8 @@
 
 .fiscal-view__table .shared-data-table__header {
   min-height: 40px;
-  border-bottom-color: color-mix(in oklab, var(--fiscal-line) 88%, transparent);
-  background: var(--surface-table-header);
+  border-bottom-color: var(--fiscal-line);
+  background: var(--fiscal-table-header);
   color: var(--fiscal-text-muted);
   font-size: var(--font-size-xs);
   font-weight: 860;
@@ -252,13 +241,13 @@
 
 .fiscal-view__table .shared-data-table__row {
   min-height: 62px;
-  border-bottom-color: color-mix(in oklab, var(--fiscal-line) 76%, transparent);
+  border-bottom-color: var(--fiscal-line-subtle);
   color: var(--fiscal-text);
-  background: color-mix(in oklab, var(--surface-1) 86%, transparent);
+  background: var(--fiscal-table-row);
 }
 
 .fiscal-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 6%, var(--surface-1));
+  background: var(--fiscal-hover);
 }
 
 .fiscal-view__table .shared-data-table__row:hover .shared-data-table__cell {
@@ -266,8 +255,8 @@
 }
 
 .fiscal-view__table .shared-status-badge {
-  border-color: color-mix(in oklab, var(--fiscal-line) 78%, transparent);
-  background: var(--surface-chip);
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface-soft);
   color: var(--fiscal-text-muted);
 }
 
@@ -307,32 +296,31 @@
 }
 
 .app-theme[data-theme="dark"] .fiscal-view {
-  --fiscal-line: color-mix(in oklab, var(--line) 88%, transparent);
-  --fiscal-line-strong: color-mix(in oklab, var(--line-strong) 72%, var(--accent));
-  --fiscal-field: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--surface-elevated) 92%, var(--panel)) 0%,
-    color-mix(in oklab, var(--control-surface) 84%, var(--panel)) 100%
-  );
-  --fiscal-shadow: var(--shadow-1);
-  --fiscal-shadow-hover: 0 18px 34px color-mix(in oklab, var(--neutral-black) 32%, transparent);
-}
-
-.app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item {
-  background: transparent;
-  color: var(--text-muted);
+  --fiscal-page-bg: var(--workspace-page-bg);
+  --fiscal-text: var(--workspace-text-primary);
+  --fiscal-text-soft: var(--workspace-text-secondary);
+  --fiscal-text-muted: var(--workspace-text-muted);
+  --fiscal-line: var(--workspace-border);
+  --fiscal-line-subtle: var(--workspace-border-subtle);
+  --fiscal-line-strong: var(--workspace-border-strong);
+  --fiscal-surface: var(--workspace-surface);
+  --fiscal-surface-soft: var(--workspace-surface-soft);
+  --fiscal-section: var(--workspace-section-surface);
+  --fiscal-table-header: var(--workspace-table-header);
+  --fiscal-table-row: var(--workspace-table-row);
+  --fiscal-hover: var(--workspace-table-row-hover);
+  --fiscal-selected: var(--workspace-selected);
+  --fiscal-selected-border: var(--workspace-selected-border);
+  --fiscal-field: var(--workspace-control-surface);
+  --fiscal-field-hover: var(--workspace-control-surface-hover);
+  --fiscal-field-border: var(--workspace-control-border);
+  --fiscal-focus-ring: var(--workspace-focus-ring);
+  --fiscal-shadow: none;
+  --fiscal-shadow-hover: none;
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item:hover {
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-  color: var(--text-soft);
-}
-
-.app-theme[data-theme="dark"] .fiscal-view__tabs .shared-tabs__item--active {
-  color: var(--text-strong);
-  background: transparent;
-  border-color: transparent;
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__summary-card,
@@ -340,32 +328,32 @@
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-input,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-select,
 .app-theme[data-theme="dark"] .fiscal-view__field .shared-textarea {
-  border-color: var(--line);
-  background: var(--surface-raised);
-  color: var(--text-strong);
-  box-shadow: var(--shadow-1);
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
+  color: var(--fiscal-text);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__header {
-  border-bottom-color: var(--line);
-  background: var(--surface-muted);
-  color: var(--text-soft);
+  border-bottom-color: var(--fiscal-line);
+  background: var(--fiscal-table-header);
+  color: var(--fiscal-text-muted);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__row {
-  border-bottom-color: var(--line);
-  background: color-mix(in oklab, var(--panel) 86%, transparent);
-  color: var(--text);
+  border-bottom-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-table-row);
+  color: var(--fiscal-text);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-data-table__row:hover {
-  background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+  background: var(--fiscal-hover);
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__table .shared-status-badge {
-  border-color: var(--line);
-  background: var(--surface-muted);
-  color: var(--text-muted);
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface-soft);
+  color: var(--fiscal-text-muted);
 }
 
 /* ── Portal do cliente ─────────────────────────────────────────────── */
@@ -381,11 +369,9 @@
   justify-content: space-between;
   gap: 12px;
   padding: 18px 20px;
-  border: 1px solid color-mix(in oklab, var(--fiscal-line) 72%, transparent);
+  border: 1px solid var(--fiscal-line-subtle);
   border-radius: var(--radius-xs);
-  background:
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 22%, transparent) 0%, transparent 50%),
-    var(--fiscal-field);
+  background: var(--fiscal-surface);
   box-shadow: var(--fiscal-shadow);
 }
 
@@ -422,12 +408,87 @@
 }
 
 .app-theme[data-theme="dark"] .fiscal-view__portal-head {
-  border-color: var(--line);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-1);
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
+  box-shadow: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
+
+/* List-aligned final normalization for Fiscal surfaces. */
+.fiscal-view .shared-section-card,
+.fiscal-view__form-card,
+.fiscal-view .shared-empty-state,
+.fiscal-view .shared-loading-state,
+.fiscal-view .shared-inline-alert {
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
+  color: var(--fiscal-text);
+  box-shadow: none;
+}
+
+.fiscal-view .shared-section-card__header,
+.fiscal-view .shared-section-card__content {
+  border-color: var(--fiscal-line-subtle);
+}
+
+.fiscal-view .shared-section-card__title,
+.fiscal-view .shared-empty-state__title {
+  color: var(--fiscal-text);
+}
+
+.fiscal-view .shared-section-card__subtitle,
+.fiscal-view .shared-empty-state__description,
+.fiscal-view .shared-loading-state,
+.fiscal-view .shared-inline-alert {
+  color: var(--fiscal-text-soft);
+}
+
+.fiscal-view .shared-input:hover,
+.fiscal-view .shared-select:hover,
+.fiscal-view .shared-textarea:hover {
+  border-color: var(--fiscal-selected-border);
+  background: var(--fiscal-field-hover);
+}
+
+.fiscal-view .shared-data-table__pagination {
+  border-top-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
+  color: var(--fiscal-text-muted);
+}
+
+.fiscal-view .shared-data-table__mobile-card {
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
+  color: var(--fiscal-text);
+  box-shadow: none;
+}
+
+.fiscal-view__modal,
+.fiscal-view__modal-content {
+  color: var(--fiscal-text);
+}
+
+.fiscal-view__modal-content .shared-textarea,
+.fiscal-view__modal-content textarea {
+  border-color: var(--fiscal-field-border);
+  background: var(--fiscal-field);
+  color: var(--fiscal-text);
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .fiscal-view .shared-section-card,
+.app-theme[data-theme="dark"] .fiscal-view__form-card,
+.app-theme[data-theme="dark"] .fiscal-view .shared-empty-state,
+.app-theme[data-theme="dark"] .fiscal-view .shared-loading-state,
+.app-theme[data-theme="dark"] .fiscal-view .shared-data-table__mobile-card,
+.app-theme[data-theme="dark"] .fiscal-view__modal-content .shared-textarea,
+.app-theme[data-theme="dark"] .fiscal-view__modal-content textarea {
+  border-color: var(--fiscal-line-subtle);
+  background: var(--fiscal-surface);
+  color: var(--fiscal-text);
+  box-shadow: none;
+}
 
 @media (max-width: 980px) {
   .fiscal-view__summary-grid,

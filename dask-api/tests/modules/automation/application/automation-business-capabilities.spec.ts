@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getAutomationCapabilities } from '@/modules/automation/application/automation-capabilities';
+import {
+  automationNativeWorkflowCatalog,
+  deprecatedInternalAutomationRecipeCatalog,
+  getAutomationCapabilities
+} from '@/modules/automation/application/automation-capabilities';
 import { validateAutomationWorkflowGraph } from '@/modules/automation/application/automation-workflow-graph-validation';
 
 describe('automation business capabilities', () => {
@@ -11,6 +15,8 @@ describe('automation business capabilities', () => {
       expect.arrayContaining([
         'move_work_item',
         'update_work_item_fields',
+        'replicate_work_item_type_fields',
+        'transform_work_item_type',
         'create_proposal',
         'create_contract',
         'send_document',
@@ -91,27 +97,129 @@ describe('automation business capabilities', () => {
     ).not.toThrow();
   });
 
-  it('ships executable CRM recipes that validate with official nodes only', () => {
+  it('ships executable native commercial workflows that validate with official nodes only', () => {
     const capabilities = getAutomationCapabilities();
     const officialTypes = new Set(capabilities.nodeCatalog.map((node) => node.type));
 
-    expect(capabilities.recipeCatalog.map((recipe) => recipe.id)).toEqual(
+    expect(capabilities.nativeWorkflowCatalog.map((workflow) => workflow.nativeKey)).toEqual(
       expect.arrayContaining([
-        'commercial-work-item-created-to-intake',
-        'first-contact-on-commercial-intake',
-        'hot-opportunity-followup',
-        'no-response-followup',
-        'proposal-preparing-create-proposal',
-        'proposal-approved-create-contract',
-        'contract-accepted-create-billing',
-        'payment-confirmed-active-customer',
-        'billing-overdue-finance-alert'
+        'commercial.intake',
+        'commercial.hot_opportunity',
+        'commercial.first_contact',
+        'commercial.no_response_followup',
+        'commercial.proposal_drafting',
+        'commercial.proposal_approved_to_contract',
+        'commercial.contract_accepted_to_billing',
+        'commercial.payment_confirmed_to_active_customer',
+        'commercial.overdue_charge'
       ])
     );
+    expect(capabilities.nativeWorkflowCatalog).toHaveLength(9);
 
-    for (const recipe of capabilities.recipeCatalog) {
-      expect(recipe.graph.nodes.every((node) => officialTypes.has(node.type))).toBe(true);
-      expect(() => validateAutomationWorkflowGraph(recipe.graph)).not.toThrow();
+    for (const workflow of capabilities.nativeWorkflowCatalog) {
+      expect(workflow.nativeDomain).toBe('commercial');
+      expect(workflow.isSystemManaged).toBe(true);
+      expect(workflow.isProtected).toBe(true);
+      expect(workflow).not.toHaveProperty('graph');
     }
+
+    for (const workflow of automationNativeWorkflowCatalog) {
+      expect(workflow.graph.metadata).not.toHaveProperty('recipe');
+      expect(workflow.graph.nodes.every((node) => officialTypes.has(node.type))).toBe(true);
+      expect(() => validateAutomationWorkflowGraph(workflow.graph)).not.toThrow();
+    }
+  });
+
+  it('models native commercial workflows as CRM operations over WorkItems', () => {
+    const workItemActionTypes = new Set([
+      'move_work_item',
+      'update_work_item_fields',
+      'create_proposal',
+      'create_contract',
+      'ensure_customer_from_work_item',
+      'create_billing_order',
+      'create_followup_task',
+      'register_card_activity'
+    ]);
+    const expectedOperationalSteps = new Map([
+      ['commercial.intake', ['commercial_work_item_created', 'move_work_item', 'register_card_activity']],
+      ['commercial.proposal_drafting', ['work_item_moved_to_column', 'create_proposal']],
+      ['commercial.proposal_approved_to_contract', ['proposal_status_changed', 'create_contract']],
+      ['commercial.contract_accepted_to_billing', ['contract_status_changed', 'create_billing_order']],
+      ['commercial.payment_confirmed_to_active_customer', ['billing_payment_confirmed', 'ensure_customer_from_work_item']],
+      ['commercial.overdue_charge', ['billing_overdue', 'create_followup_task']]
+    ]);
+
+    for (const workflow of automationNativeWorkflowCatalog) {
+      expect(workflow.nativeDomain).toBe('commercial');
+      expect(workflow.graph.metadata).toEqual(expect.objectContaining({
+        native: true,
+        source: 'work_item'
+      }));
+      expect(JSON.stringify(workflow.graph).toLowerCase()).not.toContain('leadid');
+
+      const triggerNodes = workflow.graph.nodes.filter((node) => node.type === 'trigger');
+      expect(triggerNodes.length).toBeGreaterThan(0);
+      for (const trigger of triggerNodes) {
+        expect(trigger.config.itemTypeSlugs ?? trigger.config.itemTypeSlug).toEqual(
+          expect.arrayContaining(['commercial'])
+        );
+      }
+
+      for (const node of workflow.graph.nodes) {
+        if (workItemActionTypes.has(node.type)) {
+          expect(node.config.itemIdPath).toBe('event.payload.itemId');
+        }
+        if (node.type === 'human_approval') {
+          expect(node.config.workItemId).toBe('{{event.payload.itemId}}');
+        }
+        if (node.type === 'communication_send') {
+          expect(node.config.metadata).toEqual(expect.objectContaining({
+            itemId: '{{event.payload.itemId}}',
+            workItemId: '{{event.payload.itemId}}',
+            nativeDomain: 'commercial'
+          }));
+        }
+      }
+    }
+
+    for (const [nativeKey, expected] of expectedOperationalSteps) {
+      const workflow = automationNativeWorkflowCatalog.find((item) => item.nativeKey === nativeKey);
+      expect(workflow).toBeDefined();
+      const graphTokens = workflow?.graph.nodes.flatMap((node) => [
+        node.type,
+        typeof node.config.triggerType === 'string' ? node.config.triggerType : ''
+      ]) ?? [];
+      expect(graphTokens).toEqual(expect.arrayContaining(expected));
+    }
+  });
+
+  it('publishes nodes as the primary capabilities contract without visible recipes', () => {
+    const capabilities = getAutomationCapabilities();
+    const nativeLegacyIds = new Set(automationNativeWorkflowCatalog.map((workflow) => workflow.legacyRecipeId));
+
+    expect(capabilities.runtime).toEqual(expect.objectContaining({
+      creationSource: 'nodes',
+      supportsEmptyWorkflow: true,
+      supportsNativeWorkflows: true,
+      requiresPublishedVersionToRun: true
+    }));
+    expect(capabilities.nodeCatalog.length).toBeGreaterThan(0);
+    expect(capabilities.recipeCatalog).toEqual([]);
+    expect(capabilities.recipeCatalog.some((recipe) => nativeLegacyIds.has(recipe.id))).toBe(false);
+  });
+
+  it('keeps legacy recipes only as deprecated internal compatibility definitions', () => {
+    const nativeLegacyIds = new Set(automationNativeWorkflowCatalog.map((workflow) => workflow.legacyRecipeId));
+
+    expect(deprecatedInternalAutomationRecipeCatalog.length).toBeGreaterThan(0);
+    expect(deprecatedInternalAutomationRecipeCatalog.every((recipe) => recipe.deprecated)).toBe(true);
+    expect(deprecatedInternalAutomationRecipeCatalog.every((recipe) => recipe.internal)).toBe(true);
+    expect(deprecatedInternalAutomationRecipeCatalog.every((recipe) => recipe.visibility === 'internal')).toBe(true);
+    expect(
+      deprecatedInternalAutomationRecipeCatalog
+        .filter((recipe) => nativeLegacyIds.has(recipe.id))
+        .every((recipe) => recipe.replacedBy?.kind === 'native_workflow')
+    ).toBe(true);
   });
 });

@@ -31,6 +31,7 @@ type MockStripeInstance = {
   accounts: {
     create: ReturnType<typeof vi.fn>;
     retrieve: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
     updateCapability: ReturnType<typeof vi.fn>;
   };
   paymentMethodConfigurations: {
@@ -89,7 +90,25 @@ function makeWorkspace(overrides: Record<string, unknown> = {}) {
   return {
     id: 'workspace-1',
     name: 'Workspace Test',
+    kind: 'CORPORATE',
     connectAccountId: null as string | null,
+    legalProfile: {
+      tradeName: 'Workspace Test',
+      legalName: null,
+      taxId: null,
+      website: null,
+      description: null,
+      addressLine1: null,
+      addressLine2: null,
+      city: null,
+      state: null,
+      postalCode: null,
+      country: 'BR',
+      businessType: 'company',
+      defaultNoticeDays: null,
+      legalVenueCity: null,
+      legalVenueState: null
+    },
     ...overrides
   };
 }
@@ -210,7 +229,7 @@ function makeStripe(): MockStripeInstance {
     checkout: { sessions: { create: vi.fn() } },
     subscriptions: { retrieve: vi.fn() },
     webhooks: { constructEvent: vi.fn() },
-    accounts: { create: vi.fn(), retrieve: vi.fn(), updateCapability: vi.fn().mockResolvedValue({}) },
+    accounts: { create: vi.fn(), retrieve: vi.fn(), update: vi.fn().mockResolvedValue({}), updateCapability: vi.fn().mockResolvedValue({}) },
     paymentMethodConfigurations: {
       list: vi.fn().mockResolvedValue({ data: [] }),
       update: vi.fn().mockResolvedValue({})
@@ -401,8 +420,20 @@ describe('BillingService', () => {
         role: 'OWNER'
       });
       repo.findWorkspaceBillingConnectInfo.mockResolvedValue(
-        makeWorkspace({ connectAccountId: 'acct_existing' })
+        makeWorkspace({
+          connectAccountId: 'acct_existing',
+          legalProfile: {
+            ...makeWorkspace().legalProfile,
+            tradeName: 'Dask Labs',
+            legalName: 'Dask Labs Ltda',
+            website: 'https://dask.example',
+            description: 'Servicos Dask'
+          }
+        })
       );
+      (stripe.accounts.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(makeConnectAccount({
+        details_submitted: false
+      }));
       (stripe.accountLinks.create as ReturnType<typeof vi.fn>).mockResolvedValue({
         url: 'https://connect.stripe.com/setup/acct_existing'
       });
@@ -410,6 +441,21 @@ describe('BillingService', () => {
       const result = await service.createConnectOnboardingLink('workspace-1', 'user-1');
 
       expect(stripe.accounts.create).not.toHaveBeenCalled();
+      expect(stripe.accounts.update).toHaveBeenCalledWith('acct_existing', expect.objectContaining({
+        business_profile: {
+          name: 'Dask Labs',
+          url: 'https://dask.example',
+          product_description: 'Servicos Dask'
+        },
+        business_type: 'company',
+        company: expect.objectContaining({
+          name: 'Dask Labs Ltda'
+        }),
+        metadata: {
+          workspaceId: 'workspace-1',
+          workspaceName: 'Workspace Test'
+        }
+      }));
       expect(result.accountId).toBe('acct_existing');
     });
 

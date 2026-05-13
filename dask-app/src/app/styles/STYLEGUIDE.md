@@ -14,6 +14,7 @@
 
 ## Token Groups
 - Colors and surfaces: use semantic tokens such as `--panel`, `--surface-raised`, `--surface-muted`, `--accent`, `--danger`.
+- Workspace visual language: use the `--workspace-*` tokens for app modules that should match the List screen (`--workspace-page-bg`, `--workspace-surface`, `--workspace-border`, `--workspace-text-*`, `--workspace-table-*`, `--workspace-control-*`, `--workspace-empty-surface`).
 - Typography: use `--font-size-*` tokens plus `--font-size-label` and `--font-size-title-*` for hierarchy.
 - Spacing and radius: use `--space-*`, `--radius-*`, `--radius-pill`.
 - Elevation and interaction: use `--shadow-*`, `--focus`, `--focus-strong`, `--state-*`.
@@ -34,3 +35,4 @@
 - Avoid adding large unrelated blocks to existing files.
 - For variants, prefer `component--variant` classes and token-driven values.
 - If a local component overrides a shared primitive, keep the override narrow and preserve token usage so the visual language stays consistent.
+- Do not introduce new hardcoded background, surface, border, table, input or text colors in workspace modules when a `--workspace-*`, `--surface-*`, `--text-*`, `--border-*`, `--control-*` or semantic status token exists.

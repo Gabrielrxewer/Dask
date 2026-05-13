@@ -337,6 +337,14 @@ export function useBillingPageModel() {
 
   const canCreateCheckout = !isClient && connectState === "ready" && connectStatus?.chargesEnabled === true;
   const onboardingChecklist = useMemo(() => buildOnboardingChecklist(connectStatus), [connectStatus]);
+  const blockingConnectRequirementsCount =
+    (connectStatus?.requirementsDue.length ?? 0) + (connectStatus?.requirementsPastDue.length ?? 0);
+  const isConnectReady = Boolean(
+    connectStatus?.detailsSubmitted &&
+    connectStatus?.chargesEnabled &&
+    connectStatus?.payoutsEnabled &&
+    blockingConnectRequirementsCount === 0
+  );
 
   const statusCards = useMemo<Array<{ key: string; label: string; value: string; tone: StatusTone }>>(
     () => [
@@ -369,16 +377,16 @@ export function useBillingPageModel() {
       {
         key: "requirements",
         label: "Pendências",
-        value: `${connectStatus?.requirementsDue.length ?? 0} itens`,
+        value: `${blockingConnectRequirementsCount} itens`,
         tone:
-          (connectStatus?.requirementsDue.length ?? 0) === 0
+          blockingConnectRequirementsCount === 0
             ? "active"
-            : (connectStatus?.requirementsDue.length ?? 0) <= 3
+            : blockingConnectRequirementsCount <= 3
               ? "attention"
               : "blocked"
       }
     ],
-    [connectState, connectStatus]
+    [blockingConnectRequirementsCount, connectState, connectStatus]
   );
 
   const pendingItems = onboardingChecklist.filter((item) => !item.done);
@@ -393,19 +401,23 @@ export function useBillingPageModel() {
 
   const onboardingSummary = useMemo(() => {
     if (!connectStatus) {
-      return { title: "Conta Stripe Connect não iniciada", subtitle: "Conecte e complete o cadastro para liberar cobranças e repasses.", progress: 0 };
+      return {
+        title: "Cobranca Connect ainda nao iniciada",
+        subtitle: "Usaremos os dados legais do workspace para iniciar sua conta Stripe Connect.",
+        progress: 0
+      };
     }
     const doneCount = onboardingChecklist.filter((item) => item.done).length;
     const progress = Math.round((doneCount / onboardingChecklist.length) * 100);
-    if (canCreateCheckout) {
-      return { title: "Conta pronta para cobrar", subtitle: "Cobranças e repasses estão habilitados.", progress };
+    if (isConnectReady) {
+      return { title: "Conta Connect pronta", subtitle: "Cobrancas e repasses habilitados.", progress };
     }
     return {
-      title: "Cadastro incompleto",
-      subtitle: `Faltam ${connectStatus.requirementsDue.length} informações para liberar cobranças.`,
+      title: "Verificacao Stripe pendente",
+      subtitle: `A Stripe ainda precisa validar ${blockingConnectRequirementsCount} pendencia(s) bloqueante(s).`,
       progress
     };
-  }, [canCreateCheckout, connectStatus, onboardingChecklist]);
+  }, [blockingConnectRequirementsCount, connectStatus, isConnectReady, onboardingChecklist]);
 
   const currentOnboardingStage = useMemo<BillingOnboardingStage>(() => {
     if (!connectStatus || !connectStatus.detailsSubmitted) return "Cadastro";

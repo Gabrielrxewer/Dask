@@ -1,4 +1,5 @@
 import type { SubscriptionPlan, SubscriptionStatus } from '../domain/types';
+import type { WorkspaceLegalProfile } from '../domain/workspace-legal-profile';
 
 /** Minimal user shape used by billing — avoids coupling to the generated Prisma User type */
 export interface BillingUser {
@@ -22,7 +23,9 @@ export interface WorkspaceMembership {
 export interface WorkspaceBillingConnectInfo {
   id: string;
   name: string;
+  kind: string | null;
   connectAccountId: string | null;
+  legalProfile: WorkspaceLegalProfile;
 }
 
 export interface BillingCustomerSnapshot {

@@ -1,15 +1,15 @@
 .shared-section {
   position: relative;
-  border: 1px solid color-mix(in oklab, var(--line) 88%, transparent);
-  border-radius: 24px;
-  background: var(--surface-section);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--workspace-border, color-mix(in oklab, var(--line) 88%, transparent));
+  border-radius: var(--radius-xs);
+  background: var(--workspace-section-surface, var(--surface-section));
+  box-shadow: none;
   overflow: hidden;
-  backdrop-filter: saturate(120%) blur(12px);
+  backdrop-filter: none;
 }
 
 .shared-section::before {
-  content: "";
+  content: none;
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -24,8 +24,8 @@
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid color-mix(in oklab, var(--line) 74%, transparent);
-  background: var(--surface-section-header);
+  border-bottom: 1px solid var(--workspace-border-subtle, color-mix(in oklab, var(--line) 74%, transparent));
+  background: var(--workspace-section-header-surface, var(--surface-section-header));
 }
 
 .shared-section__title {
@@ -46,20 +46,18 @@
   position: relative;
   z-index: 1;
   padding: var(--space-5);
-  background: var(--surface-section-content);
+  background: var(--workspace-section-surface, var(--surface-section-content));
 }
 
 .shared-empty-state {
   margin: 0;
-  border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
-  background:
-    radial-gradient(circle at 20% 0%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 34%),
-    var(--surface-overlay);
+  border: 1px solid var(--workspace-border-subtle, color-mix(in oklab, var(--line) 72%, transparent));
+  background: var(--workspace-empty-surface, var(--surface-overlay));
   color: var(--text-soft);
   border-radius: var(--radius-xs);
   padding: var(--space-5);
   font-weight: 700;
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 }
 
 .shared-empty-state--structured {
@@ -105,12 +103,12 @@
 
 .shared-empty-state--error {
   border-color: color-mix(in oklab, var(--danger) 24%, var(--line));
-  background: color-mix(in oklab, var(--danger-bg) 54%, var(--surface-overlay));
+  background: var(--workspace-error-surface);
 }
 
 .shared-empty-state--permission {
   border-color: color-mix(in oklab, var(--warning) 24%, var(--line));
-  background: color-mix(in oklab, var(--warning-bg) 58%, var(--surface-overlay));
+  background: var(--workspace-warning-surface);
 }
 
 .shared-empty-state--loading {

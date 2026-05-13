@@ -44,6 +44,7 @@ import {
   RefreshCw,
   Repeat2,
   Search,
+  Save,
   Send,
   Settings,
   SquareCheckBig,
@@ -105,6 +106,7 @@ export type AppIconName =
   | "plus"
   | "receipt"
   | "refresh"
+  | "save"
   | "search"
   | "send"
   | "settings"
@@ -166,6 +168,7 @@ const icons: Record<AppIconName, LucideIcon> = {
   plus: Plus,
   receipt: ReceiptText,
   refresh: RefreshCw,
+  save: Save,
   search: Search,
   send: Send,
   settings: Settings,

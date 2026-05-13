@@ -4,11 +4,11 @@ import {
   AppIcon,
   AppSelect,
   Button,
+  DataTable,
+  type DataTableColumn,
   EmptyState,
   PageToolbar,
   RegistrationList,
-  ResourceTable,
-  type ResourceTableColumn,
   StatusBadge,
   TextInput
 } from "@/shared/ui";
@@ -134,7 +134,7 @@ export function BillingCatalogSection({
     onCatalogBillingFilterChange("ALL");
   };
 
-  const columns = useMemo<Array<ResourceTableColumn<ConnectCatalogItem>>>(
+  const columns = useMemo<Array<DataTableColumn<ConnectCatalogItem>>>(
     () => [
       {
         id: "item",
@@ -235,14 +235,8 @@ export function BillingCatalogSection({
   return (
     <div className="billing-view__panel billing-view__panel--catalog billing-catalog" role="tabpanel">
       <RegistrationList
-        title="Catálogo"
-        description="Produtos e serviços prontos para cobrar, orçar e contratar."
-        actions={
-          <Button type="button" variant="primary" onClick={onOpenCatalogForm} className="billing-catalog__primary-action">
-            <AppIcon name="plus" size={15} />
-            Novo item
-          </Button>
-        }
+        title=""
+        headerClassName="billing-catalog__header billing-catalog__header--actions-only"
         summary={
           <>
             <CatalogSummaryItem label="Itens ativos" value={activeItems.length} detail="Disponíveis para novas cobranças" />
@@ -253,6 +247,7 @@ export function BillingCatalogSection({
         toolbar={
           <PageToolbar
             compact
+            className="billing-catalog__toolbar"
             ariaLabel="Filtros do catálogo"
             search={
               <label className="billing-catalog__search">
@@ -292,22 +287,27 @@ export function BillingCatalogSection({
               </>
             }
             end={
-              hasFilters ? (
-                <Button type="button" size="sm" variant="ghost" onClick={resetFilters}>
-                  Limpar
+              <div className="billing-catalog__toolbar-end">
+                {hasFilters ? (
+                  <Button type="button" size="sm" variant="ghost" onClick={resetFilters}>
+                    Limpar
+                  </Button>
+                ) : null}
+                <Button type="button" size="sm" variant="primary" onClick={onOpenCatalogForm} className="billing-catalog__primary-action">
+                  <AppIcon name="plus" size={14} />
+                  Novo item
                 </Button>
-              ) : (
-                <StatusBadge tone="muted" size="sm">{`${catalogItems.length} item${catalogItems.length === 1 ? "" : "s"}`}</StatusBadge>
-              )
+              </div>
             }
           />
         }
       >
-        <ResourceTable
+        <DataTable<ConnectCatalogItem>
           data={catalogItems}
           columns={columns}
-          rowKey="id"
+          getRowId={(item) => item.id}
           className="billing-view__table billing-catalog__table"
+          containerClassName="billing-view__table-container billing-catalog__table-container"
           loading={catalogLoadState === "loading"}
           loadingState="Carregando catálogo..."
           emptyState={emptyState}
@@ -316,35 +316,31 @@ export function BillingCatalogSection({
           pagination={
             hasCatalogItems || catalogHasPrevious || catalogHasNext
               ? {
-                  page: catalogPage,
+                  pageIndex: Math.max(catalogPage - 1, 0),
                   pageSize: 25,
-                  hasPrevious: catalogHasPrevious,
-                  hasNext: catalogHasNext,
-                  isLoading: catalogIsFetching,
-                  label: "Paginacao do catalogo",
-                  onPrevious: onCatalogPrevious,
-                  onNext: onCatalogNext
+                  totalCount: ((catalogPage - 1) * 25) + catalogItems.length + (catalogHasNext ? 25 : 0),
+                  pageCount: catalogPage + (catalogHasNext ? 1 : 0),
+                  canPreviousPage: catalogHasPrevious && !catalogIsFetching,
+                  canNextPage: catalogHasNext && !catalogIsFetching,
+                  "aria-label": "Paginacao do catalogo",
+                  className: "billing-view__data-table-pagination",
+                  infoClassName: "billing-view__data-table-pagination-info",
+                  controlsClassName: "billing-view__data-table-pagination-controls",
+                  actionsClassName: "billing-view__data-table-pagination-actions",
+                  onPageChange: (pageIndex) => {
+                    const currentPageIndex = Math.max(catalogPage - 1, 0);
+                    if (pageIndex < currentPageIndex) {
+                      onCatalogPrevious();
+                      return;
+                    }
+                    if (pageIndex > currentPageIndex) {
+                      onCatalogNext();
+                    }
+                  }
                 }
               : undefined
           }
-          mobileCard={{
-            render: (item) => (
-              <>
-                <div className="billing-catalog__item-cell">
-                  <strong>{item.name}</strong>
-                  <span>{item.description || "Sem descricao"}</span>
-                </div>
-                <div className="billing-catalog__stack-cell">
-                  <strong>{formatAmount(item.amount, item.currency)}</strong>
-                  <span>{CATALOG_BILLING_LABEL[item.billingType]} - {formatRecurrence(item)}</span>
-                </div>
-                <StatusBadge tone={item.isActive ? "success" : "muted"} size="sm" dot>
-                  {item.isActive ? "Ativo" : "Inativo"}
-                </StatusBadge>
-              </>
-            )
-          }}
-          actions={{
+          rowActions={{
             header: "",
             width: "minmax(190px, 0.9fr)",
             cellClassName: "billing-catalog__actions-cell",

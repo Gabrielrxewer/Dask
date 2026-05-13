@@ -36,6 +36,7 @@ import { AppShell } from "@/widgets/app-shell";
 import { DocumentationAssistantPanel } from "./documentation-assistant-panel";
 import { DocumentationCreateModal } from "./documentation-create-modal";
 import { DocumentationEditorPanel } from "./documentation-editor-panel";
+import type { MarkdownEditorHandle } from "./editable-markdown-preview";
 import { DocumentationFilesPane } from "./documentation-files-pane";
 import { DocumentationFolderDialog } from "./documentation-folder-dialog";
 import { DocumentationSendModal } from "./documentation-send-modal";
@@ -57,8 +58,7 @@ import {
   inferIntentMode,
   normalizeDocumentKind,
   type AssistantMessage,
-  type DocumentKindFilter,
-  type EditorViewMode
+  type DocumentKindFilter
 } from "./documentation-page.local";
 import { useDocumentAutosave } from "./use-document-autosave";
 import "./documentation-page.css";
@@ -160,7 +160,7 @@ export function DocumentationPage() {
   const isClient = snapshot?.access?.isClient || snapshot?.access?.role === "CLIENT";
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const logoFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [docs, setDocs] = useState<WorkspaceDocument[]>([]);
@@ -180,7 +180,6 @@ export function DocumentationPage() {
   const [assistantSuggestion, setAssistantSuggestion] = useState<AssistantSuggestion | null>(null);
   const [chatsByDoc, setChatsByDoc] = useState<Record<string, AssistantMessage[]>>({});
   const [selectedSnippet, setSelectedSnippet] = useState("");
-  const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("split");
   const [activeMode, setActiveMode] = useState<DocumentationAssistantMode>("chat");
   const [isModeInfoOpen, setIsModeInfoOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -222,7 +221,6 @@ export function DocumentationPage() {
 
   useEffect(() => {
     if (isClient) {
-      setEditorViewMode("preview");
       setIsAssistantOpen(false);
       setIsCreateModalOpen(false);
       setSendModalDocId(null);
@@ -610,20 +608,19 @@ export function DocumentationPage() {
     }
   }
 
-  function handleEditorSelection(textarea: HTMLTextAreaElement) {
-    const nextSelection = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd).trim();
-    setSelectedSnippet(nextSelection.slice(0, 6000));
+  function handleEditorSelection(selectedText: string) {
+    setSelectedSnippet(selectedText.trim().slice(0, 6000));
   }
 
   function focusEditorAtSelection(start: number, end: number) {
     requestAnimationFrame(() => {
-      const textarea = editorTextareaRef.current;
-      if (!textarea) {
+      const editor = editorRef.current;
+      if (!editor) {
         return;
       }
-      textarea.focus();
-      textarea.setSelectionRange(start, end);
-      handleEditorSelection(textarea);
+      editor.focus();
+      editor.setSelectionRange(start, end);
+      handleEditorSelection(editor.getSelectedText());
     });
   }
 
@@ -643,12 +640,13 @@ export function DocumentationPage() {
     if (!activeDoc) {
       return;
     }
-    const textarea = editorTextareaRef.current;
-    if (!textarea) {
+    const editor = editorRef.current;
+    if (!editor) {
       return;
     }
 
-    const { selectionStart, selectionEnd, value } = textarea;
+    const value = editor.getValue();
+    const { start: selectionStart, end: selectionEnd } = editor.getSelection();
     const selected = value.slice(selectionStart, selectionEnd);
     const insertionTarget = selected || placeholder;
     const before = value.slice(0, selectionStart);
@@ -665,12 +663,13 @@ export function DocumentationPage() {
     if (!activeDoc) {
       return;
     }
-    const textarea = editorTextareaRef.current;
-    if (!textarea) {
+    const editor = editorRef.current;
+    if (!editor) {
       return;
     }
 
-    const { selectionStart, selectionEnd, value } = textarea;
+    const value = editor.getValue();
+    const { start: selectionStart, end: selectionEnd } = editor.getSelection();
     const selected = value.slice(selectionStart, selectionEnd);
     const insertionTarget = selected || placeholder;
     const transformed = insertionTarget
@@ -690,12 +689,13 @@ export function DocumentationPage() {
     if (!activeDoc) {
       return;
     }
-    const textarea = editorTextareaRef.current;
-    if (!textarea) {
+    const editor = editorRef.current;
+    if (!editor) {
       return;
     }
 
-    const { selectionStart, selectionEnd, value } = textarea;
+    const value = editor.getValue();
+    const { start: selectionStart, end: selectionEnd } = editor.getSelection();
     const before = value.slice(0, selectionStart);
     const after = value.slice(selectionEnd);
     const needsLineBreakBefore = before.length > 0 && !before.endsWith("\n");
@@ -713,15 +713,16 @@ export function DocumentationPage() {
     if (!activeDoc) {
       return;
     }
-    const textarea = editorTextareaRef.current;
-    if (!textarea) {
+    const editor = editorRef.current;
+    if (!editor) {
       updateDocDraft(activeDoc.id, {
         content: `${activeDoc.content}${activeDoc.content.endsWith(" ") || activeDoc.content.length === 0 ? "" : " "}{{${variableKey}}}`
       });
       return;
     }
 
-    const { selectionStart, selectionEnd, value } = textarea;
+    const value = editor.getValue();
+    const { start: selectionStart, end: selectionEnd } = editor.getSelection();
     const insertion = `{{${variableKey}}}`;
     const nextContent = `${value.slice(0, selectionStart)}${insertion}${value.slice(selectionEnd)}`;
     const cursor = selectionStart + insertion.length;
@@ -1269,7 +1270,7 @@ export function DocumentationPage() {
           activeDoc={activeDoc}
           activeDocKind={activeDocKind}
           linkedWorkItem={activeLinkedTask}
-          editorTextareaRef={editorTextareaRef}
+          editorRef={editorRef}
           logoFileInputRef={logoFileInputRef}
           selectedSnippet={selectedSnippet}
           wordCount={wordCount}
@@ -1283,7 +1284,6 @@ export function DocumentationPage() {
           autosaveStatus={activeDoc ? autosave.statusByDocId[activeDoc.id] ?? "saved" : "saved"}
           saveError={activeSaveError}
           uploadProgress={uploadProgress}
-          editorViewMode={editorViewMode}
           readOnly={isClient}
           clientDecision={
             canClientDecideDocument
@@ -1317,7 +1317,6 @@ export function DocumentationPage() {
           onClientLogoFileChange={handleClientLogoFileChange}
           onMarkdownToolbarAction={handleMarkdownToolbarAction}
           onInsertVariable={insertVariable}
-          onEditorViewModeChange={setEditorViewMode}
           onEditorSelection={handleEditorSelection}
         />
 

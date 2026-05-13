@@ -1,59 +1,65 @@
-/* ── Panel shell ────────────────────────────────────────────────────────────── */
-
 .acp {
-  --acp-color: var(--text-primary);
-  --acp-surface: color-mix(in oklab, var(--surface-raised, var(--neutral-white)) 98%, var(--acp-color));
-  --acp-line: color-mix(in oklab, var(--line, var(--border-default)) 80%, var(--acp-color));
-  --acp-accent: var(--acp-color);
+  --acp-color: var(--workspace-text-primary);
+  --acp-text: var(--workspace-text-primary);
+  --acp-text-soft: var(--workspace-text-secondary);
+  --acp-text-muted: var(--workspace-text-muted);
+  --acp-surface: var(--workspace-surface);
+  --acp-surface-soft: var(--workspace-surface-soft);
+  --acp-surface-muted: var(--workspace-table-header);
+  --acp-line: var(--workspace-border);
+  --acp-line-subtle: var(--workspace-border-subtle);
+  --acp-selected: var(--workspace-selected);
+  --acp-selected-border: var(--workspace-selected-border);
 
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--acp-surface);
   border-left: 1px solid var(--acp-line);
+  background: var(--acp-surface);
+  color: var(--acp-text);
 }
-
-/* ── Header ─────────────────────────────────────────────────────────────────── */
 
 .acp .shared-drawer-shell__header {
   position: relative;
-  padding: 14px 14px 13px;
   border-bottom-color: var(--acp-line);
-  background: color-mix(in oklab, var(--acp-color) 8%, var(--acp-surface));
+  background: var(--acp-surface-muted);
+  padding: 14px 14px 13px;
 }
 
 .acp .shared-drawer-shell__header::before {
-  content: '';
+  content: "";
   position: absolute;
-  left: 0;
   top: 0;
   bottom: 0;
+  left: 0;
   width: 3px;
-  background: var(--acp-color);
+  background: color-mix(in oklab, var(--acp-color) 74%, var(--acp-selected-border));
 }
 
 .acp__type-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
-  background: var(--acp-color);
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 20%, transparent);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--acp-color) 74%, var(--acp-selected-border));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acp-color) 16%, transparent);
 }
 
 .acp .shared-drawer-shell__title h2 {
-  color: var(--acp-color);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--acp-text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.acp .shared-drawer-shell__title p {
+  color: var(--acp-text-muted);
 }
 
 .acp .shared-drawer-shell__close:hover {
-  background: color-mix(in oklab, var(--acp-color) 10%, var(--acp-surface));
-  color: var(--acp-color);
-  border-color: color-mix(in oklab, var(--acp-color) 30%, var(--acp-line));
+  border-color: var(--acp-selected-border);
+  background: var(--acp-selected);
+  color: var(--acp-text);
 }
-
-/* ── Body ───────────────────────────────────────────────────────────────────── */
 
 .acp__body {
   flex: 1;
@@ -67,31 +73,29 @@
   gap: 14px;
 }
 
-/* ── Field ──────────────────────────────────────────────────────────────────── */
-
 .acp__field {
   display: grid;
   gap: 7px;
 }
 
 .acp .shared-form-field__label {
+  color: var(--acp-text);
   font-size: var(--font-size-xs);
   font-weight: 760;
-  color: var(--text-strong);
-  text-transform: none;
   letter-spacing: 0;
+  text-transform: none;
 }
 
-/* ── Controls ───────────────────────────────────────────────────────────────── */
-
-/* ── Toggle ─────────────────────────────────────────────────────────────────── */
-
-/* ── Tool list ──────────────────────────────────────────────────────────────── */
-
-/* ── Info box ───────────────────────────────────────────────────────────────── */
-
-/* ── Dark mode ──────────────────────────────────────────────────────────────── */
-
 .app-theme[data-theme="dark"] .acp {
-  --acp-surface: var(--surface-raised, var(--text-primary));
+  --acp-color: var(--workspace-text-primary);
+  --acp-text: var(--workspace-text-primary);
+  --acp-text-soft: var(--workspace-text-secondary);
+  --acp-text-muted: var(--workspace-text-muted);
+  --acp-surface: var(--workspace-surface);
+  --acp-surface-soft: var(--workspace-surface-soft);
+  --acp-surface-muted: var(--workspace-table-header);
+  --acp-line: var(--workspace-border);
+  --acp-line-subtle: var(--workspace-border-subtle);
+  --acp-selected: var(--workspace-selected);
+  --acp-selected-border: var(--workspace-selected-border);
 }

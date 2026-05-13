@@ -130,6 +130,20 @@ export const automationNodeConfigSchemas: Record<string, AutomationNodeConfigSch
     requiredAny: [['title', 'description', 'typeSlug', 'assigneeId', 'dueDate', 'customFieldValues', 'fields', 'metadata']],
     description: 'Atualiza dados nativos, metadata ou campos customizados do card.'
   },
+  replicate_work_item_type_fields: {
+    type: 'replicate_work_item_type_fields',
+    label: 'Replicar campos entre tipos',
+    required: ['itemIdPath'],
+    requiredAny: [['transformationId', 'toTypeId', 'toTypeSlug']],
+    description: 'Calcula a replicacao de campos compativeis entre tipos de WorkItem e preserva campos sem equivalente.'
+  },
+  transform_work_item_type: {
+    type: 'transform_work_item_type',
+    label: 'Transformar tipo de WorkItem',
+    required: ['itemIdPath'],
+    requiredAny: [['transformationId', 'toTypeId', 'toTypeSlug']],
+    description: 'Transforma o tipo do WorkItem usando o contrato oficial de transformacao e auditoria.'
+  },
   create_proposal: {
     type: 'create_proposal',
     label: 'Criar proposta',
@@ -223,6 +237,18 @@ export function validateAutomationNodeConfig(node: AutomationGraphNode): Automat
           'config.fields',
           ['title', 'description', 'typeSlug', 'assigneeId', 'dueDate', 'customFieldValues', 'fields', 'metadata'],
           'Atualizar card exige pelo menos um campo nativo, metadata ou custom field.'
+        )
+      ];
+    case 'replicate_work_item_type_fields':
+    case 'transform_work_item_type':
+      return [
+        ...requireItem(node, config),
+        ...requireAny(
+          node,
+          config,
+          'config.toTypeSlug',
+          ['transformationId', 'toTypeId', 'toTypeSlug'],
+          'Configure a transformacao ou o tipo destino.'
         )
       ];
     case 'create_proposal':
@@ -352,4 +378,3 @@ function validateDelayNode(node: AutomationGraphNode, config: Record<string, unk
 
   return [];
 }
-

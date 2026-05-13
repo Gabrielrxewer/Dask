@@ -228,6 +228,38 @@
   --surface-chip-active: var(--selected-bg);
   --surface-table-header: color-mix(in oklab, var(--surface-2) 92%, var(--surface-1));
   --surface-table-row-hover: color-mix(in oklab, var(--primary) 6%, var(--surface-1));
+  /*
+   * Workspace visual language tokens
+   * Keep module screens aligned with the List view: cool page background,
+   * white/tokenized surfaces, soft blue-gray borders and compact controls.
+   */
+  --workspace-page-bg: color-mix(in srgb, var(--surface-tint) 76%, var(--surface-1));
+  --workspace-page-bg-soft: color-mix(in srgb, var(--surface-tint) 86%, var(--surface-1));
+  --workspace-surface: var(--surface-1);
+  --workspace-surface-soft: color-mix(in srgb, var(--surface-tint) 86%, var(--surface-1));
+  --workspace-section-surface: var(--surface-1);
+  --workspace-section-header-surface: color-mix(in srgb, var(--surface-tint) 94%, transparent);
+  --workspace-panel-surface: var(--surface-1);
+  --workspace-border: color-mix(in srgb, var(--border-default) 82%, var(--info-border));
+  --workspace-border-subtle: color-mix(in srgb, var(--workspace-border) 72%, transparent);
+  --workspace-border-strong: color-mix(in srgb, var(--border-strong) 74%, var(--info-border));
+  --workspace-text-primary: var(--text-primary);
+  --workspace-text-secondary: var(--text-secondary);
+  --workspace-text-muted: var(--text-muted);
+  --workspace-hover: var(--surface-table-row-hover);
+  --workspace-selected: var(--selected-bg);
+  --workspace-selected-border: var(--selected-border);
+  --workspace-control-surface: var(--control-surface);
+  --workspace-control-surface-hover: var(--control-surface-hover);
+  --workspace-control-border: var(--workspace-border);
+  --workspace-focus-ring: var(--focus-ring);
+  --workspace-table-header: var(--surface-table-header);
+  --workspace-table-row: var(--workspace-surface);
+  --workspace-table-row-hover: var(--surface-table-row-hover);
+  --workspace-empty-surface: var(--surface-overlay);
+  --workspace-error-surface: color-mix(in oklab, var(--danger-bg) 58%, var(--surface-1));
+  --workspace-warning-surface: color-mix(in oklab, var(--warning-bg) 58%, var(--surface-1));
+  --workspace-success-surface: color-mix(in oklab, var(--success-bg) 58%, var(--surface-1));
   --shadow-soft: 0 8px 18px rgba(18, 50, 74, 0.05);
   --shadow-card:
     0 14px 30px rgba(18, 50, 74, 0.07),
@@ -406,6 +438,33 @@
   --surface-chip-active: var(--selected-bg);
   --surface-table-header: color-mix(in oklab, var(--surface-2) 54%, var(--surface-1));
   --surface-table-row-hover: color-mix(in oklab, var(--primary) 7%, var(--surface-1));
+  --workspace-page-bg: var(--surface-1);
+  --workspace-page-bg-soft: var(--surface-2);
+  --workspace-surface: var(--surface-1);
+  --workspace-surface-soft: var(--surface-2);
+  --workspace-section-surface: var(--surface-1);
+  --workspace-section-header-surface: var(--surface-table-header);
+  --workspace-panel-surface: var(--surface-1);
+  --workspace-border: color-mix(in oklab, var(--line) 86%, transparent);
+  --workspace-border-subtle: color-mix(in oklab, var(--line) 58%, transparent);
+  --workspace-border-strong: var(--line-strong);
+  --workspace-text-primary: var(--text-primary);
+  --workspace-text-secondary: var(--text-secondary);
+  --workspace-text-muted: var(--text-muted);
+  --workspace-hover: var(--surface-table-row-hover);
+  --workspace-selected: var(--selected-bg);
+  --workspace-selected-border: var(--selected-border);
+  --workspace-control-surface: var(--control-surface);
+  --workspace-control-surface-hover: var(--control-surface-hover);
+  --workspace-control-border: var(--workspace-border);
+  --workspace-focus-ring: var(--focus-ring);
+  --workspace-table-header: var(--surface-table-header);
+  --workspace-table-row: var(--workspace-surface);
+  --workspace-table-row-hover: var(--surface-table-row-hover);
+  --workspace-empty-surface: var(--surface-overlay);
+  --workspace-error-surface: color-mix(in oklab, var(--danger-bg) 62%, var(--surface-1));
+  --workspace-warning-surface: color-mix(in oklab, var(--warning-bg) 62%, var(--surface-1));
+  --workspace-success-surface: color-mix(in oklab, var(--success-bg) 62%, var(--surface-1));
   --shadow-soft: 0 8px 18px rgba(0, 0, 0, 0.18);
   --shadow-card:
     0 16px 32px rgba(0, 0, 0, 0.24),

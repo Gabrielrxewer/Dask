@@ -1665,8 +1665,8 @@ export class WorkspaceDocumentsService {
       payload: {
         workspaceId: input.workspaceId,
         documentId: input.document.id,
-        linkedEntityType: input.document.linkedEntityType ?? null,
-        linkedEntityId: input.document.linkedEntityId ?? null,
+        ...this.toWorkItemLinkPayload(input.document),
+        idempotencyKey: `${eventName}:${input.document.id}:${input.document.linkedEntityId ?? 'unlinked'}`,
         requestedBy: input.userId
       }
     });
@@ -1713,8 +1713,8 @@ export class WorkspaceDocumentsService {
         workspaceId: input.workspaceId,
         documentId: input.document.id,
         status: input.nextStatus,
-        linkedEntityType: input.document.linkedEntityType ?? null,
-        linkedEntityId: input.document.linkedEntityId ?? null,
+        ...this.toWorkItemLinkPayload(input.document),
+        idempotencyKey: `${eventName}:${input.document.id}:${input.document.linkedEntityId ?? 'unlinked'}:${input.nextStatus}`,
         requestedBy: input.userId
       }
     });
@@ -1753,11 +1753,30 @@ export class WorkspaceDocumentsService {
         sentToEmail: input.sentToEmails[0] ?? '',
         sentToEmails: input.sentToEmails,
         publicTokenIssued: true,
-        linkedEntityType: input.document.linkedEntityType ?? null,
-        linkedEntityId: input.document.linkedEntityId ?? null,
+        ...this.toWorkItemLinkPayload(input.document),
+        idempotencyKey: `${eventName}:${input.document.id}:${input.document.linkedEntityId ?? 'unlinked'}:sent`,
         requestedBy: input.userId
       }
     });
+  }
+
+  private toWorkItemLinkPayload(document: { linkedEntityType?: string | null; linkedEntityId?: string | null }) {
+    const linkedEntityType = document.linkedEntityType ?? null;
+    const linkedEntityId = document.linkedEntityId ?? null;
+
+    if (linkedEntityType === 'work_item' && linkedEntityId) {
+      return {
+        linkedEntityType,
+        linkedEntityId,
+        itemId: linkedEntityId,
+        workItemId: linkedEntityId
+      };
+    }
+
+    return {
+      linkedEntityType,
+      linkedEntityId
+    };
   }
 
   public async deleteDocument(input: { workspaceId: string; documentId: string; userId: string }) {

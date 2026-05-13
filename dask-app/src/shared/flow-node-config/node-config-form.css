@@ -53,7 +53,7 @@
 }
 
 .node-config-form__error {
-  color: var(--danger, #dc2626);
+  color: var(--danger);
 }
 
 .node-config-form__textarea,
@@ -172,7 +172,7 @@
 .node-config-form__errors {
   display: grid;
   gap: 5px;
-  color: var(--danger, #dc2626);
+  color: var(--danger);
   font-size: var(--font-size-xs);
 }
 

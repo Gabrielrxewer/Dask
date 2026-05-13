@@ -14,6 +14,8 @@ export type AutomationNodeType =
   | 'human_approval'
   | 'move_work_item'
   | 'update_work_item_fields'
+  | 'replicate_work_item_type_fields'
+  | 'transform_work_item_type'
   | 'create_proposal'
   | 'create_contract'
   | 'send_document'
@@ -60,16 +62,62 @@ export interface AutomationWorkflowGraphCapability {
 
 export interface AutomationCapabilities {
   schemaVersion: 1;
+  runtime: AutomationRuntimeCapabilities;
   nodeCatalog: AutomationNodeCapability[];
+  nativeWorkflowCatalog: AutomationNativeWorkflowCapability[];
   recipeCatalog: AutomationRecipeCapability[];
   defaultGraph: AutomationWorkflowGraphCapability;
+}
+
+export type AutomationNativeWorkflowDomain = 'commercial';
+export type AutomationNativeWorkflowEditableMode = 'full' | 'config_only' | 'readonly';
+export type AutomationWorkflowCatalogCategory = 'signal' | 'proposal' | 'contract' | 'billing' | 'customer' | 'followup';
+
+export interface AutomationRuntimeCapabilities {
+  graphSchemaVersion: 1;
+  creationSource: 'nodes';
+  supportsEmptyWorkflow: boolean;
+  supportsNativeWorkflows: boolean;
+  requiresPublishedVersionToRun: boolean;
+}
+
+export interface AutomationNativeWorkflowCapability {
+  nativeKey: string;
+  legacyRecipeId?: string;
+  name: string;
+  description: string;
+  nativeDomain: AutomationNativeWorkflowDomain;
+  category: AutomationWorkflowCatalogCategory;
+  schemaVersion: number;
+  isSystemManaged: boolean;
+  isProtected: boolean;
+  editableMode: AutomationNativeWorkflowEditableMode;
+}
+
+export interface AutomationNativeWorkflowDefinition extends AutomationNativeWorkflowCapability {
+  graph: AutomationWorkflowGraphCapability;
 }
 
 export interface AutomationRecipeCapability {
   id: string;
   name: string;
   description: string;
-  category: 'signal' | 'proposal' | 'contract' | 'billing' | 'customer' | 'followup';
+  category: AutomationWorkflowCatalogCategory;
+  deprecated: true;
+  internal: true;
+  visibility: 'internal';
+  replacedBy?: {
+    kind: 'native_workflow';
+    nativeKey: string;
+  };
+  graph?: AutomationWorkflowGraphCapability;
+}
+
+export interface AutomationLegacyRecipeDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: AutomationWorkflowCatalogCategory;
   graph: AutomationWorkflowGraphCapability;
 }
 
@@ -85,6 +133,8 @@ export const automationNodeCatalog: AutomationNodeCapability[] = [
   { type: 'human_approval', label: 'Aprovacao humana', description: 'Aprovar antes do efeito', color: '#dc2626', icon: 'square-check', group: 'approval', configSchema: schemaFor('human_approval') },
   { type: 'move_work_item', label: 'Mover card', description: 'Move card para coluna ou estado', color: '#2563eb', icon: 'board', group: 'card', configSchema: schemaFor('move_work_item') },
   { type: 'update_work_item_fields', label: 'Atualizar card', description: 'Atualiza campos do card', color: '#0f766e', icon: 'pencil', group: 'card', configSchema: schemaFor('update_work_item_fields') },
+  { type: 'replicate_work_item_type_fields', label: 'Replicar campos', description: 'Mapeia e preserva dados entre tipos de WorkItem', color: '#0f766e', icon: 'pencil', group: 'card', configSchema: schemaFor('replicate_work_item_type_fields') },
+  { type: 'transform_work_item_type', label: 'Transformar tipo', description: 'Transforma Prospect em Lead mantendo o WorkItem', color: '#2563eb', icon: 'board', group: 'card', configSchema: schemaFor('transform_work_item_type') },
   { type: 'create_proposal', label: 'Criar proposta', description: 'Cria proposta comercial vinculada', color: '#9333ea', icon: 'file', group: 'proposals', configSchema: schemaFor('create_proposal') },
   { type: 'create_contract', label: 'Criar contrato', description: 'Cria contrato comercial vinculado', color: '#7c3aed', icon: 'file', group: 'contracts', configSchema: schemaFor('create_contract') },
   { type: 'send_document', label: 'Enviar documento', description: 'Envia proposta ou contrato', color: '#0891b2', icon: 'send', group: 'documents', configSchema: schemaFor('send_document') },
@@ -149,7 +199,29 @@ function recipeGraph(input: {
   };
 }
 
-export const automationRecipeCatalog: AutomationRecipeCapability[] = [
+export const automationRecipeCatalog: AutomationLegacyRecipeDefinition[] = [
+  {
+    id: 'prospect-to-lead-native-transformation',
+    name: 'Prospect para Lead',
+    description: 'Transforma Prospect em Lead com validacao, replicacao de campos compativeis e historico auditavel.',
+    category: 'signal',
+    graph: recipeGraph({
+      metadata: { trigger: 'manual_action', native: true },
+      nodes: [
+        { id: 'trigger-prospect-to-lead', type: 'trigger', label: 'Acao manual', config: { triggerType: 'manual' }, position: { x: 80, y: 120 } },
+        { id: 'replicate-prospect-fields', type: 'replicate_work_item_type_fields', label: 'Replicar campos', config: { itemIdPath: 'event.payload.itemId', toTypeSlug: 'commercial' }, position: { x: 340, y: 120 } },
+        { id: 'transform-prospect-to-lead', type: 'transform_work_item_type', label: 'Transformar em Lead', config: { itemIdPath: 'event.payload.itemId', toTypeSlug: 'commercial', stateSlug: 'commercial_intake' }, position: { x: 610, y: 120 } },
+        { id: 'activity-prospect-to-lead', type: 'register_card_activity', label: 'Registrar historico', config: { itemIdPath: 'event.payload.itemId', eventName: 'work_item_type.prospect_to_lead', message: 'Prospect transformado em Lead pela automacao nativa.', payload: { copiedFields: '{{previousOutput.copiedFields}}' } }, position: { x: 880, y: 120 } },
+        { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1140, y: 120 } }
+      ],
+      edges: [
+        { id: 'edge-prospect-lead-1', source: 'trigger-prospect-to-lead', target: 'replicate-prospect-fields' },
+        { id: 'edge-prospect-lead-2', source: 'replicate-prospect-fields', target: 'transform-prospect-to-lead' },
+        { id: 'edge-prospect-lead-3', source: 'transform-prospect-to-lead', target: 'activity-prospect-to-lead' },
+        { id: 'edge-prospect-lead-4', source: 'activity-prospect-to-lead', target: 'end' }
+      ]
+    })
+  },
   {
     id: 'commercial-work-item-created-to-intake',
     name: 'Entrada automatica comercial',
@@ -158,7 +230,7 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     graph: recipeGraph({
       metadata: { trigger: 'commercial_work_item.created' },
       nodes: [
-        { id: 'trigger-commercial-created', type: 'trigger', label: 'WorkItem comercial criado', config: { triggerType: 'commercial_work_item_created' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-commercial-created', type: 'trigger', label: 'WorkItem comercial criado', config: { triggerType: 'commercial_work_item_created', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
         { id: 'activity-commercial-created', type: 'register_card_activity', label: 'Registrar entrada', config: { itemIdPath: 'event.payload.itemId', eventName: 'commercial_work_item.created', message: 'WorkItem comercial criado e recebido no funil comercial.', payload: { source: '{{event.name}}' } }, position: { x: 340, y: 120 } },
         { id: 'move-commercial-intake', type: 'move_work_item', label: 'Mover para Entrada comercial', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'commercial_intake', stateSlug: 'commercial_intake' }, position: { x: 610, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 860, y: 120 } }
@@ -198,10 +270,10 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'signal',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-commercial-intake', type: 'trigger', label: 'Entrou em Entrada comercial', config: { triggerType: 'work_item_moved_to_column', column: 'commercial_intake' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-commercial-intake', type: 'trigger', label: 'Entrou em Entrada comercial', config: { triggerType: 'work_item_moved_to_column', column: 'commercial_intake', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
         { id: 'ai-draft-message', type: 'ai_generate_message_draft', label: 'Gerar mensagem', config: { prompt: 'Crie uma mensagem curta de primeiro contato B2B.' }, position: { x: 330, y: 120 } },
-        { id: 'approval-first-contact', type: 'human_approval', label: 'Aprovar contato', config: { type: 'send_message', title: 'Aprovar primeiro contato', description: 'Revise a mensagem antes do envio ao contato.', requestedBy: '{{event.payload.requestedBy}}', expiresInDays: 2 }, position: { x: 590, y: 120 } },
-        { id: 'send-first-contact', type: 'communication_send', label: 'Enviar contato', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Ola, recebemos seu interesse e vamos seguir com o primeiro contato.' }, position: { x: 850, y: 120 } },
+        { id: 'approval-first-contact', type: 'human_approval', label: 'Aprovar contato', config: { type: 'send_message', title: 'Aprovar primeiro contato', description: 'Revise a mensagem antes do envio ao contato.', requestedBy: '{{event.payload.requestedBy}}', workItemId: '{{event.payload.itemId}}', expiresInDays: 2 }, position: { x: 590, y: 120 } },
+        { id: 'send-first-contact', type: 'communication_send', label: 'Enviar contato', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Ola, recebemos seu interesse e vamos seguir com o primeiro contato.', metadata: { itemId: '{{event.payload.itemId}}', workItemId: '{{event.payload.itemId}}', nativeDomain: 'commercial' } }, position: { x: 850, y: 120 } },
         { id: 'activity-first-contact', type: 'register_card_activity', label: 'Registrar contato', config: { itemIdPath: 'event.payload.itemId', eventName: 'commercial_work_item.first_contact.sent', message: 'Primeiro contato enviado ou aprovado para envio.', payload: { channel: 'email' } }, position: { x: 1110, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1370, y: 120 } }
       ],
@@ -221,11 +293,11 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'followup',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-proposal-sent-delay', type: 'trigger', label: 'Proposta enviada', config: { triggerType: 'proposal_status_changed', status: 'sent' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-proposal-sent-delay', type: 'trigger', label: 'Proposta enviada', config: { triggerType: 'proposal_status_changed', status: 'sent', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
         { id: 'delay-followup', type: 'delay', label: 'Aguardar resposta', config: { delayFor: { amount: 2, unit: 'days' } }, position: { x: 330, y: 120 } },
-        { id: 'send-followup', type: 'communication_send', label: 'Enviar follow-up', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Passando para saber se conseguiu avaliar a proposta.' }, position: { x: 590, y: 120 } },
-        { id: 'task-followup', type: 'create_followup_task', label: 'Criar tarefa', config: { itemIdPath: 'event.payload.linkedEntityId', title: 'Follow-up de proposta: {{item.title}}', description: 'Verificar retorno sobre proposta enviada.', dueInDays: 1, assigneeIdPath: 'event.payload.requestedBy', columnSlug: 'proposal_sent' }, position: { x: 850, y: 120 } },
-        { id: 'activity-followup', type: 'register_card_activity', label: 'Registrar tentativa', config: { itemIdPath: 'event.payload.linkedEntityId', eventName: 'proposal.followup.sent', message: 'Follow-up de proposta enviado apos ausencia de resposta.', payload: { attempt: 1 } }, position: { x: 1110, y: 120 } },
+        { id: 'send-followup', type: 'communication_send', label: 'Enviar follow-up', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Passando para saber se conseguiu avaliar a proposta.', metadata: { itemId: '{{event.payload.itemId}}', workItemId: '{{event.payload.itemId}}', nativeDomain: 'commercial' } }, position: { x: 590, y: 120 } },
+        { id: 'task-followup', type: 'create_followup_task', label: 'Criar tarefa', config: { itemIdPath: 'event.payload.itemId', title: 'Follow-up de proposta: {{item.title}}', description: 'Verificar retorno sobre proposta enviada.', dueInDays: 1, assigneeIdPath: 'event.payload.requestedBy', columnSlug: 'proposal_sent' }, position: { x: 850, y: 120 } },
+        { id: 'activity-followup', type: 'register_card_activity', label: 'Registrar tentativa', config: { itemIdPath: 'event.payload.itemId', eventName: 'proposal.followup.sent', message: 'Follow-up de proposta enviado apos ausencia de resposta.', payload: { attempt: 1 } }, position: { x: 1110, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1370, y: 120 } }
       ],
       edges: [
@@ -244,7 +316,7 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'proposal',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-proposal-preparing', type: 'trigger', label: 'Entrou em proposta', config: { triggerType: 'work_item_moved_to_column', column: 'proposal_preparing' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-proposal-preparing', type: 'trigger', label: 'Entrou em proposta', config: { triggerType: 'work_item_moved_to_column', column: 'proposal_preparing', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
         { id: 'create-proposal', type: 'create_proposal', label: 'Criar proposta', config: { itemIdPath: 'event.payload.itemId', templateKey: 'commercial_proposal', binding: 'commercial_proposal', targetFieldSlug: 'proposalId', status: 'draft', skipIfExists: true }, position: { x: 350, y: 120 } },
         { id: 'activity-proposal-created', type: 'register_card_activity', label: 'Registrar proposta', config: { itemIdPath: 'event.payload.itemId', eventName: 'proposal.created_by_automation', message: 'Proposta criada e vinculada ao card.', payload: { documentId: '{{previousOutput.documentId}}' } }, position: { x: 620, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 880, y: 120 } }
@@ -263,10 +335,10 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'contract',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-proposal-approved', type: 'trigger', label: 'Proposta aprovada', config: { triggerType: 'proposal_status_changed', status: 'approved' }, position: { x: 80, y: 120 } },
-        { id: 'create-contract', type: 'create_contract', label: 'Criar contrato', config: { itemIdPath: 'event.payload.linkedEntityId', proposalFieldSlug: 'proposalId', templateKey: 'commercial_contract', binding: 'commercial_contract', targetFieldSlug: 'contractId', status: 'draft', skipIfExists: true }, position: { x: 350, y: 120 } },
-        { id: 'move-contract-preparing', type: 'move_work_item', label: 'Mover para contrato', config: { itemIdPath: 'event.payload.linkedEntityId', columnSlug: 'contract_preparing', stateSlug: 'contract_preparing' }, position: { x: 620, y: 120 } },
-        { id: 'activity-contract-created', type: 'register_card_activity', label: 'Registrar contrato', config: { itemIdPath: 'event.payload.linkedEntityId', eventName: 'contract.created_by_automation', message: 'Contrato criado a partir de proposta aprovada.', payload: { documentId: '{{previousOutput.documentId}}' } }, position: { x: 890, y: 120 } },
+        { id: 'trigger-proposal-approved', type: 'trigger', label: 'Proposta aprovada', config: { triggerType: 'proposal_status_changed', status: 'approved', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
+        { id: 'create-contract', type: 'create_contract', label: 'Criar contrato', config: { itemIdPath: 'event.payload.itemId', proposalFieldSlug: 'proposalId', templateKey: 'commercial_contract', binding: 'commercial_contract', targetFieldSlug: 'contractId', status: 'draft', skipIfExists: true }, position: { x: 350, y: 120 } },
+        { id: 'move-contract-preparing', type: 'move_work_item', label: 'Mover para contrato', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'contract_preparing', stateSlug: 'contract_preparing' }, position: { x: 620, y: 120 } },
+        { id: 'activity-contract-created', type: 'register_card_activity', label: 'Registrar contrato', config: { itemIdPath: 'event.payload.itemId', eventName: 'contract.created_by_automation', message: 'Contrato criado a partir de proposta aprovada.', payload: { documentId: '{{previousOutput.documentId}}' } }, position: { x: 890, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1150, y: 120 } }
       ],
       edges: [
@@ -284,11 +356,11 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'billing',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-contract-accepted', type: 'trigger', label: 'Contrato aceito', config: { triggerType: 'contract_status_changed', status: 'accepted' }, position: { x: 80, y: 120 } },
-        { id: 'ensure-customer', type: 'ensure_customer_from_work_item', label: 'Garantir cliente', config: { itemIdPath: 'event.payload.linkedEntityId', targetFieldSlug: 'customerId', status: 'active' }, position: { x: 340, y: 120 } },
-        { id: 'create-billing', type: 'create_billing_order', label: 'Criar cobranca', config: { itemIdPath: 'event.payload.linkedEntityId', targetFieldSlug: 'billingOrderId', customerIdFieldSlug: 'customerId', catalogItemFieldSlug: 'interest', amountFieldSlug: 'estimatedValue', amountFieldUnit: 'major', sendEmail: true, skipIfExists: true }, position: { x: 610, y: 120 } },
-        { id: 'move-billing-created', type: 'move_work_item', label: 'Mover para cobranca', config: { itemIdPath: 'event.payload.linkedEntityId', columnSlug: 'billing_created', stateSlug: 'billing_created' }, position: { x: 880, y: 120 } },
-        { id: 'activity-billing-created', type: 'register_card_activity', label: 'Registrar cobranca', config: { itemIdPath: 'event.payload.linkedEntityId', eventName: 'billing.created_by_automation', message: 'Cobranca criada e vinculada ao card.', payload: { billingOrderId: '{{previousOutput.billingOrderId}}' } }, position: { x: 1150, y: 120 } },
+        { id: 'trigger-contract-accepted', type: 'trigger', label: 'Contrato aceito', config: { triggerType: 'contract_status_changed', status: 'accepted', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
+        { id: 'ensure-customer', type: 'ensure_customer_from_work_item', label: 'Garantir cliente', config: { itemIdPath: 'event.payload.itemId', targetFieldSlug: 'customerId', status: 'active' }, position: { x: 340, y: 120 } },
+        { id: 'create-billing', type: 'create_billing_order', label: 'Criar cobranca', config: { itemIdPath: 'event.payload.itemId', targetFieldSlug: 'billingOrderId', customerIdFieldSlug: 'customerId', catalogItemFieldSlug: 'interest', amountFieldSlug: 'estimatedValue', amountFieldUnit: 'major', sendEmail: true, skipIfExists: true }, position: { x: 610, y: 120 } },
+        { id: 'move-billing-created', type: 'move_work_item', label: 'Mover para cobranca', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'billing_created', stateSlug: 'billing_created' }, position: { x: 880, y: 120 } },
+        { id: 'activity-billing-created', type: 'register_card_activity', label: 'Registrar cobranca', config: { itemIdPath: 'event.payload.itemId', eventName: 'billing.created_by_automation', message: 'Cobranca criada e vinculada ao card.', payload: { billingOrderId: '{{previousOutput.billingOrderId}}' } }, position: { x: 1150, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1410, y: 120 } }
       ],
       edges: [
@@ -307,7 +379,7 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'customer',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-payment-confirmed', type: 'trigger', label: 'Pagamento confirmado', config: { triggerType: 'billing_payment_confirmed', status: 'paid' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-payment-confirmed', type: 'trigger', label: 'Pagamento confirmado', config: { triggerType: 'billing_payment_confirmed', status: 'paid', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
         { id: 'ensure-active-customer', type: 'ensure_customer_from_work_item', label: 'Ativar cliente', config: { itemIdPath: 'event.payload.itemId', targetFieldSlug: 'customerId', status: 'active' }, position: { x: 340, y: 120 } },
         { id: 'move-paid-active', type: 'move_work_item', label: 'Mover para ativo', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'paid_active', stateSlug: 'paid_active' }, position: { x: 610, y: 120 } },
         { id: 'onboarding-task', type: 'create_followup_task', label: 'Criar onboarding', config: { itemIdPath: 'event.payload.itemId', title: 'Onboarding: {{item.title}}', description: 'Iniciar checklist de onboarding do cliente ativo.', dueInDays: 2, assigneeIdPath: 'event.payload.requestedBy', columnSlug: 'paid_active' }, position: { x: 880, y: 120 } },
@@ -330,9 +402,9 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
     category: 'billing',
     graph: recipeGraph({
       nodes: [
-        { id: 'trigger-billing-overdue', type: 'trigger', label: 'Cobranca vencida', config: { triggerType: 'billing_overdue', status: 'overdue' }, position: { x: 80, y: 120 } },
+        { id: 'trigger-billing-overdue', type: 'trigger', label: 'Cobranca vencida', config: { triggerType: 'billing_overdue', status: 'overdue', itemTypeSlugs: ['commercial'] }, position: { x: 80, y: 120 } },
         { id: 'activity-overdue', type: 'register_card_activity', label: 'Registrar alerta', config: { itemIdPath: 'event.payload.itemId', eventName: 'billing.overdue', message: 'Cobranca vencida detectada. Acao financeira necessaria.', payload: { severity: 'high' } }, position: { x: 340, y: 120 } },
-        { id: 'send-overdue-reminder', type: 'communication_send', label: 'Enviar lembrete', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Identificamos uma cobranca em aberto. Podemos ajudar com o pagamento?' }, position: { x: 610, y: 120 } },
+        { id: 'send-overdue-reminder', type: 'communication_send', label: 'Enviar lembrete', config: { channel: 'email', to: '{{fields.contactEmail}}', body: 'Identificamos uma cobranca em aberto. Podemos ajudar com o pagamento?', metadata: { itemId: '{{event.payload.itemId}}', workItemId: '{{event.payload.itemId}}', nativeDomain: 'commercial' } }, position: { x: 610, y: 120 } },
         { id: 'task-overdue', type: 'create_followup_task', label: 'Criar tarefa financeira', config: { itemIdPath: 'event.payload.itemId', title: 'Cobranca vencida: {{item.title}}', description: 'Acompanhar cobranca vencida e registrar retorno financeiro.', dueInDays: 1, assigneeIdPath: 'event.payload.requestedBy', columnSlug: 'payment_overdue' }, position: { x: 880, y: 120 } },
         { id: 'move-overdue', type: 'move_work_item', label: 'Mover para atraso', config: { itemIdPath: 'event.payload.itemId', columnSlug: 'payment_overdue', stateSlug: 'payment_overdue' }, position: { x: 1150, y: 120 } },
         { id: 'end', type: 'end', label: 'Fim', config: {}, position: { x: 1410, y: 120 } }
@@ -348,11 +420,104 @@ export const automationRecipeCatalog: AutomationRecipeCapability[] = [
   }
 ];
 
+const commercialNativeWorkflowKeysByRecipeId: Record<string, string> = {
+  'commercial-work-item-created-to-intake': 'commercial.intake',
+  'hot-opportunity-followup': 'commercial.hot_opportunity',
+  'first-contact-on-commercial-intake': 'commercial.first_contact',
+  'no-response-followup': 'commercial.no_response_followup',
+  'proposal-preparing-create-proposal': 'commercial.proposal_drafting',
+  'proposal-approved-create-contract': 'commercial.proposal_approved_to_contract',
+  'contract-accepted-create-billing': 'commercial.contract_accepted_to_billing',
+  'payment-confirmed-active-customer': 'commercial.payment_confirmed_to_active_customer',
+  'billing-overdue-finance-alert': 'commercial.overdue_charge'
+};
+
+function nativeGraphFromLegacyRecipe(graph: AutomationWorkflowGraphCapability): AutomationWorkflowGraphCapability {
+  const metadata = { ...graph.metadata };
+  delete metadata.recipe;
+
+  return {
+    ...graph,
+    metadata: {
+      ...metadata,
+      native: true,
+      systemManaged: true,
+      source: 'work_item'
+    }
+  };
+}
+
+function toDeprecatedInternalRecipe(recipe: AutomationLegacyRecipeDefinition): AutomationRecipeCapability {
+  const nativeKey = commercialNativeWorkflowKeysByRecipeId[recipe.id];
+
+  return {
+    id: recipe.id,
+    name: recipe.name,
+    description: recipe.description,
+    category: recipe.category,
+    deprecated: true,
+    internal: true,
+    visibility: 'internal',
+    ...(nativeKey ? { replacedBy: { kind: 'native_workflow' as const, nativeKey } } : {}),
+    graph: recipe.graph
+  };
+}
+
+function toNativeWorkflowCapability(workflow: AutomationNativeWorkflowDefinition): AutomationNativeWorkflowCapability {
+  return {
+    nativeKey: workflow.nativeKey,
+    legacyRecipeId: workflow.legacyRecipeId,
+    name: workflow.name,
+    description: workflow.description,
+    nativeDomain: workflow.nativeDomain,
+    category: workflow.category,
+    schemaVersion: workflow.schemaVersion,
+    isSystemManaged: workflow.isSystemManaged,
+    isProtected: workflow.isProtected,
+    editableMode: workflow.editableMode
+  };
+}
+
+const automationRuntimeCapabilities: AutomationRuntimeCapabilities = {
+  graphSchemaVersion: 1,
+  creationSource: 'nodes',
+  supportsEmptyWorkflow: true,
+  supportsNativeWorkflows: true,
+  requiresPublishedVersionToRun: true
+};
+
+export const deprecatedInternalAutomationRecipeCatalog: AutomationRecipeCapability[] = automationRecipeCatalog
+  .map(toDeprecatedInternalRecipe);
+
+export const automationNativeWorkflowCatalog: AutomationNativeWorkflowDefinition[] = automationRecipeCatalog
+  .flatMap((recipe) => {
+    const nativeKey = commercialNativeWorkflowKeysByRecipeId[recipe.id];
+    if (!nativeKey) {
+      return [];
+    }
+
+    return [{
+      nativeKey,
+      legacyRecipeId: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      nativeDomain: 'commercial' as const,
+      category: recipe.category,
+      schemaVersion: 1,
+      isSystemManaged: true,
+      isProtected: true,
+      editableMode: 'config_only' as const,
+      graph: nativeGraphFromLegacyRecipe(recipe.graph)
+    }];
+  });
+
 export function getAutomationCapabilities(): AutomationCapabilities {
   return {
     schemaVersion: 1,
+    runtime: automationRuntimeCapabilities,
     nodeCatalog: automationNodeCatalog,
-    recipeCatalog: automationRecipeCatalog,
+    nativeWorkflowCatalog: automationNativeWorkflowCatalog.map(toNativeWorkflowCapability),
+    recipeCatalog: [],
     defaultGraph: createDefaultAutomationGraph()
   };
 }

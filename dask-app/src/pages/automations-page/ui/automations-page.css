@@ -1,10 +1,66 @@
 .automation-studio {
+  /*
+   * Automations consumes the same workspace/List visual base used by the
+   * other modules. Keep runtime, publishing and validation behavior out of
+   * this file; these aliases are only visual integration points.
+   */
+  --ast-page-bg: var(--workspace-page-bg);
+  --ast-surface: var(--workspace-surface);
+  --ast-surface-soft: var(--workspace-surface-soft);
+  --ast-surface-muted: var(--workspace-table-header);
+  --ast-border: var(--workspace-border);
+  --ast-border-subtle: var(--workspace-border-subtle);
+  --ast-border-strong: var(--workspace-border-strong);
+  --ast-text: var(--workspace-text-primary);
+  --ast-text-soft: var(--workspace-text-secondary);
+  --ast-text-muted: var(--workspace-text-muted);
+  --ast-hover: var(--workspace-table-row-hover);
+  --ast-selected: var(--workspace-selected);
+  --ast-selected-border: var(--workspace-selected-border);
+  --ast-control: var(--workspace-control-surface);
+  --ast-control-hover: var(--workspace-control-surface-hover);
+  --ast-control-border: var(--workspace-control-border);
+  --ast-focus-ring: var(--workspace-focus-ring);
+  --ast-accent: var(--module-automation-accent, var(--primary));
+  --ast-accent-strong: color-mix(in oklab, var(--ast-accent) 72%, var(--ast-text));
+
+  --bg: var(--ast-page-bg);
+  --panel: var(--ast-surface);
+  --panel-muted: var(--ast-surface-soft);
+  --surface-raised: var(--ast-surface);
+  --surface-muted: var(--ast-surface-muted);
+  --surface-tint: var(--workspace-page-bg-soft);
+  --line: var(--ast-border);
+  --line-soft: var(--ast-border-subtle);
+  --line-strong: var(--ast-border-strong);
+  --text: var(--ast-text-soft);
+  --text-strong: var(--ast-text);
+  --text-soft: var(--ast-text-soft);
+  --text-muted: var(--ast-text-muted);
+  --control-surface: var(--ast-control);
+  --control-surface-hover: var(--ast-control-hover);
+  --control-border: 1px solid var(--ast-control-border);
+  --focus-ring: var(--ast-focus-ring);
+  --accent: var(--ast-accent);
+  --accent-strong: var(--ast-accent-strong);
+  --accent-soft: color-mix(in oklab, var(--ast-accent) 8%, var(--ast-surface));
+  --agents-accent: var(--ast-accent);
+  --agents-accent-strong: var(--ast-accent-strong);
+  --studio-line: var(--ast-border);
+  --studio-panel: var(--ast-surface);
+  --studio-panel-muted: var(--ast-surface-soft);
+  --ab-line: var(--ast-border);
+  --ab-surface: var(--ast-surface);
+  --ab-text: var(--ast-text);
+  --ab-text-soft: var(--ast-text-soft);
+  --ab-text-muted: var(--ast-text-muted);
+
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--ast-page-bg);
 }
 
 /* ── Version bar buttons shared styles ─────────────────────────────────────── */
@@ -18,7 +74,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-xs, 8px);
   background: transparent;
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-xs, 0.8rem);
@@ -27,18 +83,18 @@
 }
 
 .studio-layout__sub-bar button:hover {
-  background: var(--panel-muted, var(--surface-3));
-  color: var(--text, var(--text-primary));
+  background: var(--ast-hover);
+  color: var(--ast-text);
 }
 
 .studio-layout__sub-bar button.is-active {
-  border-color: color-mix(in oklab, var(--accent, var(--brand-blue)) 24%, transparent);
+  border-color: var(--ast-selected-border);
   background: var(--accent-soft);
-  color: var(--accent, var(--brand-blue));
+  color: var(--ast-accent);
 }
 
 .studio-layout__sub-bar small {
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   font-size: var(--font-size-2xs, 0.72rem);
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -64,6 +120,51 @@
   flex-shrink: 0;
 }
 
+.ast__validation-action {
+  cursor: default;
+}
+
+.ast__validation-action.workspace-action-button:hover:not(:disabled) {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink-shadow) 6%, transparent);
+  transform: none;
+}
+
+.ast__validation-action--success {
+  border-color: color-mix(in oklab, var(--success) 28%, var(--ast-border));
+  background: var(--workspace-success-surface);
+  color: var(--success);
+}
+
+.ast__validation-action--success.workspace-action-button:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--success) 28%, var(--ast-border));
+  background: var(--workspace-success-surface);
+  color: var(--success);
+}
+
+.ast__validation-action--warning {
+  border-color: color-mix(in oklab, var(--warning) 34%, var(--ast-border));
+  background: var(--workspace-warning-surface);
+  color: var(--warning);
+}
+
+.ast__validation-action--warning.workspace-action-button:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--warning) 34%, var(--ast-border));
+  background: var(--workspace-warning-surface);
+  color: var(--warning);
+}
+
+.ast__validation-action--danger {
+  border-color: color-mix(in oklab, var(--danger) 34%, var(--ast-border));
+  background: var(--workspace-error-surface);
+  color: var(--danger);
+}
+
+.ast__validation-action--danger.workspace-action-button:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--danger) 34%, var(--ast-border));
+  background: var(--workspace-error-surface);
+  color: var(--danger);
+}
+
 /* ── Create button in sidebar header ───────────────────────────────────────── */
 
 .ast__create-btn {
@@ -72,23 +173,49 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-border);
   border-radius: 8px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--ast-text-muted);
   cursor: pointer;
   transition: background 0.14s, color 0.14s;
 }
 
 .ast__create-btn:hover {
-  background: var(--panel-muted, var(--surface-3));
-  color: var(--accent, var(--brand-blue));
+  background: var(--ast-hover);
+  color: var(--ast-accent);
 }
 
 /* ── Feedback text in sub-bar ──────────────────────────────────────────────── */
 
+.ast__workflow-badges,
+.ast__workflow-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ast__workflow-badges {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.ast__workflow-meta {
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+.ast__workflow-meta span:not(.shared-status-badge) {
+  min-width: 0;
+  color: var(--ast-text-muted);
+  font-size: var(--font-size-2xs, 0.72rem);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .ast__feedback {
-  color: var(--accent, var(--brand-blue));
+  color: var(--ast-accent);
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 800;
   white-space: nowrap;
@@ -100,7 +227,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: var(--text, var(--text-primary));
+  color: var(--ast-text);
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 800;
 }
@@ -117,24 +244,24 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
+  background: var(--ast-surface);
 }
 
 .ast__config-group h3 {
   margin: 0;
-  color: var(--text-strong, var(--foreground));
+  color: var(--ast-text);
   font-size: var(--font-size-sm, 0.9rem);
 }
 
 .ast__inspector-select {
   width: 100%;
   min-height: 36px;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-control-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
-  color: var(--text, var(--text-primary));
+  background: var(--ast-control);
+  color: var(--ast-text);
   font: inherit;
   font-size: var(--font-size-xs, 0.8rem);
   padding: 0 10px;
@@ -144,14 +271,24 @@
   width: 100%;
   min-height: 150px;
   resize: vertical;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-control-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
-  color: var(--text, var(--text-primary));
+  background: var(--ast-control);
+  color: var(--ast-text);
   font: inherit;
   font-size: var(--font-size-xs, 0.8rem);
   line-height: 1.45;
   padding: 10px;
+}
+
+.ast__create-btn:focus-visible,
+.ast__inspector-select:focus-visible,
+.ast__inspector-textarea:focus-visible,
+.automation-studio__list > button:focus-visible,
+.automation-studio__detail textarea:focus-visible {
+  border-color: var(--ast-selected-border);
+  box-shadow: 0 0 0 3px var(--ast-focus-ring);
+  outline: none;
 }
 
 .ast__inspector-textarea--compact {
@@ -162,7 +299,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text, var(--text-primary));
+  color: var(--ast-text);
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 800;
 }
@@ -170,12 +307,12 @@
 .ast__checkbox-label input {
   width: 16px;
   height: 16px;
-  accent-color: var(--accent, var(--brand-blue));
+  accent-color: var(--ast-accent);
 }
 
 .ast__inspector-muted {
   margin: 0;
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   font-size: var(--font-size-xs, 0.8rem);
   line-height: 1.45;
 }
@@ -187,7 +324,7 @@
   min-height: 0;
   overflow: auto;
   padding: 18px;
-  background: var(--bg);
+  background: var(--ast-page-bg);
 }
 
 .automation-studio__panel-header {
@@ -200,12 +337,12 @@
 
 .automation-studio__panel-header h2 {
   margin: 0;
-  color: var(--text-strong, var(--foreground));
+  color: var(--ast-text);
   font-size: var(--font-size-title-sm, 1.05rem);
 }
 
 .automation-studio__panel-header span {
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   font-size: var(--font-size-2xs, 0.72rem);
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -238,10 +375,10 @@
   width: 100%;
   padding: 10px;
   text-align: left;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
-  color: var(--text-muted, var(--text-secondary));
+  background: var(--ast-surface);
+  color: var(--ast-text-soft);
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-xs, 0.8rem);
@@ -249,15 +386,15 @@
 }
 
 .automation-studio__list > button:hover {
-  background: var(--panel-muted, var(--surface-3));
-  color: var(--text, var(--text-primary));
+  background: var(--ast-hover);
+  color: var(--ast-text);
 }
 
 .automation-studio__list > button small,
 .automation-studio__row small,
 .automation-studio__detail p,
 .automation-studio__messages span {
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   font-size: var(--font-size-xs, 0.8rem);
 }
 
@@ -267,15 +404,15 @@
   gap: 10px;
   min-height: 280px;
   padding: 14px;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
+  background: var(--ast-surface);
   overflow: auto;
 }
 
 .automation-studio__detail h3 {
   margin: 0;
-  color: var(--text-strong, var(--foreground));
+  color: var(--ast-text);
   font-size: var(--font-size-title-sm, 1.05rem);
 }
 
@@ -283,10 +420,10 @@
   width: 100%;
   min-height: 150px;
   resize: vertical;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-control-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
-  color: var(--text, var(--text-primary));
+  background: var(--ast-control);
+  color: var(--ast-text);
   font: inherit;
   font-size: var(--font-size-xs, 0.8rem);
   line-height: 1.45;
@@ -299,8 +436,8 @@
   overflow: auto;
   padding: 12px;
   border-radius: var(--radius-xs, 8px);
-  background: color-mix(in oklab, var(--neutral-black, #000) 7%, var(--panel));
-  color: var(--text, var(--text-primary));
+  background: color-mix(in oklab, var(--ast-text) 6%, var(--ast-surface-soft));
+  color: var(--ast-text);
   font-size: 0.75rem;
   white-space: pre-wrap;
   word-break: break-word;
@@ -311,9 +448,9 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-border-subtle);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel-muted, var(--surface-3));
+  background: var(--ast-surface-soft);
 }
 
 .automation-studio__empty-panel {
@@ -321,7 +458,7 @@
   min-height: 120px;
   place-items: center;
   padding: 18px;
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   font-size: var(--font-size-sm, 0.9rem);
   font-weight: 700;
 }
@@ -331,15 +468,61 @@
 .studio-layout__canvas .flow-canvas-ui {
   height: 100%;
   min-height: 0;
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in oklab, var(--ast-accent) 5%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, var(--workspace-page-bg-soft) 0%, var(--ast-page-bg) 100%);
+}
+
+.automation-studio .flow-studio-panel,
+.automation-studio .flow-canvas-ui__sidebar,
+.automation-studio .flow-canvas-ui__ctrl,
+.automation-studio .flow-canvas-ui__minimap {
+  border-color: var(--ast-border-subtle);
+  background: color-mix(in oklab, var(--ast-surface) 94%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ink-shadow) 5%, transparent);
+}
+
+.automation-studio .flow-canvas-ui__sidebar-head,
+.automation-studio .flow-canvas-ui__sidebar-foot {
+  border-color: var(--ast-border-subtle);
+  background: color-mix(in oklab, var(--ast-surface-soft) 76%, transparent);
+}
+
+.automation-studio .flow-canvas-ui__sidebar-close,
+.automation-studio .flow-canvas-ui__rail-toggle,
+.automation-studio .flow-canvas-ui__ctrl-btn,
+.automation-studio .flow-canvas-ui__sidebar-action {
+  border-color: var(--ast-control-border);
+  background: var(--ast-control);
+  color: var(--ast-text-soft);
+}
+
+.automation-studio .flow-canvas-ui__sidebar-close:hover,
+.automation-studio .flow-canvas-ui__rail-toggle:hover,
+.automation-studio .flow-canvas-ui__ctrl-btn:hover,
+.automation-studio .flow-canvas-ui__sidebar-action:hover,
+.automation-studio .flow-canvas-ui__sidebar-action:focus-visible {
+  border-color: var(--ast-selected-border);
+  background: var(--ast-hover);
+  color: var(--ast-accent);
+}
+
+.automation-studio .flow-node-card {
+  --node-surface: color-mix(in oklab, var(--ast-surface) 98%, var(--node-color));
+  --node-border: color-mix(in oklab, var(--ast-border) 76%, var(--node-color));
+}
+
+.automation-studio .flow-node-card__header {
+  background: color-mix(in oklab, var(--node-color) 10%, var(--ast-surface));
 }
 
 .ast__preview {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--line, var(--border-blue-muted));
+  border: 1px solid var(--ast-border);
   border-radius: var(--radius-xs, 8px);
-  background: var(--panel, var(--neutral-white));
+  background: var(--ast-surface);
 }
 
 .ast__preview-head {
@@ -351,7 +534,7 @@
 
 .ast__preview-head h3 {
   margin: 0;
-  color: var(--text-strong, var(--foreground));
+  color: var(--ast-text);
   font-size: var(--font-size-sm, 0.9rem);
   font-weight: 900;
 }
@@ -369,15 +552,15 @@
   min-width: 0;
   padding: 8px 10px;
   border-radius: var(--radius-xs, 8px);
-  background: color-mix(in oklab, var(--warning, #f59e0b) 10%, var(--panel, var(--neutral-white)));
-  color: var(--text, var(--text-primary));
+  background: color-mix(in oklab, var(--warning) 10%, var(--ast-surface));
+  color: var(--ast-text);
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .ast__preview-list--danger li {
-  background: color-mix(in oklab, var(--danger, #dc2626) 10%, var(--panel, var(--neutral-white)));
+  background: color-mix(in oklab, var(--danger) 10%, var(--ast-surface));
 }
 
 .ast__preview-steps li {
@@ -393,8 +576,8 @@
   height: 24px;
   place-items: center;
   border-radius: 999px;
-  background: var(--panel-muted, var(--surface-3));
-  color: var(--text-muted, var(--text-secondary));
+  background: var(--ast-surface-soft);
+  color: var(--ast-text-muted);
   font-size: var(--font-size-2xs, 0.72rem);
   font-weight: 900;
 }
@@ -402,7 +585,7 @@
 .ast__preview-steps strong {
   display: block;
   min-width: 0;
-  color: var(--text-strong, var(--foreground));
+  color: var(--ast-text);
   font-size: var(--font-size-xs, 0.8rem);
   font-weight: 900;
   overflow-wrap: anywhere;
@@ -411,7 +594,7 @@
 .ast__preview-steps small {
   display: block;
   min-width: 0;
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--ast-text-muted);
   font-size: var(--font-size-2xs, 0.72rem);
   line-height: 1.4;
   overflow-wrap: anywhere;

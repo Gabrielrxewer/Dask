@@ -2235,6 +2235,15 @@ model AutomationWorkflow {
   status           String                      @default("draft")
   currentVersionId String?                     @unique
   createdById      String?
+  origin           String                      @default("user")
+  nativeKey        String?
+  nativeDomain     String?
+  isSystemManaged  Boolean                     @default(false)
+  isProtected      Boolean                     @default(false)
+  editableMode     String                      @default("full")
+  installedAt      DateTime?
+  installedById    String?
+  schemaVersion    Int                         @default(1)
   createdAt        DateTime                    @default(now())
   updatedAt        DateTime                    @updatedAt
   workspace        Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -2243,7 +2252,9 @@ model AutomationWorkflow {
   versions         AutomationWorkflowVersion[] @relation("AutomationWorkflowVersions")
   runs             AutomationRun[]
 
+  @@unique([workspaceId, nativeKey])
   @@index([workspaceId, status, updatedAt])
+  @@index([workspaceId, origin, nativeDomain])
 }
 
 model AutomationWorkflowVersion {

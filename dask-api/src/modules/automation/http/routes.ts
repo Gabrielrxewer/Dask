@@ -18,6 +18,7 @@ import type { AutomationViewService } from '@/modules/automation/application/aut
 import type { AutomationWorkflowRunnerService } from '@/modules/automation/application/automation-workflow-runner-service';
 import type { AutomationWorkflowService } from '@/modules/automation/application/workflow-service';
 import type { AutomationWorkflowVersionService } from '@/modules/automation/application/workflow-version-service';
+import { AutomationNativeWorkflowService } from '@/modules/automation/application/native-workflow-service';
 import {
   automationRunParamsDto,
   automationApprovalParamsDto,
@@ -36,6 +37,7 @@ import {
   createAutomationWorkflowDraftVersionDto,
   createWhatsAppTemplateDto,
   itemPlacementParamsDto,
+  installNativeAutomationWorkflowsDto,
   listCommunicationTemplatesQueryDto,
   listCommunicationInboxQueryDto,
   listAutomationApprovalsQueryDto,
@@ -78,6 +80,7 @@ export const buildAutomationRoutes = (deps: {
   automationRunService: AutomationRunService;
   automationRunObservabilityService: AutomationRunObservabilityService;
   automationViewService: AutomationViewService;
+  automationNativeWorkflowService?: AutomationNativeWorkflowService;
 }): Router => {
   const router = Router();
   const resolveWorkspaceScope = workspaceScopeMiddleware(deps.prisma);
@@ -106,6 +109,8 @@ export const buildAutomationRoutes = (deps: {
   const mockWhatsAppEventSimulator = new MockWhatsAppEventSimulator(deps.prisma);
   const automationApprovalRequestService =
     deps.automationApprovalRequestService ?? new AutomationApprovalRequestService(deps.prisma);
+  const automationNativeWorkflowService =
+    deps.automationNativeWorkflowService ?? new AutomationNativeWorkflowService(deps.prisma);
 
   router.use('/automation/workspaces/:workspaceId', resolveWorkspaceScope, requireWorkflowRead, requireAutomationModule);
   router.use('/workspaces/:workspaceId/automation-workflows', resolveWorkspaceScope, requireWorkflowRead, requireAutomationModule);
@@ -119,11 +124,33 @@ export const buildAutomationRoutes = (deps: {
     })
   );
 
+  router.post(
+    '/automation/workspaces/:workspaceId/native-workflows/install',
+    requireWorkflowCreate,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = installNativeAutomationWorkflowsDto.parse(req.body ?? {});
+      const result = await automationNativeWorkflowService.installNativeWorkflows({
+        workspaceId,
+        nativeKeys: payload.nativeKeys,
+        activate: payload.activate,
+        installedById: req.auth!.userId
+      });
+
+      res.status(200).json(result);
+    })
+  );
+
   router.get(
     '/workspaces/:workspaceId/automation-workflows',
     asyncHandler(async (req, res) => {
       const { workspaceId } = workspaceIdParamsDto.parse(req.params);
       const query = listAutomationWorkflowsQueryDto.parse(req.query);
+      await automationNativeWorkflowService.installNativeCommercialWorkflows({
+        workspaceId,
+        activate: false,
+        installedById: null
+      });
       const workflows = await deps.automationWorkflowService.listWorkflows({
         workspaceId,
         status: query.status,

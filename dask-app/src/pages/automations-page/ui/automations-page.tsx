@@ -15,6 +15,7 @@ import {
 import {
   studioTabs
 } from "@/pages/automations-page/model/automation-page-view-model";
+import { isAutomationWorkflowEditable } from "@/pages/automations-page/model/automation-workflow-metadata";
 import type { StudioTab } from "@/pages/automations-page/model/automation-page.types";
 import { EmptyState, LoadingState, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
 import { AutomationApprovalsPanel } from "./components/automation-approvals-panel";
@@ -25,6 +26,7 @@ import { AutomationPublishControls } from "./components/automation-publish-contr
 import { AutomationRunsPanel } from "./components/automation-runs-panel";
 import { AutomationSettingsPanel } from "./components/automation-settings-panel";
 import { AutomationTemplatesPanel } from "./components/automation-templates-panel";
+import { AutomationToolbar } from "./AutomationToolbar";
 import "./automations-page.css";
 
 export { buildDefaultNodeConfig } from "@/pages/automations-page/model/automation-node-registry";
@@ -121,7 +123,20 @@ export function AutomationsPage() {
       );
     }
 
-    return <LoadingState text="Carregando Automation Studio" animation="automation" />;
+    return (
+      <AppShell
+        metrics={metrics}
+        pageLabel="Automation Studio"
+        pageTitle="Workflow versionado"
+        noPageScroll
+        hidePageHeader
+        hideSidebarBrandMark
+      >
+        <WorkspaceFrame className="automation-studio" variant="editor" scroll="none">
+          <LoadingState text="Carregando Automation Studio" animation="automation" variant="frame" visible />
+        </WorkspaceFrame>
+      </AppShell>
+    );
   }
 
   const topNavigation = (
@@ -132,17 +147,25 @@ export function AutomationsPage() {
       ariaLabel="Automacoes"
       className="automations-top-nav"
       actions={activeTab === "flows" && workflowSelection.selectedWorkflow ? (
-        <AutomationPublishControls
-          workflow={workflowSelection.selectedWorkflow}
-          selectedVersion={versionSelection.selectedVersion}
-          currentVersion={versionSelection.currentVersion}
-          busy={workflowActions.busy}
-          onStatusChange={workflowActions.handleStatusChange}
-          onCloneVersion={workflowActions.handleCloneVersion}
-          onRun={workflowActions.handleRun}
-          onSaveWorkflow={workflowActions.handleSaveWorkflow}
-          onPublish={workflowActions.handlePublish}
-        />
+        <>
+          <AutomationToolbar
+            issueCount={canvasEditor.validationIssueCount.errors}
+            warningCount={canvasEditor.validationIssueCount.warnings}
+            onAutoLayout={canvasEditor.handleAutoLayout}
+            disabled={!isAutomationWorkflowEditable(workflowSelection.selectedWorkflow) || canvasEditor.canvasNodes.length === 0}
+          />
+          <AutomationPublishControls
+            workflow={workflowSelection.selectedWorkflow}
+            selectedVersion={versionSelection.selectedVersion}
+            currentVersion={versionSelection.currentVersion}
+            busy={workflowActions.busy}
+            onStatusChange={workflowActions.handleStatusChange}
+            onCloneVersion={workflowActions.handleCloneVersion}
+            onRun={workflowActions.handleRun}
+            onSaveWorkflow={workflowActions.handleSaveWorkflow}
+            onPublish={workflowActions.handlePublish}
+          />
+        </>
       ) : undefined}
     />
   );
@@ -171,7 +194,6 @@ export function AutomationsPage() {
             workflowDescription={workflowDescription}
             workflowPreview={canvasEditor.workflowPreview}
             validationIssues={canvasEditor.validationIssues}
-            validationIssueCount={canvasEditor.validationIssueCount}
             canvasNodes={canvasEditor.canvasNodes}
             canvasEdges={canvasEditor.canvasEdges}
             automationNodeTypes={canvasEditor.automationNodeTypes}
@@ -185,9 +207,7 @@ export function AutomationsPage() {
             setWorkflowName={setWorkflowName}
             setWorkflowDescription={setWorkflowDescription}
             onCreateWorkflow={workflowActions.handleCreateWorkflow}
-            onCreateRecipeWorkflow={workflowActions.handleCreateRecipeWorkflow}
             onSelectWorkflow={workflowSelection.setSelectedWorkflowId}
-            onAutoLayout={canvasEditor.handleAutoLayout}
             onNodesChange={canvasEditor.onNodesChange}
             onEdgesChange={canvasEditor.onEdgesChange}
             onEdgesAdd={canvasEditor.setCanvasEdges}

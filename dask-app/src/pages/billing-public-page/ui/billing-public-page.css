@@ -3,7 +3,7 @@
   display: grid;
   place-items: center;
   padding: 32px;
-  background: var(--surface-base);
+  background: var(--workspace-page-bg);
 }
 
 .billing-public-page__panel {
@@ -11,11 +11,11 @@
   display: grid;
   gap: 14px;
   padding: 24px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--workspace-border-subtle);
   border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  box-shadow: var(--shadow-soft);
+  background: var(--workspace-surface);
+  color: var(--workspace-text-primary);
+  box-shadow: none;
 }
 
 .billing-public-page__panel h1 {
@@ -25,7 +25,7 @@
 
 .billing-public-page__panel p {
   margin: 0;
-  color: var(--text-soft);
+  color: var(--workspace-text-secondary);
   line-height: 1.5;
 }
 
@@ -37,6 +37,6 @@
 }
 
 .billing-public-page__actions a {
-  color: var(--text-soft);
+  color: var(--workspace-text-secondary);
   font-size: var(--font-size-sm);
 }

@@ -8,6 +8,7 @@ import {
   createAutomationWorkflowDraftVersionDto,
   createAutomationViewColumnDto,
   createAutomationViewDto,
+  installNativeAutomationWorkflowsDto,
   itemPlacementParamsDto,
   listAutomationRunArtifactsQueryDto,
   listAutomationRunsQueryDto,
@@ -109,6 +110,15 @@ describe('automation/http dto', () => {
     expect(runAutomationWorkflowDto.parse({ context: { contactId: UUIDS.itemId } })).toEqual({
       triggerType: 'manual',
       context: { contactId: UUIDS.itemId }
+    });
+    expect(
+      installNativeAutomationWorkflowsDto.parse({
+        nativeKeys: ['commercial.proposal_approved_to_contract'],
+        activate: true
+      })
+    ).toEqual({
+      nativeKeys: ['commercial.proposal_approved_to_contract'],
+      activate: true
     });
   });
 

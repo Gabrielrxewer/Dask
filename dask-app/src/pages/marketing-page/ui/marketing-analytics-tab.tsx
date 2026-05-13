@@ -4,7 +4,7 @@ import type {
   MarketingCampaignObjective,
   MarketingDashboard
 } from "@/modules/marketing";
-import { AppSelect, Button, EmptyState, ResourceTable, StatusBadge } from "@/shared/ui";
+import { AppSelect, Button, DataTable, EmptyState, StatusBadge, type DataTableColumn } from "@/shared/ui";
 import {
   OBJECTIVE_OPTIONS,
   campaignObjectiveLabel,
@@ -24,6 +24,50 @@ type EnrichedCampaign = MarketingCampaignListItem & {
   openRate: number | null;
   clickRate: number | null;
 };
+
+const performanceCampaignColumns: Array<DataTableColumn<EnrichedCampaign>> = [
+  {
+    id: "campaign",
+    header: "Campanha",
+    width: "minmax(240px, 1.5fr)",
+    render: (campaign) => (
+      <span className="mkt-perf-table__name">
+        <strong>{campaign.name}</strong>
+        <span>{campaignObjectiveLabel(campaign.objective)}</span>
+      </span>
+    )
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "0.8fr",
+    render: (campaign) => (
+      <StatusBadge tone={statusTone(campaign.status)}>
+        {campaignStatusLabel(campaign.status)}
+      </StatusBadge>
+    )
+  },
+  {
+    id: "sent",
+    header: "Enviados",
+    width: "0.75fr",
+    render: (campaign) => (campaign.sent > 0 ? fmtNum(campaign.sent) : "-")
+  },
+  {
+    id: "open",
+    header: "Abertura",
+    width: "0.75fr",
+    cellClassName: (campaign) => campaign.openRate != null && campaign.openRate < 0.2 ? "mkt-perf-table__num--warn" : undefined,
+    render: (campaign) => fmtPct(campaign.openRate)
+  },
+  {
+    id: "click",
+    header: "Clique",
+    width: "0.75fr",
+    cellClassName: (campaign) => campaign.clickRate != null && campaign.clickRate < 0.04 ? "mkt-perf-table__num--warn" : undefined,
+    render: (campaign) => fmtPct(campaign.clickRate)
+  }
+];
 
 interface MarketingAnalyticsTabProps {
   dashboard: MarketingDashboard | null;
@@ -163,60 +207,21 @@ export function MarketingAnalyticsTab({
                   </div>
                 </div>
 
-                {/* Grid principal */}
-                <div className="mkt-analytics__main">
-                  {/* Performance por campanha */}
+                {/* Performance por campanha */}
+                <section className="mkt-table-section mkt-table-section--performance">
                   <div className="mkt-analytics__section mkt-analytics__section--perf">
                     <h3 className="mkt-analytics__section-title">Performance por campanha</h3>
-                    <ResourceTable
+                    <DataTable<EnrichedCampaign>
                       data={enrichedCampaigns}
-                      rowKey="id"
+                      getRowId={(campaign) => campaign.id}
                       className="mkt-resource-table"
                       responsiveMinWidth="900px"
                       loading={isLoadingAnalytics}
                       loadingState="Carregando metricas..."
                       error={analyticsError}
                       emptyState={<EmptyState size="compact">Nenhuma campanha encontrada.</EmptyState>}
-                      columns={[
-                        {
-                          id: "campaign",
-                          header: "Campanha",
-                          width: "minmax(240px, 1.5fr)",
-                          render: (campaign) => (
-                            <span className="mkt-perf-table__name">
-                              <strong>{campaign.name}</strong>
-                              <span>{campaignObjectiveLabel(campaign.objective)}</span>
-                            </span>
-                          )
-                        },
-                        {
-                          id: "status",
-                          header: "Status",
-                          width: "0.8fr",
-                          render: (campaign) => <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
-                        },
-                        {
-                          id: "sent",
-                          header: "Enviados",
-                          width: "0.75fr",
-                          render: (campaign) => (campaign.sent > 0 ? fmtNum(campaign.sent) : "-")
-                        },
-                        {
-                          id: "open",
-                          header: "Abertura",
-                          width: "0.75fr",
-                          cellClassName: (campaign) => campaign.openRate != null && campaign.openRate < 0.2 ? "mkt-perf-table__num--warn" : undefined,
-                          render: (campaign) => fmtPct(campaign.openRate)
-                        },
-                        {
-                          id: "click",
-                          header: "Clique",
-                          width: "0.75fr",
-                          cellClassName: (campaign) => campaign.clickRate != null && campaign.clickRate < 0.04 ? "mkt-perf-table__num--warn" : undefined,
-                          render: (campaign) => fmtPct(campaign.clickRate)
-                        }
-                      ]}
-                      actions={{
+                      columns={performanceCampaignColumns}
+                      rowActions={{
                         header: "Acoes",
                         width: "0.7fr",
                         render: (campaign) => (
@@ -232,32 +237,12 @@ export function MarketingAnalyticsTab({
                           </Button>
                         )
                       }}
-                      mobileCard={{
-                        render: (campaign) => (
-                          <>
-                            <strong>{campaign.name}</strong>
-                            <span>{campaignObjectiveLabel(campaign.objective)}</span>
-                            <StatusBadge tone={statusTone(campaign.status)}>{campaignStatusLabel(campaign.status)}</StatusBadge>
-                            <span>{campaign.sent > 0 ? fmtNum(campaign.sent) : "-"} enviados</span>
-                            <span>{fmtPct(campaign.openRate)} abertura - {fmtPct(campaign.clickRate)} clique</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                void loadCampaignDetails(campaign.id);
-                                setTab("campaigns");
-                              }}
-                            >
-                              Abrir
-                            </Button>
-                          </>
-                        )
-                      }}
                     />
                   </div>
+                </section>
 
-                  {/* Coluna direita */}
-                  <div className="mkt-analytics__sidebar">
+                {/* Leituras de apoio */}
+                <section className="mkt-analytics__support-grid">
                     {/* Insights */}
                     <div className="mkt-analytics__section">
                       <h3 className="mkt-analytics__section-title">Insights automáticos</h3>
@@ -359,8 +344,7 @@ export function MarketingAnalyticsTab({
                       </div>
                       )}
                     </div>
-                  </div>
-                </div>
+                </section>
               </div>
   );
 }

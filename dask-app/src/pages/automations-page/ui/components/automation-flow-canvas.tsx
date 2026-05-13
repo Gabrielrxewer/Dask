@@ -11,8 +11,7 @@ import type {
   AutomationCanvasData,
   AutomationCanvasNode,
   AutomationNodeMetaMap,
-  AutomationNodeType,
-  AutomationRecipe
+  AutomationNodeType
 } from "@/pages/automations-page/model/automation-page.types";
 
 export interface AutomationNodeMenuSection {
@@ -23,15 +22,6 @@ export interface AutomationNodeMenuSection {
     label: string;
     description?: string;
     color?: string;
-  }>;
-}
-
-export interface AutomationRecipeMenuSection {
-  id: string;
-  title: string;
-  actions: Array<{
-    id: string;
-    label: string;
     disabled?: boolean;
   }>;
 }
@@ -44,8 +34,8 @@ export function AutomationFlowCanvas({
   nodeMeta,
   validationIssues,
   nodeMenuSections,
-  recipeMenuSections,
   fitViewKey,
+  readOnly = false,
   onNodesChange,
   onEdgesChange,
   onEdgesAdd,
@@ -53,8 +43,7 @@ export function AutomationFlowCanvas({
   onNodeSelect,
   validateConnection,
   onInvalidConnection,
-  onAddNode,
-  onCreateRecipe
+  onAddNode
 }: {
   capabilities: AutomationCapabilities;
   nodes: AutomationCanvasNode[];
@@ -63,8 +52,8 @@ export function AutomationFlowCanvas({
   nodeMeta: AutomationNodeMetaMap;
   validationIssues: FlowStudioValidationIssue[];
   nodeMenuSections: AutomationNodeMenuSection[];
-  recipeMenuSections: AutomationRecipeMenuSection[];
   fitViewKey: number;
+  readOnly?: boolean;
   onNodesChange: OnNodesChange<AutomationCanvasNode>;
   onEdgesChange: OnEdgesChange<Edge>;
   onEdgesAdd: (edges: Edge[]) => void;
@@ -73,7 +62,6 @@ export function AutomationFlowCanvas({
   validateConnection: (connection: Connection) => string | null;
   onInvalidConnection: (connection: Connection, reason: string) => void;
   onAddNode: (node: AutomationCapabilities["nodeCatalog"][number]) => void;
-  onCreateRecipe: (recipe: AutomationRecipe) => void;
 }) {
   return (
     <FlowStudioCanvas<AutomationCanvasData, AutomationNodeType>
@@ -82,7 +70,7 @@ export function AutomationFlowCanvas({
       nodeTypes={nodeTypes}
       validationIssues={validationIssues}
       showMiniMap
-      paletteItems={capabilities.nodeCatalog.map((node) => ({
+      paletteItems={readOnly ? [] : capabilities.nodeCatalog.map((node) => ({
         kind: node.type,
         label: node.label,
         description: node.description,
@@ -94,11 +82,13 @@ export function AutomationFlowCanvas({
           config: buildDefaultNodeConfig(node.type)
         })
       }))}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onEdgesAdd={onEdgesAdd}
-      onNodesAdd={onNodesAdd}
+      onNodesChange={readOnly ? () => undefined : onNodesChange}
+      onEdgesChange={readOnly ? () => undefined : onEdgesChange}
+      onEdgesAdd={readOnly ? () => undefined : onEdgesAdd}
+      onNodesAdd={readOnly ? () => undefined : onNodesAdd}
       onNodeSelect={onNodeSelect}
+      nodesDraggable={!readOnly}
+      nodesConnectable={!readOnly}
       validateConnection={validateConnection}
       onInvalidConnection={onInvalidConnection}
       fitViewKey={fitViewKey}
@@ -108,15 +98,14 @@ export function AutomationFlowCanvas({
       topPanel={<FlowStudioValidationPanel issues={validationIssues} />}
       sidebarContent={
         <FlowNodeSidebarMenu
-          sections={nodeMenuSections}
-          actionSections={recipeMenuSections}
+          sections={readOnly ? nodeMenuSections.map((section) => ({
+            ...section,
+            items: section.items.map((item) => ({ ...item, disabled: true }))
+          })) : nodeMenuSections}
           onItemSelect={(item) => {
+            if (readOnly) return;
             const meta = nodeMeta.get(item.id);
             if (meta) onAddNode(meta);
-          }}
-          onActionSelect={(action) => {
-            const recipe = (capabilities.recipeCatalog ?? []).find((entry) => entry.id === action.id);
-            if (recipe) onCreateRecipe(recipe);
           }}
         />
       }

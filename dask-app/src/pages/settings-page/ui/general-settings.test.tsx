@@ -117,7 +117,7 @@ describe("GeneralSettings Connect permissions", () => {
     const html = renderSettings("OWNER");
 
     expect(testState.useCreateConnectAccountMutation).toHaveBeenCalledWith("workspace-1");
-    expect(html).toContain("Completar cadastro");
+    expect(html).toContain("Continuar cadastro de cobranca");
     expect(html).not.toContain("Apenas o proprietario do workspace pode alterar a configuracao sensivel do Stripe Connect.");
   });
 
@@ -125,7 +125,7 @@ describe("GeneralSettings Connect permissions", () => {
     const html = renderSettings(role);
 
     expect(testState.useCreateConnectAccountMutation).toHaveBeenCalledWith(null);
-    expect(html).toContain("Completar cadastro");
+    expect(html).toContain("Continuar cadastro de cobranca");
     expect(html).toContain("disabled=\"\"");
     expect(html).toContain("Apenas o proprietario do workspace pode alterar a configuracao sensivel do Stripe Connect.");
   });

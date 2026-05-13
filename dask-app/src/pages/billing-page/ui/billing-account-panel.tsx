@@ -1,5 +1,5 @@
 import type { ConnectAccountStatus } from "@/modules/billing";
-import { Button, InlineAlert, StatusBadge } from "@/shared/ui";
+import { Button, DataTable, InlineAlert, StatusBadge, type DataTableColumn } from "@/shared/ui";
 import { IconAlertCircle, IconCheck, KPI_ICONS } from "./billing-page-icons";
 import {
   formatCapabilityStatus,
@@ -27,6 +27,46 @@ interface BillingAccountPanelProps {
   onRequestPaymentCapability: (capability: PaymentCapability) => void | Promise<void>;
 }
 
+interface BillingPendingRow extends BillingChecklistItem {
+  statusLabel: string;
+  resolved?: boolean;
+}
+
+const pendingColumns: Array<DataTableColumn<BillingPendingRow>> = [
+  {
+    id: "item",
+    header: "Item",
+    width: "1fr",
+    render: (item) => (
+      <span className="billing-view__pending-item-copy">
+        <span
+          className={`billing-view__pending-item-icon${item.resolved ? " billing-view__pending-item-icon--resolved" : ""}`}
+          aria-hidden="true"
+        >
+          {item.resolved ? <IconCheck /> : <IconAlertCircle />}
+        </span>
+        <strong className="billing-view__pending-item-title">{item.title}</strong>
+      </span>
+    )
+  },
+  {
+    id: "detail",
+    header: "Detalhe",
+    width: "1fr",
+    render: (item) => <span className="billing-view__pending-item-description">{item.description}</span>
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "0.7fr",
+    render: (item) => (
+      <span className={`billing-view__pending-item-status${item.resolved ? " billing-view__pending-item-status--resolved" : ""}`}>
+        {item.statusLabel}
+      </span>
+    )
+  }
+];
+
 export function BillingAccountPanel({
   statusCards,
   canCreateCheckout,
@@ -43,6 +83,41 @@ export function BillingAccountPanel({
   onRequestPaymentCapability
 }: BillingAccountPanelProps) {
   const sensitivePermissionMessage = "Apenas o proprietario do workspace pode alterar a configuracao sensivel do Stripe Connect.";
+  const blockingRequirementsCount =
+    (connectStatus?.requirementsDue.length ?? 0) + (connectStatus?.requirementsPastDue.length ?? 0);
+  const pendingRequirements = [
+    ...(connectStatus?.requirementsPastDue ?? []),
+    ...(connectStatus?.requirementsDue ?? [])
+  ];
+  const pendingRows: BillingPendingRow[] = pendingItems.map((item) => ({
+    ...item,
+    statusLabel: "Pendente"
+  }));
+  const completedRows: BillingPendingRow[] = completedItems.map((item) => ({
+    ...item,
+    description: "Etapa concluída no cadastro da conta.",
+    statusLabel: "Concluído",
+    resolved: true
+  }));
+  const isConnectReady = Boolean(
+    connectStatus?.detailsSubmitted &&
+    connectStatus?.chargesEnabled &&
+    connectStatus?.payoutsEnabled &&
+    blockingRequirementsCount === 0
+  );
+  const nextStep = !connectStatus
+    ? "Iniciar verificacao da conta Stripe"
+    : isConnectReady
+      ? "Conta pronta para receber pagamentos"
+      : connectStatus.disabledReason
+        ? "Resolver bloqueio indicado pela Stripe"
+        : !connectStatus.detailsSubmitted
+          ? "Completar verificacao na Stripe"
+          : blockingRequirementsCount > 0
+            ? "Enviar pendencias solicitadas pela Stripe"
+            : !connectStatus.payoutsEnabled
+              ? "Validar conta para repasses"
+              : "Aguardar revisao da Stripe";
 
   return (
     <div className="billing-view__panel billing-view__panel--account" role="tabpanel">
@@ -70,6 +145,9 @@ export function BillingAccountPanel({
               {onboardingSummary.subtitle === "Conecte e complete o cadastro para liberar cobranças e repasses." ? null : (
                 <p className="billing-view__onboarding-subtitle">{onboardingSummary.subtitle}</p>
               )}
+              <p className="billing-view__onboarding-subtitle">
+                Usaremos os dados legais do workspace para iniciar sua conta Stripe Connect. A Stripe pode solicitar informacoes adicionais de verificacao, representante legal, documentos, dados fiscais e conta bancaria.
+              </p>
             </div>
           </div>
 
@@ -86,11 +164,37 @@ export function BillingAccountPanel({
                 disabled={isOpeningOnboarding || !canManageSensitiveConnectSettings}
                 title={!canManageSensitiveConnectSettings ? sensitivePermissionMessage : undefined}
               >
-                {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
+                {isOpeningOnboarding ? "Abrindo..." : connectStatus ? "Completar verificacao na Stripe" : "Continuar cadastro de cobranca"}
               </Button>
-            ) : null}
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="billing-view__onboarding-cta"
+                onClick={() => void onOpenOnboarding()}
+                disabled={isOpeningOnboarding || !canManageSensitiveConnectSettings}
+                title={!canManageSensitiveConnectSettings ? sensitivePermissionMessage : undefined}
+              >
+                {isOpeningOnboarding ? "Abrindo..." : "Atualizar dados na Stripe"}
+              </Button>
+            )}
           </div>
         </div>
+
+        <div className="billing-view__connect-status-list">
+          <span><strong>{connectStatus ? "Sim" : "Nao"}</strong> Conta Connect criada</span>
+          <span><strong>{connectStatus?.chargesEnabled ? "Sim" : "Nao"}</strong> Cobrancas habilitadas</span>
+          <span><strong>{connectStatus?.payoutsEnabled ? "Sim" : "Nao"}</strong> Repasses habilitados</span>
+          <span><strong>{blockingRequirementsCount}</strong> Pendencias cadastrais</span>
+          <span className="billing-view__connect-status-list-wide"><strong>Proximo passo:</strong> {nextStep}</span>
+        </div>
+
+        {pendingRequirements.length > 0 ? (
+          <p className="billing-view__onboarding-subtitle">
+            Pendencias principais: {pendingRequirements.slice(0, 4).join(", ")}
+            {pendingRequirements.length > 4 ? ` e mais ${pendingRequirements.length - 4}` : ""}.
+          </p>
+        ) : null}
 
         <div className="billing-view__progress-wrap">
           <div className="billing-view__progress-meta">
@@ -199,47 +303,27 @@ export function BillingAccountPanel({
           </div>
           <div className="billing-view__pending-sections">
             <div className="billing-view__pending-group">
-              <div className="billing-view__pending-table-head" aria-hidden="true">
-                <span>Item</span>
-                <span>Detalhe</span>
-                <span>Status</span>
-              </div>
-              <ul className="billing-view__pending-list billing-view__pending-list--compact">
-                {pendingItems.map((item) => (
-                  <li key={item.key}>
-                    <span className="billing-view__pending-item-icon" aria-hidden="true">
-                      <IconAlertCircle />
-                    </span>
-                    <strong className="billing-view__pending-item-title">{item.title}</strong>
-                    <p className="billing-view__pending-item-description">{item.description}</p>
-                    <span className="billing-view__pending-item-status">Pendente</span>
-                  </li>
-                ))}
-              </ul>
+              <DataTable<BillingPendingRow>
+                className="billing-view__table billing-view__pending-table"
+                data={pendingRows}
+                columns={pendingColumns}
+                getRowId={(item) => item.key}
+                responsiveMinWidth="760px"
+                emptyState={null}
+              />
             </div>
 
             {completedItems.length > 0 ? (
               <div className="billing-view__pending-group billing-view__pending-group--secondary">
                 <p className="billing-view__pending-group-title">Concluídas</p>
-                <div className="billing-view__pending-table-head" aria-hidden="true">
-                  <span>Item</span>
-                  <span>Detalhe</span>
-                  <span>Status</span>
-                </div>
-                <ul className="billing-view__pending-list billing-view__pending-list--compact billing-view__pending-list--resolved">
-                  {completedItems.map((item) => (
-                    <li key={item.key}>
-                      <span className="billing-view__pending-item-icon billing-view__pending-item-icon--resolved" aria-hidden="true">
-                        <IconCheck />
-                      </span>
-                      <strong className="billing-view__pending-item-title">{item.title}</strong>
-                      <p className="billing-view__pending-item-description">Etapa concluída no cadastro da conta.</p>
-                      <span className="billing-view__pending-item-status billing-view__pending-item-status--resolved">
-                        Concluído
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <DataTable<BillingPendingRow>
+                  className="billing-view__table billing-view__pending-table"
+                  data={completedRows}
+                  columns={pendingColumns}
+                  getRowId={(item) => item.key}
+                  responsiveMinWidth="760px"
+                  emptyState={null}
+                />
               </div>
             ) : null}
           </div>

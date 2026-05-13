@@ -50,6 +50,16 @@ function makeService() {
       moduleEntitlements: {},
       allowedBoardViewKeys: null,
       workspace: { id: 'workspace-1', name: 'Workspace', key: 'workspace', kind: 'CORPORATE' }
+    }),
+    ensureItemTransitionWorkspace: vi.fn().mockResolvedValue({
+      role: MembershipRole.ADMIN,
+      isClient: false,
+      customerIds: [],
+      ownCardsOnly: false,
+      allowedModules: ['board'],
+      moduleEntitlements: {},
+      allowedBoardViewKeys: null,
+      workspace: { id: 'workspace-1', name: 'Workspace', key: 'workspace', kind: 'CORPORATE' }
     })
   };
   const publisher = {
@@ -224,6 +234,245 @@ describe('WorkspaceWorkItemsService schedule update', () => {
       payload: {
         plannedStartAt: '2026-05-11T12:00:00.000Z'
       }
+    })).rejects.toMatchObject({ statusCode: 404 });
+
+    expect(transaction.item.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('WorkspaceWorkItemsService type transformation', () => {
+  it('replicates compatible fields by slug and preserves unmapped source values', () => {
+    const { service } = makeService();
+    const plan = (service as any).buildWorkItemTypeReplicationPlan({
+      sourceValues: [
+        {
+          fieldId: 'prospect-company',
+          value: 'ACME',
+          field: {
+            id: 'prospect-company',
+            slug: 'companyName',
+            name: 'Empresa',
+            type: 'TEXT',
+            variableKey: 'companyName',
+            required: false,
+            defaultValue: null
+          }
+        },
+        {
+          fieldId: 'prospect-message',
+          value: 'Mensagem original',
+          field: {
+            id: 'prospect-message',
+            slug: 'message',
+            name: 'Mensagem',
+            type: 'LONG_TEXT',
+            variableKey: null,
+            required: false,
+            defaultValue: null
+          }
+        }
+      ],
+      targetValues: [],
+      targetFields: [
+        {
+          id: 'lead-company',
+          slug: 'companyName',
+          name: 'Empresa',
+          type: 'TEXT',
+          variableKey: 'companyName',
+          required: false,
+          defaultValue: null
+        }
+      ],
+      payloadValues: {}
+    });
+
+    expect(plan.valuesByTargetFieldId).toEqual({ 'lead-company': 'ACME' });
+    expect(plan.copied).toEqual([
+      expect.objectContaining({
+        sourceFieldId: 'prospect-company',
+        targetFieldId: 'lead-company',
+        strategy: 'slug'
+      })
+    ]);
+    expect(plan.skipped).toEqual([
+      expect.objectContaining({
+        sourceSlug: 'message',
+        reason: 'target_field_not_found'
+      })
+    ]);
+    expect(plan.unmappedSourceValues).toEqual({ message: 'Mensagem original' });
+  });
+
+  it('transforms Prospect to Lead in-place with replication metadata and audit history', async () => {
+    const { service, prisma, configService, publisher } = makeService();
+    const transaction = {
+      item: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'item-1',
+          typeId: 'prospect-type',
+          type: 'prospect',
+          stateId: 'prospect-state',
+          status: 'prospect',
+          metadata: { source: 'manual' }
+        }),
+        update: vi.fn().mockResolvedValue({}),
+        findUnique: vi.fn().mockResolvedValue({ fields: { companyName: 'ACME' } })
+      },
+      workflowState: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'lead-state', slug: 'commercial_intake' })
+      },
+      customFieldDefinition: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'lead-company',
+            slug: 'companyName',
+            name: 'Empresa',
+            scopes: [{ typeId: 'lead-type' }]
+          }
+        ])
+      },
+      customFieldValue: {
+        upsert: vi.fn().mockResolvedValue({})
+      },
+      itemHistory: {
+        create: vi.fn().mockResolvedValue({})
+      }
+    };
+    prisma.$transaction.mockImplementation((callback) => callback(transaction as never));
+    const serialized = {
+      id: 'item-1',
+      boardId: 'board-1',
+      type: { id: 'lead-type', slug: 'commercial', name: 'Lead', color: '#0f766e' },
+      title: 'ACME',
+      text: 'Contato inicial',
+      status: 'commercial_intake',
+      state: { id: 'lead-state', slug: 'commercial_intake' },
+      column: { id: 'lead-column', slug: 'commercial_intake' },
+      assigneeId: null,
+      dueDate: null,
+      tags: [],
+      customFields: { companyName: 'ACME' }
+    };
+    vi.spyOn(service as never, 'getSerializedWorkItemById').mockResolvedValue(serialized as never);
+    vi.spyOn(service as never, 'buildTypeTransformationValidation').mockResolvedValue({
+      valid: true,
+      reason: null,
+      transformation: {
+        id: 'default:prospect:lead',
+        workspaceId: 'workspace-1',
+        fromTypeId: 'prospect-type',
+        toTypeId: 'lead-type',
+        name: 'Transformar Prospect em Lead',
+        description: null,
+        enabled: true,
+        mode: 'same_work_item_type_change',
+        fieldCompatibilityMode: 'replicate_compatible_preserve_unmapped',
+        defaultValuesForNewFields: {},
+        stateMapping: { prospect: 'commercial_intake' },
+        permission: 'commercial.transform'
+      },
+      fromType: { id: 'prospect-type', slug: 'prospect', name: 'Prospect', color: '#2563eb' },
+      toType: { id: 'lead-type', slug: 'commercial', name: 'Lead', color: '#0f766e' },
+      replicationPlan: {
+        copied: [{ sourceFieldId: 'prospect-company', sourceSlug: 'companyName', targetFieldId: 'lead-company', targetSlug: 'companyName', strategy: 'slug' }],
+        skipped: [{ sourceFieldId: 'prospect-message', sourceSlug: 'message', reason: 'target_field_not_found' }],
+        incompatible: [],
+        valuesByTargetFieldId: { 'lead-company': 'ACME' },
+        unmappedSourceValues: { message: 'Mensagem original' }
+      },
+      preservedFields: [],
+      missingFields: [],
+      newRequiredFields: [],
+      defaultValuesForNewFields: {}
+    } as never);
+
+    const result = await service.transformWorkItemType({
+      workspaceId: 'workspace-1',
+      itemId: 'item-1',
+      userId: 'user-admin',
+      payload: { transformationId: 'default:prospect:lead' }
+    });
+
+    expect(result).toBe(serialized);
+    expect(configService.ensureItemTransitionWorkspace).toHaveBeenCalledWith('workspace-1', 'user-admin');
+    expect(transaction.item.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'item-1' },
+      data: expect.objectContaining({
+        typeId: 'lead-type',
+        type: 'commercial',
+        stateId: 'lead-state',
+        status: 'commercial_intake',
+        updatedBy: 'user-admin'
+      })
+    }));
+    expect(transaction.customFieldValue.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { fieldId_itemId: { fieldId: 'lead-company', itemId: 'item-1' } },
+      create: expect.objectContaining({ value: 'ACME' })
+    }));
+    expect(transaction.itemHistory.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        itemId: 'item-1',
+        eventName: 'work_item_type.transformed_by_native_automation'
+      })
+    }));
+    expect(publisher.publishInTransaction).toHaveBeenCalled();
+  });
+
+  it('does not transform when the user cannot transition the work item', async () => {
+    const { service, prisma, configService } = makeService();
+    configService.ensureItemTransitionWorkspace.mockRejectedValue(new Error('Forbidden'));
+
+    await expect(service.transformWorkItemType({
+      workspaceId: 'workspace-1',
+      itemId: 'item-1',
+      userId: 'user-viewer',
+      payload: { toTypeSlug: 'commercial' }
+    })).rejects.toThrow('Forbidden');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('does not transform work items from another workspace', async () => {
+    const { service, prisma } = makeService();
+    const transaction = {
+      item: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        update: vi.fn()
+      }
+    };
+    prisma.$transaction.mockImplementation((callback) => callback(transaction as never));
+    vi.spyOn(service as never, 'buildTypeTransformationValidation').mockResolvedValue({
+      valid: true,
+      reason: null,
+      transformation: {
+        id: 'default:prospect:lead',
+        workspaceId: 'workspace-1',
+        fromTypeId: 'prospect-type',
+        toTypeId: 'lead-type',
+        name: 'Transformar Prospect em Lead',
+        description: null,
+        enabled: true,
+        mode: 'same_work_item_type_change',
+        fieldCompatibilityMode: 'replicate_compatible_preserve_unmapped',
+        defaultValuesForNewFields: {},
+        stateMapping: {},
+        permission: 'commercial.transform'
+      },
+      fromType: { id: 'prospect-type', slug: 'prospect', name: 'Prospect', color: '#2563eb' },
+      toType: { id: 'lead-type', slug: 'commercial', name: 'Lead', color: '#0f766e' },
+      replicationPlan: { copied: [], skipped: [], incompatible: [], valuesByTargetFieldId: {}, unmappedSourceValues: {} },
+      preservedFields: [],
+      missingFields: [],
+      newRequiredFields: [],
+      defaultValuesForNewFields: {}
+    } as never);
+
+    await expect(service.transformWorkItemType({
+      workspaceId: 'workspace-2',
+      itemId: 'item-1',
+      userId: 'user-admin',
+      payload: { transformationId: 'default:prospect:lead' }
     })).rejects.toMatchObject({ statusCode: 404 });
 
     expect(transaction.item.update).not.toHaveBeenCalled();

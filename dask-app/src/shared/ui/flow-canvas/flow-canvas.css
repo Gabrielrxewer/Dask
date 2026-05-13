@@ -425,7 +425,7 @@
 }
 
 .flow-canvas-ui__edge--invalid .react-flow__edge-path {
-  stroke: var(--danger, #dc2626);
+  stroke: var(--danger);
   stroke-dasharray: 8 6;
 }
 

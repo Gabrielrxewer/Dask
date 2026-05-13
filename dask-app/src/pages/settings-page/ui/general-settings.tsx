@@ -32,6 +32,7 @@ import {
   type WorkspaceProfileSettingsFormInput,
   type WorkspaceProfileSettingsFormValues
 } from "./general-settings.model";
+import { SettingsProfileCard, SettingsSectionHeading, SettingsSummaryList } from "./settings-summary-components";
 import "./general-settings.css";
 
 type BoardPerspective = {
@@ -84,6 +85,16 @@ function readCompanyProfile(settings: Record<string, unknown> | undefined): Comp
     legalName: readString(source.legalName),
     document: readString(source.document),
     address: readString(source.address),
+    addressLine1: readString(source.addressLine1),
+    addressLine2: readString(source.addressLine2),
+    city: readString(source.city),
+    state: readString(source.state),
+    postalCode: readString(source.postalCode),
+    country: readString(source.country) || "BR",
+    businessType:
+      source.businessType === "individual" || source.businessType === "company" || source.businessType === "corporate"
+        ? source.businessType
+        : "company",
     jurisdictionCity: readString(source.jurisdictionCity),
     jurisdictionState: readString(source.jurisdictionState),
     noticePeriod: readString(source.noticePeriod)
@@ -123,7 +134,7 @@ function getCompanyProfileMissingFields(profile: CompanyProfileForm): string[] {
   return [
     { label: "Razao social / nome legal", value: profile.legalName },
     { label: "CPF / CNPJ", value: profile.document },
-    { label: "Endereco da contratada", value: profile.address },
+    { label: "Endereco da contratada", value: profile.addressLine1 || profile.address },
     { label: "Cidade do foro", value: profile.jurisdictionCity },
     { label: "Estado do foro", value: profile.jurisdictionState },
     { label: "Aviso previo padrao", value: profile.noticePeriod }
@@ -136,6 +147,9 @@ export function GeneralSettings() {
   const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplateOption["key"] | "">("");
   const [isResettingTemplate, setIsResettingTemplate] = useState(false);
   const [templateToConfirm, setTemplateToConfirm] = useState<WorkspaceTemplateOption | null>(null);
+  const [profileDialog, setProfileDialog] = useState<"identity" | "legal" | null>(null);
+  const [isPreferencesDialogOpen, setIsPreferencesDialogOpen] = useState(false);
+  const [isConnectDetailsOpen, setIsConnectDetailsOpen] = useState(false);
   const workspaceProfileForm = useForm<WorkspaceProfileSettingsFormInput, unknown, WorkspaceProfileSettingsFormValues>({
     resolver: zodResolver(workspaceProfileSettingsFormSchema),
     defaultValues: {
@@ -154,6 +168,7 @@ export function GeneralSettings() {
   const permissions = useWorkspaceSettingsPermissions(workspaceSlug, snapshot);
   const canManageSensitiveConnectSettings = canManageSensitiveConnectSettingsForRole(permissions.role);
   const companyProfile = workspaceProfileForm.watch("companyProfile");
+  const workspaceProfileValues = workspaceProfileForm.watch();
   const isSavingWorkspaceProfile = workspaceProfileForm.formState.isSubmitting;
   const isSavingCompanyProfile = workspaceProfileForm.formState.isSubmitting;
   const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
@@ -184,6 +199,8 @@ export function GeneralSettings() {
   const availableTemplates = templates;
   const missingCompanyProfileFields = getCompanyProfileMissingFields(companyProfile);
   const isCompanyProfileComplete = missingCompanyProfileFields.length === 0;
+  const defaultModeLabel = perspectives.find(perspective => perspective.id === defaultMode)?.label ?? "Nao definido";
+  const legalStatusLabel = isCompanyProfileComplete ? "Completo" : `${missingCompanyProfileFields.length} pendencia(s)`;
 
   const stepStates = {
     perspectives: statusLabel(perspectives.length, 1),
@@ -318,15 +335,29 @@ export function GeneralSettings() {
         companyProfile: values.companyProfile
       });
       toast.success("Dados salvos.");
+      return true;
     } catch {
       toast.error("Nao foi possivel salvar agora. Tente novamente.");
+      return false;
     }
   };
+
+  const closeProfileDialog = () => setProfileDialog(null);
 
   const hasConnectRequirements = Boolean(connectStatus && connectStatus.requirementsDue.length > 0);
   const connectNeedsAttention = Boolean(
     connectStatus && (!connectStatus.onboardingComplete || !connectStatus.chargesEnabled || hasConnectRequirements)
   );
+  const connectSummaryLabel =
+    connectLoadState === "ready" && connectStatus
+      ? connectNeedsAttention
+        ? "Verificacao pendente"
+        : "Conta pronta"
+      : connectLoadState === "missing"
+        ? "Nao iniciado"
+        : connectLoadState === "loading"
+          ? "Carregando"
+          : "Indisponivel";
   const onboardingChecklist = useMemo(
     () => buildOnboardingChecklist(connectStatus),
     [connectStatus]
@@ -460,7 +491,7 @@ export function GeneralSettings() {
 
       <section className="general-settings__preferences-row">
         <div className="general-settings__summary-card">
-          <h2>Resumo do workspace</h2>
+          <SettingsSectionHeading eyebrow="Resumo" title="Workspace em operacao" />
           <div className="general-settings__summary-grid">
             <span><strong>{perspectives.length}</strong> perspectivas</span>
             <span><strong>{statuses.length}</strong> estados</span>
@@ -489,8 +520,412 @@ export function GeneralSettings() {
         </div>
 
         <div className="general-settings__preference-card">
-          <h2>Preferencias iniciais</h2>
-          <div className="general-settings__form-grid">
+          <SettingsSectionHeading
+            eyebrow="Preferencias"
+            title="Preferencias iniciais"
+            description="Define como o workspace abre para quem acessa o board."
+          />
+          <SettingsSummaryList
+            items={[
+              { label: "Perspectiva inicial", value: defaultModeLabel },
+              { label: "Formato de data", value: dateFormat.toUpperCase() }
+            ]}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsPreferencesDialogOpen(true)}
+            disabled={!permissions.canManageWorkspace}
+          >
+            Editar preferencias
+          </Button>
+        </div>
+      </section>
+
+      <section className="general-settings__workspace-profile">
+        <header>
+          <SettingsSectionHeading
+            eyebrow="Workspace"
+            title="Identidade e dados legais"
+            description="Resumo dos dados usados em propostas, contratos, fiscal e pre-cadastro da cobranca."
+          />
+        </header>
+        {isCorporateWorkspace && !isCompanyProfileComplete ? (
+          <div className="general-settings__required-company-alert">
+            <strong>Cadastro legal incompleto</strong>
+            <p>Complete os dados da contratada. Sem isso, contratos e propostas ficam com campos "a definir".</p>
+            <small>Pendente: {missingCompanyProfileFields.join(", ")}</small>
+          </div>
+        ) : null}
+        <div className="general-settings__profile-grid">
+          <SettingsProfileCard
+            eyebrow="Identidade do workspace"
+            title={workspaceProfileValues.workspaceName || "Workspace sem nome"}
+            description={workspaceProfileValues.workspaceDescription || "Sem descricao cadastrada."}
+            details={[
+              { label: "Chave", value: workspaceProfileValues.workspaceKey || "Nao definida" },
+              { label: "Empresa", value: workspaceProfileValues.workspaceCompany || "Nao definida" },
+              { label: "Website", value: workspaceProfileValues.workspaceWebsite || "Nao definido" }
+            ]}
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setProfileDialog("identity")}
+                disabled={!permissions.canManageWorkspace}
+              >
+                Editar dados
+              </Button>
+            }
+          />
+          <SettingsProfileCard
+            eyebrow="Dados legais"
+            title={legalStatusLabel}
+            description={companyProfile.legalName || companyProfile.name || "Identidade legal ainda nao cadastrada."}
+            details={[
+              { label: "Documento", value: companyProfile.document || "Nao definido" },
+              { label: "Endereco", value: companyProfile.addressLine1 || companyProfile.address || "Nao definido" },
+              {
+                label: "Foro",
+                value: [companyProfile.jurisdictionCity, companyProfile.jurisdictionState].filter(Boolean).join(" / ") || "Nao definido"
+              }
+            ]}
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setProfileDialog("legal")}
+                disabled={!permissions.canManageWorkspace}
+              >
+                Editar dados legais
+              </Button>
+            }
+          />
+        </div>
+      </section>
+
+      <section className="general-settings__billing-connect">
+        <header>
+          <SettingsSectionHeading
+            eyebrow="Cobranca Connect"
+            title="Status e verificacao da conta Stripe"
+            description="Status e verificacao da conta Stripe usada para receber pagamentos. Os dados legais vem do Workspace; a Stripe pode solicitar informacoes adicionais de compliance."
+          />
+        </header>
+
+        <div className="general-settings__billing-status general-settings__billing-status--compact">
+          {connectLoadState === "loading" ? (
+            <p>Carregando status da conta Connect...</p>
+          ) : null}
+          {connectLoadState === "missing" ? (
+            <p className="general-settings__billing-warning">
+              Conta Connect ainda nao iniciada. Vamos usar os dados legais do workspace para iniciar o pre-cadastro.
+            </p>
+          ) : null}
+          {connectLoadState === "error" ? (
+            <p className="general-settings__billing-warning">
+              Nao foi possivel verificar o status da cobranca agora.
+            </p>
+          ) : null}
+          {connectLoadState === "ready" && connectStatus ? (
+            <>
+              {connectNeedsAttention ? (
+                <p className="general-settings__billing-warning">
+                  Existem pendencias cadastrais no Stripe Connect. Complete os dados para habilitar cobrancas.
+                </p>
+              ) : (
+                <p className="general-settings__billing-success">
+                  Conta Connect pronta. Cobrancas e repasses habilitados.
+                </p>
+              )}
+              <div className="general-settings__billing-grid">
+                <span>
+                  <strong>Sim</strong>
+                  Conta Connect criada
+                </span>
+                <span>
+                  <strong>{connectStatus.chargesEnabled ? "Sim" : "Nao"}</strong>
+                  Cobrancas habilitadas
+                </span>
+                <span>
+                  <strong>{connectStatus.payoutsEnabled ? "Sim" : "Nao"}</strong>
+                  Repasses habilitados
+                </span>
+                <span>
+                  <strong>{connectStatus.requirementsDue.length + connectStatus.requirementsPastDue.length}</strong>
+                  Pendencias cadastrais
+                </span>
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        <div className="general-settings__billing-actions">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsConnectDetailsOpen(true)}
+          >
+            Ver detalhes
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void handleOpenConnectOnboarding()}
+            disabled={!canManageSensitiveConnectSettings || isOpeningOnboarding}
+            title={!canManageSensitiveConnectSettings ? sensitiveConnectSettingsPermissionMessage : undefined}
+          >
+            {isOpeningOnboarding ? "Abrindo..." : connectStatus ? "Completar verificacao na Stripe" : "Continuar cadastro de cobranca"}
+          </Button>
+        </div>
+      </section>
+
+      {profileDialog === "identity" ? (
+        <AppDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeProfileDialog();
+          }}
+          title="Editar identidade do workspace"
+          description="Atualize nome, chave, descricao e informacoes publicas do workspace."
+          className="general-settings__settings-dialog"
+          bodyClassName="general-settings__settings-dialog-body"
+          footer={
+            <>
+              <Button type="button" variant="outline" onClick={closeProfileDialog} disabled={isSavingWorkspaceProfile}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="workspace-identity-form"
+                disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile || isSavingCompanyProfile}
+              >
+                {isSavingWorkspaceProfile || isSavingCompanyProfile ? "Salvando..." : "Salvar dados"}
+              </Button>
+            </>
+          }
+        >
+          <AppForm
+            id="workspace-identity-form"
+            form={workspaceProfileForm}
+            onSubmit={async (values) => {
+              const saved = await handleSaveAll(values);
+              if (saved) closeProfileDialog();
+            }}
+            className="general-settings__workspace-profile-form"
+            disabled={!permissions.canManageWorkspace}
+            loading={isSavingWorkspaceProfile || isSavingCompanyProfile}
+          >
+            <div className="general-settings__workspace-profile-grid">
+              <AppFormField label="Nome do workspace" error={workspaceProfileForm.formState.errors.workspaceName?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("workspaceName")}
+                  placeholder="Ex.: Produto Core"
+                  disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
+                  aria-invalid={workspaceProfileForm.formState.errors.workspaceName ? true : undefined}
+                />
+              </AppFormField>
+              <AppFormField label="Chave do workspace (A-Z e 0-9)" error={workspaceProfileForm.formState.errors.workspaceKey?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("workspaceKey", {
+                    onChange: event => {
+                      event.target.value = event.target.value.toUpperCase();
+                    }
+                  })}
+                  placeholder="PRODCORE"
+                  disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
+                  aria-invalid={workspaceProfileForm.formState.errors.workspaceKey ? true : undefined}
+                />
+              </AppFormField>
+              <AppFormField label="Empresa" error={workspaceProfileForm.formState.errors.companyProfile?.name?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.name", {
+                    onChange: event => {
+                      workspaceProfileForm.setValue("workspaceCompany", event.target.value, {
+                        shouldDirty: true,
+                        shouldValidate: true
+                      });
+                    }
+                  })}
+                  placeholder="Ex.: Dask Labs"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Website" error={workspaceProfileForm.formState.errors.workspaceWebsite?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("workspaceWebsite")}
+                  placeholder="https://suaempresa.com"
+                  disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Descricao" className="general-settings__field--full" error={workspaceProfileForm.formState.errors.workspaceDescription?.message}>
+                <Textarea
+                  {...workspaceProfileForm.register("workspaceDescription")}
+                  placeholder="Resumo da area, objetivo ou contexto deste workspace."
+                  rows={4}
+                  disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
+                />
+              </AppFormField>
+            </div>
+          </AppForm>
+        </AppDialog>
+      ) : null}
+
+      {profileDialog === "legal" ? (
+        <AppDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeProfileDialog();
+          }}
+          title="Editar dados legais"
+          description="Dados usados em propostas, contratos, fiscal e pre-cadastro Stripe Connect."
+          className="general-settings__settings-dialog general-settings__settings-dialog--wide"
+          bodyClassName="general-settings__settings-dialog-body"
+          footer={
+            <>
+              <Button type="button" variant="outline" onClick={closeProfileDialog} disabled={isSavingCompanyProfile}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="workspace-legal-form"
+                disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile || isSavingCompanyProfile}
+              >
+                {isSavingWorkspaceProfile || isSavingCompanyProfile ? "Salvando..." : "Salvar dados legais"}
+              </Button>
+            </>
+          }
+        >
+          <AppForm
+            id="workspace-legal-form"
+            form={workspaceProfileForm}
+            onSubmit={async (values) => {
+              const saved = await handleSaveAll(values);
+              if (saved) closeProfileDialog();
+            }}
+            className="general-settings__workspace-profile-form"
+            disabled={!permissions.canManageWorkspace}
+            loading={isSavingWorkspaceProfile || isSavingCompanyProfile}
+          >
+            <div className="general-settings__workspace-profile-grid">
+              <AppFormField label="Razao social / nome legal" error={workspaceProfileForm.formState.errors.companyProfile?.legalName?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.legalName")}
+                  placeholder="Ex.: Dask Labs Tecnologia Ltda"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="CPF / CNPJ" error={workspaceProfileForm.formState.errors.companyProfile?.document?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.document")}
+                  placeholder="Ex.: 00.000.000/0001-00"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Tipo de negocio" error={workspaceProfileForm.formState.errors.companyProfile?.businessType?.message}>
+                <AppSelect
+                  value={companyProfile.businessType || "company"}
+                  onValueChange={(value) =>
+                    workspaceProfileForm.setValue("companyProfile.businessType", value as "individual" | "company" | "corporate", {
+                      shouldDirty: true,
+                      shouldValidate: true
+                    })
+                  }
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                  aria-label="Tipo de negocio"
+                  items={[
+                    { value: "company", label: "Empresa" },
+                    { value: "individual", label: "Pessoa fisica" },
+                    { value: "corporate", label: "Corporativo" }
+                  ]}
+                />
+              </AppFormField>
+              <AppFormField label="Aviso previo padrao (dias)" error={workspaceProfileForm.formState.errors.companyProfile?.noticePeriod?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.noticePeriod")}
+                  placeholder="Ex.: 30"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                  aria-invalid={workspaceProfileForm.formState.errors.companyProfile?.noticePeriod ? true : undefined}
+                />
+              </AppFormField>
+              <AppFormField label="Endereco da contratada" className="general-settings__field--full" error={workspaceProfileForm.formState.errors.companyProfile?.address?.message}>
+                <Textarea
+                  {...workspaceProfileForm.register("companyProfile.address")}
+                  placeholder="Endereco completo usado em propostas e contratos."
+                  rows={3}
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Endereco para pre-cadastro Stripe" error={workspaceProfileForm.formState.errors.companyProfile?.addressLine1?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.addressLine1")}
+                  placeholder="Logradouro e numero"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Complemento" error={workspaceProfileForm.formState.errors.companyProfile?.addressLine2?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.addressLine2")}
+                  placeholder="Sala, bloco, andar"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Cidade" error={workspaceProfileForm.formState.errors.companyProfile?.city?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.city")}
+                  placeholder="Ex.: Sao Paulo"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Estado" error={workspaceProfileForm.formState.errors.companyProfile?.state?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.state")}
+                  placeholder="Ex.: SP"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="CEP" error={workspaceProfileForm.formState.errors.companyProfile?.postalCode?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.postalCode")}
+                  placeholder="Ex.: 01310-100"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Pais" error={workspaceProfileForm.formState.errors.companyProfile?.country?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.country")}
+                  placeholder="BR"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Cidade do foro" error={workspaceProfileForm.formState.errors.companyProfile?.jurisdictionCity?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.jurisdictionCity")}
+                  placeholder="Ex.: Sao Paulo"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+              <AppFormField label="Estado do foro" error={workspaceProfileForm.formState.errors.companyProfile?.jurisdictionState?.message}>
+                <TextInput
+                  {...workspaceProfileForm.register("companyProfile.jurisdictionState")}
+                  placeholder="Ex.: SP"
+                  disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
+                />
+              </AppFormField>
+            </div>
+          </AppForm>
+        </AppDialog>
+      ) : null}
+
+      {isPreferencesDialogOpen ? (
+        <AppDialog
+          open
+          onOpenChange={setIsPreferencesDialogOpen}
+          title="Editar preferencias iniciais"
+          description="Ajuste a primeira perspectiva e o formato de data do workspace."
+          className="general-settings__settings-dialog"
+          bodyClassName="general-settings__settings-dialog-body"
+        >
+          <div className="general-settings__form-grid general-settings__form-grid--dialog">
             <FormField label="Perspectiva inicial">
               <AppSelect
                 value={defaultMode}
@@ -517,219 +952,41 @@ export function GeneralSettings() {
               />
             </FormField>
           </div>
-        </div>
-      </section>
+        </AppDialog>
+      ) : null}
 
-      <section className="general-settings__workspace-profile">
-        <header>
-          <span>Workspace</span>
-          <h2>Identidade e dados legais</h2>
-          <p>Nome e informacoes do workspace e cadastro da contratada usada em propostas e contratos.</p>
-        </header>
-        {isCorporateWorkspace && !isCompanyProfileComplete ? (
-          <div className="general-settings__required-company-alert">
-            <strong>Cadastro legal incompleto</strong>
-            <p>Complete os dados da contratada. Sem isso, contratos e propostas ficam com campos "a definir".</p>
-            <small>Pendente: {missingCompanyProfileFields.join(", ")}</small>
-          </div>
-        ) : null}
-        <AppForm
-          form={workspaceProfileForm}
-          onSubmit={handleSaveAll}
-          className="general-settings__workspace-profile-form"
-          disabled={!permissions.canManageWorkspace}
-          loading={isSavingWorkspaceProfile || isSavingCompanyProfile}
+      {isConnectDetailsOpen ? (
+        <AppDialog
+          open
+          onOpenChange={setIsConnectDetailsOpen}
+          title="Detalhes da cobranca Connect"
+          description={`Status atual: ${connectSummaryLabel}. Proximo passo: ${nextOnboardingAction}`}
+          className="general-settings__settings-dialog general-settings__settings-dialog--wide"
+          bodyClassName="general-settings__settings-dialog-body"
+          footer={
+            <Button
+              type="button"
+              onClick={() => void handleOpenConnectOnboarding()}
+              disabled={!canManageSensitiveConnectSettings || isOpeningOnboarding}
+              title={!canManageSensitiveConnectSettings ? sensitiveConnectSettingsPermissionMessage : undefined}
+            >
+              {isOpeningOnboarding ? "Abrindo..." : connectStatus ? "Completar verificacao na Stripe" : "Continuar cadastro de cobranca"}
+            </Button>
+          }
         >
-        <div className="general-settings__workspace-profile-grid">
-          <AppFormField label="Nome do workspace" error={workspaceProfileForm.formState.errors.workspaceName?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("workspaceName")}
-              placeholder="Ex.: Produto Core"
-              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
-              aria-invalid={workspaceProfileForm.formState.errors.workspaceName ? true : undefined}
-            />
-          </AppFormField>
-          <AppFormField label="Chave do workspace (A-Z e 0-9)" error={workspaceProfileForm.formState.errors.workspaceKey?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("workspaceKey", {
-                onChange: event => {
-                  event.target.value = event.target.value.toUpperCase();
-                }
-              })}
-              placeholder="PRODCORE"
-              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
-              aria-invalid={workspaceProfileForm.formState.errors.workspaceKey ? true : undefined}
-            />
-          </AppFormField>
-          <AppFormField label="Website" error={workspaceProfileForm.formState.errors.workspaceWebsite?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("workspaceWebsite")}
-              placeholder="https://suaempresa.com"
-              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
-            />
-          </AppFormField>
-          <AppFormField label="Descricao" className="general-settings__field--full" error={workspaceProfileForm.formState.errors.workspaceDescription?.message}>
-            <Textarea
-              {...workspaceProfileForm.register("workspaceDescription")}
-              placeholder="Resumo da area, objetivo ou contexto deste workspace."
-              rows={3}
-              disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile}
-            />
-          </AppFormField>
-
-          <div className="general-settings__form-divider">
-            <span>Dados legais da contratada</span>
-          </div>
-
-          <AppFormField label="Nome fantasia / empresa" error={workspaceProfileForm.formState.errors.companyProfile?.name?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("companyProfile.name", {
-                onChange: event => {
-                  workspaceProfileForm.setValue("workspaceCompany", event.target.value, {
-                    shouldDirty: true,
-                    shouldValidate: true
-                  });
-                }
-              })}
-              placeholder="Ex.: Dask Labs"
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-            />
-          </AppFormField>
-          <AppFormField label="Razao social / nome legal" error={workspaceProfileForm.formState.errors.companyProfile?.legalName?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("companyProfile.legalName")}
-              placeholder="Ex.: Dask Labs Tecnologia Ltda"
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-            />
-          </AppFormField>
-          <AppFormField label="CPF / CNPJ" error={workspaceProfileForm.formState.errors.companyProfile?.document?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("companyProfile.document")}
-              placeholder="Ex.: 00.000.000/0001-00"
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-            />
-          </AppFormField>
-          <AppFormField label="Aviso previo padrao (dias)" error={workspaceProfileForm.formState.errors.companyProfile?.noticePeriod?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("companyProfile.noticePeriod")}
-              placeholder="Ex.: 30"
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-              aria-invalid={workspaceProfileForm.formState.errors.companyProfile?.noticePeriod ? true : undefined}
-            />
-          </AppFormField>
-          <AppFormField label="Endereco da contratada" className="general-settings__field--full" error={workspaceProfileForm.formState.errors.companyProfile?.address?.message}>
-            <Textarea
-              {...workspaceProfileForm.register("companyProfile.address")}
-              placeholder="Logradouro, numero, complemento, cidade, estado, CEP"
-              rows={3}
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-            />
-          </AppFormField>
-          <AppFormField label="Cidade do foro" error={workspaceProfileForm.formState.errors.companyProfile?.jurisdictionCity?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("companyProfile.jurisdictionCity")}
-              placeholder="Ex.: Sao Paulo"
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-            />
-          </AppFormField>
-          <AppFormField label="Estado do foro" error={workspaceProfileForm.formState.errors.companyProfile?.jurisdictionState?.message}>
-            <TextInput
-              {...workspaceProfileForm.register("companyProfile.jurisdictionState")}
-              placeholder="Ex.: SP"
-              disabled={!permissions.canManageWorkspace || isSavingCompanyProfile}
-            />
-          </AppFormField>
-        </div>
-        <div className="general-settings__workspace-profile-actions">
-          <Button
-            type="submit"
-            disabled={!permissions.canManageWorkspace || isSavingWorkspaceProfile || isSavingCompanyProfile}
-          >
-            {isSavingWorkspaceProfile || isSavingCompanyProfile ? "Salvando..." : "Salvar"}
-          </Button>
-          {workspaceProfile?.kind ? <small>Tipo: {workspaceProfile.kind}</small> : null}
-        </div>
-        </AppForm>
-      </section>
-
-      <section className="general-settings__billing-connect">
-        <header>
-          <span>Cobranca Connect</span>
-          <h2>Completar cadastro da cobranca</h2>
-          <p>
-            Seus clientes so conseguem cobrar clientes deles quando a conta Connect do workspace estiver completa.
-          </p>
-        </header>
-
-        <div className="general-settings__billing-status">
-          {connectLoadState === "loading" ? (
-            <p>Carregando status da conta Connect...</p>
-          ) : null}
-          {connectLoadState === "missing" ? (
-            <p className="general-settings__billing-warning">
-              Conta Connect ainda nao iniciada. Complete o cadastro para liberar cobrancas.
-            </p>
-          ) : null}
-          {connectLoadState === "error" ? (
-            <p className="general-settings__billing-warning">
-              Nao foi possivel verificar o status da cobranca agora.
-            </p>
-          ) : null}
-          {connectLoadState === "ready" && connectStatus ? (
-            <>
-              {connectNeedsAttention ? (
-                <p className="general-settings__billing-warning">
-                  Existem pendencias cadastrais no Stripe Connect. Complete os dados para habilitar cobrancas.
-                </p>
-              ) : (
-                <p className="general-settings__billing-success">
-                  Conta Connect pronta. Cobrancas e repasses habilitados.
-                </p>
-              )}
-              <div className="general-settings__billing-grid">
-                <span>
-                  <strong>{connectStatus.chargesEnabled ? "Sim" : "Nao"}</strong>
-                  Cobrancas habilitadas
-                </span>
-                <span>
-                  <strong>{connectStatus.payoutsEnabled ? "Sim" : "Nao"}</strong>
-                  Repasses habilitados
-                </span>
-                <span>
-                  <strong>{connectStatus.requirementsDue.length}</strong>
-                  Pendencias cadastrais
-                </span>
-              </div>
-              <p className="general-settings__billing-next-step">
-                <strong>Proximo passo:</strong> {nextOnboardingAction}
-              </p>
-            </>
-          ) : null}
-        </div>
-
-        <ul className="general-settings__billing-checklist">
-          {onboardingChecklist.map((item) => (
-            <li key={item.key} className={item.done ? "is-done" : "is-pending"}>
-              <strong>{item.title}</strong>
-              <p>{item.description}</p>
-              {!item.done && item.pendingReasons.length > 0 ? (
-                <small>{item.pendingReasons.join(" | ")}</small>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-
-        <div className="general-settings__billing-actions">
-          <Button
-            type="button"
-            onClick={() => void handleOpenConnectOnboarding()}
-            disabled={!canManageSensitiveConnectSettings || isOpeningOnboarding}
-            title={!canManageSensitiveConnectSettings ? sensitiveConnectSettingsPermissionMessage : undefined}
-          >
-            {isOpeningOnboarding ? "Abrindo..." : "Completar cadastro"}
-          </Button>
-        </div>
-      </section>
+          <ul className="general-settings__billing-checklist">
+            {onboardingChecklist.map((item) => (
+              <li key={item.key} className={item.done ? "is-done" : "is-pending"}>
+                <strong>{item.title}</strong>
+                <p>{item.description}</p>
+                {!item.done && item.pendingReasons.length > 0 ? (
+                  <small>{item.pendingReasons.join(" | ")}</small>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </AppDialog>
+      ) : null}
 
       {templateToConfirm ? (
         <AppDialog

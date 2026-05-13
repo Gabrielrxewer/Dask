@@ -175,10 +175,10 @@
 .app-theme[data-theme="dark"] :where(
   .shared-tabs__trigger:hover,
   .shared-tabs__trigger[aria-selected="true"],
-  [class*="__tab"]:hover,
-  [class*="__tab"].is-active,
-  [class*="__nav-link"]:hover,
-  [class*="__nav-link"].is-active
+  .shared-tabs__item:hover,
+  .shared-tabs__item--active,
+  .module-tabs__item:hover,
+  .module-tabs__item--active
 ) {
   color: var(--text-primary);
   background: var(--selected-bg);

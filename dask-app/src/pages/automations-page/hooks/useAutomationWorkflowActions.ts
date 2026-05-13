@@ -18,9 +18,12 @@ import {
 } from "@/modules/automation/query";
 import { toast } from "@/shared/ui";
 import { canvasToGraph } from "@/pages/automations-page/model/automation-graph-adapter";
+import {
+  isAutomationWorkflowEditable,
+  isAutomationWorkflowProtected
+} from "@/pages/automations-page/model/automation-workflow-metadata";
 import type {
   AutomationCanvasNode,
-  AutomationRecipe,
   StudioTab
 } from "@/pages/automations-page/model/automation-page.types";
 
@@ -100,26 +103,12 @@ export function useAutomationWorkflowActions(input: {
     workflowsCount
   ]);
 
-  const handleCreateRecipeWorkflow = useCallback(async (recipe: AutomationRecipe) => {
-    setFeedback(null);
-    const workflow = await createWorkflowMutation.mutateAsync({
-      name: recipe.name,
-      description: recipe.description,
-      status: "draft"
-    });
-    await createDraftMutation.mutateAsync({
-      workflowId: workflow.id,
-      versionInput: {
-        graph: recipe.graph,
-        definition: { graph: recipe.graph, recipeId: recipe.id }
-      }
-    });
-    setSelectedWorkflowId(workflow.id);
-    setFeedback("Receita criada como workflow editavel.");
-  }, [createDraftMutation, createWorkflowMutation, setFeedback, setSelectedWorkflowId]);
-
   const handleSaveWorkflow = useCallback(async (): Promise<boolean> => {
     if (!selectedWorkflow || !selectedVersion || selectedVersion.status !== "draft") return false;
+    if (!isAutomationWorkflowEditable(selectedWorkflow)) {
+      setFeedback("Esta automacao e gerenciada pelo sistema e nao permite edicao.");
+      return false;
+    }
     if (firstValidationError) {
       setFeedback(`Corrija antes de salvar: ${firstValidationError}`);
       toast.warning("Payload invalido", { description: firstValidationError });
@@ -186,6 +175,10 @@ export function useAutomationWorkflowActions(input: {
 
   const handleCloneVersion = useCallback(async () => {
     if (!selectedWorkflow || !selectedVersion) return;
+    if (!isAutomationWorkflowEditable(selectedWorkflow)) {
+      setFeedback("Esta automacao e gerenciada pelo sistema e nao permite edicao.");
+      return;
+    }
     const draft = await cloneVersionMutation.mutateAsync({
       workflowId: selectedWorkflow.id,
       versionId: selectedVersion.id
@@ -196,6 +189,10 @@ export function useAutomationWorkflowActions(input: {
 
   const handleStatusChange = useCallback(async (status: Extract<AutomationWorkflowStatus, "active" | "paused" | "archived">) => {
     if (!selectedWorkflow) return;
+    if (status === "archived" && isAutomationWorkflowProtected(selectedWorkflow)) {
+      setFeedback("Esta automacao e protegida pelo sistema e nao pode ser arquivada.");
+      return;
+    }
     await statusMutation.mutateAsync({ workflowId: selectedWorkflow.id, status });
     setFeedback("Status atualizado.");
   }, [selectedWorkflow, setFeedback, statusMutation]);
@@ -213,7 +210,6 @@ export function useAutomationWorkflowActions(input: {
   return {
     busy,
     handleCreateWorkflow,
-    handleCreateRecipeWorkflow,
     handleSaveWorkflow,
     handlePublish,
     handleCloneVersion,

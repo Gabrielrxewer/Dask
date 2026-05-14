@@ -8,6 +8,7 @@ import {
   type WorkspaceTemplateKey
 } from '@/modules/workspaces/application/workspace-template-catalog';
 import type { WorkspacesRepository } from '@/modules/workspaces/repositories/workspaces-repository';
+import { isBusinessWorkspacePlan } from '@/modules/billing/domain/types';
 
 const BUSINESS_WORKSPACE_CREATION_LIMIT = 3;
 
@@ -33,10 +34,10 @@ export class WorkspacesService {
     const hasCorporateAccess = process.env.NODE_ENV !== 'production'
       ? true
       : subscriptionAccess?.hasActiveSubscription === true &&
-        subscriptionAccess.subscriptionPlan === 'BUSINESS';
+        isBusinessWorkspacePlan(subscriptionAccess.subscriptionPlan);
     const isBusinessSubscriber =
       subscriptionAccess?.hasActiveSubscription === true &&
-      subscriptionAccess.subscriptionPlan === 'BUSINESS';
+      isBusinessWorkspacePlan(subscriptionAccess.subscriptionPlan);
 
     const template = getWorkspaceTemplateByKey(input.templateKey);
     if (input.templateKey && !template) {
@@ -45,7 +46,7 @@ export class WorkspacesService {
 
     if (input.kind === WorkspaceKind.CORPORATE) {
       if (!hasCorporateAccess) {
-        throw new AppError('Corporate workspace requires an active BUSINESS plan', 403);
+        throw new AppError('Corporate workspace requires an active business workspace plan', 403);
       }
 
       if (!input.organizationId) {
@@ -187,7 +188,7 @@ export class WorkspacesService {
     const hasCorporateAccess = process.env.NODE_ENV !== 'production'
       ? true
       : subscriptionAccess?.hasActiveSubscription === true &&
-        subscriptionAccess.subscriptionPlan === 'BUSINESS';
+        isBusinessWorkspacePlan(subscriptionAccess.subscriptionPlan);
 
     if (hasCorporateAccess) {
       return workspaces;

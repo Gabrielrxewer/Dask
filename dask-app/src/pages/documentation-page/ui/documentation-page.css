@@ -60,6 +60,32 @@
   display: none;
 }
 
+.documentation-create-modal,
+.documentation-send-modal {
+  --doc-line: var(--workspace-border, var(--line));
+  --doc-line-subtle: var(--workspace-border-subtle, var(--line));
+  --doc-line-strong: var(--workspace-border-strong, var(--line-strong));
+  --doc-ink: var(--workspace-text-primary, var(--text-strong));
+  --doc-soft: var(--workspace-text-secondary, var(--text-soft));
+  --doc-muted: var(--workspace-text-muted, var(--text-muted));
+  --doc-surface: var(--workspace-surface, var(--surface-1));
+  --doc-surface-soft: var(--workspace-surface-soft, var(--surface-2));
+  --doc-surface-muted: var(--workspace-table-header, var(--surface-muted));
+  --doc-hover: var(--workspace-table-row-hover, var(--surface-2));
+  --doc-selected: var(--workspace-selected, var(--selected-bg));
+  --doc-selected-border: var(--workspace-selected-border, var(--selected-border));
+  --doc-selected-text: var(--workspace-text-primary, var(--text-strong));
+  --doc-control: var(--workspace-control-surface, var(--control-surface));
+  --doc-control-hover: var(--workspace-control-surface-hover, var(--control-surface-hover));
+  --doc-control-border: var(--workspace-control-border, var(--border-default));
+  --doc-focus-ring: var(--workspace-focus-ring, color-mix(in oklab, var(--primary) 18%, transparent));
+  --doc-panel-surface: var(--workspace-panel-surface, var(--surface-overlay-strong));
+  --doc-field-border: var(--workspace-control-border, var(--border-default));
+  --doc-field-surface: var(--workspace-control-surface, var(--control-surface));
+  --doc-field-surface-strong: var(--workspace-control-surface, var(--control-surface));
+  --doc-field-shadow: none;
+}
+
 .documentation-create-modal {
   width: min(720px, calc(100vw - 28px));
   padding: 18px;

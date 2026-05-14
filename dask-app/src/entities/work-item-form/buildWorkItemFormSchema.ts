@@ -14,12 +14,17 @@ function schemaForField(field: WorkItemPublicField): z.ZodTypeAny {
     case "textarea":
     case "long_text":
     case "select":
+    case "status":
+    case "priority":
     case "user":
     case "client":
     case "reference":
+    case "relation":
+    case "catalog_select":
       return required ? z.string().min(1, "Campo obrigatorio") : z.string().nullable().optional();
     case "multi_select":
     case "file":
+    case "attachment":
       return required ? z.array(z.string()).min(1, "Campo obrigatorio") : z.array(z.string()).optional();
     case "checkbox":
     case "boolean":

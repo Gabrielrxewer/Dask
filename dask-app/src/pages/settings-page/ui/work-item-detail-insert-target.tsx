@@ -40,13 +40,13 @@ export function WorkItemDetailInsertTarget({
       key={`detail-insert-${zone}-${index}`}
       className={`wie__detail-insert-target${zone === "side" ? " is-side" : ""}${isTarget || isOver ? " is-target" : ""}`}
       data-detail-zone={zone}
+      data-insert-index={index}
       data-drop-intent={isTarget || isOver ? "vacancy" : undefined}
+      aria-label="Inserir campo nesta posicao"
       onPointerEnter={() => {
         if (!dragPayload) return;
         onUpdateDropTarget(target);
       }}
-    >
-      <span>Solte aqui</span>
-    </div>
+    />
   );
 }

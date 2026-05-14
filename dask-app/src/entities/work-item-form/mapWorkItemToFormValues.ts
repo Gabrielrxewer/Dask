@@ -7,7 +7,16 @@ export function mapWorkItemToFormValues(task: Task | null | undefined, schema: W
   if (!task) return defaults;
 
   return schema.fields.reduce<WorkItemFormValues>((acc, field) => {
-    acc[field.key] = task.customFields[field.key] ?? task.customFieldValuesById?.[field.id] ?? defaults[field.key];
+    const runtimeFieldId =
+      field.metadata && typeof field.metadata.runtimeFieldId === "string" ? field.metadata.runtimeFieldId : null;
+
+    acc[field.key] =
+      task.customFields[field.key] ??
+      task.customFields[field.id] ??
+      (runtimeFieldId ? task.customFields[runtimeFieldId] : undefined) ??
+      task.customFieldValuesById?.[field.id] ??
+      (runtimeFieldId ? task.customFieldValuesById?.[runtimeFieldId] : undefined) ??
+      defaults[field.key];
     return acc;
   }, { ...defaults });
 }

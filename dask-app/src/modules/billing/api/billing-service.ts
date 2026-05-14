@@ -10,6 +10,7 @@ import type {
   ConnectCatalogRecurringInterval,
   ConnectPaymentOrder,
   CreateConnectCheckoutSessionInput,
+  SubscriptionCheckoutAcceptance,
   SubscriptionPlan
 } from "../model/types";
 
@@ -49,10 +50,10 @@ export const billingService = {
     return apiClient.get<BillingStatus>("/billing/status", billingRequestConfig);
   },
 
-  createCheckoutSession(planCode: SubscriptionPlan): Promise<{ url: string }> {
+  createCheckoutSession(planCode: SubscriptionPlan, acceptance: SubscriptionCheckoutAcceptance): Promise<{ url: string }> {
     return apiClient.post<{ url: string }>(
       "/billing/checkout-session",
-      { planCode },
+      { planCode, ...acceptance },
       billingRequestConfig
     );
   },

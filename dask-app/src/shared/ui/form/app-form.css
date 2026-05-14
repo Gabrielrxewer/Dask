@@ -88,6 +88,34 @@
   opacity: 0.86;
 }
 
+.app-form-field--switch {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label control"
+    "help control"
+    "error error";
+  align-items: center;
+  gap: 3px 12px;
+  min-height: 34px;
+}
+
+.app-form-field--switch .app-form-field__label {
+  grid-area: label;
+}
+
+.app-form-field--switch .app-form-help-text {
+  grid-area: help;
+}
+
+.app-form-field--switch .app-switch__root {
+  grid-area: control;
+  justify-self: end;
+}
+
+.app-form-field--switch .app-form-error {
+  grid-area: error;
+}
+
 .app-form-field .shared-input,
 .app-form-field .shared-select__control,
 .app-form-field .shared-textarea,
@@ -104,6 +132,30 @@
   border-radius: 14px;
   padding: 0 14px;
   box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent) inset;
+}
+
+.app-color-field {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-color-field__picker {
+  width: 46px;
+  height: 46px;
+  padding: 4px;
+  border: var(--control-border);
+  border-radius: 14px;
+  background: var(--control-surface);
+  cursor: pointer;
+  box-shadow: var(--shadow-soft), 0 1px 0 color-mix(in oklab, var(--glass-highlight) 64%, transparent) inset;
+}
+
+.app-color-field__picker:focus-visible {
+  border-color: var(--control-border-strong);
+  box-shadow: var(--focus-strong);
 }
 
 .app-form-field--invalid .shared-input,

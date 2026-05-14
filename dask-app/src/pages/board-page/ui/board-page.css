@@ -15,6 +15,13 @@
   --board-selected-border: var(--workspace-selected-border);
   --board-control-surface: var(--workspace-control-surface);
   --board-control-hover: var(--workspace-control-surface-hover);
+  --shared-tabs-bg: transparent;
+  --shared-tabs-border: transparent;
+  --shared-tabs-hover-bg: var(--workspace-hover);
+  --shared-tabs-hover-border: var(--workspace-border-subtle);
+  --shared-tabs-active-bg: var(--workspace-selected);
+  --shared-tabs-active-border: var(--workspace-selected-border);
+  --shared-tabs-active-line: var(--workspace-selected-border);
   --workspace-view-text: var(--builder-text);
   --workspace-view-text-soft: var(--builder-text-soft);
   --workspace-view-text-muted: var(--builder-text-muted);
@@ -286,7 +293,7 @@
 
 .app-theme[data-theme="dark"] .board-top-nav {
   padding: 5px 2px;
-  border-bottom: 1px solid var(--board-header-line);
+  border-bottom: 1px solid color-mix(in srgb, var(--workspace-border-strong) 82%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__tabs.shared-tabs {
@@ -338,19 +345,19 @@
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search {
   border-radius: 10px;
-  border: 1px solid var(--workspace-border-subtle);
-  background: var(--board-control-surface);
+  border: 1px solid transparent;
+  background: transparent;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search:hover {
-  background: var(--board-control-hover);
-  border-color: var(--workspace-border);
+  background: var(--workspace-table-row-hover);
+  border-color: color-mix(in srgb, var(--workspace-border-strong) 72%, transparent);
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__search:focus-within {
   background: var(--board-control-surface);
-  border-color: var(--board-selected-border);
+  border-color: var(--workspace-control-border);
   box-shadow: 0 0 0 3px var(--workspace-focus-ring);
 }
 
@@ -409,8 +416,8 @@
 }
 
 .app-theme[data-theme="dark"] .board-top-nav__filter .dashboard-filter__mine-button:hover {
-  background: var(--board-hover-surface);
-  border-color: var(--workspace-border);
+  background: var(--workspace-table-row-hover);
+  border-color: color-mix(in srgb, var(--workspace-border-strong) 72%, transparent);
   color: var(--workspace-text-primary);
 }
 

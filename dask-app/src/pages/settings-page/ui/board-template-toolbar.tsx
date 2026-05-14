@@ -48,15 +48,22 @@ export function BoardTemplateToolbar({
 
   return (
     <div className="board-editor__template-toolbar">
-      <div className="board-editor__template-group">
+      <div className="board-editor__template-summary">
+        <span className="board-editor__template-icon" aria-hidden="true">
+          <IconTemplate />
+        </span>
         <div className="board-editor__template-group-copy">
-          <strong>Template por perspectiva</strong>
-          <span>
-            {activePerspective?.template
-              ? `Base atual: ${activePerspective.template.templateName} / ${activePerspective.template.perspectiveName}`
-              : "Aplique um template salvo na perspectiva ativa."}
-          </span>
+          <span className="board-editor__template-eyebrow">Templates</span>
+          <strong>Perspectiva ativa</strong>
+          {activePerspective?.template ? (
+            <span title={`${activePerspective.template.templateName} / ${activePerspective.template.perspectiveName}`}>
+              {`${activePerspective.template.templateName} / ${activePerspective.template.perspectiveName}`}
+            </span>
+          ) : null}
         </div>
+      </div>
+
+      <div className="board-editor__template-group">
         <div className="board-editor__template-actions">
           <AppSelect
             className="board-editor__template-select"
@@ -75,11 +82,11 @@ export function BoardTemplateToolbar({
           />
           <button
             type="button"
-            className="board-editor__btn-discard"
+            className="board-editor__template-apply-btn"
             onClick={onApplyTemplateToActivePerspective}
             disabled={!activePerspective || !selectedApplyTemplateSeed}
           >
-            Aplicar template
+            Aplicar
           </button>
         </div>
       </div>
@@ -109,7 +116,7 @@ export function BoardTemplateToolbar({
               onChange={(event) => onNewTemplateDescriptionChange(event.target.value)}
             />
             <button type="button" className="board-editor__btn-save-main board-editor__btn-save-main--compact" onClick={onSavePerspectiveAsTemplate}>
-              Salvar template
+              Salvar
             </button>
             <button type="button" className="board-editor__btn-cancel" onClick={onCancelCreatingTemplate}>
               Cancelar
@@ -118,12 +125,13 @@ export function BoardTemplateToolbar({
         ) : (
           <button type="button" className="board-editor__template-save-btn" onClick={onStartCreatingTemplate} disabled={!activePerspective}>
             <IconTemplate />
-            Salvar perspectiva como template
+            Salvar como template
           </button>
         )}
-        {templateFeedback ? <span className="board-editor__template-feedback">{templateFeedback}</span> : null}
-        {templateError ? <span className="board-editor__template-error">{templateError}</span> : null}
       </div>
+
+      {templateFeedback ? <span className="board-editor__template-feedback">{templateFeedback}</span> : null}
+      {templateError ? <span className="board-editor__template-error">{templateError}</span> : null}
     </div>
   );
 }

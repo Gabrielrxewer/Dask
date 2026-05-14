@@ -177,6 +177,58 @@ describe("work-item layout editor drop model", () => {
     expect(result.layout.detail).toEqual(["sys:title", "summary", "due", "reviewer"]);
   });
 
+  it("troca posicoes quando um campo do formulario e solto em cima de outro", () => {
+    const result = applyFieldDrop({
+      draft: {
+        card: [],
+        detail: ["sys:title", "summary", "reviewer", "due"]
+      },
+      payload: {
+        fieldId: "reviewer",
+        origin: "detail"
+      },
+      target: {
+        surface: "detail",
+        kind: "replace-field",
+        targetFieldId: "due",
+        zone: "side"
+      },
+      allowedFieldIds,
+      cardAreasByFieldId: { ...cardAreasByFieldId },
+      detailZonesByFieldId: { ...detailZonesByFieldId }
+    });
+
+    expect(result.layout.detail).toEqual(["sys:title", "summary", "due", "reviewer"]);
+    expect(result.detailZonesByFieldId.reviewer).toBe("side");
+    expect(result.detailZonesByFieldId.due).toBe("side");
+  });
+
+  it("troca posicoes e areas quando um campo do card e solto em cima de outro", () => {
+    const result = applyFieldDrop({
+      draft: {
+        card: ["sys:title", "summary", "reviewer", "due"],
+        detail: []
+      },
+      payload: {
+        fieldId: "summary",
+        origin: "card"
+      },
+      target: {
+        surface: "card",
+        kind: "replace-field",
+        targetFieldId: "due",
+        area: "meta"
+      },
+      allowedFieldIds,
+      cardAreasByFieldId: { ...cardAreasByFieldId },
+      detailZonesByFieldId: { ...detailZonesByFieldId }
+    });
+
+    expect(result.layout.card).toEqual(["sys:title", "due", "reviewer", "summary"]);
+    expect(result.cardAreasByFieldId.summary).toBe("meta");
+    expect(result.cardAreasByFieldId.due).toBe("summary");
+  });
+
   it("persiste o layout final com a mesma ordem e area mostradas na preview", () => {
     const finalLayout = applyFieldDrop({
       draft: {

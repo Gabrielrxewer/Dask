@@ -490,7 +490,12 @@ const auditEvents = [
 ];
 
 const billingStatus = { hasActiveSubscription: true, plan: "BUSINESS", status: "ACTIVE", currentPeriodEnd: now, cancelAtPeriodEnd: false, canAccessPlatform: true, canCreateWorkspace: true, message: null };
-const billingPlans = [{ code: "BUSINESS", name: "Business", description: "Plano smoke", amount: 9900, currency: "BRL", interval: "month", intervalCount: 1, features: ["Workspace", "Billing"], isActive: true }];
+const billingPlans = [
+  { code: "BASIC", name: "Basic", description: "Plano smoke Basic", amount: 14990, currency: "BRL", interval: "month", intervalCount: 1, features: ["Workspace business"], isActive: true },
+  { code: "PRO", name: "Pro", description: "Plano smoke Pro", amount: 29990, currency: "BRL", interval: "month", intervalCount: 1, features: ["Automacoes", "IA contextual"], isActive: true },
+  { code: "BUSINESS", name: "Business", description: "Plano smoke Business", amount: 49990, currency: "BRL", interval: "month", intervalCount: 1, features: ["Workspace", "Billing"], isActive: true },
+  { code: "ENTERPRISE", name: "Enterprise", description: "Plano sob consulta", amount: 0, currency: "BRL", interval: null, intervalCount: null, features: ["Contrato empresarial"], isActive: true }
+];
 const connectAccount = { workspaceId: workspaceSlug, stripeAccountId: "acct_smoke", controllerType: "express", dashboardType: "express", requirementCollection: null, disabledReason: null, detailsSubmitted: true, chargesEnabled: true, payoutsEnabled: true, cardPaymentsStatus: "active", pixPaymentsStatus: "active", boletoPaymentsStatus: "inactive", capabilities: {}, onboardingComplete: true, requirementsDue: [], requirementsPastDue: [], requirementsEventuallyDue: [], requirementsPendingVerification: [] };
 const catalogItems = [{ id: "catalog-1", kind: "SERVICE", billingType: "ONE_TIME", recurringInterval: null, recurringIntervalCount: null, name: "Diagnostico Smoke", description: "Servico de teste", amount: 12500, currency: "BRL", stripeConnectAccountId: "acct_smoke", stripeProductId: "prod_smoke", stripePriceId: "price_smoke", isActive: true, metadata: null, createdAt: now, updatedAt: now }];
 const paymentOrders = [{ id: "order-smoke", status: "CHECKOUT_OPEN", customerStatus: "pending", amount: 12500, currency: "BRL", description: "Diagnostico Smoke", customerId: "customer-1", customerName: "Cliente Smoke", customerEmail: "cliente@example.invalid", customerDocument: null, customerPhone: null, stripeCheckoutSessionId: "session-smoke", stripePaymentIntentId: null, checkoutUrl: "https://example.invalid/checkout", customerPortalUrl: null, createdAt: now, updatedAt: now, paidAt: null, failedAt: null, canceledAt: null, refundedAt: null }];

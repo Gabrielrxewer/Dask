@@ -6,6 +6,7 @@ import type {
   ConnectCatalogRecurringInterval,
   ConnectPaymentOrder,
   CreateConnectCheckoutSessionInput,
+  SubscriptionCheckoutAcceptance,
   SubscriptionPlan
 } from "@/modules/billing/model/types";
 import { billingQueryKeys } from "@/modules/billing/query/billing-query-keys";
@@ -101,7 +102,12 @@ export function useCreateSubscriptionCheckoutMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (planCode: SubscriptionPlan) => billingService.createCheckoutSession(planCode),
+    mutationFn: (input: { planCode: SubscriptionPlan } & SubscriptionCheckoutAcceptance) =>
+      billingService.createCheckoutSession(input.planCode, {
+        acceptedTerms: input.acceptedTerms,
+        acceptedTermsVersion: input.acceptedTermsVersion,
+        acceptedPrivacyVersion: input.acceptedPrivacyVersion
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: billingQueryKeys.subscription() });
     },

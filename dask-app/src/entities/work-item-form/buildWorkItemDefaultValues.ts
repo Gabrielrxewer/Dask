@@ -1,8 +1,10 @@
-import type { WorkItemPublicSchema } from "@/entities/work-item-schema";
+import type { FieldDefinition } from "@/shared/field-core";
 
 export type WorkItemFormValues = Record<string, unknown>;
 
-export function buildWorkItemDefaultValues(schema: WorkItemPublicSchema): WorkItemFormValues {
+export type WorkItemDefaultValuesSchema = Pick<FieldDefinition, "key" | "type" | "defaultValue">;
+
+export function buildWorkItemDefaultValues(schema: { fields: WorkItemDefaultValuesSchema[] }): WorkItemFormValues {
   return schema.fields.reduce<WorkItemFormValues>((acc, field) => {
     if (field.defaultValue !== undefined) {
       acc[field.key] = field.defaultValue;
@@ -13,6 +15,7 @@ export function buildWorkItemDefaultValues(schema: WorkItemPublicSchema): WorkIt
       case "multi_select":
       case "checklist":
       case "file":
+      case "attachment":
         acc[field.key] = [];
         break;
       case "checkbox":

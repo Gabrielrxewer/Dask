@@ -8,6 +8,12 @@ export { workItemPublicSchemaZod } from "./model/work-item-schema.zod";
 export { fieldCapabilities } from "./model/field-capabilities";
 export { normalizeFieldKey, normalizePublicField } from "./model/field-normalizers";
 export { validatePublicField } from "./model/field-validators";
+export {
+  assertNoDuplicateWorkItemFields,
+  createWorkItemFieldRegistry,
+  createWorkItemSchemaFieldRegistry,
+  type WorkItemFieldRegistry
+} from "./model/work-item-field-registry";
 export { createDefaultWorkItemSchema } from "./model/default-work-item-schemas";
 export { migrateWorkItemSchema } from "./model/work-item-schema-migrations";
 export { legacyFieldBindingsToPublicSchema, publicSchemaToFieldBindings } from "./model/legacy-adapters";

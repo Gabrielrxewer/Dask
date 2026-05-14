@@ -12,6 +12,7 @@ export interface AppSwitchProps {
   name?: string;
   value?: string;
   className?: string;
+  "aria-label"?: string;
 }
 
 export function AppSwitch({
@@ -23,7 +24,8 @@ export function AppSwitch({
   description,
   name,
   value,
-  className
+  className,
+  "aria-label": ariaLabel
 }: AppSwitchProps) {
   const control = (
     <SwitchPrimitive.Root
@@ -34,6 +36,7 @@ export function AppSwitch({
       disabled={disabled}
       name={name}
       value={value}
+      aria-label={ariaLabel}
     >
       <SwitchPrimitive.Thumb className="app-switch__thumb" />
     </SwitchPrimitive.Root>

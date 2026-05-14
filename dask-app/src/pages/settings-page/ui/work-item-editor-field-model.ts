@@ -1,5 +1,10 @@
 ﻿import { mergeCardFieldDefinitions } from "@/entities/task";
 import type { TaskFieldDefinition } from "@/entities/task";
+import {
+  getCreatableTaskFieldTypeOptions,
+  getTaskFieldRegistryEntry,
+  supportsManualOptionsForTaskFieldType
+} from "@/entities/task";
 import type { ApiCustomField, CustomFieldType } from "@/modules/workspace/model";
 import type { DetailZone, EditorDropTarget, LayoutScope } from "@/pages/settings-page/model/work-item-layout-editor";
 
@@ -7,20 +12,10 @@ export const FIELD_TYPE_OPTIONS: Array<{
   value: CustomFieldType;
   label: string;
   caption: string;
-}> = [
-  { value: "text", label: "Texto curto", caption: "Linha simples e direta." },
-  { value: "long_text", label: "Texto longo", caption: "Contexto e briefing." },
-  { value: "number", label: "Numero", caption: "Metricas e contagens." },
-  { value: "date", label: "Data", caption: "Datas sem horario." },
-  { value: "datetime", label: "Data e hora", caption: "Agenda e planejamento." },
-  { value: "boolean", label: "Sim / Nao", caption: "Alternancia rapida." },
-  { value: "select", label: "Selecao unica", caption: "Uma opcao entre varias." },
-  { value: "catalog_select", label: "Selecao dinamica", caption: "Fonte das opcoes: Catalogo de cobranca." },
-  { value: "multi_select", label: "Selecao multipla", caption: "Etiquetas e combinacoes." },
-  { value: "user", label: "Usuario", caption: "Pessoa responsavel ou autora." },
-  { value: "checklist", label: "Checklist", caption: "Lista operacional com marcacao." },
-  { value: "billing_summary", label: "Cobranças vinculadas", caption: "Ordens de cobrança com status e valor." }
-];
+}> = getCreatableTaskFieldTypeOptions().map((option) => ({
+  ...option,
+  value: option.value as CustomFieldType
+}));
 
 
 export interface FieldOptionDraft {
@@ -145,11 +140,11 @@ export function buildFieldsById(fields: FieldLibraryItem[]): Record<string, Fiel
 }
 
 export function supportsAiGeneration(type: TaskFieldDefinition["type"]): boolean {
-  return type === "text" || type === "long_text";
+  return getTaskFieldRegistryEntry(type).supportsAi === true;
 }
 
 export function supportsSelectableOptions(type: TaskFieldDefinition["type"]): boolean {
-  return type === "select" || type === "multi_select";
+  return supportsManualOptionsForTaskFieldType(type);
 }
 
 export function isCatalogSelectType(type: TaskFieldDefinition["type"] | CustomFieldType): boolean {

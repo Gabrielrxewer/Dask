@@ -14,7 +14,7 @@ export type UserWorkspaceSummary = {
 
 export type UserSubscriptionAccess = {
   hasActiveSubscription: boolean;
-  subscriptionPlan: 'PERSONAL' | 'BUSINESS' | null;
+  subscriptionPlan: 'PERSONAL' | 'BASIC' | 'PRO' | 'BUSINESS' | 'ENTERPRISE' | null;
 };
 
 export type WorkspaceBoardSummary = {

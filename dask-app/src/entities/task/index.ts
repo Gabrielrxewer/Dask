@@ -15,7 +15,9 @@ export {
   buildTaskInputFromFieldDrafts,
   createTaskFieldDrafts,
   formatTaskFieldValue,
+  getCreatableTaskFieldTypeOptions,
   getTaskFieldRegistryEntry,
+  getTaskFieldTypeLabelFromRegistry,
   isTaskFieldValueEmpty,
   matchesTaskFieldStorage,
   readTaskFieldStorage,
@@ -23,6 +25,7 @@ export {
   resolveTaskFieldDetailZone,
   resolveTaskFieldOptions,
   resolveTaskFieldValue,
+  supportsManualOptionsForTaskFieldType,
   supportsAiGenerationForField
 } from "@/entities/task/model/field-registry";
 export {
@@ -76,8 +79,13 @@ export type {
   TaskType,
   TaskTypeMetaItem,
   TaskCustomFieldValue,
-  LinkedTaskDocument
+  LinkedTaskDocument,
+  TaskFieldType
 } from "@/entities/task/model/types";
+export type {
+  TaskFieldCreationOption,
+  TaskFieldRegistryEntry
+} from "@/entities/task/model/field-registry";
 export type {
   FieldControllerResult,
   FieldPresentationComponent,

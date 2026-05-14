@@ -10,7 +10,14 @@ import {
 import type { BillingPlan, BillingStatus, SubscriptionPlan } from "@/modules/billing";
 import "./choose-plan-page.css";
 
+const SUBSCRIPTION_TERMS_VERSION = "2026-05-14";
+const PRIVACY_POLICY_VERSION = "2026-05-14";
+const PLAN_ORDER: SubscriptionPlan[] = ["BASIC", "PRO", "BUSINESS", "ENTERPRISE", "PERSONAL"];
+
 function formatPlanPrice(plan: BillingPlan): string {
+  if (plan.code === "ENTERPRISE") {
+    return "Solicitar orçamento";
+  }
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: plan.currency.toUpperCase()
@@ -18,6 +25,7 @@ function formatPlanPrice(plan: BillingPlan): string {
 }
 
 function formatPlanPeriod(plan: BillingPlan): string {
+  if (plan.code === "ENTERPRISE") return "";
   if (plan.interval === "month") return "/mes";
   if (plan.interval === "year") return "/ano";
   if (plan.interval) return `/${plan.interval}`;
@@ -28,6 +36,7 @@ export function ChoosePlanPage() {
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
   const statusQuery = useBillingStatusQuery();
   const plansQuery = useBillingPlansQuery();
   const checkoutMutation = useCreateSubscriptionCheckoutMutation();
@@ -41,7 +50,8 @@ export function ChoosePlanPage() {
 
   const status: BillingStatus | null = statusQuery.data ?? null;
   const plans: BillingPlan[] = useMemo(
-    () => plansQuery.data?.items.filter((plan) => plan.isActive) ?? [],
+    () => (plansQuery.data?.items.filter((plan) => plan.isActive && plan.code !== "PERSONAL") ?? [])
+      .sort((left, right) => PLAN_ORDER.indexOf(left.code) - PLAN_ORDER.indexOf(right.code)),
     [plansQuery.data]
   );
   const isLoadingPlans = statusQuery.isLoading || plansQuery.isLoading;
@@ -66,11 +76,25 @@ export function ChoosePlanPage() {
   }, [status?.status]);
 
   async function handleChoosePlan(plan: SubscriptionPlan) {
+    if (plan === "ENTERPRISE") {
+      window.location.href = "mailto:comercial@dask.com.br?subject=Orcamento%20Enterprise%20Dask";
+      return;
+    }
+    if (!acceptedLegalTerms) {
+      setError("Aceite os termos de assinatura e a politica de privacidade antes de assinar.");
+      return;
+    }
+
     setLoadingPlan(plan);
     setError(null);
 
     try {
-      const { url } = await checkoutMutation.mutateAsync(plan);
+      const { url } = await checkoutMutation.mutateAsync({
+        planCode: plan,
+        acceptedTerms: true,
+        acceptedTermsVersion: SUBSCRIPTION_TERMS_VERSION,
+        acceptedPrivacyVersion: PRIVACY_POLICY_VERSION
+      });
       window.location.href = url;
     } catch {
       setError("Nao foi possivel iniciar o pagamento. Tente novamente.");
@@ -104,9 +128,8 @@ export function ChoosePlanPage() {
           <p className="choose-plan__eyebrow">Planos e precos</p>
           <h1 className="choose-plan__title">Escolha o plano ideal para voce</h1>
           <p className="choose-plan__description choose-plan__description--legal">
-            Antes de pagar, revise os <Link to={routePaths.termsOfUse}>Termos de Uso</Link> e a{" "}
-            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>. Ao clicar em "Assinar", voce concorda
-            com ambos.
+            Todos os planos ativos usam workspace business. O workspace personal fica obsoleto por enquanto e novas
+            assinaturas sao contratadas para operacao empresarial.
           </p>
         </header>
       </section>
@@ -174,13 +197,37 @@ export function ChoosePlanPage() {
               onClick={() => handleChoosePlan(plan.code)}
               type="button"
             >
-              {status?.plan === plan.code ? "Plano atual" : loadingPlan === plan.code ? "Aguarde..." : `Assinar ${plan.name}`}
+              {status?.plan === plan.code
+                ? "Plano atual"
+                : plan.code === "ENTERPRISE"
+                  ? "Solicitar orçamento"
+                  : loadingPlan === plan.code
+                    ? "Aguarde..."
+                    : `Assinar ${plan.name}`}
             </button>
           </article>
         ))}
       </div>
 
       <div className="choose-plan__footer">
+        <label className="choose-plan__legal-acceptance">
+          <input
+            type="checkbox"
+            checked={acceptedLegalTerms}
+            onChange={(event) => {
+              setAcceptedLegalTerms(event.target.checked);
+              if (event.target.checked) {
+                setError(null);
+              }
+            }}
+          />
+          <span>
+            Li e aceito os <Link to={routePaths.termsOfUse}>Termos de Uso e Assinatura</Link>, a{" "}
+            <Link to={routePaths.privacyPolicy}>Politica de Privacidade</Link>, a cobranca recorrente mensal e as
+            regras de cancelamento do Dask.
+          </span>
+        </label>
+
         {error && <p className="choose-plan__error">{error}</p>}
 
         <p className="choose-plan__notice choose-plan__notice--summary">

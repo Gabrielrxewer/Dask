@@ -4,6 +4,7 @@ import type { TaskCardDebugSnapshot, TaskFieldCardArea } from "@/entities/task";
 import type { DetailZone, LayoutDraft, LayoutScope } from "@/pages/settings-page/model/work-item-layout-editor";
 import { resolveCssColorForInput } from "@/shared/lib/color/css-color";
 import { AppSelect, Button, FormField, TextInput } from "@/shared/ui";
+import { AppIcon } from "@/shared/ui/icon";
 import { CatalogSourceField } from "./work-item-catalog-source-field";
 import {
   CARD_SLOT_AREA_META,
@@ -106,6 +107,18 @@ export function WorkItemEditorProperties({
   onSetDetailZoneForField,
   onSetCardAreaForField
 }: WorkItemEditorPropertiesProps) {
+  const getFieldTypeLabel = (type: FieldDraft["type"] | PendingFieldSetup["type"]) =>
+    FIELD_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? String(type);
+
+  const renderFieldTypeSummary = (type: FieldDraft["type"] | PendingFieldSetup["type"]) => (
+    <div className="wie__props-type-summary">
+      <div>
+        <span>Tipo do campo</span>
+        <strong>{getFieldTypeLabel(type)}</strong>
+      </div>
+    </div>
+  );
+
   const renderFieldDefinitionEditor = (draft: FieldDraft, options?: { showHeader?: boolean; showDelete?: boolean }) => {
     const showHeader = options?.showHeader ?? false;
     const showDelete = options?.showDelete ?? true;
@@ -127,7 +140,7 @@ export function WorkItemEditorProperties({
                 onClick={() => onSaveField()}
                 disabled={fieldSaving || !draft.name.trim()}
               >
-                {fieldSaving ? "..." : "✓"}
+                {fieldSaving ? "..." : <AppIcon name="check" size={15} strokeWidth={2.3} />}
               </button>
               {showDelete ? (
                 <button
@@ -138,7 +151,7 @@ export function WorkItemEditorProperties({
                   onClick={() => onDeleteField(draft.id)}
                   disabled={fieldDeletingId === draft.id}
                 >
-                  {fieldDeletingId === draft.id ? "..." : "ðŸ—‘"}
+                  {fieldDeletingId === draft.id ? "..." : <AppIcon name="trash" size={15} strokeWidth={2.2} />}
                 </button>
               ) : null}
             </div>
@@ -157,16 +170,7 @@ export function WorkItemEditorProperties({
             <TextInput value={draft.name} placeholder="Ex: Impacto esperado"
               onChange={(e) => setFieldDraft({ ...draft, name: e.target.value })} />
           </FormField>
-          <div className="wie__props-field-types">
-            {FIELD_TYPE_OPTIONS.map((opt) => (
-              <button key={opt.value} type="button"
-                className={`wie__props-type-btn${draft.type === opt.value ? " is-active" : ""}`}
-                onClick={() => setFieldDraft({ ...draft, type: opt.value, allowAiGeneration: supportsAiGeneration(opt.value) ? draft.allowAiGeneration : false })}>
-                <span>{opt.label}</span>
-                {opt.value === "catalog_select" ? <small>Fonte das opcoes: Catalogo de cobranca</small> : null}
-              </button>
-            ))}
-          </div>
+          {renderFieldTypeSummary(draft.type)}
           {isCatalogSelectType(draft.type) ? <CatalogSourceField /> : null}
           <div className="wie__props-toggles">
             <label>
@@ -306,21 +310,7 @@ export function WorkItemEditorProperties({
               <strong>{pendingFieldTargetLabel}</strong>
             </div>
           ) : null}
-          <div className="wie__props-field-types">
-            {FIELD_TYPE_OPTIONS.map((opt) => (
-              <button key={opt.value} type="button"
-                className={`wie__props-type-btn${pendingFieldSetup.type === opt.value ? " is-active" : ""}`}
-                onClick={() => setPendingFieldSetup({
-                  ...pendingFieldSetup,
-                  type: opt.value,
-                  allowAiGeneration: supportsAiGeneration(opt.value) ? pendingFieldSetup.allowAiGeneration : false,
-                  options: supportsSelectableOptions(opt.value) ? pendingFieldSetup.options : []
-                })}>
-                <span>{opt.label}</span>
-                {opt.value === "catalog_select" ? <small>Fonte das opcoes: Catalogo de cobranca</small> : null}
-              </button>
-            ))}
-          </div>
+          {renderFieldTypeSummary(pendingFieldSetup.type)}
           {isCatalogSelectType(pendingFieldSetup.type) ? <CatalogSourceField /> : null}
           <div className="wie__props-toggles">
             <label>
@@ -517,7 +507,7 @@ export function WorkItemEditorProperties({
                 onClick={() => onSaveField()}
                 disabled={fieldSaving || !fieldDraft.name.trim()}
               >
-                {fieldSaving ? "..." : "✓"}
+                {fieldSaving ? "..." : <AppIcon name="check" size={15} strokeWidth={2.3} />}
               </button>
               {selectedField.hasApiDefinition ? (
                 <button
@@ -528,7 +518,7 @@ export function WorkItemEditorProperties({
                   onClick={() => onDeleteField(fieldDraft.id)}
                   disabled={fieldDeletingId === fieldDraft.id}
                 >
-                  {fieldDeletingId === fieldDraft.id ? "..." : "ðŸ—‘"}
+                  {fieldDeletingId === fieldDraft.id ? "..." : <AppIcon name="trash" size={15} strokeWidth={2.2} />}
                 </button>
               ) : null}
             </div>
@@ -662,10 +652,6 @@ export function WorkItemEditorProperties({
           <div className="wie__props-idle-tip">
             <span>Canvas</span>
             <p>Clique em um campo para ver suas propriedades. Arraste para reordenar.</p>
-          </div>
-          <div className="wie__props-idle-tip">
-            <span>Novo campo</span>
-            <p>Clique ou arraste um tipo da secao "Novo campo" na biblioteca.</p>
           </div>
         </div>
       </div>

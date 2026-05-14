@@ -1,30 +1,8 @@
-export type WorkItemPublicFieldType =
-  | "text"
-  | "textarea"
-  | "long_text"
-  | "number"
-  | "currency"
-  | "date"
-  | "datetime"
-  | "select"
-  | "multi_select"
-  | "checkbox"
-  | "boolean"
-  | "checklist"
-  | "user"
-  | "client"
-  | "file"
-  | "reference"
-  | "billing_summary"
-  | "computed";
+import type { FieldDefinition, FieldOption, FieldType } from "@/shared/field-core";
 
-export interface WorkItemFieldOption {
-  id: string;
-  label: string;
-  value: string;
-  color?: string | null;
-  order?: number;
-}
+export type WorkItemPublicFieldType = FieldType;
+
+export interface WorkItemFieldOption extends FieldOption {}
 
 export interface BillingSummaryFieldMetadata {
   currency: string;
@@ -35,16 +13,18 @@ export interface BillingSummaryFieldMetadata {
   readOnly?: boolean;
 }
 
-export interface WorkItemPublicField {
+export interface WorkItemPublicField extends FieldDefinition {
   id: string;
   key: string;
   label: string;
   description?: string | null;
   type: WorkItemPublicFieldType;
   required: boolean;
+  readonly?: boolean;
   defaultValue?: unknown;
   visibility?: "visible" | "hidden" | "conditional";
   validation?: Record<string, unknown>;
+  validations?: Record<string, unknown>;
   options?: WorkItemFieldOption[];
   metadata?: Record<string, unknown> & {
     billingSummary?: BillingSummaryFieldMetadata;

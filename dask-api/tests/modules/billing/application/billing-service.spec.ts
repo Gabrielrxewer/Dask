@@ -48,6 +48,11 @@ type MockStripeInstance = {
 const APP_URL = 'http://localhost:5173';
 const WEBHOOK_SECRET = 'whsec_test';
 const PORTAL_TOKEN_SECRET = 'billing-portal-token-secret-for-unit-tests';
+const CHECKOUT_ACCEPTANCE = {
+  acceptedTerms: true,
+  acceptedTermsVersion: '2026-05-14',
+  acceptedPrivacyVersion: '2026-05-14'
+} as const;
 
 function makeUser(overrides: Partial<BillingUser> = {}): BillingUser {
   return {
@@ -260,6 +265,8 @@ describe('BillingService', () => {
       portalTokenSecret: PORTAL_TOKEN_SECRET,
       priceIds: {
         PERSONAL: 'price_personal',
+        BASIC: 'price_basic',
+        PRO: 'price_pro',
         BUSINESS: 'price_business'
       }
     });
@@ -277,7 +284,7 @@ describe('BillingService', () => {
         id: 'cs_1'
       });
 
-      const result = await service.createCheckoutSession('user-1', 'PERSONAL');
+      const result = await service.createCheckoutSession('user-1', 'BASIC', CHECKOUT_ACCEPTANCE);
 
       expect(stripe.customers.create).toHaveBeenCalledWith(
         expect.objectContaining({ email: user.email, metadata: { userId: 'user-1' } })
@@ -294,17 +301,33 @@ describe('BillingService', () => {
         id: 'cs_2'
       });
 
-      await service.createCheckoutSession('user-1', 'BUSINESS');
+      await service.createCheckoutSession('user-1', 'BUSINESS', CHECKOUT_ACCEPTANCE);
 
       expect(stripe.customers.create).not.toHaveBeenCalled();
       expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
-        expect.objectContaining({ customer: 'cus_existing' })
+        expect.objectContaining({
+          customer: 'cus_existing',
+          line_items: [
+            expect.objectContaining({
+              price_data: expect.objectContaining({
+                unit_amount: 49990,
+                recurring: { interval: 'month', interval_count: 1 }
+              })
+            })
+          ],
+          metadata: expect.objectContaining({
+            planCode: 'BUSINESS',
+            acceptedTerms: 'true',
+            acceptedTermsVersion: CHECKOUT_ACCEPTANCE.acceptedTermsVersion,
+            acceptedPrivacyVersion: CHECKOUT_ACCEPTANCE.acceptedPrivacyVersion
+          })
+        })
       );
     });
 
     it('throws 404 if user not found', async () => {
       repo.findUserById.mockResolvedValue(null);
-      await expect(service.createCheckoutSession('missing', 'PERSONAL')).rejects.toMatchObject({
+      await expect(service.createCheckoutSession('missing', 'BASIC', CHECKOUT_ACCEPTANCE)).rejects.toMatchObject({
         statusCode: 404
       });
     });
@@ -316,7 +339,7 @@ describe('BillingService', () => {
         id: 'cs_3'
       });
 
-      await service.createCheckoutSession('user-1', 'PERSONAL');
+      await service.createCheckoutSession('user-1', 'PRO', CHECKOUT_ACCEPTANCE);
 
       const call = (stripe.checkout.sessions.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(call.success_url).toContain('/billing/success');
@@ -333,11 +356,13 @@ describe('BillingService', () => {
         stripeSecretConfigured: false,
         priceIds: {
           PERSONAL: 'price_personal',
+          BASIC: 'price_basic',
+          PRO: 'price_pro',
           BUSINESS: 'price_business'
         }
       });
 
-      await expect(productionService.createCheckoutSession('user-1', 'PERSONAL')).rejects.toMatchObject({
+      await expect(productionService.createCheckoutSession('user-1', 'BASIC', CHECKOUT_ACCEPTANCE)).rejects.toMatchObject({
         statusCode: 503,
         details: {
           code: 'STRIPE_BILLING_ENV_MISSING',
@@ -1018,8 +1043,7 @@ describe('BillingService', () => {
         'STRIPE_SECRET_KEY',
         'STRIPE_PUBLIC_KEY',
         'STRIPE_WEBHOOK_SECRET',
-        'BILLING_PORTAL_TOKEN_SECRET',
-        'STRIPE_PRICE_ID_PERSONAL_MONTHLY'
+        'BILLING_PORTAL_TOKEN_SECRET'
       ]);
     });
 

@@ -8,6 +8,7 @@ import {
   workspaceScopeMiddleware
 } from '@/modules/identity/http/workspace-scope-middleware';
 import type { AuthorizationService } from '@/modules/identity/domain/authorization';
+import { isBusinessWorkspacePlan } from '@/modules/billing/domain/types';
 import type { WorkspacesService } from '@/modules/workspaces/application/workspaces-service';
 import {
   getWorkspaceTemplateByKey,
@@ -109,10 +110,10 @@ export const buildWorkspacesRoutes = (deps: {
         const hasCorporateAccess = process.env.NODE_ENV !== 'production'
           ? true
           : userAccess?.hasActiveSubscription === true &&
-            userAccess.subscriptionPlan === 'BUSINESS';
+            isBusinessWorkspacePlan(userAccess.subscriptionPlan);
 
         if (!hasCorporateAccess) {
-          res.status(403).json({ message: 'Corporate workspace requires an active BUSINESS plan.' });
+          res.status(403).json({ message: 'Corporate workspace requires an active business workspace plan.' });
           return;
         }
       }

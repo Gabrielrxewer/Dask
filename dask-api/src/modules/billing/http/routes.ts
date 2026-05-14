@@ -56,7 +56,11 @@ export function buildBillingRoutes({ billingService }: BillingRouteDeps): Router
       }
 
       const userId = req.auth!.userId;
-      const { url } = await billingService.createCheckoutSession(userId, parsed.data.planCode);
+      const { url } = await billingService.createCheckoutSession(userId, parsed.data.planCode, {
+        acceptedTerms: parsed.data.acceptedTerms,
+        acceptedTermsVersion: parsed.data.acceptedTermsVersion,
+        acceptedPrivacyVersion: parsed.data.acceptedPrivacyVersion
+      });
       res.status(200).json({ url });
     })
   );

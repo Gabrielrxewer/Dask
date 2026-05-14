@@ -25,8 +25,12 @@ import "./home-page.css";
 
 type HomeSectionId = "top" | "valor" | "inteligencia" | "contextos" | "estruturas" | "precos";
 const homeSectionIds = new Set<HomeSectionId>(["top", "valor", "inteligencia", "contextos", "estruturas", "precos"]);
+const planOrder: SubscriptionPlan[] = ["BASIC", "PRO", "BUSINESS", "ENTERPRISE", "PERSONAL"];
 
 function formatPlanPrice(plan: BillingPlan): string {
+  if (plan.code === "ENTERPRISE") {
+    return "Solicitar orçamento";
+  }
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: plan.currency.toUpperCase()
@@ -34,6 +38,7 @@ function formatPlanPrice(plan: BillingPlan): string {
 }
 
 function formatPlanPeriod(plan: BillingPlan): string {
+  if (plan.code === "ENTERPRISE") return "";
   if (plan.interval === "month") return "/mes";
   if (plan.interval === "year") return "/ano";
   return plan.interval ? `/${plan.interval}` : "";
@@ -309,8 +314,8 @@ function PricingSection({
     >
       <SectionIntro
         eyebrow="Planos"
-        title="Comece simples. Estruture a operacao inteira."
-        description="Escolha o plano ideal para sair da fragmentacao e operar no mesmo sistema. Cobranca mensal recorrente, sem surpresa e com cancelamento quando quiser."
+        title="Planos business para operar o Dask sem fragmentacao."
+        description="Basic, Pro e Business sao assinaturas mensais para workspace business. Enterprise segue por orçamento. O workspace personal fica obsoleto por enquanto."
       />
 
       <div className="home-page__pricing-cards">
@@ -349,7 +354,7 @@ function PricingSection({
               onClick={() => onSubscribeClick(plan.code)}
               type="button"
             >
-              Assinar {plan.name}
+              {plan.code === "ENTERPRISE" ? "Solicitar orçamento" : `Assinar ${plan.name}`}
             </button>
           </article>
         ))}
@@ -365,7 +370,11 @@ export function HomePage() {
   const { isAuthenticated } = useAuth();
   const activeSection = getHomeSectionFromHash(location.hash);
   const plansQuery = useBillingPlansQuery();
-  const plans = useMemo(() => plansQuery.data?.items.filter((plan) => plan.isActive) ?? [], [plansQuery.data]);
+  const plans = useMemo(
+    () => (plansQuery.data?.items.filter((plan) => plan.isActive && plan.code !== "PERSONAL") ?? [])
+      .sort((left, right) => planOrder.indexOf(left.code) - planOrder.indexOf(right.code)),
+    [plansQuery.data]
+  );
   const planLoadError = plansQuery.isError ? "Nao foi possivel carregar os planos configurados." : null;
 
   function handleSubscribeClick(_plan: SubscriptionPlan) {

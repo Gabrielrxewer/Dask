@@ -5,7 +5,6 @@ import { useAuth, useLogout } from "@/features/auth";
 import {
   useBillingPlansQuery,
   useBillingStatusQuery,
-  useCreateSubscriptionCheckoutMutation,
   type BillingPlan,
   type BillingStatus
 } from "@/modules/billing";
@@ -349,7 +348,6 @@ export function GlobalLayout() {
   const shouldLoadUserBilling = isAuthenticated && isUserMenuOpen;
   const billingStatusQuery = useBillingStatusQuery({ enabled: shouldLoadUserBilling });
   const billingPlansQuery = useBillingPlansQuery({ enabled: shouldLoadUserBilling });
-  const checkoutMutation = useCreateSubscriptionCheckoutMutation();
   const [isHomeNavOpen, setIsHomeNavOpen] = useState(false);
   const [activeHomeSection, setActiveHomeSection] = useState(() => getHomeSectionFromHash(location.hash));
   const [activeLegalSection, setActiveLegalSection] = useState(() => getLegalSectionFromHash(location.hash));
@@ -770,22 +768,14 @@ export function GlobalLayout() {
     closeNavigation
   };
 
-  const handleUpgradeToBusiness = async () => {
+  const handleUpgradeToBusiness = () => {
     if (isUpgradingToBusiness) {
       return;
     }
 
     setIsUpgradingToBusiness(true);
-    try {
-      if (!businessBillingPlan) {
-        throw new Error("Business plan is not available.");
-      }
-      const { url } = await checkoutMutation.mutateAsync(businessBillingPlan.code);
-      window.location.href = url;
-    } catch {
-      setBillingError("Nao foi possivel iniciar upgrade agora.");
-      setIsUpgradingToBusiness(false);
-    }
+    setIsUserMenuOpen(false);
+    navigate(routePaths.choosePlan);
   };
 
   const closeUserProfileModal = (preserveCurrentState = false) => {
@@ -1000,7 +990,7 @@ export function GlobalLayout() {
                         {canUpgradeToBusiness ? (
                           <button
                             type="button"
-                            onClick={() => void handleUpgradeToBusiness()}
+                            onClick={handleUpgradeToBusiness}
                             disabled={isUpgradingToBusiness || billingLoadState === "loading"}
                           >
                             {isUpgradingToBusiness ? "Abrindo checkout..." : `Fazer upgrade para ${businessBillingPlan?.name ?? "plano superior"}`}

@@ -51,7 +51,10 @@ enum WorkspaceKind {
 
 enum SubscriptionPlan {
   PERSONAL
+  BASIC
+  PRO
   BUSINESS
+  ENTERPRISE
 }
 
 enum SubscriptionStatus {

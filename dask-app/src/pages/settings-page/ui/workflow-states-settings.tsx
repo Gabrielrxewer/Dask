@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import {
   useCurrentWorkspace,
@@ -9,8 +9,22 @@ import {
   useWorkflowStatesQuery
 } from "@/modules/workspace";
 import type { ApiWorkflowState } from "@/modules/workspace/model";
-import { AppForm, AppFormField, Button, EmptyState, LoadingState, PanelMenu, PanelMenuGroup, PanelMenuItem, TextInput } from "@/shared/ui";
-import { resolveCssColorForInput, withCssColorAlpha } from "@/shared/lib/color/css-color";
+import {
+  AppColorField,
+  AppForm,
+  AppFormActions,
+  AppFormGrid,
+  AppIcon,
+  AppSwitchField,
+  AppTextField,
+  Button,
+  EmptyState,
+  LoadingState,
+  PanelMenu,
+  PanelMenuGroup,
+  PanelMenuItem
+} from "@/shared/ui";
+import { withCssColorAlpha } from "@/shared/lib/color/css-color";
 import {
   DEFAULT_WORKFLOW_STATE_COLOR,
   toWorkflowStateSlug,
@@ -94,7 +108,7 @@ export function WorkflowStatesSettings() {
     defaultValues: createEmptyDraft(0),
     mode: "onChange"
   });
-  const [activeView, setActiveView] = useState<"board" | "detail" | "badge">("board");
+  const [activeView, setActiveView] = useState<"detail" | "badge">("badge");
   const [selectedStateId, setSelectedStateId] = useState<string | "new" | null>(null);
   const [error, setError] = useState("");
 
@@ -248,41 +262,6 @@ export function WorkflowStatesSettings() {
     }
   };
 
-  const handleArchiveToggle = async () => {
-    if (!draft.id) {
-      return;
-    }
-    if (!canManageWorkflowStates) {
-      setError("Apenas proprietarios e admins podem alterar estados.");
-      return;
-    }
-
-    setError("");
-
-    try {
-      const snapshot = await saveWorkflowStateMutation.mutateAsync({
-        action: "update",
-        stateId: draft.id,
-        input: { isActive: !draft.isActive },
-        successMessage: draft.isActive ? "Estado arquivado." : "Estado reativado."
-      });
-      const savedState = sortStates(snapshot.workflowStates ?? []).find(state => state.id === draft.id);
-
-      if (savedState) {
-        applySavedState(savedState);
-        return;
-      }
-
-      const refreshed = await workflowStatesQuery.refetch();
-      const refreshedState = sortStates(refreshed.data ?? []).find(state => state.id === draft.id);
-      if (refreshedState) {
-        applySavedState(refreshedState);
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Nao foi possivel atualizar o estado.");
-    }
-  };
-
   return (
     <div className="wse">
       <section className="wse__topbar">
@@ -312,7 +291,8 @@ export function WorkflowStatesSettings() {
             onClick={() => openNewDraft()}
             disabled={!canManageWorkflowStates || saving}
           >
-            Novo estado
+            <AppIcon name="plus" size={13} />
+            <span>Novo estado</span>
           </button>
         </div>
 
@@ -370,10 +350,10 @@ export function WorkflowStatesSettings() {
           <div className="wse__canvas-tabs">
             <button
               type="button"
-              className={`wse__canvas-tab${activeView === "board" ? " is-active" : ""}`}
-              onClick={() => setActiveView("board")}
+              className={`wse__canvas-tab${activeView === "badge" ? " is-active" : ""}`}
+              onClick={() => setActiveView("badge")}
             >
-              Board
+              Badge
             </button>
             <button
               type="button"
@@ -382,52 +362,9 @@ export function WorkflowStatesSettings() {
             >
               Detalhe
             </button>
-            <button
-              type="button"
-              className={`wse__canvas-tab${activeView === "badge" ? " is-active" : ""}`}
-              onClick={() => setActiveView("badge")}
-            >
-              Badge
-            </button>
           </div>
 
           <div className="wse__canvas-surface">
-            {activeView === "board" ? (
-              <div className="wse__board-preview">
-                <div className="wse__lane">
-                  <div className="wse__lane-head">
-                    <span className="wse__lane-title">
-                      <i style={{ background: previewColor }} />
-                      {previewName}
-                    </span>
-                    <span className="wse__lane-count">3 itens</span>
-                  </div>
-
-                  <div className="wse__card">
-                    <span
-                      className="wse__status-pill"
-                      style={{
-                        background: withCssColorAlpha(previewColor, 10),
-                        color: previewColor,
-                        borderColor: withCssColorAlpha(previewColor, 33)
-                      }}
-                    >
-                      <i style={{ background: previewColor }} />
-                      {previewName}
-                    </span>
-                    <strong>Refinar experiencia de aprovacao</strong>
-                    <p>Preview do estado aplicado diretamente na coluna do board.</p>
-                    <div className="wse__card-foot">
-                      <span>/{previewSlug}</span>
-                      <span>{previewCategory}</span>
-                    </div>
-                  </div>
-
-                  <div className="wse__ghost-card" />
-                </div>
-              </div>
-            ) : null}
-
             {activeView === "detail" ? (
               <div className="wse__detail-preview">
                 <div className="wse__detail-header">
@@ -458,7 +395,7 @@ export function WorkflowStatesSettings() {
                     <strong>/{previewSlug}</strong>
                   </div>
                   <div className="wse__detail-field">
-                    <span>Comportamento</span>
+                    <span>Fluxo</span>
                     <strong>{draft.isTerminal ? "Finaliza o fluxo" : "Segue no fluxo"}</strong>
                   </div>
                   <div className="wse__detail-field">
@@ -511,177 +448,95 @@ export function WorkflowStatesSettings() {
                 disabled={!canManageWorkflowStates}
                 loading={saving}
               >
-                <Controller
-                  control={form.control}
+                <AppTextField<WorkflowStateFormInput, "name">
                   name="name"
-                  render={({ field, fieldState }) => (
-                    <AppFormField label="Nome" error={fieldState.error?.message}>
-                      <TextInput
-                        ref={field.ref}
-                        name={field.name}
-                        value={field.value}
-                        placeholder="Ex: Em validacao"
-                        disabled={!canManageWorkflowStates || saving}
-                        aria-invalid={fieldState.invalid || undefined}
-                        onBlur={field.onBlur}
-                        onChange={event => {
-                          const nextName = event.target.value;
-                          const previousAutoSlug = toWorkflowStateSlug(form.getValues("name"));
-                          const currentSlug = form.getValues("slug");
-                          field.onChange(nextName);
-                          if (!currentSlug.trim() || currentSlug.trim() === previousAutoSlug) {
-                            form.setValue("slug", toWorkflowStateSlug(nextName), { shouldDirty: true, shouldValidate: true });
-                          }
-                          setError("");
-                        }}
-                      />
-                    </AppFormField>
-                  )}
+                  label="Nome"
+                  placeholder="Ex: Em validacao"
+                  autoFocus
+                  onValueChange={(nextName, previousName) => {
+                    const previousAutoSlug = toWorkflowStateSlug(previousName ?? "");
+                    const currentSlug = form.getValues("slug");
+                    if (!currentSlug.trim() || currentSlug.trim() === previousAutoSlug) {
+                      form.setValue("slug", toWorkflowStateSlug(nextName), { shouldDirty: true, shouldValidate: true });
+                    }
+                    setError("");
+                  }}
                 />
 
-                <AppFormField label="Slug" error={form.formState.errors.slug?.message}>
-                  <TextInput
-                    {...form.register("slug", {
-                      onChange: event => {
-                        event.target.value = toWorkflowStateSlug(event.target.value);
-                        setError("");
-                      }
-                    })}
-                    placeholder="em-validacao"
-                    disabled={!canManageWorkflowStates || saving}
-                    aria-invalid={form.formState.errors.slug ? true : undefined}
-                  />
-                </AppFormField>
+                <AppTextField<WorkflowStateFormInput, "slug">
+                  name="slug"
+                  label="Slug"
+                  placeholder="em-validacao"
+                  parseValue={toWorkflowStateSlug}
+                  onValueChange={() => setError("")}
+                />
 
-                <AppFormField label="Categoria" error={form.formState.errors.category?.message}>
-                  <TextInput
-                    {...form.register("category", { onChange: () => setError("") })}
-                    placeholder="Execucao, Revisao, Risco..."
-                    disabled={!canManageWorkflowStates || saving}
+                <AppFormGrid columns={2} className="wse__compact-grid">
+                  <AppTextField<WorkflowStateFormInput, "category">
+                    name="category"
+                    label="Categoria"
+                    placeholder="Execucao"
+                    onValueChange={() => setError("")}
                   />
-                </AppFormField>
-
-                <AppFormField label="Ordem" error={form.formState.errors.order?.message}>
-                  <TextInput
-                    {...form.register("order", {
-                      onChange: event => {
-                        event.target.value = event.target.value.replace(/[^\d]/g, "");
-                        setError("");
-                      }
-                    })}
+                  <AppTextField<WorkflowStateFormInput, "order">
+                    name="order"
+                    label="Ordem"
                     inputMode="numeric"
                     placeholder="0"
-                    disabled={!canManageWorkflowStates || saving}
-                    aria-invalid={form.formState.errors.order ? true : undefined}
+                    parseValue={(value) => value.replace(/[^\d]/g, "")}
+                    onValueChange={() => setError("")}
                   />
-                </AppFormField>
+                </AppFormGrid>
 
-                <Controller
-                  control={form.control}
+                <AppColorField<WorkflowStateFormInput, "color">
                   name="color"
-                  render={({ field, fieldState }) => (
-                    <AppFormField label="Cor" error={fieldState.error?.message}>
-                      <div className="wse__color-row">
-                        <input
-                          type="color"
-                          className="wse__color-picker"
-                          value={resolveCssColorForInput(field.value)}
-                          disabled={!canManageWorkflowStates || saving}
-                          onChange={event => {
-                            field.onChange(event.target.value);
-                            setError("");
-                          }}
-                        />
-                        <TextInput
-                          ref={field.ref}
-                          name={field.name}
-                          value={field.value}
-                          placeholder="var(--text-secondary)"
-                          disabled={!canManageWorkflowStates || saving}
-                          aria-invalid={fieldState.invalid || undefined}
-                          onBlur={field.onBlur}
-                          onChange={event => {
-                            field.onChange(event.target.value);
-                            setError("");
-                          }}
-                        />
-                      </div>
-                    </AppFormField>
-                  )}
+                  label="Cor"
+                  placeholder="var(--text-secondary)"
+                  onValueChange={() => setError("")}
                 />
 
-                <Controller
-                  control={form.control}
-                  name="isTerminal"
-                  render={({ field }) => (
-                    <label className="wse__toggle">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        disabled={!canManageWorkflowStates || saving}
-                        onChange={event => field.onChange(event.target.checked)}
-                      />
-                      <span>
-                        <strong>Estado terminal</strong>
-                        <small>Esse estado representa o fim do fluxo.</small>
-                      </span>
-                    </label>
-                  )}
-                />
-
-                <Controller
-                  control={form.control}
-                  name="isEditable"
-                  render={({ field }) => (
-                    <label className="wse__toggle">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        disabled={!canManageWorkflowStates || saving}
-                        onChange={event => field.onChange(event.target.checked)}
-                      />
-                      <span>
-                        <strong>Permitir edicao</strong>
-                        <small>Define se o estado continua ajustavel depois.</small>
-                      </span>
-                    </label>
-                  )}
-                />
-
-                <Controller
-                  control={form.control}
-                  name="isActive"
-                  render={({ field }) => (
-                    <label className="wse__toggle">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        disabled={!canManageWorkflowStates || saving}
-                        onChange={event => field.onChange(event.target.checked)}
-                      />
-                      <span>
-                        <strong>Estado ativo</strong>
-                        <small>Estados inativos saem do fluxo e ficam arquivados.</small>
-                      </span>
-                    </label>
-                  )}
-                />
+                <div className="wse__switch-list" aria-label="Comportamento do estado">
+                  <AppSwitchField<WorkflowStateFormInput, "isTerminal">
+                    name="isTerminal"
+                    label="Estado terminal"
+                    description="Representa o fim do fluxo."
+                    className="wse__switch-field"
+                  />
+                  <AppSwitchField<WorkflowStateFormInput, "isEditable">
+                    name="isEditable"
+                    label="Permitir edicao"
+                    description="Mantem o estado ajustavel depois."
+                    className="wse__switch-field"
+                  />
+                  <AppSwitchField<WorkflowStateFormInput, "isActive">
+                    name="isActive"
+                    label="Estado ativo"
+                    description="Inativos saem do fluxo e ficam arquivados."
+                    className="wse__switch-field"
+                  />
+                </div>
 
                 {error ? <p className="wse__error">{error}</p> : null}
 
-                <div className="wse__actions">
-                  <Button type="submit" size="sm" disabled={!canManageWorkflowStates || saving}>
-                    {saving ? "Salvando..." : isExistingState ? "Salvar alteracoes" : "Criar estado"}
+                <AppFormActions align="between" className="wse__actions">
+                  <Button type="submit" size="sm" variant="primary" disabled={!canManageWorkflowStates || saving}>
+                    <AppIcon name={saving ? "refresh" : isExistingState ? "save" : "plus"} size={14} />
+                    <span>{saving ? "Salvando..." : isExistingState ? "Salvar" : "Criar"}</span>
                   </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={resetDraft} disabled={!canManageWorkflowStates || saving || !hasUnsavedChanges}>
-                    Descartar
-                  </Button>
-                  {isExistingState ? (
-                    <Button type="button" size="sm" variant="outline" onClick={() => void handleArchiveToggle()} disabled={!canManageWorkflowStates || saving}>
-                      {draft.isActive ? "Arquivar" : "Reativar"}
+                  <div className="wse__secondary-actions">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title="Descartar alteracoes"
+                      aria-label="Descartar alteracoes"
+                      onClick={resetDraft}
+                      disabled={!canManageWorkflowStates || saving || !hasUnsavedChanges}
+                    >
+                      <AppIcon name="x" size={15} />
                     </Button>
-                  ) : null}
-                </div>
+                  </div>
+                </AppFormActions>
               </AppForm>
             ) : (
               <EmptyState className="wse__empty" size="compact">Selecione um estado para editar.</EmptyState>

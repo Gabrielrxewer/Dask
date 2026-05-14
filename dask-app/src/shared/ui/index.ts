@@ -53,6 +53,7 @@ export type {
 } from "@/shared/ui/form";
 export {
   AppCheckboxField,
+  AppColorField,
   AppDateField,
   AppDateTimeField,
   AppMoneyField,
@@ -63,6 +64,7 @@ export {
 } from "@/shared/ui/field";
 export type {
   AppCheckboxFieldProps,
+  AppColorFieldProps,
   AppDateFieldProps,
   AppDateTimeFieldProps,
   AppMoneyFieldProps,

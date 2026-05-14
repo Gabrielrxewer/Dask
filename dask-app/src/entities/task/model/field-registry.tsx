@@ -14,13 +14,23 @@ import type {
 } from "@/entities/task/model/types";
 import type { CreateTaskInput, UpdateTaskInput } from "@/modules/workspace/model";
 
-type TaskFieldRegistryEntry = {
+export type TaskFieldRegistryEntry = {
   label: string;
+  creationLabel?: string;
+  caption: string;
+  creatable?: boolean;
   supportsAi?: boolean;
   supportsOptions?: boolean;
+  supportsManualOptions?: boolean;
   defaultCardArea: TaskFieldCardArea;
   defaultDetailZone: TaskFieldDetailZone;
   normalize: (value: TaskCustomFieldValue) => TaskCustomFieldValue;
+};
+
+export type TaskFieldCreationOption = {
+  value: TaskFieldType;
+  label: string;
+  caption: string;
 };
 
 const priorityOptions: Array<{ value: string; label: string; color: string }> = [
@@ -34,6 +44,7 @@ const priorityOptions: Array<{ value: string; label: string; color: string }> = 
 export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry> = {
   text: {
     label: "Texto curto",
+    caption: "Linha simples e direta.",
     supportsAi: true,
     defaultCardArea: "custom-field",
     defaultDetailZone: "side",
@@ -41,6 +52,7 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   long_text: {
     label: "Texto longo",
+    caption: "Contexto e briefing.",
     supportsAi: true,
     defaultCardArea: "description",
     defaultDetailZone: "main",
@@ -48,6 +60,7 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   number: {
     label: "Numero",
+    caption: "Metricas e contagens.",
     defaultCardArea: "custom-field",
     defaultDetailZone: "side",
     normalize: value => {
@@ -58,25 +71,31 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   date: {
     label: "Data",
+    caption: "Datas sem horario.",
     defaultCardArea: "meta",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
   datetime: {
     label: "Data e hora",
+    caption: "Agenda e planejamento.",
     defaultCardArea: "meta",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
   select: {
     label: "Selecao unica",
+    caption: "Uma opcao entre varias.",
     supportsOptions: true,
+    supportsManualOptions: true,
     defaultCardArea: "custom-field",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
   catalog_select: {
     label: "Item de catalogo",
+    creationLabel: "Selecao dinamica",
+    caption: "Fonte das opcoes: Catalogo de cobranca.",
     supportsOptions: true,
     defaultCardArea: "custom-field",
     defaultDetailZone: "main",
@@ -84,7 +103,9 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   multi_select: {
     label: "Selecao multipla",
+    caption: "Etiquetas e combinacoes.",
     supportsOptions: true,
+    supportsManualOptions: true,
     defaultCardArea: "tags",
     defaultDetailZone: "side",
     normalize: value => {
@@ -104,24 +125,29 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   boolean: {
     label: "Sim / Nao",
+    caption: "Alternancia rapida.",
     defaultCardArea: "custom-field",
     defaultDetailZone: "side",
     normalize: value => value === true
   },
   user: {
     label: "Usuario",
+    caption: "Pessoa responsavel ou autora.",
     defaultCardArea: "summary",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
   checklist: {
     label: "Checklist",
+    caption: "Lista operacional com marcacao.",
     defaultCardArea: "meta",
     defaultDetailZone: "main",
     normalize: value => (value as TaskChecklist | null) ?? null
   },
   priority: {
     label: "Prioridade",
+    caption: "Prioridade operacional do item.",
+    creatable: false,
     defaultCardArea: "badge",
     defaultDetailZone: "side",
     normalize: value => {
@@ -132,12 +158,16 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   status: {
     label: "Status",
+    caption: "Estado atual no workflow.",
+    creatable: false,
     defaultCardArea: "badge",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
   tag: {
     label: "Tags",
+    caption: "Marcadores do item.",
+    creatable: false,
     defaultCardArea: "tags",
     defaultDetailZone: "side",
     normalize: value => {
@@ -157,6 +187,8 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   schedule: {
     label: "Planejamento",
+    caption: "Datas planejadas de execucao.",
+    creatable: false,
     defaultCardArea: "meta",
     defaultDetailZone: "side",
     normalize: value => {
@@ -169,12 +201,15 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
   },
   work_item_type: {
     label: "Tipo de item",
+    caption: "Tipo de work item.",
+    creatable: false,
     defaultCardArea: "badge",
     defaultDetailZone: "side",
     normalize: value => (value == null || value === "" ? null : String(value))
   },
   billing_summary: {
-    label: "Cobranças vinculadas",
+    label: "Cobrancas vinculadas",
+    caption: "Ordens de cobranca com status e valor.",
     defaultCardArea: "custom-field",
     defaultDetailZone: "main",
     normalize: value => {
@@ -186,6 +221,21 @@ export const taskFieldTypeRegistry: Record<TaskFieldType, TaskFieldRegistryEntry
     }
   }
 };
+
+const taskFieldCreationOrder: TaskFieldType[] = [
+  "text",
+  "long_text",
+  "number",
+  "date",
+  "datetime",
+  "boolean",
+  "select",
+  "catalog_select",
+  "multi_select",
+  "user",
+  "checklist",
+  "billing_summary"
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -217,6 +267,27 @@ export function matchesTaskFieldStorage(
 
 export function getTaskFieldRegistryEntry(type: TaskFieldType): TaskFieldRegistryEntry {
   return taskFieldTypeRegistry[type] ?? taskFieldTypeRegistry.text;
+}
+
+export function getTaskFieldTypeLabelFromRegistry(type: TaskFieldType): string {
+  return getTaskFieldRegistryEntry(type).label;
+}
+
+export function getCreatableTaskFieldTypeOptions(): TaskFieldCreationOption[] {
+  return taskFieldCreationOrder
+    .map((type) => {
+      const entry = getTaskFieldRegistryEntry(type);
+      return {
+        value: type,
+        label: entry.creationLabel ?? entry.label,
+        caption: entry.caption
+      };
+    })
+    .filter((option) => getTaskFieldRegistryEntry(option.value).creatable !== false);
+}
+
+export function supportsManualOptionsForTaskFieldType(type: TaskFieldType): boolean {
+  return getTaskFieldRegistryEntry(type).supportsManualOptions === true;
 }
 
 export function supportsAiGenerationForField(field: Pick<TaskFieldDefinition, "type" | "config">): boolean {
@@ -260,6 +331,27 @@ export function resolveTaskFieldDetailZone(
 function normalizeDateValue(value: string | null | undefined): string | null {
   if (!value) return null;
   return value;
+}
+
+function resolveCustomTaskFieldValue(task: Task, field: TaskFieldDefinition): TaskCustomFieldValue | undefined {
+  const keys = [
+    field.id,
+    field.definitionId,
+    field.variableKey,
+    field.slug
+  ].filter((key): key is string => typeof key === "string" && key.length > 0);
+
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(task.customFields, key)) {
+      return task.customFields[key];
+    }
+
+    if (task.customFieldValuesById && Object.prototype.hasOwnProperty.call(task.customFieldValuesById, key)) {
+      return task.customFieldValuesById[key];
+    }
+  }
+
+  return undefined;
 }
 
 export function resolveTaskFieldValue(task: Task | null | undefined, field: TaskFieldDefinition): TaskCustomFieldValue {
@@ -311,7 +403,7 @@ export function resolveTaskFieldValue(task: Task | null | undefined, field: Task
     }
   }
 
-  return task.customFields[field.id] ?? task.customFields[field.slug ?? field.id] ?? field.defaultValue ?? null;
+  return resolveCustomTaskFieldValue(task, field) ?? field.defaultValue ?? null;
 }
 
 export function resolveTaskFieldOptions(input: {

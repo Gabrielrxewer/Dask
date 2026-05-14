@@ -241,6 +241,48 @@ describe("TaskDetailsModal", () => {
     expect(formValues.contactName).toBe("Contato persistente");
   });
 
+  it("preenche formulario de edicao com valores persistidos por definitionId", () => {
+    const drafts = createTaskDetailsInitialFieldDrafts({
+      task: {
+        id: "task-1",
+        title: "Projeto ACME",
+        text: "Descricao salva",
+        createdById: "user-1",
+        type: "commercial",
+        status: "qualified",
+        priority: 2,
+        tags: [],
+        assignee: "member-1",
+        checklist: { items: [] },
+        due: "2026-06-30",
+        customFields: {},
+        customFieldValuesById: {
+          "def-contact-name": "Ana Souza",
+          "def-contact-email": "ana@example.com",
+          "def-contact-phone": "+55 11 99999-0000",
+          "def-company": "ACME Ltda",
+          "def-source": "website"
+        }
+      },
+      fields: commercialFields,
+      isCreateMode: false,
+      initialStatusId: "new",
+      selectedTypeId: "commercial"
+    });
+    const formValues = buildTaskDetailsOfficialFormValues(commercialFields, drafts);
+
+    expect(formValues.title).toBe("Projeto ACME");
+    expect(formValues.description).toBe("Descricao salva");
+    expect(formValues.contactName).toBe("Ana Souza");
+    expect(formValues.contactEmail).toBe("ana@example.com");
+    expect(formValues.contactPhone).toBe("+55 11 99999-0000");
+    expect(formValues.companyName).toBe("ACME Ltda");
+    expect(formValues.source).toBe("website");
+    expect(formValues.status).toBe("qualified");
+    expect(formValues.assigneeId).toBe("member-1");
+    expect(formValues.dueDate).toBe("2026-06-30");
+  });
+
   it("envia no payload os valores preenchidos no submit", () => {
     let drafts = createCommercialDrafts();
 

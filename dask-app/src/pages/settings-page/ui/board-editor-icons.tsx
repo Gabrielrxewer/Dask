@@ -1,19 +1,19 @@
 import { AppIcon } from "@/shared/ui";
 
 export function IconEye() {
-  return <AppIcon name="eye" size={14} strokeWidth={2.2} />;
+  return <AppIcon name="eye" size={13} strokeWidth={1.8} />;
 }
 
 export function IconEyeOff() {
-  return <AppIcon name="eye-off" size={14} strokeWidth={2.2} />;
+  return <AppIcon name="eye-off" size={13} strokeWidth={1.8} />;
 }
 
 export function IconTrash() {
-  return <AppIcon name="trash" size={13} strokeWidth={2.2} />;
+  return <AppIcon name="trash" size={12} strokeWidth={1.8} />;
 }
 
 export function IconPencil() {
-  return <AppIcon name="pencil" size={12} strokeWidth={2.4} />;
+  return <AppIcon name="pencil" size={12} strokeWidth={1.8} />;
 }
 
 export function IconPlus() {
@@ -21,7 +21,7 @@ export function IconPlus() {
 }
 
 export function IconGrip() {
-  return <AppIcon name="grip" size={14} />;
+  return <AppIcon name="grip" size={13} strokeWidth={1.7} />;
 }
 
 export function IconTemplate() {

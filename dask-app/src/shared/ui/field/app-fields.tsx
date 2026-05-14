@@ -3,12 +3,14 @@ import { Controller, useFormContext, type Control, type FieldPath, type FieldVal
 import { AppCheckbox } from "@/shared/ui/checkbox";
 import { AppDatePicker, AppDateTimePicker } from "@/shared/ui/date-picker";
 import { AppFormField, useAppFormState } from "@/shared/ui/form";
+import { cn } from "@/shared/lib/cn";
 import { TextInput, type TextInputProps } from "@/shared/ui/input";
 import { AppSelect, type AppSelectItem } from "@/shared/ui/select";
 import { AppSwitch } from "@/shared/ui/switch";
 import { Textarea } from "@/shared/ui/textarea";
+import { resolveCssColorForInput } from "@/shared/lib/color/css-color";
 
-type FieldChangeCallback<TValue> = (value: TValue) => void;
+type FieldChangeCallback<TValue> = (value: TValue, previousValue?: TValue) => void;
 
 interface AppControlledFieldProps<TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>> {
   name: TName;
@@ -106,8 +108,9 @@ export function AppTextField<
             }}
             onChange={(event) => {
               const nextValue = event.target.value;
+              const previousValue = formatValue(field.value);
               field.onChange(parseValue ? parseValue(nextValue) : nextValue);
-              onValueChange?.(nextValue);
+              onValueChange?.(nextValue, previousValue);
             }}
           />
         </AppFormField>
@@ -130,6 +133,86 @@ export function AppMoneyField<
       {...props}
       type="text"
       inputMode="decimal"
+    />
+  );
+}
+
+export interface AppColorFieldProps<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> extends AppControlledFieldProps<TFieldValues, TName>,
+    Omit<TextInputProps, "name" | "value" | "defaultValue" | "onChange" | "onBlur" | "disabled" | "required" | "type"> {
+  formatValue?: (value: unknown) => string;
+  parseValue?: (value: string) => unknown;
+  onValueChange?: FieldChangeCallback<string>;
+}
+
+export function AppColorField<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  name,
+  control,
+  label,
+  description,
+  help,
+  disabled,
+  required,
+  className,
+  formatValue = toTextValue,
+  parseValue,
+  onValueChange,
+  ...inputProps
+}: AppColorFieldProps<TFieldValues, TName>) {
+  const resolvedControl = useResolvedControl(control);
+  const resolvedDisabled = useResolvedDisabled(disabled);
+
+  return (
+    <Controller
+      control={resolvedControl}
+      name={name}
+      render={({ field, fieldState }) => {
+        const textValue = formatValue(field.value);
+        const commitValue = (nextValue: string) => {
+          const previousValue = textValue;
+          field.onChange(parseValue ? parseValue(nextValue) : nextValue);
+          onValueChange?.(nextValue, previousValue);
+        };
+
+        return (
+          <AppFormField
+            label={label}
+            description={description}
+            help={help}
+            error={fieldState.error?.message}
+            required={required}
+            disabled={resolvedDisabled}
+            className={className}
+          >
+            <div className="app-color-field">
+              <input
+                type="color"
+                className="app-color-field__picker"
+                value={resolveCssColorForInput(textValue)}
+                disabled={resolvedDisabled}
+                aria-label={typeof label === "string" ? `${label}: seletor visual` : undefined}
+                onChange={(event) => commitValue(event.target.value)}
+              />
+              <TextInput
+                {...inputProps}
+                ref={field.ref}
+                name={field.name}
+                value={textValue}
+                disabled={resolvedDisabled}
+                required={required}
+                aria-invalid={fieldState.invalid || undefined}
+                onBlur={field.onBlur}
+                onChange={(event) => commitValue(event.target.value)}
+              />
+            </div>
+          </AppFormField>
+        );
+      }}
     />
   );
 }
@@ -189,8 +272,9 @@ export function AppTextareaField<
             onBlur={field.onBlur}
             onChange={(event) => {
               const nextValue = event.target.value;
+              const previousValue = formatValue(field.value);
               field.onChange(parseValue ? parseValue(nextValue) : nextValue);
-              onValueChange?.(nextValue);
+              onValueChange?.(nextValue, previousValue);
             }}
           />
         </AppFormField>
@@ -471,11 +555,12 @@ export function AppSwitchField<
           error={fieldState.error?.message}
           required={required}
           disabled={resolvedDisabled}
-          className={className}
+          className={cn("app-form-field--switch", className)}
         >
           <AppSwitch
             checked={Boolean(field.value)}
             disabled={resolvedDisabled}
+            aria-label={typeof label === "string" ? label : undefined}
             onCheckedChange={(checked) => {
               field.onChange(checked);
               onValueChange?.(checked);

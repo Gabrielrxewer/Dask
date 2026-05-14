@@ -1,7 +1,8 @@
 import { routePaths } from "@/app/router";
 import { LegalDocumentPage } from "../../legal-document-page/ui/legal-document-page";
 
-const UPDATED_AT = "17 de abril de 2026";
+export const SUBSCRIPTION_TERMS_VERSION = "2026-05-14";
+const UPDATED_AT = "14 de maio de 2026";
 
 const sections = [
   {
@@ -17,9 +18,21 @@ const sections = [
   {
     title: "Planos, cobranca e renovacao",
     description:
-      "Os planos sao recorrentes e cobrados mensalmente pelo provedor de pagamento integrado. A assinatura se renova automaticamente ate que o cancelamento seja solicitado.",
+      "Os planos Basic, Pro e Business sao recorrentes, cobrados mensalmente pelo provedor de pagamento integrado e vinculados a workspace business. O plano Enterprise depende de proposta comercial, aceite contratual especifico e condicoes negociadas.",
     featured: true,
     tag: "Assinatura"
+  },
+  {
+    title: "Aceite dos termos de assinatura",
+    description:
+      "Ao selecionar um plano, marcar o aceite legal e iniciar o checkout, voce concorda com estes Termos, com a Politica de Privacidade, com a recorrencia mensal, com os valores exibidos na tela de contratacao e com a autorizacao de cobranca pelo provedor de pagamento.",
+    featured: true,
+    tag: "Aceite"
+  },
+  {
+    title: "Workspace business e plano personal obsoleto",
+    description:
+      "Novas contratacoes sao disponibilizadas como workspace business. O workspace personal permanece apenas como legado operacional e pode deixar de receber novas ativacoes enquanto a oferta business estiver vigente."
   },
   {
     title: "Cancelamento da assinatura",
@@ -30,6 +43,16 @@ const sections = [
     title: "Reembolso",
     description:
       "Como regra geral, valores ja cobrados nao sao reembolsaveis. Excecoes podem ser analisadas caso a caso, conforme obrigacoes legais aplicaveis e analise de suporte."
+  },
+  {
+    title: "Tributos, documentos fiscais e dados cadastrais",
+    description:
+      "Valores podem estar sujeitos a tributos conforme a legislacao aplicavel. O cliente deve manter dados fiscais corretos e completos para emissao de documentos, cobranças, recibos, comunicados e cumprimento de obrigacoes legais."
+  },
+  {
+    title: "Disponibilidade e mudancas de planos",
+    description:
+      "O Dask pode evoluir funcionalidades, limites, valores, nomes de planos e regras comerciais, preservando direitos adquiridos do periodo contratado quando exigido pela lei aplicavel ou pelo contrato vigente."
   },
   {
     title: "Uso permitido e condutas proibidas",
@@ -45,8 +68,13 @@ const sections = [
   {
     title: "Privacidade e protecao de dados",
     description:
-      "O tratamento de dados pessoais ocorre conforme a Politica de Privacidade e a legislacao aplicavel, incluindo a LGPD.",
+      "O tratamento de dados pessoais ocorre conforme a Politica de Privacidade e a legislacao aplicavel, incluindo a LGPD. O Dask pode atuar como controlador ou operador conforme o contexto do dado tratado na plataforma.",
     tag: "LGPD"
+  },
+  {
+    title: "Base legal e comunicações",
+    description:
+      "Dados podem ser tratados para execucao de contrato, cumprimento de obrigacao legal ou regulatoria, exercicio regular de direitos, prevencao a fraude, legitimo interesse e consentimento quando aplicavel. Comunicacoes transacionais sobre conta, assinatura, seguranca e cobranca fazem parte da prestacao do servico."
   },
   {
     title: "Limitacao de responsabilidade",
@@ -84,8 +112,8 @@ export function TermsOfUsePage() {
         },
         {
           label: "Assinatura",
-          value: "Cobranca mensal com renovacao",
-          description: "Os planos sao recorrentes, com cancelamento na area de gestao e manutencao do acesso ate o fim do periodo pago."
+          value: "Basic, Pro e Business com renovacao",
+          description: "Todos os planos self-service usam workspace business, recorrencia mensal e aceite explicito antes do checkout."
         },
         {
           label: "Limites",
@@ -96,7 +124,7 @@ export function TermsOfUsePage() {
       sections={sections}
       sectionsEyebrow="Leitura estruturada"
       sectionsTitle="Clausulas principais"
-      sectionsDescription="Os topicos abaixo concentram as regras que governam uso, assinatura, cancelamento, propriedade intelectual, privacidade e atualizacoes deste documento."
+      sectionsDescription="Os topicos abaixo concentram as regras que governam uso, assinatura, aceite legal, cancelamento, documentos fiscais, propriedade intelectual, privacidade e atualizacoes deste documento."
       guideEyebrow="Leitura rapida"
       guideTitle="Como interpretar estes termos"
       guideDescription="A pagina foi organizada no mesmo padrao visual da home para ficar escaneavel. O objetivo aqui e localizar rapidamente o que impacta cadastro, uso e assinatura."

@@ -16,7 +16,10 @@ import type {
   UpdateConnectPaymentOrderInput
 } from '../repositories/billing-repository';
 import {
+  LEGACY_SUBSCRIPTION_PLANS,
   PLAN_PRICE_IDS,
+  SELF_SERVICE_SUBSCRIPTION_PLANS,
+  SUBSCRIPTION_PLAN_CATALOG,
   SUBSCRIPTION_PLANS,
   isSubscriptionActive,
   type BillingStatus
@@ -60,7 +63,10 @@ function normalizedMetadataValue(value: string | null | undefined): string {
 }
 
 function isSubscriptionPlan(value: unknown): value is SubscriptionPlan {
-  return typeof value === 'string' && SUBSCRIPTION_PLANS.includes(value as SubscriptionPlan);
+  return typeof value === 'string' && (
+    SUBSCRIPTION_PLANS.includes(value as (typeof SUBSCRIPTION_PLANS)[number]) ||
+    LEGACY_SUBSCRIPTION_PLANS.includes(value as 'PERSONAL')
+  );
 }
 
 function parseBillingPlanFeatures(metadata: Record<string, string> | null | undefined): string[] {
@@ -209,6 +215,12 @@ interface BillingServiceDeps {
   priceIds?: Partial<Record<SubscriptionPlan, string>>;
   connectApplicationFeeBps?: number;
   connectRequiredCapabilities?: string[];
+}
+
+export interface CreateSubscriptionCheckoutAcceptance {
+  acceptedTerms: true;
+  acceptedTermsVersion: string;
+  acceptedPrivacyVersion: string;
 }
 
 export interface ConnectAccountStatus {
@@ -447,7 +459,7 @@ export class BillingService {
 
   async listBillingPlans(): Promise<BillingPlanCatalogItem[]> {
     this.assertStripeRuntimeConfigured('platform');
-    return Promise.all(SUBSCRIPTION_PLANS.map((planCode) => this.buildBillingPlanCatalogItem(planCode)));
+    return SUBSCRIPTION_PLANS.map((planCode) => this.buildStaticBillingPlanCatalogItem(planCode));
   }
 
   private getConfiguredPlanPriceId(planCode: SubscriptionPlan): string {
@@ -467,7 +479,51 @@ export class BillingService {
     });
   }
 
+  private buildStaticBillingPlanCatalogItem(planCode: Exclude<SubscriptionPlan, 'PERSONAL'>): BillingPlanCatalogItem {
+    const staticPlan = SUBSCRIPTION_PLAN_CATALOG[planCode];
+    return {
+      code: planCode,
+      name: staticPlan.name,
+      description: staticPlan.description,
+      amount: staticPlan.amount,
+      currency: staticPlan.currency,
+      interval: staticPlan.selfService ? 'month' : null,
+      intervalCount: staticPlan.selfService ? 1 : null,
+      features: staticPlan.features,
+      isActive: true
+    };
+  }
+
   private async buildBillingPlanCatalogItem(planCode: SubscriptionPlan): Promise<BillingPlanCatalogItem> {
+    const staticPlan = planCode === 'PERSONAL' ? null : SUBSCRIPTION_PLAN_CATALOG[planCode];
+    if (staticPlan && !staticPlan.selfService) {
+      return {
+        code: planCode,
+        name: staticPlan.name,
+        description: staticPlan.description,
+        amount: staticPlan.amount,
+        currency: staticPlan.currency,
+        interval: null,
+        intervalCount: null,
+        features: staticPlan.features,
+        isActive: true
+      };
+    }
+
+    if (staticPlan && this.environment !== 'production' && !this.priceIds[planCode]?.trim()) {
+      return {
+        code: planCode,
+        name: staticPlan.name,
+        description: staticPlan.description,
+        amount: staticPlan.amount,
+        currency: staticPlan.currency,
+        interval: 'month',
+        intervalCount: 1,
+        features: staticPlan.features,
+        isActive: true
+      };
+    }
+
     const price = await this.retrievePlanPrice(planCode);
     if (price.unit_amount == null) {
       throw new AppError(`Stripe price ${price.id} for plan ${planCode} has no unit_amount.`, 503);
@@ -527,10 +583,17 @@ export class BillingService {
 
   async createCheckoutSession(
     userId: string,
-    planCode: SubscriptionPlan
+    planCode: SubscriptionPlan,
+    acceptance: CreateSubscriptionCheckoutAcceptance
   ): Promise<{ url: string }> {
     this.assertStripeRuntimeConfigured('platform');
-    const priceId = this.getConfiguredPlanPriceId(planCode);
+    if (!SELF_SERVICE_SUBSCRIPTION_PLANS.includes(planCode as (typeof SELF_SERVICE_SUBSCRIPTION_PLANS)[number])) {
+      throw new AppError('This plan is not available for self-service checkout', 422, {
+        code: 'PLAN_CHECKOUT_UNAVAILABLE',
+        planCode
+      });
+    }
+    const planCatalog = SUBSCRIPTION_PLAN_CATALOG[planCode as (typeof SELF_SERVICE_SUBSCRIPTION_PLANS)[number]];
 
     const user = await this.repo.findUserById(userId);
     if (!user) {
@@ -553,15 +616,42 @@ export class BillingService {
       mode: 'subscription',
       customer: customerId,
       payment_method_types: CARD_ONLY_PAYMENT_METHODS,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [
+        {
+          price_data: {
+            currency: planCatalog.currency,
+            unit_amount: planCatalog.amount,
+            recurring: { interval: 'month', interval_count: 1 },
+            product_data: {
+              name: `Dask ${planCatalog.name}`,
+              description: planCatalog.description,
+              metadata: {
+                planCode,
+                workspaceType: 'business'
+              }
+            }
+          },
+          quantity: 1
+        }
+      ],
       success_url: `${this.appPublicUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.appPublicUrl}/billing/cancel`,
       metadata: {
         userId,
-        planCode
+        planCode,
+        acceptedTerms: String(acceptance.acceptedTerms),
+        acceptedTermsVersion: acceptance.acceptedTermsVersion,
+        acceptedPrivacyVersion: acceptance.acceptedPrivacyVersion,
+        acceptedAt: new Date().toISOString()
       },
       subscription_data: {
-        metadata: { userId, planCode }
+        metadata: {
+          userId,
+          planCode,
+          acceptedTerms: String(acceptance.acceptedTerms),
+          acceptedTermsVersion: acceptance.acceptedTermsVersion,
+          acceptedPrivacyVersion: acceptance.acceptedPrivacyVersion
+        }
       },
       allow_promotion_codes: true,
       billing_address_collection: 'auto',

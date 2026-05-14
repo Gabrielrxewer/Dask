@@ -5,6 +5,7 @@ import {
   type Permission,
   type PermissionOverrides
 } from '@/modules/identity/domain/permissions';
+import { isBusinessWorkspacePlan, type SubscriptionPlan } from '@/modules/billing/domain/types';
 
 export const workspaceModuleCatalog = ['dashboard', 'board', 'automation', 'documentation', 'billing', 'ai', 'settings', 'fiscal', 'commercial', 'marketing'] as const;
 
@@ -151,9 +152,9 @@ function parseAccessGroup(input: unknown): WorkspaceAccessGroup | null {
   };
 }
 
-function defaultPlanModuleEntitlements(subscriptionPlan: 'PERSONAL' | 'BUSINESS' | null | undefined) {
+function defaultPlanModuleEntitlements(subscriptionPlan: SubscriptionPlan | null | undefined) {
   if (
-    subscriptionPlan === 'BUSINESS' ||
+    isBusinessWorkspacePlan(subscriptionPlan) ||
     subscriptionPlan === 'PERSONAL' ||
     subscriptionPlan == null
   ) {
@@ -233,7 +234,7 @@ export function resolveWorkspaceAccessPolicy(input: {
   role: MembershipRole;
   membershipPermissions: unknown;
   workspaceConfig: unknown;
-  subscriptionPlan: 'PERSONAL' | 'BUSINESS' | null | undefined;
+  subscriptionPlan: SubscriptionPlan | null | undefined;
 }): ResolvedWorkspaceAccessPolicy {
   const overrides = parseMembershipAccessOverrides(input.membershipPermissions);
   const { groups, moduleEntitlements: workspaceEntitlements } = parseWorkspaceAccessControlConfig(input.workspaceConfig);
@@ -267,7 +268,7 @@ export function resolveWorkspaceAccessPolicy(input: {
 
   const planEntitlements = defaultPlanModuleEntitlements(input.subscriptionPlan);
   const hasFullModuleAccessByPlan =
-    input.subscriptionPlan === 'BUSINESS' ||
+    isBusinessWorkspacePlan(input.subscriptionPlan) ||
     input.subscriptionPlan === 'PERSONAL' ||
     input.subscriptionPlan == null;
   const moduleEntitlements = workspaceModuleCatalog.reduce<Record<WorkspaceModuleKey, boolean>>((acc, moduleKey) => {

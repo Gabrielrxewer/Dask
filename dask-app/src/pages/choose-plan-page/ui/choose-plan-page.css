@@ -103,8 +103,8 @@
 
 .choose-plan__plans {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(16px, 2vw, 24px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.4vw, 18px);
   align-items: stretch;
 }
 
@@ -191,6 +191,37 @@
     0 22px 44px color-mix(in srgb, var(--ink-shadow) 7.5%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 82%, transparent) inset;
   transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.choose-plan__legal-acceptance {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--info-border) 84%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 92%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 74%, transparent) 100%);
+  box-shadow:
+    0 14px 26px color-mix(in srgb, var(--ink-shadow) 5.5%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1.46;
+}
+
+.choose-plan__legal-acceptance input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+
+.choose-plan__legal-acceptance a {
+  color: var(--text-primary);
+  font-weight: 800;
 }
 
 .choose-plan__card--featured {
@@ -429,6 +460,12 @@
 
   .choose-plan__current-subscription {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 1180px) {
+  .choose-plan__plans {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

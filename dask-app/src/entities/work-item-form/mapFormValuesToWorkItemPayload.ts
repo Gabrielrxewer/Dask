@@ -1,8 +1,12 @@
 import type { UpdateTaskInput } from "@/modules/workspace";
-import type { WorkItemPublicSchema } from "@/entities/work-item-schema";
 import type { WorkItemFormValues } from "@/entities/work-item-form/buildWorkItemDefaultValues";
+import type { FieldDefinition } from "@/shared/field-core";
 
-export function mapFormValuesToWorkItemPayload(values: WorkItemFormValues, schema: WorkItemPublicSchema): UpdateTaskInput {
+type WorkItemPayloadSchema = {
+  fields: Pick<FieldDefinition, "key" | "type">[];
+};
+
+export function mapFormValuesToWorkItemPayload(values: WorkItemFormValues, schema: WorkItemPayloadSchema): UpdateTaskInput {
   const fields = schema.fields.reduce<Record<string, unknown>>((acc, field) => {
     if (field.type === "computed" || field.type === "billing_summary") {
       return acc;

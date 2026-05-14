@@ -1,16 +1,10 @@
-import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";
-import { getTaskFieldTypeLabel } from "@/entities/task";
-import type { CustomFieldType } from "@/modules/workspace/model";
 import { EmptyState, PanelMenu, PanelMenuGroup, PanelMenuItem } from "@/shared/ui";
-import {
-  FIELD_TYPE_OPTIONS,
-  type FieldLibraryItem
-} from "./work-item-editor-settings.model";
+import { useDraggable } from "@dnd-kit/core";
+import { type FieldLibraryItem } from "./work-item-editor-settings.model";
 
 interface WorkItemFieldLibraryProps {
-  activeCanvasTab: "card" | "detail" | "field";
   librarySearch: string;
   libraryFieldsInCardOnly: FieldLibraryItem[];
   libraryFieldsInBoth: FieldLibraryItem[];
@@ -21,7 +15,6 @@ interface WorkItemFieldLibraryProps {
   selectedFieldId: string | null;
   onSearchChange: (value: string) => void;
   onSelectField: (fieldId: string) => void;
-  onOpenNewFieldPanel: (type: CustomFieldType) => void;
 }
 
 function DraggableLibraryFieldChip({
@@ -62,38 +55,7 @@ function DraggableLibraryFieldChip({
   );
 }
 
-function DraggableFieldTypeTile({
-  option,
-  onOpenNewFieldPanel
-}: {
-  option: (typeof FIELD_TYPE_OPTIONS)[number];
-  onOpenNewFieldPanel: (type: CustomFieldType) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `work-item-field-type:${option.value}`,
-    data: {
-      payload: { kind: "type", type: option.value }
-    }
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`panel-menu-tile${isDragging ? " is-dragging" : ""}`}
-      style={{ transform: CSS.Translate.toString(transform) }}
-      onClick={() => onOpenNewFieldPanel(option.value)}
-      {...attributes}
-      {...listeners}
-      aria-label={`Criar campo ${option.label}`}
-    >
-      <strong>{option.label}</strong>
-      <span>{option.caption}</span>
-    </div>
-  );
-}
-
 export function WorkItemFieldLibrary({
-  activeCanvasTab,
   librarySearch,
   libraryFieldsInCardOnly,
   libraryFieldsInBoth,
@@ -103,8 +65,7 @@ export function WorkItemFieldLibrary({
   detailFieldSet,
   selectedFieldId,
   onSearchChange,
-  onSelectField,
-  onOpenNewFieldPanel
+  onSelectField
 }: WorkItemFieldLibraryProps) {
   const renderFieldChip = (field: FieldLibraryItem) => {
     const inCard = cardFieldSet.has(field.id);
@@ -160,19 +121,6 @@ export function WorkItemFieldLibrary({
           )}
         </PanelMenuGroup>
 
-        {activeCanvasTab === "field" ? (
-          <PanelMenuGroup label="Novo campo" tone="new">
-            <div className="panel-menu-tile-grid">
-              {FIELD_TYPE_OPTIONS.map((opt) => (
-                <DraggableFieldTypeTile
-                  key={opt.value}
-                  option={opt}
-                  onOpenNewFieldPanel={onOpenNewFieldPanel}
-                />
-              ))}
-            </div>
-          </PanelMenuGroup>
-        ) : null}
       </PanelMenu>
     </aside>
   );

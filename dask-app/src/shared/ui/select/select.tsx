@@ -110,7 +110,7 @@ export function Select({ autoFocus, className = "", children, disabled, onChange
       bottom: openUp ? window.innerHeight - rect.top + gap : undefined,
       width: menuWidth,
       maxHeight,
-      zIndex: 10050
+      zIndex: "var(--z-popover)"
     });
   }, []);
 

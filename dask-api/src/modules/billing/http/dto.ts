@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 export const createCheckoutSessionDto = z.object({
-  planCode: z.enum(['PERSONAL', 'BUSINESS'])
+  planCode: z.enum(['BASIC', 'PRO', 'BUSINESS']),
+  acceptedTerms: z.literal(true),
+  acceptedTermsVersion: z.string().trim().min(1).max(80),
+  acceptedPrivacyVersion: z.string().trim().min(1).max(80)
 });
 
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionDto>;

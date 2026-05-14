@@ -46,12 +46,13 @@ export function WorkItemCardEmptySlot({
       className={`wie__card-empty-slot wie__card-empty-slot--${area}${isTarget || isOver ? " is-target" : ""}`}
       data-slot-area={area}
       data-drop-intent={isTarget || isOver ? "vacancy" : undefined}
+      aria-label={`Adicionar campo em ${area}`}
       onPointerEnter={() => {
         if (!dragPayload) return;
         onUpdateDropTarget(target);
       }}
     >
-      <span className="wie__card-empty-slot-label">+ campo</span>
+      <span className="wie__card-empty-slot-label" aria-hidden="true" />
       <span className="wie__card-empty-slot-count">{`${occupiedCount}/${slotLimit}`}</span>
     </SlotTag>
   );

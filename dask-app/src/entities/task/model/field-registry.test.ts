@@ -97,6 +97,16 @@ describe("field-registry", () => {
     expect(resolveTaskFieldValue(baseTask, customSelectField)).toBe("high");
   });
 
+  it("resolve valores customizados por definitionId quando o runtime id mudou", () => {
+    expect(resolveTaskFieldValue({
+      ...baseTask,
+      customFields: {},
+      customFieldValuesById: {
+        "field-impact-level": "medium"
+      }
+    }, customSelectField)).toBe("medium");
+  });
+
   it("monta payloads dirigidos por tipo e storage", () => {
     const payload = buildTaskInputFromFieldDrafts(
       [titleField, statusField, tagsField, scheduleField, checklistField, customSelectField],

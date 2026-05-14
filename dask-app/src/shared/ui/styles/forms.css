@@ -70,7 +70,7 @@
 
 .shared-select__menu {
   position: absolute;
-  z-index: 500;
+  z-index: var(--z-popover);
   top: calc(100% + 4px);
   left: 0;
   right: 0;

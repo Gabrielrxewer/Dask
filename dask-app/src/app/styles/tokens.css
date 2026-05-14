@@ -182,8 +182,9 @@
   --layout-inspector-width: 320px;
   --z-header: 40;
   --z-sidebar: 70;
-  --z-popover: 80;
   --z-modal: 10000;
+  --z-modal-content: 10020;
+  --z-popover: 10040;
 
   --radius-xl: 24px;
   --radius-lg: 16px;

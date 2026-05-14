@@ -115,7 +115,10 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
     stripeFiscalWebhookSecret: env.STRIPE_WEBHOOK_SECRET_FISCAL,
     billingPortalTokenSecret: env.BILLING_PORTAL_TOKEN_SECRET,
     stripePriceIdPersonalMonthly: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY,
+    stripePriceIdBasicMonthly: env.STRIPE_PRICE_ID_BASIC_MONTHLY,
+    stripePriceIdProMonthly: env.STRIPE_PRICE_ID_PRO_MONTHLY,
     stripePriceIdBusinessMonthly: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY,
+    stripePriceIdEnterpriseMonthly: env.STRIPE_PRICE_ID_ENTERPRISE_MONTHLY,
     stripeConnectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS,
     stripeConnectRequiredCapabilities: env.STRIPE_CONNECT_REQUIRED_CAPABILITIES,
     focusApiEnvironment: env.FOCUS_API_ENVIRONMENT,
@@ -151,7 +154,10 @@ export function startOutboxRelayWorker(prisma: PrismaClient): RelayWorkerHandle 
         eventPublisher,
         priceIds: {
           PERSONAL: env.STRIPE_PRICE_ID_PERSONAL_MONTHLY ?? '',
-          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? ''
+          BASIC: env.STRIPE_PRICE_ID_BASIC_MONTHLY ?? '',
+          PRO: env.STRIPE_PRICE_ID_PRO_MONTHLY ?? '',
+          BUSINESS: env.STRIPE_PRICE_ID_BUSINESS_MONTHLY ?? '',
+          ENTERPRISE: env.STRIPE_PRICE_ID_ENTERPRISE_MONTHLY ?? ''
         },
         connectApplicationFeeBps: env.STRIPE_CONNECT_APPLICATION_FEE_BPS,
         connectRequiredCapabilities: env.STRIPE_CONNECT_REQUIRED_CAPABILITIES

@@ -288,7 +288,14 @@ export function normalizeFieldSection(section: unknown): string | null {
 export function inferFieldCapabilities(type: CustomFieldInputType, settings: unknown): JsonRecord {
   const capabilities: JsonRecord = {};
 
-  if (type === 'select' || type === 'user' || type === 'priority' || type === 'status' || type === 'work_item_type') {
+  if (
+    type === 'select' ||
+    type === 'catalog_select' ||
+    type === 'user' ||
+    type === 'priority' ||
+    type === 'status' ||
+    type === 'work_item_type'
+  ) {
     capabilities.selectable = true;
   }
 

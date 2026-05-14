@@ -183,6 +183,56 @@ export function applyFieldDrop(input: {
     };
   }
 
+  if (target.surface === "card" && target.kind === "replace-field" && payload.origin === "card") {
+    const payloadIndex = draft.card.indexOf(payload.fieldId);
+    const targetIndex = draft.card.indexOf(target.targetFieldId);
+
+    if (payloadIndex >= 0 && targetIndex >= 0) {
+      const nextCard = [...draft.card];
+      nextCard[payloadIndex] = target.targetFieldId;
+      nextCard[targetIndex] = payload.fieldId;
+
+      return {
+        layout: {
+          card: uniqueFieldIds(nextCard),
+          detail: uniqueFieldIds(draft.detail)
+        },
+        cardAreasByFieldId: {
+          ...cardAreasByFieldId,
+          [payload.fieldId]: target.area,
+          [target.targetFieldId]: cardAreasByFieldId[payload.fieldId] ?? cardAreasByFieldId[target.targetFieldId]
+        },
+        detailZonesByFieldId,
+        replacedFieldId: null
+      };
+    }
+  }
+
+  if (target.surface === "detail" && target.kind === "replace-field" && payload.origin === "detail") {
+    const payloadIndex = draft.detail.indexOf(payload.fieldId);
+    const targetIndex = draft.detail.indexOf(target.targetFieldId);
+
+    if (payloadIndex >= 0 && targetIndex >= 0) {
+      const nextDetail = [...draft.detail];
+      nextDetail[payloadIndex] = target.targetFieldId;
+      nextDetail[targetIndex] = payload.fieldId;
+
+      return {
+        layout: {
+          card: uniqueFieldIds(draft.card),
+          detail: uniqueFieldIds(nextDetail)
+        },
+        cardAreasByFieldId,
+        detailZonesByFieldId: {
+          ...detailZonesByFieldId,
+          [payload.fieldId]: target.zone,
+          [target.targetFieldId]: detailZonesByFieldId[payload.fieldId] ?? detailZonesByFieldId[target.targetFieldId]
+        },
+        replacedFieldId: null
+      };
+    }
+  }
+
   let nextCard = [...draft.card];
   let nextDetail = [...draft.detail];
 

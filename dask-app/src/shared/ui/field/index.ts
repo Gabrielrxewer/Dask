@@ -1,5 +1,6 @@
 export {
   AppCheckboxField,
+  AppColorField,
   AppDateField,
   AppDateTimeField,
   AppMoneyField,
@@ -10,6 +11,7 @@ export {
 } from "@/shared/ui/field/app-fields";
 export type {
   AppCheckboxFieldProps,
+  AppColorFieldProps,
   AppDateFieldProps,
   AppDateTimeFieldProps,
   AppMoneyFieldProps,

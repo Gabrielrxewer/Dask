@@ -343,8 +343,8 @@
   --board-column-canvas-surface: var(--workspace-page-bg);
   --board-column-header-surface: var(--workspace-table-header);
   --board-column-body-surface: var(--workspace-surface);
-  --board-column-list-surface: var(--workspace-surface-soft);
-  --board-column-body-surface-over: color-mix(in oklab, var(--workspace-selected) 62%, var(--board-column-list-surface));
+  --board-column-list-surface: var(--workspace-surface);
+  --board-column-body-surface-over: var(--workspace-table-row-hover);
   gap: 10px;
   padding: 0;
   border-radius: var(--radius-xs);
@@ -408,7 +408,7 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--workspace-surface-soft);
+  background: var(--workspace-table-row-hover);
   color: var(--workspace-text-muted);
   box-shadow: none;
   font-size: 0.72rem;
@@ -436,7 +436,7 @@
 
 .app-theme[data-theme="dark"] .board-column__drop-indicator {
   height: 6px;
-  background: var(--accent);
+  background: var(--workspace-selected-border);
   box-shadow: 0 0 0 1px var(--workspace-focus-ring);
 }
 

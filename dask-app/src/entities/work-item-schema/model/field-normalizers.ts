@@ -1,12 +1,8 @@
 import type { WorkItemPublicField } from "@/entities/work-item-schema/model/work-item-field.types";
+import { normalizeFieldKey as normalizeSharedFieldKey } from "@/shared/field-core";
 
 export function normalizeFieldKey(value: string): string {
-  return value
-    .trim()
-    .replace(/[^A-Za-z0-9_]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/^[0-9]/, "_$&")
-    .slice(0, 80);
+  return normalizeSharedFieldKey(value);
 }
 
 export function normalizePublicField(field: WorkItemPublicField): WorkItemPublicField {

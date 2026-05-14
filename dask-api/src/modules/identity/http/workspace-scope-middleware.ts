@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '@/core/errors/app-error';
 import type { AuthorizationService, Permission } from '@/modules/identity/domain/authorization';
 import { resolveWorkspaceAccessPolicy, type WorkspaceModuleKey } from '@/modules/identity/domain/access-policy';
+import { isBusinessWorkspacePlan } from '@/modules/billing/domain/types';
 
 type WorkspaceMembershipRole = 'CLIENT' | 'VIEWER' | 'MEMBER' | 'ADMIN' | 'OWNER';
 
@@ -66,11 +67,11 @@ export const workspaceScopeMiddleware = (prisma: PrismaClient) => {
         const hasCorporateAccess = process.env.NODE_ENV !== 'production'
           ? true
           : userAccess?.hasActiveSubscription === true &&
-            userAccess.subscriptionPlan === 'BUSINESS';
+            isBusinessWorkspacePlan(userAccess.subscriptionPlan);
         const hasGuestCorporateAccess = membership.role !== 'OWNER';
 
         if (!hasCorporateAccess && !hasGuestCorporateAccess) {
-          next(new AppError('Corporate workspace requires an active BUSINESS plan', 403));
+          next(new AppError('Corporate workspace requires an active business workspace plan', 403));
           return;
         }
       }

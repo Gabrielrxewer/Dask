@@ -12,7 +12,10 @@ export interface ProductionCriticalConfigInput {
   stripeFiscalWebhookSecret?: string | null;
   billingPortalTokenSecret?: string | null;
   stripePriceIdPersonalMonthly?: string | null;
+  stripePriceIdBasicMonthly?: string | null;
+  stripePriceIdProMonthly?: string | null;
   stripePriceIdBusinessMonthly?: string | null;
+  stripePriceIdEnterpriseMonthly?: string | null;
   stripeConnectApplicationFeeBps?: number | null;
   stripeConnectRequiredCapabilities?: string[];
   focusApiEnvironment?: FocusApiEnvironment;
@@ -173,19 +176,6 @@ function validateStripeProductionConfig(
     value: input.billingPortalTokenSecret,
     minLength: 32
   });
-  requirePrefix({
-    violations,
-    envName: 'STRIPE_PRICE_ID_PERSONAL_MONTHLY',
-    value: input.stripePriceIdPersonalMonthly,
-    prefix: 'price_'
-  });
-  requirePrefix({
-    violations,
-    envName: 'STRIPE_PRICE_ID_BUSINESS_MONTHLY',
-    value: input.stripePriceIdBusinessMonthly,
-    prefix: 'price_'
-  });
-
   requirePrefix({
     violations,
     envName: 'STRIPE_WEBHOOK_SECRET_FISCAL',

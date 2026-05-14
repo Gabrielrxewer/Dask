@@ -299,7 +299,7 @@ export class PrismaWorkspacesRepository implements WorkspacesRepository {
 
     return {
       hasActiveSubscription: user.hasActiveSubscription,
-      subscriptionPlan: user.subscriptionPlan as 'PERSONAL' | 'BUSINESS' | null
+      subscriptionPlan: user.subscriptionPlan as 'PERSONAL' | 'BASIC' | 'PRO' | 'BUSINESS' | 'ENTERPRISE' | null
     };
   }
 

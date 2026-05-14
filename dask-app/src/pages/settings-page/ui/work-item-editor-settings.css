@@ -144,10 +144,28 @@
   color: var(--foreground);
 }
 
+.wie__topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--border-default) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--neutral-white) 62%, transparent);
+}
+
+.wie__topbar-action.shared-button--icon {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+}
+
 /* ── Body — 3-column grid ─────────────────────────────────────────────────── */
 .wie__body {
   display: grid;
-  grid-template-columns: minmax(230px, 268px) minmax(0, 1fr) minmax(260px, 300px);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(330px, 380px);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
@@ -266,6 +284,65 @@
 
 .wie__canvas-panel--field {
   min-height: 0;
+  overflow: visible;
+}
+
+.wie__canvas-panel--card {
+  isolation: isolate;
+}
+
+.wie__card-canvas-toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--border-default) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--neutral-white) 86%, transparent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--ink-shadow) 8%, transparent);
+  backdrop-filter: blur(10px) saturate(116%);
+}
+
+.wie__card-canvas-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+}
+
+.wie__card-canvas-btn:hover,
+.wie__card-canvas-btn:focus-visible {
+  background: var(--selected-bg);
+  color: var(--text-primary);
+}
+
+.wie__card-canvas-btn:active {
+  transform: scale(0.94);
+}
+
+.wie__card-canvas-zoom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-tint) 82%, transparent);
+  color: var(--text-primary);
+  font-size: var(--font-size-3xs);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .wie__field-editor-stage {
@@ -290,7 +367,7 @@
   border-radius: 18px;
   background: color-mix(in srgb, var(--neutral-white) 86%, transparent);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--neutral-black) 6%, transparent);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .wie__field-editor-preview-head,
@@ -323,6 +400,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 18px 16px;
+  overflow: visible;
 }
 
 .wie__field-editor-preview-meta {
@@ -368,6 +446,9 @@
   border: 1px solid var(--border-default);
   border-radius: 14px;
   background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint) 100%);
+  overflow: visible;
+  position: relative;
+  z-index: 2;
 }
 
 .wie__field-editor-preview-field label {
@@ -416,22 +497,33 @@
 /* ── Card canvas ──────────────────────────────────────────────────────────── */
 .wie__card-stage {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  place-items: center;
   flex: 1 1 auto;
   min-height: 0;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 20px 16px;
+  padding: 58px 18px 42px;
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--brand-blue) 6%, transparent), transparent 28%),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--brand-blue) 8%, transparent), transparent 30%),
+    radial-gradient(circle at 78% 14%, color-mix(in srgb, var(--decorative-cyan) 7%, transparent), transparent 24%),
+    linear-gradient(color-mix(in srgb, var(--border-default) 24%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border-default) 20%, transparent) 1px, transparent 1px),
     linear-gradient(180deg, var(--surface-tint) 0%, var(--surface-tint) 100%);
-  overflow-y: auto;
-  transition: box-shadow 0.15s, border-color 0.15s;
+  background-size: auto, auto, 28px 28px, 28px 28px, auto;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.wie__card-stage[data-panning="true"] {
+  cursor: grabbing;
 }
 
 .wie__card-stage.is-drop-ready {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand-blue) 18%, transparent);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--brand-blue) 22%, transparent),
+    inset 0 0 48px color-mix(in srgb, var(--brand-blue) 8%, transparent);
 }
 
 .wie__card-stage.is-type-target {
@@ -439,11 +531,25 @@
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand-blue) 30%, transparent);
 }
 
-.wie__card-stage .task-card {
-  width: min(100%, 300px);
+.wie__card-canvas-content {
+  width: min(100%, 320px);
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.wie__card-stage[data-panning="true"] .wie__card-canvas-content {
+  transition: none;
+}
+
+.wie__card-canvas-content .task-card {
+  width: min(100%, 320px);
   margin: 0;
   cursor: default;
   overflow: visible;
+  box-shadow:
+    0 22px 54px color-mix(in srgb, var(--ink-shadow) 12%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--brand-blue) 8%, transparent);
 }
 
 .wie__card-drop-line {
@@ -484,12 +590,12 @@
 }
 
 .wie__stage-hint {
-  display: none;
+  display: block;
   position: absolute;
   left: 14px;
   right: 14px;
   bottom: 12px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
   background: color-mix(in srgb, var(--neutral-white) 84%, transparent);
@@ -498,11 +604,18 @@
   font-weight: 700;
   text-align: center;
   line-height: 1.4;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
   box-shadow: 0 10px 20px color-mix(in srgb, var(--ink-shadow) 6%, transparent);
+  transition: opacity 0.16s ease, transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
 .wie__stage-hint.is-visible {
-  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  border-color: color-mix(in srgb, var(--selected-border) 44%, var(--border-default));
+  background: color-mix(in srgb, var(--neutral-white) 92%, var(--selected-bg));
 }
 
 /* Card field slots (applied via getFieldSlotProps) */
@@ -510,10 +623,18 @@
   position: relative;
   min-width: 0;
   cursor: grab;
-  border-radius: 12px;
-  transition: box-shadow 0.12s, background 0.12s, outline-color 0.12s;
+  border-radius: 10px;
+  transition: box-shadow 0.14s ease, background 0.14s ease, outline-color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
   user-select: none;
   -webkit-user-drag: element;
+}
+
+.wie__card-field.task-card__field-slot--draggable:hover,
+.wie__card-field.task-card__field-slot--over {
+  background: color-mix(in srgb, var(--selected-bg) 68%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--selected-border) 18%, transparent),
+    0 8px 18px color-mix(in srgb, var(--ink-shadow) 8%, transparent);
 }
 
 .wie__card-field:active { cursor: grabbing; }
@@ -538,26 +659,26 @@
   background: var(--selected-bg);
 }
 
+.wie__card-field.task-card__field-slot--dragging {
+  opacity: 0.35;
+}
+
 .wie__card-field.is-replace-target,
-.wie__detail-field-card.is-replace-target {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--selected-border) 30%, transparent);
+.wie__detail-field-card.is-replace-target,
+.wie__card-field.task-card__field-slot--over {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--selected-border) 38%, transparent),
+    0 10px 22px color-mix(in srgb, var(--brand-blue) 13%, transparent);
   background: var(--selected-bg);
 }
 
 .wie__card-field.is-replace-target::after,
 .wie__detail-field-card.is-replace-target::after {
-  content: attr(data-drop-label);
+  content: "";
   position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 2px 6px;
+  inset: -4px;
   border-radius: 999px;
-  background: var(--selected-bg);
-  color: var(--text-primary);
-  font-size: var(--font-size-3xs);
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--selected-border) 42%, transparent);
   pointer-events: none;
 }
 
@@ -565,55 +686,72 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 30px;
-  padding: 6px 10px;
-  border: 1px dashed var(--border-default);
+  justify-content: center;
+  gap: 0;
+  min-height: 14px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-tint) 54%, transparent);
+  background: transparent;
   color: var(--text-secondary);
-  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
+  transform: translateZ(0);
+  transition: min-height 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
+}
+
+.wie__card-empty-slot::before {
+  content: "";
+  display: block;
+  width: min(100%, 180px);
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--selected-border) 26%, transparent);
+  opacity: 0.42;
+  transition: width 0.14s ease, height 0.14s ease, background 0.14s ease, opacity 0.14s ease, box-shadow 0.14s ease;
 }
 
 .wie__card-empty-slot.is-target {
-  border-color: var(--selected-border);
-  background: var(--selected-bg);
+  min-height: 22px;
+  background: transparent;
   color: var(--text-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--selected-border) 10%, transparent);
+  transform: scale(1.02);
+  box-shadow: none;
+}
+
+.wie__card-empty-slot.is-target::before {
+  width: min(100%, 240px);
+  height: 4px;
+  background: var(--selected-border);
+  opacity: 1;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--selected-border) 10%, transparent);
 }
 
 .wie__card-empty-slot--badge,
 .wie__card-empty-slot--meta,
 .wie__card-empty-slot--tags {
   display: inline-flex;
-  min-height: 24px;
-  padding: 4px 8px;
+  min-height: 18px;
+  min-width: 34px;
+  padding: 0;
   border-radius: 999px;
 }
 
 .wie__card-empty-slot--title {
-  min-height: 26px;
+  min-height: 16px;
   border-radius: 10px;
 }
 
 .wie__card-empty-slot--description,
 .wie__card-empty-slot--custom-field {
-  min-height: 34px;
+  min-height: 18px;
   border-radius: 12px;
 }
 
 .wie__card-empty-slot-label {
-  font-size: var(--font-size-3xs);
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  display: none;
 }
 
 .wie__card-empty-slot-count {
-  flex-shrink: 0;
-  font-size: var(--font-size-3xs);
-  font-weight: 700;
-  color: var(--text-secondary);
+  display: none;
 }
 
 .wie__card-empty-slot.is-target .wie__card-empty-slot-count {
@@ -622,11 +760,151 @@
 
 .wie__dnd-source {
   touch-action: none;
+  border-radius: 8px;
+  transition: opacity 0.12s ease, transform 0.12s ease, filter 0.12s ease;
+}
+
+.wie__dnd-source .panel-menu-item {
+  cursor: grab;
+}
+
+.wie__dnd-source:hover .panel-menu-item {
+  border-color: color-mix(in srgb, var(--selected-border) 32%, var(--border-default));
+  background: color-mix(in srgb, var(--selected-bg) 52%, var(--neutral-white));
 }
 
 .wie__dnd-source.is-dragging,
 .panel-menu-tile.is-dragging {
-  opacity: 0.62;
+  opacity: 0.36;
+  filter: saturate(0.8);
+}
+
+.wie__drag-overlay {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--selected-border) 42%, var(--border-default));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--neutral-white) 94%, var(--selected-bg));
+  color: var(--text-primary);
+  box-shadow:
+    0 18px 38px color-mix(in srgb, var(--ink-shadow) 20%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--selected-border) 10%, transparent);
+  cursor: grabbing;
+}
+
+.wie__drag-overlay-grip {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--selected-bg);
+  color: var(--selected-border);
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+}
+
+.wie__drag-overlay span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.wie__drag-overlay strong,
+.wie__drag-overlay small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wie__library-add-field {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--selected-border);
+  border-radius: 8px;
+  background: var(--selected-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+
+.wie__library-add-field:hover {
+  border-color: var(--brand-blue);
+  background: var(--surface-blue-muted);
+  transform: translateY(-1px);
+}
+
+.wie__library-new-field {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  border: 1px dashed var(--border-blue-muted);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-tint) 72%, var(--neutral-white));
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+}
+
+.wie__library-new-field:hover {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  transform: translateY(-1px);
+}
+
+.wie__library-new-field-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--neutral-white);
+  color: var(--text-primary);
+}
+
+.wie__library-new-field strong,
+.wie__library-new-field small {
+  display: block;
+}
+
+.wie__library-new-field strong {
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+}
+
+.wie__library-new-field small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-3xs);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.wie__drag-overlay strong {
+  font-size: var(--font-size-xs);
+  font-weight: 900;
+}
+
+.wie__drag-overlay small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-3xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .wie__card-field--badge,
@@ -639,7 +917,7 @@
 /* ── Form canvas ──────────────────────────────────────────────────────────── */
 .wie__form-stage {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.85fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.62fr);
   align-items: start;
   gap: 12px;
   flex: 1 1 auto;
@@ -779,17 +1057,18 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, gap 0.15s;
 }
 
 .wie__form-zone.is-drop-ready {
-  border-radius: 10px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-blue) 8%, transparent);
+  gap: 6px 18px;
+  border-radius: 12px;
+  box-shadow: none;
 }
 
 .wie__form-zone.is-type-target {
   border-radius: 10px;
-  background: color-mix(in srgb, var(--brand-blue) 2%, transparent);
+  background: color-mix(in srgb, var(--brand-blue) 1.5%, transparent);
 }
 
 .wie__form-zone-head {
@@ -849,7 +1128,11 @@
   box-shadow: none;
   cursor: grab;
   touch-action: none;
-  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s, transform 0.12s;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
+}
+
+.wie__detail-field-key {
+  display: contents;
 }
 
 .wie__detail-field-card.is-wide {
@@ -875,6 +1158,9 @@
 }
 
 .wie__detail-field-card:hover {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--selected-bg) 42%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--selected-border) 10%, transparent);
   transform: none;
 }
 
@@ -892,9 +1178,9 @@
 
 .wie__detail-field-card-drag-surface {
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   z-index: 1;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   cursor: grab;
   user-select: none;
@@ -919,24 +1205,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px dashed var(--border-default);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--neutral-white) 72%, transparent);
+  min-height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--text-secondary);
   font-size: var(--font-size-3xs);
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
+  opacity: 0.66;
+  transition: min-height 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
+}
+
+.wie__detail-insert-target::before {
+  content: "";
+  width: min(100%, 220px);
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--selected-border) 24%, transparent);
+  opacity: 0.55;
+  transition: width 0.14s ease, height 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
 }
 
 .wie__detail-insert-target.is-target {
-  border-color: var(--selected-border);
-  background: var(--selected-bg);
+  min-height: 22px;
+  background: transparent;
   color: var(--text-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--selected-border) 12%, transparent);
+  opacity: 1;
+  transform: scale(1.01);
+  box-shadow: none;
+}
+
+.wie__detail-insert-target.is-target::before {
+  width: min(100%, 320px);
+  height: 4px;
+  background: var(--selected-border);
+  opacity: 1;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--selected-border) 10%, transparent);
 }
 
 .wie__detail-field-card-dragbar {
@@ -1219,6 +1526,66 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.wie__props-type-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-tint);
+}
+
+.wie__props-type-summary div {
+  min-width: 0;
+}
+
+.wie__props-type-summary span,
+.wie__props-type-summary strong {
+  display: block;
+}
+
+.wie__props-type-summary span {
+  color: var(--text-secondary);
+  font-size: var(--font-size-3xs);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wie__props-type-summary strong {
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wie__props-type-change {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-blue-muted);
+  border-radius: 8px;
+  background: var(--neutral-white);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s, transform 0.12s;
+}
+
+.wie__props-type-change:hover {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .wie__props-icon-btn {
@@ -1607,6 +1974,222 @@
   font-weight: 700;
 }
 
+.wie__field-type-dialog.shared-dialog-shell {
+  width: min(860px, calc(100vw - 32px));
+}
+
+.wie__field-type-dialog-body {
+  padding: 0 18px 18px;
+}
+
+.wie__field-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wie__field-type-card {
+  min-height: 154px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, var(--surface-tint)) 0%, var(--surface-tint) 100%);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s, box-shadow 0.14s, transform 0.14s;
+}
+
+.wie__field-type-card:hover,
+.wie__field-type-card.is-selected {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--ink-shadow) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.wie__field-type-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wie__field-type-card-icon,
+.wie__field-type-selected {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  background: var(--neutral-white);
+}
+
+.wie__field-type-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--text-primary);
+}
+
+.wie__field-type-selected {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border-color: var(--selected-border);
+  color: var(--brand-blue);
+}
+
+.wie__field-type-preview {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--neutral-white) 72%, transparent);
+}
+
+.wie__field-type-preview i {
+  display: block;
+  border-radius: 999px;
+  background: var(--border-blue-muted);
+}
+
+.wie__field-type-preview--long-text {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.wie__field-type-preview--long-text i {
+  height: 5px;
+}
+
+.wie__field-type-preview--long-text i:nth-child(2) {
+  width: 74%;
+}
+
+.wie__field-type-preview--long-text i:nth-child(3) {
+  width: 48%;
+}
+
+.wie__field-type-preview--number,
+.wie__field-type-preview--date,
+.wie__field-type-preview--user {
+  justify-content: space-between;
+}
+
+.wie__field-type-preview--number strong,
+.wie__field-type-preview--date strong {
+  font-size: var(--font-size-md);
+  font-weight: 900;
+}
+
+.wie__field-type-preview--number small,
+.wie__field-type-preview--date small,
+.wie__field-type-preview--user small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-3xs);
+  font-weight: 800;
+}
+
+.wie__field-type-preview--boolean i {
+  width: 34px;
+  height: 18px;
+  margin-left: auto;
+  background: var(--selected-border);
+  position: relative;
+}
+
+.wie__field-type-preview--boolean i::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--neutral-white);
+}
+
+.wie__field-type-preview--select i {
+  height: 20px;
+  min-width: 34px;
+}
+
+.wie__field-type-preview--select i:nth-child(2) {
+  min-width: 48px;
+}
+
+.wie__field-type-preview--user i {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-blue-muted);
+  color: var(--text-primary);
+  font-size: var(--font-size-3xs);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.wie__field-type-preview--checklist {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.wie__field-type-preview--checklist i {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.wie__field-type-preview--checklist i::before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--brand-blue);
+}
+
+.wie__field-type-card-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.wie__field-type-card-copy strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.wie__field-type-card-copy small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  .wie__field-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .wie__field-type-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Idle state */
 .wie__props-panel.is-idle {
   justify-content: stretch;
@@ -1699,7 +2282,7 @@
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 1400px) {
   .wie__body {
-    grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(240px, 280px);
+    grid-template-columns: minmax(250px, 280px) minmax(0, 1fr) minmax(300px, 340px);
   }
 }
 
@@ -1901,6 +2484,7 @@
 .app-theme[data-theme="dark"] .wie__field-editor-empty,
 .app-theme[data-theme="dark"] .wie__props-idle-tip,
 .app-theme[data-theme="dark"] .wie__summary span,
+.app-theme[data-theme="dark"] .wie__topbar-actions,
 .app-theme[data-theme="dark"] .wie__tab {
   border-color: var(--line);
   background: var(--surface-raised);
@@ -2038,21 +2622,32 @@
 .app-theme[data-theme="dark"] .wie__field-editor-preview-badges span,
 .app-theme[data-theme="dark"] .wie__detail-insert-target {
   border-color: var(--line);
-  background: var(--surface-muted);
+  background: transparent;
 }
 
 .app-theme[data-theme="dark"] .wie__stage-hint,
 .app-theme[data-theme="dark"] .wie__card-empty-slot {
-  background: color-mix(in oklab, var(--surface-raised) 72%, transparent);
-  border-color: color-mix(in oklab, var(--line) 72%, transparent);
+  background: transparent;
+  border-color: transparent;
   box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .wie__detail-insert-target::before,
+.app-theme[data-theme="dark"] .wie__card-empty-slot::before {
+  background: color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__card-empty-slot.is-target,
 .app-theme[data-theme="dark"] .wie__stage-hint.is-visible {
-  background: color-mix(in oklab, var(--selected-bg) 62%, var(--surface-raised));
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 12%, transparent);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .wie__detail-insert-target.is-target::before,
+.app-theme[data-theme="dark"] .wie__card-empty-slot.is-target::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__card-empty-slot-count,
@@ -2103,8 +2698,13 @@
 .app-theme[data-theme="dark"] .wie__props-zone-switcher,
 .app-theme[data-theme="dark"] .wie__props-idle-icon {
   border-color: var(--line);
-  background: var(--surface-muted);
   color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .wie__stage-hint,
+.app-theme[data-theme="dark"] .wie__card-empty-slot {
+  background: transparent;
+  border-color: transparent;
 }
 
 .app-theme[data-theme="dark"] .wie__tab-input,
@@ -2115,10 +2715,10 @@
 .app-theme[data-theme="dark"] .wie__props-zone-btn.is-active,
 .app-theme[data-theme="dark"] .wie__card-empty-slot.is-target,
 .app-theme[data-theme="dark"] .wie__stage-hint.is-visible {
-  background: color-mix(in oklab, var(--selected-bg) 88%, var(--surface-raised));
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
+  background: transparent;
+  border-color: transparent;
   color: var(--text-strong);
-  box-shadow: var(--shadow-1);
+  box-shadow: none;
 }
 
 .app-theme[data-theme="dark"] .wie__stage-empty span,
@@ -2146,6 +2746,39 @@
   color: var(--text-soft);
 }
 
+.app-theme[data-theme="dark"] .wie__library-add-field,
+.app-theme[data-theme="dark"] .wie__library-new-field,
+.app-theme[data-theme="dark"] .wie__library-new-field-icon,
+.app-theme[data-theme="dark"] .wie__props-type-summary,
+.app-theme[data-theme="dark"] .wie__props-type-change,
+.app-theme[data-theme="dark"] .wie__field-type-card,
+.app-theme[data-theme="dark"] .wie__field-type-card-icon,
+.app-theme[data-theme="dark"] .wie__field-type-selected,
+.app-theme[data-theme="dark"] .wie__field-type-preview {
+  border-color: var(--line);
+  background: var(--surface-raised);
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .wie__library-new-field small,
+.app-theme[data-theme="dark"] .wie__props-type-summary span,
+.app-theme[data-theme="dark"] .wie__field-type-card-copy small,
+.app-theme[data-theme="dark"] .wie__field-type-preview--number small,
+.app-theme[data-theme="dark"] .wie__field-type-preview--date small,
+.app-theme[data-theme="dark"] .wie__field-type-preview--user small {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .wie__field-type-card:hover,
+.app-theme[data-theme="dark"] .wie__field-type-card.is-selected,
+.app-theme[data-theme="dark"] .wie__library-add-field:hover,
+.app-theme[data-theme="dark"] .wie__library-new-field:hover,
+.app-theme[data-theme="dark"] .wie__props-type-change:hover {
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
+  background: color-mix(in oklab, var(--selected-bg) 90%, var(--surface-raised));
+  color: var(--text-strong);
+}
+
 .app-theme[data-theme="dark"] .wie__canvas-tab.is-active .wie__canvas-tab-count,
 .app-theme[data-theme="dark"] .wie__props-badge.is-active {
   border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
@@ -2165,14 +2798,14 @@
 .app-theme[data-theme="dark"] .wie__card-field.is-replace-target,
 .app-theme[data-theme="dark"] .wie__detail-field-card.is-replace-target,
 .app-theme[data-theme="dark"] .wie__detail-insert-target.is-target {
-  background: color-mix(in oklab, var(--selected-bg) 86%, var(--surface-raised));
+  background: color-mix(in oklab, var(--selected-bg) 42%, transparent);
   border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
 }
 
 .app-theme[data-theme="dark"] .wie__card-field.is-replace-target::after,
 .app-theme[data-theme="dark"] .wie__detail-field-card.is-replace-target::after {
-  background: color-mix(in oklab, var(--selected-bg) 78%, var(--surface-muted));
-  color: var(--text-strong);
+  background: transparent;
+  border-color: color-mix(in oklab, var(--accent) 42%, transparent);
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tabs {
@@ -2182,6 +2815,94 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-toolbar {
+  border-color: color-mix(in oklab, var(--line) 72%, transparent);
+  background: color-mix(in oklab, var(--surface-raised) 84%, transparent);
+  box-shadow: var(--shadow-1);
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-btn {
+  color: var(--text-soft);
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-btn:hover,
+.app-theme[data-theme="dark"] .wie__card-canvas-btn:focus-visible {
+  background: color-mix(in oklab, var(--selected-bg) 72%, var(--surface-muted));
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-zoom {
+  background: color-mix(in oklab, var(--surface-muted) 88%, transparent);
+  color: var(--text-strong);
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] {
+  --board-card-surface: var(--workspace-surface, var(--surface-raised));
+  --board-card-line: var(--workspace-border, var(--line));
+  background: var(--board-card-surface);
+  border: 1px solid var(--board-card-line);
+  border-left: 0;
+  border-radius: var(--radius-xs);
+  box-shadow:
+    0 22px 54px color-mix(in srgb, var(--neutral-black) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--neutral-white) 3%, transparent);
+  isolation: isolate;
+  position: relative;
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: color-mix(in oklab, var(--task-card-priority-border) 66%, var(--workspace-border, var(--line)));
+  box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"]::after {
+  content: none;
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-card__title {
+  color: var(--workspace-text-primary, var(--text-strong));
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-card__text {
+  color: var(--workspace-text-secondary, var(--text-soft));
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-small,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-mid,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__checklist-display-chip,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__pill,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__chip,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .billing-summary__card-badge {
+  background: var(--workspace-control-surface, var(--surface-muted));
+  border: 1px solid var(--workspace-border-subtle, var(--line));
+  box-shadow: none;
+  color: var(--workspace-text-secondary, var(--text-soft));
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-small-leading,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-mid-leading {
+  color: var(--workspace-text-muted, var(--text-muted));
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-small-primary,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-mid-primary {
+  color: var(--workspace-text-primary, var(--text-strong));
+}
+
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-small-secondary,
+.app-theme[data-theme="dark"] .wie__card-canvas-content article.task-card[data-board-card="true"] .task-field-presentation__card-mid-secondary {
+  color: var(--workspace-text-secondary, var(--text-soft));
 }
 
 .app-theme[data-theme="dark"] .wie__canvas-tab {

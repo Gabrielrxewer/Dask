@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MouseEvent } from "react";
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -32,6 +34,7 @@ import { WorkItemDetailFieldCard } from "./work-item-detail-field-card";
 import { WorkItemDetailInsertTarget } from "./work-item-detail-insert-target";
 import { WorkItemEditorLoadingState } from "./work-item-editor-loading-state";
 import { WorkItemEditorCanvas } from "./work-item-editor-canvas";
+import { WorkItemFieldTypePicker } from "./work-item-field-type-picker";
 import { WorkItemEditorProperties } from "./work-item-editor-properties";
 import { WorkItemEditorToolbar } from "./work-item-editor-toolbar";
 import { WorkItemFieldLibrary } from "./work-item-field-library";
@@ -39,6 +42,7 @@ import {
   addFieldIdToList,
   buildCustomFieldRuntimeIndex,
   DEFAULT_BILLING_SUMMARY_DRAFT_SETTINGS,
+  FIELD_TYPE_OPTIONS,
   buildFieldLibraryItems,
   buildFieldSettings,
   buildFieldsById,
@@ -92,7 +96,7 @@ export function WorkItemEditorSettings() {
   const dndSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 6
+        distance: 3
       }
     }),
     useSensor(KeyboardSensor)
@@ -148,6 +152,7 @@ export function WorkItemEditorSettings() {
   // ── Field panels ─────────────────────────────────────────────────────────
   const [fieldDraft, setFieldDraft] = useState<FieldDraft | null>(null);
   const [pendingFieldSetup, setPendingFieldSetup] = useState<PendingFieldSetup | null>(null);
+  const [fieldTypePickerMode, setFieldTypePickerMode] = useState<"new" | "pending" | "draft" | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
   const [fieldDeletingId, setFieldDeletingId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState("");
@@ -635,7 +640,6 @@ export function WorkItemEditorSettings() {
       "data-field-id": fieldId,
       "data-visual-priority": visualPriority,
       "data-drop-intent": isReplaceTarget ? "replace" : undefined,
-      "data-drop-label": isReplaceTarget ? "Mover aqui" : undefined,
       onClick: (event: MouseEvent<HTMLElement>) => {
         event.stopPropagation();
         setSelectedFieldId(fieldId);
@@ -645,6 +649,92 @@ export function WorkItemEditorSettings() {
       }
     };
   };
+
+  const handleOpenNewFieldPicker = () => {
+    setFieldError("");
+    setFieldTypePickerMode("new");
+  };
+
+  const handleSelectFieldType = (type: CustomFieldType) => {
+    setFieldError("");
+
+    if (fieldTypePickerMode === "pending" && pendingFieldSetup) {
+      setPendingFieldSetup({
+        ...pendingFieldSetup,
+        type,
+        allowAiGeneration: supportsAiGeneration(type) ? pendingFieldSetup.allowAiGeneration : false,
+        options: supportsSelectableOptions(type) ? pendingFieldSetup.options : []
+      });
+      setFieldTypePickerMode(null);
+      return;
+    }
+
+    if (fieldTypePickerMode === "draft" && fieldDraft) {
+      setFieldDraft({
+        ...fieldDraft,
+        type,
+        allowAiGeneration: supportsAiGeneration(type) ? fieldDraft.allowAiGeneration : false
+      });
+      setFieldTypePickerMode(null);
+      return;
+    }
+
+    setFieldTypePickerMode(null);
+    openNewFieldPanel(type);
+  };
+
+  const selectedPickerType =
+    fieldTypePickerMode === "pending"
+      ? pendingFieldSetup?.type
+      : fieldTypePickerMode === "draft"
+        ? (fieldDraft?.type as CustomFieldType | undefined)
+        : null;
+
+  const getCardPreviewFieldDragConfig = ({
+    fieldId
+  }: {
+    fieldId: string;
+  }) => ({
+    id: `work-item-card-field:${fieldId}`,
+    data: {
+      payload: { kind: "field", fieldId, origin: "card" }
+    }
+  });
+
+  const getCardPreviewFieldDropConfig = ({
+    fieldId,
+    area
+  }: {
+    fieldId: string;
+    area: TaskFieldCardArea;
+  }) => ({
+    id: `work-item-card-replace:${fieldId}`,
+    disabled: !dragPayload || (dragPayload.kind === "field" && dragPayload.fieldId === fieldId),
+    data: {
+      target: {
+        surface: "card",
+        kind: "replace-field",
+        targetFieldId: fieldId,
+        area
+      } satisfies EditorDropTarget
+    }
+  });
+
+  const dragOverlayLabel = useMemo(() => {
+    if (!dragPayload) return "";
+    if (dragPayload.kind === "type") {
+      return FIELD_TYPE_OPTIONS.find((option) => option.value === dragPayload.type)?.label ?? "Novo campo";
+    }
+    return fieldsById[dragPayload.fieldId]?.label ?? "Campo";
+  }, [dragPayload, fieldsById]);
+
+  const dragOverlayMeta = useMemo(() => {
+    if (!dragPayload) return "";
+    if (dragPayload.kind === "type") return "criar campo";
+    if (dragPayload.origin === "card") return "reposicionar no card";
+    if (dragPayload.origin === "detail") return "mover do formulario";
+    return "arrastar da biblioteca";
+  }, [dragPayload]);
 
   // ── Renders ───────────────────────────────────────────────────────────────
 
@@ -692,7 +782,10 @@ export function WorkItemEditorSettings() {
       previewBoardConfig={previewBoardConfig}
       previewRuntimeStatuses={previewRuntimeStatuses}
       previewMembersById={previewMembersById}
+      dropTarget={dropTarget}
+      dragPayload={dragPayload}
       renderDetailInsertTarget={renderDetailInsertTarget}
+      onUpdateDropTarget={updateDropTarget}
       onSelectField={selectFieldForEditing}
     />
   );
@@ -712,6 +805,7 @@ export function WorkItemEditorSettings() {
         detailFieldsCount={detailFields.length}
         hasUnsavedLayout={hasUnsavedLayout}
         savingLayout={savingLayout}
+        canChangeFieldType={Boolean(pendingFieldSetup || fieldDraft)}
         onSelectType={setActiveTypeSlug}
         onEditType={(type) => {
           setEditingTypeId(type.id);
@@ -727,6 +821,11 @@ export function WorkItemEditorSettings() {
           setPendingFieldSetup(null);
           setSelectedFieldId(null);
         }}
+        onOpenNewFieldPicker={handleOpenNewFieldPicker}
+        onRequestFieldTypeChange={() => {
+          if (!pendingFieldSetup && !fieldDraft) return;
+          setFieldTypePickerMode(pendingFieldSetup ? "pending" : "draft");
+        }}
         onDiscardLayout={handleDiscardLayout}
         onSaveLayout={() => void handleSaveLayout()}
       />
@@ -738,6 +837,7 @@ export function WorkItemEditorSettings() {
           <>
             <DndContext
               sensors={dndSensors}
+              collisionDetection={pointerWithin}
               onDragStart={handleEditorDragStart}
               onDragOver={handleEditorDragOver}
               onDragEnd={handleEditorDragEnd}
@@ -745,7 +845,6 @@ export function WorkItemEditorSettings() {
             >
             {/* ── Library ────────────────────────────────────────────────────── */}
             <WorkItemFieldLibrary
-              activeCanvasTab={activeCanvasTab}
               librarySearch={librarySearch}
               libraryFieldsInCardOnly={groupedLibraryFields.inCardOnly}
               libraryFieldsInBoth={groupedLibraryFields.inBoth}
@@ -761,7 +860,6 @@ export function WorkItemEditorSettings() {
                 setPendingFieldSetup(null);
                 setTypeComposer(null);
               }}
-              onOpenNewFieldPanel={openNewFieldPanel}
             />
             {/* ── Canvas ───────────────────────────────────────────────────────── */}
             <WorkItemEditorCanvas
@@ -787,12 +885,25 @@ export function WorkItemEditorSettings() {
               isDraggingType={isDraggingType}
               dropTarget={dropTarget}
               getCardPreviewFieldProps={getCardPreviewFieldProps}
+              getCardPreviewFieldDragConfig={getCardPreviewFieldDragConfig}
+              getCardPreviewFieldDropConfig={getCardPreviewFieldDropConfig}
               renderCardEmptySlot={renderCardEmptySlot}
               renderDetailInsertTarget={renderDetailInsertTarget}
               renderDetailFieldCard={renderDetailFieldCard}
               onClearSelectedField={() => setSelectedFieldId(null)}
               onDebugSnapshot={setPreviewCardDebug}
             />
+            <DragOverlay dropAnimation={{ duration: 160, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }}>
+              {dragPayload ? (
+                <div className="wie__drag-overlay" data-drag-kind={dragPayload.kind}>
+                  <span className="wie__drag-overlay-grip" aria-hidden="true">::</span>
+                  <span>
+                    <strong>{dragOverlayLabel}</strong>
+                    <small>{dragOverlayMeta}</small>
+                  </span>
+                </div>
+              ) : null}
+            </DragOverlay>
             </DndContext>
             {/* ── Properties ──────────────────────────────────────────────────── */}
             <aside className="wie__props">
@@ -837,6 +948,19 @@ export function WorkItemEditorSettings() {
           </>
         )}
       </div>
+
+      <WorkItemFieldTypePicker
+        open={fieldTypePickerMode !== null}
+        onOpenChange={(open) => setFieldTypePickerMode(open ? fieldTypePickerMode : null)}
+        selectedType={selectedPickerType}
+        title={fieldTypePickerMode === "new" ? "Novo campo" : "Trocar tipo do campo"}
+        description={
+          fieldTypePickerMode === "new"
+            ? "Escolha o tipo de campo para criar e configurar no editor."
+            : "Escolha o novo tipo. As configuracoes compativeis serao mantidas."
+        }
+        onSelectType={handleSelectFieldType}
+      />
 
       {layoutMessage ? <p className="wie__footer-message">{layoutMessage}</p> : null}
     </div>

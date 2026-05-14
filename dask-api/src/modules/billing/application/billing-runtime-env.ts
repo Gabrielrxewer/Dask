@@ -16,9 +16,7 @@ export const STRIPE_BILLING_PRODUCTION_ENV_VARS = [
   'STRIPE_SECRET_KEY',
   'STRIPE_PUBLIC_KEY',
   'STRIPE_WEBHOOK_SECRET',
-  'BILLING_PORTAL_TOKEN_SECRET',
-  'STRIPE_PRICE_ID_PERSONAL_MONTHLY',
-  'STRIPE_PRICE_ID_BUSINESS_MONTHLY'
+  'BILLING_PORTAL_TOKEN_SECRET'
 ] as const;
 
 function hasValue(value: string | null | undefined): boolean {
@@ -35,8 +33,6 @@ export function listMissingStripeBillingProductionEnv(input: StripeBillingRuntim
   if (!hasValue(input.stripePublicKey)) missing.push('STRIPE_PUBLIC_KEY');
   if (!hasValue(input.stripeWebhookSecret)) missing.push('STRIPE_WEBHOOK_SECRET');
   if (!hasValue(input.billingPortalTokenSecret)) missing.push('BILLING_PORTAL_TOKEN_SECRET');
-  if (!hasValue(input.priceIds?.PERSONAL)) missing.push('STRIPE_PRICE_ID_PERSONAL_MONTHLY');
-  if (!hasValue(input.priceIds?.BUSINESS)) missing.push('STRIPE_PRICE_ID_BUSINESS_MONTHLY');
   return missing;
 }
 

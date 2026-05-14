@@ -1,4 +1,5 @@
 import type { TaskFieldDefinition, TaskFieldOption } from "@/entities/task/model/types";
+import { getTaskFieldTypeLabelFromRegistry } from "@/entities/task/model/field-registry";
 
 export const CARD_FIELDS_SCHEMA_VERSION = 3;
 
@@ -188,27 +189,7 @@ export function getTaskFieldTypeLabel(definition: Pick<TaskFieldDefinition, "typ
     return "Texto IA";
   }
 
-  const labels: Record<TaskFieldDefinition["type"], string> = {
-    text: "Texto curto",
-    long_text: "Texto longo",
-    number: "Numero",
-    date: "Data",
-    datetime: "Data e hora",
-    select: "Selecao unica",
-    catalog_select: "Item de catalogo",
-    multi_select: "Selecao multipla",
-    boolean: "Sim / Nao",
-    user: "Usuario",
-    checklist: "Checklist",
-    priority: "Prioridade",
-    status: "Status",
-    tag: "Tags",
-    schedule: "Planejamento",
-    work_item_type: "Tipo de item",
-    billing_summary: "Cobranças vinculadas"
-  };
-
-  return labels[definition.type] ?? definition.type;
+  return getTaskFieldTypeLabelFromRegistry(definition.type);
 }
 
 export function injectCatalogOptionsIntoBoardConfig<T extends { fieldDefinitions: TaskFieldDefinition[] }>(

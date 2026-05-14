@@ -1,4 +1,4 @@
-export type SubscriptionPlan = 'PERSONAL' | 'BUSINESS';
+export type SubscriptionPlan = 'PERSONAL' | 'BASIC' | 'PRO' | 'BUSINESS' | 'ENTERPRISE';
 export type SubscriptionStatus =
   | 'INCOMPLETE'
   | 'INCOMPLETE_EXPIRED'
@@ -30,6 +30,12 @@ export interface BillingPlan {
   intervalCount: number | null;
   features: string[];
   isActive: boolean;
+}
+
+export interface SubscriptionCheckoutAcceptance {
+  acceptedTerms: true;
+  acceptedTermsVersion: string;
+  acceptedPrivacyVersion: string;
 }
 
 export interface ConnectAccountStatus {

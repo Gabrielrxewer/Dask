@@ -1,11 +1,22 @@
 .workspace-audit {
+  --audit-text: var(--workspace-text-primary);
+  --audit-text-soft: var(--workspace-text-secondary);
+  --audit-text-muted: var(--workspace-text-muted);
+  --audit-line: var(--workspace-border);
+  --audit-line-subtle: var(--workspace-border-subtle);
+  --audit-surface: var(--workspace-surface);
+  --audit-surface-soft: var(--workspace-surface-soft);
+  --audit-hover: var(--workspace-hover);
+  --audit-control: var(--workspace-control-surface);
+  --audit-control-hover: var(--workspace-control-surface-hover);
   display: flex;
   flex-direction: column;
   gap: 16px;
   height: 100%;
   padding: 18px;
   overflow: auto;
-  color: var(--foreground);
+  background: var(--workspace-page-bg);
+  color: var(--audit-text);
 }
 
 .workspace-audit__header {
@@ -14,14 +25,14 @@
   justify-content: space-between;
   gap: 16px;
   padding: 18px;
-  border: 1px solid var(--border-cyan-muted);
+  border: 1px solid var(--audit-line);
   border-radius: 8px;
-  background: var(--surface-tint);
+  background: var(--audit-surface);
 }
 
 .workspace-audit__eyebrow {
   margin: 0 0 4px;
-  color: var(--text-secondary);
+  color: var(--audit-text-muted);
   font-size: var(--font-size-xs);
   font-weight: 800;
   text-transform: uppercase;
@@ -30,14 +41,14 @@
 
 .workspace-audit__header h1 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--audit-text);
   font-size: var(--font-size-xl);
 }
 
 .workspace-audit__header p:last-child {
   max-width: 620px;
   margin: 6px 0 0;
-  color: var(--text-secondary);
+  color: var(--audit-text-soft);
   font-size: var(--font-size-sm);
   line-height: 1.45;
 }
@@ -45,13 +56,21 @@
 .workspace-audit__refresh {
   min-height: 34px;
   padding: 0 14px;
-  border: 1px solid var(--brand-blue);
+  border: 1px solid var(--workspace-control-border);
   border-radius: 6px;
-  background: var(--brand-blue);
-  color: var(--neutral-white);
+  background: var(--audit-control);
+  color: var(--audit-text);
   font-size: var(--font-size-xs);
   font-weight: 800;
   cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.workspace-audit__refresh:hover:not(:disabled) {
+  border-color: var(--workspace-selected-border);
+  background: var(--audit-control-hover);
+  color: var(--audit-text);
 }
 
 .workspace-audit__refresh:disabled {
@@ -71,9 +90,9 @@
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--audit-line);
   border-radius: 8px;
-  background: var(--neutral-white);
+  background: var(--audit-surface);
 }
 
 .workspace-audit__event-main {
@@ -88,9 +107,9 @@
   min-height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  border: 1px solid var(--info-border);
-  background: var(--surface-tint);
-  color: var(--text-secondary);
+  border: 1px solid var(--audit-line-subtle);
+  background: var(--audit-hover);
+  color: var(--audit-text-soft);
   font-size: var(--font-size-3xs);
   font-weight: 900;
   text-transform: uppercase;
@@ -98,14 +117,14 @@
 
 .workspace-audit__event h3 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--audit-text);
   font-size: var(--font-size-sm);
   text-transform: capitalize;
 }
 
 .workspace-audit__event p {
   margin: 3px 0 0;
-  color: var(--text-secondary);
+  color: var(--audit-text-soft);
   font-size: var(--font-size-xs);
 }
 
@@ -113,7 +132,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: var(--text-muted);
+  color: var(--audit-text-muted);
   font-size: var(--font-size-xs);
 }
 
@@ -122,10 +141,14 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--audit-text);
   font-size: var(--font-size-xs);
   font-weight: 800;
   cursor: pointer;
+}
+
+.workspace-audit__details-trigger:hover {
+  color: var(--workspace-view-accent-strong, var(--accent-strong));
 }
 
 .workspace-audit__payload-grid {
@@ -138,7 +161,7 @@
 .workspace-audit__payload-grid strong {
   display: block;
   margin-bottom: 4px;
-  color: var(--text-primary);
+  color: var(--audit-text);
   font-size: var(--font-size-xs);
 }
 
@@ -148,10 +171,22 @@
   padding: 10px;
   overflow: auto;
   border-radius: 6px;
-  background: var(--surface-tint);
-  color: var(--text-secondary);
+  border: 1px solid var(--audit-line-subtle);
+  background: var(--audit-surface-soft);
+  color: var(--audit-text-soft);
   font-size: var(--font-size-3xs);
   line-height: 1.45;
+}
+
+.app-theme[data-theme="dark"] .workspace-audit__header,
+.app-theme[data-theme="dark"] .workspace-audit__event {
+  border-color: var(--workspace-border);
+  background: var(--workspace-surface);
+}
+
+.app-theme[data-theme="dark"] .workspace-audit__payload-grid pre {
+  border-color: var(--workspace-border-subtle);
+  background: var(--workspace-surface-soft);
 }
 
 @media (max-width: 720px) {

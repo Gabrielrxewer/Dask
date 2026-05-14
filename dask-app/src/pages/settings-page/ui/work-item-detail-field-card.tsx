@@ -1,4 +1,4 @@
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { ComponentProps, ReactNode } from "react";
 import {
@@ -9,9 +9,10 @@ import {
   WorkItemFieldRenderer
 } from "@/entities/task";
 import type { BoardConfig, Task } from "@/entities/task";
-import type { DetailZone } from "@/pages/settings-page/model/work-item-layout-editor";
+import type { DetailZone, EditorDropTarget } from "@/pages/settings-page/model/work-item-layout-editor";
 import {
   resolveDetailPreviewLayoutClass,
+  type DragPayload,
   type FieldLibraryItem
 } from "./work-item-editor-settings.model";
 
@@ -25,7 +26,10 @@ interface WorkItemDetailFieldCardProps {
   previewBoardConfig: BoardConfig;
   previewRuntimeStatuses: ComponentProps<typeof WorkItemFieldRenderer>["statuses"];
   previewMembersById: ComponentProps<typeof WorkItemFieldRenderer>["membersById"];
+  dropTarget: EditorDropTarget | null;
+  dragPayload: DragPayload | null;
   renderDetailInsertTarget: (zone: DetailZone, index: number) => ReactNode;
+  onUpdateDropTarget: (target: EditorDropTarget | null) => void;
   onSelectField: (fieldId: string) => void;
 }
 
@@ -39,7 +43,10 @@ export function WorkItemDetailFieldCard({
   previewBoardConfig,
   previewRuntimeStatuses,
   previewMembersById,
+  dropTarget,
+  dragPayload,
   renderDetailInsertTarget,
+  onUpdateDropTarget,
   onSelectField
 }: WorkItemDetailFieldCardProps) {
   const isSelected = selectedFieldId === field.id;
@@ -56,6 +63,24 @@ export function WorkItemDetailFieldCard({
     }
   });
   const previewValue = resolveTaskFieldValue(previewTask, field);
+  const replaceTarget: EditorDropTarget = {
+    surface: "detail",
+    kind: "replace-field",
+    targetFieldId: field.id,
+    zone
+  };
+  const {
+    setNodeRef: setDropNodeRef,
+    isOver
+  } = useDroppable({
+    id: `work-item-detail-replace:${field.id}`,
+    disabled: !dragPayload || (dragPayload.kind === "field" && dragPayload.fieldId === field.id),
+    data: { target: replaceTarget }
+  });
+  const isReplaceTarget =
+    dropTarget?.surface === "detail" &&
+    dropTarget.kind === "replace-field" &&
+    dropTarget.targetFieldId === field.id;
   const shellStyle = resolveFieldShellStyle({
     field,
     mode: "edit",
@@ -68,16 +93,24 @@ export function WorkItemDetailFieldCard({
     <div key={`detail-${zone}-${field.id}`} className={`wie__detail-slot-wrap ${layoutClass}`}>
       {isDragging ? renderDetailInsertTarget(zone, index) : null}
       <section
-        ref={setNodeRef}
-        className={`wie__detail-field-card wie__detail-field-card--${shellStyle.kind} ${layoutClass}${zone === "side" ? " is-side" : ""}${isSelected ? " is-selected" : ""}`}
+        ref={(node) => {
+          setNodeRef(node);
+          setDropNodeRef(node);
+        }}
+        className={`wie__detail-field-card wie__detail-field-card--${shellStyle.kind} ${layoutClass}${zone === "side" ? " is-side" : ""}${isSelected ? " is-selected" : ""}${isReplaceTarget || isOver ? " is-replace-target" : ""}`}
         style={{ transform: CSS.Translate.toString(transform) }}
         data-workitem-slot="detail"
         data-detail-zone={zone}
         data-field-type={field.type}
         data-field-id={field.id}
+        data-drop-intent={isReplaceTarget || isOver ? "replace" : undefined}
         onClick={(e) => {
           e.stopPropagation();
           onSelectField(field.id);
+        }}
+        onPointerEnter={() => {
+          if (!dragPayload || (dragPayload.kind === "field" && dragPayload.fieldId === field.id)) return;
+          onUpdateDropTarget(replaceTarget);
         }}
         {...attributes}
         {...listeners}

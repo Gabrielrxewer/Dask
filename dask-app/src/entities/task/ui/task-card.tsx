@@ -1,5 +1,7 @@
-import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
+import { Fragment, createElement, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import type { MembersById } from "@/entities/member";
 import {
   matchesTaskFieldStorage,
@@ -11,6 +13,23 @@ import { WorkItemFieldRenderer } from "@/entities/task/ui/field-presentation";
 import { cn } from "@/shared/lib/cn";
 import "./task-card.css";
 
+type TaskCardFieldSlotContext = {
+  fieldId: string;
+  area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
+  visualPriority: "primary" | "secondary" | "supporting";
+  field: TaskFieldDefinition;
+  value: ReturnType<typeof buildTaskCardRenderModel>["resolvedFields"][number]["value"];
+  index: number;
+  slotLimit: number;
+  occupiedCount: number;
+};
+
+type TaskCardFieldDndConfig = {
+  id: string;
+  data?: Record<string, unknown>;
+  disabled?: boolean;
+};
+
 interface TaskCardProps {
   task: Task;
   boardConfig: BoardConfig;
@@ -20,16 +39,9 @@ interface TaskCardProps {
     suppressStatus?: boolean;
     suppressCreatedByWhenAssigneeVisible?: boolean;
   };
-  getFieldSlotProps?: (slot: {
-    fieldId: string;
-    area: "badge" | "title" | "description" | "summary" | "tags" | "custom-field" | "meta";
-    visualPriority: "primary" | "secondary" | "supporting";
-    field: TaskFieldDefinition;
-    value: ReturnType<typeof buildTaskCardRenderModel>["resolvedFields"][number]["value"];
-    index: number;
-    slotLimit: number;
-    occupiedCount: number;
-  }) => HTMLAttributes<HTMLElement>;
+  getFieldSlotProps?: (slot: TaskCardFieldSlotContext) => HTMLAttributes<HTMLElement>;
+  getFieldDragConfig?: (slot: TaskCardFieldSlotContext) => TaskCardFieldDndConfig | null;
+  getFieldDropConfig?: (slot: TaskCardFieldSlotContext) => TaskCardFieldDndConfig | null;
   renderEmptySlot?: (slot: {
     area: TaskCardSlotArea;
     index: number;
@@ -52,6 +64,64 @@ interface TaskCardProps {
   onMoveToStatus?: (taskId: string, statusId: string) => void;
 }
 
+function TaskCardFieldSlot({
+  element,
+  className,
+  nativeProps,
+  dragConfig,
+  dropConfig,
+  children
+}: {
+  element: "span" | "div" | "h4" | "p";
+  className?: string;
+  nativeProps: HTMLAttributes<HTMLElement>;
+  dragConfig?: TaskCardFieldDndConfig | null;
+  dropConfig?: TaskCardFieldDndConfig | null;
+  children: ReactNode;
+}) {
+  const fallbackId = useId();
+  const drag = useDraggable({
+    id: dragConfig?.id ?? `task-card-field-disabled:${fallbackId}`,
+    data: dragConfig?.data,
+    disabled: !dragConfig || dragConfig.disabled
+  });
+  const drop = useDroppable({
+    id: dropConfig?.id ?? `task-card-field-drop-disabled:${fallbackId}`,
+    data: dropConfig?.data,
+    disabled: !dropConfig || dropConfig.disabled
+  });
+  const setSlotNodeRef = useCallback(
+    (node: HTMLElement | null) => {
+      drag.setNodeRef(node);
+      drop.setNodeRef(node);
+    },
+    [drag.setNodeRef, drop.setNodeRef]
+  );
+  const { style, ...restNativeProps } = nativeProps;
+  const transform = CSS.Translate.toString(drag.transform);
+
+  return createElement(
+    element,
+    {
+      ...restNativeProps,
+      ...drag.attributes,
+      ...drag.listeners,
+      ref: setSlotNodeRef,
+      className: cn(
+        className,
+        dragConfig && "task-card__field-slot--draggable",
+        drag.isDragging && "task-card__field-slot--dragging",
+        drop.isOver && "task-card__field-slot--over"
+      ),
+      style: {
+        ...style,
+        transform: transform || style?.transform
+      }
+    },
+    children
+  );
+}
+
 export function TaskCard({
   task,
   boardConfig,
@@ -59,6 +129,8 @@ export function TaskCard({
   ignoreSlotLimits = false,
   contextualDisplay,
   getFieldSlotProps,
+  getFieldDragConfig,
+  getFieldDropConfig,
   renderEmptySlot,
   membersById,
   displayStatuses,
@@ -75,6 +147,7 @@ export function TaskCard({
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const debugSnapshotKeyRef = useRef("");
   const menuId = useId();
   const canOpen = typeof onOpen === "function";
   const resolvedStatuses = displayStatuses ?? boardConfig.statuses;
@@ -145,13 +218,12 @@ export function TaskCard({
     moveTargets.length > 0;
   const hasHeader = badgeFields.length > 0 || hasMenuActions || emptySlotCountByArea.badge > 0;
 
-  const resolveFieldSlotProps = (
+  const resolveFieldSlotContext = (
     field: (typeof resolvedFields)[number],
     area: TaskCardSlotArea,
     index: number,
     occupiedCount: number
-  ): HTMLAttributes<HTMLElement> =>
-    getFieldSlotProps?.({
+  ): TaskCardFieldSlotContext => ({
       fieldId: field.definition.id,
       area,
       visualPriority: field.visualPriority,
@@ -160,7 +232,16 @@ export function TaskCard({
       index,
       slotLimit: CARD_SLOT_LIMITS[area],
       occupiedCount
-    }) ?? {};
+    });
+
+  const resolveFieldSlotProps = (slot: TaskCardFieldSlotContext): HTMLAttributes<HTMLElement> =>
+    getFieldSlotProps?.(slot) ?? {};
+
+  const resolveFieldDragConfig = (slot: TaskCardFieldSlotContext): TaskCardFieldDndConfig | null =>
+    getFieldDragConfig?.(slot) ?? null;
+
+  const resolveFieldDropConfig = (slot: TaskCardFieldSlotContext): TaskCardFieldDndConfig | null =>
+    getFieldDropConfig?.(slot) ?? null;
 
   const renderEmptySlots = (area: TaskCardSlotArea, occupiedCount: number) => {
     if (!renderEmptySlot) {
@@ -212,7 +293,13 @@ export function TaskCard({
   }, []);
 
   useEffect(() => {
-    onDebugSnapshot?.(debugSnapshot);
+    if (!onDebugSnapshot) return;
+
+    const nextKey = JSON.stringify(debugSnapshot);
+    if (debugSnapshotKeyRef.current === nextKey) return;
+
+    debugSnapshotKeyRef.current = nextKey;
+    onDebugSnapshot(debugSnapshot);
   }, [debugSnapshot, onDebugSnapshot]);
 
   useEffect(() => {
@@ -282,35 +369,59 @@ export function TaskCard({
   }, [isMenuOpen]);
 
   const renderSummaryField = (field: (typeof resolvedFields)[number], index: number, occupiedCount: number) => {
-    const slotProps = resolveFieldSlotProps(field, "summary", index, occupiedCount);
+    const slotContext = resolveFieldSlotContext(field, "summary", index, occupiedCount);
+    const slotProps = resolveFieldSlotProps(slotContext);
     const { className, ...nativeProps } = slotProps;
 
     return (
-      <span className={cn("task-card__summary-item", className)} key={field.definition.id} {...nativeProps}>
+      <TaskCardFieldSlot
+        element="span"
+        className={cn("task-card__summary-item", className)}
+        key={field.definition.id}
+        nativeProps={nativeProps}
+        dragConfig={resolveFieldDragConfig(slotContext)}
+        dropConfig={resolveFieldDropConfig(slotContext)}
+      >
         {renderFieldValue(field)}
-      </span>
+      </TaskCardFieldSlot>
     );
   };
 
   const renderCustomField = (field: (typeof resolvedFields)[number], index: number, occupiedCount: number) => {
-    const slotProps = resolveFieldSlotProps(field, "custom-field", index, occupiedCount);
+    const slotContext = resolveFieldSlotContext(field, "custom-field", index, occupiedCount);
+    const slotProps = resolveFieldSlotProps(slotContext);
     const { className, ...nativeProps } = slotProps;
 
     return (
-      <div className={cn("task-card__field", className)} key={field.definition.id} {...nativeProps}>
+      <TaskCardFieldSlot
+        element="div"
+        className={cn("task-card__field", className)}
+        key={field.definition.id}
+        nativeProps={nativeProps}
+        dragConfig={resolveFieldDragConfig(slotContext)}
+        dropConfig={resolveFieldDropConfig(slotContext)}
+      >
         <span className="task-card__field-value">{renderFieldValue(field)}</span>
-      </div>
+      </TaskCardFieldSlot>
     );
   };
 
   const renderMetaField = (field: (typeof resolvedFields)[number], index: number, occupiedCount: number) => {
-    const slotProps = resolveFieldSlotProps(field, "meta", index, occupiedCount);
+    const slotContext = resolveFieldSlotContext(field, "meta", index, occupiedCount);
+    const slotProps = resolveFieldSlotProps(slotContext);
     const { className, ...nativeProps } = slotProps;
 
     return (
-      <div className={className} key={field.definition.id} {...nativeProps}>
+      <TaskCardFieldSlot
+        element="div"
+        className={className}
+        key={field.definition.id}
+        nativeProps={nativeProps}
+        dragConfig={resolveFieldDragConfig(slotContext)}
+        dropConfig={resolveFieldDropConfig(slotContext)}
+      >
         {renderFieldValue(field)}
-      </div>
+      </TaskCardFieldSlot>
     );
   };
 
@@ -342,13 +453,21 @@ export function TaskCard({
         <header className="task-card__head">
           <div className="task-card__badges">
             {badgeFields.map(field => {
-              const slotProps = resolveFieldSlotProps(field, "badge", badgeFields.indexOf(field), badgeFields.length);
+              const slotContext = resolveFieldSlotContext(field, "badge", badgeFields.indexOf(field), badgeFields.length);
+              const slotProps = resolveFieldSlotProps(slotContext);
               const { className, ...nativeProps } = slotProps;
 
               return (
-                <span className={className} key={field.definition.id} {...nativeProps}>
+                <TaskCardFieldSlot
+                  element="span"
+                  className={className}
+                  key={field.definition.id}
+                  nativeProps={nativeProps}
+                  dragConfig={resolveFieldDragConfig(slotContext)}
+                  dropConfig={resolveFieldDropConfig(slotContext)}
+                >
                   {renderFieldValue(field)}
-                </span>
+                </TaskCardFieldSlot>
               );
             })}
             {renderEmptySlots("badge", badgeFields.length)}
@@ -374,25 +493,41 @@ export function TaskCard({
       ) : null}
 
       {titleFields.map(field => {
-        const slotProps = resolveFieldSlotProps(field, "title", titleFields.indexOf(field), titleFields.length);
+        const slotContext = resolveFieldSlotContext(field, "title", titleFields.indexOf(field), titleFields.length);
+        const slotProps = resolveFieldSlotProps(slotContext);
         const { className, ...nativeProps } = slotProps;
 
         return (
-          <h4 className={cn("task-card__title", className)} key={field.definition.id} {...nativeProps}>
+          <TaskCardFieldSlot
+            element="h4"
+            className={cn("task-card__title", className)}
+            key={field.definition.id}
+            nativeProps={nativeProps}
+            dragConfig={resolveFieldDragConfig(slotContext)}
+            dropConfig={resolveFieldDropConfig(slotContext)}
+          >
             {renderFieldValue(field)}
-          </h4>
+          </TaskCardFieldSlot>
         );
       })}
       {renderEmptySlots("title", titleFields.length)}
 
       {descriptionFields.map(field => {
-        const slotProps = resolveFieldSlotProps(field, "description", descriptionFields.indexOf(field), descriptionFields.length);
+        const slotContext = resolveFieldSlotContext(field, "description", descriptionFields.indexOf(field), descriptionFields.length);
+        const slotProps = resolveFieldSlotProps(slotContext);
         const { className, ...nativeProps } = slotProps;
 
         return (
-          <p className={cn("task-card__text", className)} key={field.definition.id} {...nativeProps}>
+          <TaskCardFieldSlot
+            element="p"
+            className={cn("task-card__text", className)}
+            key={field.definition.id}
+            nativeProps={nativeProps}
+            dragConfig={resolveFieldDragConfig(slotContext)}
+            dropConfig={resolveFieldDropConfig(slotContext)}
+          >
             {renderFieldValue(field)}
-          </p>
+          </TaskCardFieldSlot>
         );
       })}
       {renderEmptySlots("description", descriptionFields.length)}
@@ -405,13 +540,21 @@ export function TaskCard({
       ) : null}
 
       {tagFields.map(field => {
-        const slotProps = resolveFieldSlotProps(field, "tags", tagFields.indexOf(field), tagFields.length);
+        const slotContext = resolveFieldSlotContext(field, "tags", tagFields.indexOf(field), tagFields.length);
+        const slotProps = resolveFieldSlotProps(slotContext);
         const { className, ...nativeProps } = slotProps;
 
         return (
-          <div className={cn("task-card__tags", className)} key={field.definition.id} {...nativeProps}>
+          <TaskCardFieldSlot
+            element="div"
+            className={cn("task-card__tags", className)}
+            key={field.definition.id}
+            nativeProps={nativeProps}
+            dragConfig={resolveFieldDragConfig(slotContext)}
+            dropConfig={resolveFieldDropConfig(slotContext)}
+          >
             {renderFieldValue(field)}
-          </div>
+          </TaskCardFieldSlot>
         );
       })}
       {renderEmptySlots("tags", tagFields.length)}

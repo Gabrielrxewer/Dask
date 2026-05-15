@@ -1,25 +1,46 @@
 .subscription-blocked {
   min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(32px, 5vw, 80px) clamp(18px, 3.6vw, 40px);
+  display: grid;
+  place-items: center;
+  padding: clamp(24px, 4vw, 48px);
+  color: var(--text-primary);
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--dask-aqua) 12%, transparent) 0%, transparent 34%),
+    linear-gradient(28deg, color-mix(in srgb, var(--dask-purple) 7%, transparent) 0%, transparent 42%),
+    linear-gradient(180deg, var(--surface-tint) 0%, var(--bg-app) 52%, var(--surface-2) 100%);
+}
+
+.global-layout__main--public:has(.subscription-blocked) {
+  padding: 0;
+  background: var(--bg-app);
+}
+
+.subscription-blocked__panel {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: clamp(24px, 4vw, 34px);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-1) 96%, transparent) 100%);
+  box-shadow:
+    0 18px 38px color-mix(in srgb, var(--shadow-color) 68%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 80%, transparent) inset;
   text-align: center;
-  gap: 20px;
 }
 
 .subscription-blocked__icon {
   width: 68px;
   height: 68px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
-  border: 2px solid color-mix(in srgb, var(--primary) 22%, transparent);
-  color: var(--text-primary);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border-default));
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary) 10%, var(--neutral-white));
+  color: var(--primary-hover);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .subscription-blocked__icon svg {
@@ -28,27 +49,33 @@
 }
 
 .subscription-blocked__title {
-  font-size: clamp(20px, 2.6vw, 28px);
-  font-weight: 700;
-  color: var(--text-strong, var(--primary));
   margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-heading);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .subscription-blocked__description {
-  font-size: var(--font-size-sm);
-  color: var(--text-soft, var(--primary));
-  max-width: 400px;
-  line-height: 1.6;
+  max-width: 440px;
   margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  line-height: 1.6;
 }
 
 .subscription-blocked__status {
-  font-size: var(--font-size-sm);
-  color: var(--danger);
-  padding: 8px 14px;
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--danger) 18%, transparent);
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border-default));
   border-radius: 8px;
+  background: color-mix(in srgb, var(--danger-bg) 74%, var(--neutral-white));
+  color: var(--danger);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .subscription-blocked__actions {
@@ -56,59 +83,65 @@
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
-  margin-top: 4px;
+  width: 100%;
 }
 
 .subscription-blocked__btn {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--selected-border);
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 0 22px;
-  border-radius: 14px;
-  font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
-  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
-  text-decoration: none;
-}
-
-.subscription-blocked__btn--primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 58%, var(--decorative-cyan) 100%);
-  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
-  color: var(--surface-tint);
-  box-shadow:
-    0 16px 30px color-mix(in srgb, var(--primary) 22%, transparent),
-    0 8px 16px color-mix(in srgb, var(--primary) 14%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 20%, transparent) inset;
-}
-
-.subscription-blocked__btn--secondary {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 88%, transparent) 100%);
   color: var(--text-primary);
-  box-shadow:
-    0 12px 24px color-mix(in srgb, var(--ink-shadow) 8%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 84%, transparent) inset;
+  background: color-mix(in oklab, var(--neutral-white) 84%, var(--surface-tint));
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .subscription-blocked__btn:hover {
   transform: translateY(-1px);
 }
 
-.subscription-blocked__btn--primary:hover {
-  background: linear-gradient(135deg, var(--brand-blue-active) 0%, var(--primary-hover) 58%, var(--decorative-cyan) 100%);
+.subscription-blocked__btn--primary {
+  border-color: color-mix(in srgb, var(--dask-aqua) 42%, transparent);
+  background: var(--dask-gradient-primary);
+  color: var(--neutral-white);
   box-shadow:
-    0 18px 34px color-mix(in srgb, var(--primary) 26%, transparent),
-    0 10px 18px color-mix(in srgb, var(--primary) 16%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 18%, transparent) inset;
+    0 14px 28px color-mix(in srgb, var(--primary) 20%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 22%, transparent) inset;
+}
+
+.subscription-blocked__btn--primary:hover {
+  background: var(--brand-gradient-main-hover);
+  color: var(--neutral-white);
 }
 
 .subscription-blocked__btn--secondary:hover {
-  border-color: color-mix(in srgb, var(--info-border) 98%, transparent);
-  background: linear-gradient(180deg, var(--neutral-white) 0%, var(--surface-tint-strong) 100%);
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border-default));
+  background: var(--selected-bg);
   color: var(--text-primary);
-  box-shadow:
-    0 16px 28px color-mix(in srgb, var(--ink-shadow) 11%, transparent),
-    0 1px 0 color-mix(in srgb, var(--neutral-white) 88%, transparent) inset;
+}
+
+@media (max-width: 560px) {
+  .subscription-blocked {
+    padding: 18px 14px;
+  }
+
+  .subscription-blocked__actions {
+    display: grid;
+  }
+
+  .subscription-blocked__btn {
+    width: 100%;
+  }
 }

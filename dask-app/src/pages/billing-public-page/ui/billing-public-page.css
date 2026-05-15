@@ -1,32 +1,50 @@
 .billing-public-page {
-  min-height: calc(100dvh - var(--global-header-height, 0px));
+  min-height: calc(100dvh - var(--global-header-height) - var(--global-footer-height));
   display: grid;
   place-items: center;
-  padding: 32px;
-  background: var(--workspace-page-bg);
+  padding: clamp(24px, 4vw, 48px);
+  color: var(--text-primary);
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--dask-aqua) 12%, transparent) 0%, transparent 34%),
+    linear-gradient(28deg, color-mix(in srgb, var(--dask-purple) 7%, transparent) 0%, transparent 42%),
+    linear-gradient(180deg, var(--surface-tint) 0%, var(--bg-app) 52%, var(--surface-2) 100%);
+}
+
+.global-layout__main--public:has(.billing-public-page) {
+  padding: 0;
+  background: var(--bg-app);
 }
 
 .billing-public-page__panel {
-  width: min(100%, 440px);
+  width: min(520px, 100%);
   display: grid;
   gap: 14px;
-  padding: 24px;
-  border: 1px solid var(--workspace-border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--workspace-surface);
-  color: var(--workspace-text-primary);
-  box-shadow: none;
+  padding: clamp(24px, 4vw, 34px);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--neutral-white) 94%, transparent) 0%, color-mix(in srgb, var(--surface-1) 96%, transparent) 100%);
+  color: var(--text-primary);
+  box-shadow:
+    0 18px 38px color-mix(in srgb, var(--shadow-color) 68%, transparent),
+    0 1px 0 color-mix(in srgb, var(--neutral-white) 80%, transparent) inset;
 }
 
 .billing-public-page__panel h1 {
   margin: 0;
-  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-family: var(--font-family-heading);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .billing-public-page__panel p {
   margin: 0;
-  color: var(--workspace-text-secondary);
-  line-height: 1.5;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  line-height: 1.6;
 }
 
 .billing-public-page__actions {
@@ -34,9 +52,31 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .billing-public-page__actions a {
-  color: var(--workspace-text-secondary);
-  font-size: var(--font-size-sm);
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary-hover);
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.billing-public-page__actions a:hover,
+.billing-public-page__actions a:focus-visible {
+  color: var(--primary);
+}
+
+@media (max-width: 560px) {
+  .billing-public-page {
+    padding: 18px 14px;
+  }
+
+  .billing-public-page__actions,
+  .billing-public-page__actions .shared-button {
+    width: 100%;
+  }
 }

@@ -5,10 +5,7 @@ export const studioTabs: Array<{ id: StudioTab; label: string; icon: AppIconName
   { id: "flows", label: "Fluxos", icon: "automation" },
   { id: "runs", label: "Execucoes", icon: "list-ordered" },
   { id: "approvals", label: "Aprovacoes", icon: "square-check" },
-  { id: "inbox", label: "Inbox", icon: "message" },
-  { id: "templates", label: "Templates", icon: "template" },
-  { id: "contacts", label: "Contatos", icon: "users" },
-  { id: "settings", label: "Configuracoes", icon: "settings" }
+  { id: "templates", label: "Templates", icon: "template" }
 ];
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

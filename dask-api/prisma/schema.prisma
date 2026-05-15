@@ -482,6 +482,8 @@ model User {
   createdCommunicationTemplates          CommunicationTemplate[]        @relation("CommunicationTemplateCreatedBy")
   publishedCommunicationTemplateVersions CommunicationTemplateVersion[] @relation("CommunicationTemplateVersionPublishedBy")
   assignedCommunicationConversations     CommunicationConversation[]    @relation("CommunicationConversationAssignedTo")
+  createdWhatsAppIntegrations            WorkspaceWhatsAppIntegration[] @relation("WorkspaceWhatsAppIntegrationCreatedBy")
+  updatedWhatsAppIntegrations            WorkspaceWhatsAppIntegration[] @relation("WorkspaceWhatsAppIntegrationUpdatedBy")
 }
 
 model Subscription {
@@ -652,6 +654,7 @@ model Workspace {
   communicationSuppressions        CommunicationSuppression[]
   communicationUnsubscribeTokens   CommunicationUnsubscribeToken[]
   communicationProviderEvents      CommunicationProviderEvent[]
+  whatsappIntegrations             WorkspaceWhatsAppIntegration[]
   communicationContacts            CommunicationContact[]
   communicationContactChannels     CommunicationContactChannel[]
   communicationConversations       CommunicationConversation[]
@@ -2793,6 +2796,38 @@ model CommunicationProviderEvent {
   @@index([contactChannelId])
   @@index([eventType, receivedAt])
   @@index([status, receivedAt])
+}
+
+model WorkspaceWhatsAppIntegration {
+  id                       String    @id @default(uuid())
+  workspaceId              String
+  provider                 String    @default("meta")
+  status                   String    @default("configured")
+  phoneNumberId            String
+  wabaId                   String?
+  displayPhoneNumber       String?
+  verifiedName             String?
+  graphApiVersion          String    @default("v23.0")
+  accessTokenCiphertext    String
+  accessTokenIv            String
+  accessTokenAuthTag       String
+  accessTokenLast4         String?
+  tokenUpdatedAt           DateTime  @default(now())
+  lastTestedAt             DateTime?
+  lastTestStatus           String?
+  lastTestError            String?
+  metadataJson             Json?
+  createdById              String?
+  updatedById              String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  workspace                Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy                User?     @relation("WorkspaceWhatsAppIntegrationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy                User?     @relation("WorkspaceWhatsAppIntegrationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId, status, updatedAt])
+  @@index([workspaceId, phoneNumberId])
 }
 
 model AutomationView {

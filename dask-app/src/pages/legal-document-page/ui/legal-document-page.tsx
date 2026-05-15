@@ -67,15 +67,15 @@ function getLegalSectionFromHash(hash: string): LegalSectionId {
 }
 
 function Badge({ label, tone = "default" }: LegalDocumentBadge) {
-  return <span className={`home-page__badge home-page__badge--${tone}`}>{label}</span>;
+  return <span className={`legal-page__badge legal-page__badge--${tone}`}>{label}</span>;
 }
 
 function HighlightCard({ label, value, description }: LegalDocumentHighlight) {
   return (
-    <article className="home-page__signal-card">
-      <p className="home-page__signal-label">{label}</p>
-      <strong className="home-page__signal-value">{value}</strong>
-      <p className="home-page__signal-description">{description}</p>
+    <article className="legal-page__highlight-card">
+      <p className="legal-page__highlight-label">{label}</p>
+      <strong className="legal-page__highlight-value">{value}</strong>
+      <p className="legal-page__highlight-description">{description}</p>
     </article>
   );
 }
@@ -88,27 +88,20 @@ function ClauseCard({
   featured,
   variant
 }: LegalDocumentSection & { index: number; variant: LegalDocumentPageProps["sectionsVariant"] }) {
-  if (variant === "pillars") {
-    return (
-      <article className="home-page__pillar legal-page__card">
-        <span className="home-page__pillar-number">{String(index).padStart(2, "0")}</span>
-        <p className="home-page__pillar-eyebrow">{tag ?? "Clausula"}</p>
-        <h3>{title}</h3>
-        <p>{description}</p>
-      </article>
-    );
-  }
-
-  const cardClassName = featured
-    ? "home-page__pricing-card--featured legal-page__card"
-    : "home-page__pricing-card legal-page__card";
+  const cardClassName = cn(
+    "legal-page__card",
+    variant === "pillars" && "legal-page__card--pillar",
+    featured && "legal-page__card--featured"
+  );
 
   return (
     <article className={cardClassName}>
-      <p className="home-page__pricing-plan-name">Topico {String(index).padStart(2, "0")}</p>
-      {tag ? <span className="home-page__pricing-badge">{tag}</span> : null}
-      <h2 className="home-page__feature-title legal-page__card-title">{title}</h2>
-      <p className="home-page__feature-description legal-page__card-description">{description}</p>
+      <div className="legal-page__card-head">
+        <span className="legal-page__card-number">{String(index).padStart(2, "0")}</span>
+        <span className="legal-page__card-tag">{tag ?? (variant === "pillars" ? "Clausula" : "Topico")}</span>
+      </div>
+      <h3 className="legal-page__card-title">{title}</h3>
+      <p className="legal-page__card-description">{description}</p>
     </article>
   );
 }
@@ -139,42 +132,31 @@ export function LegalDocumentPage({
 }: LegalDocumentPageProps) {
   const location = useLocation();
   const activeSection = getLegalSectionFromHash(location.hash);
-  const mainClassName = ["home-page legal-page", pageClassName].filter(Boolean).join(" ");
+  const mainClassName = ["legal-page", pageClassName].filter(Boolean).join(" ");
   const hasPillarGuide = guideVariant === "pillars";
-  const clausesSectionClassName = [
-    "home-page__section",
-    "home-page__tab-section",
-    sectionsVariant === "pillars" ? "home-page__value-section" : "home-page__pricing-section",
-    "legal-page__clauses-section"
-  ].join(" ");
-  const cardsClassName = [
-    sectionsVariant === "pillars" ? "home-page__pillar-grid" : "home-page__pricing-cards",
-    "legal-page__cards",
-    sectionsVariant === "pillars" && "legal-page__cards--pillars"
-  ].filter(Boolean).join(" ");
-  const guideSectionClassName = [
-    "home-page__section",
-    "home-page__tab-section",
-    hasPillarGuide ? "home-page__value-section" : "home-page__architecture-section",
+  const clausesSectionClassName = cn(
+    "legal-page__section",
+    "legal-page__clauses-section",
+    sectionsVariant === "pillars" && "legal-page__section--pillars"
+  );
+  const cardsClassName = cn("legal-page__cards", sectionsVariant === "pillars" && "legal-page__cards--pillars");
+  const guideSectionClassName = cn(
+    "legal-page__section",
     "legal-page__guide-section",
-    hasPillarGuide && "legal-page__guide-section--pillars"
-  ].filter(Boolean).join(" ");
-  const guideListClassName = [
-    hasPillarGuide ? "home-page__pillar-grid" : "home-page__architecture-list",
-    "legal-page__guide-list",
-    hasPillarGuide && "legal-page__guide-list--pillars"
-  ].filter(Boolean).join(" ");
+    hasPillarGuide && "legal-page__section--pillars"
+  );
+  const guideListClassName = cn("legal-page__guide-list", hasPillarGuide && "legal-page__guide-list--pillars");
 
   const clausesView = (
-    <div className="home-page__view home-page__view--stacked legal-page__stack legal-page__stack--clauses">
+    <div className="legal-page__view legal-page__stack legal-page__stack--clauses">
       <section
         id="legal-clauses"
-        className={cn(clausesSectionClassName, activeSection === "legal-clauses" && "home-page__section--active")}
+        className={cn(clausesSectionClassName, activeSection === "legal-clauses" && "legal-page__section--active")}
       >
-        <header className="home-page__section-intro">
-          <p className="home-page__section-eyebrow">{sectionsEyebrow}</p>
-          <h2 className="home-page__section-title">{sectionsTitle}</h2>
-          <p className="home-page__section-description">{sectionsDescription}</p>
+        <header className="legal-page__section-intro">
+          <p className="legal-page__section-eyebrow">{sectionsEyebrow}</p>
+          <h2 className="legal-page__section-title">{sectionsTitle}</h2>
+          <p className="legal-page__section-description">{sectionsDescription}</p>
         </header>
 
         <div className={cardsClassName}>
@@ -189,40 +171,40 @@ export function LegalDocumentPage({
   const guideCards = hasPillarGuide ? (
     <div className={guideListClassName}>
       {guideItems.map((item, index) => (
-        <article key={item.title} className="home-page__pillar legal-page__guide-card">
-          <span className="home-page__pillar-number">{String(index + 1).padStart(2, "0")}</span>
-          <p className="home-page__pillar-eyebrow">Leitura rapida</p>
+        <article key={item.title} className="legal-page__guide-card">
+          <span className="legal-page__card-number">{String(index + 1).padStart(2, "0")}</span>
+          <p className="legal-page__card-tag">Leitura rapida</p>
           <h3>{item.title}</h3>
           <p>{item.description}</p>
         </article>
       ))}
 
-      <article id="legal-complementary" className="home-page__pillar legal-page__guide-card legal-page__guide-card--link">
-        <span className="home-page__pillar-number">04</span>
-        <p className="home-page__pillar-eyebrow">{complementaryEyebrow}</p>
+      <article id="legal-complementary" className="legal-page__guide-card legal-page__guide-card--link">
+        <span className="legal-page__card-number">04</span>
+        <p className="legal-page__card-tag">{complementaryEyebrow}</p>
         <h3>{complementaryTitle}</h3>
         <p>{complementaryDescription}</p>
-        <Link className="home-page__action home-page__action--secondary legal-page__preview-link" to={complementaryLink.to}>
+        <Link className="legal-page__button legal-page__button--secondary legal-page__preview-link" to={complementaryLink.to}>
           {complementaryLink.label}
         </Link>
       </article>
     </div>
   ) : (
-    <div className="home-page__architecture-grid">
+    <div className="legal-page__guide-grid">
       <div className={guideListClassName}>
         {guideItems.map((item) => (
-          <article key={item.title} className="home-page__architecture-item">
+          <article key={item.title} className="legal-page__guide-card">
             <h3>{item.title}</h3>
             <p>{item.description}</p>
           </article>
         ))}
       </div>
 
-      <aside id="legal-complementary" className="home-page__architecture-preview legal-page__preview">
-        <p className="home-page__architecture-preview-eyebrow">{complementaryEyebrow}</p>
+      <aside id="legal-complementary" className="legal-page__preview">
+        <p className="legal-page__card-tag">{complementaryEyebrow}</p>
         <h3>{complementaryTitle}</h3>
         <p>{complementaryDescription}</p>
-        <Link className="home-page__action home-page__action--secondary legal-page__preview-link" to={complementaryLink.to}>
+        <Link className="legal-page__button legal-page__button--secondary legal-page__preview-link" to={complementaryLink.to}>
           {complementaryLink.label}
         </Link>
       </aside>
@@ -232,12 +214,12 @@ export function LegalDocumentPage({
   const guideSection = (
     <section
       id="legal-guide"
-      className={cn(guideSectionClassName, activeSection === "legal-guide" && "home-page__section--active")}
+      className={cn(guideSectionClassName, activeSection === "legal-guide" && "legal-page__section--active")}
     >
-      <header className="home-page__section-intro">
-        <p className="home-page__section-eyebrow">{guideEyebrow}</p>
-        <h2 className="home-page__section-title">{guideTitle}</h2>
-        <p className="home-page__section-description">{guideDescription}</p>
+      <header className="legal-page__section-intro">
+        <p className="legal-page__section-eyebrow">{guideEyebrow}</p>
+        <h2 className="legal-page__section-title">{guideTitle}</h2>
+        <p className="legal-page__section-description">{guideDescription}</p>
       </header>
 
       {guideCards}
@@ -246,40 +228,40 @@ export function LegalDocumentPage({
 
   return (
     <main className={mainClassName}>
-      <div className="home-page__container legal-page__container">
-        <div className="home-page__view legal-page__viewport">
+      <div className="legal-page__container">
+        <div className="legal-page__view legal-page__viewport">
           <section
             id="legal-overview"
-            className={cn("home-page__hero legal-page__hero", activeSection === "legal-overview" && "home-page__hero--active")}
+            className={cn("legal-page__hero", activeSection === "legal-overview" && "legal-page__section--active")}
             aria-label={title}
           >
-            <div className="home-page__hero-copy legal-page__hero-copy">
-              <p className="home-page__eyebrow">{eyebrow}</p>
-              <h1 className="home-page__title legal-page__title">{title}</h1>
-              <p className="home-page__description legal-page__description">{description}</p>
+            <div className="legal-page__hero-copy">
+              <p className="legal-page__eyebrow">{eyebrow}</p>
+              <h1 className="legal-page__title">{title}</h1>
+              <p className="legal-page__description">{description}</p>
               <p className="legal-page__updated">Ultima atualizacao: {updatedAt}</p>
 
-              <div className="home-page__actions">
-                <Link className="home-page__action home-page__action--primary" to={routePaths.home}>
+              <div className="legal-page__actions">
+                <Link className="legal-page__button legal-page__button--primary" to={routePaths.home}>
                   Voltar para Home
                 </Link>
-                <Link className="home-page__action home-page__action--secondary" to={complementaryLink.to}>
+                <Link className="legal-page__button legal-page__button--secondary" to={complementaryLink.to}>
                   {complementaryLink.label}
                 </Link>
               </div>
             </div>
 
-            <aside className="home-page__hero-side legal-page__hero-side" aria-label={`${title} em resumo`}>
-              <div className="home-page__hero-side-head">
-                <div className="home-page__badge-row" aria-label="Pontos centrais do documento">
+            <aside className="legal-page__hero-side" aria-label={`${title} em resumo`}>
+              <div className="legal-page__summary-head">
+                <div className="legal-page__badge-row" aria-label="Pontos centrais do documento">
                   {badges.map((badge) => (
                     <Badge key={badge.label} {...badge} />
                   ))}
                 </div>
-                <p className="home-page__hero-side-summary">{summary}</p>
+                <p className="legal-page__summary">{summary}</p>
               </div>
 
-              <div className="home-page__hero-signal-list" aria-label="Resumo rapido do documento">
+              <div className="legal-page__highlight-list" aria-label="Resumo rapido do documento">
                 {highlights.map((highlight) => (
                   <HighlightCard key={highlight.label} {...highlight} />
                 ))}
@@ -291,20 +273,20 @@ export function LegalDocumentPage({
         {hasPillarGuide ? (
           <>
             {clausesView}
-            <div className="home-page__view home-page__view--stacked legal-page__stack legal-page__stack--guide">
+            <div className="legal-page__view legal-page__stack legal-page__stack--guide">
               {guideSection}
             </div>
           </>
         ) : (
-          <div className="home-page__view home-page__view--stacked legal-page__stack">
+          <div className="legal-page__view legal-page__stack">
             <section
               id="legal-clauses"
-              className={cn(clausesSectionClassName, activeSection === "legal-clauses" && "home-page__section--active")}
+              className={cn(clausesSectionClassName, activeSection === "legal-clauses" && "legal-page__section--active")}
             >
-              <header className="home-page__section-intro">
-                <p className="home-page__section-eyebrow">{sectionsEyebrow}</p>
-                <h2 className="home-page__section-title">{sectionsTitle}</h2>
-                <p className="home-page__section-description">{sectionsDescription}</p>
+              <header className="legal-page__section-intro">
+                <p className="legal-page__section-eyebrow">{sectionsEyebrow}</p>
+                <h2 className="legal-page__section-title">{sectionsTitle}</h2>
+                <p className="legal-page__section-description">{sectionsDescription}</p>
               </header>
 
               <div className={cardsClassName}>

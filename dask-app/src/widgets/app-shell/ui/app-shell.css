@@ -45,6 +45,12 @@
   backdrop-filter: none;
 }
 
+.app-theme[data-theme="dark"] .sidebar {
+  --sidebar-line: var(--dask-border);
+  --sidebar-foot-bg: var(--dask-bg-sidebar);
+  background: var(--dask-bg-sidebar);
+}
+
 .sidebar::before {
   content: none;
 }
@@ -65,6 +71,10 @@
     radial-gradient(ellipse 200px 88px at 12% 28%, color-mix(in oklab, var(--primary) 12%, transparent) 0%, transparent 74%),
     linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 92%, var(--surface-1)) 0%, var(--surface-1) 100%);
   box-shadow: none;
+}
+
+.app-theme[data-theme="dark"] .sidebar__brand {
+  background: var(--dask-bg-sidebar);
 }
 
 .sidebar__brand-mark {

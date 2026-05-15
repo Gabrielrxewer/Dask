@@ -33,6 +33,7 @@ export type RenderedCommunicationTemplate = {
   approvalStatus?: string;
   providerTemplateName?: string | null;
   providerTemplateId?: string | null;
+  variables?: string[];
   language?: string | null;
   subject?: string;
   text?: string;
@@ -496,6 +497,7 @@ export class CommunicationTemplateService {
       approvalStatus: version.approvalStatus,
       providerTemplateName: version.providerTemplateName ?? version.template.providerTemplateName,
       providerTemplateId: version.providerTemplateId ?? version.template.providerTemplateId,
+      variables: required,
       language: version.language ?? version.template.language,
       subject,
       text,

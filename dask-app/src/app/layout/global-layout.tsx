@@ -11,16 +11,16 @@ import {
 import { GlobalChromeProvider } from "@/app/layout";
 import { cn } from "@/shared/lib/cn";
 import { AppDialog, TextInput, UserAvatar } from "@/shared/ui";
-import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import "./global-layout.css";
 
+const daskLogoSrc = "/favicon.svg";
+
 const homeNavigationItems = [
-  { id: "top", label: "Inicio" },
-  { id: "valor", label: "Por que Dask" },
-  { id: "inteligencia", label: "Como funciona" },
-  { id: "contextos", label: "Adaptabilidade" },
-  { id: "estruturas", label: "Estrutura" },
-  { id: "precos", label: "Planos" }
+  { id: "produto", label: "Produto" },
+  { id: "solucoes", label: "Solucoes" },
+  { id: "recursos", label: "Recursos" },
+  { id: "precos", label: "Precos" },
+  { id: "sobre", label: "Sobre" }
 ];
 
 const termsNavigationItems = [
@@ -219,7 +219,7 @@ function getLegalScrollTarget(sectionId: string): HTMLElement | null {
     return null;
   }
 
-  return target.closest(".home-page__view") ?? target;
+  return target.closest(".legal-page__view") ?? target;
 }
 
 function getLegalSectionScrollTop(
@@ -885,7 +885,7 @@ export function GlobalLayout() {
                 </span>
               </button>
               <div className="global-header__brand">
-                <img className="global-header__brand-mark" src={daskLogoMark} alt="Dask" />
+                <img className="global-header__brand-mark" src={daskLogoSrc} alt="Dask" />
               </div>
             </div>
 
@@ -1100,6 +1100,7 @@ export function GlobalLayout() {
                 <span className="global-footer__wordmark" aria-label="Dask">
                   Dask
                 </span>
+                <span className="global-footer__company-id">CNPJ 66.183.412/0001-12</span>
                 <nav className="global-footer__links" aria-label="Links legais">
                   <Link to={routePaths.termsOfUse}>Termos de uso</Link>
                   <Link to={routePaths.privacyPolicy}>Privacidade</Link>

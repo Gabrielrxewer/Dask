@@ -61,6 +61,7 @@ import {
   updateCommunicationTemplateDraftVersionDto,
   updateAutomationWorkflowVersionDto,
   upsertItemPlacementDto,
+  upsertWhatsAppIntegrationDto,
   upsertWhatsAppConsentDto,
   workspaceIdParamsDto
 } from '@/modules/automation/http/dto';
@@ -69,6 +70,7 @@ import { CommunicationConversationService } from '@/modules/automation/communica
 import { CommunicationTemplateService } from '@/modules/automation/communication/communication-template-service';
 import { maskCommunicationAddress } from '@/modules/automation/communication/communication-address';
 import { MockWhatsAppEventSimulator } from '@/modules/automation/communication/mock-whatsapp-event-simulator';
+import { WorkspaceWhatsAppIntegrationService } from '@/modules/automation/communication/workspace-whatsapp-integration-service';
 
 export const buildAutomationRoutes = (deps: {
   prisma: PrismaClient;
@@ -107,6 +109,7 @@ export const buildAutomationRoutes = (deps: {
   const communicationConversationService = new CommunicationConversationService(deps.prisma);
   const communicationTemplateService = new CommunicationTemplateService(deps.prisma);
   const mockWhatsAppEventSimulator = new MockWhatsAppEventSimulator(deps.prisma);
+  const whatsAppIntegrationService = new WorkspaceWhatsAppIntegrationService(deps.prisma);
   const automationApprovalRequestService =
     deps.automationApprovalRequestService ?? new AutomationApprovalRequestService(deps.prisma);
   const automationNativeWorkflowService =
@@ -757,6 +760,58 @@ export const buildAutomationRoutes = (deps: {
           address: maskCommunicationAddress('whatsapp', consent.address)
         }))
       });
+    })
+  );
+
+  router.get(
+    '/automation/workspaces/:workspaceId/communication/whatsapp/integration',
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const integration = await whatsAppIntegrationService.getIntegration({ workspaceId });
+      res.status(200).json({ integration });
+    })
+  );
+
+  router.put(
+    '/automation/workspaces/:workspaceId/communication/whatsapp/integration',
+    requireWorkflowUpdate,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const payload = upsertWhatsAppIntegrationDto.parse(req.body);
+      const integration = await whatsAppIntegrationService.upsertManualIntegration({
+        workspaceId,
+        accessToken: payload.accessToken,
+        phoneNumberId: payload.phoneNumberId,
+        wabaId: payload.wabaId,
+        graphApiVersion: payload.graphApiVersion,
+        displayPhoneNumber: payload.displayPhoneNumber,
+        verifiedName: payload.verifiedName,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(integration);
+    })
+  );
+
+  router.post(
+    '/automation/workspaces/:workspaceId/communication/whatsapp/integration/test',
+    requireWorkflowUpdate,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const integration = await whatsAppIntegrationService.testIntegration({ workspaceId });
+      res.status(200).json(integration);
+    })
+  );
+
+  router.post(
+    '/automation/workspaces/:workspaceId/communication/whatsapp/integration/disable',
+    requireWorkflowUpdate,
+    asyncHandler(async (req, res) => {
+      const { workspaceId } = workspaceIdParamsDto.parse(req.params);
+      const integration = await whatsAppIntegrationService.disableIntegration({
+        workspaceId,
+        userId: req.auth!.userId
+      });
+      res.status(200).json(integration);
     })
   );
 

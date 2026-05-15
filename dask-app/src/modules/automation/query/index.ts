@@ -17,7 +17,8 @@ export {
   useAutomationRuns,
   useAutomationTemplates,
   useAutomationWorkflowEditor,
-  useAutomationWorkflows
+  useAutomationWorkflows,
+  useWhatsAppIntegration
 } from "./automation-queries";
 export {
   cancelAutomationRunMutationRequest,
@@ -31,6 +32,9 @@ export {
   saveAutomationDraftMutationRequest,
   setAutomationWorkflowStatusMutationRequest,
   updateAutomationWorkflowMutationRequest,
+  upsertWhatsAppIntegrationMutationRequest,
+  testWhatsAppIntegrationMutationRequest,
+  disableWhatsAppIntegrationMutationRequest,
   upsertWhatsAppConsentMutationRequest,
   useCancelAutomationRunMutation,
   useCloneAutomationVersionMutation,
@@ -42,5 +46,8 @@ export {
   useSaveAutomationDraftMutation,
   useSetAutomationWorkflowStatusMutation,
   useUpdateAutomationWorkflowMutation,
+  useUpsertWhatsAppIntegrationMutation,
+  useTestWhatsAppIntegrationMutation,
+  useDisableWhatsAppIntegrationMutation,
   useUpsertWhatsAppConsentMutation
 } from "./automation-mutations";

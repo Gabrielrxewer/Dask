@@ -15,6 +15,7 @@ import type { CommunicationProviderRegistry } from '@/modules/automation/communi
 import { createDefaultCommunicationProviderRegistry } from '@/modules/automation/communication/default-communication-provider-registry';
 import { CommunicationSuppressionService } from '@/modules/automation/communication/communication-suppression-service';
 import { CommunicationTemplateService } from '@/modules/automation/communication/communication-template-service';
+import { WorkspaceWhatsAppIntegrationService } from '@/modules/automation/communication/workspace-whatsapp-integration-service';
 
 export type AutomationSideEffectProcessorResult = {
   locked: number;
@@ -33,6 +34,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readPath(source: Record<string, unknown>, path: string): unknown {
+  return path
+    .split('.')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .reduce<unknown>((current, segment) => {
+      if (!isRecord(current)) {
+        return undefined;
+      }
+
+      return current[segment];
+    }, source);
+}
+
+function renderTemplateParameters(paths: unknown, context: Record<string, unknown>): string[] | undefined {
+  if (!Array.isArray(paths)) {
+    return undefined;
+  }
+
+  return paths
+    .map((path) => (typeof path === 'string' ? readPath(context, path) : undefined))
+    .map((value) => (value === undefined || value === null ? '' : String(value)));
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -94,6 +119,11 @@ function buildCommunicationInput(sideEffect: AutomationSideEffect): Communicatio
   const text = readString(payload.text) ?? undefined;
   const html = readString(payload.html) ?? undefined;
   const metadata = isRecord(payload.metadata) ? payload.metadata : undefined;
+  const providerTemplateParameters = Array.isArray(payload.providerTemplateParameters)
+    ? payload.providerTemplateParameters
+        .map((value) => readString(value))
+        .filter((value): value is string => Boolean(value))
+    : undefined;
 
   if (channel !== 'email' && channel !== 'whatsapp') {
     throw new AppError('Unsupported communication side effect channel.', 422, {
@@ -124,6 +154,10 @@ function buildCommunicationInput(sideEffect: AutomationSideEffect): Communicatio
     body,
     text,
     html,
+    providerTemplateName: readString(payload.providerTemplateName) ?? undefined,
+    providerTemplateId: readString(payload.providerTemplateId) ?? undefined,
+    providerTemplateParameters,
+    language: readString(payload.language) ?? undefined,
     metadata
   };
 }
@@ -158,7 +192,10 @@ export class AutomationSideEffectProcessor {
     this.sideEffectService = input?.sideEffectService ?? new AutomationSideEffectService(prisma, {
       eventService
     });
-    this.providerRegistry = input?.providerRegistry ?? createDefaultCommunicationProviderRegistry();
+    const whatsappIntegrationService = new WorkspaceWhatsAppIntegrationService(prisma);
+    this.providerRegistry = input?.providerRegistry ?? createDefaultCommunicationProviderRegistry({
+      metaWhatsAppCredentialResolver: ({ workspaceId }) => whatsappIntegrationService.getCredentials({ workspaceId })
+    });
     this.templateService = input?.templateService ?? new CommunicationTemplateService(prisma);
     this.consentService = input?.consentService ?? new CommunicationConsentService(prisma);
     this.suppressionService = input?.suppressionService ?? new CommunicationSuppressionService(prisma);
@@ -460,22 +497,24 @@ export class AutomationSideEffectProcessor {
       return { status: 'skipped' };
     }
 
+    const templateContext = {
+      ...runContext,
+      ...toRecord(payload.context),
+      ...toRecord(payload.variables),
+      payload,
+      contact: {
+        ...toRecord(toRecord(runContext).contact),
+        ...toRecord(toRecord(payload.context).contact),
+        phone: recipient.normalizedAddress
+      }
+    };
     const rendered = await this.templateService.renderApprovedWhatsAppTemplate({
       workspaceId: sideEffect.workspaceId,
       templateKey,
       templateVersionId,
-      context: {
-        ...runContext,
-        ...toRecord(payload.context),
-        ...toRecord(payload.variables),
-        payload,
-        contact: {
-          ...toRecord(toRecord(runContext).contact),
-          ...toRecord(toRecord(payload.context).contact),
-          phone: recipient.normalizedAddress
-        }
-      }
+      context: templateContext
     });
+    const providerTemplateParameters = renderTemplateParameters(rendered.variables, templateContext);
 
     const consent = await this.consentService.checkConsent({
       workspaceId: sideEffect.workspaceId,
@@ -545,6 +584,8 @@ export class AutomationSideEffectProcessor {
         templateVersionId: rendered.templateVersionId,
         providerTemplateName: rendered.providerTemplateName,
         providerTemplateId: rendered.providerTemplateId,
+        providerTemplateParameters,
+        templateVariables: rendered.variables,
         language: rendered.language ?? 'pt_BR',
         approvalStatus: rendered.approvalStatus,
         metadata: {

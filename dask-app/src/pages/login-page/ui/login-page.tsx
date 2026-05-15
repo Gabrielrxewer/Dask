@@ -1,6 +1,7 @@
-import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
 import { LoginForm } from "@/features/auth";
 import "./login-page.css";
+
+const daskLogoSrc = "/favicon.svg";
 
 export function LoginPage() {
   return (
@@ -17,7 +18,7 @@ export function LoginPage() {
             <span className="login-page__signal login-page__signal--two" />
           </div>
 
-          <img className="login-page__logo" src={daskLogoFull} alt="Logo Dask" />
+          <img className="login-page__logo" src={daskLogoSrc} alt="Logo Dask" />
           <h2 className="login-page__title">Mais clareza e controle para a operacao industrial.</h2>
           <p className="login-page__subtitle">
             Centralize atividades, acompanhe prioridades e mantenha sua equipe alinhada em uma interface moderna,

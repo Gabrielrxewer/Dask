@@ -113,6 +113,8 @@ export type {
   WorkItemTypeTransformationValidation,
   WorkItemsPage,
   WhatsAppConsent,
+  WhatsAppIntegration,
+  UpsertWhatsAppIntegrationInput,
   WhatsAppTemplateApprovalStatus,
   WorkspaceDateFormat,
   WorkspacePreferences,

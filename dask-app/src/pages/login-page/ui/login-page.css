@@ -97,11 +97,11 @@
 }
 
 .login-page__logo {
-  width: clamp(220px, 31vw, 332px);
-  max-width: min(100%, 332px);
+  width: clamp(112px, 13vw, 156px);
+  max-width: min(100%, 156px);
   height: auto;
   display: block;
-  margin: 0 0 0 -55px;
+  margin: 0;
   object-fit: contain;
   filter: drop-shadow(0 18px 28px color-mix(in srgb, var(--primary) 12%, transparent));
   animation: login-brand-enter 0.85s 0.02s both;
@@ -473,8 +473,8 @@
   }
 
   .login-page__logo {
-    width: clamp(200px, 56vw, 280px);
-    max-width: 280px;
+    width: clamp(104px, 30vw, 140px);
+    max-width: 140px;
     margin-left: 0;
   }
 
@@ -518,7 +518,7 @@
 
 @media (max-width: 480px) {
   .login-page__logo {
-    width: min(240px, 72vw);
+    width: min(128px, 36vw);
   }
 
   .login-page__title {

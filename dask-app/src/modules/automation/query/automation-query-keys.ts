@@ -47,6 +47,8 @@ export const automationsQueryKeys = {
     [...automationsQueryKeys.workspace(workspaceId), "inbox", "conversation", conversationId] as const,
   templates: (workspaceId: string, filters?: Record<string, unknown>) =>
     [...automationsQueryKeys.workspace(workspaceId), "templates", normalizeAutomationFilters(filters)] as const,
+  whatsappIntegration: (workspaceId: string) =>
+    [...automationsQueryKeys.workspace(workspaceId), "whatsapp-integration"] as const,
   consents: (workspaceId: string, filters?: AutomationConsentsFilters) =>
     [...automationsQueryKeys.workspace(workspaceId), "consents", normalizeAutomationFilters(filters)] as const
 };

@@ -8,6 +8,10 @@ export function IconTrendUp() {
   return <AppIcon name="trend-up" size={18} />;
 }
 
+export function IconBriefcase() {
+  return <AppIcon name="briefcase" size={18} />;
+}
+
 export function IconCheck() {
   return <AppIcon name="check" size={18} />;
 }

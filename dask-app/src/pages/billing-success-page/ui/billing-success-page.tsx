@@ -48,7 +48,7 @@ export function BillingSuccessPage() {
 
   if (state === "loading") {
     return (
-      <main className="billing-success">
+      <main className="billing-success billing-success--loading">
         <LoadingState text="Confirmando seu pagamento" animation="billing" />
       </main>
     );
@@ -57,48 +57,51 @@ export function BillingSuccessPage() {
   if (state === "active") {
     return (
       <main className="billing-success">
-        <div className="billing-success__check-wrap">
-          <svg className="billing-success__check-svg" viewBox="0 0 52 52" fill="none" aria-hidden="true">
-            <circle className="billing-success__check-circle" cx="26" cy="26" r="24" />
-            <polyline className="billing-success__check-mark" points="14,27 22,35 38,19" />
-          </svg>
-        </div>
-        <h1 className="billing-success__title">Assinatura ativa!</h1>
-        <p className="billing-success__description">
-          Seu pagamento foi confirmado. Você tem acesso completo à plataforma Dask.
-        </p>
-        <div className="billing-success__actions">
-          <Link className="billing-success__btn billing-success__btn--primary" to={routePaths.workspaceEntry}>
-            Acessar a plataforma
-          </Link>
-        </div>
+        <section className="billing-success__panel" aria-labelledby="billing-success-title">
+          <div className="billing-success__check-wrap" aria-hidden="true">
+            <svg className="billing-success__check-svg" viewBox="0 0 52 52" fill="none">
+              <circle className="billing-success__check-circle" cx="26" cy="26" r="24" />
+              <polyline className="billing-success__check-mark" points="14,27 22,35 38,19" />
+            </svg>
+          </div>
+          <h1 id="billing-success-title" className="billing-success__title">Assinatura ativa!</h1>
+          <p className="billing-success__description">
+            Seu pagamento foi confirmado. Voce tem acesso completo a plataforma Dask.
+          </p>
+          <div className="billing-success__actions">
+            <Link className="billing-success__btn billing-success__btn--primary" to={routePaths.workspaceEntry}>
+              Acessar a plataforma
+            </Link>
+          </div>
+        </section>
       </main>
     );
   }
 
-  // pending: webhook may arrive later
   return (
     <main className="billing-success">
-      <div className="billing-success__icon billing-success__icon--pending">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-      </div>
-      <h1 className="billing-success__title">Pagamento em processamento</h1>
-      <p className="billing-success__description">
-        Seu pagamento está sendo processado. A ativação pode levar alguns instantes. Se já foi cobrado, acesse a
-        plataforma e aguarde a confirmação automática.
-      </p>
-      <div className="billing-success__actions">
-        <Link className="billing-success__btn billing-success__btn--primary" to={routePaths.workspaceEntry}>
-          Tentar acessar a plataforma
-        </Link>
-        <Link className="billing-success__btn billing-success__btn--secondary" to={routePaths.choosePlan}>
-          Voltar aos planos
-        </Link>
-      </div>
+      <section className="billing-success__panel" aria-labelledby="billing-pending-title">
+        <div className="billing-success__icon billing-success__icon--pending" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <h1 id="billing-pending-title" className="billing-success__title">Pagamento em processamento</h1>
+        <p className="billing-success__description">
+          Seu pagamento esta sendo processado. A ativacao pode levar alguns instantes. Se ja foi cobrado, acesse a
+          plataforma e aguarde a confirmacao automatica.
+        </p>
+        <div className="billing-success__actions">
+          <Link className="billing-success__btn billing-success__btn--primary" to={routePaths.workspaceEntry}>
+            Tentar acessar a plataforma
+          </Link>
+          <Link className="billing-success__btn billing-success__btn--secondary" to={routePaths.choosePlan}>
+            Voltar aos planos
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }

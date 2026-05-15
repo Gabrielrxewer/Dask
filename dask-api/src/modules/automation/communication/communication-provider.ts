@@ -12,6 +12,10 @@ export type CommunicationSendInput = {
   body: string;
   text?: string;
   html?: string;
+  providerTemplateName?: string;
+  providerTemplateId?: string;
+  providerTemplateParameters?: string[];
+  language?: string;
   metadata?: Record<string, unknown>;
 };
 

@@ -1,365 +1,622 @@
-import { useMemo } from "react";
+import type { CSSProperties } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { routePaths } from "@/app/router";
 import { useAuth } from "@/features/auth/model";
-import { useBillingPlansQuery, type BillingPlan, type SubscriptionPlan } from "@/modules/billing";
 import { cn } from "@/shared/lib/cn";
-import daskLogoFull from "@/shared/assets/dask-logo-full.svg";
+import { AppIcon, Button, type AppIconName } from "@/shared/ui";
 import {
-  architectureItems,
+  audiences,
+  auditLogs,
+  automationSteps,
+  comparisonRows,
+  heroActivities,
   heroBadges,
-  heroSignals,
-  processStages,
-  useCases,
-  valuePillars
+  heroDeals,
+  heroMetrics,
+  insightMetrics,
+  modules,
+  plans,
+  pipelineStages,
+  problemCards,
+  proofSegments,
+  revenueSteps,
+  trustItems
 } from "./home-page.data";
 import type {
-  HomeArchitectureItem,
+  HomeActivity,
+  HomeAudience,
+  HomeAutomationStep,
   HomeBadge,
-  HomeProcessStage,
-  HomeSignal,
-  HomeUseCase,
-  HomeValuePillar
+  HomeComparisonRow,
+  HomeDeal,
+  HomeInsightMetric,
+  HomeMetric,
+  HomeModule,
+  HomePlan,
+  HomePipelineStage,
+  HomeProblem,
+  HomeRevenueStep,
+  HomeTrustItem
 } from "./home-page.types";
 import "./home-page.css";
 
-type HomeSectionId = "top" | "valor" | "inteligencia" | "contextos" | "estruturas" | "precos";
-const homeSectionIds = new Set<HomeSectionId>(["top", "valor", "inteligencia", "contextos", "estruturas", "precos"]);
-const planOrder: SubscriptionPlan[] = ["BASIC", "PRO", "BUSINESS", "ENTERPRISE", "PERSONAL"];
+const daskLogoSrc = "/favicon.svg";
 
-function formatPlanPrice(plan: BillingPlan): string {
-  if (plan.code === "ENTERPRISE") {
-    return "Solicitar orçamento";
-  }
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: plan.currency.toUpperCase()
-  }).format(plan.amount / 100);
-}
+type HomeSectionId = "top" | "produto" | "solucoes" | "recursos" | "precos" | "sobre";
 
-function formatPlanPeriod(plan: BillingPlan): string {
-  if (plan.code === "ENTERPRISE") return "";
-  if (plan.interval === "month") return "/mes";
-  if (plan.interval === "year") return "/ano";
-  return plan.interval ? `/${plan.interval}` : "";
-}
+const homeSectionIds = new Set<HomeSectionId>(["top", "produto", "solucoes", "recursos", "precos", "sobre"]);
 
 function getHomeSectionFromHash(hash: string): HomeSectionId {
   const sectionId = hash.replace("#", "") as HomeSectionId;
   return homeSectionIds.has(sectionId) ? sectionId : "top";
 }
 
+function progressStyle(progress: number): CSSProperties {
+  return { "--progress": `${progress}%` } as CSSProperties;
+}
+
+function IconBadge({ name, className }: { name: AppIconName; className?: string }) {
+  return (
+    <span className={cn("home-page__icon-badge", className)}>
+      <AppIcon name={name} size={18} strokeWidth={2} />
+    </span>
+  );
+}
+
 function SectionIntro({
-  id,
   eyebrow,
   title,
-  description
+  description,
+  titleId,
+  align = "center"
 }: {
-  id?: string;
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
+  titleId: string;
+  align?: "start" | "center";
 }) {
   return (
-    <header id={id} className="home-page__section-intro">
-      <p className="home-page__section-eyebrow">{eyebrow}</p>
-      <h2 className="home-page__section-title">{title}</h2>
-      <p className="home-page__section-description">{description}</p>
+    <header className={cn("home-page__section-intro", align === "start" && "home-page__section-intro--start")}>
+      {eyebrow ? <p className="home-page__eyebrow">{eyebrow}</p> : null}
+      <h2 id={titleId}>{title}</h2>
+      <p>{description}</p>
     </header>
   );
 }
 
-function Badge({ badge }: { badge: HomeBadge }) {
-  return <span className={`home-page__badge home-page__badge--${badge.tone ?? "default"}`}>{badge.label}</span>;
+function HeroBadge({ badge }: { badge: HomeBadge }) {
+  return <span className={`home-page__hero-badge home-page__hero-badge--${badge.tone ?? "default"}`}>{badge.label}</span>;
 }
 
-function SignalCard({ signal }: { signal: HomeSignal }) {
+function HeroMetric({ metric }: { metric: HomeMetric }) {
   return (
-    <article className="home-page__signal-card">
-      <p className="home-page__signal-label">{signal.label}</p>
-      <strong className="home-page__signal-value">{signal.value}</strong>
-      <p className="home-page__signal-description">{signal.description}</p>
+    <article className={`home-page__metric-card home-page__metric-card--${metric.tone ?? "default"}`}>
+      <span>{metric.label}</span>
+      <strong>{metric.value}</strong>
+      <small>{metric.detail}</small>
     </article>
   );
 }
 
-function ValuePillarCard({ pillar, index }: { pillar: HomeValuePillar; index: number }) {
+function PipelineStage({ stage }: { stage: HomePipelineStage }) {
   return (
-    <article className="home-page__pillar">
-      <span className="home-page__pillar-number">{String(index + 1).padStart(2, "0")}</span>
-      <p className="home-page__pillar-eyebrow">{pillar.eyebrow}</p>
-      <h3>{pillar.title}</h3>
-      <p>{pillar.description}</p>
-    </article>
+    <li className={cn("home-page__pipeline-stage", stage.isActive && "is-active", stage.isDone && "is-done")}>
+      <span>{stage.label}</span>
+      <i style={progressStyle(stage.progress)} aria-hidden="true" />
+    </li>
   );
 }
 
-function WorkflowStep({ stage }: { stage: HomeProcessStage }) {
+function HeroDeal({ deal }: { deal: HomeDeal }) {
   return (
-    <article className="home-page__workflow-step">
-      <span className="home-page__workflow-index">{stage.step}</span>
+    <article className="home-page__deal-card">
       <div>
-        <h3>{stage.title}</h3>
-        <p>{stage.description}</p>
+        <strong>{deal.account}</strong>
+        <span>{deal.scope}</span>
+        <small>{deal.amount}</small>
+      </div>
+      <div className="home-page__deal-progress">
+        <mark className={`home-page__status-pill home-page__status-pill--${deal.tone ?? "accent"}`}>{deal.status}</mark>
+        <span>{deal.progress}%</span>
       </div>
     </article>
   );
 }
 
-function UseCaseItem({ useCase }: { useCase: HomeUseCase }) {
+function HeroActivity({ activity }: { activity: HomeActivity }) {
   return (
-    <article className="home-page__use-case-item">
-      <h3>{useCase.title}</h3>
-      <p>{useCase.focus}</p>
-    </article>
+    <li>
+      <AppIcon name={activity.icon} size={15} strokeWidth={2} />
+      <span>{activity.label}</span>
+      <time>{activity.time}</time>
+    </li>
   );
 }
 
-function ArchitectureItem({ item }: { item: HomeArchitectureItem }) {
+function RevenueDashboard() {
   return (
-    <article className="home-page__architecture-item">
-      <h3>{item.label}</h3>
-      <p>{item.detail}</p>
-    </article>
+    <aside className="home-page__dashboard" aria-label="Dashboard conceitual de receita do Dask">
+      <header className="home-page__dashboard-header">
+        <div>
+          <span>Pipeline de Receita</span>
+          <strong>Do lead ao onboarding</strong>
+        </div>
+        <small>Dados conectados em tempo real</small>
+      </header>
+
+      <ol className="home-page__pipeline" aria-label="Etapas de receita">
+        {pipelineStages.map((stage) => (
+          <PipelineStage key={stage.label} stage={stage} />
+        ))}
+      </ol>
+
+      <div className="home-page__metric-grid">
+        {heroMetrics.map((metric) => (
+          <HeroMetric key={metric.label} metric={metric} />
+        ))}
+      </div>
+
+      <div className="home-page__dashboard-grid">
+        <section className="home-page__dashboard-panel">
+          <header>
+            <strong>Negocios em andamento</strong>
+            <a href="#solucoes">Ver todos</a>
+          </header>
+          <div className="home-page__deal-list">
+            {heroDeals.map((deal) => (
+              <HeroDeal key={deal.account} deal={deal} />
+            ))}
+          </div>
+        </section>
+
+        <section className="home-page__dashboard-panel">
+          <header>
+            <strong>Atividades recentes</strong>
+            <a href="#recursos">Ver logs</a>
+          </header>
+          <ul className="home-page__activity-list">
+            {heroActivities.map((activity) => (
+              <HeroActivity key={`${activity.label}-${activity.time}`} activity={activity} />
+            ))}
+          </ul>
+        </section>
+      </div>
+    </aside>
   );
 }
 
-function HomeHeroView({
+function HeroSection({
   isAuthenticated,
-  onExploreClick,
-  isActive
+  onExploreClick
 }: {
   isAuthenticated: boolean;
   onExploreClick: () => void;
-  isActive: boolean;
 }) {
-  const privateEntryPath = isAuthenticated ? routePaths.workspaceEntry : routePaths.login;
+  const primaryPath = isAuthenticated ? routePaths.workspaceEntry : routePaths.login;
 
   return (
-    <section
-      className={cn("home-page__hero", isActive && "home-page__hero--active")}
-      id="top"
-      aria-label="Tela inicial da plataforma"
-    >
+    <section className="home-page__hero" id="produto" aria-labelledby="home-hero-title">
       <div className="home-page__hero-copy">
-        <img className="home-page__logo" src={daskLogoFull} alt="Logo Dask" />
-        <p className="home-page__eyebrow">Plataforma operacional para software houses e startups</p>
-        <h1 className="home-page__title">Seu processo inteiro, no mesmo sistema.</h1>
-        <p className="home-page__description">
-          Do workItem ao faturamento, o Dask conecta comercial, escopo, documentacao, execucao, agenda e cobranca no
-          mesmo contexto. A IA acompanha essa jornada inteira, sem transformar sua operacao em ilhas de ferramenta.
+        <div className="home-page__brand-lockup" aria-label="Dask">
+          <img src={daskLogoSrc} alt="" />
+          <span>Dask</span>
+        </div>
+        <h1 id="home-hero-title">O CRM que nao para na proposta.</h1>
+        <p className="home-page__hero-lead">
+          O Dask conecta todo o ciclo de receita da sua empresa: leads, propostas, contratos, cobrancas, fiscal,
+          automacoes e IA. Um sistema operacional de receita configuravel para empresas de servicos que querem
+          previsibilidade e controle.
         </p>
-
         <div className="home-page__actions">
-          <Link className="home-page__action home-page__action--primary" to={privateEntryPath}>
-            {isAuthenticated ? "Abrir operacao" : "Entrar no Dask"}
+          <Link className="home-page__action home-page__action--primary" to={primaryPath}>
+            Agendar demonstracao
           </Link>
-          <button
-            className="home-page__action home-page__action--secondary"
-            type="button"
-            onClick={onExploreClick}
-          >
-            Ver o fluxo completo
-          </button>
+          <Button className="home-page__action home-page__action--secondary" variant="secondary" onClick={onExploreClick}>
+            Ver como funciona
+          </Button>
+        </div>
+        <div className="home-page__hero-badges" aria-label="Diferenciais do Dask">
+          {heroBadges.map((badge) => (
+            <HeroBadge key={badge.label} badge={badge} />
+          ))}
         </div>
       </div>
+      <RevenueDashboard />
+    </section>
+  );
+}
 
-      <aside className="home-page__hero-side" aria-label="Resumo do produto">
-        <div className="home-page__hero-side-head">
-          <div className="home-page__badge-row" aria-label="Capacidades principais do Dask">
-            {heroBadges.map((badge) => (
-              <Badge key={badge.label} badge={badge} />
+function ProofStrip() {
+  return (
+    <section className="home-page__proof" aria-label="Perfis de operacao para o Dask">
+      <p>Empresas de servicos que precisam transformar oportunidade em receita rastreavel</p>
+      <div>
+        {proofSegments.map((segment) => (
+          <span key={segment}>{segment}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProblemCard({ problem }: { problem: HomeProblem }) {
+  return (
+    <article className="home-page__problem-card">
+      <IconBadge name={problem.icon} />
+      <h3>{problem.title}</h3>
+      <p>{problem.description}</p>
+    </article>
+  );
+}
+
+function ProblemsSection() {
+  return (
+    <section className="home-page__section" aria-labelledby="home-problems-title">
+      <SectionIntro
+        titleId="home-problems-title"
+        title="Os problemas que travam sua receita"
+        description="Quando a venda sai do CRM, a receita passa a depender de memoria, planilha, copia manual e follow-up solto."
+      />
+      <div className="home-page__problem-grid">
+        {problemCards.map((problem) => (
+          <ProblemCard key={problem.title} problem={problem} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RevenueStepCard({ step, index }: { step: HomeRevenueStep; index: number }) {
+  return (
+    <li className="home-page__revenue-card">
+      <IconBadge name={step.icon} />
+      <strong>{step.title}</strong>
+      <p>{step.description}</p>
+      <span>{String(index + 1).padStart(2, "0")}</span>
+    </li>
+  );
+}
+
+function RevenueSystemSection() {
+  return (
+    <section className="home-page__section home-page__revenue-system" id="solucoes" aria-labelledby="home-revenue-title">
+      <div className="home-page__revenue-copy">
+        <SectionIntro
+          align="start"
+          eyebrow="Sistema operacional de receita"
+          titleId="home-revenue-title"
+          title="Um sistema operacional de receita ponta a ponta"
+          description="O Dask orquestra todas as etapas do ciclo de receita em um unico trilho, com dados conectados, automacoes inteligentes e total visibilidade."
+        />
+        <ul className="home-page__check-list">
+          <li>Fluxos 100% configuraveis</li>
+          <li>Regras de negocio e aprovacoes</li>
+          <li>Automacao de tarefas e comunicacoes</li>
+          <li>Integracoes nativas com fiscal e financeiro</li>
+          <li>IA aplicada para analise e execucao</li>
+        </ul>
+      </div>
+
+      <div className="home-page__revenue-flow-panel">
+        <ol className="home-page__revenue-grid" aria-label="Ciclo completo de receita no Dask">
+          {revenueSteps.map((step, index) => (
+            <RevenueStepCard key={step.title} step={step} index={index} />
+          ))}
+        </ol>
+        <div className="home-page__connected-strip">
+          <span>Dados conectados</span>
+          <span>Auditoria completa</span>
+          <span>Automacoes</span>
+          <span>IA</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ModuleCard({ module }: { module: HomeModule }) {
+  return (
+    <article className="home-page__module-card">
+      <IconBadge name={module.icon} />
+      <h3>{module.title}</h3>
+      <p>{module.description}</p>
+    </article>
+  );
+}
+
+function ModulesSection() {
+  return (
+    <section className="home-page__section" aria-labelledby="home-modules-title">
+      <SectionIntro
+        titleId="home-modules-title"
+        title="Modulos que cobrem todo o ciclo de receita"
+        description="Tudo que normalmente fica espalhado entre CRM, documento, financeiro, fiscal, marketing e entrega dentro do mesmo trilho operacional."
+      />
+      <div className="home-page__module-grid">
+        {modules.map((module) => (
+          <ModuleCard key={module.title} module={module} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PlanCard({
+  plan,
+  selfServicePath
+}: {
+  plan: HomePlan;
+  selfServicePath: string;
+}) {
+  const isEnterprise = plan.code === "ENTERPRISE";
+  const actionClassName = cn(
+    "home-page__plan-action",
+    plan.isFeatured && "home-page__plan-action--featured"
+  );
+  const actionContent = (
+    <>
+      <span>{plan.ctaLabel}</span>
+      <AppIcon name="chevron-right" size={15} strokeWidth={2.4} />
+    </>
+  );
+
+  return (
+    <article className={cn("home-page__plan-card", plan.isFeatured && "home-page__plan-card--featured")}>
+      {plan.isFeatured ? <span className="home-page__plan-badge">Mais completo</span> : null}
+      <div className="home-page__plan-head">
+        <p>{plan.name}</p>
+        <div className="home-page__plan-price">
+          <strong>{plan.price}</strong>
+          {plan.period ? <span>{plan.period}</span> : null}
+        </div>
+      </div>
+      <p className="home-page__plan-description">{plan.description}</p>
+      <ul className="home-page__plan-features">
+        {plan.features.map((feature) => (
+          <li key={feature}>
+            <AppIcon name="check" size={14} strokeWidth={2.4} />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+      {isEnterprise ? (
+        <a className={actionClassName} href="mailto:comercial@dask.com.br?subject=Orcamento%20Enterprise%20Dask">
+          {actionContent}
+        </a>
+      ) : (
+        <Link className={actionClassName} to={selfServicePath}>
+          {actionContent}
+        </Link>
+      )}
+    </article>
+  );
+}
+
+function PricingSection({ selfServicePath }: { selfServicePath: string }) {
+  return (
+    <section className="home-page__section home-page__pricing" id="precos" aria-labelledby="home-pricing-title">
+      <div className="home-page__pricing-copy">
+        <SectionIntro
+          align="start"
+          eyebrow="Planos"
+          titleId="home-pricing-title"
+          title="Planos e precos do Dask"
+          description="Planos mensais para operar CRM, proposta, contrato, cobranca, fiscal, automacoes e IA no mesmo fluxo."
+        />
+        <p className="home-page__pricing-note">
+          Valores do catalogo atual. O checkout confirma plano, aceite legal, recorrencia e dados de cobranca antes do pagamento.
+        </p>
+      </div>
+      <div className="home-page__plan-grid">
+        {plans.map((plan) => (
+          <PlanCard key={plan.code} plan={plan} selfServicePath={selfServicePath} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ComparisonRow({ row }: { row: HomeComparisonRow }) {
+  return (
+    <div className="home-page__comparison-row" role="row">
+      <span role="cell">{row.commonCrm}</span>
+      <strong role="cell">{row.dask}</strong>
+    </div>
+  );
+}
+
+function InsightMetric({ metric }: { metric: HomeInsightMetric }) {
+  return (
+    <article>
+      <span>{metric.label}</span>
+      <strong>{metric.value}</strong>
+      <small>{metric.detail}</small>
+    </article>
+  );
+}
+
+function ComparisonInsightsSection() {
+  const bars = [72, 84, 79, 96, 91, 100];
+
+  return (
+    <section className="home-page__section home-page__comparison-insights" aria-labelledby="home-comparison-title">
+      <div className="home-page__comparison-card" role="table" aria-label="CRM comum vs Dask">
+        <h2 id="home-comparison-title">CRM comum vs Dask</h2>
+        <div className="home-page__comparison-head" role="row">
+          <span role="columnheader">CRM comum</span>
+          <strong role="columnheader">Dask</strong>
+        </div>
+        {comparisonRows.map((row) => (
+          <ComparisonRow key={row.commonCrm} row={row} />
+        ))}
+      </div>
+
+      <div className="home-page__insights-card" aria-label="Visao de receita">
+        <div className="home-page__chart-card">
+          <header>
+            <strong>Visao de Receita</strong>
+            <span>Previsibilidade mensal</span>
+          </header>
+          <div className="home-page__bar-chart" aria-hidden="true">
+            {bars.map((bar, index) => (
+              <i key={`${bar}-${index}`} style={progressStyle(bar)} />
             ))}
           </div>
-          <p className="home-page__hero-side-summary">
-            Nao e so mais um board com IA. O Dask foi pensado para operacoes de software que precisam vender,
-            documentar, executar, acompanhar e faturar sem reescrever o mesmo trabalho em varias ferramentas.
-          </p>
+          <div className="home-page__chart-legend">
+            <span>Prevista</span>
+            <span>Contratada</span>
+            <span>Realizada</span>
+          </div>
         </div>
-
-        <div className="home-page__hero-signal-list" aria-label="Sinais de valor do produto">
-          {heroSignals.map((signal) => (
-            <SignalCard key={signal.label} signal={signal} />
+        <div className="home-page__donut-card">
+          <strong>Receita por status</strong>
+          <div className="home-page__donut" aria-hidden="true" />
+          <ul>
+            <li>Prevista 40%</li>
+            <li>Contratada 30%</li>
+            <li>Realizada 20%</li>
+            <li>Pendente 10%</li>
+          </ul>
+        </div>
+        <div className="home-page__insight-grid">
+          {insightMetrics.map((metric) => (
+            <InsightMetric key={metric.label} metric={metric} />
           ))}
         </div>
-      </aside>
+      </div>
     </section>
   );
 }
 
-function ValueSectionView({ isActive }: { isActive: boolean }) {
+function AudienceCard({ audience }: { audience: HomeAudience }) {
   return (
-    <section
-      id="valor"
-      className={cn("home-page__section home-page__tab-section home-page__value-section", isActive && "home-page__section--active")}
-      aria-label="Proposta de valor"
-    >
-      <SectionIntro
-        eyebrow="Por que Dask"
-        title="Continuidade operacional, sem fragmentacao."
-        description="O mesmo contexto segue do comercial a entrega e ao faturamento. Menos retrabalho, mais clareza e uma operacao mais fluida para times de software."
-      />
+    <article className="home-page__audience-card">
+      <IconBadge name={audience.icon} />
+      <div>
+        <h3>{audience.title}</h3>
+        <p>{audience.description}</p>
+      </div>
+    </article>
+  );
+}
 
-      <div className="home-page__pillar-grid" aria-label="Beneficios centrais do Dask">
-        {valuePillars.map((pillar, index) => (
-          <ValuePillarCard key={pillar.title} pillar={pillar} index={index} />
+function AudienceSection() {
+  return (
+    <section className="home-page__section" aria-labelledby="home-audience-title">
+      <SectionIntro
+        titleId="home-audience-title"
+        title="Feito para empresas de servicos B2B"
+        description="Negocios que vendem projeto, contrato, mensalidade ou servico recorrente precisam de mais que um funil: precisam de uma operacao que chegue ate a receita."
+      />
+      <div className="home-page__audience-grid">
+        {audiences.map((audience) => (
+          <AudienceCard key={audience.title} audience={audience} />
         ))}
       </div>
     </section>
   );
 }
 
-function IntelligenceView({ isActive }: { isActive: boolean }) {
+function AutomationStep({ step, index }: { step: HomeAutomationStep; index: number }) {
   return (
-    <section
-      id="inteligencia"
-      className={cn("home-page__section home-page__tab-section home-page__workflow-section", isActive && "home-page__section--active")}
-      aria-label="Como funciona"
-    >
-      <div className="home-page__workflow-copy">
-        <SectionIntro
-          eyebrow="Como funciona"
-          title="Do workItem a cobranca, sem perder contexto."
-          description="No Dask, a operacao nao reinicia a cada etapa. O que nasce no comercial continua no escopo, vira documentacao, alimenta a execucao, organiza acompanhamento e sustenta cobranca e faturamento."
-        />
-      </div>
+    <li>
+      <span>{String(index + 1).padStart(2, "0")}</span>
+      <strong>{step.title}</strong>
+      <p>{step.description}</p>
+    </li>
+  );
+}
 
-      <div className="home-page__workflow-panel" aria-label="Fluxo de trabalho no Dask">
-        {processStages.map((stage) => (
-          <WorkflowStep key={stage.step} stage={stage} />
+function AutomationSection() {
+  return (
+    <section className="home-page__section home-page__automation" id="recursos" aria-labelledby="home-automation-title">
+      <SectionIntro
+        titleId="home-automation-title"
+        title="Automacao + IA que acelera sua operacao"
+        description="Menos trabalho manual. Mais receita. Decisoes melhores. Com aprovacao humana, logs e contexto operacional em cada etapa."
+      />
+      <ol className="home-page__automation-rail">
+        {automationSteps.map((step, index) => (
+          <AutomationStep key={step.title} step={step} index={index} />
         ))}
+      </ol>
+      <div className="home-page__automation-strip">
+        <span>Menos trabalho manual</span>
+        <span>Mais receita</span>
+        <span>Decisoes melhores</span>
       </div>
     </section>
   );
 }
 
-function AdaptabilityView({ isActive }: { isActive: boolean }) {
+function TrustItem({ item }: { item: HomeTrustItem }) {
   return (
-    <section
-      id="contextos"
-      className={cn("home-page__section home-page__tab-section home-page__adaptability-section", isActive && "home-page__section--active")}
-      aria-label="Adaptabilidade"
-    >
-      <SectionIntro
-        eyebrow="Aplicacao"
-        title="Feito para operacoes de software. Expansivel quando precisar."
-        description="A mensagem principal do Dask e software house, fabrica de software, startup de desenvolvimento e operacoes por projeto. Outros contextos podem usar a mesma base depois, sem roubar o foco da proposta central."
-      />
-
-      <div className="home-page__context-map" aria-label="Contextos de aplicacao">
-        {useCases.map((useCase) => (
-          <UseCaseItem key={useCase.title} useCase={useCase} />
-        ))}
-      </div>
-
-      <aside className="home-page__adaptability-note" aria-label="Resumo de adaptabilidade">
-        <p>Expansao controlada</p>
-        <strong>Comece pela operacao de software e leve o mesmo sistema para outras frentes.</strong>
-      </aside>
-    </section>
+    <li>
+      <AppIcon name="check" size={15} strokeWidth={2.2} />
+      <span>{item.title}</span>
+      <small>{item.description}</small>
+    </li>
   );
 }
 
-function StructureView({ isActive }: { isActive: boolean }) {
+function TrustSection() {
   return (
-    <section
-      id="estruturas"
-      className={cn("home-page__section home-page__tab-section home-page__architecture-section", isActive && "home-page__section--active")}
-      aria-label="Estrutura configuravel"
-    >
+    <section className="home-page__section home-page__trust" id="sobre" aria-labelledby="home-trust-title">
       <SectionIntro
-        eyebrow="Arquitetura configuravel"
-        title="Configuravel para o processo. Objetivo na narrativa."
-        description="A configuracao existe para sustentar o fluxo comercial, operacional e financeiro do seu time. Ela e importante, mas nao substitui a promessa principal: manter tudo no mesmo sistema, no mesmo contexto."
+        titleId="home-trust-title"
+        title="Confianca, controle e auditoria em cada etapa"
+        description="O Dask deixa claro o que aconteceu, quem executou, qual automacao rodou e o que falta para a oportunidade virar receita."
       />
-
-      <div className="home-page__architecture-grid">
-        <div className="home-page__architecture-list" aria-label="Elementos configuraveis">
-          {architectureItems.map((item) => (
-            <ArchitectureItem key={item.label} item={item} />
+      <div className="home-page__trust-grid">
+        <ul className="home-page__trust-list">
+          {trustItems.map((item) => (
+            <TrustItem key={item.title} item={item} />
           ))}
-        </div>
-
-        <aside className="home-page__architecture-preview" aria-label="Resumo da configuracao">
-          <p className="home-page__architecture-preview-eyebrow">Base configuravel</p>
-          <h3>Padrao onde precisa, flexibilidade onde importa.</h3>
-          <p>Templates, campos, views e regras adaptam o processo sem quebrar a continuidade entre venda, documentacao, execucao e faturamento.</p>
-        </aside>
+        </ul>
+        <section className="home-page__audit-card" aria-label="Log de auditoria">
+          <h3>Log de auditoria</h3>
+          {auditLogs.map((log) => (
+            <article key={`${log.time}-${log.event}`}>
+              <time>{log.time}</time>
+              <span>{log.event}</span>
+            </article>
+          ))}
+        </section>
+        <section className="home-page__security-card" aria-label="Seguranca e conformidade">
+          <h3>Seguranca e conformidade</h3>
+          <div>
+            <span>LGPD</span>
+            <span>SSL/TLS</span>
+            <span>Backup diario</span>
+          </div>
+          <strong>SLA 99,9%</strong>
+          <p>Infraestrutura em nuvem, permissoes por perfil e revisao para operacoes criticas.</p>
+        </section>
       </div>
     </section>
   );
 }
 
-function PricingSection({
-  onSubscribeClick,
-  isActive,
-  plans,
-  isLoadingPlans,
-  planLoadError
+function FinalCta({
+  primaryPath,
+  onSecondaryClick
 }: {
-  onSubscribeClick: (plan: SubscriptionPlan) => void;
-  isActive: boolean;
-  plans: BillingPlan[];
-  isLoadingPlans: boolean;
-  planLoadError: string | null;
+  primaryPath: string;
+  onSecondaryClick: () => void;
 }) {
   return (
-    <section
-      className={cn(
-        "home-page__section home-page__tab-section home-page__pricing-section",
-        isActive && "home-page__section--active"
-      )}
-      id="precos"
-      aria-label="Planos e precos"
-    >
-      <SectionIntro
-        eyebrow="Planos"
-        title="Planos business para operar o Dask sem fragmentacao."
-        description="Basic, Pro e Business sao assinaturas mensais para workspace business. Enterprise segue por orçamento. O workspace personal fica obsoleto por enquanto."
-      />
-
-      <div className="home-page__pricing-cards">
-        {isLoadingPlans ? (
-          <article className="home-page__pricing-card">
-            <p className="home-page__pricing-plan-name">Carregando planos...</p>
-          </article>
-        ) : null}
-
-        {!isLoadingPlans && (planLoadError || plans.length === 0) ? (
-          <article className="home-page__pricing-card">
-            <p className="home-page__pricing-plan-name">Planos indisponiveis</p>
-            <p className="home-page__pricing-description">
-              {planLoadError ?? "O catalogo de assinatura nao esta disponivel no momento."}
-            </p>
-          </article>
-        ) : null}
-
-        {plans.map((plan) => (
-          <article key={plan.code} className="home-page__pricing-card">
-            <p className="home-page__pricing-plan-name">{plan.name}</p>
-            <div className="home-page__pricing-price">
-              <strong>{formatPlanPrice(plan)}</strong>
-              <span>{formatPlanPeriod(plan)}</span>
-            </div>
-            {plan.description ? <p className="home-page__pricing-description">{plan.description}</p> : null}
-            {plan.features.length > 0 ? (
-              <ul className="home-page__pricing-features">
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-            ) : null}
-            <button
-              className="home-page__action home-page__action--primary home-page__pricing-btn"
-              onClick={() => onSubscribeClick(plan.code)}
-              type="button"
-            >
-              {plan.code === "ENTERPRISE" ? "Solicitar orçamento" : `Assinar ${plan.name}`}
-            </button>
-          </article>
-        ))}
+    <section className="home-page__final-cta" aria-labelledby="home-final-title">
+      <h2 id="home-final-title">Pronto para transformar sua operacao de receita?</h2>
+      <p>Agende uma demonstracao personalizada e veja o Dask na pratica.</p>
+      <div className="home-page__actions home-page__actions--center">
+        <Link className="home-page__action home-page__action--primary" to={primaryPath}>
+          Agendar demonstracao
+        </Link>
+        <Button className="home-page__action home-page__action--secondary" variant="secondary" onClick={onSecondaryClick}>
+          Falar com especialista
+        </Button>
       </div>
-
     </section>
   );
 }
@@ -369,62 +626,30 @@ export function HomePage() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const activeSection = getHomeSectionFromHash(location.hash);
-  const plansQuery = useBillingPlansQuery();
-  const plans = useMemo(
-    () => (plansQuery.data?.items.filter((plan) => plan.isActive && plan.code !== "PERSONAL") ?? [])
-      .sort((left, right) => planOrder.indexOf(left.code) - planOrder.indexOf(right.code)),
-    [plansQuery.data]
-  );
-  const planLoadError = plansQuery.isError ? "Nao foi possivel carregar os planos configurados." : null;
-
-  function handleSubscribeClick(_plan: SubscriptionPlan) {
-    if (isAuthenticated) {
-      navigate(routePaths.choosePlan);
-    } else {
-      navigate(routePaths.login, { state: { from: { pathname: routePaths.choosePlan } } });
-    }
-  }
+  const primaryPath = isAuthenticated ? routePaths.workspaceEntry : routePaths.login;
+  const selfServicePath = isAuthenticated ? routePaths.choosePlan : routePaths.login;
 
   function selectSection(sectionId: HomeSectionId) {
     navigate(sectionId === "top" ? routePaths.home : `${routePaths.home}#${sectionId}`);
   }
 
   return (
-    <main className="home-page">
+    <main id="top" className="home-page" data-active-section={activeSection}>
       <div className="home-page__container">
-        <div className="home-page__view">
-          <HomeHeroView
-            isAuthenticated={isAuthenticated}
-            isActive={activeSection === "top"}
-            onExploreClick={() => selectSection("inteligencia")}
-          />
+        <div className="home-page__view home-page__view--hero">
+          <HeroSection isAuthenticated={isAuthenticated} onExploreClick={() => selectSection("solucoes")} />
         </div>
 
-        <div className="home-page__view">
-          <ValueSectionView isActive={activeSection === "valor"} />
-        </div>
-
-        <div className="home-page__view">
-          <IntelligenceView isActive={activeSection === "inteligencia"} />
-        </div>
-
-        <div className="home-page__view">
-          <AdaptabilityView isActive={activeSection === "contextos"} />
-        </div>
-
-        <div className="home-page__view">
-          <StructureView isActive={activeSection === "estruturas"} />
-        </div>
-
-        <div className="home-page__view home-page__view--pricing">
-          <PricingSection
-            isActive={activeSection === "precos"}
-            onSubscribeClick={handleSubscribeClick}
-            plans={plans}
-            isLoadingPlans={plansQuery.isLoading}
-            planLoadError={planLoadError}
-          />
-        </div>
+        <ProofStrip />
+        <ProblemsSection />
+        <RevenueSystemSection />
+        <ModulesSection />
+        <ComparisonInsightsSection />
+        <PricingSection selfServicePath={selfServicePath} />
+        <AudienceSection />
+        <AutomationSection />
+        <TrustSection />
+        <FinalCta primaryPath={primaryPath} onSecondaryClick={() => selectSection("sobre")} />
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CommunicationProviderRegistry } from '@/modules/automation/communication/communication-provider-registry';
 import { createDefaultCommunicationProviderRegistry } from '@/modules/automation/communication/default-communication-provider-registry';
+import { MetaWhatsAppProvider } from '@/modules/automation/communication/meta-whatsapp-provider';
 import { MockEmailProvider } from '@/modules/automation/communication/mock-email-provider';
 import { MockWhatsAppProvider } from '@/modules/automation/communication/mock-whatsapp-provider';
 import { ResendCommunicationEmailProvider } from '@/modules/automation/communication/resend-communication-email-provider';
@@ -46,6 +47,18 @@ describe('CommunicationProviderRegistry', () => {
     expect(registry.resolve({ channel: 'email', provider: 'resend' })).toBeInstanceOf(
       ResendCommunicationEmailProvider
     );
+  });
+
+  it('registers Meta WhatsApp provider only when real mode is explicitly configured', () => {
+    const registry = createDefaultCommunicationProviderRegistry({
+      whatsappSendMode: 'real',
+      whatsappProvider: 'meta',
+      metaWhatsAppAccessToken: 'token',
+      metaWhatsAppPhoneNumberId: 'phone-123'
+    });
+
+    expect(registry.resolve({ channel: 'whatsapp', provider: 'mock' })).toBeInstanceOf(MockWhatsAppProvider);
+    expect(registry.resolve({ channel: 'whatsapp', provider: 'meta' })).toBeInstanceOf(MetaWhatsAppProvider);
   });
 });
 

@@ -390,6 +390,27 @@
   color: var(--ast-text);
 }
 
+.automation-studio__settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.automation-studio__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.automation-studio__hint {
+  display: block;
+  margin: 8px 0;
+  color: var(--ast-text-muted);
+  font-size: var(--font-size-xs, 0.8rem);
+}
+
 .automation-studio__list > button small,
 .automation-studio__row small,
 .automation-studio__detail p,

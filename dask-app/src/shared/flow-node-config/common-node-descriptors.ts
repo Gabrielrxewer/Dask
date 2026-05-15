@@ -161,6 +161,16 @@ export function createCommunicationNodeConfigDescriptor(input: CommonDescriptorI
       options: input.channelOptions ?? commonCommunicationChannelOptions
     },
     {
+      name: "provider",
+      label: "Provider",
+      type: "select",
+      options: [
+        { value: "mock", label: "Mock" },
+        { value: "resend", label: "Resend" },
+        { value: "meta", label: "Meta WhatsApp" }
+      ]
+    },
+    {
       name: input.recipientFieldName ?? "to",
       label: "Destinatario",
       type: "text"

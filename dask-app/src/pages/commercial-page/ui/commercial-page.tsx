@@ -29,6 +29,11 @@ import {
   billingQueryKeys,
   type ConnectCatalogItem
 } from "@/modules/billing";
+import {
+  useAutomationConversationDetail,
+  useAutomationInbox,
+  useReplyAutomationConversationMutation
+} from "@/modules/automation/query";
 import { documentationQueryKeys, useDocumentsQuery } from "@/modules/documentation";
 import { AppDialog, Button, InlineAlert, LoadingState, toast, WorkspaceFrame } from "@/shared/ui";
 import { customerFormSchema } from "@/modules/commercial/model";
@@ -64,6 +69,7 @@ import {
   type ModalMode
 } from "./commercial-page.model";
 import { CommercialOverviewSection } from "./commercial-overview-section";
+import { CommercialInboxSection } from "./commercial-inbox-section";
 import { CommercialTopNavigation } from "./commercial-top-navigation";
 import { LinkCustomerModal } from "./link-customer-modal";
 import "./commercial-page.css";
@@ -84,6 +90,8 @@ export function CommercialPage() {
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
   const [commercialWorkItemForm, setCommercialWorkItemForm] = useState<CommercialWorkItemFormState>(() => emptyCommercialWorkItemForm());
   const [customerForm, setCustomerForm] = useState<CreateCustomerInput>(() => emptyCustomerForm());
   const [linkCustomerId, setLinkCustomerId] = useState("");
@@ -110,6 +118,12 @@ export function CommercialPage() {
     search: tab === "customers" ? deferredSearch : "",
     limit: 80
   });
+  const inboxQuery = useAutomationInbox(workspaceSlug || null, { limit: 100 }, { enabled: tab === "inbox" });
+  const conversationQuery = useAutomationConversationDetail(
+    workspaceSlug || null,
+    selectedConversationId,
+    { enabled: tab === "inbox" }
+  );
   const transformationsQuery = useCommercialTransformationsQuery(workspaceSlug || null);
   const updateWorkItemMutation = useUpdateCommercialWorkItemMutation(workspaceSlug || null, { silent: true });
   const createCustomerMutation = useCreateCustomerMutation(workspaceSlug || null, { silent: true });
@@ -117,6 +131,7 @@ export function CommercialPage() {
   const convertWorkItemToCustomerMutation = useConvertWorkItemToCustomerMutation(workspaceSlug || null, { silent: true });
   const catalogQuery = useBillingCatalogQuery(snapshot?.id ?? null, { status: "active", pageSize: 100 });
   const createCheckoutSessionMutation = useCreateCheckoutSessionMutation(snapshot?.id ?? null);
+  const replyConversationMutation = useReplyAutomationConversationMutation(workspaceSlug || null);
   const pagedCommercialTasks = useMemo(() => flattenWorkItemPages(workItemsQuery.data), [workItemsQuery.data]);
   const pagedSignalTasks = useMemo(() => flattenWorkItemPages(signalsQuery.data), [signalsQuery.data]);
   const customers = useMemo(() => flattenCustomerPages(customersQuery.data), [customersQuery.data]);
@@ -214,6 +229,17 @@ export function CommercialPage() {
 
     void Promise.all(refreshes);
   }, [queryClient, snapshot?.id, workspaceSlug]);
+
+  const handleReplyConversation = useCallback(async () => {
+    const conversation = conversationQuery.data?.conversation;
+    if (!conversation || !replyText.trim()) return;
+    await replyConversationMutation.mutateAsync({
+      conversationId: conversation.id,
+      channel: conversation.channel === "email" ? "email" : "whatsapp",
+      text: replyText
+    });
+    setReplyText("");
+  }, [conversationQuery.data?.conversation, replyConversationMutation, replyText]);
 
   const openNewCommercialWorkItemModal = (customer?: Customer) => {
     if (!commercialMetadata) {
@@ -496,8 +522,8 @@ export function CommercialPage() {
           <InlineAlert tone="warning">Template comercial sem metadados operacionais de commercial. Reaplique o template comercial antes de criar ou analisar oportunidades.</InlineAlert>
         ) : null}
 
-        <div className="commercial-page__content">
-          <div className="commercial-page__stack">
+        <div className={tab === "inbox" ? "commercial-page__content commercial-page__content--inbox" : "commercial-page__content"}>
+          <div className={tab === "inbox" ? "commercial-page__stack commercial-page__stack--inbox" : "commercial-page__stack"}>
             {tab === "overview" ? (
               <CommercialOverviewSection
                 pipelineMetrics={pipelineMetrics}
@@ -558,6 +584,21 @@ export function CommercialPage() {
                 hasMore={Boolean(customersQuery.hasNextPage)}
                 isFetchingMore={customersQuery.isFetchingNextPage}
                 onLoadMore={() => void customersQuery.fetchNextPage()}
+              />
+            ) : null}
+
+            {tab === "inbox" ? (
+              <CommercialInboxSection
+                conversations={inboxQuery.data?.items ?? []}
+                selectedConversation={conversationQuery.data ?? null}
+                selectedConversationLoading={conversationQuery.isLoading}
+                replyText={replyText}
+                loading={inboxQuery.isLoading}
+                error={inboxQuery.error}
+                onRefresh={inboxQuery.refetch}
+                onOpenConversation={setSelectedConversationId}
+                onReplyTextChange={setReplyText}
+                onReply={handleReplyConversation}
               />
             ) : null}
           </div>

@@ -19,10 +19,11 @@ import { useWorkspacePermissions } from "@/modules/workspace";
 import type { BoardMetrics } from "@/entities/task";
 import type { DashboardFilterState } from "@/features/dashboard-filter";
 import { DashboardFilter } from "@/features/dashboard-filter";
-import daskLogoMark from "@/shared/assets/dask-logo-mark.svg";
 import { cn } from "@/shared/lib/cn";
 import { AppIcon, PageHeader, type AppIconName } from "@/shared/ui";
 import "./app-shell.css";
+
+const daskLogoSrc = "/favicon.svg";
 
 type SidebarIconName = "dashboard" | "board" | "list" | "agenda" | "documentation" | "ai" | "automation" | "settings" | "billing" | "fiscal" | "commercial" | "marketing";
 type SidebarTone = "blue" | "mint" | "amber" | "cyan" | "rose" | "violet" | "slate";
@@ -199,7 +200,7 @@ export function AppShell({
       <aside className="sidebar">
         <div className="sidebar__brand">
           {hideSidebarBrandMark ? null : (
-            <img className="sidebar__brand-mark" src={daskLogoMark} alt="" aria-hidden="true" />
+            <img className="sidebar__brand-mark" src={daskLogoSrc} alt="" aria-hidden="true" />
           )}
           <div>
             <p className="sidebar__brand-title">Dask</p>

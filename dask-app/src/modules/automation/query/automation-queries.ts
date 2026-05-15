@@ -128,3 +128,14 @@ export function useAutomationConsents(
     enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
   });
 }
+
+export function useWhatsAppIntegration(
+  workspaceId: string | null | undefined,
+  options?: AutomationQueryOptions
+) {
+  return useQuery({
+    queryKey: automationsQueryKeys.whatsappIntegration(workspaceId ?? "__missing_workspace__"),
+    queryFn: () => workspaceService.getWhatsAppIntegration(requireWorkspace(workspaceId)),
+    enabled: isWorkspaceReady(workspaceId) && (options?.enabled ?? true)
+  });
+}

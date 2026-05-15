@@ -3,7 +3,8 @@ import { workspaceService } from "@/modules/workspace/api";
 import type {
   CreateAutomationWorkflowInput,
   SaveAutomationWorkflowVersionInput,
-  UpdateAutomationWorkflowInput
+  UpdateAutomationWorkflowInput,
+  UpsertWhatsAppIntegrationInput
 } from "@/modules/workspace/model";
 import { workspaceQueryKeys } from "@/modules/workspace/query";
 import { toast } from "@/shared/ui/toast";
@@ -153,6 +154,21 @@ export function upsertWhatsAppConsentMutationRequest(
   return workspaceService.upsertWhatsAppConsent(requireWorkspace(workspaceId), input);
 }
 
+export function upsertWhatsAppIntegrationMutationRequest(
+  workspaceId: string | null | undefined,
+  input: UpsertWhatsAppIntegrationInput
+) {
+  return workspaceService.upsertWhatsAppIntegration(requireWorkspace(workspaceId), input);
+}
+
+export function testWhatsAppIntegrationMutationRequest(workspaceId: string | null | undefined) {
+  return workspaceService.testWhatsAppIntegration(requireWorkspace(workspaceId));
+}
+
+export function disableWhatsAppIntegrationMutationRequest(workspaceId: string | null | undefined) {
+  return workspaceService.disableWhatsAppIntegration(requireWorkspace(workspaceId));
+}
+
 export function useCreateAutomationWorkflowMutation(workspaceId: string | null | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -297,5 +313,44 @@ export function useUpsertWhatsAppConsentMutation(workspaceId: string | null | un
       toast.success("Consentimento atualizado.");
     },
     onError: mutationError("Nao foi possivel atualizar o consentimento.")
+  });
+}
+
+export function useUpsertWhatsAppIntegrationMutation(workspaceId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpsertWhatsAppIntegrationInput) => upsertWhatsAppIntegrationMutationRequest(workspaceId, input),
+    onSuccess: () => {
+      const resolvedWorkspaceId = requireWorkspace(workspaceId);
+      void queryClient.invalidateQueries({ queryKey: automationsQueryKeys.whatsappIntegration(resolvedWorkspaceId) });
+      toast.success("WhatsApp conectado.");
+    },
+    onError: mutationError("Nao foi possivel salvar a integracao do WhatsApp.")
+  });
+}
+
+export function useTestWhatsAppIntegrationMutation(workspaceId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => testWhatsAppIntegrationMutationRequest(workspaceId),
+    onSuccess: () => {
+      const resolvedWorkspaceId = requireWorkspace(workspaceId);
+      void queryClient.invalidateQueries({ queryKey: automationsQueryKeys.whatsappIntegration(resolvedWorkspaceId) });
+      toast.success("Conexao com WhatsApp validada.");
+    },
+    onError: mutationError("Nao foi possivel testar a conexao com WhatsApp.")
+  });
+}
+
+export function useDisableWhatsAppIntegrationMutation(workspaceId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => disableWhatsAppIntegrationMutationRequest(workspaceId),
+    onSuccess: () => {
+      const resolvedWorkspaceId = requireWorkspace(workspaceId);
+      void queryClient.invalidateQueries({ queryKey: automationsQueryKeys.whatsappIntegration(resolvedWorkspaceId) });
+      toast.success("WhatsApp desativado.");
+    },
+    onError: mutationError("Nao foi possivel desativar o WhatsApp.")
   });
 }

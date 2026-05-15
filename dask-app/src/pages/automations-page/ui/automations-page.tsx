@@ -19,12 +19,9 @@ import { isAutomationWorkflowEditable } from "@/pages/automations-page/model/aut
 import type { StudioTab } from "@/pages/automations-page/model/automation-page.types";
 import { EmptyState, LoadingState, WorkspaceFrame, WorkspaceTopNavigation } from "@/shared/ui";
 import { AutomationApprovalsPanel } from "./components/automation-approvals-panel";
-import { AutomationContactsPanel } from "./components/automation-contacts-panel";
 import { AutomationFlowsView } from "./components/automation-flows-view";
-import { AutomationInboxPanel } from "./components/automation-inbox-panel";
 import { AutomationPublishControls } from "./components/automation-publish-controls";
 import { AutomationRunsPanel } from "./components/automation-runs-panel";
-import { AutomationSettingsPanel } from "./components/automation-settings-panel";
 import { AutomationTemplatesPanel } from "./components/automation-templates-panel";
 import { AutomationToolbar } from "./AutomationToolbar";
 import "./automations-page.css";
@@ -243,46 +240,12 @@ export function AutomationsPage() {
           />
         ) : null}
 
-        {activeTab === "inbox" ? (
-          <AutomationInboxPanel
-            conversations={operations.conversations}
-            selectedConversation={operations.selectedConversation}
-            selectedConversationLoading={operations.selectedConversationLoading}
-            replyText={operations.replyText}
-            loading={operations.inboxLoading}
-            error={operations.inboxError}
-            onRefresh={operations.refreshInbox}
-            onOpenConversation={operations.setSelectedConversationId}
-            onReplyTextChange={operations.setReplyText}
-            onReply={operations.handleReply}
-          />
-        ) : null}
-
         {activeTab === "templates" ? (
           <AutomationTemplatesPanel
             templates={operations.templates}
             loading={operations.templatesLoading}
             error={operations.templatesError}
             onRefresh={operations.refreshTemplates}
-          />
-        ) : null}
-
-        {activeTab === "contacts" ? (
-          <AutomationContactsPanel
-            conversations={operations.conversations}
-            loading={operations.inboxLoading}
-            error={operations.inboxError}
-            onRefresh={operations.refreshInbox}
-          />
-        ) : null}
-
-        {activeTab === "settings" ? (
-          <AutomationSettingsPanel
-            consents={operations.consents}
-            loading={operations.consentsLoading}
-            error={operations.consentsError}
-            onRefresh={operations.refreshConsents}
-            onOptOutFirstConsent={operations.handleOptOutFirstConsent}
           />
         ) : null}
       </WorkspaceFrame>

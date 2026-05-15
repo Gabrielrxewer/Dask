@@ -20,6 +20,12 @@ import {
   useWorkspaceSummaryQuery,
   useWorkspaceTemplatesQuery
 } from "@/modules/workspace";
+import {
+  useDisableWhatsAppIntegrationMutation,
+  useTestWhatsAppIntegrationMutation,
+  useUpsertWhatsAppIntegrationMutation,
+  useWhatsAppIntegration
+} from "@/modules/automation/query";
 import type { WorkspaceTemplateOption } from "@/modules/workspace/model";
 import { buildWorkspaceSettingsMembersPath, buildWorkspaceSelectorPath } from "@/app/router";
 import { isApiError } from "@/shared/api/http-client";
@@ -150,6 +156,10 @@ export function GeneralSettings() {
   const [profileDialog, setProfileDialog] = useState<"identity" | "legal" | null>(null);
   const [isPreferencesDialogOpen, setIsPreferencesDialogOpen] = useState(false);
   const [isConnectDetailsOpen, setIsConnectDetailsOpen] = useState(false);
+  const [whatsAppAccessToken, setWhatsAppAccessToken] = useState("");
+  const [whatsAppPhoneNumberId, setWhatsAppPhoneNumberId] = useState("");
+  const [whatsAppWabaId, setWhatsAppWabaId] = useState("");
+  const [whatsAppGraphApiVersion, setWhatsAppGraphApiVersion] = useState("v23.0");
   const workspaceProfileForm = useForm<WorkspaceProfileSettingsFormInput, unknown, WorkspaceProfileSettingsFormValues>({
     resolver: zodResolver(workspaceProfileSettingsFormSchema),
     defaultValues: {
@@ -179,6 +189,10 @@ export function GeneralSettings() {
   const connectOnboardingMutation = useCreateConnectAccountMutation(
     canManageSensitiveConnectSettings ? workspaceProfile?.id : null
   );
+  const whatsAppIntegrationQuery = useWhatsAppIntegration(workspaceSlug || null);
+  const upsertWhatsAppIntegrationMutation = useUpsertWhatsAppIntegrationMutation(workspaceSlug || null);
+  const testWhatsAppIntegrationMutation = useTestWhatsAppIntegrationMutation(workspaceSlug || null);
+  const disableWhatsAppIntegrationMutation = useDisableWhatsAppIntegrationMutation(workspaceSlug || null);
   const templateTrackRef = useRef<HTMLDivElement>(null);
   const previewTrackRef = useRef<HTMLDivElement>(null);
 
@@ -274,6 +288,14 @@ export function GeneralSettings() {
   useEffect(() => {
     workspaceProfileForm.reset(buildWorkspaceProfileFormValues(workspaceProfile, settings));
   }, [snapshot?.preferences.settings, workspaceProfile, workspaceProfileForm]);
+
+  useEffect(() => {
+    const integration = whatsAppIntegrationQuery.data?.integration;
+    if (!integration) return;
+    setWhatsAppPhoneNumberId(integration.phoneNumberId);
+    setWhatsAppWabaId(integration.wabaId ?? "");
+    setWhatsAppGraphApiVersion(integration.graphApiVersion || "v23.0");
+  }, [whatsAppIntegrationQuery.data?.integration]);
 
   const members = useMemo(() => Object.values(snapshot?.membersById ?? {}), [snapshot?.membersById]);
   const adminsCount = useMemo(
@@ -386,6 +408,23 @@ export function GeneralSettings() {
       toast.error("Nao foi possivel abrir o cadastro da cobranca Connect.");
       setIsOpeningOnboarding(false);
     }
+  };
+  const whatsAppIntegration = whatsAppIntegrationQuery.data?.integration ?? null;
+  const isWhatsAppBusy =
+    upsertWhatsAppIntegrationMutation.isPending ||
+    testWhatsAppIntegrationMutation.isPending ||
+    disableWhatsAppIntegrationMutation.isPending;
+  const canSaveWhatsApp = whatsAppAccessToken.trim().length > 0 && whatsAppPhoneNumberId.trim().length > 0;
+
+  const handleSaveWhatsAppIntegration = async () => {
+    if (!canSaveWhatsApp) return;
+    await upsertWhatsAppIntegrationMutation.mutateAsync({
+      accessToken: whatsAppAccessToken,
+      phoneNumberId: whatsAppPhoneNumberId,
+      wabaId: whatsAppWabaId || null,
+      graphApiVersion: whatsAppGraphApiVersion || "v23.0"
+    });
+    setWhatsAppAccessToken("");
   };
 
   return (
@@ -539,6 +578,90 @@ export function GeneralSettings() {
           >
             Editar preferencias
           </Button>
+        </div>
+      </section>
+
+      <section className="general-settings__workspace-profile">
+        <header>
+          <SettingsSectionHeading
+            eyebrow="Integracoes"
+            title="WhatsApp Business"
+            description="Conecte a Cloud API da Meta para o workspace enviar e receber conversas pelo numero do cliente."
+          />
+        </header>
+        <div className="general-settings__profile-grid">
+          <SettingsProfileCard
+            eyebrow="Status"
+            title={whatsAppIntegration ? whatsAppIntegration.status : "Nao conectado"}
+            description={
+              whatsAppIntegration
+                ? `${whatsAppIntegration.displayPhoneNumber ?? whatsAppIntegration.phoneNumberId} - token ...${whatsAppIntegration.accessTokenLast4 ?? "****"}`
+                : "Cole as credenciais do WhatsApp Cloud API do cliente para ativar o provider Meta neste workspace."
+            }
+            details={[
+              { label: "Phone number ID", value: whatsAppIntegration?.phoneNumberId ?? "Nao definido" },
+              { label: "WABA ID", value: whatsAppIntegration?.wabaId ?? "Nao definido" },
+              { label: "Ultimo teste", value: whatsAppIntegration?.lastTestStatus ?? "Nao testado" }
+            ]}
+            action={
+              <div className="general-settings__inline-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!whatsAppIntegration || isWhatsAppBusy}
+                  onClick={() => void testWhatsAppIntegrationMutation.mutateAsync()}
+                >
+                  Testar conexao
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!whatsAppIntegration || isWhatsAppBusy}
+                  onClick={() => void disableWhatsAppIntegrationMutation.mutateAsync()}
+                >
+                  Desativar
+                </Button>
+              </div>
+            }
+          />
+          <div className="general-settings__profile-card">
+            <span>Credenciais</span>
+            <div className="general-settings__form-grid">
+              <TextInput
+                type="password"
+                placeholder={whatsAppIntegration ? "Novo access token" : "Access token da Meta"}
+                value={whatsAppAccessToken}
+                disabled={isWhatsAppBusy}
+                onChange={(event) => setWhatsAppAccessToken(event.target.value)}
+              />
+              <TextInput
+                placeholder="Phone number ID"
+                value={whatsAppPhoneNumberId}
+                disabled={isWhatsAppBusy}
+                onChange={(event) => setWhatsAppPhoneNumberId(event.target.value)}
+              />
+              <TextInput
+                placeholder="WABA ID"
+                value={whatsAppWabaId}
+                disabled={isWhatsAppBusy}
+                onChange={(event) => setWhatsAppWabaId(event.target.value)}
+              />
+              <TextInput
+                placeholder="v23.0"
+                value={whatsAppGraphApiVersion}
+                disabled={isWhatsAppBusy}
+                onChange={(event) => setWhatsAppGraphApiVersion(event.target.value)}
+              />
+            </div>
+            {whatsAppIntegration?.lastTestError ? <p>{whatsAppIntegration.lastTestError}</p> : null}
+            <Button
+              type="button"
+              disabled={!canSaveWhatsApp || isWhatsAppBusy}
+              onClick={() => void handleSaveWhatsAppIntegration()}
+            >
+              Salvar WhatsApp
+            </Button>
+          </div>
         </div>
       </section>
 

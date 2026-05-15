@@ -1213,6 +1213,13 @@ export interface WorkspaceService {
       reason?: string | null;
     }
   ) => Promise<WhatsAppConsent>;
+  getWhatsAppIntegration: (workspaceSlug: string) => Promise<{ integration: WhatsAppIntegration | null }>;
+  upsertWhatsAppIntegration: (
+    workspaceSlug: string,
+    input: UpsertWhatsAppIntegrationInput
+  ) => Promise<WhatsAppIntegration>;
+  testWhatsAppIntegration: (workspaceSlug: string) => Promise<WhatsAppIntegration>;
+  disableWhatsAppIntegration: (workspaceSlug: string) => Promise<WhatsAppIntegration>;
   simulateWhatsAppMockEvent: (
     workspaceSlug: string,
     sideEffectId: string,
@@ -1988,6 +1995,34 @@ export interface WhatsAppConsent {
   optOutAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WhatsAppIntegration {
+  id: string;
+  workspaceId: string;
+  provider: "meta";
+  status: string;
+  phoneNumberId: string;
+  wabaId: string | null;
+  displayPhoneNumber: string | null;
+  verifiedName: string | null;
+  graphApiVersion: string;
+  accessTokenLast4: string | null;
+  tokenUpdatedAt: string;
+  lastTestedAt: string | null;
+  lastTestStatus: string | null;
+  lastTestError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertWhatsAppIntegrationInput {
+  accessToken: string;
+  phoneNumberId: string;
+  wabaId?: string | null;
+  graphApiVersion?: string | null;
+  displayPhoneNumber?: string | null;
+  verifiedName?: string | null;
 }
 
 export interface CreateWhatsAppTemplateInput {

@@ -170,6 +170,15 @@ export const upsertWhatsAppConsentDto = z.object({
   contactId: z.string().trim().min(1).nullable().optional()
 });
 
+export const upsertWhatsAppIntegrationDto = z.object({
+  accessToken: z.string().trim().min(1),
+  phoneNumberId: z.string().trim().min(1),
+  wabaId: z.string().trim().min(1).nullable().optional(),
+  graphApiVersion: z.string().trim().min(2).nullable().optional(),
+  displayPhoneNumber: z.string().trim().min(1).nullable().optional(),
+  verifiedName: z.string().trim().min(1).nullable().optional()
+});
+
 export const automationSideEffectParamsDto = z.object({
   workspaceId: z.string().uuid(),
   sideEffectId: z.string().uuid()

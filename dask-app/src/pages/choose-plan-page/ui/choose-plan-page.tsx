@@ -16,7 +16,7 @@ const PLAN_ORDER: SubscriptionPlan[] = ["BASIC", "PRO", "BUSINESS", "ENTERPRISE"
 
 function formatPlanPrice(plan: BillingPlan): string {
   if (plan.code === "ENTERPRISE") {
-    return "Solicitar orçamento";
+    return "Solicitar orcamento";
   }
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -125,13 +125,22 @@ export function ChoosePlanPage() {
     <main className="choose-plan">
       <section className="choose-plan__intro">
         <header className="choose-plan__header">
-          <p className="choose-plan__eyebrow">Planos e precos</p>
-          <h1 className="choose-plan__title">Escolha o plano ideal para voce</h1>
+          <p className="choose-plan__eyebrow">Assinatura Dask</p>
+          <h1 className="choose-plan__title">Monte seu fluxo de receita no plano certo.</h1>
+          <p className="choose-plan__description">
+            Escolha como sua operacao vai conectar CRM, proposta, contrato, cobranca, fiscal, automacoes e IA no mesmo trilho comercial.
+          </p>
           <p className="choose-plan__description choose-plan__description--legal">
             Todos os planos ativos usam workspace business. O workspace personal fica obsoleto por enquanto e novas
             assinaturas sao contratadas para operacao empresarial.
           </p>
         </header>
+
+        <aside className="choose-plan__flow-panel" aria-label="Fluxo operacional incluso no Dask">
+          {["Lead", "Proposta", "Contrato", "Cobranca", "Pagamento", "Fiscal"].map((step) => (
+            <span key={step}>{step}</span>
+          ))}
+        </aside>
       </section>
 
       {status ? (
@@ -174,39 +183,47 @@ export function ChoosePlanPage() {
           </article>
         ) : null}
 
-        {plans.map((plan) => (
-          <article key={plan.code} className="choose-plan__card">
-            <p className="choose-plan__plan-name">{plan.name}</p>
-            <div className="choose-plan__price">
-              <span className="choose-plan__price-value">{formatPlanPrice(plan)}</span>
-              <span className="choose-plan__price-period">{formatPlanPeriod(plan)}</span>
-            </div>
-            {plan.description ? <p className="choose-plan__plan-description">{plan.description}</p> : null}
-            {plan.features.length > 0 ? (
-              <ul className="choose-plan__features">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="choose-plan__feature">
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <button
-              className={`choose-plan__action${loadingPlan === plan.code ? " choose-plan__action--loading" : ""}`}
-              disabled={loadingPlan !== null || status?.plan === plan.code}
-              onClick={() => handleChoosePlan(plan.code)}
-              type="button"
-            >
-              {status?.plan === plan.code
-                ? "Plano atual"
-                : plan.code === "ENTERPRISE"
-                  ? "Solicitar orçamento"
-                  : loadingPlan === plan.code
-                    ? "Aguarde..."
-                    : `Assinar ${plan.name}`}
-            </button>
-          </article>
-        ))}
+        {plans.map((plan) => {
+          const isFeaturedPlan = plan.code === "BUSINESS";
+          const cardClassName = ["choose-plan__card", isFeaturedPlan && "choose-plan__card--featured"]
+            .filter(Boolean)
+            .join(" ");
+
+          return (
+            <article key={plan.code} className={cardClassName}>
+              {isFeaturedPlan ? <span className="choose-plan__badge">Operacao completa</span> : null}
+              <p className="choose-plan__plan-name">{plan.name}</p>
+              <div className="choose-plan__price">
+                <span className="choose-plan__price-value">{formatPlanPrice(plan)}</span>
+                <span className="choose-plan__price-period">{formatPlanPeriod(plan)}</span>
+              </div>
+              {plan.description ? <p className="choose-plan__plan-description">{plan.description}</p> : null}
+              {plan.features.length > 0 ? (
+                <ul className="choose-plan__features">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="choose-plan__feature">
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <button
+                className={`choose-plan__action${loadingPlan === plan.code ? " choose-plan__action--loading" : ""}`}
+                disabled={loadingPlan !== null || status?.plan === plan.code}
+                onClick={() => handleChoosePlan(plan.code)}
+                type="button"
+              >
+                {status?.plan === plan.code
+                  ? "Plano atual"
+                  : plan.code === "ENTERPRISE"
+                    ? "Solicitar orcamento"
+                    : loadingPlan === plan.code
+                      ? "Aguarde..."
+                      : `Assinar ${plan.name}`}
+              </button>
+            </article>
+          );
+        })}
       </div>
 
       <div className="choose-plan__footer">

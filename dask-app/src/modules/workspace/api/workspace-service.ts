@@ -64,6 +64,8 @@ import type {
   WorkspaceDocumentFolder,
   WorkspaceDocumentsPage,
   WhatsAppConsent,
+  WhatsAppIntegration,
+  UpsertWhatsAppIntegrationInput,
   Customer,
   CustomerStatus,
   CustomersPage,
@@ -1432,6 +1434,56 @@ export const workspaceService: WorkspaceService = {
     return apiClient.put<WhatsAppConsent>(
       `/automation/workspaces/${workspaceId}/communication/whatsapp/consents`,
       input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async getWhatsAppIntegration(workspaceSlug: string): Promise<{ integration: WhatsAppIntegration | null }> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.get<{ integration: WhatsAppIntegration | null }>(
+      `/automation/workspaces/${workspaceId}/communication/whatsapp/integration`,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async upsertWhatsAppIntegration(
+    workspaceSlug: string,
+    input: UpsertWhatsAppIntegrationInput
+  ): Promise<WhatsAppIntegration> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.put<WhatsAppIntegration>(
+      `/automation/workspaces/${workspaceId}/communication/whatsapp/integration`,
+      input,
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async testWhatsAppIntegration(workspaceSlug: string): Promise<WhatsAppIntegration> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WhatsAppIntegration>(
+      `/automation/workspaces/${workspaceId}/communication/whatsapp/integration/test`,
+      {},
+      {
+        authMode: "required",
+        retryOnUnauthorized: true
+      }
+    );
+  },
+
+  async disableWhatsAppIntegration(workspaceSlug: string): Promise<WhatsAppIntegration> {
+    const workspaceId = await resolveWorkspaceId(workspaceSlug);
+    return apiClient.post<WhatsAppIntegration>(
+      `/automation/workspaces/${workspaceId}/communication/whatsapp/integration/disable`,
+      {},
       {
         authMode: "required",
         retryOnUnauthorized: true

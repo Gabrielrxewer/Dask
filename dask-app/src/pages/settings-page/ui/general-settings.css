@@ -614,6 +614,12 @@
   font-weight: 700;
 }
 
+.general-settings__inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .general-settings__required-company-alert {
   display: grid;
   gap: 5px;

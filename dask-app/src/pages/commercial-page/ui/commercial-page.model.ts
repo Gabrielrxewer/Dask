@@ -7,7 +7,7 @@ import type {
 } from "@/entities/task";
 import type { Customer, CustomerStatus, CreateCustomerInput, WorkspaceDocument } from "@/modules/workspace";
 
-export type CommercialTab = "overview" | "commercial" | "customers";
+export type CommercialTab = "overview" | "commercial" | "customers" | "inbox";
 export type ModalMode =
   | "workItem"
   | "signal"
@@ -34,7 +34,8 @@ export type CommercialWorkItemFormState = {
 export const TABS: Array<{ id: CommercialTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "commercial", label: "Comercial" },
-  { id: "customers", label: "Clientes" }
+  { id: "customers", label: "Clientes" },
+  { id: "inbox", label: "Inbox" }
 ];
 
 export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {

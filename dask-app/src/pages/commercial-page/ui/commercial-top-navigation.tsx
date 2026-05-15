@@ -1,5 +1,5 @@
 import { ModuleTabs, PageToolbar, WorkspaceActionButton } from "@/shared/ui";
-import { IconRefresh, IconTrendUp, IconUsers } from "./commercial-page-icons";
+import { IconBriefcase, IconRefresh, IconTrendUp, IconUsers } from "./commercial-page-icons";
 import { TABS, type CommercialTab } from "./commercial-page.model";
 
 export function CommercialTopNavigation({
@@ -37,7 +37,7 @@ export function CommercialTopNavigation({
             <WorkspaceActionButton className="commercial-top-nav__btn" label="Atualizar" icon={<IconRefresh />} onClick={onRefresh} disabled={isAuxLoading || isSubmitting} />
             <WorkspaceActionButton className="commercial-top-nav__btn commercial-top-nav__btn--customer" label="Novo cliente" icon={<IconUsers />} onClick={onNewCustomer} />
             <WorkspaceActionButton className="commercial-top-nav__btn" label="Novo signal" icon={<IconTrendUp />} onClick={onNewSignal} disabled={!canCreateSignal || isSubmitting} />
-            <WorkspaceActionButton className="commercial-top-nav__btn commercial-top-nav__btn--workItem" tone="accent" label="Novo WorkItem" icon={<IconTrendUp />} onClick={onNewCommercialWorkItem} disabled={!canCreateCommercialWorkItem || isSubmitting} />
+            <WorkspaceActionButton className="commercial-top-nav__btn commercial-top-nav__btn--workItem" tone="accent" label="Novo WorkItem" icon={<IconBriefcase />} onClick={onNewCommercialWorkItem} disabled={!canCreateCommercialWorkItem || isSubmitting} />
           </>
         }
       />

@@ -6,7 +6,7 @@ import type {
   AutomationWorkflowGraphNode
 } from "@/modules/workspace/model";
 
-export type StudioTab = "flows" | "runs" | "approvals" | "inbox" | "templates" | "contacts" | "settings";
+export type StudioTab = "flows" | "runs" | "approvals" | "templates";
 export type AutomationNodeType = string;
 
 export type AutomationCanvasData = Record<string, unknown> & {

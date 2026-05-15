@@ -1,6 +1,6 @@
 :root {
   --global-header-height: var(--layout-app-header-height, 48px);
-  --global-footer-height: 48px;
+  --global-footer-height: 43px;
   --global-content-gap: var(--layout-page-gap, 8px);
   --global-sidebar-width: var(--layout-sidebar-width, 280px);
   --global-chrome-border: var(--chrome-border);
@@ -105,8 +105,8 @@ body.shared-modal-open .global-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 0 18px;
+  gap: 11px;
+  padding: 0 16px;
   box-shadow:
     var(--global-chrome-shadow-top),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 6%, transparent) inset;
@@ -118,9 +118,9 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header--marketing {
-  gap: 12px;
-  padding-left: 18px;
-  padding-right: 18px;
+  gap: 11px;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .global-header--home {
@@ -148,7 +148,7 @@ body.shared-modal-open .global-footer {
 .global-header__left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   padding-left: 0;
 }
@@ -156,9 +156,9 @@ body.shared-modal-open .global-footer {
 .global-header__menu {
   border: 1px solid var(--global-chrome-pill-border);
   background: var(--global-chrome-pill-bg);
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -173,11 +173,11 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__menu-grid {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
+  gap: 2.5px;
 }
 
 .global-header__menu-grid i {
@@ -230,7 +230,7 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__brand-mark {
-  width: 58px;
+  width: 52px;
   height: auto;
   max-height: calc(var(--global-header-height) - 2px);
   display: block;
@@ -247,7 +247,7 @@ body.shared-modal-open .global-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -255,8 +255,8 @@ body.shared-modal-open .global-footer {
 .global-header__marketing-link {
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
+  min-height: 34px;
+  padding: 0 13px;
   border-radius: 999px;
   color: var(--global-chrome-text-soft);
   text-decoration: none;
@@ -280,7 +280,7 @@ body.shared-modal-open .global-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   width: max-content;
   max-width: calc(100% - 320px);
@@ -288,10 +288,10 @@ body.shared-modal-open .global-footer {
 
 .global-header__home-link {
   position: relative;
-  min-height: 34px;
+  min-height: 31px;
   border: 0;
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 11px;
   background: transparent;
   color: var(--global-chrome-text-soft);
   font-size: 0.76rem;
@@ -346,10 +346,10 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__home-menu-link {
-  min-height: 38px;
+  min-height: 34px;
   border: 1px solid transparent;
   border-radius: 12px;
-  padding: 0 12px;
+  padding: 0 11px;
   background: transparent;
   color: var(--global-floating-title);
   text-align: left;
@@ -366,17 +366,17 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__user {
-  min-height: 38px;
-  min-width: 44px;
+  min-height: 34px;
+  min-width: 40px;
   border-radius: 999px;
   border: 1px solid var(--global-chrome-pill-border);
   background: var(--global-chrome-pill-bg);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 7px;
   cursor: pointer;
-  padding: 0 12px 0 5px;
+  padding: 0 11px 0 5px;
   box-shadow:
     0 10px 20px color-mix(in srgb, var(--ink-shadow-strong) 16%, transparent),
     0 1px 0 color-mix(in srgb, var(--neutral-white) 16%, transparent) inset;
@@ -397,7 +397,7 @@ body.shared-modal-open .global-footer {
 
 .global-header__home-return {
   justify-content: center;
-  padding: 0 14px;
+  padding: 0 13px;
   color: var(--global-chrome-text);
   font-size: 0.76rem;
   font-weight: 700;
@@ -419,7 +419,7 @@ body.shared-modal-open .global-footer {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
 
 .global-header__guest-actions {
@@ -435,8 +435,8 @@ body.shared-modal-open .global-footer {
   border: 1px solid var(--global-chrome-pill-border);
   background: var(--global-chrome-pill-bg);
   color: var(--global-chrome-text);
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 31px;
+  padding: 0 13px;
   border-radius: 10px;
   font-size: 0.76rem;
   font-weight: 700;
@@ -464,8 +464,8 @@ body.shared-modal-open .global-footer {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 16px;
+  min-height: 36px;
+  padding: 0 14px;
   border-radius: 12px;
   border: 1px solid color-mix(in oklab, var(--accent-strong) 18%, var(--global-chrome-pill-border));
   background: linear-gradient(135deg, color-mix(in srgb, var(--neutral-white) 20%, transparent), color-mix(in srgb, var(--info-bg) 12%, transparent));
@@ -486,8 +486,8 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__user-avatar {
-  width: 28px;
-  height: 28px;
+  width: 25px;
+  height: 25px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -534,7 +534,7 @@ body.shared-modal-open .global-footer {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 124px;
+  max-width: 112px;
 }
 
 .global-header__user:hover {
@@ -560,16 +560,16 @@ body.shared-modal-open .global-footer {
   border: 1px solid var(--global-floating-border);
   border-radius: 12px;
   box-shadow: var(--global-floating-shadow);
-  padding: 10px;
+  padding: 9px;
   display: grid;
-  gap: 8px;
+  gap: 7px;
   backdrop-filter: saturate(120%) blur(16px);
 }
 
 .global-header__user-menu-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   border-bottom: 1px solid color-mix(in oklab, var(--line) 82%, var(--neutral-white) 18%);
   padding-bottom: 8px;
 }
@@ -591,8 +591,8 @@ body.shared-modal-open .global-footer {
 }
 
 .global-header__user-menu-avatar {
-  width: 32px;
-  height: 32px;
+  width: 29px;
+  height: 29px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -611,8 +611,8 @@ body.shared-modal-open .global-footer {
 
 .global-header__billing-card {
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 7px;
+  padding: 9px;
   border: 1px solid color-mix(in oklab, var(--line) 82%, var(--neutral-white) 18%);
   border-radius: 10px;
   background: var(--surface-overlay);
@@ -662,8 +662,8 @@ body.shared-modal-open .global-footer {
   background: var(--button-neutral-bg);
   color: var(--button-neutral-text);
   border-radius: 9px;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 31px;
+  padding: 0 11px;
   text-align: left;
   font-size: 0.74rem;
   font-weight: 700;
@@ -2989,7 +2989,7 @@ body.shared-modal-open .global-footer {
 .global-footer__links {
   display: inline-flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 9px;
   margin-left: 8px;
 }
 

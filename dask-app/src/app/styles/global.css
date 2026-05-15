@@ -24,6 +24,7 @@ body {
 }
 
 html {
+  font-size: 90%;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--primary) 72%, transparent) transparent;
 }

@@ -179,37 +179,37 @@
   --info-soft: var(--info-bg);
 
   --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 28px;
-  --space-8: 32px;
-  --space-9: 40px;
+  --space-2: 7px;
+  --space-3: 11px;
+  --space-4: 14px;
+  --space-5: 18px;
+  --space-6: 22px;
+  --space-7: 25px;
+  --space-8: 29px;
+  --space-9: 36px;
 
-  --layout-app-header-height: 48px;
-  --layout-sidebar-width: 280px;
-  --layout-page-padding: 8px;
-  --layout-page-gap: 8px;
-  --layout-content-frame-radius: 10px;
+  --layout-app-header-height: 43px;
+  --layout-sidebar-width: 252px;
+  --layout-page-padding: 7px;
+  --layout-page-gap: 7px;
+  --layout-content-frame-radius: 9px;
   --layout-content-frame-border: color-mix(in oklab, var(--border-default) 78%, transparent);
   --layout-content-frame-shadow: var(--shadow-card);
-  --layout-toolbar-height: 40px;
-  --layout-tab-height: 34px;
-  --layout-canvas-rail-width: 272px;
-  --layout-inspector-width: 320px;
+  --layout-toolbar-height: 36px;
+  --layout-tab-height: 31px;
+  --layout-canvas-rail-width: 245px;
+  --layout-inspector-width: 288px;
   --z-header: 40;
   --z-sidebar: 70;
   --z-modal: 10000;
   --z-modal-content: 10020;
   --z-popover: 10040;
 
-  --radius-xl: 24px;
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 10px;
-  --radius-xs: 8px;
+  --radius-xl: 22px;
+  --radius-lg: 14px;
+  --radius-md: 11px;
+  --radius-sm: 9px;
+  --radius-xs: 7px;
   --radius-pill: 999px;
 
   --font-family-heading: "Sora", "Segoe UI", sans-serif;
@@ -287,10 +287,10 @@
   --shadow-card-hover:
     0 18px 36px rgba(18, 50, 74, 0.1),
     0 1px 0 rgba(255, 255, 255, 0.92) inset;
-  --control-height-sm: 34px;
-  --control-height-md: 42px;
-  --control-height-lg: 46px;
-  --control-padding-x: 12px;
+  --control-height-sm: 31px;
+  --control-height-md: 38px;
+  --control-height-lg: 41px;
+  --control-padding-x: 11px;
   --control-border: 1px solid var(--border-default);
   --control-border-strong: var(--selected-border);
   --control-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 252, 254, 0.96) 100%);
